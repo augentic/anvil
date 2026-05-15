@@ -7,7 +7,7 @@ assignment names a project that does not yet exist in
 
 The transcript starts at the **end** of step 3(d) Assignment, after
 the propose brief has written all three plan entries via
-`specify change plan add` and the assignment table has been rendered with
+`specify plan add` and the assignment table has been rendered with
 the third row marked unresolved (`?`).
 
 ```text
@@ -50,7 +50,7 @@ Running:
   $ specify workspace sync
   ok: materialised .specify/workspace/alpha-gateway/
 
-  $ specify change plan amend alpha-gateway-extract --project alpha-gateway
+  $ specify plan amend alpha-gateway-extract --project alpha-gateway
   ok: alpha-gateway-extract.project = alpha-gateway
 
 Re-rendering assignment table:
@@ -61,23 +61,23 @@ Re-rendering assignment table:
 | 2 | operator-dashboard-alerts | command-centre   | baseline spec: user-alerts exists on command-centre             |
 | 3 | alpha-gateway-extract     | alpha-gateway    | greenfield carve-out — newly added registry entry (RFC-9 §2B)   |
 
-All entries resolved. Continuing to step 4 (specify change plan validate).
+All entries resolved. Continuing to step 4 (specify plan validate).
 
 Running:
-  $ specify change plan validate
+  $ specify plan validate
   PASS
 
 Wrote .specify/plans/platform-modernisation/proposal.md.
 
 Done. Next steps:
-  - specify change plan status
+  - specify plan status
   - /change:execute loop
 ```
 
 ## Invariants pinned by this transcript
 
-- **Decline default.** The confirm prompt defaults to `N`. The transcript shows the operator typing `y`; an `N` (or empty) response would surface a follow-up prompt asking the operator to either name an existing project or drop the entry via `specify change plan transition <name> skipped`.
+- **Decline default.** The confirm prompt defaults to `N`. The transcript shows the operator typing `y`; an `N` (or empty) response would surface a follow-up prompt asking the operator to either name an existing project or drop the entry via `specify plan transition <name> skipped`.
 - **URL inference.** `git@github.com:augentic/<name>.git` is inferred from the longest common `<host>:<org>/` prefix across the existing entries (`legacy-monolith` and `command-centre`).
 - **Schema default.** `omnia@v1` is the majority schema (both existing entries use it). On a tie the skill would prompt with the candidates instead.
-- **Verb order.** `specify registry add` → `specify workspace sync` → `specify change plan amend --project <new>`. Reversing any pair would surface a validator error or leave a clone slot unmaterialised.
+- **Verb order.** `specify registry add` → `specify workspace sync` → `specify plan amend --project <new>`. Reversing any pair would surface a validator error or leave a clone slot unmaterialised.
 - **`--description` is required.** Multi-project registries enforce `description-missing-multi-repo` (RFC-3b). The skill prompts unconditionally before calling `specify registry add`.

@@ -9,7 +9,7 @@ This fixture is the acceptance target for [RFC-3a C24](../../../../../../../rfcs
 | [`inputs/discovery.md`](inputs/discovery.md) | Starting-state `discovery.md` — byte-identical to the C22 monolith discovery fixture's `expected/discovery.md`. Drives the expected plan (`expected/plan.yaml`). |
 | [`inputs/discovery-manifest.md`](inputs/discovery-manifest.md) | Same three capabilities as `discovery.md`, but `user-registration` is `confidence: low`. |
 | [`expected/plan.yaml`](expected/plan.yaml) | Byte-stable plan when every slice is accepted without edit — all path hints and delta-targeting intent carried in `description`. |
-| [`expected/create-invocations.md`](expected/create-invocations.md) | The three `specify change plan add` commands. |
+| [`expected/create-invocations.md`](expected/create-invocations.md) | The three `specify plan add` commands. |
 | [`expected/create-invocations-manifest.md`](expected/create-invocations-manifest.md) | Alternative invocation sequence (description-driven). |
 | [`notes.md`](notes.md) | Mapping rationale + cross-references to C22. |
 

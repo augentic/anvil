@@ -83,7 +83,7 @@ The report is read-only. It classifies producer-to-consumer deltas as `additive`
 **Triage:**
 
 - If the consumer project is intentionally lagging (e.g. mobile shipping a release behind the backend), accept the drift and capture the rationale in the change or PR.
-- If the consumer needs to be updated to match, spawn a follow-up consumer slice in the same plan or in a follow-up change. Use `specify change plan add <name> --project <consumer> --depends-on <producer-slice>` to wire it up.
+- If the consumer needs to be updated to match, spawn a follow-up consumer slice in the same plan or in a follow-up change. Use `specify plan add <name> --project <consumer> --depends-on <producer-slice>` to wire it up.
 - See [Resolve cross-project compatibility findings](resolve-cross-project-contract-warnings.md) for the full triage checklist.
 
 **What the check does not do:** it never modifies the consumer's specs, never auto-creates a follow-up change, and RM-04 does not transition plan state. RM-11 adds dependency-aware compatibility gates later.

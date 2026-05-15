@@ -73,7 +73,7 @@ When a slice is part of a change plan, the plan entry has its own status tracked
 planEntryLifecycle: {
   shape: state_diagram
 
-  pending -> in-progress: "specify change plan transition"
+  pending -> in-progress: "specify plan transition"
   in-progress -> done: "slice merged successfully"
   in-progress -> failed: "slice failed"
   in-progress -> blocked: "slice deferred"
@@ -90,7 +90,7 @@ planEntryLifecycle: {
 | `blocked` | Slice deferred -- dependency issue or external blocker |
 | `skipped` | Manually skipped by operator |
 
-Plan entry transitions are performed by `specify change plan transition <name> <target>`.
+Plan entry transitions are performed by `specify plan transition <name> <target>`.
 
 ## Archiving
 
@@ -102,4 +102,4 @@ Both terminal states (`merged` and `dropped`) result in the slice directory bein
 
 The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This provides an audit trail of every slice the project has been through.
 
-For plans, `specify change plan archive` moves a completed `plan.yaml` and its working directory to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+For plans, `specify plan archive` moves a completed `plan.yaml` and its working directory to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

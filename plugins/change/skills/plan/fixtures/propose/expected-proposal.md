@@ -20,4 +20,4 @@
 - Open questions from discovery answered inline:
   - *Should `email-verification` stay a separate plan entry?* — yes, kept separate (slice 2).
   - *Does the new `shopping-cart` crate need to absorb `order-create`?* — no, `order-create` is deferred to a follow-up plan.
-- `specify change plan validate` — no errors.
+- `specify plan validate` — no errors.

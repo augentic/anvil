@@ -85,7 +85,7 @@ This is an interactive loop. The agent presents each slice and waits for your de
 
 ### Validate
 
-After all slices are accepted or rejected, the skill runs `specify change plan validate` to check:
+After all slices are accepted or rejected, the skill runs `specify plan validate` to check:
 
 - No duplicate slice names.
 - No dependency cycles.
@@ -96,7 +96,7 @@ After all slices are accepted or rejected, the skill runs `specify change plan v
 After planning completes, inspect the result:
 
 ```bash
-specify change plan status
+specify plan status
 ```
 
 This shows the entries in topological order:
@@ -151,7 +151,7 @@ The driver:
 5. Runs `/spec:merge`.
 6. Reads the phase outcome and transitions the plan entry to `done`.
 
-After this, `specify change plan status` shows:
+After this, `specify plan status` shows:
 
 ```
   done     extract-token-validation
@@ -184,9 +184,9 @@ If a slice fails during execution:
 
 If all remaining entries depend on the failed one, execution reports `stuck`. You can then:
 
-- Fix the issue and re-run: `specify change plan transition extract-token-validation pending` to reset it, then `/change:execute loop`.
-- Skip it: `specify change plan transition extract-token-validation skipped`.
-- Amend the plan: `specify change plan amend consolidate-auth-middleware --depends-on extract-session-management` to remove the dependency.
+- Fix the issue and re-run: `specify plan transition extract-token-validation pending` to reset it, then `/change:execute loop`.
+- Skip it: `specify plan transition extract-token-validation skipped`.
+- Amend the plan: `specify plan amend consolidate-auth-middleware --depends-on extract-session-management` to remove the dependency.
 
 ## 7. Drop down a layer
 
@@ -194,7 +194,7 @@ You can always fall back to manual control. If `/change:execute` is stuck or you
 
 ```text
 # Manually transition a plan entry
-specify change plan transition add-oauth-integration in-progress
+specify plan transition add-oauth-integration in-progress
 
 # Define, build, and merge manually
 /spec:define "Add OAuth2 provider integration to the auth service"
@@ -202,7 +202,7 @@ specify change plan transition add-oauth-integration in-progress
 /spec:merge
 
 # Mark it done in the plan
-specify change plan transition add-oauth-integration done
+specify plan transition add-oauth-integration done
 ```
 
 The plan is just a data file that tracks status. The CLI commands give you full control.

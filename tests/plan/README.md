@@ -53,7 +53,7 @@ For each run:
 4. Run the `/change:plan` prompt from **Invocation** exactly as written unless the scenario documents an allowed local substitution.
 5. Run the listed validation and inspection commands.
 6. Check each item in **Assertions** and **Negative Expectations**.
-7. Preserve failure evidence: `plan.yaml`, `.specify/plans/<change-name>/`, command output, registry state when relevant, and `specify change plan status` output.
+7. Preserve failure evidence: `plan.yaml`, `.specify/plans/<change-name>/`, command output, registry state when relevant, and `specify plan status` output.
 8. Fill out [`run-summary-template.md`](run-summary-template.md).
 
 ## Run-All Prompt

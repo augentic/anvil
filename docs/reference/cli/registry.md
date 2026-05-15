@@ -57,7 +57,7 @@ Behaviour:
 - Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
-Used by `/change:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify change plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify change plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+Used by `/change:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
 
 ### specify registry remove
 
@@ -71,7 +71,7 @@ Behaviour:
 
 - Refuses when the registry is absent or `<name>` is not declared.
 - Validates the resulting shape after the write.
-- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify change plan amend <change> --project <other>` separately.
+- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify plan amend <change> --project <other>` separately.
 
 ## See also
 

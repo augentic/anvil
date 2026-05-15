@@ -237,12 +237,12 @@ Run the planning skill:
 |---|---|---|
 | **Discovery** | Reads `change.md` and `./docs/oauth-login.md`; emits a neutral capability inventory. | `.specify/plans/oauth-login/discovery.md` |
 | **Sync workspace** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each project slot. | `.specify/workspace/<project>/`, `.specify/plans/oauth-login/workspace.md` |
-| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify change plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
-| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify change plan amend --project`. | `plan.yaml` (entries gain `project:`) |
+| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
+| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
 When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `capability: contracts@v1` and no `project` — it runs against the hub itself.
 
-`specify change plan validate` is the final gate; the skill exits non-zero on any error-level finding.
+`specify plan validate` is the final gate; the skill exits non-zero on any error-level finding.
 
 <details>
 <summary>Expected assignment table (interactive review)</summary>
@@ -261,7 +261,7 @@ The contract change is omitted from this table — only entries with a real `pro
 </details>
 
 <details>
-<summary>Expected <code>specify change plan status</code> output after planning</summary>
+<summary>Expected <code>specify plan status</code> output after planning</summary>
 
 ```text
 oauth-login
@@ -281,7 +281,7 @@ The plan is now the single source of truth for what runs where. Run `cat plan.ya
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo changes. The hub holds platform state and never carries code.
 - `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:plan`.
 - `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
-- `/change:plan` runs discovery -> sync-workspace -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
+- `/change:plan` runs discovery -> sync-workspace -> propose -> assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 
 ## Next
 

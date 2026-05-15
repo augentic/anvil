@@ -7,7 +7,7 @@ This how-to walks the canonical recovery sequence end-to-end. The framework pins
 ## Prerequisites
 
 - A change where `/change:execute loop` halted with `Completion: stuck` or surfaced a `registry-amendment-required` line in the per-slice summary.
-- The dropped change's name (from `specify change plan status` -- the entry is in `blocked` state with `status-reason: registry-amendment-required`).
+- The dropped change's name (from `specify plan status` -- the entry is in `blocked` state with `status-reason: registry-amendment-required`).
 
 ## 1. Read the proposal payload
 
@@ -27,7 +27,7 @@ Three legitimate decisions:
 |----------|------|--------|
 | **Accept** | The proposal is sound -- the capability genuinely belongs in a new project. | Continue to step 3. |
 | **Reject and re-route** | An existing registry project is a better fit (the phase skill's heuristic missed it). | Skip to step 4. |
-| **Reject and abort** | The capability does not belong in this change at all. | `specify change plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
+| **Reject and abort** | The capability does not belong in this change at all. | `specify plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
 
 For "Accept," continue with the canonical sequence below. For "Reject and re-route," skip to [Re-route to an existing project](#re-route-to-an-existing-project).
 
@@ -57,7 +57,7 @@ specify workspace sync
 ### 3c. Re-route the blocked change to the new project
 
 ```bash
-specify change plan amend <change> --project <proposed-name>
+specify plan amend <change> --project <proposed-name>
 ```
 
 The verb validates `<proposed-name>` against the now-updated registry (rejects unknown projects). After the write, the entry's `project:` field points at the new slot.
@@ -65,7 +65,7 @@ The verb validates `<proposed-name>` against the now-updated registry (rejects u
 ### 3d. Re-queue the change
 
 ```bash
-specify change plan transition <change> pending
+specify plan transition <change> pending
 ```
 
 The entry transitions back to `pending`. The next `/change:execute` cycle picks it up and routes it into the new workspace clone.
@@ -85,8 +85,8 @@ If you started this change via `/change:plan <name> orchestrate`, re-running the
 If the right answer is an existing project rather than a new one, skip steps 3a and 3b -- you do not need to mutate the registry:
 
 ```bash
-specify change plan amend <change> --project <existing-project>
-specify change plan transition <change> pending
+specify plan amend <change> --project <existing-project>
+specify plan transition <change> pending
 /change:execute loop
 ```
 
@@ -98,7 +98,7 @@ The phase skill that proposed the amendment will not see the rejection; the jour
 |-------|---------|--------|
 | Registry has the new project | `specify registry show` | `<proposed-name>` listed under `projects[]`. |
 | Workspace slot is materialised | `specify workspace status` | `<proposed-name>` shows `git-clone` or `symlink`, `dirty: no`. |
-| Plan entry is re-routed | `specify change plan status` | `<change>` is `pending`, `project: <proposed-name>`. |
+| Plan entry is re-routed | `specify plan status` | `<change>` is `pending`, `project: <proposed-name>`. |
 | Change drives to `done` on next run | `/change:execute loop` | The change merges; the plan progresses. |
 
 ## Why the framework requires operator confirmation

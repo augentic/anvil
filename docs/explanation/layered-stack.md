@@ -95,7 +95,7 @@ The plan is the change's table of contents. `/change:plan` produces it by analys
 /change:plan <name> source legacy=./path  -->  /change:execute loop
 ```
 
-The matching CLI surface spans **`specify change plan ...`** (scaffold, populate, validate, transition, archive a plan), **`specify change ...`** (operator brief at `change.md`, `change finalize`), **`specify registry ...`** (`registry.yaml` CRUD + validate), and **`specify workspace ...`** (materialise, inspect, push workspace clones for multi-repo changes).
+The matching CLI surface spans **`specify plan ...`** (scaffold, populate, validate, transition, archive a plan), **`specify change ...`** (operator brief at `change.md`, `change finalize`), **`specify registry ...`** (`registry.yaml` CRUD + validate), and **`specify workspace ...`** (materialise, inspect, push workspace clones for multi-repo changes).
 
 ### The `orchestrate` umbrella mode
 
@@ -113,7 +113,7 @@ This means you can always drop down a layer:
 
 - If `/change:plan <name> orchestrate` halts on a step, you can pick up by hand at the next action (`specify workspace push`, operator PR merge, `specify change finalize`).
 - If `/change:execute` fails on a slice, you can finish it manually with `/spec:build` and `/spec:merge`.
-- If `/change:plan` produces a plan you want to adjust, you can edit it with `specify change plan amend` and drive it yourself with `specify change plan next`.
-- If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify change plan status`.
+- If `/change:plan` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next`.
+- If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify plan status`.
 
 See [Drop down a layer](../how-to/drop-down-a-layer.md) for worked examples of each escape hatch.

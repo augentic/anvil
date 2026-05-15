@@ -46,7 +46,7 @@ The umbrella drives the canonical platform-first loop:
 |------|------------|----------|
 | 1. Brief | `specify change create <name>` (when `change.md` is absent) | Kebab-case violation, partial scaffold |
 | 2. Registry | `specify registry validate` | `description-missing-multi-repo`, `hub-cannot-be-project`, kebab-case / URL / capability identifier violations |
-| 3. Plan | `/change:plan <name> [from ...] [against ...] [source ...]` | Operator `abort` in propose loop, `specify change plan validate` failure |
+| 3. Plan | `/change:plan <name> [from ...] [against ...] [source ...]` | Operator `abort` in propose loop, `specify plan validate` failure |
 | 4. Execute | `/change:execute loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |
 | 5. Push | `specify workspace push` | Per-project `failed` status (auth, missing remote) |
 | 6. Land | Operator merges PRs through forge UI or `gh pr merge`; umbrella lists PRs and stops until this is done | Unmerged PRs |
@@ -111,7 +111,7 @@ Each shape uses the same seven-step sequence. Only the inputs to step 3 (Plan) d
 
 ## Lifecycle transitions
 
-The umbrella is a composition of existing skills and CLI verbs. It does not introduce new lifecycle states. Plan-entry transitions are written by `/change:execute` via `specify change plan transition`; slice lifecycle transitions are written by the phase skills via `specify slice transition`.
+The umbrella is a composition of existing skills and CLI verbs. It does not introduce new lifecycle states. Plan-entry transitions are written by `/change:execute` via `specify plan transition`; slice lifecycle transitions are written by the phase skills via `specify slice transition`.
 
 ## Error modes
 

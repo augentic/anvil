@@ -28,10 +28,10 @@ Trigger: `alpha-gateway-extract` was unresolved during step 3(d) — no existing
 
 1. `specify registry add alpha-gateway --url git@github.com:augentic/alpha-gateway.git --capability omnia@v1 --description "Inbound traffic gateway carved out of the monolith's edge layer."`
 2. `specify workspace sync`
-3. `specify change plan amend alpha-gateway-extract --project alpha-gateway`
+3. `specify plan amend alpha-gateway-extract --project alpha-gateway`
 
 ## Notes
 
 - Heuristics applied (Omnia, from `plugins/change/skills/plan/briefs/omnia/propose.md`): one slice per discovered capability; emit order follows `depends-on`.
 - Slice 3 was originally surfaced with `confidence: medium` because no existing baseline spec covered the gateway layer; the operator confirmed the carve-out and approved the new registry entry.
-- `specify change plan validate` — no errors.
+- `specify plan validate` — no errors.

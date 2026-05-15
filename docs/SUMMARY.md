@@ -74,7 +74,7 @@
 - [CLI reference](reference/cli/index.md)
   - [specify status](reference/cli/status.md)
   - [specify slice](reference/cli/slice.md)
-  - [specify change plan](reference/cli/plan.md)
+  - [specify plan](reference/cli/plan.md)
   - [specify change](reference/cli/change.md)
   - [specify registry](reference/cli/registry.md)
   - [specify capability](reference/cli/capability.md)

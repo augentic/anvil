@@ -8,7 +8,7 @@ Running `/change:plan <name> orchestrate` a second time after a halt is the cano
 |---|---|
 | change brief and plan both absent (`change.md`, `plan.yaml`) | step 1 (the merged `specify change create` scaffolds both files together) |
 | brief present, `plan.yaml` absent (anomalous — usually a manual delete of `plan.yaml`) | operator removes `change.md` (or restores the matching `plan.yaml` from VCS) and re-runs from step 1 — `specify change create` refuses while either file exists |
-| both present, no entries | step 3 (with `/change:plan` default mode running under `--extend` so its step 2 is skipped) |
+| both present, no entries | step 3 (the default mode of `/change:plan` runs in extend semantics so its step 2 is skipped — see "Step 3 re-entry" below) |
 | `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |
 | PRs pushed, not all `MERGED` | step 6 lists PRs and stops for operator merge |
@@ -26,7 +26,7 @@ The orchestration mode never re-creates a brief, re-runs discovery, or re-pushes
 
 ## Step 3 re-entry against a populated plan
 
-When step 3 runs against a populated `plan.yaml`, the orchestration forwards `--extend` to `/change:plan` (default mode) so the plan skill appends new slices instead of refusing on a populated plan. Operators who want a fresh plan archive the old one first (`specify change plan archive`) and re-run.
+When step 3 runs against a populated `plan.yaml`, the orchestration forwards `--extend` to `/change:plan` (default mode) so the plan skill appends new slices instead of refusing on a populated plan. Operators who want a fresh plan archive the old one first (`specify plan archive`) and re-run.
 
 The plan skill's own `--extend` semantics apply (see [SKILL.md](SKILL.md) §"Modes → `--extend`"):
 

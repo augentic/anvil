@@ -100,29 +100,29 @@ The plan skill internally:
 
 - runs the discovery brief (step 3a in default mode);
 - on multi-project registries, runs discovery-oriented `specify workspace sync` and authors `workspace.md` (step 3b);
-- proposes slices and lands accepted ones via `specify change plan add` (step 3c);
-- on multi-project registries, assigns each entry to a project via `specify change plan amend --project` (step 3d);
+- proposes slices and lands accepted ones via `specify plan add` (step 3c);
+- on multi-project registries, assigns each entry to a project via `specify plan amend --project` (step 3d);
 - when assignment names a project not yet in the registry, runs the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — and continues;
-- gates the run on `specify change plan validate`.
+- gates the run on `specify plan validate`.
 
 **Halts.**
 
 - Plan-skill abort during the propose loop (operator typed `abort`) → umbrella stops; `proposal.md` records the partial decision trail; resume by re-running `/change:plan <name> orchestrate` (which re-enters step 3 under `extend` semantics — see [re-entry.md](re-entry.md)).
-- `specify change plan validate` failure → umbrella stops; the operator amends via `specify change plan amend` and re-runs.
+- `specify plan validate` failure → umbrella stops; the operator amends via `specify plan amend` and re-runs.
 
 **Manual fallback.**
 
 ```bash
 specify change create <name> [--source <key>=<path-or-url> ...]
 # discovery / sync-workspace / propose / assignment cycles run by hand or via /change:plan default
-specify change plan add <slice-name> ...
-specify change plan amend <slice-name> --project <project>
+specify plan add <slice-name> ...
+specify plan amend <slice-name> --project <project>
 specify registry add <project> --url ... --capability <capability> --description "..."
 specify workspace sync
-specify change plan validate
+specify plan validate
 ```
 
-**Failure recovery.** A non-zero exit from `/change:plan` leaves the partial plan on disk (entries written via `specify change plan add` are durable). The operator inspects `specify change plan status`, fixes the offending entry, and re-runs the umbrella with `--extend` semantics implicit (re-running `/change:plan <name> orchestrate` against an already-populated plan is idempotent — see [re-entry.md](re-entry.md)).
+**Failure recovery.** A non-zero exit from `/change:plan` leaves the partial plan on disk (entries written via `specify plan add` are durable). The operator inspects `specify plan status`, fixes the offending entry, and re-runs the umbrella with `--extend` semantics implicit (re-running `/change:plan <name> orchestrate` against an already-populated plan is idempotent — see [re-entry.md](re-entry.md)).
 
 ### Step 4 — Execute
 
@@ -132,7 +132,7 @@ specify change plan validate
 /change:execute loop
 ```
 
-The execute skill takes the `.specify/plan.lock` PID stamp, runs self-heal, then iterates `specify change plan next → /spec:define → /spec:build → /spec:merge → specify change plan transition` until no eligible change remains. Multi-repo entries route into `.specify/workspace/<project>/` via the executor's CWD-routing step.
+The execute skill takes the `.specify/plan.lock` PID stamp, runs self-heal, then iterates `specify plan next → /spec:define → /spec:build → /spec:merge → specify plan transition` until no eligible change remains. Multi-repo entries route into `.specify/workspace/<project>/` via the executor's CWD-routing step.
 
 Execution owns mutation-time workspace preparation. For each selected plan entry that carries `project`, `/change:execute` materialises/prepares only that project's slot, checks out the exact `specify/<change-name>` branch before any define/build/merge mutation, and never refreshes unrelated projects unless the operator explicitly ran a broader sync outside the umbrella. This is distinct from plan-time sync-workspace, which may refresh every registered project for discovery context.
 
@@ -141,7 +141,7 @@ Execution owns mutation-time workspace preparation. For each selected plan entry
 | Classification | Source | Operator action |
 |---|---|---|
 | `all-done` | every entry `done` / `skipped` | continue to step 5 |
-| `stuck` | dependency chain blocked by `failed` / `blocked` predecessors | `specify change plan validate` → `specify change plan transition <name> pending` (or `skipped`) → re-run umbrella |
+| `stuck` | dependency chain blocked by `failed` / `blocked` predecessors | `specify plan validate` → `specify plan transition <name> pending` (or `skipped`) → re-run umbrella |
 | `halted` | self-heal saw an ambiguous on-disk state | manual triage of `.specify/slices/<name>/.metadata.yaml` against `plan.yaml` → re-run umbrella |
 | `driver-interrupted` | SIGINT/SIGTERM mid-run | re-run umbrella; self-heal reclaims the in-flight entry on the next startup |
 | `registry-amendment-required` | phase emitted the structured payload | review proposal in journal → run the canonical recovery sequence (below) → re-run umbrella |
@@ -153,8 +153,8 @@ The umbrella **only** continues to step 5 on `all-done`. Every other classificat
 ```bash
 specify registry add <proposed-name> --url <proposed-url> --capability <proposed-capability> --description "<proposed-description>"
 specify workspace sync
-specify change plan amend <slice-name> --project <proposed-name>
-specify change plan transition <slice-name> pending
+specify plan amend <slice-name> --project <proposed-name>
+specify plan transition <slice-name> pending
 ```
 
 …then re-runs the umbrella. The umbrella never auto-applies registry amendments — every registry mutation passes through operator confirmation, mirroring the constraint `/change:execute` enforces directly (per the [executor's `registry-amendment-required` recovery contract](../execute/per-slice-algorithm.md#canonical-recovery-sequence-operator-driven)).
@@ -162,12 +162,12 @@ specify change plan transition <slice-name> pending
 **Manual fallback.** Drive the loop by hand using the same CLI verbs the executor uses:
 
 ```bash
-specify change plan lock acquire --pid $$
-specify change plan next --format json
-specify change plan transition <name> in-progress
+specify plan lock acquire --pid $$
+specify plan next --format json
+specify plan transition <name> in-progress
 /spec:define <name>; /spec:build <name>; /spec:merge <name>
-specify change plan transition <name> done
-specify change plan lock release --pid $$
+specify plan transition <name> done
+specify plan lock release --pid $$
 ```
 
 **Failure recovery.** Any non-zero exit from `/change:execute` (other than the documented terminal classifications, which exit zero) is treated as a halt — the umbrella stops and surfaces the diagnostic. The operator triages and re-runs.
@@ -252,7 +252,7 @@ Under `--dry-run` with `--orchestrate` the mode is **observation-only** end-to-e
 
 The skill MAY:
 
-- read the registry, plan, and workspace state (`specify registry show`, `specify change plan status`, `specify workspace status`);
+- read the registry, plan, and workspace state (`specify registry show`, `specify plan status`, `specify workspace status`);
 - invoke `/change:plan <name> dry-run` (default mode dry-run, which runs read-only — it reads `from`/`against`/`source` inputs, runs the discovery brief in preview mode, and emits the readiness report and proposed-plan preview to stdout);
 - emit a final preview block summarising what each subsequent step *would* do.
 
@@ -284,9 +284,9 @@ Every shell-out in this mode is listed here so reviewers can grep for accidental
 | 1 Brief | `specify change create <name>` |
 | 2 Registry | `specify registry validate`, `specify registry show --format json` |
 | 3 Plan | `/change:plan <name> [from ...] [against ...] [source ...] [dry-run] [extend]` (default mode, not `orchestrate`) |
-| 3 (internal to plan default) | `specify change create` (when scaffolding from `/change:plan`), `specify change plan add`, `specify change plan amend`, `specify change plan validate`, `specify registry add`, `specify workspace sync` |
+| 3 (internal to plan default) | `specify change create` (when scaffolding from `/change:plan`), `specify plan add`, `specify plan amend`, `specify plan validate`, `specify registry add`, `specify workspace sync` |
 | 4 Execute | `/change:execute loop` |
-| 4 (internal to execute) | `specify change plan lock {acquire, release}`, `specify change plan next`, `specify change plan transition`, `specify slice outcome show`, `specify slice journal append`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` |
+| 4 (internal to execute) | `specify plan lock {acquire, release}`, `specify plan next`, `specify plan transition`, `specify slice outcome show`, `specify slice journal append`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` |
 | 5 Push | `specify workspace push` |
 | 6 PR handoff | `gh pr list`, `gh pr view` (read-only listing only) |
 | 7 Finalize | `specify change finalize` |
@@ -334,7 +334,7 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - [`/change:execute`](../execute/SKILL.md) — plan-driver skill (step 4); see also [`/change:execute` per-slice-algorithm.md §Registry amendment required](../execute/per-slice-algorithm.md#registry-amendment-required) for the recovery surface step 4 surfaces.
 - [`specify change`](../../../../docs/reference/cli/change.md) — `create`, `show`, and `finalize` (steps 1 and 7).
 - [`specify registry`](../../../../docs/reference/cli/registry.md) — `add`, `remove`, `show`, `validate` (step 2 and recovery).
-- [`specify change plan`](../../../../docs/reference/cli/plan.md) — plan CRUD and lifecycle (recovery and manual fallback).
+- [`specify plan`](../../../../docs/reference/cli/plan.md) — plan CRUD and lifecycle (recovery and manual fallback).
 - [`specify workspace`](../../../../docs/reference/cli/workspace.md) — `sync`, `status`, and `push` (plan-time peer discovery and PR transport).
 - [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes.
 - [The Layered Stack](../../../../docs/explanation/layered-stack.md) — where the `orchestrate` umbrella mode sits in Specify's layered architecture (Layer 2).

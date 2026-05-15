@@ -11,7 +11,7 @@ Merge a completed slice. Deterministic bookkeeping — slice selection, prerequi
 When working plan-driven (a `plan.yaml` exists), after `specify slice merge run` returns successfully the plan entry should be transitioned to `done`:
 
 ```bash
-specify change plan transition <name> done
+specify plan transition <name> done
 ```
 
 This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.

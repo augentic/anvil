@@ -19,4 +19,4 @@
 - Open questions from discovery answered inline:
   - *Should `theme-core` own the light/dark toggle state?* — yes, retained on `theme-core` (slice 2); the shells read it via the `ViewModel`.
   - *The legacy Android codebase ships custom motion / elevation tokens that have no iOS counterpart — surface them as Android-only theme entries or omit from `tokens.yaml`?* — surface as Android-only for now; revisit when iOS adds motion support.
-- `specify change plan validate` — no errors.
+- `specify plan validate` — no errors.

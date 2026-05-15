@@ -9,7 +9,7 @@ This is a **documentation/prompt-engineering repository**. The codebase consists
 Two lifecycle nouns recur throughout this codebase:
 
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
 
@@ -33,7 +33,7 @@ For the three-layer composition (Layer 0 configuration → Layer 1 executing a c
 
 Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
-The CLI surface skills depend on is documented in the [`specify` `--help`](https://github.com/augentic/specify-cli) output. The headline groups: `specify init`, `specify status`, `specify slice {…}` (per-slice verbs), `specify change plan {…}` (plan CRUD + lifecycle), `specify change {create, show, finalize}` (operator brief + canonical closure), `specify registry {add, remove, show, validate}`, `specify workspace {sync, status, push}`, `specify capability {resolve, pipeline}`, and `specify tool run` (WASI tool dispatch — `contract`, `vectis`, …).
+The CLI surface skills depend on is documented in the [`specify` `--help`](https://github.com/augentic/specify-cli) output. The headline groups: `specify init`, `specify status`, `specify slice {…}` (per-slice verbs), `specify plan {…}` (plan CRUD + lifecycle), `specify change {create, show, finalize}` (operator brief + canonical closure), `specify registry {add, remove, show, validate}`, `specify workspace {sync, status, push}`, `specify capability {resolve, pipeline}`, and `specify tool run` (WASI tool dispatch — `contract`, `vectis`, …).
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
@@ -49,7 +49,7 @@ The matching CLI surface is the declared `contract` WASI tool, run via `specify 
 
 ### Plan-driven loop
 
-`/change:plan` authors the plan, `/change:execute loop` drives it, `specify change plan archive` sweeps it. Plan *entries* are only ever written via `specify change plan add` / `specify change plan amend`; plan *status* is only ever written via `specify change plan transition`. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: skip `/change:plan` and `/change:execute` and drive the loop yourself via `specify change plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+`/change:plan` authors the plan, `/change:execute loop` drives it, `specify plan archive` sweeps it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: skip `/change:plan` and `/change:execute` and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
 ### Commands
 

@@ -44,8 +44,8 @@ export function resolveSpecifyCliDir(): string {
   return resolve(REPO_ROOT, override ?? "../specify-cli");
 }
 
-// `plan/<verb>-*.json` maps to `specify change plan <verb>`. Override
-// only when the verb -> CLI command mapping is non-obvious.
+// `plan/<verb>-*.json` maps to `specify plan <verb>`. Override only
+// when the verb -> CLI command mapping is non-obvious.
 const PLAN_VERB_TO_COMMAND: Record<string, string> = {};
 
 // `e2e/goldens/<stem>.json` is curated; every fixture must be mapped
@@ -104,7 +104,7 @@ function classifyPlan(
   const dashIdx = stem.indexOf("-");
   const verb = dashIdx >= 0 ? stem.slice(0, dashIdx) : stem;
   const variant = dashIdx >= 0 ? stem.slice(dashIdx + 1) : "";
-  const command = PLAN_VERB_TO_COMMAND[verb] ?? `specify change plan ${verb}`;
+  const command = PLAN_VERB_TO_COMMAND[verb] ?? `specify plan ${verb}`;
   return { command, variant };
 }
 

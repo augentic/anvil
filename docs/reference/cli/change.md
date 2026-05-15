@@ -22,7 +22,7 @@ specify change create <name> [--source <key>=<path-or-url> ...]
 
 Writes `change.md` with the canonical frontmatter template (operators fill in the body) and writes `plan.yaml` with the change name and the supplied `--source` map. Each `--source` flag takes one `key=value` pair (repeatable, deduplicated by key); these populate the plan's top-level `sources:` map and become the `<source-key>` namespace that plan entries reference.
 
-**Atomic refusal.** If either `change.md` or `plan.yaml` already exists at the repo root, the command exits with the `already-exists` diagnostic and writes neither file — no partial state. Recover by reviewing/removing the offending file (or running `specify change plan archive` if the existing plan is a stale leftover) and re-running.
+**Atomic refusal.** If either `change.md` or `plan.yaml` already exists at the repo root, the command exits with the `already-exists` diagnostic and writes neither file — no partial state. Recover by reviewing/removing the offending file (or running `specify plan archive` if the existing plan is a stale leftover) and re-running.
 
 The change name must be kebab-case (lowercase ASCII, digits, single hyphens; no leading/trailing/doubled hyphens). Non-kebab input refuses with `change-name-not-kebab` before any write.
 
@@ -57,7 +57,7 @@ specify change finalize [--clean] [--dry-run]
 The verb runs four guards in order. **All-or-nothing:** any guard failure refuses the run with a per-project status table and leaves the on-disk state untouched.
 
 1. **Plan-presence guard.** `plan.yaml` must exist. Absent file refuses with `plan-not-found` — the canonical "change is already finalized" signal (the previous run swept the plan into `.specify/archive/plans/`).
-2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify change plan status`.
+2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify plan status`.
 3. **Per-project PR-state guard.** For each registry project, `gh pr view --json state,merged,headRefName,number,url` is run against the workspace clone. The PR, when present, must use the exact branch `specify/<change-name>`. Status mapping:
 
    | Status | Meaning | Passes? |
@@ -138,6 +138,7 @@ The old `specify workspace merge` automation has been removed. Operators land PR
 
 ## See also
 
+- [specify plan](plan.md) -- the executable-plan verbs (`create`, `add`, `amend`, `transition`, `validate`, `next`, `status`, `archive`, `lock`) that the umbrella's `create` delegates to for the plan half.
 - [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
 - [specify registry](registry.md) -- platform registry.
 - [specify workspace](workspace.md) -- sync, status, push.

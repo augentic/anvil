@@ -6,7 +6,7 @@ These clones are the read-write **tier-2** workspace; they outlive the change an
 
 ## Workspace routing and branch preparation (per-slice algorithm step 5a)
 
-Read `project` from the `specify change plan next` response (step 4 of the per-slice algorithm). If `project` is non-null:
+Read `project` from the `specify plan next` response (step 4 of the per-slice algorithm). If `project` is non-null:
 
 - Resolve the target project through `registry.yaml` using the same selector preflight as `specify workspace *`. Unknown names halt before filesystem, Git, forge, phase, or plan-status side effects.
 - Save CWD (the initiating repo root).
@@ -64,7 +64,7 @@ Immediately after reading `outcome: success` from `/spec:merge`, while still `ch
 
 ## CWD restore (per-slice algorithm step 9b)
 
-If the CWD routing step (5c) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify change plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify change plan next` always runs from the initiating repo root.
+If the CWD routing step (5c) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify plan next` always runs from the initiating repo root.
 
 ## Cross-project compatibility reporting (RM-04)
 

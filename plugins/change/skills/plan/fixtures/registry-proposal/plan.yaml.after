@@ -2,7 +2,7 @@
 #   - ingest-pipeline-refactor → legacy-monolith (description match)
 #   - operator-dashboard-alerts → command-centre (baseline-spec affinity)
 #   - alpha-gateway-extract → alpha-gateway (newly-added registry entry)
-# All three rows written via `specify change plan amend --project <name>`.
+# All three rows written via `specify plan amend --project <name>`.
 version: 1
 name: platform-modernisation
 sources:

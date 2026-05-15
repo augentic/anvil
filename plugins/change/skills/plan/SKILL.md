@@ -6,7 +6,7 @@ argument-hint: <change-name>
 
 # Plan skill
 
-> **Author `plan.yaml` by running the capability's planning brief pipeline.** `/change:plan` is the Layer 2 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change plan {create, add, amend}`.
+> **Author `plan.yaml` by running the capability's planning brief pipeline.** `/change:plan` is the Layer 2 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify plan {create, add, amend}`.
 
 ## Critical Path
 
@@ -15,14 +15,14 @@ argument-hint: <change-name>
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/change:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` (may sync all projects) + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-workspace.md](sync-workspace.md).
-   - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify change plan add` for each accepted slice. See [propose.md](propose.md).
-   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify change plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
-4. **Validate** — `specify change plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
-5. **Exit with hand-off summary** — point the operator at `specify change plan status` and `/change:execute loop`.
+   - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan add` for each accepted slice. See [propose.md](propose.md).
+   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
+4. **Validate** — `specify plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
+5. **Exit with hand-off summary** — point the operator at `specify plan status` and `/change:execute loop`.
 
 ## Orientation
 
-`/change:plan` runs a five-step loop driven by the active capability's `capability.yaml`: parse → scaffold → brief-pipeline → validate → hand-off. Every shell-out targets the `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify change plan validate` is the contract this skill owes its caller.
+`/change:plan` runs a five-step loop driven by the active capability's `capability.yaml`: parse → scaffold → brief-pipeline → validate → hand-off. Every shell-out targets the `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify plan validate` is the contract this skill owes its caller.
 
 The brief pipeline is two-step for single-repo capabilities (discovery → propose) and four-step for multi-repo (discovery → sync-workspace → propose → assignment). Multi-repo behaviour fires whenever `registry.yaml` declares more than one project; assignment infers `project` per entry and may run a registry-proposal sub-step when a row names a project that does not exist yet.
 
@@ -39,7 +39,7 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`references/runbook.md`](references/runbook.md) | Invocation grammar, input kinds, kind defaults, verbatim five-step loop, single-writer invariant, working-directory layout, mode deltas, non-goals, state-mutation surface |
 | [`discovery.md`](discovery.md) | Discovery brief (step 3a) — `/change:analyze` integration and greenfield registry bootstrap |
 | [`sync-workspace.md`](sync-workspace.md) | Sync-workspace brief (step 3b, multi-repo only) — `specify workspace sync` + `workspace.md` authoring |
-| [`propose.md`](propose.md) | Propose brief (step 3c) — accept/edit/reject loop, `specify change plan add` |
+| [`propose.md`](propose.md) | Propose brief (step 3c) — accept/edit/reject loop, `specify plan add` |
 | [`assignment.md`](assignment.md) | Assignment brief (step 3d, multi-repo only) — `--project` inference and registry-proposal sub-step |
 | [`orchestration.md`](orchestration.md) | `orchestrate` cross-repo umbrella sequence |
 | [`shapes.md`](shapes.md) | Shape inference / validation for `migrate-legacy` / `new-feature` / `update-existing` |
@@ -52,6 +52,6 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 
 ## Guardrails
 
-- **Single-writer for `plan.yaml`.** Every write goes through `specify change create` (initial scaffold, alongside `change.md`) or `specify change plan {add, amend}` (subsequent edits); never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
-- **Never skip `specify change plan validate` (step 4).** A plan that ships to `/change:execute` without a clean validate is a regression. Validate `<change-name>` as kebab-case before any filesystem read or CLI shell-out.
+- **Single-writer for `plan.yaml`.** Every write goes through `specify change create` (initial scaffold, alongside `change.md`) or `specify plan {add, amend}` (subsequent edits); never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
+- **Never skip `specify plan validate` (step 4).** A plan that ships to `/change:execute` without a clean validate is a regression. Validate `<change-name>` as kebab-case before any filesystem read or CLI shell-out.
 - **`dry-run` MUST NOT write under `.specify/`** (no `create` / `add` / `amend` / `transition`, no `discovery.md`). **`extend` skips step 2 entirely** and only `amend --project` may touch newly added entries — never pre-existing ones. A missing `briefs/<capability>/{discovery,propose}.md` for the active capability is a hard failure: print the resolved capability and expected paths, then exit non-zero.

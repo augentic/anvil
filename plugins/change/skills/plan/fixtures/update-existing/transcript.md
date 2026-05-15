@@ -79,12 +79,12 @@ Multi-project registry; descriptions complete. Continuing.
   Step 3(c) — Propose
     Slice 1: tighten-auth-error-messages  (depends-on: —)              [accept] [edit] [reject] [abort]
     > accept
-    $ specify change plan add tighten-auth-error-messages --description "Polish the auth flow's error messages to match the platform style guide. Delta-targets the `user-auth` baseline spec on omnia-backend."
+    $ specify plan add tighten-auth-error-messages --description "Polish the auth flow's error messages to match the platform style guide. Delta-targets the `user-auth` baseline spec on omnia-backend."
     ok: appended `tighten-auth-error-messages` to plan.yaml
 
     Slice 2: theme-picker-a11y-label      (depends-on: —)
     > accept
-    $ specify change plan add theme-picker-a11y-label --description "Add the missing accessibility label on the theme-picker control. Delta-targets the `settings-screen` baseline spec on vectis-mobile."
+    $ specify plan add theme-picker-a11y-label --description "Add the missing accessibility label on the theme-picker control. Delta-targets the `settings-screen` baseline spec on vectis-mobile."
     ok: appended `theme-picker-a11y-label` to plan.yaml
 
   Step 3(d) — Assignment
@@ -94,19 +94,19 @@ Multi-project registry; descriptions complete. Continuing.
   | 1 | tighten-auth-error-messages    | omnia-backend  | Baseline spec affinity: `user-auth` exists on omnia-backend. |
   | 2 | theme-picker-a11y-label        | vectis-mobile  | Baseline spec affinity: `settings-screen` on vectis-mobile.  |
 
-    $ specify change plan amend tighten-auth-error-messages --project omnia-backend
+    $ specify plan amend tighten-auth-error-messages --project omnia-backend
     ok: tighten-auth-error-messages.project = omnia-backend
-    $ specify change plan amend theme-picker-a11y-label --project vectis-mobile
+    $ specify plan amend theme-picker-a11y-label --project vectis-mobile
     ok: theme-picker-a11y-label.project = vectis-mobile
 
   Wrote .specify/plans/polish-pass/proposal.md
 
   Step 4 — Validate
-    $ specify change plan validate
+    $ specify plan validate
     PASS
 
   Done. Next steps:
-    - specify change plan status
+    - specify plan status
     - /change:execute loop
 
 ---
@@ -124,7 +124,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   Self-heal: no in-progress entries found.
 
-  # specify change plan next → { "next": "tighten-auth-error-messages", "project": "omnia-backend", ... }
+  # specify plan next → { "next": "tighten-auth-error-messages", "project": "omnia-backend", ... }
 
   Routing: tighten-auth-error-messages → omnia-backend (.specify/workspace/omnia-backend/)
 
@@ -138,7 +138,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ---
 
-  # specify change plan next → { "next": "theme-picker-a11y-label", "project": "vectis-mobile", ... }
+  # specify plan next → { "next": "theme-picker-a11y-label", "project": "vectis-mobile", ... }
 
   Routing: theme-picker-a11y-label → vectis-mobile (.specify/workspace/vectis-mobile/)
 
@@ -284,7 +284,7 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a current verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change {create, finalize}`, `specify plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No `--from` / `--source` / `--against`.** Pre-flight enforces this; the dispatch is unambiguous when shape is `update-existing`.
 - **`inputs:` is empty in the brief.** Discovery falls back to baseline accumulation; the `.specify/workspace/<peer>/specs/` trees are the only signal.
 - **No registry mutation.** `registry.yaml` is byte-identical between input and output. The 2B registry-proposal sub-step does not fire.

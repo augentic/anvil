@@ -51,6 +51,6 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 
 ## Counter-examples (not pinned)
 
-- A run where the discovery brief surfaces no polish opportunities — the propose step would skip every slice and `specify change plan validate` would fail with an empty-plan diagnostic; the umbrella halts at step 3.
+- A run where the discovery brief surfaces no polish opportunities — the propose step would skip every slice and `specify plan validate` would fail with an empty-plan diagnostic; the umbrella halts at step 3.
 - A `--dry-run` rendering — see [§`--dry-run` semantics](../../SKILL.md#--dry-run-semantics).
 - A run that surfaces a `registry-amendment-required` outcome at step 4 (operator decides one of the polish slices needs a new project mid-execute) — recovery is documented in the SKILL but not pinned here.

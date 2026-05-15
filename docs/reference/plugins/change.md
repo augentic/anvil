@@ -14,7 +14,7 @@ The plugin separation reflects the dependency direction: *capabilities* own outc
 
 ## CLI counterpart
 
-The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`) and the nested plan family (`specify change plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) are the current operator-facing commands.
+The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`) and the nested plan family (`specify plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) are the current operator-facing commands.
 
 ## See also
 

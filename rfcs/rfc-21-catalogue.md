@@ -10,7 +10,7 @@ This RFC adds:
 
 1. **`sources.yaml`** — a platform-repo catalogue of legacy sources, mirroring the role `registry.yaml` plays for target projects.
 2. **`specify sources {add, remove, show, list, validate, sync}`** — a new CLI verb family, structurally parallel to `specify registry`.
-3. **`.specify/.cache/sources/<key>/`** — a durable, shared tier-1 cache that survives `specify change plan archive`. Per-change `analyze/<key>/` slots become read-only symlinks into the cache.
+3. **`.specify/.cache/sources/<key>/`** — a durable, shared tier-1 cache that survives `specify plan archive`. Per-change `analyze/<key>/` slots become read-only symlinks into the cache.
 4. **`--source @<key>`** — a new selector form on `/change:plan` (and any caller that accepts `--source`) that resolves the key against `sources.yaml`.
 5. **`--analyze-concurrency <N>`** — a brief-level fan-out knob on `/change:plan` for parallel `/change:analyze` invocations across many sources.
 
@@ -21,7 +21,7 @@ These additions are **strictly additive**: the existing `--source <key>=<path-or
 The framework already supports the *mechanics* of multi-source migration: `plan.yaml` slices accept `sources: [k1, k2, …]`; `/spec:extract` walks the union of sources at define time; assignment routes each entry to one project. What it does not provide — and what becomes prohibitive at 80+ source repositories — is the **declaration and caching layer** beneath those mechanics:
 
 - **Sources are declared every change.** Operators repeat `--source <k>=<url>` for every plan invocation. Forty repos times two re-plans is eighty CLI flags. There is no artifact saying "these are the legacy sources we are migrating", separate from any one change.
-- **Tier-1 clones are per-change and ephemeral.** Each `--source <k>=<git-url>` clones into `.specify/plans/<change>/analyze/<key>/` and is swept by `specify change plan archive`. Re-planning the same source means re-cloning. The survey brief from RFC-20 compounds the cost when run across many sources, because each survey re-iteration starts from scratch.
+- **Tier-1 clones are per-change and ephemeral.** Each `--source <k>=<git-url>` clones into `.specify/plans/<change>/analyze/<key>/` and is swept by `specify plan archive`. Re-planning the same source means re-cloning. The survey brief from RFC-20 compounds the cost when run across many sources, because each survey re-iteration starts from scratch.
 - **Discovery fan-out is sequential.** RFC-20's discovery brief invokes `/change:analyze` once per source in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
 - **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the workspace-tier boundary in [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) blurs.
 
@@ -103,7 +103,7 @@ The CLI exit-code surface mirrors `specify registry`: `0` success, `1` generic, 
 
 ### Tier-1 caching at `.specify/.cache/sources/<key>/`
 
-Today, tier-1 clones live at `.specify/plans/<change>/analyze/<key>/` (per-change, swept by `specify change plan archive`). This RFC moves the *clone* to a **durable, shared cache** at `.specify/.cache/sources/<key>/` and replaces the per-change directory with a **read-only symlink** into the cache.
+Today, tier-1 clones live at `.specify/plans/<change>/analyze/<key>/` (per-change, swept by `specify plan archive`). This RFC moves the *clone* to a **durable, shared cache** at `.specify/.cache/sources/<key>/` and replaces the per-change directory with a **read-only symlink** into the cache.
 
 Lifecycle:
 
@@ -112,7 +112,7 @@ Lifecycle:
 | `specify sources sync` | Idempotent. For each entry: clone into `.specify/.cache/sources/<key>/` if missing; `git fetch` if present and remote; no-op for symlink/local URLs. |
 | `/change:analyze` (legacy-code branch) | Reads from `.specify/.cache/sources/<key>/` via the per-change symlink. Writes nothing into the cache. |
 | `specify change create` (when invoked with `--source @<key>`) | Materialises `.specify/plans/<change>/analyze/<key>/` as a symlink to `.specify/.cache/sources/<key>/`, calling `specify sources sync <key>` first if the cache slot is missing. |
-| `specify change plan archive` | Sweeps `.specify/plans/<change>/analyze/<key>/` (the symlink) into the archive. Does **not** touch `.specify/.cache/sources/<key>/`. The cache outlives the change. |
+| `specify plan archive` | Sweeps `.specify/plans/<change>/analyze/<key>/` (the symlink) into the archive. Does **not** touch `.specify/.cache/sources/<key>/`. The cache outlives the change. |
 | `specify sources remove <key>` | Removes the cache entry alongside the catalogue entry. Refuses if any active plan slice still references the key. |
 
 The downstream `/change:analyze` skill reads through the symlink unchanged; its idempotency contract is unaffected. Archives preserve the symlink target by recording a small sidecar at `.specify/archive/plans/<date>-<name>/.snapshot.yaml`:
@@ -185,7 +185,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 3. **`specify sources` verb family.** Add `src/commands/sources/{cli,add,remove,show,list,validate,sync}.rs`. Each verb gets a JSON envelope mirroring `specify registry`. Land integration tests under `tests/sources.rs`.
 4. **Tier-1 cache lifecycle.** Implement `.specify/.cache/sources/<key>/` materialisation in `specify sources sync`. Update `.gitignore` defaults (already covered by [`Registry::ensure_specify_gitignore_entries`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/gitignore.rs); extend to add `.specify/.cache/`).
 5. **Symlink view for `analyze/<key>/`.** When `/change:plan` resolves `--source @<key>`, materialise `.specify/plans/<change>/analyze/<key>/` as a symlink to the cache slot. Land integration tests for the symlink lifecycle.
-6. **Archive snapshot.** Update `specify change plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `specify-cli/schemas/archive-snapshot/schema.json`.
+6. **Archive snapshot.** Update `specify plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `specify-cli/schemas/archive-snapshot/schema.json`.
 7. **`--source @<key>` selector parsing.** Update `/change:plan` invocation grammar in [`plan-invocation.md`](../plugins/change/references/plan-invocation.md) and the CLI flag handler. Hard-fail on unknown keys.
 8. **`change.md:inputs[].source_key` form.** Additive schema update to `brief/schema.json`. Update brief readers.
 9. **`--analyze-concurrency` knob.** Brief-level change: update `discovery.md` brief to fan out via a small concurrency primitive. Default `4`. Document trade-offs (network bandwidth, CPU) in `references/runbook.md`.
@@ -225,7 +225,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
 
-**Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify change plan transition done`, `specify change finalize`) that make `status` honest.
+**Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify plan transition done`, `specify change finalize`) that make `status` honest.
 
 **Run analyze concurrency through a CLI verb (`specify analyze fan-out`).** Rejected. The existing `/change:analyze` skill is already per-input and idempotent; concurrency is a brief-level scheduling decision, not a new contract. The `--analyze-concurrency` flag on `/change:plan` is the natural place because the brief already orchestrates the fan-out.
 

@@ -19,8 +19,8 @@ Non-interactive mode is how `/change:execute` invokes this skill during `loop`, 
 When working plan-driven (a `plan.yaml` exists), after `specify slice drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
 
 ```bash
-specify change plan transition <name> failed  --reason "<short rationale>"
-specify change plan transition <name> blocked --reason "<short rationale>"
+specify plan transition <name> failed  --reason "<short rationale>"
+specify plan transition <name> blocked --reason "<short rationale>"
 ```
 
 This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.

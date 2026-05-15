@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify change plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
@@ -16,7 +16,7 @@ Decompose the capability inventory produced by `discovery.md` into a concrete se
 
 Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is consumed by a SwiftUI iOS shell and a Jetpack Compose Android shell. Each shell reads `tokens.yaml` and `assets.yaml` directly and emits its own theme + asset code under its own tree (no shared design-system library — RFC-11 §L). Slice the inventory with that grain in mind.
 
-1. **Shared-core first.** Every capability classified as shared core under `discovery.md`'s `### Shared core` tier becomes a plan entry before any shell entry. Shared core is the dependency backbone: shell views bind to it, so shelving the cores earlier in the plan keeps `depends-on` edges forward and avoids dependent slices blocking on missing `App` traits. Name shared-core entries with a `-core` suffix (`counter-core`, `theme-core`) to make the tier obvious at a glance in `specify change plan status`.
+1. **Shared-core first.** Every capability classified as shared core under `discovery.md`'s `### Shared core` tier becomes a plan entry before any shell entry. Shared core is the dependency backbone: shell views bind to it, so shelving the cores earlier in the plan keeps `depends-on` edges forward and avoids dependent slices blocking on missing `App` traits. Name shared-core entries with a `-core` suffix (`counter-core`, `theme-core`) to make the tier obvious at a glance in `specify plan status`.
 2. **UI inputs are slices only when independently reviewable.** Token, asset, and layout work (`tokens.yaml`, `assets.yaml`, `layout.yaml`) is *input context* for the shells, not a peer tier (RFC-11 §L). Discovery surfaces these capabilities under `## Cross-cutting UI inputs`; propose creates a plan entry for one **only** when the work is large enough to warrant its own review pass — for example, "migrate legacy SCSS into `tokens.yaml`" or "author `assets.yaml` from a Figma asset export". Trivially-coupled token / asset edits (a single new colour added in service of a single new shell view) stay folded into the consuming shell entry rather than becoming their own slice. When a UI-input slice IS created, present it after the shared-core entries it reads from (if any) and before the shell entries that consume it; name it after the artifact it produces (`design-tokens` for `tokens.yaml`, `app-icons` for `assets.yaml`, `<screen>-layout` for `layout.yaml`) so the artifact destination is obvious. There is no longer a default "design-tokens" rung between core and shells — the slice appears only when discovery surfaced a UI-input capability **and** the operator confirmed during accept/edit/reject that it warrants an independent review pass.
 3. **Per-shell last.** Every iOS-shell and Android-shell capability from `discovery.md` becomes its own plan entry, presented *after* the shared-core entries it depends on (and after any UI-input slices that were promoted under heuristic 2). The default `depends-on` edges for a shell entry are the corresponding shared-core entry PLUS every promoted UI-input slice the shell consumes, seeded from discovery's ordering hints. When a UI-input capability surfaced in discovery but was NOT promoted to its own plan entry (heuristic 2), the shell entry that consumes it carries the UI-input edit inline — no `depends-on` edge is added for it because the work happens within the shell slice itself. Name shell entries with a platform-suffixed `-ios-view` / `-android-view` / `-ios-binding` / `-android-binding` to make the platform obvious at a glance.
 4. **One plan entry per Crux unit.** The Crux units are:
@@ -34,7 +34,7 @@ Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is c
 
 Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the change plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
-When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly.
+When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify plan amend --project <name>` for the entry. This brief never proposes registry entries directly.
 
 ### Resulting draft order
 
@@ -67,7 +67,7 @@ For each proposed slice, present the draft to the human and accept one of three 
 
 - **accept** — shell out to:
   ```
-  specify change plan add <slice-name> \
+  specify plan add <slice-name> \
       --sources <key> [--sources <key>...] \
       --depends-on <preceding> [--depends-on <preceding>...] \
       --description "<rich description with delta-targeting intent>"
@@ -102,15 +102,15 @@ The table MUST include every slice presented to the human — edited and rejecte
 
 ## Final step
 
-After the last accepted slice, run `specify change plan validate`. If it reports any errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
+After the last accepted slice, run `specify plan validate`. If it reports any errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
 
 ## `--dry-run` behaviour
 
 Emit the proposed plan to stdout as a preview of the same table structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify change plan add`,
+- call `specify plan add`,
 - write `proposal.md`,
-- run `specify change plan validate`.
+- run `specify plan validate`.
 
 `--dry-run` is read-only; it is safe to invoke repeatedly against the same discovery output.
 
@@ -146,5 +146,5 @@ Skip the `specify change create` scaffold step (the caller, typically the `/chan
   promoted `design-tokens` input.
 - Slice 5's `description` was edited during review to clarify
   the Compose binding is Material 3.
-- `specify change plan validate` — no errors.
+- `specify plan validate` — no errors.
 ```

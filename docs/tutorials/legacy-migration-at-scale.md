@@ -137,7 +137,7 @@ After all slices are accepted, the plan skill's assignment step (3d) matches eac
 | 3 | extract-email-dispatch   | notification-service | baseline spec: email-templates exists   |
 ```
 
-The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify change plan amend <name> --project <project>`.
+The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify plan amend <name> --project <project>`.
 
 ## 3. Handle tangled code
 
@@ -214,7 +214,7 @@ Create registry.yaml with target repos
 /change:plan modernise-platform source monolith=/path/to/legacy
 
 # Review
-specify change plan status
+specify plan status
 
 # Execute
 /change:execute loop

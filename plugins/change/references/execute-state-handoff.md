@@ -6,10 +6,10 @@
 
 | Channel | Writer | Reader | Purpose |
 |---|---|---|---|
-| `plan.yaml` entry status | `/change:execute` via `specify change plan transition` | Humans, `specify change plan next`, `/change:execute` | Claims `pending -> in-progress` and records terminal `done`, `failed`, or `blocked`. |
+| `plan.yaml` entry status | `/change:execute` via `specify plan transition` | Humans, `specify plan next`, `/change:execute` | Claims `pending -> in-progress` and records terminal `done`, `failed`, or `blocked`. |
 | `.specify/slices/<name>/.metadata.yaml:outcome` | Phase skills via `specify slice outcome set`, except merge/drop CLI-stamped success paths | `/change:execute` | The only signal used to decide whether to continue, drop, block, fail, or complete an entry. |
 | `.specify/slices/<name>/journal.yaml` | Phase skills, and the driver in the narrow cases below | Humans and audit tooling | Append-only audit log. It is never a signalling channel for the driver. |
-| `.specify/plan.lock` | `specify change plan lock` | `/change:execute` | Prevents concurrent driver runs from racing plan transitions. |
+| `.specify/plan.lock` | `specify plan lock` | `/change:execute` | Prevents concurrent driver runs from racing plan transitions. |
 
 The driver never hand-edits these files. Every write goes through the CLI command named for that state channel.
 
@@ -40,6 +40,6 @@ These entries preserve audit history. They do not drive phase or plan state tran
 
 ## Dry-run and interrupt rules
 
-`dry-run` performs the same reads and classifications but substitutes every write with a report. It must not invoke phase skills, `/spec:drop`, `specify change plan transition`, `specify slice journal append`, workspace push/merge/finalize, or residue commits.
+`dry-run` performs the same reads and classifications but substitutes every write with a report. It must not invoke phase skills, `/spec:drop`, `specify plan transition`, `specify slice journal append`, workspace push/merge/finalize, or residue commits.
 
 On SIGINT or SIGTERM, finish the current phase if one is already running, skip later phases for that entry, leave the plan entry `in-progress`, release the driver lock, and let the next run's self-heal reconcile from `.metadata.yaml:outcome`.

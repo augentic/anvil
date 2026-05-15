@@ -44,7 +44,7 @@ Recap the on-disk state we are starting from:
 
 | Surface | Expected |
 |---------|----------|
-| `specify change plan status` | Three entries; `Summary: 0 pending, 0 in-progress, 3 done` |
+| `specify plan status` | Three entries; `Summary: 0 pending, 0 in-progress, 3 done` |
 | `gh pr list -R org/shop-backend --head specify/oauth-login` | Exactly one open PR |
 | `gh pr list -R org/shop-mobile --head specify/oauth-login` | Exactly one open PR |
 | `git status` (in each workspace clone) | Clean (the auto-commits from `/change:execute loop` are pushed, not staged) |
@@ -164,7 +164,7 @@ The umbrella runs through PR creation, stops for operator merge, then finalizes 
 6. **Land.** The operator reviews and merges both PRs through the forge UI or `gh pr merge`.
 7. **Finalize.** Re-run `/change:plan <name> orchestrate migrate-foo`; it observes merged PRs and runs `specify change finalize`.
 
-Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/change/skills/plan/fixtures/migrate-legacy/).
+Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/change/skills/plan/fixtures/migrate-legacy/).
 
 ### Variant: new-feature
 
@@ -180,7 +180,7 @@ Run against the populated hub from [Working across repos: planning](cross-repo-c
 
 **The walkthrough across the planning, executing, and landing tutorials is this shape.** The umbrella drives the same nine-step flow, with one deliberate pause: after `specify workspace push`, it lists the open PRs and **stops**. The operator merges PRs through the forge UI or `gh pr merge`, then re-runs the umbrella to finalize. Re-entry inspects on-disk state -- brief present, plan terminal, every PR `MERGED` on remote -- and skips straight to `specify change finalize`.
 
-Verb sequence (run 1, halts at step 6): `specify change create` -> `specify registry validate` -> `/change:plan <name> from ./docs/dark-mode-spec.md` -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> `gh pr list` (read-only). No registry mutation -- both projects exist before the run.
+Verb sequence (run 1, halts at step 6): `specify change create` -> `specify registry validate` -> `/change:plan <name> from ./docs/dark-mode-spec.md` -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/change:execute loop` -> `specify workspace push` -> `gh pr list` (read-only). No registry mutation -- both projects exist before the run.
 
 Verb sequence (run 2, after the operator merges PRs by hand): `specify registry validate` -> `specify workspace push` (reports `up-to-date`) -> `gh pr list` -> `specify change finalize`.
 
@@ -207,7 +207,7 @@ Pre-flight forbids `--from`, `--against`, and `--source` under this shape; suppl
 6. **Land.** The operator reviews and merges both PRs through the forge UI or `gh pr merge`.
 7. **Finalize.** Re-run the umbrella; archive completes.
 
-Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify workspace sync` -> `specify change plan add` x 2 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`.
+Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify workspace sync` -> `specify plan add` x 2 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`.
 
 Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/change/skills/plan/fixtures/update-existing/).
 

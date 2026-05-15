@@ -39,7 +39,7 @@ Prove that `/change:plan` can turn a simple documentation input into a reviewabl
 feature brief
   -> /change:plan
   -> local slice entries
-  -> specify change plan validate
+  -> specify plan validate
 ```
 
 The scenario checks durable plan structure only. It should not fail because the generated proposal prose or slice descriptions differ from a previous run.
@@ -121,8 +121,8 @@ Keep the plan small and happy-path only.
 After planning, validate and inspect the plan:
 
 ```bash
-specify change plan validate
-specify change plan status
+specify plan validate
+specify plan status
 ```
 
 Do not run `/change:execute`. This scenario ends after plan validation and inspection.
@@ -140,7 +140,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/change:plan`.
-- `plan-validates`: `specify change plan validate` exits cleanly.
+- `plan-validates`: `specify plan validate` exits cleanly.
 - `slices-match-expected-shape`: entries are named, scoped, and ordered consistently with the inventory adjustment brief.
 - `no-project-routing-required`: entries do not include project routing fields or registry-derived assignments.
 
@@ -162,5 +162,5 @@ Use a disposable directory and remove it when the run is complete unless a failu
 - `docs/inventory-adjustments.md`
 - `plan.yaml`
 - `.specify/plans/inventory-adjustments/`
-- `specify change plan validate` output
-- `specify change plan status` output
+- `specify plan validate` output
+- `specify plan status` output

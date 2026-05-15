@@ -45,7 +45,7 @@ export async function checkOperationalVocabulary(): Promise<void> {
     [/\.specify\/changes\//, "use `.specify/slices/` for slice-local state"],
     [/\bspecify validate\b/, "use `specify slice validate`"],
     [/\bspecify merge\b/, "use `specify slice merge run`"],
-    [/\bspecify plan\b/, "use `specify change plan`"],
+    [/\bspecify change plan\b/, "use `specify plan`"],
     [/\b[Ii]nitiative\b/, "use `change` for the umbrella and `slice` for entries"],
   ];
 

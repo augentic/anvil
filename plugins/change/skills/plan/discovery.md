@@ -41,7 +41,7 @@ When `/change:plan` runs **before** any `registry.yaml` exists and the discovery
    ```
 
    Materialise every new slot under `.specify/workspace/<name>/`. Then proceed to step 3(b) Sync workspace (which now has a multi-project registry to inventory) and step 3(c) Propose.
-5. **Plan scaffold ordering.** Step 2 (`specify change create`) MUST run **before** the bootstrap flow — `plan.yaml` is independent of `registry.yaml`. Use the merged verb `specify change create <name> [--source ...]`, which scaffolds `change.md` and `plan.yaml` together (the retired `specify change plan create` verb has been replaced by it). The bootstrap flow runs between step 3(a) discovery and step 3(b) sync-workspace; it never re-creates the plan.
+5. **Plan scaffold ordering.** Step 2 (`specify change create`) MUST run **before** the bootstrap flow — `plan.yaml` is independent of `registry.yaml`. Use the merged verb `specify change create <name> [--source ...]`, which scaffolds `change.md` and `plan.yaml` together (the retired `specify plan create` verb has been replaced by it). The bootstrap flow runs between step 3(a) discovery and step 3(b) sync-workspace; it never re-creates the plan.
 
 **`--dry-run`.** Render the `Proposed registry` table to stdout with a `Would create registry entries:` heading; do **not** shell `specify registry add` or `specify workspace sync`. The discovery brief still runs (so the clustering preview is real); only the writing path is suppressed.
 

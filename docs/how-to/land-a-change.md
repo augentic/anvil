@@ -34,7 +34,7 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 | Guard | Refusal code | Recovery |
 |-------|--------------|----------|
 | Plan-presence (`plan.yaml` exists) | `plan-not-found` | The change is already finalized -- no action needed. |
-| Plan terminal-state (every entry `done`/`failed`/`skipped`) | `non-terminal-entries-present` | Drive the offending entry to terminal via `/change:execute` or `specify change plan transition`. |
+| Plan terminal-state (every entry `done`/`failed`/`skipped`) | `non-terminal-entries-present` | Drive the offending entry to terminal via `/change:execute` or `specify plan transition`. |
 | Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR through the forge UI or `gh pr merge`; see [change landing issues](troubleshooting/change-landing.md) for `branch-pattern-mismatch`. |
 | Workspace-cleanliness (`git status --porcelain` empty per clone) | `dirty` | Commit or stash uncommitted work in `.specify/workspace/<peer>/`. |
 

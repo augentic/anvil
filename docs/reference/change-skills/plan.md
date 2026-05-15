@@ -48,8 +48,8 @@ The skill runs a fixed flow:
 
 1. **Analyse inputs.** Dispatches every input to `/change:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
 2. **Sync workspace.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md` with per-project `Description` and `Schema` bullets from `registry.yaml`.
-3. **Generate plan (propose).** Combines the capability inventory with the project inventory (when present) into an ordered, dependency-aware list of slices. Presents each proposed slice for interactive accept / edit / reject. Writes accepted slices via `specify change plan add` (without `--project`).
-4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify change plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
+3. **Generate plan (propose).** Combines the capability inventory with the project inventory (when present) into an ordered, dependency-aware list of slices. Presents each proposed slice for interactive accept / edit / reject. Writes accepted slices via `specify plan add` (without `--project`).
+4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
 
 ### Contract authorship patterns
 
@@ -79,11 +79,11 @@ changes:
 
 **Spec-first (inline derivation).** For single-repo slices with no identified API boundary and no external consumers, no separate contract slice is inserted. The `contracts` brief derives interface shapes inline during the slice's define phase.
 
-After the loop, runs `specify change plan validate` to check structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
+After the loop, runs `specify plan validate` to check structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
 
 ## Lifecycle transitions
 
-Creates plan entries in `pending` state via `specify change plan add`.
+Creates plan entries in `pending` state via `specify plan add`.
 
 ## Error modes
 

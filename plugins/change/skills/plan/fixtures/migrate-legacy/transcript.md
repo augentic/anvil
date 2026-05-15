@@ -98,17 +98,17 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
   Step 3(c) — Propose
     Slice 1: migrate-foo-contract  (sources: monolith; depends-on: —)            [accept] [edit] [reject] [abort]
     > accept
-    $ specify change plan add migrate-foo-contract --sources monolith --description "Define the cross-project HTTP contract between foo-backend and foo-mobile. Inferred from the legacy monolith's internal call sites (src/api/)."
+    $ specify plan add migrate-foo-contract --sources monolith --description "Define the cross-project HTTP contract between foo-backend and foo-mobile. Inferred from the legacy monolith's internal call sites (src/api/)."
     ok: appended `migrate-foo-contract` to plan.yaml
 
     Slice 2: migrate-foo-backend   (sources: monolith; depends-on: migrate-foo-contract)
     > accept
-    $ specify change plan add migrate-foo-backend --sources monolith --depends-on migrate-foo-contract --description "Migrate the backend layer of mono-repo-foo onto Omnia: user accounts, orders, and the HTTP surface the contract pins."
+    $ specify plan add migrate-foo-backend --sources monolith --depends-on migrate-foo-contract --description "Migrate the backend layer of mono-repo-foo onto Omnia: user accounts, orders, and the HTTP surface the contract pins."
     ok: appended `migrate-foo-backend` to plan.yaml
 
     Slice 3: migrate-foo-mobile    (sources: monolith; depends-on: migrate-foo-contract)
     > accept
-    $ specify change plan add migrate-foo-mobile --sources monolith --depends-on migrate-foo-contract --description "Migrate the mobile shells onto Vectis Crux: storefront, checkout, and account-management screens. Consumes the migrate-foo-contract HTTP API."
+    $ specify plan add migrate-foo-mobile --sources monolith --depends-on migrate-foo-contract --description "Migrate the mobile shells onto Vectis Crux: storefront, checkout, and account-management screens. Consumes the migrate-foo-contract HTTP API."
     ok: appended `migrate-foo-mobile` to plan.yaml
 
   Step 3(d) — Assignment
@@ -119,19 +119,19 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
   | 2 | migrate-foo-backend    | foo-backend    | Description overlap: backend, HTTP, accounts.     |
   | 3 | migrate-foo-mobile     | foo-mobile     | Description overlap: mobile, storefront, checkout. |
 
-    $ specify change plan amend migrate-foo-backend --project foo-backend
+    $ specify plan amend migrate-foo-backend --project foo-backend
     ok: migrate-foo-backend.project = foo-backend
-    $ specify change plan amend migrate-foo-mobile --project foo-mobile
+    $ specify plan amend migrate-foo-mobile --project foo-mobile
     ok: migrate-foo-mobile.project = foo-mobile
 
   Wrote .specify/plans/migrate-foo/proposal.md
 
   Step 4 — Validate
-    $ specify change plan validate
+    $ specify plan validate
     PASS
 
   Done. Next steps:
-    - specify change plan status
+    - specify plan status
     - /change:execute loop
 
 ---
@@ -149,8 +149,8 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   Self-heal: no in-progress entries found.
 
-  # specify change plan next --format json → { "next": "migrate-foo-contract", "project": null, ... }
-  # specify change plan transition migrate-foo-contract in-progress
+  # specify plan next --format json → { "next": "migrate-foo-contract", "project": null, ... }
+  # specify plan transition migrate-foo-contract in-progress
 
   ### Processing: migrate-foo-contract (sources: [monolith])
 
@@ -162,7 +162,7 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   ---
 
-  # specify change plan next --format json → { "next": "migrate-foo-backend", "project": "foo-backend", ... }
+  # specify plan next --format json → { "next": "migrate-foo-backend", "project": "foo-backend", ... }
 
   Routing: migrate-foo-backend → foo-backend (.specify/workspace/foo-backend/)
 
@@ -177,7 +177,7 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   ---
 
-  # specify change plan next --format json → { "next": "migrate-foo-mobile", "project": "foo-mobile", ... }
+  # specify plan next --format json → { "next": "migrate-foo-mobile", "project": "foo-mobile", ... }
 
   Routing: migrate-foo-mobile → foo-mobile (.specify/workspace/foo-mobile/)
 
@@ -326,8 +326,8 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a current verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
-- **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change create`, `specify plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
+- **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
 - **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. The merge itself happens outside the umbrella.
 - **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan <name> orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

@@ -30,7 +30,7 @@ Four canonical paths:
 The consumer project needs to be updated to match the producer's new shape, and the work fits inside the current change. Add a new entry to `plan.yaml` that depends on the producer slice:
 
 ```bash
-specify change plan add update-<consumer>-for-<producer-change> \
+specify plan add update-<consumer>-for-<producer-change> \
     --project <consumer> \
     --depends-on <producer-change> \
     --description "Adopt the updated <contract-path> contract from <producer-change>" \
@@ -81,7 +81,7 @@ After applying any of paths A, B, or C, confirm the findings are accounted for:
 ```bash
 specify compatibility check --change <name> --report-only   # findings are understood or now additive
 specify slice status <consumer-change>           # if path A or B, follow-up change is tracked
-specify change plan status                                # if path A, the entry is queued
+specify plan status                                # if path A, the entry is queued
 ```
 
 Path D is verified by rerunning the producer work and then rerunning `specify compatibility check`.

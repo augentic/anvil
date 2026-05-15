@@ -37,7 +37,7 @@ The framework already pins a clean separation between *plan-time, shallow* (anal
 4. **Capability-owned, framework-shaped.** The new kind, the survey brief, and the synthesise brief are framework concerns; per-capability prompts (clustering heuristics, refined sizing rubrics, reconciliation algorithms) live in `plugins/change/skills/plan/briefs/<capability>/`.
 5. **Closed enums stay closed.** Adding `domain-model` to the kind enum is an explicit change, not an open extension point. Unknown kinds remain a hard exit.
 6. **Idempotency is non-negotiable.** Every new artifact (`survey.md`, `## Reconciliation`, `## Domain model`) must be byte-stable on unchanged inputs, with sorted ordering, fixed field order, and no host-state leaks.
-7. **Read-only with respect to `plan.yaml`.** Survey and synthesise emit Markdown under `.specify/plans/<change>/`; neither writes to `plan.yaml`. The propose brief still owns slice creation through `specify change plan add`.
+7. **Read-only with respect to `plan.yaml`.** Survey and synthesise emit Markdown under `.specify/plans/<change>/`; neither writes to `plan.yaml`. The propose brief still owns slice creation through `specify plan add`.
 8. **Composition only.** Where possible, new behaviour is a brief layered on existing skill primitives. New CLI verbs are introduced only when no existing primitive fits.
 9. **One change at a time.** Multi-plan output, parallel changes, and cross-change state are RFC-21 (catalogue + cache) and RFC-22 (ledger + mapping) concerns.
 
@@ -109,7 +109,7 @@ A node is a **slice-candidate leaf** iff its size is XS or S. Internal (non-leaf
 
 Per-capability briefs MAY refine the rubric with additional constraints — for example, "Omnia slices are S iff LOC < 1000 *and* aggregate count ≤ 1 *and* external endpoint count ≤ 3." Refinements may only *tighten* the framework rubric (a node the framework calls S may be re-classified M by the capability), never loosen it. This guarantees that propose can rely on the leaf invariant: every input it receives is at most S by both framework and capability measures.
 
-A small CLI helper `specify change plan size --path <dir> [--capability <name>]` computes the production-LOC count using a pinned set of language-aware include/exclude globs (framework defaults at `specify-cli/sizing.toml`; per-capability overrides at `plugins/change/skills/plan/briefs/<cap>/sizing.toml`). The survey loop calls it under the hood; operators can call it directly to audit sizing decisions. The globs and LOC counter are deterministic — re-running on unchanged inputs yields identical counts.
+A small CLI helper `specify plan size --path <dir> [--capability <name>]` computes the production-LOC count using a pinned set of language-aware include/exclude globs (framework defaults at `specify-cli/sizing.toml`; per-capability overrides at `plugins/change/skills/plan/briefs/<cap>/sizing.toml`). The survey loop calls it under the hood; operators can call it directly to audit sizing decisions. The globs and LOC counter are deterministic — re-running on unchanged inputs yields identical counts.
 
 ### Survey topology: the decomposition DAG
 
@@ -344,10 +344,10 @@ The plan skill's brief pipeline (steps 3a–3d) becomes:
 | 3(b) | Sync workspace (multi-repo only) → `workspace.md` | unchanged |
 | **3(b.5)** | — | **Survey → top-down DAG decomposition → `survey.md`** |
 | **3(b.6)** | — | **Synthesise → appends `## Reconciliation` to `discovery.md`, keyed by survey leaves** |
-| 3(c) | Propose → `specify change plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
-| 3(d) | Assignment (multi-repo only) → `specify change plan amend --project` | unchanged contract; assignment reads `target_project` hints from survey nodes |
+| 3(c) | Propose → `specify plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
+| 3(d) | Assignment (multi-repo only) → `specify plan amend --project` | unchanged contract; assignment reads `target_project` hints from survey nodes |
 
-Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of the orchestration mode treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify change plan archive`.
+Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of the orchestration mode treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify plan archive`.
 
 `/change:analyze` remains a single fan-out at 3(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
 
@@ -370,12 +370,12 @@ This RFC adds **no new top-level CLI verbs**. All existing primitives compose:
 
 - `/change:analyze` gains a third kind branch — same positional arity (`<input-path> <output-dir> <kind> [source-key]`).
 - `specify change create` (the merged brief + plan scaffold) is unchanged by this RFC.
-- `specify change plan add` is unchanged.
-- `specify change plan validate` is unchanged.
+- `specify plan add` is unchanged.
+- `specify plan validate` is unchanged.
 
 One new internal subcommand under the existing `plan` namespace:
 
-- `specify change plan size --path <dir> [--capability <name>]` — production-LOC counter with per-capability include/exclude globs. Used by the survey loop; also useful for operators auditing sizing decisions. Pure read-only LOC counting, no state.
+- `specify plan size --path <dir> [--capability <name>]` — production-LOC counter with per-capability include/exclude globs. Used by the survey loop; also useful for operators auditing sizing decisions. Pure read-only LOC counting, no state.
 
 Skills change:
 
@@ -396,7 +396,7 @@ Skills change:
 ## Implementation Plan
 
 1. **Schema and validator.** Add `specify-cli/schemas/domain-model/schema.json` and `specify-cli/schemas/domain-model/README.md`. Extend `specify-validate` with a domain-model validator. Add unit tests covering required fields, kebab-case constraints, the relationship-pattern enum, and `additionalProperties: false`.
-2. **Sizing helper.** Add `specify change plan size` CLI subcommand with framework-default include/exclude globs at `specify-cli/sizing.toml` and a `--capability` flag that loads `briefs/<cap>/sizing.toml`. Pin the LOC counter algorithm (line-based, language-aware blank/comment skipping). v1 languages: TypeScript, JavaScript, Python, Rust, Go. Add fixtures asserting deterministic counts on sample trees.
+2. **Sizing helper.** Add `specify plan size` CLI subcommand with framework-default include/exclude globs at `specify-cli/sizing.toml` and a `--capability` flag that loads `briefs/<cap>/sizing.toml`. Pin the LOC counter algorithm (line-based, language-aware blank/comment skipping). v1 languages: TypeScript, JavaScript, Python, Rust, Go. Add fixtures asserting deterministic counts on sample trees.
 3. **Closed-enum extension in `/change:analyze`.** Update the SKILL.md kind enum, the per-capability `analyze.md` brief structure, and the `--kind` validation in any helper that enforces the enum. Land first as a stub branch that errors with `domain-model-not-yet-implemented` so operators get a stable diagnostic.
 4. **Domain-model branch in the per-capability brief.** Implement the Omnia per-capability variant first (`plugins/change/skills/plan/briefs/omnia/analyze.md`), with fixtures under `plugins/change/skills/plan/briefs/omnia/fixtures/analyze/domain-model/`. Vectis variant follows.
 5. **Discovery section shape.** Extend the discovery brief and the `omnia/discovery.md` brief to write the `## Domain model` heading wrapper. Pin a fixture for the byte-stable shape.
@@ -416,7 +416,7 @@ For operators:
 - Continue using `kind: documentation` for unstructured architecture docs. Promote to `kind: domain-model` only when the input is a structured YAML/JSON document conforming to the schema.
 - A run with a non-trivial codebase now produces a `survey.md` automatically. For very small single-source migrations, `survey.md` is a one-node DAG with a one-line summary.
 - The propose phase still drives accept/edit/reject per slice — survey emits *candidates*, not commitments.
-- The new sizing rubric makes "is this slice too big?" a first-class check rather than operator intuition. Use `specify change plan size` to audit any node by hand.
+- The new sizing rubric makes "is this slice too big?" a first-class check rather than operator intuition. Use `specify plan size` to audit any node by hand.
 
 For capability authors:
 
@@ -455,7 +455,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 **Reconcile at every internal node, not just leaves.** Rejected. The same mismatch echoes up the tree, inflating noise. Leaf-level reconciliation surfaces concrete actionable mismatches per slice candidate; internal-node reconciliation can be added later if operators report missing context.
 
-**Add a CLI verb `specify change plan survey`.** Rejected for v1. Brief-driven composition reuses the existing plan-skill orchestration shell; a CLI verb would invent new state-transition ownership outside the single-writer invariant. The `specify change plan size` helper is a different shape — pure read-only LOC counting, no state.
+**Add a CLI verb `specify plan survey`.** Rejected for v1. Brief-driven composition reuses the existing plan-skill orchestration shell; a CLI verb would invent new state-transition ownership outside the single-writer invariant. The `specify plan size` helper is a different shape — pure read-only LOC counting, no state.
 
 ## Non-Goals
 

@@ -199,8 +199,8 @@ Keep the plan small and happy-path only.
 After planning, validate and inspect the plan:
 
 ```bash
-specify change plan validate
-specify change plan status
+specify plan validate
+specify plan status
 ```
 
 ### 3. Execute the plan
@@ -218,7 +218,7 @@ remove those prompts.
 When the loop exits, inspect status:
 
 ```bash
-specify change plan status
+specify plan status
 specify workspace status
 ```
 
@@ -282,7 +282,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/change:plan`.
-- `plan-validates`: `specify change plan validate` exits cleanly.
+- `plan-validates`: `specify plan validate` exits cleanly.
 - `contract-slice-first`: the dependency graph makes the contract slice the
   first executable slice.
 - `implementation-slices-routed`: exactly two implementation slices route to
@@ -323,7 +323,7 @@ failure needs investigation. Preserve these items on failure:
 - `docs/oauth-login.md`
 - `registry.yaml`
 - `plan.yaml`, or the archived plan path if finalize succeeded
-- `specify change plan status` output
+- `specify plan status` output
 - `specify workspace status` output
 - `specify workspace push` output
 - `specify change finalize` output

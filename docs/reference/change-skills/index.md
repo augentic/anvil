@@ -56,4 +56,4 @@ These skills are optional. You can use the define-build-merge loop without ever 
 - **Plan + drive (`/change:plan` then `/change:execute`)** -- author a plan, then automate execution.
 - **Single slice** -- skip plans entirely, define and build slices one at a time.
 
-The underlying CLI commands (`specify change plan ...`, `specify workspace ...`, `specify change ...`) remain available as manual fallback at every level.
+The underlying CLI commands (`specify plan ...`, `specify workspace ...`, `specify change ...`) remain available as manual fallback at every level.

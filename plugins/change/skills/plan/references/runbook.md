@@ -6,8 +6,8 @@ Operational detail for `/change:plan`. The SKILL.md keeps only the orientation s
 
 Specify at authoring time is a small stack — mirror of the execution stack documented in [`../../execute/SKILL.md`](../../execute/SKILL.md):
 
-1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed `specify` verbs that read and write `plan.yaml`. The shared single-writer rules live in [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
-2. **Authoring skill** (`/change:plan`, this one) — the Layer 2 authoring counterpart that runs the planning brief pipeline and shells out to `specify change plan add` for each accepted slice.
+1. **Plan CLI** (`specify plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed `specify` verbs that read and write `plan.yaml`. The shared single-writer rules live in [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
+2. **Authoring skill** (`/change:plan`, this one) — the Layer 2 authoring counterpart that runs the planning brief pipeline and shells out to `specify plan add` for each accepted slice.
 3. **Driver skill** (`/change:execute`) — the Layer 2 automation that consumes the plan this skill authored.
 
 The on-disk contracts the authoring skill depends on are:
@@ -15,7 +15,7 @@ The on-disk contracts the authoring skill depends on are:
 | File / directory | Owner | Role |
 |---|---|---|
 | `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status; write boundaries are in [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md). |
-| `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
+| `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify plan archive` alongside the plan itself. |
 | `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. The capability manifest schema rejects a `pipeline.plan` block — planning is orchestration, not capability-owned slice work, so the briefs ride with this skill rather than the capability manifest. |
 
 ## Invocation
@@ -72,7 +72,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
     inputs). A bare /change:plan <name> with neither slash inputs nor
      populated change-brief inputs is still a hard exit.
    - If plan.yaml exists and extend was NOT supplied,
-     refuse with a diagnostic pointing at `specify change plan archive`.
+     refuse with a diagnostic pointing at `specify plan archive`.
      (There is no force positional. Overwriting an existing plan would drop
      audit history.)
    - If extend was supplied but plan.yaml does NOT
@@ -110,7 +110,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 4. Final validation gate.
 
-     specify change plan validate
+     specify plan validate
 
    Runs the CLI validator against the authored plan. Report
    every `ValidationResult` verbatim. Non-zero exit on any result
@@ -120,7 +120,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 5. Exit with a hand-off summary.
 
    Point the human at:
-     - `specify change plan status` — review the authored plan.
+     - `specify plan status` — review the authored plan.
      - `/change:execute loop` — start executing it.
 
    Non-zero exit on any earlier step's hard failure; zero exit on
@@ -129,7 +129,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 ## Single-writer invariant
 
-Every plan write this skill performs follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md): create the shell (alongside `change.md`) through `specify change create`, add accepted entries through `specify change plan add`, amend only assignment fields through `specify change plan amend`, and never call `specify change plan transition` from the authoring step.
+Every plan write this skill performs follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md): create the shell (alongside `change.md`) through `specify change create`, add accepted entries through `specify plan add`, amend only assignment fields through `specify plan amend`, and never call `specify plan transition` from the authoring step.
 
 ## Working directory (`.specify/plans/<name>/`)
 
@@ -150,7 +150,7 @@ The working directory is created lazily — by the discovery brief itself when i
 
 `.specify/plans/<change-name>/analyze/<key>/` is the **tier-1** legacy-source clone — read-only, ephemeral, and bound to this change. The **tier-2** registered project clones materialised by step 3(b) live separately under `.specify/workspace/<project>/`, are read-write during execution, and outlive any single change. See [Workspace Tiers](../../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
-On archive, `specify change plan archive` sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
+On archive, `specify plan archive` sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
 
 ## Modes
 
@@ -166,15 +166,15 @@ Per-mode deltas, dry-run write prohibitions, and `extend` collision rules live i
 ## Non-goals
 
 - **Execute the plan in default mode.** Never. Execution is `/change:execute`'s concern. `/change:plan` exits with a hand-off summary that points the operator at `/change:execute loop`; `orchestrate` composes that separate skill after authoring.
-- **Modify existing plan entries.** Never. `extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify change plan amend` by the human, not by this skill.
-- **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
+- **Modify existing plan entries.** Never. `extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify plan amend` by the human, not by this skill.
+- **Skip `specify plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
+- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/change:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync`, invoked only in the sync-workspace step when `len(registry.projects) > 1`.
 - **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
-- **Auto-repair a failing `specify change plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify change plan amend` / `specify change plan transition skipped` fix, never an in-skill edit.
+- **Auto-repair a failing `specify plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
 The state the skill mutates:
 

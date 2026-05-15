@@ -24,7 +24,7 @@ If `/change:execute` is stuck or you want to handle a specific change yourself:
 
 ```bash
 # Take manual control of a plan entry
-specify change plan transition add-oauth in-progress
+specify plan transition add-oauth in-progress
 
 # Run the phases manually
 /spec:define "Add OAuth2 provider integration"
@@ -32,7 +32,7 @@ specify change plan transition add-oauth in-progress
 /spec:merge
 
 # Mark it done in the plan
-specify change plan transition add-oauth done
+specify plan transition add-oauth done
 ```
 
 The plan is just a data file that tracks status. You can transition entries freely.
@@ -76,26 +76,26 @@ specify slice status <name>
 /spec:merge
 
 # Update the plan entry
-specify change plan transition <name> done
+specify plan transition <name> done
 ```
 
 ### Adjust a plan entry
 
 ```bash
 # Change dependencies
-specify change plan amend <name> --depends-on dep1,dep2
+specify plan amend <name> --depends-on dep1,dep2
 
 # Change the target project (multi-repo)
-specify change plan amend <name> --project api
+specify plan amend <name> --project api
 
 # Skip an entry entirely
-specify change plan transition <name> skipped
+specify plan transition <name> skipped
 ```
 
 ### Reset and retry a failed entry
 
 ```bash
-specify change plan transition <name> pending
+specify plan transition <name> pending
 /change:execute        # picks it up on the next cycle
 ```
 

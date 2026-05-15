@@ -84,11 +84,11 @@ specify status                                   # render every active slice
 specify slice transition <name> <target>
 
 # Plan management
-specify change plan status
-specify change plan next
-specify change plan validate                     # base shape + cycle / orphan / stale-clone / unreachable
-specify change plan transition <name> <target>
-specify change plan lock status
+specify plan status
+specify plan next
+specify plan validate                     # base shape + cycle / orphan / stale-clone / unreachable
+specify plan transition <name> <target>
+specify plan lock status
 
 # Workspace (multi-repo)
 specify workspace sync [<project>...]      # omit selectors to sync all registry projects
@@ -108,8 +108,8 @@ specify change finalize              # verify merged PRs, archive plan
 specify change finalize --clean      # also remove clean .specify/workspace/<peer>/ clones
 
 # Plan authoring (multi-repo)
-specify change plan add <name> --project <project>
-specify change plan amend <name> --project <project>
+specify plan add <name> --project <project>
+specify plan amend <name> --project <project>
 
 # Per-slice inspection
 specify slice validate <name>

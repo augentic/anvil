@@ -7,14 +7,14 @@ Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (tota
 
 Self-heal: no in-progress entries found.
 
-# specify change plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
+# specify plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
 # registry selector: traffic → git@github.com:org/traffic.git
 # specify workspace status traffic --format json → git-clone, branch=main, dirty=false
 # specify workspace prepare-branch traffic --change platform-v2 --source /path/to/legacy-codebase --format json
 #   → prepared=true branch=specify/platform-v2 local-branch=created remote-branch=absent
 # CWD saved: /path/to/initiating-repo
 # Source resolution: monolith → /path/to/legacy-codebase (absolute)
-# specify change plan transition ingest-pipeline in-progress
+# specify plan transition ingest-pipeline in-progress
 
 Routing: ingest-pipeline → traffic (.specify/workspace/traffic/)
 Workspace: traffic prepared on specify/platform-v2
@@ -37,12 +37,12 @@ Step 3/3: merge
   Residue committed: git add --all -- . ':!.specify/specs/**' ':!.specify/archive/**' && git commit -m "specify: residue ingest-pipeline"
 
 # CWD restored: /path/to/initiating-repo
-# specify change plan transition ingest-pipeline done
+# specify plan transition ingest-pipeline done
   Status: done
 
 ---
 
-# specify change plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
+# specify plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
 # registry selector: command-centre → git@github.com:org/command-centre.git
 # specify workspace status command-centre --format json → missing
 # specify workspace sync command-centre
@@ -50,7 +50,7 @@ Step 3/3: merge
 # specify workspace prepare-branch command-centre --change platform-v2 --format json
 #   → prepared=true branch=specify/platform-v2 local-branch=created remote-branch=absent
 # CWD saved: /path/to/initiating-repo
-# specify change plan transition operator-dashboard in-progress
+# specify plan transition operator-dashboard in-progress
 
 Routing: operator-dashboard → command-centre (.specify/workspace/command-centre/)
 Workspace: command-centre prepared on specify/platform-v2
@@ -66,10 +66,10 @@ Step 2/3: build
   Summary: Missing API contract from traffic service.
   Journal: .specify/slices/operator-dashboard/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify change plan transition operator-dashboard pending
+    specify plan transition operator-dashboard pending
 
 # CWD restored: /path/to/initiating-repo
-# specify change plan transition operator-dashboard failed --reason "Missing API contract from traffic service."
+# specify plan transition operator-dashboard failed --reason "Missing API contract from traffic service."
   Status: failed
 
 ---
@@ -87,4 +87,4 @@ Failed:
 Pending (dependencies not satisfied):
   - traffic-api (waits on: operator-dashboard)
 
-Next action: Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify change plan archive --force.
+Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify plan archive --force.

@@ -14,10 +14,10 @@ The "five-step loop" refers to the Critical Path that `/change:plan` runs on eve
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/change:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet.
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` (may sync all projects) + author `workspace.md`.
-   - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify change plan add` for each accepted slice.
-   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify change plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** before continuing.
-4. **Validate** — `specify change plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
-5. **Exit with hand-off summary** — point the operator at `specify change plan status` and `/change:execute loop`.
+   - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan add` for each accepted slice.
+   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** before continuing.
+4. **Validate** — `specify plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
+5. **Exit with hand-off summary** — point the operator at `specify plan status` and `/change:execute loop`.
 
 So: parse → scaffold → brief-pipeline → validate → hand-off, with the brief-pipeline step itself being a 2-step (single-repo) or 4-step (multi-repo) sub-sequence.
 

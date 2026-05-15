@@ -59,7 +59,7 @@ warn: inferred delta target stale-flag-never-used had no matching
       extract capability in <slice-dir>/specs/ after the per-source
       merge. The description may reference a change that this slice
       does not actually modify — amend the description via
-      `specify change plan amend extract-shared-validation \
+      `specify plan amend extract-shared-validation \
           --description "..."`.
 ```
 

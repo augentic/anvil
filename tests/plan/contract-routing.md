@@ -44,7 +44,7 @@ feature brief
   -> /change:plan
   -> contract slice
   -> routed backend and mobile implementation slices
-  -> specify change plan validate
+  -> specify plan validate
 ```
 
 The scenario checks durable plan structure only. It should not fail because the generated proposal prose or slice descriptions differ from a previous run.
@@ -177,8 +177,8 @@ Keep the plan small and happy-path only.
 After planning, validate and inspect the plan:
 
 ```bash
-specify change plan validate
-specify change plan status
+specify plan validate
+specify plan status
 specify registry validate
 ```
 
@@ -201,7 +201,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/change:plan`.
-- `plan-validates`: `specify change plan validate` exits cleanly.
+- `plan-validates`: `specify plan validate` exits cleanly.
 - `contract-slice-present`: the plan includes a contract slice before implementation work begins.
 - `implementation-slices-routed`: implementation slices route to the expected projects, `shop-backend` and `shop-mobile`.
 - `dependencies-correct`: each implementation slice depends on the contract slice.
@@ -226,6 +226,6 @@ Use disposable directories and remove them when the run is complete unless a fai
 - `registry.yaml`
 - `plan.yaml`
 - `.specify/plans/oauth-login-plan/`
-- `specify change plan validate` output
-- `specify change plan status` output
+- `specify plan validate` output
+- `specify plan status` output
 - `specify registry validate` output

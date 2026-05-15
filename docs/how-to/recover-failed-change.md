@@ -56,7 +56,7 @@ When `/change:execute` encounters a failure:
 To retry the failed entry:
 
 ```bash
-specify change plan transition <name> pending
+specify plan transition <name> pending
 ```
 
 Then re-run `/change:execute`. The driver will pick up the reset entry.
@@ -64,7 +64,7 @@ Then re-run `/change:execute`. The driver will pick up the reset entry.
 If the failure was caused by a dependency, you can also skip the entry:
 
 ```bash
-specify change plan transition <name> skipped
+specify plan transition <name> skipped
 ```
 
 ## Self-heal on restart

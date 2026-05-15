@@ -40,7 +40,7 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 - **Contract change runs against the hub.** The cross-project HTTP contract (`migrate-foo-contract`) carries no `project` field; `/change:execute` runs it against the hub root, not inside a workspace clone.
 - **PR merge is operator-owned.** The umbrella stops after `specify workspace push` until the operator merges the PRs outside the skill.
 - **Idempotent re-entry.** Re-running `/change:plan <name> orchestrate migrate-foo shape migrate-legacy source monolith=...` after a successful run reports `plan-not-found` from `specify change finalize` and exits zero.
-- **No retired CLI verbs.** Every shell-out in [`transcript.md`](transcript.md) uses the current surface (`specify change create`, `specify change plan {create, add, amend, validate}`, `specify slice outcome show`, `specify slice journal append`).
+- **No retired CLI verbs.** Every shell-out in [`transcript.md`](transcript.md) uses the current surface (`specify change create`, `specify plan {create, add, amend, validate}`, `specify slice outcome show`, `specify slice journal append`).
 
 ## Counter-examples (not pinned)
 

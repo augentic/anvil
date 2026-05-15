@@ -71,7 +71,7 @@ The umbrella inspects on-disk state, sees the brief present, the plan terminal, 
 - **No registry mutation under `new-feature`.** Both projects exist in the registry at start; assignment routes work to them without any `specify registry add` shell-out. The 2B registry-proposal sub-step does not fire.
 - **Step 6 stops for operator merge.** The umbrella surfaces the list of open PRs and exits zero — the operator merges by hand and re-runs to finalize.
 - **Re-entry is idempotent.** The second run skips steps 1–6 (each shell-out underneath is idempotent: `specify change create` refuses on populated brief, `/change:plan` would refuse without `extend` but the umbrella never re-enters `/change:plan` because the plan is already terminal, `specify workspace push` reports `up-to-date`) and lands directly at step 7.
-- **Verb hygiene.** Every shell-out in [`transcript.md`](transcript.md) uses current verbs (`specify change {create, finalize}`, `specify change plan {add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`, `gh pr view`).
+- **Verb hygiene.** Every shell-out in [`transcript.md`](transcript.md) uses current verbs (`specify change {create, finalize}`, `specify plan {add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`, `gh pr view`).
 
 ## Counter-examples (not pinned)
 

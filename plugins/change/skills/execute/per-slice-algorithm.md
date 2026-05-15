@@ -10,7 +10,7 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
    no Specify project is found.
 
 2. Acquire the driver lock:
-     specify change plan lock acquire --pid <agent-session-pid>
+     specify plan lock acquire --pid <agent-session-pid>
    On Error::DriverBusy, report which PID holds the lock and exit 1
    without touching the plan.
 
@@ -27,7 +27,7 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
    reaching step 4.
 
 4. Pick the next slice:
-     specify change plan next --format json
+     specify plan next --format json
    Interpret the JSON:
      - `next != null`                → continue to step 5 with this
                                         name. Capture the entry's
@@ -72,11 +72,11 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
    this step entirely (single-repo path).
 
 5b. Transition the selected entry:
-     specify change plan transition <name> in-progress
+     specify plan transition <name> in-progress
    This is the first plan write the driver performs. It must happen
    BEFORE /spec:define creates the slice directory: between this step and step 6 the
    plan briefly shows an in-progress entry with no matching slice
-   directory, which `specify change plan validate` tolerates as a
+   directory, which `specify plan validate` tolerates as a
    warning.
 
 5c. CWD routing (multi-repo only).
@@ -130,14 +130,14 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
 9b. CWD restore (multi-repo only).
    If the CWD routing step (5c) changed the working directory,
    restore CWD to the saved initiating repo root. This ensures
-   `specify change plan transition` (which reads `plan.yaml` in the
+   `specify plan transition` (which reads `plan.yaml` in the
    initiating repo) runs from the correct directory. In `--loop`
    mode, the CWD routing and CWD restore steps bracket every
-   iteration so that `specify change plan next` always runs from
+   iteration so that `specify plan next` always runs from
    the initiating repo root.
 
 10. Success wrap-up.
-      specify change plan transition <name> done
+      specify plan transition <name> done
     Emit the success transcript (see output-format.md). Cross-project
     consumer-impact classification is a separate `specify compatibility`
     CLI surface. Go to step 13.
@@ -151,7 +151,7 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
        artifacts and flips the slice lifecycle to `dropped`. It does
        NOT touch plan.yaml.
     c. Run:
-         specify change plan transition <name> failed --reason "<outcome.summary>"
+         specify plan transition <name> failed --reason "<outcome.summary>"
        The `--reason` value is copied VERBATIM from the phase's
        `outcome.summary`. Do not paraphrase, truncate, or re-render.
     d. Emit the failure transcript. Go to step 13.
@@ -162,12 +162,12 @@ The algorithm is normative. Every shell-out is to the `specify` CLI; this skill 
     b. Run:
          /spec:drop <name> reason "<outcome.summary>"
     c. Run:
-         specify change plan transition <name> blocked --reason "<outcome.summary>"
+         specify plan transition <name> blocked --reason "<outcome.summary>"
        `--reason` is copied verbatim, as in step 11c.
     d. Emit the deferred transcript. Go to step 13.
 
 13. Release the driver lock:
-      specify change plan lock release --pid <agent-session-pid>
+      specify plan lock release --pid <agent-session-pid>
     Run this on EVERY exit path — success, failure, deferral, stop-
     for-triage (step 4 in-progress branch), or any uncaught error
     after step 2. The release step is unconditional; think of it as
@@ -218,7 +218,7 @@ Notes:
 - The journal entry uses the existing `failure` kind (the canonical `EntryKind::{Question, Failure, Recovery}` set per `specify-cli/crates/change/src/journal.rs`); no new kind is introduced. Readers grep `summary` for the `registry-amendment-required:` prefix to filter.
 - The full structured payload lives in `--context` as YAML. The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
 - Read `outcome.proposal.*` from `specify slice outcome show <name> --format json` — the CLI emits the proposal as a sibling object (`outcome.proposal`) so existing consumers that only read `.outcome.outcome` (a kebab-case string) keep working.
-- After the journal append, fall through to step 12.b (`/spec:drop`) and step 12.c (`specify change plan transition <name> blocked --reason "<outcome.summary>"`) with the **same `--reason` rule** the `deferred` branch follows: `outcome.summary` is copied byte-for-byte. The default summary stamped by the CLI is `registry-amendment-required: <proposed-name>`, but a phase that supplied a richer `--summary` keeps that exact text.
+- After the journal append, fall through to step 12.b (`/spec:drop`) and step 12.c (`specify plan transition <name> blocked --reason "<outcome.summary>"`) with the **same `--reason` rule** the `deferred` branch follows: `outcome.summary` is copied byte-for-byte. The default summary stamped by the CLI is `registry-amendment-required: <proposed-name>`, but a phase that supplied a richer `--summary` keeps that exact text.
 
 ### Surface the proposal in the per-slice transcript
 
@@ -250,20 +250,20 @@ specify registry add <proposed-name> \
 
 specify workspace sync
 
-specify change plan amend <slice-name> --project <proposed-name>
+specify plan amend <slice-name> --project <proposed-name>
 
-specify change plan transition <slice-name> pending
+specify plan transition <slice-name> pending
 ```
 
 Notes:
 
 - **Verb order matters.** The registry must be amended **before** the plan can amend `--project` (the validator rejects `project` values not in `registry.yaml`). The workspace sync between them materialises the new clone slot under `.specify/workspace/<proposed-name>/` so subsequent `/change:execute loop` runs route into a real working tree.
-- **`pending` re-queues.** The slice was dropped at step 12.b; the next `/change:execute loop` pass picks it up via `specify change plan next`. The drop archived the prior journal under `.specify/archive/...-<slice-name>/` — the recovery `pending → in-progress` re-creates a fresh slice directory at step 6.
+- **`pending` re-queues.** The slice was dropped at step 12.b; the next `/change:execute loop` pass picks it up via `specify plan next`. The drop archived the prior journal under `.specify/archive/...-<slice-name>/` — the recovery `pending → in-progress` re-creates a fresh slice directory at step 6.
 - **Manual fallback.** Every step is a v1 verb the operator can run by hand; the umbrella skill (RFC-9 §2C, `/change:plan <name> orchestrate`) wraps the same sequence into a single composition. `/change:execute` itself never invokes any of these verbs — that boundary is what keeps the registry under operator control.
 
 ### Self-heal interaction
 
-Self-heal ([self-heal.md](self-heal.md)) treats `outcome.outcome == registry-amendment-required` exactly like `deferred`: it emits the journal append (the same way step 12.a above does), runs `/spec:drop`, and applies `specify change plan transition <name> blocked --reason "<outcome.summary>"`. The diagnostic line uses the canonical `registry-amendment-required` qualifier so the operator can tell from a single log line which deferred branch the self-heal pass took:
+Self-heal ([self-heal.md](self-heal.md)) treats `outcome.outcome == registry-amendment-required` exactly like `deferred`: it emits the journal append (the same way step 12.a above does), runs `/spec:drop`, and applies `specify plan transition <name> blocked --reason "<outcome.summary>"`. The diagnostic line uses the canonical `registry-amendment-required` qualifier so the operator can tell from a single log line which deferred branch the self-heal pass took:
 
 ```text
 Self-heal: <name> → blocked (define registry-amendment-required: "<outcome.summary verbatim>")
@@ -279,6 +279,6 @@ The dry-run variant uses the same line with `(if executed)` appended (mirroring 
 
 - **Journal entries from the phase are preserved.** Whatever `type: question` / `type: failure` entries the phase wrote during its run stay on disk unchanged. The driver does not rewrite, merge, or summarise them. Humans reading the journal after a failure or deferral see the full trail the phase recorded, not a driver-authored post-hoc rollup.
 
-- **Release the lock on every exit path.** Every branch of the algorithm — success, failure, deferred, stop-for-triage, unhandled error — MUST run `specify change plan lock release` before returning control to the caller. Treat the release as the invariant trailing edge of the run.
+- **Release the lock on every exit path.** Every branch of the algorithm — success, failure, deferred, stop-for-triage, unhandled error — MUST run `specify plan lock release` before returning control to the caller. Treat the release as the invariant trailing edge of the run.
 
 - **Single `in-progress` at a time.** The driver never has more than one plan entry in `in-progress` at any point in time. Step 5 is the only place the driver enters that state; steps 10/11/12 are the only places the driver leaves it. Self-heal is the only other step that mutates plan status, and only to resolve a pre-existing `in-progress` left by a prior crashed run.

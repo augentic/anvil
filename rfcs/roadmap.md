@@ -73,7 +73,7 @@ specify review --format json
 **Target surface:**
 
 ```bash
-specify change plan impact --change <name>
+specify plan impact --change <name>
 ```
 
 #### RM-12: Catalog import: Backstage adapter

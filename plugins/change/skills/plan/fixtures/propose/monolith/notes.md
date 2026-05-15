@@ -26,7 +26,7 @@ Dependency-order + within-depth alphabetical:
 2. `shared-validation` (depth 0)
 3. `user-registration` (depth 1, depends on both leaves)
 
-Matches the order `specify change plan next` would walk at execution time.
+Matches the order `specify plan next` would walk at execution time.
 
 ## Confidence flags
 

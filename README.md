@@ -56,7 +56,7 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 Two lifecycle nouns appear constantly in this codebase. RFC-13 §Migration locked their meaning:
 
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
 
 ## Installing the CLI
 
