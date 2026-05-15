@@ -74,28 +74,6 @@ Notes on the protocol:
 - Another live holder surfaces as `Error::DriverBusy { pid }` (exit code `1`); this skill reports the conflict and stops without touching the plan.
 - The long-lived in-process `PlanLockGuard` primitive (with a real `flock`) remains available for any future native driver that keeps a Rust process alive for the full run.
 
-## Per-slice algorithm at a glance
-
-The full algorithm — including step 9's phase-outcome classifier and the `registry-amendment-required` branch — lives in [per-slice-algorithm.md](per-slice-algorithm.md). The 13 steps in summary:
-
-1. Resolve project directory (walk upward for `.specify/project.yaml`).
-2. Acquire driver lock (`specify plan lock acquire`).
-3. Run self-heal ([self-heal.md](self-heal.md)).
-4. Pick next slice (`specify plan next --format json`); capture `project`, `description`, `sources`.
-5. Prepare multi-repo workspace entry when `project` is set: selected materialisation, branch preparation, then route CWD ([multi-repo.md](multi-repo.md) §Workspace routing and branch preparation).
-6. Resolve `sources` ([argument-resolution.md](argument-resolution.md)) and invoke `/spec:define <name>`.
-7. On `success`: invoke `/spec:build <name>`.
-8. On `success`: invoke `/spec:merge <name>`.
-9. Read phase outcome (`specify slice outcome show <name> --format json`). Classify `success` / `failure` / `deferred` / `registry-amendment-required` / missing-or-malformed.
-9a. For multi-repo merge success: verify `.specify/specs/` and `.specify/archive/` are clean, then commit non-baseline residue as `specify: residue <name>` or halt.
-9b. Restore CWD for multi-repo entries.
-10. On terminal `success`: `specify plan transition <name> done`.
-11. On `failure`: `/spec:drop` + `specify plan transition <name> failed --reason "<outcome.summary>"`.
-12. On `deferred` (or `registry-amendment-required`): journal append (`registry-amendment-required` path only) → `/spec:drop` + `specify plan transition <name> blocked --reason "<outcome.summary>"`.
-13. Release driver lock — on every exit path.
-
-`outcome.summary` is copied byte-for-byte into `--reason` at steps 11c and 12c. Never paraphrase.
-
 ## Modes at a glance
 
 | Mode | Behaviour | Detail |
@@ -123,11 +101,11 @@ The state this skill may mutate is limited to the driver lock, plan status trans
 - Treat an unexpected `specify plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
 - For `dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify plan transition`, MUST NOT shell out to `specify slice journal append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only ([self-heal.md](self-heal.md) §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] `.
 - For `loop` specifically: the driver lock is acquired ONCE at run start and released ONCE at run end; never per iteration. Individual slice outcomes (success, failure, deferred) are handled inside the iteration body; they do not short-circuit the outer loop. The loop exits only on `specify plan next` reporting no eligible slice, self-heal halt on startup, or SIGINT / SIGTERM. On any exit path, the terminal summary is emitted before the lock is released.
-- For the supervised single-slice run: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix.
+- On every `failed`/`blocked` transition (supervised, `loop`, and self-heal alike): the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix.
 - For multi-repo entries: `specify workspace prepare-branch <project> --change <change-name>` must pass before any phase skill runs. Never create a branch from a guessed default branch; `origin-head-unresolved` is a hard stop.
 - After a routed `/spec:merge` success: never transition the entry to `done` until `.specify/specs/` and `.specify/archive/` are clean and all non-baseline residue is either committed as `specify: residue <slice-name>` or proven clean.
 - Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify slice outcome set` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) — do not speculate about which of success / failure was really intended.
-- Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c. Self-heal never paraphrases ambiguity away — halt with exit code 2 and leave the plan entry as `in-progress`.
+- Self-heal applies the same verbatim-`summary` rule as the failed/blocked guardrail above. Self-heal never paraphrases ambiguity away — halt with exit code 2 and leave the plan entry as `in-progress`.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(slice, key)` pair, release the lock, and exit non-zero.
 - Cross-project compatibility reporting is outside `/change:execute`; run `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) when consumer-impact classification is needed.
 
