@@ -175,7 +175,7 @@ Framework defaults — explicit, identical for every capability:
 
 | Surface kind                                        | Default canonicalisation                                                                                                                                                                                                                                           |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Strip configured version prefixes (`/v1`, `/v2`, …) by default; opt out per change with `http: { strip_version_prefix: false }` to keep `/v1` and `/v2` distinct. |
+| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Version prefixes (`/v1`, `/v2`, …) are preserved verbatim; operators that need `/v1` and `/v2` collapsed declare an alias group in `<plan-dir>/identifier-aliases.yaml`. |
 | `message-pub`, `message-sub`, `ws-handler`          | Case-fold, unify dot/dash/underscore separators (`user.created` ≡ `user-created` ≡ `user_created`). Strip configured environment prefixes (`prod.`, `staging.`) **only when** listed.                                                                              |
 | `cli-command`, `scheduled-job`, `external-call-out` | Lowercase identifier; otherwise verbatim.                                                                                                                                                                                                                          |
 
@@ -188,8 +188,8 @@ Alias schema:
 aliases:
   - kind: message-pub
     group: [user.created, users.created, user-created]
-http:
-  strip_version_prefix: false  # default true; set false to keep /v1 vs /v2 distinct
+  - kind: http-route
+    group: [GET /v1/users, GET /v2/users]
 ```
 
 Aliases inside a `group` are bidirectional. Any alias whose `kind` fails the closed `surface kind` enum check **fails the survey**.
@@ -209,7 +209,6 @@ Conceptual shape:
   "version": 1,
   "source_key": "legacy-monolith",
   "language": "typescript",
-  "framework_signatures": ["express", "bullmq"],
   "surfaces": [
     {
       "id": "http-post-users",
@@ -230,7 +229,9 @@ Conceptual shape:
 }
 ```
 
-All fields are required. `version` is `1`; bumps go through an RFC update. `surfaces[]` is sorted by `id`; `touches` is sorted alphabetically; `framework_signatures` is sorted alphabetically. No timestamps, no absolute paths, no host-state leaks.
+All fields are required. `version` is `1`; bumps go through an RFC update. `surfaces[]` is sorted by `id`; `touches` is sorted alphabetically. No timestamps, no absolute paths, no host-state leaks.
+
+Framework detection is still performed by every detector so applicability gating works (see [Detector Contract](#detector-contract)), but the detected signatures are not persisted on `surfaces.json` in v1 — nothing in survey, propose, or the operator review flow branches on them. The field is reserved for a future revision once a consumer needs it (see [Out Of Scope](#out-of-scope)).
 
 `evidence` is a small structured shape rather than free prose so byte-stability survives detector phrasing changes:
 
@@ -377,18 +378,16 @@ struct DetectorInput<'a> {
 
 ```rust
 struct DetectorOutput {
-    framework_signatures: Vec<String>,
     surfaces: Vec<Surface>,
 }
 ```
 
 `Surface` matches the `surfaces.json` `surfaces[]` entry verbatim (including the structured `evidence` shape from [Artifacts](#artifacts)). Detectors return owned data; the verb deduplicates, sorts, and writes.
 
-**Discovery rule.** `specify change survey` runs every registered detector against the source root. Each detector self-reports applicability: when its framework signatures are absent the detector returns an empty `DetectorOutput { framework_signatures: vec![], surfaces: vec![] }`. The verb:
+**Discovery rule.** `specify change survey` runs every registered detector against the source root. Each detector self-reports applicability internally: when its framework signatures are absent the detector returns an empty `DetectorOutput { surfaces: vec![] }`. The verb:
 
-1. Merges `framework_signatures` across all detectors (deduplicated, sorted).
-2. Merges `surfaces` across all detectors and asserts no two detectors emitted the same `id`; on collision, exits `surface-scan-detector-id-collision`.
-3. Validates the merged output against the `surfaces.json` schema and writes it atomically.
+1. Merges `surfaces` across all detectors and asserts no two detectors emitted the same `id`; on collision, exits `surface-scan-detector-id-collision`.
+2. Validates the merged output against the `surfaces.json` schema and writes it atomically.
 
 **Capability scoping.** v1 is a single global registry. Per-capability detector packs at `plugins/change/skills/survey/briefs/<cap>/detectors/` are explicitly deferred; the directory is reserved but not loaded in v1.
 
@@ -462,16 +461,16 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 6. **Combined release.** Land the discovery-brief edit that writes the `## Candidate inventory` heading wrapper *together with* the `/change:survey` skill in step 7 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
 7. Add `/change:survey` with Pass 1 (per-source size check; emit `acceptable` sources as single terminal candidates, hand `too_large` sources to Pass 2) and Pass 2 (intra-source clustering signals — `touches` overlap, framework module boundary, URI/topic prefix, worker-pool affinity — plus canonicalised cross-source pairing with canonical-owner rules, `consumes-external` annotation for unpaired subscribers, cycle detection on `depends_on`, and `unresolved: true` markers on `too_large` clusters that cannot be split). Wired against the thin evidence renderer from [Artifacts](#artifacts) (sorted citations + optional `note`). Wire it between workspace sync and propose.
 8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence), including the propagation rules.
-9. Acceptance fixtures (ship in step 7's PR or immediately after):
-  - Single-source L monolith with one cross-module candidate.
-  - Multi-source change with **≥ 3 source-keys** producing at least one cross-source candidate and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey.
+9. Acceptance fixtures (ship in step 7's PR or immediately after). v1 keeps the proving set small and adds escape-hatch fixtures only when real plans exercise them:
+  - Single-source L monolith with one cross-module candidate (core happy path).
+  - Multi-source change with **at least two source-keys** producing one cross-source candidate (proves cross-source pairing end-to-end).
   - Greenfield documentation-only pass-through (survey skipped entirely).
   - Single-source-already-S no-op (source is its own terminal candidate without further partitioning).
   - `too_large` cluster produced by intra-source clustering (heavy shared `touches`) that cannot be split and is emitted `unresolved: true` (Pass 2 fail-safe).
-  - Subscriber with no in-scope publisher producing a `consumes-external` annotation (Pass 2 single-source fallback).
-  - Two-source `depends_on` cycle that is resolved by aliasing two surface identifiers together (`cycle_with` markers, then clean topo order after re-run).
-  - Alias bundle with an invalid `kind` value failing closed via `surface-scan-alias-kind-invalid`.
+  - Alias bundle with an invalid `kind` value failing closed via `surface-scan-alias-kind-invalid` (closed-enum guardrail).
   - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Candidate inventory` is emitted exactly once.
+
+  Escape-hatch fixtures deferred until a real plan exercises them: `consumes-external` annotation for a subscriber with no in-scope publisher; `depends_on` cycle resolved by aliasing two surface identifiers together; alias-resolved `unresolved` round-trip on a ≥ 3-source-key plan. See [Out Of Scope](#out-of-scope).
 10. Tutorials: monolith decomposition and legacy-fleet decomposition (with one alias-resolved `unresolved`). Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
 
 ## Migration
@@ -518,6 +517,8 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | Closed `evidence.kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`, …)       | A consumer (propose, plan diffing, CI gate, telemetry) needs to branch on evidence category without re-deriving it from `surfaces[]` membership.     |
 | Persisted `cross_module` / `cross_source` boolean flags on candidate leaves                              | A consumer needs to filter / branch on multi-module or multi-source candidates and the derivation from `sources` + namespaced `surfaces[]` proves expensive or error-prone in practice. |
 | Machine-readable JSON sibling for `survey.md`                                                            | A downstream consumer (CI gate, registry sync, telemetry, plan diffing tool) needs structured survey data; v1 stays markdown-only.                   |
+| Persisted `framework_signatures` field on `surfaces.json` (detector applicability gating still happens in-process) | A consumer (propose, plan diffing, CI gate, telemetry, capability routing) needs to branch on the detected framework set without re-running detectors. |
+| Escape-hatch acceptance fixtures: `consumes-external` annotation, `depends_on` cycle round-trip, alias-resolved `unresolved` on a ≥ 3-source-key plan | A real plan exercises any of these escape hatches and regresses, or the matching code path lands a behavioral change that needs guarding. |
 
 
 ## References
