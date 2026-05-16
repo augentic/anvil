@@ -49,10 +49,10 @@ After this RFC, the planning pipeline inside `/change:draft` has one extra analy
 - **Brief scaffold** — create the draft change workspace and deterministic brief structure that later stages append to.
 - **Registry validate** — check project and capability registry state so planning uses known targets and declared capabilities.
 - **Discovery** — gather planning-level source facts and documentation hints before slice candidates are proposed.
-- **Workspace sync, when multi-repo** — refresh the workspace inventory so repository assignments and target projects reflect the current registry.
-- **Source survey** — mechanically decompose legacy code into surfaces, code footprints, and capability-sized candidates.
+- **[When multi-repo system] Workspace sync** — refresh the mult-repo workspace inventory so repository assignments and target projects reflect the current registry.
+- **[When migrating a legacy system] Source survey** — mechanically decompose legacy code into surfaces, code footprints, and capability-sized candidates.
 - **Propose** — turn accepted capability candidates into operator-reviewable plan entries.
-- **Assignment, when multi-repo** — attach accepted plan entries to the projects or repositories that should own the work.
+- **[When multi-repo system] Assignment** — attach accepted plan entries to the projects or repositories that should own the work.
 - **Plan validate** — run the canonical plan validation before handing the draft back to the operator.
 - **Hand-off** — stop after producing the reviewed planning artifacts and leave execution to `/change:execute`.
 
@@ -107,7 +107,7 @@ Cuts are tried in priority order; the first that applies wins:
 1. **Size check.** XS or S → stop, leaf candidate.
 2. **Source split.** At root, always cut on `<source-key>`.
 3. **Framework module boundary.** Nest `@Module`, Rails engine, Spring `@Configuration`, Phoenix context, etc., when surfaces partition cleanly.
-4. **URI / topic / channel prefix.** Group by longest common prefix (`/users/`*, `user.*`); cut where distinct prefixes have low `touches` overlap.
+4. **URI / topic / channel prefix.** Group by longest common prefix (`/users/`*, `user.`*); cut where distinct prefixes have low `touches` overlap.
 5. **Worker pool / scheduled-job batch.** Workers and jobs sharing a topic or schedule prefix form their own group.
 6. **Surface enumeration.** Each surface group ends at its `surfaces.json` constituents.
 
