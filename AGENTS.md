@@ -23,7 +23,8 @@ Slash commands operators reach for, in roughly the order they appear in a projec
 - `/spec:build` — implement a slice's tasks.
 - `/spec:merge` — fold a slice's deltas into the baseline and archive it.
 - `/spec:drop` — abandon a slice without merging.
-- `/change:draft` — author a change's `plan.yaml` via the planning brief pipeline; in multi-project hubs `sync-workspace` + `workspace.md` precede the propose step.
+- `/change:draft` — author a change's `plan.yaml` via the planning brief pipeline; in multi-project hubs `sync-workspace` + `workspace.md` precede the propose step; for legacy-code changes `/change:survey` decomposes sources before propose.
+- `/change:survey` — mechanically decompose `legacy-code` sources into surfaces and slice-sized candidates; invoked by `/change:draft` between sync-workspace and propose. Documentation-only changes skip this step entirely.
 - `/change:execute` — drive a change's `plan.yaml` through define → build → merge; supports `dry-run`, single-slice supervised run, and `loop` mode with self-heal and SIGINT/SIGTERM handling.
 - `/change:finalize` — push branches, observe PR state, run `specify change finalize` once every PR is `MERGED`.
 

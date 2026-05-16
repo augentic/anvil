@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source-key": "legacy-widget",
+  "language": "typescript",
+  "loc": 850,
+  "module_count": 6,
+  "top_level_modules": [
+    "src/handlers",
+    "src/server.ts",
+    "src/services"
+  ]
+}

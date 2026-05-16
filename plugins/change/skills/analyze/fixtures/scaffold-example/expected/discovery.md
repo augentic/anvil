@@ -1,42 +1,25 @@
-<!-- source-key: monolith -->
-### email-verification
+## Candidate inventory
+
+<!-- source-key: ops-docs -->
+### drain-backpressure-queue
 
 ```yaml
-summary: Verify a newly registered account via a one-time email token.
-sources:
-  - src/auth/verify.ts
-depends-on: []
-hints:
-  entry_points: [GET /auth/verify]
-  external_deps: [postgres]
-confidence: high
+kind: candidate
+sources: [ops-docs]
+surfaces:
+  - ops-docs:scheduled-job-drain-backpressure
+declared-at:
+  - ops-runbook.md#drain-the-backpressure-queue
 ```
 
-<!-- source-key: monolith -->
-### shared-validation
+<!-- source-key: ops-docs -->
+### rotate-upstream-ingest-key
 
 ```yaml
-summary: Validate common user-facing inputs (email, password, name).
-sources:
-  - src/users/validation.ts
-depends-on: []
-hints:
-  external_deps: []
-confidence: medium
-```
-
-<!-- source-key: monolith -->
-### user-registration
-
-```yaml
-summary: Create new user accounts with email verification.
-sources:
-  - src/auth/verify.ts
-  - src/users/register.ts
-  - src/users/validation.ts
-depends-on: [email-verification, shared-validation]
-hints:
-  entry_points: [POST /users]
-  external_deps: [postgres, sendgrid]
-confidence: high
+kind: candidate
+sources: [ops-docs]
+surfaces:
+  - ops-docs:cli-command-rotate-ingest-key
+declared-at:
+  - ops-runbook.md#rotate-the-upstream-ingest-key
 ```

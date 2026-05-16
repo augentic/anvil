@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source-key": "legacy-monolith",
+  "language": "typescript",
+  "loc": 2400,
+  "module_count": 12,
+  "top_level_modules": [
+    "src/orders",
+    "src/server.ts",
+    "src/users"
+  ]
+}

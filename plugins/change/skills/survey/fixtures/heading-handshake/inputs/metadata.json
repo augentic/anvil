@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "source_key": "monolith",
+  "source-key": "legacy-api",
   "language": "typescript",
-  "loc": 187,
-  "module_count": 3,
+  "loc": 420,
+  "module_count": 5,
   "top_level_modules": [
-    "src/auth",
+    "src/server.ts",
     "src/users"
   ]
 }

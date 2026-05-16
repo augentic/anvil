@@ -9,9 +9,17 @@ Turn the capability inventory in `discovery.md` into a concrete set of plan entr
 
 ## Input
 
-- `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first.
+- `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first. The file contains both `## Capability inventory` blocks and `## Candidate inventory` blocks — the latter appended by `/change:analyze` (documentation) and `/change:survey` (legacy-code).
 - **`.specify/plans/<name>/workspace.md`** when present (multi-repo). Authored by `/change:draft` step 4(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
-- Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
+- Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Candidate blocks under `## Candidate inventory` use the fenced-YAML grammar (`kind`, `sources`, `handler`, `touches`, `surfaces`, `declared-at`, `unresolved`). Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
+
+### `unresolved: true` candidates
+
+Candidate blocks with `unresolved: true` are **refused** — do not draft a plan entry from them. Present each unresolved candidate to the operator with a diagnostic:
+
+> Candidate `<name>` is marked `unresolved: true` (too-large at `<LOC>` LOC). Edit the candidate block in `discovery.md` to narrow `touches` or split into smaller candidates, then re-run propose.
+
+The operator workflow: edit the candidate block in `discovery.md` to remove `unresolved: true` (typically by narrowing `touches` or splitting the block into two smaller candidates that are each `acceptable`), then re-run propose. Propose never auto-resolves unresolved candidates.
 
 ## Decomposition — 1:1 capability → slice
 

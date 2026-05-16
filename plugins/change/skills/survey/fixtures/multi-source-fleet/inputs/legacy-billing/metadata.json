@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source-key": "legacy-billing",
+  "language": "typescript",
+  "loc": 780,
+  "module_count": 5,
+  "top_level_modules": [
+    "src/invoices",
+    "src/payments",
+    "src/server.ts"
+  ]
+}
