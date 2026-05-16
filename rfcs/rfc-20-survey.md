@@ -67,28 +67,26 @@ Only the middle of the pipeline changes. The initial scaffold, single-writer rul
 
 The same flow covers one source and many sources. A monolith is simply one `legacy-code` source. A distributed legacy estate is many `legacy-code` sources plus any documentation inputs.
 
-### Step 2: Analyze Each Input
+### Step 2: Analyze Documentation Inputs
 
-The discovery brief still invokes `/change:analyze` once per input.
+The discovery brief invokes `/change:analyze` once per `documentation` input. `/change:analyze` extracts planning-level candidate hints into `discovery.md`. Documentation is the only kind `/change:analyze` accepts in v1; legacy code is surveyed end-to-end by `/change:survey` (see [Step 3](#step-3-source-survey-and-decomposition-mechanical)).
 
-For `documentation`, `/change:analyze` behaves as it does today: it extracts planning-level candidate hints into `discovery.md`.
+Before invoking survey, the discovery brief writes the `## Candidate inventory` heading wrapper into `discovery.md` exactly once. Both `/change:analyze` (for `documentation`) and `/change:survey` (for `legacy-code`) append candidate blocks under that heading; the brief never re-emits it.
 
-For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer candidate summaries directly. Instead, it invokes `specify change survey` and writes two sidecars under the plan working directory:
+### Step 3: Source Survey And Decomposition (mechanical)
+
+For `legacy-code` inputs, `/change:survey` runs the mechanical scanner and the per-source decomposition in one pass. It invokes `specify change survey` (see [Mechanical Scanner](#mechanical-scanner)) once per change — passing every recorded `legacy-code` source as a batch — which writes two sidecars per source-key under the plan working directory:
 
 ```text
-.specify/plans/<change>/analyze/<source-key>/metadata.json
-.specify/plans/<change>/analyze/<source-key>/surfaces.json
+.specify/plans/<change>/survey/<source-key>/metadata.json
+.specify/plans/<change>/survey/<source-key>/surfaces.json
 ```
 
 `metadata.json` records coarse source facts such as language, LOC, module count, and top-level modules. `surfaces.json` records the source's externally observable surfaces and their code footprints (see [Artifacts](#artifacts)).
 
 This split is the key simplification: plan-time code analysis first produces structural evidence, not slice decisions.
 
-Before invoking survey, the discovery brief writes the `## Candidate inventory` heading wrapper into `discovery.md` exactly once. Survey appends candidate blocks under that heading; the brief never re-emits it.
-
-### Step 3: Source Decomposition (mechanical)
-
-After all inputs have been analyzed, `/change:survey` walks each source independently. v1 keeps the model shallow: only `source`, `surface`, and `candidate` node kinds exist. There is no intermediate `group` kind, no cross-source pairing pass, and no target-routing inference inside survey.
+Once the sidecars exist, `/change:survey` walks each source independently. v1 keeps the model shallow: only `source`, `surface`, and `candidate` node kinds exist. There is no intermediate `group` kind, no cross-source pairing pass, and no target-routing inference inside survey.
 
 
 | Kind        | Sized as                                   |
@@ -186,10 +184,7 @@ Conceptual shape:
         "src/notifications/email.ts",
         "src/users/repository.ts"
       ],
-      "evidence": {
-        "citations": ["src/server.ts:42", "src/auth/register.ts"],
-        "note": "express"
-      }
+      "declared-at": ["src/server.ts:42"]
     }
   ]
 }
@@ -199,18 +194,11 @@ All fields are required. `version` is `1`; bumps go through an RFC update. `surf
 
 Framework detection is still performed by every detector so applicability gating works (see [Detector Contract](#detector-contract)), but the detected signatures are not persisted on `surfaces.json` in v1 — nothing in survey, propose, or the operator review flow branches on them. The field is reserved for a future revision once a consumer needs it (see [Out Of Scope](#out-of-scope)).
 
-`evidence` is a small structured shape rather than free prose so byte-stability survives detector phrasing changes:
+`declared-at` is a flat list of paths (or `path:line` references) where the surface is declared to its framework or runtime — the route mount, publish call site, subscription registration, scheduled-job declaration, command registration, UI route entry, or outbound call site, depending on `kind`. It is the answer to "where in the source code does the detector see the proof that this surface exists?", and is intentionally distinct from `handler` (where the implementation lives) and `touches` (what the implementation reaches).
 
+Entries are sorted alphabetically and are paths relative to `$INPUT_PATH`, optionally `:<line>` suffixed. The list is non-empty: every detected surface must point to at least one declaration site. `/change:survey` exposes a single renderer that emits the field into `survey.md`; the renderer is thin and detector authors never hand-write prose.
 
-| Field       | Type     | Notes                                                                                  |
-| ----------- | -------- | -------------------------------------------------------------------------------------- |
-| `citations` | string[] | Sorted alphabetically; paths relative to `$INPUT_PATH`, optionally `:<line>` suffixed. |
-| `note`      | string?  | Optional; kebab-case identifier (typically the framework name, topic, or route slug); no free prose. |
-
-
-Byte-stability is mechanical: sorted citations + a constrained note field. `/change:survey` exposes a single renderer that emits the shape into `survey.md`, but the renderer is now thin — detector authors never hand-write evidence prose, and consumers can read the structured form directly without a discriminator.
-
-A categorical `kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`) is intentionally deferred. v1 has no consumer that branches on evidence category, and future cross-source pairing can add the category it actually needs once that behavior exists. See [Out Of Scope](#out-of-scope) for the re-open trigger.
+A categorical declaration discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`) is intentionally deferred. v1 has no consumer that branches on declaration category, and future cross-source pairing can add the category it actually needs once that behavior exists. See [Out Of Scope](#out-of-scope) for the re-open trigger.
 
 The surface kind enum is closed in v1:
 
@@ -228,11 +216,11 @@ One file per change. Required sections, in order:
 
 Each node block is a fenced YAML block following a Markdown sub-heading. Fields appear in fixed order so re-runs diff cleanly:
 
-> `kind`, `sources`, `handler`, `touches`, `surfaces`, `evidence`, `unresolved`
+> `kind`, `sources`, `handler`, `touches`, `surfaces`, `declared-at`, `unresolved`
 
 Omit fields that don't apply to the node's kind. Consumers identify terminal leaves by `kind == "candidate"`.
 
-The fenced-YAML form is the **canonical candidate block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Candidate inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit mechanically-resolved `handler` / `touches` paths when no hint applies; survey-derived blocks always include `kind: candidate`.
+The fenced-YAML form is the **canonical candidate block shape**. Both `/change:survey` (for `legacy-code` inputs) and `/change:analyze` (for `documentation` inputs) emit blocks in this shape under the shared `## Candidate inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit mechanically-resolved `handler` / `touches` paths when no hint applies; survey-derived blocks always include `kind: candidate`.
 
 Example same-source candidate leaf:
 
@@ -250,11 +238,9 @@ touches:
 surfaces:
   - legacy-monolith:http-post-users
   - legacy-monolith:message-pub-user-created
-evidence:
-  citations:
-    - legacy-monolith:src/auth/register.ts
-    - legacy-monolith:src/server.ts:42
-  note: user.created
+declared-at:
+  - legacy-monolith:src/server.ts:42
+  - legacy-monolith:src/users/events.ts:18
 ```
 ```
 
@@ -273,10 +259,9 @@ touches:
 surfaces:
   - legacy-billing:scheduled-job-invoice-sync
   - legacy-billing:message-sub-payment-settled
-evidence:
-  citations:
-    - legacy-billing:src/billing/invoices.ts
-  note: invoice-sync
+declared-at:
+  - legacy-billing:src/billing/scheduler.ts:24
+  - legacy-billing:src/billing/subscriptions.ts:11
 unresolved: true
 ```
 ```
@@ -285,10 +270,14 @@ Re-running on unchanged inputs produces byte-identical `survey.md`.
 
 ## Mechanical Scanner
 
-The CLI scanner invoked by `/change:analyze legacy-code`:
+The CLI scanner invoked by `/change:survey`. Two forms:
 
 ```text
+# Single-source form (ad-hoc / debugging)
 specify change survey <source-path> --source-key <key> --out <dir>
+
+# Batch form (the form `/change:survey` uses)
+specify change survey --sources <file> --out <dir>
 ```
 
 The verb sits under `specify change` to make its plan-time role explicit and to keep the CLI namespace aligned with the rest of the change-lifecycle surface (`specify change draft`, `specify change finalize`, …).
@@ -299,25 +288,40 @@ It owns mechanical work only:
 - Enumerate surfaces.
 - Resolve handlers and call sites where static analysis can do so.
 - Record touched files.
-- Validate and write `surfaces.json`.
+- Capture coarse source metadata (language, LOC, module count, top-level modules).
+- Validate and write `surfaces.json` and `metadata.json`.
 
 The scanner does not call an LLM, infer candidates, or write `plan.yaml`.
 
 **Flags.**
 
-- `--source-key <key>` is **required**. The discovery brief always passes the key declared in `specify change draft --source <key>=<...>`; ad-hoc invocations must supply it explicitly. Synthesis is not duplicated across `analyze` and `survey` — failing closed surfaces mismatches immediately.
-- `--out <dir>` is a directory. The verb always writes `surfaces.json` inside it (matching `analyze/<source-key>/`). If the directory already contains a `surfaces.json` whose `source-key` does not match `--source-key`, the verb exits non-zero rather than overwriting.
-- `--format` is intentionally absent in v1. The output file is JSON by definition; the flag would re-introduce if and when stdout JSON envelopes are needed for shell pipelines.
+- `<source-path>` and `--source-key <key>` are the **single-source form** and are mutually exclusive with `--sources`. Both are required when used; ad-hoc invocations must supply the key explicitly so source-key mismatches fail closed.
+- `--sources <file>` is the **batch form**. The file is a small YAML document listing one entry per source:
+
+  ```yaml
+  version: 1
+  sources:
+    - key: legacy-monolith
+      path: ./legacy/monolith
+    - key: legacy-billing
+      path: ./legacy/billing
+  ```
+
+  `/change:survey` writes this file from the change's recorded `legacy-code` sources, so the whole legacy-code batch reaches the CLI in one invocation. The verb processes each row independently and atomically: a row's `surfaces.json` and `metadata.json` are written iff that row's detectors complete cleanly, and a row failure leaves that row's existing files untouched. Rows that completed cleanly before a later row failed remain on disk so re-runs only re-do the failed work — the per-source-key files are independent.
+- `--out <dir>` is a directory. In the single-source form the verb writes `<dir>/surfaces.json` and `<dir>/metadata.json` (the skill is responsible for picking a per-source-key directory). In the batch form `<dir>` is the parent directory and the verb writes `<dir>/<source-key>/surfaces.json` and `<dir>/<source-key>/metadata.json` per row. Either form refuses to overwrite a `surfaces.json` whose `source-key` does not match the requested key.
+- `--format` is intentionally absent in v1. The output files are JSON by definition; the flag would re-introduce if and when stdout JSON envelopes are needed for shell pipelines.
 
 **Exit discriminants.** Initial set, kebab-case per the CLI repo's coding standards:
 
 - `surface-scan-no-detectors-registered` — no detector applied to the source.
 - `surface-scan-detector-id-collision` — two detectors emitted the same `surfaces[].id`.
-- `surface-scan-source-path-missing` — `<source-path>` does not exist.
-- `surface-scan-source-path-not-readable` — `<source-path>` cannot be read.
+- `surface-scan-source-path-missing` — `<source-path>` does not exist (single-source form) or a row's `path` does not exist (batch form).
+- `surface-scan-source-path-not-readable` — `<source-path>` cannot be read (single-source form) or a row's `path` cannot be read (batch form).
 - `surface-scan-detector-failure` — a detector panicked or returned a malformed `Surface`.
+- `surface-scan-sources-file-missing` — the `--sources` file does not exist (batch form).
+- `surface-scan-sources-file-malformed` — the `--sources` file is not valid YAML, fails schema validation, or contains a duplicate `key` (batch form).
 
-No partial output is ever written; on any non-zero exit, `surfaces.json` is left untouched.
+No partial output is ever written for a row; on any non-zero exit, the affected row's `surfaces.json` and `metadata.json` are left untouched.
 
 Capability-owned detector packages may add framework support over time, but v1 ships a global registry (see [Detector Contract](#detector-contract)). v1 only needs enough detectors to prove the flow on the first supported stack; unsupported stacks fall back to manual source scoping until a detector exists.
 
@@ -344,7 +348,7 @@ struct DetectorOutput {
 }
 ```
 
-`Surface` matches the `surfaces.json` `surfaces[]` entry verbatim (including the structured `evidence` shape from [Artifacts](#artifacts)). Detectors return owned data; the verb deduplicates, sorts, and writes.
+`Surface` matches the `surfaces.json` `surfaces[]` entry verbatim (including the `declared-at` field from [Artifacts](#artifacts)). Detectors return owned data; the verb deduplicates, sorts, and writes.
 
 **Discovery rule.** `specify change survey` runs every registered detector against the source root. Each detector self-reports applicability internally: when its framework signatures are absent the detector returns an empty `DetectorOutput { surfaces: vec![] }`. The verb:
 
@@ -358,13 +362,12 @@ struct DetectorOutput {
 ## Skill Responsibility Split
 
 
-| Component                       | Responsibility                                                                                                                           |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `/change:analyze documentation` | Extract candidate hints from prose into `discovery.md`.                                                                                  |
-| `/change:analyze legacy-code`   | Run the mechanical scanner; write `metadata.json` + `surfaces.json`; do not infer candidates.                                            |
-| `specify change survey`         | Deterministically enumerate surfaces for one source.                                                                                     |
-| `/change:survey`                | Compose all sources into one inventory, size candidates, apply minimal same-source clustering, write `survey.md`, append candidate blocks under the discovery-owned heading. |
-| `propose` brief                 | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                            |
+| Component               | Responsibility                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/change:analyze`       | Extract candidate hints from `documentation` inputs into `discovery.md`. Documentation is the only kind accepted in v1.                                                                                                                                                                                              |
+| `specify change survey` | Deterministically enumerate surfaces for one source (single-source form) or a batch of sources (batch form); write `metadata.json` + `surfaces.json` per source-key.                                                                                                                                                 |
+| `/change:survey`        | Build the `--sources` batch file from the change's recorded `legacy-code` sources, invoke `specify change survey`, then compose all `surfaces.json` files into one inventory, size candidates, apply minimal same-source clustering, write `survey.md`, and append candidate blocks under the discovery-owned heading. |
+| `propose` brief         | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                                                                                                                                                                                                        |
 
 
 This split keeps expensive semantic judgement out of per-source analysis while still giving `propose` one candidate inventory to review.
@@ -405,19 +408,19 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 
 ## Implementation Plan
 
-1. Add the `surfaces.json` schema + validators (`evidence.citations` sorted, `evidence.note` matches the kebab-case grammar per [Artifacts](#artifacts)).
+1. Add the `surfaces.json` schema + validators (`declared-at` non-empty and sorted alphabetically per [Artifacts](#artifacts)).
 2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, the required `--source-key` flag, the `--out <dir>` directory contract, and the initial exit-discriminant set documented in [Mechanical Scanner](#mechanical-scanner).
 3. Land the detector trait, `DetectorRegistry`, and `DetectorInput` / `DetectorOutput` shapes per [Detector Contract](#detector-contract), then the first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ). Landing a real detector forces the contract to be exercised end-to-end.
-4. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit candidate blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
+4. Rewrite `/change:analyze` to handle `documentation` inputs only and emit candidate blocks in the unified fenced-YAML shape from [Artifacts](#artifacts). The skill drops its `kind` positional in v1; reintroducing a closed-enum `kind` is a re-open trigger when a new structured-prose kind (e.g. `domain-model`) lands (see [Out Of Scope](#out-of-scope)).
 5. **Combined release.** Land the discovery-brief edit that writes the `## Candidate inventory` heading wrapper *together with* the `/change:survey` skill in step 6 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
-6. Add `/change:survey` with source-local sizing, surface-sized default candidates, minimal same-source clustering (`touches` overlap, explicit documentation grouping, shared handler/call site), `unresolved: true` markers on `too-large` candidates that cannot be split, and the thin evidence renderer from [Artifacts](#artifacts) (sorted citations + optional `note`). Wire it between workspace sync and propose.
+6. Add `/change:survey`. The skill builds the `--sources` batch file from the change's recorded `legacy-code` sources, invokes `specify change survey` once, and then performs source-local sizing, surface-sized default candidates, minimal same-source clustering (`touches` overlap, explicit documentation grouping, shared handler/call site), `unresolved: true` markers on `too-large` candidates that cannot be split, and the thin `declared-at` renderer from [Artifacts](#artifacts) (sorted file or `file:line` entries). Wire it between workspace sync and propose.
 7. Acceptance fixtures (ship in step 6's PR or immediately after). v1 keeps the proving set small and adds escape-hatch fixtures only when real plans exercise them:
   - Single-source L monolith producing surface-sized candidates with one minimal same-source cluster (core happy path).
   - Multi-source change with **at least two source-keys** producing one combined inventory with separate source-local candidates (proves repo-fleet handling without cross-source pairing).
   - Greenfield documentation-only pass-through (survey skipped entirely).
   - Single-source-already-S no-op (source is its own terminal candidate without further partitioning).
   - `too-large` candidate produced by minimal same-source clustering that cannot be split and is emitted `unresolved: true`.
-  - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Candidate inventory` is emitted exactly once.
+  - Fresh `/change:draft` end-to-end exercising the discovery brief + `/change:survey` handshake and asserting `## Candidate inventory` is emitted exactly once.
 
   Escape-hatch fixtures deferred until a real plan exercises them: cross-source pairing, dependency ordering, operator aliases, and alias-resolved `unresolved` round-trips. See [Out Of Scope](#out-of-scope).
 8. Tutorials: monolith decomposition and legacy-fleet decomposition, with the legacy-fleet tutorial showing separate source-local candidates and the operator review point where related candidates may be combined. Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
@@ -426,11 +429,11 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 
 This is a plan-time behavioral change for legacy-code inputs.
 
-**For operators.** `/change:analyze legacy-code` no longer infers candidate summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns source-local candidate clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes produce one combined inventory, but related candidates from different sources remain separate until the operator combines or orders them during `propose`.
+**For operators.** `/change:analyze` no longer accepts `legacy-code`; it handles `documentation` inputs only. Legacy code is surveyed end-to-end by `/change:survey`, which builds a `--sources` batch file from the change's recorded `legacy-code` sources, invokes `specify change survey` once to write `metadata.json` + `surfaces.json` per source-key, and then owns source-local candidate clustering and the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes produce one combined inventory, but related candidates from different sources remain separate until the operator combines or orders them during `propose`.
 
-**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted candidate block to the unified shape (`kind: candidate` plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Identifier aliases and capability-owned detector packaging are deferred (see [Out Of Scope](#out-of-scope)).
+**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` content and updates its emitted candidate block to the unified shape (`kind: candidate` plus the field set described in [Artifacts](#artifacts)); the per-capability `analyze` brief no longer dispatches on a `kind` positional. Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Identifier aliases and capability-owned detector packaging are deferred (see [Out Of Scope](#out-of-scope)).
 
-**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Candidate inventory` heading in `discovery.md` is written exactly once by the discovery brief; both survey (legacy-code) and `/change:analyze documentation` append candidate blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
+**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` and `metadata.json` per source under `<plan-dir>/survey/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Candidate inventory` heading in `discovery.md` is written exactly once by the discovery brief; both `/change:survey` (for `legacy-code`) and `/change:analyze` (for `documentation`) append candidate blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
 
 Documentation-only changes skip `/change:survey` entirely. With no `legacy-code` source, the pipeline reaches `propose` directly from discovery — there is nothing to decompose and the survey gate adds ceremony without value.
 
@@ -466,7 +469,7 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | LLM-fallback detector contract and `--fallback-llm` flag                                                 | A real legacy stack outside the mechanical-detector envelope reaches the planning pipeline.                                                          |
 | Brownfield reconciliation against `.specify/specs/` baselines (read baselines for delta-target flagging) | Brownfield-only changes reach the pipeline frequently enough that propose's missing delta-target awareness becomes a recurring complaint.            |
 | Surface `confidence` field (graded high/medium/low)                                                      | The LLM-fallback contract lands; the field then differentiates mechanical from probabilistic detection.                                              |
-| Closed `evidence.kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`, …)       | A consumer (propose, plan diffing, CI gate, telemetry) needs to branch on evidence category without re-deriving it from `surfaces[]` membership.     |
+| Closed `declaration-kind` discriminator on `declared-at` (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`, …) | A consumer (propose, plan diffing, CI gate, telemetry) needs to branch on declaration category without re-deriving it from `surfaces[]` membership. |
 | Persisted `cross-module` / `cross-source` boolean flags on candidate leaves                              | A consumer needs to filter / branch on multi-module or multi-source candidates and the derivation from `sources` + namespaced `surfaces[]` proves expensive or error-prone in practice. |
 | Machine-readable JSON sibling for `survey.md`                                                            | A downstream consumer (CI gate, registry sync, telemetry, plan diffing tool) needs structured survey data; v1 stays markdown-only.                   |
 | Persisted `framework-signatures` field on `surfaces.json` (detector applicability gating still happens in-process) | A consumer (propose, plan diffing, CI gate, telemetry, capability routing) needs to branch on the detected framework set without re-running detectors. |
