@@ -90,10 +90,6 @@ On success, the CLI returns `merged-specs[]` with the same operation list. Rende
 
 This skill is the **merge** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including merge's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
-## Input
-
-Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
-
 ## Guardrails
 
 - Always confirm the slice before merging.

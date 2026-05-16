@@ -408,6 +408,37 @@ export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
   }
 }
 
+// `## Input` is the canonical frontmatter-restatement smell: every
+// historical instance paraphrased the slice-name placeholder already
+// rendered by `argument-hint`, the description, or `## Critical Path`
+// step 1. Flag any SKILL.md that reintroduces the H2 so the
+// frontmatter ↔ body separation documented in
+// `docs/standards/skill-authoring.md` (§Skill body discipline,
+// rule 1) stays mechanically enforced.
+export async function checkNoFrontmatterRestatement(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
+
+    const idx = lines.findIndex((line) => line.trim() === "## Input");
+    if (idx >= 0) {
+      fail(
+        `Frontmatter restated in skill body: ${rel}:${idx + 1} — '## Input' restates the argument-hint already rendered on every invocation; drop the H2 (the inference / prompt instruction belongs in Critical Path step 1)`,
+      );
+    }
+  }
+}
+
 export async function checkVariables(): Promise<void> {
   const DEF_RE = /^\$([A-Z_][A-Z_0-9]*)\s*=/gm;
   const USE_RE = /\$([A-Z_][A-Z_0-9]*)/g;

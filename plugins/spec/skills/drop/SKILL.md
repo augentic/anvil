@@ -29,10 +29,6 @@ This is an advisory note — this skill does not run the command itself. `/chang
 
 This skill is the **drop** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including drop's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
-## Input
-
-Optionally specify a slice name. If omitted, check whether it can be inferred from conversation context. If vague or ambiguous, you MUST prompt for available slices.
-
 ## Steps
 
 1. **Select the slice**
