@@ -4,13 +4,13 @@
 
 ## Abstract
 
-Introduce a mechanical source-survey stage inside `/change:draft` so Specify can turn legacy code into a reviewable migration plan. The legacy input may be one large monolith, many repositories, or a mix of both. The survey decomposes code from the outside in: externally observable surfaces first, the source files those surfaces touch second, slice-sized units of business capability last.
+Introduce a mechanical source-survey stage inside `/change:draft` so Specify can turn legacy code into a reviewable migration plan. The legacy input may be one large monolith, many repositories, or a mix of both. v1 stays narrow: scan externally observable surfaces, record the source files those surfaces touch, size the result by production LOC, and emit one reviewable candidate inventory for `propose`.
 
 The goal is not to extract full specs. The goal is to answer one planning question before `propose` runs:
 
 > What are the smallest coherent business capabilities we can migrate, and in what order?
 
-This RFC focusses on the `/change:draft` analysis process. Detailed schemas, detector catalogues, and future reconciliation features are deliberately secondary.
+This RFC focusses on the `/change:draft` analysis process. Advanced cross-source pairing, routing inference, detailed detector catalogues, and future reconciliation features are deliberately secondary until real plans show repeated operator pain.
 
 ## Motivation
 
@@ -21,7 +21,7 @@ Without that step:
 - A 100k LOC monolith reaches planning as one oversized input.
 - A fleet of legacy repositories reaches planning as many disconnected inputs.
 - Slice boundaries are inferred directly from code organization, which risks rebuilding the legacy architecture in the target system.
-- Cross-repo flows such as publisher/subscriber pairs or service-to-service HTTP calls must be stitched together by hand.
+- Cross-repo flows such as publisher/subscriber pairs or service-to-service HTTP calls are hard to spot because each repo reaches planning with separate evidence.
 - `propose` has to negotiate slice boundaries and plan entries at the same time.
 
 The missing primitive is a source survey: a deterministic analysis pass that turns legacy code into small, slice-sized candidates before `propose` asks the operator to accept, edit, or reject plan entries.
@@ -39,7 +39,7 @@ For every legacy source, the survey records:
 - The source files reached from that handler or call site.
 - Evidence explaining how the surface was found.
 
-Then `/change:survey` composes all sources together, clusters related surfaces into business capabilities — or migration candidates, sizes each candidate, and emits the ordered candidate set consumed by `propose`.
+Then `/change:survey` reads the mechanical evidence, performs minimal same-source clustering, sizes each candidate, and emits the candidate set consumed by `propose`. It does not try to reconstruct the full legacy architecture, infer cross-source ownership, or route work to target projects in v1.
 
 ## `/change:draft` Analysis Flow
 
@@ -86,58 +86,50 @@ This split is the key simplification: plan-time code analysis first produces str
 
 Before invoking survey, the discovery brief writes the `## Candidate inventory` heading wrapper into `discovery.md` exactly once. Survey appends candidate blocks under that heading; the brief never re-emits it.
 
-### Step 3: Pass 1 — Source Decomposition (mechanical, top-down)
+### Step 3: Source Decomposition (mechanical)
 
-After all inputs have been analyzed, `/change:survey` walks each source independently. v1 keeps the DAG shallow: only `source`, `surface`, and `candidate` node kinds exist. There is no intermediate `group` kind — framework module boundaries, URI/topic prefixes, and worker-pool affinity surface as Pass 2 clustering signals rather than as their own DAG nodes.
-
-
-| Kind        | Sized as                                              |
-| ----------- | ----------------------------------------------------- |
-| `source`    | union of surface `touches`                            |
-| `surface`   | union of handler `touches`                            |
-| `candidate` | dedup union of `touches` across participating sources |
+After all inputs have been analyzed, `/change:survey` walks each source independently. v1 keeps the model shallow: only `source`, `surface`, and `candidate` node kinds exist. There is no intermediate `group` kind, no cross-source pairing pass, and no target-routing inference inside survey.
 
 
-Only `candidate` leaves are consumed by `propose`. `source` and `surface` nodes are structural and exist to make the DAG reviewable; consumers identify terminals via `kind == "candidate"`.
+| Kind        | Sized as                                   |
+| ----------- | ------------------------------------------ |
+| `source`    | union of surface `touches`                 |
+| `surface`   | union of handler or call-site `touches`    |
+| `candidate` | dedup union of `touches` within one source |
 
-Pass 1 only descends into each source independently. There is no Pass 1 cross-source decomposition; cross-source pairing happens in Pass 2 against normalized identifiers, never against source code.
 
-For each source, Pass 1 applies a single decision:
+Only `candidate` leaves are consumed by `propose`. `source` and `surface` nodes are structural and exist to make the candidate inventory reviewable; consumers identify terminals via `kind == "candidate"`.
+
+v1 only descends into each source independently. Matching surfaces across repositories is intentionally deferred; operators can still accept, edit, or combine candidates during `propose`.
+
+For each source, survey applies three decisions:
 
 1. **Size check.** If the source as a whole is `acceptable` (see [Step 5](#step-5-size-and-order-candidates)), emit it as a single terminal candidate covering every surface and stop.
-2. **Otherwise, enumerate surfaces.** Hand the full surface set to Pass 2 for clustering.
+2. **Surface candidates.** Otherwise, treat each surface as the default candidate and size it by its `touches`.
+3. **Minimal clustering.** Merge same-source surface candidates only when they share a handler/call site, have heavy `touches` overlap, or are explicitly grouped by documentation in `discovery.md`.
 
-There is no nested descent within a source. The previous structural depth cap is unnecessary once the DAG bottoms out at the surface level in one step; if a `too_large` cluster survives Pass 2 without a clean partition, Pass 2 marks it `unresolved: true` (see [Step 4](#step-4-pass-2--candidate-clustering-semantic-bottom-up)). Survey exits 0 in that case; `propose` is responsible for refusing to draft a plan entry from an unresolved leaf until the operator resolves it.
+There is no nested descent within a source. If a `too-large` candidate survives minimal clustering without a clean partition, survey marks it `unresolved: true`. Survey exits 0 in that case; `propose` is responsible for refusing to draft a plan entry from an unresolved leaf until the operator resolves it.
 
-### Step 4: Pass 2 — Candidate Clustering (semantic, bottom-up)
+### Step 4: Minimal Candidate Clustering
 
-Once Pass 1 ends at surfaces, cluster surfaces into candidate leaves. Inputs:
+Clustering is deliberately small in v1. Inputs:
 
-- All `surfaces.json` files, intra-source first.
+- All `surfaces.json` files, processed one source at a time.
 - `discovery.md` candidate hints from documentation inputs.
-- `<plan-dir>/identifier-aliases.yaml` (operator overrides on top of framework defaults; see [Identifier Normalization](#identifier-normalization)).
 
 Clustering evidence, in priority order:
 
 1. **Shared `touches` overlap (≥ 50%)** within a source — the scattered-within-source case.
 2. **Documentation grouping.** When documentation explicitly groups surfaces under one candidate heading, that grouping is authoritative even if identifiers do not match mechanically.
-3. **Cross-source contract edges**, matched on normalized `identifier`:
-  - **Pub/sub pairing.** `message-pub` in source A + `message-sub` in source B sharing the normalized identifier → one cross-source leaf. **Publisher's source is canonical owner**; subscribers join.
-  - **HTTP contract pairing.** `external-call-out` in source A whose normalized identifier matches an `http-route` in source B → one cross-source leaf. **Route owner is canonical**; caller depends on it.
-  - **WebSocket contract pairing.** `external-call-out` (channel kind) matching a `ws-handler` → one cross-source leaf. **Handler owner is canonical**.
-4. **Framework module boundary.** Surfaces whose handlers cluster inside the same `@Module`, Rails engine, Spring `@Configuration`, Phoenix context, etc., when the partition is clean.
-5. **URI / topic / channel prefix.** Surfaces sharing a longest-common identifier prefix (`/users/`*, `user.`*) when distinct prefixes have low `touches` overlap.
-6. **Worker-pool / scheduled-job batch.** Workers and jobs sharing a topic or schedule prefix.
+3. **Shared handler or call site.** Multiple routes, topics, or jobs handled by the same function or class are one candidate when the combined size remains `acceptable`.
 
 Cluster outcomes:
 
-- Surface ids in `surfaces[]` are always namespaced `<source-key>:<surface-id>` so the same identifier from two repos remains distinguishable. Whether a candidate is single-source, multi-module within a source, or multi-source is observable directly from `sources` and the namespaced `surfaces[]` — no derived `cross_*` flags are persisted on the candidate (see [Out Of Scope](#out-of-scope) for the re-open trigger).
-- `**depends_on` / `depends_on_by`** derive from contract edges (canonical owner → consumer). When producer and consumer end up in the same leaf, no edge is emitted — the dependency is internal.
-- **Subscriber surface with no in-scope publisher** → record as a `consumes-external` annotation on its single-source leaf, not an `unresolved`.
-- **Ambiguous match** (multiple plausible cross-source pairings after normalization, or an alias-resolved pair the operator has not confirmed) → leaf is `unresolved: true` with the candidate set listed verbatim. Survey never invents fictitious cross-source pairs.
-- **`too_large` cluster** that cannot be split further by the signals above → leaf is `unresolved: true`; the operator either extends `identifier-aliases.yaml` to separate the cluster or rescopes the change.
+- Surface ids in `surfaces[]` are always namespaced `<source-key>:<surface-id>` so the same identifier from two repos remains distinguishable.
+- Surfaces that look related across sources remain separate candidates in v1. The evidence is preserved for operator review, but survey does not merge them or emit dependency edges automatically.
+- **`too-large` candidate** that cannot be split further by the signals above → leaf is `unresolved: true`; the operator either edits the candidate during `propose` or rescopes the change.
 
-Pass 2 has no depth cap; it is a single pass over the surface set.
+This keeps v1 focused on the repeatable work: finding externally visible surfaces, measuring their code footprints, and producing a candidate inventory that a human can review.
 
 ### Step 5: Size And Order Candidates
 
@@ -147,18 +139,14 @@ Each candidate is sized over **production LOC** (excluding tests, generated code
 | Size         | Production LOC | Planning meaning                  |
 | ------------ | -------------- | --------------------------------- |
 | `acceptable` | `< 1000`       | Slice-sized; emit as candidate.   |
-| `too_large`  | `>= 1000`      | Split or mark `unresolved: true`. |
+| `too-large`  | `>= 1000`      | Split or mark `unresolved: true`. |
 
-
-For a cross-source candidate, LOC is the **deduplicated union of `touches` across every participating source**.
 
 The invariant is simple: `propose` should receive `acceptable` candidates or explicit unresolved items. It should not receive an unsliced monolith or an undifferentiated repo fleet.
 
 Finer-grained buckets (XS/S/M/L/XL) are out of scope for v1 — the only outcomes propose acts on are "emit" and "refuse", and the extra grades are reviewer noise until propose grows behavior that depends on the distinction (see [Out Of Scope](#out-of-scope)).
 
-Ordering comes from `depends_on`. Independent candidates may appear at the same order level and migrate in parallel.
-
-When `depends_on` forms a cycle, mark every participating leaf `unresolved: true` with `cycle_with: [<leaf-ids>]` in the unresolved candidate set and omit the cycle members from the migration order. The operator either breaks the cycle by editing `identifier-aliases.yaml` (collapsing pairs into one leaf) or by re-scoping the change.
+Ordering is intentionally conservative in v1. Survey does not infer `depends-on` from contract edges; it emits candidates in source order, then surface order, with documentation-derived candidates placed where the existing `propose` flow can review them. Dependency ordering remains a `propose` and operator concern until real plans show a repeated need for mechanical ordering.
 
 ### Step 6: Hand Candidates To Propose
 
@@ -166,35 +154,13 @@ Survey appends candidate blocks to the `## Candidate inventory` heading the disc
 
 Survey produces candidates; propose produces `plan.yaml`.
 
-## Identifier Normalization
+## Surface Identifier Handling
 
-Cross-source matching keys on a canonicalised form of `surfaces[].identifier`. Original identifiers are preserved verbatim on every surface; the normalized form is only the matching key.
+`surfaces[].identifier` preserves the legacy spelling of the observable surface: route, topic, command, channel, schedule, or outbound call. v1 does not canonicalize identifiers for matching and does not load alias files. The identifier is evidence for review, not an automatic cross-source join key.
 
-Framework defaults — explicit, identical for every capability:
+Detectors still emit stable `surfaces[].id` values so reruns diff cleanly inside a source. The id only needs to be unique within the source's `surfaces.json`; candidate blocks namespace it as `<source-key>:<surface-id>`.
 
-
-| Surface kind                                        | Default canonicalisation                                                                                                                                                                                                                                           |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Version prefixes (`/v1`, `/v2`, …) are preserved verbatim; operators that need `/v1` and `/v2` collapsed declare an alias group in `<plan-dir>/identifier-aliases.yaml`. |
-| `message-pub`, `message-sub`, `ws-handler`          | Case-fold, unify dot/dash/underscore separators (`user.created` ≡ `user-created` ≡ `user_created`). Strip configured environment prefixes (`prod.`, `staging.`) **only when** listed.                                                                              |
-| `cli-command`, `scheduled-job`, `external-call-out` | Lowercase identifier; otherwise verbatim.                                                                                                                                                                                                                          |
-
-
-After framework canonicalisation, the operator may override matches in `<plan-dir>/identifier-aliases.yaml`. v1 ships one alias tier — operator overrides on top of framework defaults — and no capability-owned alias bundles. Capability-level alias bundles are deferred (see [Out Of Scope](#out-of-scope)) until a capability author demonstrates the same alias rules being hand-copied across multiple plan-dir alias files.
-
-Alias schema:
-
-```yaml
-aliases:
-  - kind: message-pub
-    group: [user.created, users.created, user-created]
-  - kind: http-route
-    group: [GET /v1/users, GET /v2/users]
-```
-
-Aliases inside a `group` are bidirectional. Any alias whose `kind` fails the closed `surface kind` enum check **fails the survey**.
-
-Aliases are a review mechanism, not a guess. Survey marks ambiguous matches `unresolved` until the operator confirms the equivalence.
+Cross-source identifier normalization, operator alias files, and capability-owned alias bundles are deferred until real plans repeatedly require mechanical pairing across repositories (see [Out Of Scope](#out-of-scope)).
 
 ## Artifacts
 
@@ -207,7 +173,7 @@ Conceptual shape:
 ```json
 {
   "version": 1,
-  "source_key": "legacy-monolith",
+  "source-key": "legacy-monolith",
   "language": "typescript",
   "surfaces": [
     {
@@ -244,7 +210,7 @@ Framework detection is still performed by every detector so applicability gating
 
 Byte-stability is mechanical: sorted citations + a constrained note field. `/change:survey` exposes a single renderer that emits the shape into `survey.md`, but the renderer is now thin — detector authors never hand-write evidence prose, and consumers can read the structured form directly without a discriminator.
 
-A categorical `kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`) is intentionally deferred. The pairing type of any candidate is derivable from its `surfaces[]` (a candidate that contains both `message-pub` and `message-sub` of the same normalized identifier is a pub/sub pairing); locking a closed enum now would commit v1 to seven detector-side categories before any of them has a concrete consumer. See [Out Of Scope](#out-of-scope) for the re-open trigger.
+A categorical `kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`) is intentionally deferred. v1 has no consumer that branches on evidence category, and future cross-source pairing can add the category it actually needs once that behavior exists. See [Out Of Scope](#out-of-scope) for the re-open trigger.
 
 The surface kind enum is closed in v1:
 
@@ -258,67 +224,64 @@ One file per change. Required sections, in order:
 
 1. `Summary` — source / surface / candidate / unresolved counts.
 2. `Source inventory` — one row per input source.
-3. `DAG` — source → surface → candidate (one tree per source).
-4. `Candidates` — proposed slice-sized leaves.
-5. `Unresolved` — ambiguous or oversized items requiring operator input.
-6. `Migration order` — topological sort over `depends_on`.
+3. `Candidate inventory` — proposed slice-sized leaves and unresolved items.
 
 Each node block is a fenced YAML block following a Markdown sub-heading. Fields appear in fixed order so re-runs diff cleanly:
 
-> `kind`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`, `cycle_with`
+> `kind`, `sources`, `handler`, `touches`, `surfaces`, `evidence`, `unresolved`
 
-Omit fields that don't apply to the node's kind. Consumers identify terminal leaves by `kind == "candidate"`. `cycle_with` is emitted only on `unresolved: true` leaves that participate in a `depends_on` cycle.
+Omit fields that don't apply to the node's kind. Consumers identify terminal leaves by `kind == "candidate"`.
 
-The fenced-YAML form is the **canonical candidate block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Candidate inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit the survey-only fields (`target_project` when no hint applies, `cycle_with` on cycle members, mechanically-resolved `handler` / `touches` paths, etc.); survey-derived blocks always include `kind: candidate`.
+The fenced-YAML form is the **canonical candidate block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Candidate inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit mechanically-resolved `handler` / `touches` paths when no hint applies; survey-derived blocks always include `kind: candidate`.
 
-Example cross-source pub/sub candidate leaf:
+Example same-source candidate leaf:
 
 ```markdown
 ### identity.user-registration [acceptable, 894 LOC]
 
 ```yaml
 kind: candidate
-sources: [legacy-monolith, legacy-workers]
-target_project: identity-svc
+sources: [legacy-monolith]
+handler: src/auth/register.ts:registerUser
+touches:
+  - src/auth/register.ts
+  - src/notifications/email.ts
+  - src/users/repository.ts
 surfaces:
   - legacy-monolith:http-post-users
   - legacy-monolith:message-pub-user-created
-  - legacy-workers:message-sub-user-created
 evidence:
   citations:
     - legacy-monolith:src/auth/register.ts
-    - legacy-workers:src/handlers/user_created.ts
+    - legacy-monolith:src/server.ts:42
   note: user.created
-depends_on: [shared-validation]
 ```
 ```
 
-Example cross-source HTTP-contract candidate leaf — caller in one source, route owner in another; `target_project` is inherited from the route owner per [Propagation Rules](#propagation-rules):
+Example unresolved candidate leaf:
 
 ```markdown
-### orders.checkout [acceptable, 612 LOC]
+### billing.invoice-sync [too-large, 1320 LOC]
 
 ```yaml
 kind: candidate
-sources: [legacy-monolith, legacy-orders]
-target_project: orders-svc
+sources: [legacy-billing]
+touches:
+  - src/billing/invoices.ts
+  - src/billing/reconciliation.ts
+  - src/billing/settlement.ts
 surfaces:
-  - legacy-monolith:external-call-post-orders
-  - legacy-orders:http-post-orders
+  - legacy-billing:scheduled-job-invoice-sync
+  - legacy-billing:message-sub-payment-settled
 evidence:
   citations:
-    - legacy-monolith:src/checkout/api.ts:88
-    - legacy-orders:src/routes.ts:14
-  note: post-orders
-depends_on: [identity.user-registration]
+    - legacy-billing:src/billing/invoices.ts
+  note: invoice-sync
+unresolved: true
 ```
 ```
 
-Re-running on unchanged inputs (including aliases) produces byte-identical `survey.md`.
-
-### `identifier-aliases.yaml`
-
-Operator-authored, tracked alongside the change. See [Identifier Normalization](#identifier-normalization) for schema, precedence, and validation.
+Re-running on unchanged inputs produces byte-identical `survey.md`.
 
 ## Mechanical Scanner
 
@@ -343,17 +306,16 @@ The scanner does not call an LLM, infer candidates, or write `plan.yaml`.
 **Flags.**
 
 - `--source-key <key>` is **required**. The discovery brief always passes the key declared in `specify change draft --source <key>=<...>`; ad-hoc invocations must supply it explicitly. Synthesis is not duplicated across `analyze` and `survey` — failing closed surfaces mismatches immediately.
-- `--out <dir>` is a directory. The verb always writes `surfaces.json` inside it (matching `analyze/<source-key>/`). If the directory already contains a `surfaces.json` whose `source_key` does not match `--source-key`, the verb exits non-zero rather than overwriting.
+- `--out <dir>` is a directory. The verb always writes `surfaces.json` inside it (matching `analyze/<source-key>/`). If the directory already contains a `surfaces.json` whose `source-key` does not match `--source-key`, the verb exits non-zero rather than overwriting.
 - `--format` is intentionally absent in v1. The output file is JSON by definition; the flag would re-introduce if and when stdout JSON envelopes are needed for shell pipelines.
 
-**Exit discriminants.** Pinned set, kebab-case per the CLI repo's coding standards:
+**Exit discriminants.** Initial set, kebab-case per the CLI repo's coding standards:
 
 - `surface-scan-no-detectors-registered` — no detector applied to the source.
 - `surface-scan-detector-id-collision` — two detectors emitted the same `surfaces[].id`.
 - `surface-scan-source-path-missing` — `<source-path>` does not exist.
 - `surface-scan-source-path-not-readable` — `<source-path>` cannot be read.
 - `surface-scan-detector-failure` — a detector panicked or returned a malformed `Surface`.
-- `surface-scan-alias-kind-invalid` — an alias bundle loaded at survey time failed the closed-kind enum check on `kind`.
 
 No partial output is ever written; on any non-zero exit, `surfaces.json` is left untouched.
 
@@ -401,42 +363,32 @@ struct DetectorOutput {
 | `/change:analyze documentation` | Extract candidate hints from prose into `discovery.md`.                                                                                  |
 | `/change:analyze legacy-code`   | Run the mechanical scanner; write `metadata.json` + `surfaces.json`; do not infer candidates.                                            |
 | `specify change survey`         | Deterministically enumerate surfaces for one source.                                                                                     |
-| `/change:survey`                | Compose all sources, run Pass 1 + Pass 2, size candidates, write `survey.md`, append candidate blocks under the discovery-owned heading. |
+| `/change:survey`                | Compose all sources into one inventory, size candidates, apply minimal same-source clustering, write `survey.md`, append candidate blocks under the discovery-owned heading. |
 | `propose` brief                 | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                            |
 
 
-This split keeps expensive semantic judgement out of per-source analysis and lets cross-source clustering happen with the full system in view.
+This split keeps expensive semantic judgement out of per-source analysis while still giving `propose` one candidate inventory to review.
 
-## Routing Hint Precedence
+## Routing Behavior (v1)
 
-When assignment infers a target project for a survey-leaf slice, signals are consulted in strict order:
+Survey-derived candidates do not carry `target-project` in v1. Assignment continues to use today's signals:
 
-1. **Survey leaf `target_project`** — inherited from the nearest ancestor that carries one (typically a documentation hint, or the canonical owner on a cross-source leaf). Surfaced verbatim in the assignment table's `Rationale` column.
-2. Description match (today's primary signal).
-3. Baseline spec affinity (today's secondary signal).
-4. Capability compatibility (today's tiebreaker).
-5. Ambiguity → human.
+1. Description match.
+2. Baseline spec affinity.
+3. Capability compatibility.
+4. Ambiguity → human.
 
-Cross-source leaves carry the `target_project` of the canonical owner: publisher for pub/sub, route owner for HTTP, handler owner for WebSocket.
-
-### Propagation Rules
-
-`target_project` is propagated down the DAG by survey using a fixed set of rules so authors do not invent ad-hoc fallbacks:
-
-1. **Doc-hint propagation.** If a documentation candidate with the same normalized name carries `target_project`, propagate it onto every cross-source or same-source leaf that mechanically maps to it.
-2. **Canonical-owner propagation.** Cross-source leaves inherit `target_project` from the canonical owner. Pub/sub → publisher's source; HTTP → route owner's source (e.g. an `external-call-out` from `legacy-monolith` against an `http-route` owned by `legacy-orders` inherits `legacy-orders`' `target_project`); WebSocket → handler owner's source.
-3. **Single-source, no-hint.** The leaf emits `target_project` as **absent** (not empty). Downstream assignment runs today's description-match → baseline-affinity → capability-compatibility chain. An absent field is legal and downstream-handled by design.
-4. **Conflict.** If two ancestors carry conflicting `target_project` values (for example, a doc hint disagrees with a canonical owner), the leaf is marked `unresolved: true` with both candidates listed verbatim. Survey never silently picks a winner.
+Documentation-derived candidate hints may still carry target routing when the documentation analysis already has explicit evidence, but survey does not propagate that hint onto mechanically scanned leaves. Canonical-owner routing for cross-source leaves is deferred until survey actually emits cross-source leaves.
 
 ## Single-Source And Multi-Source Behavior
 
 The algorithm is identical in both cases.
 
-For a monolith, survey usually finds cross-module candidates: one candidate spanning several internal folders, workers, or packages.
+For a monolith, survey usually finds same-source candidates: one source-sized candidate when the source is small enough, or surface-sized candidates with minimal clustering when it is not.
 
-For a repo fleet, survey can also find cross-source candidates: one candidate spanning multiple deployable systems connected by HTTP, messages, jobs, or shared external contracts.
+For a repo fleet, survey runs the same source-local algorithm for each input and emits one combined inventory. It may expose evidence that two sources communicate, such as an outbound HTTP call and a matching route, but it does not merge them into one candidate automatically.
 
-The source count changes the breadth of the graph, not the planning model.
+The source count changes the breadth of the inventory, not the planning model.
 
 ## Brownfield Behavior (v1)
 
@@ -447,39 +399,36 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 - Survey is plan-time decomposition, not spec extraction. Full `spec.md` and `design.md` authoring still happens per slice through `/spec:define`, delegating to `/spec:extract` when legacy code is the source.
 - Survey never writes `plan.yaml`. Only `specify change draft`, `specify plan add`, and `specify plan amend` write plan state.
 - Legacy module boundaries are evidence, not authority. They may help find surfaces and code footprints, but they do not define slices.
-- Unknown surface kinds, malformed sidecars, and aliases failing the closed-kind check fail closed.
+- Unknown surface kinds and malformed sidecars fail closed.
 - Outputs are byte-stable on unchanged inputs: fixed field order, sorted lists, no timestamps, no absolute paths, no host-specific state.
 - Ambiguity is explicit. Survey emits `unresolved` candidates rather than inventing aliases or silently merging unrelated surfaces.
 
 ## Implementation Plan
 
-1. Add the `surfaces.json` and `identifier-aliases.yaml` schemas + validators (closed-kind enforcement on alias `kind`; `evidence.citations` sorted, `evidence.note` matches the kebab-case grammar per [Artifacts](#artifacts)).
-2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, the required `--source-key` flag, the `--out <dir>` directory contract, and the full exit-discriminant set documented in [Mechanical Scanner](#mechanical-scanner).
-3. Land the framework identifier canonicaliser inside `/change:survey` with the rules in [Identifier Normalization](#identifier-normalization). Fixtures cover the canonical-form table and operator alias overrides on top of framework defaults.
-4. Land the detector trait, `DetectorRegistry`, and `DetectorInput` / `DetectorOutput` shapes per [Detector Contract](#detector-contract), then the first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ). Landing a real detector forces the contract to be exercised end-to-end.
-5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit candidate blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
-6. **Combined release.** Land the discovery-brief edit that writes the `## Candidate inventory` heading wrapper *together with* the `/change:survey` skill in step 7 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
-7. Add `/change:survey` with Pass 1 (per-source size check; emit `acceptable` sources as single terminal candidates, hand `too_large` sources to Pass 2) and Pass 2 (intra-source clustering signals — `touches` overlap, framework module boundary, URI/topic prefix, worker-pool affinity — plus canonicalised cross-source pairing with canonical-owner rules, `consumes-external` annotation for unpaired subscribers, cycle detection on `depends_on`, and `unresolved: true` markers on `too_large` clusters that cannot be split). Wired against the thin evidence renderer from [Artifacts](#artifacts) (sorted citations + optional `note`). Wire it between workspace sync and propose.
-8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence), including the propagation rules.
-9. Acceptance fixtures (ship in step 7's PR or immediately after). v1 keeps the proving set small and adds escape-hatch fixtures only when real plans exercise them:
-  - Single-source L monolith with one cross-module candidate (core happy path).
-  - Multi-source change with **at least two source-keys** producing one cross-source candidate (proves cross-source pairing end-to-end).
+1. Add the `surfaces.json` schema + validators (`evidence.citations` sorted, `evidence.note` matches the kebab-case grammar per [Artifacts](#artifacts)).
+2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, the required `--source-key` flag, the `--out <dir>` directory contract, and the initial exit-discriminant set documented in [Mechanical Scanner](#mechanical-scanner).
+3. Land the detector trait, `DetectorRegistry`, and `DetectorInput` / `DetectorOutput` shapes per [Detector Contract](#detector-contract), then the first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ). Landing a real detector forces the contract to be exercised end-to-end.
+4. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit candidate blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
+5. **Combined release.** Land the discovery-brief edit that writes the `## Candidate inventory` heading wrapper *together with* the `/change:survey` skill in step 6 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
+6. Add `/change:survey` with source-local sizing, surface-sized default candidates, minimal same-source clustering (`touches` overlap, explicit documentation grouping, shared handler/call site), `unresolved: true` markers on `too-large` candidates that cannot be split, and the thin evidence renderer from [Artifacts](#artifacts) (sorted citations + optional `note`). Wire it between workspace sync and propose.
+7. Acceptance fixtures (ship in step 6's PR or immediately after). v1 keeps the proving set small and adds escape-hatch fixtures only when real plans exercise them:
+  - Single-source L monolith producing surface-sized candidates with one minimal same-source cluster (core happy path).
+  - Multi-source change with **at least two source-keys** producing one combined inventory with separate source-local candidates (proves repo-fleet handling without cross-source pairing).
   - Greenfield documentation-only pass-through (survey skipped entirely).
   - Single-source-already-S no-op (source is its own terminal candidate without further partitioning).
-  - `too_large` cluster produced by intra-source clustering (heavy shared `touches`) that cannot be split and is emitted `unresolved: true` (Pass 2 fail-safe).
-  - Alias bundle with an invalid `kind` value failing closed via `surface-scan-alias-kind-invalid` (closed-enum guardrail).
+  - `too-large` candidate produced by minimal same-source clustering that cannot be split and is emitted `unresolved: true`.
   - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Candidate inventory` is emitted exactly once.
 
-  Escape-hatch fixtures deferred until a real plan exercises them: `consumes-external` annotation for a subscriber with no in-scope publisher; `depends_on` cycle resolved by aliasing two surface identifiers together; alias-resolved `unresolved` round-trip on a ≥ 3-source-key plan. See [Out Of Scope](#out-of-scope).
-10. Tutorials: monolith decomposition and legacy-fleet decomposition (with one alias-resolved `unresolved`). Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
+  Escape-hatch fixtures deferred until a real plan exercises them: cross-source pairing, dependency ordering, operator aliases, and alias-resolved `unresolved` round-trips. See [Out Of Scope](#out-of-scope).
+8. Tutorials: monolith decomposition and legacy-fleet decomposition, with the legacy-fleet tutorial showing separate source-local candidates and the operator review point where related candidates may be combined. Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
 
 ## Migration
 
 This is a plan-time behavioral change for legacy-code inputs.
 
-**For operators.** `/change:analyze legacy-code` no longer infers candidate summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns candidate clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes get cross-source clustering automatically; ambiguous identifiers surface as `unresolved` with the candidate set listed, and the operator extends `<plan-dir>/identifier-aliases.yaml` and re-runs.
+**For operators.** `/change:analyze legacy-code` no longer infers candidate summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns source-local candidate clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes produce one combined inventory, but related candidates from different sources remain separate until the operator combines or orders them during `propose`.
 
-**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted candidate block to the unified shape (`kind: candidate` plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Capability-owned alias overrides are deferred (see [Out Of Scope](#out-of-scope)); v1 supports a single operator-authored `<plan-dir>/identifier-aliases.yaml` layered on framework defaults.
+**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted candidate block to the unified shape (`kind: candidate` plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Identifier aliases and capability-owned detector packaging are deferred (see [Out Of Scope](#out-of-scope)).
 
 **For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Candidate inventory` heading in `discovery.md` is written exactly once by the discovery brief; both survey (legacy-code) and `/change:analyze documentation` append candidate blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
 
@@ -506,19 +455,22 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | `domain-model` as a third closed-enum kind on `/change:analyze` (structured bounded-context import)      | An operator wants a structured context-map workflow, or documentation analyze repeatedly fails to surface bounded-context attribution routing needs. |
 | `synthesize` brief and `## Reconciliation` section in `discovery.md`                                     | Propose repeatedly drafts slices that ignore documented-but-uncoded candidates, or `domain-model` lands and produces a third corpus to reconcile.    |
 | `specify plan size` standalone CLI verb                                                                  | Operators report wanting LOC audits outside a draft run (slice review, candidate spot-check).                                                        |
-| Per-capability `cut.md` brief separate from `cluster.md`                                                 | A capability author writes a Pass 1 refinement that materially exceeds half a page inside `cluster.md`.                                              |
+| Per-capability `cut.md` brief separate from `cluster.md`                                                 | A capability author writes a source-local refinement that materially exceeds half a page inside `cluster.md`.                                        |
 | Per-capability `sizing.toml` overrides (tighten LOC rubric, add aggregate/endpoint counts)               | A capability demonstrates LOC-only sizing produces persistently wrong slices in operator review.                                                     |
-| Per-capability `identifier-aliases.yaml` bundles merged into the framework / operator precedence         | A capability author repeatedly hand-copies the same alias rules into multiple plan-dir alias files.                                                  |
-| Sub-source `group` DAG nodes and per-source structural depth cap                                         | A source produces enough surfaces that Pass 2 alone yields candidates the operator cannot review without intermediate framework-module structure.    |
-| Finer-grained sizing buckets (XS/S/M/L/XL or similar)                                                    | Propose grows behavior that branches on more than the `acceptable` / `too_large` distinction (e.g. parallelism hints, review-effort budgeting).      |
+| Cross-source contract pairing (pub/sub, HTTP, WebSocket)                                                | Operators repeatedly combine the same source-local candidates by hand during `propose`, or cross-repo migration plans become unreadable without mechanical pairing. |
+| Survey-inferred dependency ordering from contract edges                                                  | Operators repeatedly reorder survey candidates by obvious route/topic dependencies during `propose`.                                                  |
+| Survey-emitted `target-project` and canonical-owner routing                                              | Assignment repeatedly misroutes survey candidates and the missing signal can be traced to a mechanical cross-source owner.                            |
+| Operator-authored `identifier-aliases.yaml` and per-capability alias bundles                             | Operators repeatedly need alias files to resolve the same cross-source identifiers, or a capability author repeatedly hand-copies the same alias rules. |
+| Sub-source `group` DAG nodes and per-source structural depth cap                                         | A source produces enough surfaces that minimal clustering alone yields candidates the operator cannot review without intermediate framework-module structure. |
+| Finer-grained sizing buckets (XS/S/M/L/XL or similar)                                                    | Propose grows behavior that branches on more than the `acceptable` / `too-large` distinction (e.g. parallelism hints, review-effort budgeting).      |
 | LLM-fallback detector contract and `--fallback-llm` flag                                                 | A real legacy stack outside the mechanical-detector envelope reaches the planning pipeline.                                                          |
 | Brownfield reconciliation against `.specify/specs/` baselines (read baselines for delta-target flagging) | Brownfield-only changes reach the pipeline frequently enough that propose's missing delta-target awareness becomes a recurring complaint.            |
 | Surface `confidence` field (graded high/medium/low)                                                      | The LLM-fallback contract lands; the field then differentiates mechanical from probabilistic detection.                                              |
 | Closed `evidence.kind` discriminator (e.g. `framework-route`, `pubsub-pairing`, `http-pairing`, …)       | A consumer (propose, plan diffing, CI gate, telemetry) needs to branch on evidence category without re-deriving it from `surfaces[]` membership.     |
-| Persisted `cross_module` / `cross_source` boolean flags on candidate leaves                              | A consumer needs to filter / branch on multi-module or multi-source candidates and the derivation from `sources` + namespaced `surfaces[]` proves expensive or error-prone in practice. |
+| Persisted `cross-module` / `cross-source` boolean flags on candidate leaves                              | A consumer needs to filter / branch on multi-module or multi-source candidates and the derivation from `sources` + namespaced `surfaces[]` proves expensive or error-prone in practice. |
 | Machine-readable JSON sibling for `survey.md`                                                            | A downstream consumer (CI gate, registry sync, telemetry, plan diffing tool) needs structured survey data; v1 stays markdown-only.                   |
-| Persisted `framework_signatures` field on `surfaces.json` (detector applicability gating still happens in-process) | A consumer (propose, plan diffing, CI gate, telemetry, capability routing) needs to branch on the detected framework set without re-running detectors. |
-| Escape-hatch acceptance fixtures: `consumes-external` annotation, `depends_on` cycle round-trip, alias-resolved `unresolved` on a ≥ 3-source-key plan | A real plan exercises any of these escape hatches and regresses, or the matching code path lands a behavioral change that needs guarding. |
+| Persisted `framework-signatures` field on `surfaces.json` (detector applicability gating still happens in-process) | A consumer (propose, plan diffing, CI gate, telemetry, capability routing) needs to branch on the detected framework set without re-running detectors. |
+| Escape-hatch acceptance fixtures: cross-source pairing, `depends-on` cycle round-trip, alias-resolved `unresolved` on a ≥ 3-source-key plan | A real plan exercises any of these escape hatches and regresses, or the matching code path lands a behavioral change that needs guarding. |
 
 
 ## References
