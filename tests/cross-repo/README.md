@@ -1,13 +1,17 @@
 # Cross-Repo Manual Acceptance Scenarios
 
 These documents are manual acceptance scenarios for the cross-repo Specify
-workflow from an operator's point of view:
+workflow from an operator's point of view, expressed through the three-skill
+change lifecycle introduced by RFC-23 (`draft → review → execute → finalize`):
 
-1. plan a multi-slice change from a short feature brief
-2. route work through a registry-only hub into implementation projects
+1. draft a multi-slice change from a short feature brief (`/change:draft`)
+2. review the draft plan at the operator pause (`specify plan status`,
+   optional `specify plan amend`)
 3. execute contract and implementation slices in dependency order
-4. push prepared workspace branches
-5. finalize the change after the project branches are merged
+   (`/change:execute loop`)
+4. drive the post-execute tail (`/change:finalize`): push prepared workspace
+   branches, observe PR state, and archive the change after the project
+   branches are merged externally
 
 This is intentionally not an automated harness. There is no runner, fake forge,
 recorded transcript, CI target, or golden output comparison in this scenario
@@ -41,9 +45,12 @@ The scenario follows the same compact shape used by
 3. **Intent** - what behavior the scenario proves.
 4. **Workspace** - project shape, isolation, prerequisites, and non-goals.
 5. **Inputs** - files or source material the operator creates before running.
-6. **Invocation** - slash-command and CLI prompts to run.
+6. **Invocation** - slash-command and CLI prompts to run, organised by
+   lifecycle stage (draft, review, execute, finalize).
 7. **Expected Artifacts** - files or state transitions to check.
-8. **Assertions** - structural pass/fail checks.
+8. **Assertions** - structural pass/fail checks, including the durable
+   end-state outcomes (archived plan path, merged-PR list, archived
+   `change.md`).
 9. **Negative Expectations** - forbidden machinery for this first pass.
 10. **Cleanup** - how to preserve or discard the run state.
 
@@ -58,11 +65,15 @@ For each run:
 2. Create the temporary hub and project workspaces described in **Workspace**.
 3. Create the feature brief from **Inputs**.
 4. Run the prompts and commands from **Invocation** exactly as written unless
-   the scenario documents an allowed local substitution.
-5. Check each item in **Assertions**.
+   the scenario documents an allowed local substitution. The `/change:finalize`
+   stage is invoked twice intentionally — the first invocation halts on
+   `pr-not-merged`; the operator merges the named PRs externally; the second
+   invocation archives the plan.
+5. Check each item in **Assertions**, including the parity-with-umbrella
+   snapshot in the run summary.
 6. Preserve failure evidence: `plan.yaml`, `registry.yaml`, command output,
-   workspace status, generated artifacts, PR or branch state, and finalization
-   output.
+   workspace status, generated artifacts, PR or branch state, and every
+   `/change:finalize` invocation's output.
 7. Fill out [`run-summary-template.md`](run-summary-template.md).
 
 ## Run Summary

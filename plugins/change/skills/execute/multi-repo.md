@@ -2,11 +2,11 @@
 
 For multi-repo changes the driver keeps the coordinator repo as the owner of `plan.yaml`, `.specify/plan.lock`, and terminal status transitions. For each plan entry with `project`, it resolves and prepares that project's materialised workspace slot, `chdir`s into the slot only for phase execution, then restores CWD before writing the terminal plan transition. After a successful merge, the driver commits any non-baseline residue before it can mark the entry `done`. Cross-project consumer-impact reporting is a separate `specify compatibility` CLI surface. Shared plan/outcome/journal ownership rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
+These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/change:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
 ## Workspace routing and branch preparation (per-slice algorithm step 5a)
 
-Read `project` from the `specify change plan next` response (step 4 of the per-slice algorithm). If `project` is non-null:
+Read `project` from the `specify plan next` response (step 4 of the per-slice algorithm). If `project` is non-null:
 
 - Resolve the target project through `registry.yaml` using the same selector preflight as `specify workspace *`. Unknown names halt before filesystem, Git, forge, phase, or plan-status side effects.
 - Save CWD (the initiating repo root).
@@ -64,15 +64,15 @@ Immediately after reading `outcome: success` from `/spec:merge`, while still `ch
 
 ## CWD restore (per-slice algorithm step 9b)
 
-If the CWD routing step (5c) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify change plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify change plan next` always runs from the initiating repo root.
+If the CWD routing step (5c) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify plan next` always runs from the initiating repo root.
 
 ## Cross-project compatibility reporting (RM-04)
 
 `/change:execute` does not run consumer-impact classification as a side-effect of step 10. Operators can run the CLI-owned report explicitly:
 
 ```bash
-specify compatibility report --change <change-name>
-specify compatibility check
+specify compatibility check --change <change-name> --report-only   # read-only RM-04 report, always exits 0
+specify compatibility check                                         # strict gate, exits 2 on non-additive findings
 ```
 
-The report walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root `contracts/<path>` to `.specify/workspace/<consumer>/contracts/<path>`, and classifies each comparable delta as `additive`, `breaking`, `ambiguous`, or `unverifiable`. `compatibility check` exits validation-failed when any finding is not additive; RM-11 will decide how those classifications become plan lifecycle gates.
+The report walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root `contracts/<path>` to `.specify/workspace/<consumer>/contracts/<path>`, and classifies each comparable delta as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The bare `compatibility check` exits validation-failed when any finding is not additive; `--report-only` suppresses that exit code for audit/CI workflows. RM-11 will decide how those classifications become plan lifecycle gates.

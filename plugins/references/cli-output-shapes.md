@@ -19,7 +19,7 @@ The per-command sections below are **generated** from the canonical fixtures in 
 
 <!-- generated:begin -->
 
-### `specify change plan amend`
+### `specify plan amend`
 
 Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
 
@@ -47,7 +47,7 @@ Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
 }
 ```
 
-### `specify change plan archive`
+### `specify plan archive`
 
 #### `outstanding-work`
 
@@ -92,7 +92,7 @@ Source fixture: `tests/fixtures/plan/archive-success-with-working-dir.json`
 }
 ```
 
-### `specify change plan create`
+### `specify plan add`
 
 Source fixture: `tests/fixtures/plan/create-foo.json`
 
@@ -117,21 +117,29 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 }
 ```
 
-### `specify change plan init`
+### `specify change draft`
 
 Source fixture: `tests/fixtures/plan/init-success.json`
 
+The merged scaffold writes `change.md` and `plan.yaml` together; the
+envelope carries one ref per file. The retired `specify plan
+create` envelope (which only carried the `plan` ref) has been replaced
+by this shape.
+
 ```json
 {
+  "brief": {
+    "path": "<TEMPDIR>/change.md"
+  },
   "envelope-version": 6,
+  "name": "my-change",
   "plan": {
-    "name": "my-change",
     "path": "<TEMPDIR>/plan.yaml"
   }
 }
 ```
 
-### `specify change plan next`
+### `specify plan next`
 
 #### `all-done`
 
@@ -201,7 +209,7 @@ Source fixture: `tests/fixtures/plan/next-stuck.json`
 }
 ```
 
-### `specify change plan status`
+### `specify plan status`
 
 Source fixture: `tests/fixtures/plan/status-platform-v2.json`
 
@@ -347,7 +355,7 @@ Source fixture: `tests/fixtures/plan/status-platform-v2.json`
 }
 ```
 
-### `specify change plan transition`
+### `specify plan transition`
 
 #### `in-progress-to-done`
 
@@ -406,7 +414,7 @@ Source fixture: `tests/fixtures/plan/transition-pending-to-in-progress.json`
 }
 ```
 
-### `specify change plan validate`
+### `specify plan validate`
 
 #### `clean`
 

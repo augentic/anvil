@@ -16,7 +16,7 @@ argument-hint: <source-path> <slice-dir> [include]... [exclude]... [manifest]
 
 # Extract
 
-> See also `/spec:analyze` for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
+> See also `/change:analyze` for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 
@@ -111,6 +111,6 @@ Lifecycle state (`.metadata.yaml` transitions, baseline merge into `.specify/spe
 
 - Write only `specs/` and `design.md` under the supplied `<slice-dir>`; the source tree is read-only.
 - Never author `tasks.md` or implement code — task authoring lives in `/spec:define`; implementation lives in `/spec:build`.
-- Never run plan-time capability inference — that delegates to `/spec:analyze`, which emits capability summaries into `discovery.md`.
+- Never run plan-time capability inference — that delegates to `/change:analyze`, which emits capability summaries into `discovery.md`.
 - Never clone git URLs from `<source-path>` — the caller (or the invoking define brief) materialises the source tree before extract runs.
-- Never extend the closed kind enum — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind.
+- Never extend the closed kind enum — `legacy-code` / `documentation` are frozen at `/change:analyze`; extract operates on a materialised path regardless of kind.

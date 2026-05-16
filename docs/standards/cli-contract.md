@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:plan`, `/change:execute`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
+The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:draft`, `/change:execute`, `/change:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
 
 The CLI itself is built in the sibling [augentic/specify-cli](https://github.com/augentic/specify-cli) repository. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -31,7 +31,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Change plan
 
-- `specify change plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `add` appends an entry; `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/change:execute`.
+- `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `add` appends an entry; `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/change:execute`.
 
 ### Change umbrella
 
@@ -53,15 +53,15 @@ Today the per-slice verbs live under `specify slice *` and the umbrella verbs li
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/change:plan <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify change plan create` + one `specify change plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-peers is discovery-oriented and may sync all registered peers.
-2. **Execute.** `/change:execute loop` repeatedly picks `specify change plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
-3. **Archive.** `specify change plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+1. **Author.** `/change:draft <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-workspace** + `workspace.md` when the registry is multi-project, then `specify change draft` (which scaffolds `change.md` + `plan.yaml` together) + one `specify plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-workspace is discovery-oriented and may sync all registered projects. The skill stops at the operator review seam — execution does not start automatically.
+2. **Execute.** `/change:execute loop` repeatedly picks `specify plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
+3. **Finalize.** `/change:finalize <change-name>` runs `specify workspace push`, observes PR state via `gh pr list`, and runs `specify change finalize` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/change:plan` and `/change:execute`, author `plan.yaml` entry-by-entry with `specify change plan {create, add, amend}`, and drive the loop yourself via `specify change plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+Hand-driven fallback: skip `/change:draft`, `/change:execute`, and `/change:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`, and run `specify workspace push` + `specify change finalize` by hand.
 
-The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are only ever written via `specify change plan add` / `specify change plan amend`; plan *status* is only ever written via `specify change plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify change plan add` / `specify change plan amend` — the same commands humans run.
+The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
-The `/change:plan <name> orchestrate` umbrella mode strings the cross-repo loop into one operator action: brief → registry validate → `/change:plan` (default mode) → `/change:execute loop` → `specify workspace push` → operator PR merge → `specify change finalize`. It is composition only, idempotent on re-entry; opens/updates PRs but never merges them; supports `migrate-legacy`, `new-feature`, and `update-existing` shapes through a single uniform sequence.
+The three change-lifecycle skills (`/change:draft`, `/change:execute`, `/change:finalize`) are peers; there is no umbrella that drives all three in one shot. Operators who want a single command can write a thin shell wrapper, accepting that the wrapper opts out of the operator review pause between draft and execute. Each skill is idempotent on re-entry; halts surface verbatim and resume by re-running the same skill.
 
 ## Contracts as a declared WASI tool
 
@@ -69,7 +69,7 @@ The contract plugin (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-
 
 The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party capability owning its own validation behaviour; the contracts capability merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is exposed separately as `specify compatibility` (`compatibility report --change <name>` and `compatibility check`), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk.
+Cross-project consumer-impact classification is exposed separately as `specify compatibility check` (with `--change <name>` to echo the change name and `--report-only` for read-only audits), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk unless `--report-only` is passed.
 
 ## JSON envelope
 
@@ -82,7 +82,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 - `init-requires-capability-or-hub` — `specify init` invoked with neither or both of `<capability>` / `--hub`.
 - `registry-amendment-required` — `/change:execute` phase outcome carrying a structured proposal payload for capabilities that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify change plan doctor` diagnostics.
+- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
 - `no-branch` — `specify workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 

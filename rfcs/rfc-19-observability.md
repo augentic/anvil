@@ -105,7 +105,7 @@ Use crate and module targets rather than hand-authored product names. Examples:
 This keeps filters unsurprising:
 
 ```bash
-SPECIFY_LOG=specify_change=debug,specify_tool=trace,warn specify change plan doctor
+SPECIFY_LOG=specify_change=debug,specify_tool=trace,warn specify plan validate
 ```
 
 ### Field Conventions

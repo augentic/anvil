@@ -9,8 +9,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
-| [`list`](#specify-slice-list) | List all active slices. |
-| [`status`](#specify-slice-status) | Detailed status for one slice (lifecycle state, artifacts, tasks, timestamps). |
+| [`status`](#specify-slice-status) | Detailed status for one slice (lifecycle state, artifacts, tasks, timestamps). The multi-slice dashboard lives at [`specify status`](status.md). |
 | [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`created` -> `defining` -> `defined` -> `building` -> `complete` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
@@ -19,8 +18,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | [`journal`](#specify-slice-journal) | `journal {append, show}` -- append or read `journal.yaml` entries (questions, failures, recoveries). |
 | [`touched-specs`](#specify-slice-touched-specs) | Scan or set the spec files this slice affects. |
 | [`overlap`](#specify-slice-overlap) | Find slices whose touched specs overlap. |
-| [`archive`](#specify-slice-archive) | Move a `merged` or `dropped` slice into `.specify/archive/`. |
-| [`drop`](#specify-slice-drop) | Discard a slice without merging. |
+| [`drop`](#specify-slice-drop) | Discard a slice without merging. Archive moves are owned by `slice merge run`, `slice drop`, and `change finalize`. |
 
 ## Subcommands
 
@@ -40,14 +38,6 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 
 Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
 
-### specify slice list
-
-List all active slices.
-
-```bash
-specify slice list [--format json|table]
-```
-
 ### specify slice status
 
 Show detailed status for a slice.
@@ -56,7 +46,7 @@ Show detailed status for a slice.
 specify slice status <name>
 ```
 
-Returns lifecycle state, artifact completion, task progress, and timestamps. The bare project dashboard lives at [`specify status`](status.md).
+Returns lifecycle state, artifact completion, task progress, and timestamps. The multi-slice project dashboard lives at [`specify status`](status.md) — there is no `specify slice list`; skills enumerate slices through the umbrella status verb.
 
 ### specify slice transition
 
@@ -69,7 +59,7 @@ specify slice transition <name> <target>
 | Argument | Description |
 |----------|-------------|
 | `name` | Slice name |
-| `target` | Target state: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. The transient states (`defining`, `building`) are typically set by skills, not operators. |
+| `target` | Target state: `defining`, `defined`, `building`, `complete`, `dropped`. The transient states (`defining`, `building`) are typically set by skills, not operators. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
 
 Enforces legal transitions. Records timestamps in `.metadata.yaml`.
 
@@ -91,14 +81,6 @@ specify slice overlap <name>
 ```
 
 Reports which specs are touched by multiple active slices.
-
-### specify slice archive
-
-Archive a slice (move to `.specify/archive/`).
-
-```bash
-specify slice archive <name>
-```
 
 ### specify slice drop
 

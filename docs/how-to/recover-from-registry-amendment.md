@@ -2,12 +2,12 @@
 
 When `/change:execute loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
 
-This how-to walks the canonical recovery sequence end-to-end. The framework pins this exact sequence so phase skills, executors, and umbrella skills compose against it.
+This how-to walks the canonical recovery sequence end-to-end. The framework pins this exact sequence so phase skills, executors, and the change-lifecycle skills (`/change:draft`, `/change:execute`, `/change:finalize`) compose against it.
 
 ## Prerequisites
 
 - A change where `/change:execute loop` halted with `Completion: stuck` or surfaced a `registry-amendment-required` line in the per-slice summary.
-- The dropped change's name (from `specify change plan status` -- the entry is in `blocked` state with `status-reason: registry-amendment-required`).
+- The dropped change's name (from `specify plan status` -- the entry is in `blocked` state with `status-reason: registry-amendment-required`).
 
 ## 1. Read the proposal payload
 
@@ -27,7 +27,7 @@ Three legitimate decisions:
 |----------|------|--------|
 | **Accept** | The proposal is sound -- the capability genuinely belongs in a new project. | Continue to step 3. |
 | **Reject and re-route** | An existing registry project is a better fit (the phase skill's heuristic missed it). | Skip to step 4. |
-| **Reject and abort** | The capability does not belong in this change at all. | `specify change plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
+| **Reject and abort** | The capability does not belong in this change at all. | `specify plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
 
 For "Accept," continue with the canonical sequence below. For "Reject and re-route," skip to [Re-route to an existing project](#re-route-to-an-existing-project).
 
@@ -57,7 +57,7 @@ specify workspace sync
 ### 3c. Re-route the blocked change to the new project
 
 ```bash
-specify change plan amend <change> --project <proposed-name>
+specify plan amend <change> --project <proposed-name>
 ```
 
 The verb validates `<proposed-name>` against the now-updated registry (rejects unknown projects). After the write, the entry's `project:` field points at the new slot.
@@ -65,7 +65,7 @@ The verb validates `<proposed-name>` against the now-updated registry (rejects u
 ### 3d. Re-queue the change
 
 ```bash
-specify change plan transition <change> pending
+specify plan transition <change> pending
 ```
 
 The entry transitions back to `pending`. The next `/change:execute` cycle picks it up and routes it into the new workspace clone.
@@ -78,15 +78,15 @@ The entry transitions back to `pending`. The next `/change:execute` cycle picks 
 
 The driver picks up the re-queued change first (it has no unsatisfied dependencies that were not already satisfied before the halt), runs `/spec:define` -> `/spec:build` -> `/spec:merge` against the new workspace slot, and continues with the rest of the plan.
 
-If you started this change via `/change:plan <name> orchestrate`, re-running the umbrella achieves the same end state -- the umbrella's re-entry algorithm detects the now-pending change and resumes at step 4 (Execute). See [`/change:plan <name> orchestrate` re-entry](../reference/change-skills/change.md#re-entry--idempotency).
+`registry-amendment-required` is an execution-time halt, so `/change:execute loop` is the recovery owner. Re-running it after the canonical sequence above picks up the now-pending change next; the per-slice loop continues against the new workspace slot.
 
 ## Re-route to an existing project
 
 If the right answer is an existing project rather than a new one, skip steps 3a and 3b -- you do not need to mutate the registry:
 
 ```bash
-specify change plan amend <change> --project <existing-project>
-specify change plan transition <change> pending
+specify plan amend <change> --project <existing-project>
+specify plan transition <change> pending
 /change:execute loop
 ```
 
@@ -98,7 +98,7 @@ The phase skill that proposed the amendment will not see the rejection; the jour
 |-------|---------|--------|
 | Registry has the new project | `specify registry show` | `<proposed-name>` listed under `projects[]`. |
 | Workspace slot is materialised | `specify workspace status` | `<proposed-name>` shows `git-clone` or `symlink`, `dirty: no`. |
-| Plan entry is re-routed | `specify change plan status` | `<change>` is `pending`, `project: <proposed-name>`. |
+| Plan entry is re-routed | `specify plan status` | `<change>` is `pending`, `project: <proposed-name>`. |
 | Change drives to `done` on next run | `/change:execute loop` | The change merges; the plan progresses. |
 
 ## Why the framework requires operator confirmation
@@ -115,5 +115,5 @@ The framework reports drift; the operator decides what to do about it. Same post
 - [Registry amendment required](troubleshooting/plan-and-execution.md#registry-amendment-required) -- troubleshooting entry.
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `add` and `remove`.
 - [Manage registry projects](manage-registry-projects.md) -- the broader add/remove how-to.
-- [`/change:execute`](../reference/change-skills/execute.md) -- the executor that surfaces the halt.
-- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- the umbrella mode, which composes against this same recovery sequence.
+- [`/change:execute`](../reference/change-skills/execute.md) -- the executor that surfaces the halt and re-enters once the registry is amended.
+- [Change lifecycle skills](../reference/change-skills/index.md) -- the three peer skills (`/change:draft`, `/change:execute`, `/change:finalize`) that compose against this recovery sequence.

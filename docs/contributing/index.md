@@ -13,7 +13,7 @@ Specify spans two repositories:
 
 The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (capabilities and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
-The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify change create ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify change draft ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
 
 ## Development environment
 

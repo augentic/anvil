@@ -45,7 +45,7 @@ export async function checkOperationalVocabulary(): Promise<void> {
     [/\.specify\/changes\//, "use `.specify/slices/` for slice-local state"],
     [/\bspecify validate\b/, "use `specify slice validate`"],
     [/\bspecify merge\b/, "use `specify slice merge run`"],
-    [/\bspecify plan\b/, "use `specify change plan`"],
+    [/\bspecify change plan\b/, "use `specify plan`"],
     [/\b[Ii]nitiative\b/, "use `change` for the umbrella and `slice` for entries"],
   ];
 
@@ -106,7 +106,6 @@ export async function checkSkillNumericCaps(): Promise<void> {
   const EXPECTED_BODY = 200;
   const FILES: Array<[string, boolean, boolean]> = [
     [".cursor/schemas/skill.schema.json", true, false],
-    [".cursor/rules/project.mdc", true, true],
     ["docs/standards/skill-authoring.md", true, true],
     ["scripts/checks/skill_frontmatter.ts", true, false],
     ["scripts/checks/skill_body.ts", false, true],

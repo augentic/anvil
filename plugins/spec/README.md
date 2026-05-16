@@ -1,6 +1,6 @@
 # Specify Workflow
 
-Per-slice workflow orchestration for spec-driven development: define slices, build them, and merge or drop. Plan authoring and execution live in the [`change` plugin](../change/README.md); use `/change:plan` and `/change:execute` for change-level work.
+Per-slice workflow orchestration for spec-driven development: define slices, build them, and merge or drop. Plan authoring and execution live in the [`change` plugin](../change/README.md); use `/change:draft`, `/change:execute`, and `/change:finalize` for change-level work.
 
 ## Skills
 
@@ -12,7 +12,6 @@ Per-slice workflow orchestration for spec-driven development: define slices, bui
 | [merge](skills/merge/SKILL.md) | `/spec:merge` | Finalize and merge specs into baseline |
 | [drop](skills/drop/SKILL.md) | `/spec:drop` | Discard a slice without merging |
 | [extract](skills/extract/SKILL.md) | `/spec:extract` | Extract Specify artifacts from existing source code |
-| [analyze](skills/analyze/SKILL.md) | `/spec:analyze` | Plan-time capability inference; emits capability summaries into `discovery.md` |
 
 ## References
 
@@ -21,4 +20,4 @@ Per-slice workflow orchestration for spec-driven development: define slices, bui
 
 ## See also
 
-- [`change` plugin](../change/README.md) — canonical home of `/change:plan` and `/change:execute`.
+- [`change` plugin](../change/README.md) — canonical home of `/change:draft`, `/change:execute`, and `/change:finalize`.

@@ -97,7 +97,7 @@ export async function checkCapabilityIntegrity(): Promise<void> {
     if (!pipeline) continue;
 
     // Post-RFC-13 §3.11 the manifest carries only the slice phases
-    // (define, build, merge); planning is owned by the change-planning
+    // (define, build, merge); planning is owned by the change-draft
     // skill and `pipeline.plan` is rejected by `capability.schema.json`.
     const allEntries: PipelineEntry[] = [
       ...(pipeline.define ?? []),

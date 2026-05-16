@@ -5,7 +5,7 @@ Use this page when a Specify skill refuses to act on a slice -- because it canno
 ## Prerequisites
 
 - A project initialised with `/spec:init` (`.specify/` exists at the repo root).
-- The name of the slice you were operating on (from `specify slice list` or the skill's error output).
+- The name of the slice you were operating on (from `specify status` or the skill's error output).
 
 ## "Slice not found"
 
@@ -14,7 +14,7 @@ Use this page when a Specify skill refuses to act on a slice -- because it canno
 **Cause:** The slice name is misspelled, or `/spec:init` has not been run.
 
 **Resolution:**
-1. Check active slices: `specify slice list`
+1. Check active slices: `specify status`
 2. Verify `.specify/` exists. If not, run `/spec:init`.
 
 ## "Slice not in expected state"

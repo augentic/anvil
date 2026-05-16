@@ -41,7 +41,7 @@ After the standard delta merge succeeds, the merge brief shells out to the decla
 
 Use the `contracts` capability when:
 
-- **Contract-first:** Defining a new API contract before implementation begins. `/change:plan` inserts these automatically when it detects an API boundary between projects.
+- **Contract-first:** Defining a new API contract before implementation begins. `/change:draft` inserts these automatically when it detects an API boundary between projects.
 - **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the slice's `contracts/` directory.
 - **Standalone modification:** Modifying existing platform contracts independently of implementation slices.
 

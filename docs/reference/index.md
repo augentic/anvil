@@ -13,7 +13,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Skills
 
 - [Slice Skills](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
-- [Change Skills](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes; `/change:plan <name> orchestrate` for cross-repo changes end-to-end.
+- [Change Skills](change-skills/index.md) -- the three-skill change lifecycle (`/change:draft`, `/change:execute`, `/change:finalize`) plus `/change:analyze` for plan-time capability inference.
 
 ### CLI
 

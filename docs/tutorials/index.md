@@ -14,8 +14,9 @@ The tutorials progress from single-slice basics through multi-repo platform chan
 | 3 | [Brownfield Onboarding](brownfield-onboarding.md) | Extracting specs from existing code | [Prerequisites](../orientation/prerequisites.md) installed |
 | 4 | [A Multi-Slice Change](single-repo-change.md) | Plans, execute, dependency tracking | Tutorials 1-2 |
 | 5 | [Working across repos: planning](cross-repo-change.md) | Hub topology, registry, workspace sync, project assignment | Tutorial 4 |
+| 5a | [Reviewing the plan](reviewing-a-plan.md) | The human seam between `/change:draft` and `/change:execute` — `specify plan status`, `specify plan amend`, abort | Tutorial 5 |
 | 6 | [Working across repos: executing](cross-repo-execute.md) | Workspace inspection, `/change:execute loop` across projects, `specify workspace push` | Tutorial 5 |
-| 7 | [Working across repos: landing](landing-a-change.md) | Operator PR merge, `specify change finalize`, the three umbrella shapes | Tutorial 6 |
+| 7 | [Working across repos: landing](landing-a-change.md) | Operator PR merge, `/change:finalize`, the three change shapes | Tutorial 6 |
 | 8 | [Legacy Migration at Scale](legacy-migration-at-scale.md) | Analyze/extract split, monolith decomposition | Tutorials 5-7 |
 
 ## Where to start
@@ -23,4 +24,4 @@ The tutorials progress from single-slice basics through multi-repo platform chan
 - **New to Specify?** Run the [Quick Start](quick-start.md) if you want the fastest path, then read [Your First Slice](first-change.md).
 - **Have an existing codebase?** Start with [Brownfield Onboarding](brownfield-onboarding.md), then return to [Your First Slice](first-change.md).
 - **Planning a large change?** Read Tutorials 1-2 first, then skip to [A Multi-Slice Change](single-repo-change.md).
-- **Working across multiple repos?** Walk through Tutorials 5-7 in order: [planning](cross-repo-change.md), [executing](cross-repo-execute.md), and [landing](landing-a-change.md).
+- **Working across multiple repos?** Walk through Tutorials 5-7 in order: [planning](cross-repo-change.md), [reviewing the plan](reviewing-a-plan.md), [executing](cross-repo-execute.md), and [landing](landing-a-change.md).

@@ -14,16 +14,19 @@
 ### Multi-slice change
 
 ```text
-/change:plan <name> source legacy=./path    # author plan
+/change:draft <name> source legacy=./path   # author plan, stop at hand-off
+# operator reviews plan.yaml (specify plan amend / status as needed)
 /change:execute loop                        # run until done
+/change:finalize <name>                     # push, observe PRs, archive
 ```
 
-### Cross-repo umbrella
+### Cross-repo bootstrap
 
 ```text
 /spec:init hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --capability ...
-/change:plan <name> orchestrate [shape ...]
+/change:draft <name> source legacy=./path          # author the cross-repo plan
+# then proceed through /change:execute loop and /change:finalize <name> as above
 ```
 
 ## All skills
@@ -36,10 +39,10 @@ specify registry add <project> --url ... --capability ...
 | `/spec:merge` | Merge completed slice into baseline |
 | `/spec:drop` | Discard a slice |
 | `/spec:extract` | Extract specs from existing code |
-| `/spec:analyze` | Plan-time capability inference (invoked by `/change:plan`) |
-| `/change:plan` | Author a multi-slice plan |
+| `/change:analyze` | Plan-time capability inference (invoked by `/change:draft`) |
+| `/change:draft` | Author a multi-slice plan; stop at the operator review seam |
 | `/change:execute` | Automate the plan loop |
-| `/change:plan <name> orchestrate` | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> PR merge -> finalize |
+| `/change:finalize` | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` |
 | `/contract:openapi` | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
 | `/contract:asyncapi` | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
 | `/contract:json-schema` | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
@@ -80,15 +83,15 @@ specify context generate --check          # CI dry-run; exit 1 when context woul
 specify context check                     # report stale AGENTS.md/context.lock state
 
 # Slice management
-specify slice list
+specify status                                   # render every active slice
 specify slice transition <name> <target>
 
 # Plan management
-specify change plan status
-specify change plan next
-specify change plan doctor                       # validate + cycle / orphan / stale-clone / unreachable
-specify change plan transition <name> <target>
-specify change plan lock status
+specify plan status
+specify plan next
+specify plan validate                     # base shape + cycle / orphan / stale-clone / unreachable
+specify plan transition <name> <target>
+specify plan lock status
 
 # Workspace (multi-repo)
 specify workspace sync [<project>...]      # omit selectors to sync all registry projects
@@ -102,14 +105,14 @@ specify registry add <name> --url <url> --capability <schema> --description "...
 specify registry remove <name>
 
 # Change brief and closure
-specify change create <name>         # scaffold change.md
+specify change draft <name>          # scaffold change.md + plan.yaml
 specify change show
 specify change finalize              # verify merged PRs, archive plan
 specify change finalize --clean      # also remove clean .specify/workspace/<peer>/ clones
 
 # Plan authoring (multi-repo)
-specify change plan add <name> --project <project>
-specify change plan amend <name> --project <project>
+specify plan add <name> --project <project>
+specify plan amend <name> --project <project>
 
 # Per-slice inspection
 specify slice validate <name>
@@ -142,7 +145,7 @@ specify slice merge conflict-check <name>
     ├── .cache/           # cached capability manifest + briefs
     ├── slices/           # active slices (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
-    ├── plans/            # change-plan working dirs (discovery, proposal)
+    ├── plans/            # change-draft working dirs (discovery, proposal)
     ├── workspace/        # registry workspace slots (multi-repo only)
     └── archive/          # finalized slices and plans
 ```

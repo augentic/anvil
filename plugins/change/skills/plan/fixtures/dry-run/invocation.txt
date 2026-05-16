@@ -1,1 +1,0 @@
-/change:plan demo --source monolith=/tmp/legacy --dry-run

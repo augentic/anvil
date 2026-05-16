@@ -57,7 +57,7 @@ The registry surface is mutated **directly**, not through the slice loop:
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specify registry add`     | Append a new project entry. Creates `registry.yaml` with `version: 1` when absent. Validates the resulting shape, including the `description-missing-multi-repo` invariant.          |
 | `specify registry remove`  | Delete a project entry. Warns (non-fatal) when the current `plan.yaml` references the removed project so the operator can rewire affected change entries.                            |
-| `specify registry show`    | Render the parsed registry as text or JSON. JSON is the canonical surface that change-planning skills consume to detect multi-project mode.                                          |
+| `specify registry show`    | Render the parsed registry as text or JSON. JSON is the canonical surface that change-draft skills consume to detect multi-project mode.                                          |
 | `specify registry validate`| Shape and referential integrity check; `Registry::validate_shape` plus hub-mode invariants. Absent registry is not an error (exit 0).                                                |
 
 None of these verbs go through `define → build → merge`. The registry is substrate: it is what the slice loop runs *over*, not something the slice loop produces.

@@ -1,26 +1,40 @@
 # specify change
 
-Manage the operator-authored change brief at `change.md` and close out a change once every per-project PR has merged.
+Scaffold the change pair (`change.md` + `plan.yaml`) at the start of a change, render the brief for tooling, and close out a change once every per-project PR has merged.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-change-create) | Scaffold `change.md` from the canonical template at the start of a change. |
+| [`draft`](#specify-change-draft) | Scaffold `change.md` and `plan.yaml` together from canonical templates at the start of a change. |
 | [`show`](#specify-change-show) | Render the current brief (frontmatter + prose body) for tooling consumers and review. |
 | [`finalize`](#specify-change-finalize) | Close out a fully-landed change: confirm every per-project PR merged, archive `plan.yaml` + brief + working dir. |
 
 ## Subcommands
 
-### specify change create
+### specify change draft
 
-Scaffold `change.md` with the frontmatter template.
+Scaffold `change.md` and `plan.yaml` together at the repo root.
 
 ```bash
-specify change create <name>
+specify change draft <name> [--source <key>=<path-or-url> ...]
 ```
 
-Refuses to overwrite an existing brief — mirrors the `specify change plan create` posture for `plan.yaml`.
+Writes `change.md` with the canonical frontmatter template (operators fill in the body) and writes `plan.yaml` with the change name and the supplied `--source` map. Each `--source` flag takes one `key=value` pair (repeatable, deduplicated by key); these populate the plan's top-level `sources:` map and become the `<source-key>` namespace that plan entries reference.
+
+**Atomic refusal.** If either `change.md` or `plan.yaml` already exists at the repo root, the command exits with the `already-exists` diagnostic and writes neither file — no partial state. Recover by reviewing/removing the offending file (or running `specify plan archive` if the existing plan is a stale leftover) and re-running.
+
+The change name must be kebab-case (lowercase ASCII, digits, single hyphens; no leading/trailing/doubled hyphens). Non-kebab input refuses with `change-name-not-kebab` before any write.
+
+JSON output:
+
+```json
+{
+  "name": "oauth-login",
+  "brief": { "path": "/.../change.md" },
+  "plan":  { "path": "/.../plan.yaml" }
+}
+```
 
 ### specify change show
 
@@ -30,7 +44,7 @@ Render the brief content (frontmatter + prose body).
 specify change show [--format json]
 ```
 
-`--format json` emits the parsed frontmatter alongside the prose body for tooling consumers (e.g. `/change:plan`).
+`--format json` emits the parsed frontmatter alongside the prose body for tooling consumers (e.g. `/change:draft`).
 
 ### specify change finalize
 
@@ -43,7 +57,7 @@ specify change finalize [--clean] [--dry-run]
 The verb runs four guards in order. **All-or-nothing:** any guard failure refuses the run with a per-project status table and leaves the on-disk state untouched.
 
 1. **Plan-presence guard.** `plan.yaml` must exist. Absent file refuses with `plan-not-found` — the canonical "change is already finalized" signal (the previous run swept the plan into `.specify/archive/plans/`).
-2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify change plan status`.
+2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify plan status`.
 3. **Per-project PR-state guard.** For each registry project, `gh pr view --json state,merged,headRefName,number,url` is run against the workspace clone. The PR, when present, must use the exact branch `specify/<change-name>`. Status mapping:
 
    | Status | Meaning | Passes? |
@@ -124,6 +138,8 @@ The old `specify workspace merge` automation has been removed. Operators land PR
 
 ## See also
 
-- [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
+- [specify plan](plan.md) -- the executable-plan verbs (`add`, `amend`, `transition`, `validate`, `next`, `status`, `archive`, `lock`) that `specify change draft` scaffolds and the change skills edit.
+- [specify slice](slice.md) -- the per-slice CLI verbs that the change lifecycle drives through the slice loop.
 - [specify registry](registry.md) -- platform registry.
 - [specify workspace](workspace.md) -- sync, status, push.
+- [`/change:draft`](../change-skills/draft.md), [`/change:execute`](../change-skills/execute.md), [`/change:finalize`](../change-skills/finalize.md) -- the three-skill change lifecycle that wraps these CLI verbs.

@@ -1,11 +1,11 @@
-# /spec:analyze
+# /change:analyze
 
 Plan-time capability inference for legacy code and documentation inputs.
 
 ## Synopsis
 
 ```text
-/spec:analyze <input-path> <output-dir> <legacy-code|documentation> [source-key <key>]
+/change:analyze <input-path> <output-dir> <legacy-code|documentation> [source-key <key>]
 ```
 
 ## Arguments
@@ -19,7 +19,7 @@ Plan-time capability inference for legacy code and documentation inputs.
 
 ## When to use
 
-Typically invoked by the discovery phase during `/change:plan`, not directly. Reads one input and appends capability summaries to `discovery.md`.
+Typically invoked by the discovery phase during `/change:draft`, not directly. Reads one input and appends capability summaries to `discovery.md`.
 
 ## Artifacts produced
 
@@ -55,7 +55,7 @@ This two-skill split is a scaling strategy:
 
 | Skill | When | Depth | Scope |
 |-------|------|-------|-------|
-| `/spec:analyze` | Plan time | Shallow (summaries) | Entire source |
+| `/change:analyze` | Plan time | Shallow (summaries) | Entire source |
 | `/spec:extract` | Define time | Deep (full specs) | Per-change slice |
 
 ## Lifecycle transitions
@@ -74,13 +74,13 @@ None. Analyze is a supporting skill invoked during planning.
 
 ```text
 # Analyse legacy code
-/spec:analyze ./src/legacy .specify/plans/migrate/ legacy-code monolith
+/change:analyze ./src/legacy .specify/plans/migrate/ legacy-code monolith
 
 # Analyse documentation
-/spec:analyze ./docs/prd.md .specify/plans/new-platform/ documentation
+/change:analyze ./docs/prd.md .specify/plans/new-platform/ documentation
 ```
 
 ## See also
 
-- [/change:plan](plan.md) -- the primary consumer of analyze
+- [/change:draft](draft.md) -- the primary consumer of analyze
 - [/spec:extract](../slice-skills/extract.md) -- the deep counterpart at define time

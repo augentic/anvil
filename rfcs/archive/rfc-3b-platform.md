@@ -8,9 +8,9 @@
 
 ## Abstract
 
-RFC-3a lands initiative *planning* across repos: a platform catalogue (`registry.yaml`), an operator-authored brief (`initiative.md`), a *sync peers* phase that materialises `.specify/workspace/<peer>/`, and a single cross-repo `plan.yaml`. That plan contains an ordered list of changes — but no indication of *which repo* each change belongs to. RFC-3b bridges the gap: it determines which registry project each change targets, records that assignment in the plan, and teaches `/spec:execute` to route each change's define-build-merge cycle to the correct repo with the correct schema.
+RFC-3a lands initiative *planning* across repos: a platform catalogue (`registry.yaml`), an operator-authored brief (`initiative.md`), a *sync workspace* phase that materialises `.specify/workspace/<peer>/`, and a single cross-repo `plan.yaml`. That plan contains an ordered list of changes — but no indication of *which repo* each change belongs to. RFC-3b bridges the gap: it determines which registry project each change targets, records that assignment in the plan, and teaches `/spec:execute` to route each change's define-build-merge cycle to the correct repo with the correct schema.
 
-The assignment problem has two shapes. For **brownfield** work — modernising or extending an existing multi-repo platform — the framework infers assignment from the domain descriptions operators write in `registry.yaml`, cross-referenced against each change's description and the peer baseline specs already materialised by RFC-3a's sync-peers phase. For **greenfield** work — standing up new repos for a system that does not yet exist — the operator predetermines the repo topology by authoring registry entries with descriptions that capture the intended responsibility boundaries (e.g. "frontend", "backend API", "shared types"). In both cases the plan skill presents the inferred assignment for human review; the operator can override.
+The assignment problem has two shapes. For **brownfield** work — modernising or extending an existing multi-repo platform — the framework infers assignment from the domain descriptions operators write in `registry.yaml`, cross-referenced against each change's description and the peer baseline specs already materialised by RFC-3a's sync-workspace phase. For **greenfield** work — standing up new repos for a system that does not yet exist — the operator predetermines the repo topology by authoring registry entries with descriptions that capture the intended responsibility boundaries (e.g. "frontend", "backend API", "shared types"). In both cases the plan skill presents the inferred assignment for human review; the operator can override.
 
 RFC-3b is a follow-up to RFC-3a rather than a layer of it because the planning flow (Layers 1–2 + Large-Monolith Decomposition) is independently useful without routing, and routing depends on the workspace and registry being in place first.
 
@@ -58,7 +58,7 @@ projects:
 
 For brownfield platforms, the `description` is the primary signal the plan skill's assignment step uses to match plan entries to projects. It is complemented by secondary signals available from the workspace:
 
-1. **Baseline specs.** Each peer's `.specify/workspace/<peer>/specs/` (materialised by RFC-3a sync-peers) contains the capabilities already specified in that repo. A discovered capability whose name or domain overlaps with existing baseline specs has a strong affinity signal.
+1. **Baseline specs.** Each peer's `.specify/workspace/<peer>/specs/` (materialised by RFC-3a sync-workspace) contains the capabilities already specified in that repo. A discovered capability whose name or domain overlaps with existing baseline specs has a strong affinity signal.
 2. **Schema identity.** When projects use different schemas, the schema itself is a coarse routing signal (e.g. a UI capability is unlikely to route to an `omnia@v1` backend project if a `vectis@v1` frontend project exists).
 
 The `description` is always operator-authored. RFC-3b does not attempt to infer project descriptions from baseline specs — the operator knows the intended responsibility boundaries; the framework matches capabilities against those boundaries.
@@ -198,7 +198,7 @@ When the registry is absent or single-project, the assignment step is skipped en
 Each change's define-build-merge cycle runs against the **project's clone in the workspace** — not the initiating repo's root:
 
 - For `url: .` or relative-path projects, the resolved filesystem path is the working directory.
-- For remote projects, `.specify/workspace/<name>/` (the clone materialised by RFC-3a sync-peers) is the working directory.
+- For remote projects, `.specify/workspace/<name>/` (the clone materialised by RFC-3a sync-workspace) is the working directory.
 
 The driver resolves the target project's filesystem root from `registry.yaml`, sets the working directory to that root, and invokes `/spec:define <name>` with no additional project flag. Define discovers `.specify/project.yaml` via its normal CWD walk and resolves the schema from that file. Build and merge follow the same pattern. Phase skills need no changes — the driver owns the routing decision entirely.
 
@@ -264,7 +264,7 @@ Merge commits inside workspace clones follow these rules:
 
 ### Workspace writability policy
 
-RFC-3a describes workspace clones as read-only during planning. RFC-3b relaxes this to writable during execution. The policy is enforced by convention, not by filesystem permissions or a write-guard mechanism. The plan skill's sync-peers step reads but does not write into workspace clones; the execute skill writes via the normal phase skills running under CWD-based routing. No code change to `workspace.rs` is needed — the relaxation is a documented policy update to the execute skill's guardrails section.
+RFC-3a describes workspace clones as read-only during planning. RFC-3b relaxes this to writable during execution. The policy is enforced by convention, not by filesystem permissions or a write-guard mechanism. The plan skill's sync-workspace step reads but does not write into workspace clones; the execute skill writes via the normal phase skills running under CWD-based routing. No code change to `workspace.rs` is needed — the relaxation is a documented policy update to the execute skill's guardrails section.
 
 ### Execute skill amendments
 
@@ -477,7 +477,7 @@ The only propose-brief change is the forward-reference removal described above: 
 
 ### Plan skill (`/spec:plan`)
 
-The `workspace.md` shape authored during the sync-peers phase (step 3(b)) is extended to include each project's `description` from `registry.yaml`. The plan skill's `SKILL.md` workspace.md shape pin (§`workspace.md` shape) must be updated to the following:
+The `workspace.md` shape authored during the sync-workspace phase (step 3(b)) is extended to include each project's `description` from `registry.yaml`. The plan skill's `SKILL.md` workspace.md shape pin (§`workspace.md` shape) must be updated to the following:
 
 ```markdown
 # Workspace — <initiative-name>
@@ -538,7 +538,7 @@ Each CLI change carries unit or integration tests following the existing pattern
 - **Cross-cutting code generation.** Capabilities that span multiple repos are decomposed into per-project changes. Shared concerns (API contracts, auth libraries, protocol definitions) are handled by the platform's own dependency management, not by Specify's code-generation pipeline.
 - **Multi-plan output.** RFC-3a's single `plan.yaml` in the initiating repo is preserved. RFC-3b adds routing metadata to change entries; it does not produce per-repo plans.
 - **Inferring project descriptions.** The `description` on registry projects is always operator-authored. The framework does not attempt to generate descriptions from baseline specs or code analysis.
-- **Re-authoring planning-time behaviour.** Discovery dispatch, the sync-peers phase, and the capability inventory are unchanged from RFC-3a. RFC-3b extends only the plan skill (assignment step) and execution (routing). Schema propose briefs are unchanged.
+- **Re-authoring planning-time behaviour.** Discovery dispatch, the sync-workspace phase, and the capability inventory are unchanged from RFC-3a. RFC-3b extends only the plan skill (assignment step) and execution (routing). Schema propose briefs are unchanged.
 - **Non-GitHub forges.** `workspace push` uses `gh` for remote repo creation and PR management. GitLab, Bitbucket, and self-hosted forges are not supported. The `gh`-dependent code paths (repo creation, PR creation) are isolated behind the pre-flight check so that plain `git push` works for any forge; only the repo-creation and PR-creation steps are GitHub-specific. Supporting additional forges is a future extension.
 
 ## Fixtures

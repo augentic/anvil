@@ -297,7 +297,7 @@ The skill provides input validation, a uniform error-message style, and an optio
 Concretely:
 
 - Delete `plugins/rt/skills/git-cloner/`.
-- Inline a 5-line "Cloning a source tree" block into the two callers that reach for the skill today: `plugins/spec/skills/analyze/SKILL.md` (for `--source` URLs reaching plan-time discovery) and `plugins/rt/skills/wiretapper/SKILL.md` (for legacy-repo bootstrap).
+- Inline a 5-line "Cloning a source tree" block into the two callers that reach for the skill today: `plugins/change/skills/analyze/SKILL.md` (for `--source` URLs reaching plan-time discovery) and `plugins/rt/skills/wiretapper/SKILL.md` (for legacy-repo bootstrap).
 - Drop the entry from `marketplace.json`.
 
 The `--detach` mode (remove `.git` after clone, preserve the working tree) becomes an inlined guarded sequence rather than a reusable skill: quote the destination path, verify it is the intended clone directory, and remove only `"$DEST/.git"` after confirming that path is a directory. Do not carry forward an unguarded `rm -rf` recipe.
@@ -504,7 +504,7 @@ The work decomposes into a sequence of mechanical passes plus two focused restru
 2. **Frontmatter sweep — `argument-hint` rewrite.** Replace each skill's `argument-hint` value per the §A.3 table. Where flags moved out of the hint, make sure the body's invocation block still documents them (most skills already do).
 3. **Frontmatter sweep — descriptions.** Add "Use when…" tails per the §A.2 table. Drop RFC citations from description text. Trim block-scalar descriptions where they exceed ~250 characters.
 4. **Name qualification.** Apply the §A.1 rename to every SKILL.md `name:` field. Update inbound references in `marketplace.json` (none today reference the bare `name`), in skill bodies that cross-link by name (rare; mostly handled by the slash-command form), and in `make checks` if it asserts on names.
-5. **Plugin renames and deletions.** Move `plugins/plan/` → `plugins/client/`; move `plugins/contracts/` → `plugins/interfaces/`; delete `plugins/rt/skills/git-cloner/`; inline the 5-line clone snippet into `plugins/spec/skills/analyze/SKILL.md` and `plugins/rt/skills/wiretapper/SKILL.md`. Update `marketplace.json`. Update inbound references in `docs/`, `schemas/`, `AGENTS.md`, `README.md`, `.cursor/rules/`, and skill bodies that mention `/plan:sow-writer`, `/contracts:`*, `/rt:git-cloner`, or the `plan` / `contracts` plugins in their old roles. The slash-command updates affect:
+5. **Plugin renames and deletions.** Move `plugins/plan/` → `plugins/client/`; move `plugins/contracts/` → `plugins/interfaces/`; delete `plugins/rt/skills/git-cloner/`; inline the 5-line clone snippet into `plugins/change/skills/analyze/SKILL.md` and `plugins/rt/skills/wiretapper/SKILL.md`. Update `marketplace.json`. Update inbound references in `docs/`, `schemas/`, `AGENTS.md`, `README.md`, `.cursor/rules/`, and skill bodies that mention `/plan:sow-writer`, `/contracts:`*, `/rt:git-cloner`, or the `plan` / `contracts` plugins in their old roles. The slash-command updates affect:
   - `/plan:sow-writer` → `/client:sow-writer` (mentioned in `AGENTS.md`, `docs/reference/plugins/plan.md` (renamed to `client.md`), and the SoW skill's own examples)
   - `/contracts:writer`, `/contracts:validator`, `/contracts:importer` → `/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` depending on the interface format
   - `/rt:git-cloner` → (deleted; replace with prose at the two call sites)

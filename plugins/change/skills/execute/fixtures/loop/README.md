@@ -44,11 +44,11 @@ loop/
 
 ## Invariants every fixture asserts
 
-1. **Lock held once, across all iterations.** `specify change plan lock acquire` runs once at step 2 of the `--loop` algorithm; `specify change plan lock release` runs once at step 6. Per-iteration lock churn is visible nowhere in any transcript.
+1. **Lock held once, across all iterations.** `specify plan lock acquire` runs once at step 2 of the `--loop` algorithm; `specify plan lock release` runs once at step 6. Per-iteration lock churn is visible nowhere in any transcript.
 2. **Self-heal runs once.** The pre-iteration `Self-heal: …` diagnostic fires a single time per run. It is not repeated between iterations.
-3. **Individual failure / deferral does NOT halt `--loop`.** The `stuck-on-blocked/` fixture pins this: an `outcome: deferred` on `email-verification` transitions the entry to `blocked` via the supervised-run defer path (steps 12a–c), and the outer loop simply iterates again. `specify change plan next` skips `blocked` on the next iteration.
+3. **Individual failure / deferral does NOT halt `--loop`.** The `stuck-on-blocked/` fixture pins this: an `outcome: deferred` on `email-verification` transitions the entry to `blocked` via the supervised-run defer path (steps 12a–c), and the outer loop simply iterates again. `specify plan next` skips `blocked` on the next iteration.
 4. **`Completion: halted` is reserved for self-heal ambiguity.** `halted-on-self-heal-ambiguity/` is the only fixture that reaches `halted`. A mid-loop deferral (per `stuck-on-blocked/`) becomes `stuck`, not `halted`.
-5. **`driver-interrupted` leaves the active entry as `in-progress`.** The interrupt handler does NOT run `specify change plan transition` on the active entry; self-heal on the next run is responsible for reclaiming it based on `.metadata.yaml:outcome`.
+5. **`driver-interrupted` leaves the active entry as `in-progress`.** The interrupt handler does NOT run `specify plan transition` on the active entry; self-heal on the next run is responsible for reclaiming it based on `.metadata.yaml:outcome`.
 6. **Verbatim `outcome.summary` → `status-reason` → terminal summary `Blocked:` / `Failed:` quoting.** The `stuck-on-blocked/` fixture demonstrates this for the deferred path; the failure path follows the same rule with `Failed:` instead of `Blocked:`.
 7. **Empty terminal-summary sections are omitted entirely.** The `all-done/` terminal summary has no `Blocked:` / `Failed:` / `Pending (dependencies not satisfied):` headings; `stuck-on- blocked/` has `Blocked:` but no `Failed:` or `Pending:`. The renderer emits only non-empty sections.
 

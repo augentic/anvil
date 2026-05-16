@@ -16,12 +16,12 @@ $ /change:execute loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1/3: pick next.
-#   specify change plan next --format json  → { "next": "user-registration", "project": null, "description": "...", "sources": ["monolith"] }
-#   specify change plan transition user-registration in-progress
+#   specify plan next --format json  → { "next": "user-registration", "project": null, "description": "...", "sources": ["monolith"] }
+#   specify plan transition user-registration in-progress
 #   /spec:define user-registration   → outcome: success
 #   /spec:build  user-registration   → outcome: success
 #   /spec:merge  user-registration   → outcome: success
-#   specify change plan transition user-registration done
+#   specify plan transition user-registration done
 
 ## /change:execute — platform-v2
 
@@ -48,15 +48,15 @@ Step 3/3: merge
 ---
 
 # step 4 iteration 2/3: pick next.
-#   specify change plan next --format json  → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
+#   specify plan next --format json  → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
 # (The two siblings — email-verification and notification-preferences —
-# both depend only on user-registration. specify change plan next breaks the
+# both depend only on user-registration. specify plan next breaks the
 # tie by plan list order, picking email-verification.)
-#   specify change plan transition email-verification in-progress
+#   specify plan transition email-verification in-progress
 #   /spec:define email-verification  → outcome: success
 #   /spec:build  email-verification  → outcome: success
 #   /spec:merge  email-verification  → outcome: success
-#   specify change plan transition email-verification done
+#   specify plan transition email-verification done
 
 ### Change: platform-v2
 Progress: done 1, in-progress 1, pending 1, blocked 0, failed 0, skipped 0 (total 3)
@@ -81,12 +81,12 @@ Step 3/3: merge
 ---
 
 # step 4 iteration 3/3: pick next.
-#   specify change plan next --format json  → { "next": "notification-preferences", "project": null, "description": "...", "sources": [] }
-#   specify change plan transition notification-preferences in-progress
+#   specify plan next --format json  → { "next": "notification-preferences", "project": null, "description": "...", "sources": [] }
+#   specify plan transition notification-preferences in-progress
 #   /spec:define notification-preferences → outcome: success
 #   /spec:build  notification-preferences → outcome: success
 #   /spec:merge  notification-preferences → outcome: success
-#   specify change plan transition notification-preferences done
+#   specify plan transition notification-preferences done
 
 ### Change: platform-v2
 Progress: done 2, in-progress 1, pending 0, blocked 0, failed 0, skipped 0 (total 3)
@@ -108,7 +108,7 @@ Step 3/3: merge
 ---
 
 # step 4 iteration 4 (terminating): pick next.
-#   specify change plan next --format json  → { "next": null, "reason": "all-done" }
+#   specify plan next --format json  → { "next": null, "reason": "all-done" }
 # Break out of the loop.
 
 # step 5: emit terminal summary.
@@ -129,7 +129,7 @@ Next action: Change complete. Run specify workspace push to publish prepared spe
 
 ## Invariants pinned
 
-1. **Lock held once, across all iterations.** `specify change plan lock acquire` runs once at step 2 of the `--loop` algorithm; `specify change plan lock release` runs once at step 6. No per-iteration lock churn appears anywhere in the timeline.
+1. **Lock held once, across all iterations.** `specify plan lock acquire` runs once at step 2 of the `--loop` algorithm; `specify plan lock release` runs once at step 6. No per-iteration lock churn appears anywhere in the timeline.
 2. **Self-heal runs once.** The `Self-heal: no in-progress entries found.` line fires a single time, before any iteration starts. It is not repeated between iterations.
 3. **`Blocked:` / `Failed:` / `Pending:` sections omitted when empty.** The `all-done` terminal summary has only `Final state`, `Completion`, and `Next action`. The summary renderer must not emit empty list headings.
 4. **Progress line enumerates all six statuses in fixed order.** Even when a status bucket is zero, it appears in the line as `<status> 0`. Downstream parsers see a stable shape.

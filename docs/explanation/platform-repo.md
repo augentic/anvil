@@ -76,7 +76,7 @@ my-app/
 
 The `url: .` entry tells `specify workspace sync` to materialise the platform repo as its own workspace slot via a symlink. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability manifest. `project.yaml:hub` is absent (or `false`).
 
-**When to choose platform-as-project.** Single-repo projects, small teams that have not factored their codebase into multiple repos, and migrations where peeling code out into a separate platform repo is itself unnecessary churn. The platform-first vision still works in this shape -- the operator just runs `/change:plan`, `/change:execute`, and `workspace push` against the same repo they edit code in.
+**When to choose platform-as-project.** Single-repo projects, small teams that have not factored their codebase into multiple repos, and migrations where peeling code out into a separate platform repo is itself unnecessary churn. The platform-first vision still works in this shape -- the operator just runs `/change:draft`, `/change:execute`, and `/change:finalize` against the same repo they edit code in.
 
 ## Validation rules
 
@@ -110,7 +110,7 @@ The command writes:
 - `registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` or by hand-editing.
 - `.gitignore` upserts for `.specify/.cache/` and `.specify/workspace/`.
 
-`change.md` and `plan.yaml` are not created by `specify init --hub`; `specify change create` and `specify change plan create` mint them when a specific change begins. The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
+`change.md` and `plan.yaml` are not created by `specify init --hub`; `specify change draft` mints them together when a specific change begins (typically invoked through `/change:draft`). The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
 
 For the platform-as-project shape, use the regular `specify init <capability>` form (no `--hub` flag) where `<capability>` is a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI. The CLI rejects `specify init` with neither a capability positional nor `--hub` -- exactly one of the two is required, never both. See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
 

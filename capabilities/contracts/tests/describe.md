@@ -149,8 +149,9 @@ Drop or archive the slice before moving to the next scenario unless you
 explicitly want the new baseline contracts to persist:
 
 - `specify slice drop user-profile-api` to discard without merging, or
-- `/spec:merge user-profile-api` followed by `specify slice archive` (via the
-  CLI verbs the merge skill drives) to retain the baseline.
+- `/spec:merge user-profile-api` to merge the baseline contracts; the merge
+  skill calls `slice merge run`, which atomically merges, transitions the
+  slice to `merged`, and archives it.
 
 Default for a clean run-all sequence: drop. Record the choice in the run
 summary's **Cleanup** section.

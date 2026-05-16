@@ -33,12 +33,12 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, extract, and analyze. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; use /change:plan and /change:execute for change-level orchestration."
+      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, and extract. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; the plan-time analyze skill moved alongside (use /change:analyze). Use the three-skill change lifecycle (/change:draft, /change:execute, /change:finalize) for change-level orchestration."
     },
     {
       "name": "change",
       "source": "change",
-      "description": "Skills for Specify change orchestration: /change:plan authors plan.yaml via the planning brief pipeline (and drives the cross-repo umbrella under --orchestrate), and /change:execute drives the authored plan through the per-slice define-build-merge phases."
+      "description": "Skills for Specify change orchestration: authors `plan.yaml` (`/change:draft`) and finalizes a completed change (`/change:finalize`); execution remains `/change:execute`. `/change:analyze` infers plan-time capability summaries from legacy code or documentation inputs."
     },
     {
       "name": "contract",

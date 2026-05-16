@@ -4,7 +4,7 @@ The four phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop
 
 1. **`PhaseOutcome`** stamped into `.specify/slices/<name>/.metadata.yaml` — the only state `/change:execute` reads on phase return.
 2. **`journal.yaml`** entries appended during the run — append-only audit log; never a signalling channel.
-3. **`plan.yaml`** mutations issued through `specify change plan add` / `specify change plan amend` — bounded by the allow/forbid table below.
+3. **`plan.yaml`** mutations issued through `specify plan add` / `specify plan amend` — bounded by the allow/forbid table below.
 
 This document is the parameterised contract, including the concrete success criteria, failure modes, and deferral triggers for each phase. Individual skills link here and keep only phase-local operational steps in their always-loaded bodies.
 
@@ -102,26 +102,26 @@ specify slice journal append <name> <phase> <kind> --summary "..." [--context ".
 
 ## Mutating the plan mid-run
 
-Phases MAY shell out to `specify change plan add` / `specify change plan amend` mid-run when they discover something structural about the slice. Both commands write `plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/change:execute` iteration.
+Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the slice. Both commands write `plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/change:execute` iteration.
 
 ### Allowed
 
-- **`specify change plan add <new-name> --description "...modifies <current-name>..."`** — when a phase surfaces a neighbouring defect or prerequisite refactor that warrants its own change. Examples: a define extract sub-step uncovers the canonical `registration-duplicate-email-crash` case; a build implementation reveals a sibling refactor; a merge conflict-check surfaces a neighbouring slice that must land first.
-- **`specify change plan amend <current-name> --depends-on <newly-needed>`** — when a phase discovers a dependency on another plan entry. `amend` MAY target the currently-active `in-progress` entry: non-`status` fields on it are fair game.
+- **`specify plan add <new-name> --description "...modifies <current-name>..."`** — when a phase surfaces a neighbouring defect or prerequisite refactor that warrants its own change. Examples: a define extract sub-step uncovers the canonical `registration-duplicate-email-crash` case; a build implementation reveals a sibling refactor; a merge conflict-check surfaces a neighbouring slice that must land first.
+- **`specify plan amend <current-name> --depends-on <newly-needed>`** — when a phase discovers a dependency on another plan entry. `amend` MAY target the currently-active `in-progress` entry: non-`status` fields on it are fair game.
 
 ### Forbidden
 
-- **Writing `status` through `amend`.** The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/change:execute`'s sole prerogative via `specify change plan transition`.
+- **Writing `status` through `amend`.** The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/change:execute`'s sole prerogative via `specify plan transition`.
 - **Hand-editing `plan.yaml` or `.specify/slices/<name>/.metadata.yaml`.** Always route through the CLI so the single-writer invariant holds.
 
-`/spec:drop` does not mutate `plan.yaml` directly: it terminates the active slice, and `/change:execute` then issues `specify change plan transition <name> failed` or `blocked` based on the upstream outcome.
+`/spec:drop` does not mutate `plan.yaml` directly: it terminates the active slice, and `/change:execute` then issues `specify plan transition <name> failed` or `blocked` based on the upstream outcome.
 
 ### Allow/forbid table
 
 | Operation                                                | `define` | `build` | `merge` | `drop` | Notes                                                          |
 | -------------------------------------------------------- | :------: | :-----: | :-----: | :----: | -------------------------------------------------------------- |
-| `specify change plan add <new-name> ...`                        |    ✓     |    ✓    |    ✓    |   ✗    | Surfacing a neighbouring slice is a phase-time discovery.     |
-| `specify change plan amend <current-name> --depends-on ...`     |    ✓     |    ✓    |    ✓    |   ✗    | Non-`status` fields only; may target the active entry.         |
-| `specify change plan amend ... status=...`                      |    ✗     |    ✗    |    ✗    |   ✗    | Type-system guarantee: `PlanChangePatch` has no `status`.      |
-| `specify change plan transition <name> <state>`                 |    ✗     |    ✗    |    ✗    |   ✗    | Driver-only — `/change:execute` owns plan-status transitions.    |
+| `specify plan add <new-name> ...`                        |    ✓     |    ✓    |    ✓    |   ✗    | Surfacing a neighbouring slice is a phase-time discovery.     |
+| `specify plan amend <current-name> --depends-on ...`     |    ✓     |    ✓    |    ✓    |   ✗    | Non-`status` fields only; may target the active entry.         |
+| `specify plan amend ... status=...`                      |    ✗     |    ✗    |    ✗    |   ✗    | Type-system guarantee: `PlanChangePatch` has no `status`.      |
+| `specify plan transition <name> <state>`                 |    ✗     |    ✗    |    ✗    |   ✗    | Driver-only — `/change:execute` owns plan-status transitions.    |
 | Hand-edit `plan.yaml` or `.metadata.yaml`                |    ✗     |    ✗    |    ✗    |   ✗    | Always route through the CLI; preserves single-writer invariant. |

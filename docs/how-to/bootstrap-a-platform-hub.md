@@ -54,7 +54,7 @@ shop-platform/
     └── context.lock  # context freshness fingerprint
 ```
 
-`specify init --hub` does not create `change.md` or `plan.yaml`; `specify change create` and `specify change plan create` mint those operator artifacts when a specific change begins. It refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
+`specify init --hub` does not create `change.md` or `plan.yaml`; `specify change draft` (typically invoked through `/change:draft`) mints those operator artifacts together when a specific change begins. It refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
 
 ## 3. Register code projects
 
@@ -87,7 +87,7 @@ specify registry show
 - Every entry has a `description` (the `description-missing-multi-repo` invariant fires above one project).
 - No entry has `url: .` (the `hub-cannot-be-project` invariant fires when `project.yaml: hub: true`).
 
-`show` renders the registry as parsed YAML so you can spot-check the descriptions before they feed into `/change:plan`'s assignment step.
+`show` renders the registry as parsed YAML so you can spot-check the descriptions before they feed into `/change:draft`'s assignment step.
 
 ## 5. Commit the platform state
 

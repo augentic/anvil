@@ -1,6 +1,6 @@
 # Cross-project compatibility report fixture
 
-Pins the RM-04 `specify compatibility report --change <name>` shape for a producer-side contract change that would break a downstream consumer.
+Pins the RM-04 `specify compatibility check --change <name> --report-only` shape for a producer-side contract change that would break a downstream consumer.
 
 ## Scenario
 
@@ -23,7 +23,7 @@ required list on the request. That clone's
 `contracts/http/user-api.yaml` is the consumer's "view" of
 the contract, and is what the cross-project check compares against.
 
-When the operator runs `specify compatibility report --change platform-v2`, the CLI:
+When the operator runs `specify compatibility check --change platform-v2 --report-only`, the CLI:
 
 1. Reads `registry.yaml` and observes that `backend.contracts.produces` includes `http/user-api.yaml`.
 2. Finds matching consumers — `mobile.contracts.consumes` contains the same path.
@@ -44,7 +44,7 @@ cross-project-contract-warning/
 │   └── after/http/user-api.yaml                # producer current view (v2)
 ├── consumer-workspace/                         # snapshot of .specify/workspace/mobile/
 │   └── contracts/http/user-api.yaml   # consumer's last-known view (v1)
-└── compatibility-report.json                   # specify compatibility report output
+└── compatibility-report.json                   # specify compatibility check --report-only output
 ```
 
 ## Invariants every reviewer checks

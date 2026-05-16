@@ -3,8 +3,8 @@
 Shared vocabulary for classifying producer contract deltas against consumer views. RM-04 moves this behavior out of the retired format-skill `cross-project` verifier mode and into the CLI-owned surface:
 
 ```bash
-specify compatibility check
-specify compatibility report --change <name>
+specify compatibility check                                  # strict gate (exits 2 on non-additive findings)
+specify compatibility check --change <name> --report-only    # read-only RM-04 report, always exits 0
 ```
 
 The current post-merge baseline gate remains separate: `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` validates the merged contract set for SemVer, `info.x-specify-id` format, and cross-file id uniqueness. Compatibility classification consumes the registry and workspace state to answer a different question: whether a producer contract delta is `additive`, `breaking`, `ambiguous`, or `unverifiable` for registered consumers.
@@ -13,7 +13,7 @@ For the report's structural shape and exit semantics, see [`report-shape`](repor
 
 ## When the check runs
 
-`specify compatibility report --change <name>` recomputes a read-only report from the current project state. It reads `registry.yaml`, root `contracts/`, and consumer workspace clones under `.specify/workspace/<consumer>/contracts/`. `specify compatibility check` emits the same report and exits non-zero when any finding is `breaking`, `ambiguous`, or `unverifiable`.
+`specify compatibility check --change <name> --report-only` recomputes a read-only report from the current project state. It reads `registry.yaml`, root `contracts/`, and consumer workspace clones under `.specify/workspace/<consumer>/contracts/`. The bare `specify compatibility check` (with or without `--change`) emits the same payload and exits non-zero when any finding is `breaking`, `ambiguous`, or `unverifiable`; `--report-only` suppresses that exit code.
 
 The command is advisory in RM-04. It does not transition plan entries, write journals, mutate workspace clones, or replace the existing `specify tool run contract` baseline validation gate. Dependency-aware lifecycle blocking is reserved for RM-11.
 

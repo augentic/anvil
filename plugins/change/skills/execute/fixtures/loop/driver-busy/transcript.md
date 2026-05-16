@@ -19,10 +19,10 @@ $ /change:execute loop
 # success.
 
 # step 2: acquire the driver lock.
-#   specify change plan lock acquire --pid <agent-session-pid>
+#   specify plan lock acquire --pid <agent-session-pid>
 #     → Error::DriverBusy { pid: 48217 }
 #
-# The CLI's `specify change plan lock acquire` verb does the full
+# The CLI's `specify plan lock acquire` verb does the full
 # liveness check (is PID 48217 alive? is .specify/plan.lock a
 # sensible PID file?) before returning DriverBusy. This skill does
 # not re-check.
@@ -32,7 +32,7 @@ $ /change:execute loop
   lock file: .specify/plan.lock
 
 Nothing was changed. Wait for the running driver to finish, or
-if you believe PID 48217 is stale, re-run `specify change plan lock
+if you believe PID 48217 is stale, re-run `specify plan lock
 status` to confirm and then retry.
 
 Exit 1
@@ -48,4 +48,4 @@ Exit 1
 2. **No terminal summary on refusal.** The terminal summary is a `--loop`-scoped emission bookending the iteration body. A run that never enters the iteration body also never bookends it. The operator sees the conflict diagnostic and an exit code; the `Completion:` classifications (`all-done` / `stuck` / `halted` / `driver-interrupted`) do not apply.
 3. **Holder PID reported verbatim.** The `pid` value in `Error::DriverBusy { pid: 48217 }` is rendered as-is into the operator-facing diagnostic. A human verifying the conflict runs `ps -p 48217` and matches it against what the CLI reports.
 4. **Exit code 1.** The refused run exits non-zero so CI / scripting can distinguish "driver ran and did nothing because the plan was already all-done" (exit 0 with `Completion: all-done`) from "driver never ran because another driver was already running" (exit 1 with DriverBusy).
-5. **Lock release not run.** The refused invocation never acquired the lock; it must not release it either. Running `specify change plan lock release` on a lock held by another PID would be an authentication failure (the release verb checks `--pid` against the stamp).
+5. **Lock release not run.** The refused invocation never acquired the lock; it must not release it either. Running `specify plan lock release` on a lock held by another PID would be an authentication failure (the release verb checks `--pid` against the stamp).

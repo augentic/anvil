@@ -65,8 +65,8 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 ## plan.yaml
 
 **Location:** `plan.yaml`
-**Created by:** `/change:plan` (via `specify change plan create` + `specify change plan add`)
-**Modified by:** `specify change plan amend`, `specify change plan transition`
+**Created by:** `/change:draft` (via `specify change draft` + `specify plan add`)
+**Modified by:** `specify plan amend`, `specify plan transition`
 
 The change's table of contents -- an ordered, dependency-aware list of slices.
 
@@ -196,7 +196,7 @@ subsystems. Notifications can follow in a later cycle.
 | `inputs[].path` | Yes | Filesystem path to the input |
 | `inputs[].kind` | Yes | `legacy-code` or `documentation` |
 
-The prose body describes the operator's intent. It is read by `/change:plan` during the propose phase.
+The prose body describes the operator's intent. It is read by `/change:draft` during the propose phase.
 
 ## .metadata.yaml
 

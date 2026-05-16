@@ -55,6 +55,6 @@ Next steps:
 
 Next steps:
 1. Add registered projects with `specify registry add`
-2. Run `specify change create <name>` to frame the first change
-3. Run `/change:plan <name>` to author a plan, then `/change:execute loop` to drive it
+2. Run `specify change draft <name>` to scaffold the change brief and plan together
+3. Run `/change:draft <name>` to author the plan, `/change:execute loop` to drive it, then `/change:finalize <name>` to push and archive
 ```

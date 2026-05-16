@@ -1,1 +1,0 @@
-/change:plan traffic --from inputs/ops-runbook.md --source legacy=./inputs/legacy-service

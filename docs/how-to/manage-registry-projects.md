@@ -48,7 +48,7 @@ specify registry remove <name>
 
 The verb refuses when the registry is absent or the named project is not declared. After the write, `validate_shape` runs against the resulting registry to catch any cascading invariant breakage.
 
-A non-fatal warning fires when `plan.yaml` exists and any plan entry references the removed project. The warning names each affected entry so you can rewire them via `specify change plan amend <change> --project <other>` separately. Until you rewire them, the affected entries will refuse to advance through the executor (the `project-not-in-registry` validator code blocks them).
+A non-fatal warning fires when `plan.yaml` exists and any plan entry references the removed project. The warning names each affected entry so you can rewire them via `specify plan amend <change> --project <other>` separately. Until you rewire them, the affected entries will refuse to advance through the executor (the `project-not-in-registry` validator code blocks them).
 
 ## Handle `description-missing-multi-repo`
 
@@ -63,7 +63,7 @@ There is no in-band fix because `registry add` cannot retro-add a description to
 1. **Hand-edit `registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
 2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --capability <existing-capability> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
 
-The descriptions matter beyond validation: `/change:plan`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
+The descriptions matter beyond validation: `/change:draft`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
 
 ## After registry mutation: re-sync
 
@@ -74,24 +74,24 @@ specify registry add new-project --url ... --capability <capability> --descripti
 specify workspace sync
 ```
 
-For ongoing changes where a plan entry was already authored against the now-removed project, the validator will block `/change:execute` until you run `specify change plan amend <entry> --project <other>` (or `specify change plan transition <entry> skipped`).
+For ongoing changes where a plan entry was already authored against the now-removed project, the validator will block `/change:execute` until you run `specify plan amend <entry> --project <other>` (or `specify plan transition <entry> skipped`).
 
 ## Validation ordering invariant
 
-The plan verbs reject unknown projects: `specify change plan add --project <name>` and `specify change plan amend --project <name>` both validate `<name>` against `registry.yaml`. The implication is a strict ordering:
+The plan verbs reject unknown projects: `specify plan add --project <name>` and `specify plan amend --project <name>` both validate `<name>` against `registry.yaml`. The implication is a strict ordering:
 
 ```text
 specify registry add <name> ...     # before any plan write that references <name>
 specify workspace sync              # bootstrap the workspace slot
-specify change plan add ... --project <name>   # OR specify change plan amend ... --project <name>
+specify plan add ... --project <name>   # OR specify plan amend ... --project <name>
 ```
 
-`/change:plan`'s registry-proposal sub-step enforces the same order automatically. Hand-driven flows must respect it manually.
+`/change:draft`'s registry-proposal sub-step enforces the same order automatically. Hand-driven flows must respect it manually.
 
 ## See also
 
 - [`specify registry`](../reference/cli/registry.md) -- full CLI reference for `add` / `remove` / `show` / `validate`.
 - [Bootstrap a platform hub](bootstrap-a-platform-hub.md) -- the first time you populate a registry.
-- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:plan`'s assignment.
+- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:draft`'s assignment.
 - [Recover from registry-amendment-required](recover-from-registry-amendment.md) -- handling the case where `/change:execute` halts and proposes a new project.
 - [`description-missing-multi-repo`](troubleshooting/hub-and-registry.md#description-missing-multi-repo) -- troubleshooting entry.

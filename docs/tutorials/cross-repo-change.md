@@ -8,15 +8,16 @@ The full loop is nine steps. This page covers steps **1-4**.
 
 1. **Initialise the platform hub** (`specify init --hub`)
 2. **Register code projects** (`specify registry add`)
-3. **Write the change brief** (`specify change create`)
-4. **Plan the change** (`/change:plan`)
+3. **Write the change brief** (`specify change draft`)
+4. **Draft the plan** (`/change:draft`)
+   - *(seam — operator reviews `plan.yaml`; see [Reviewing the plan](reviewing-a-plan.md))*
 5. Inspect the workspace
 6. Execute the plan (`/change:execute loop`)
 7. Push branches and open PRs (`specify workspace push`)
 8. Operator merges the PRs
-9. Finalize the change (`specify change finalize`)
+9. Finalize the change (`/change:finalize`)
 
-Steps 5-7 live in the follow-on tutorial [Working across repos: executing](cross-repo-execute.md); Steps 8-9 in [Working across repos: landing](landing-a-change.md).
+`/change:draft` ends at "plan validated, hand back to operator." There is no automatic transition into execute; the seam between steps 4 and 5 is the design. Steps 5-6 live in the follow-on tutorial [Working across repos: executing](cross-repo-execute.md); steps 7-9 in [Working across repos: landing](landing-a-change.md). `/change:finalize <name>` composes steps 7-9 into one operator action, but the underlying CLI verbs remain available for manual use.
 
 > **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Slice Change](single-repo-change.md) for the single-repo flow.
 
@@ -28,7 +29,7 @@ Every command below should run cleanly against the current `specify` CLI on a fr
 - [`gh`](https://cli.github.com/) installed and authenticated against your GitHub org (`gh auth status`).
 - A GitHub namespace you can create repos in. The walkthrough uses `org/` — substitute your real org or user.
 - Two empty GitHub repos pre-created at `git@github.com:org/shop-backend.git` and `git@github.com:org/shop-mobile.git`. (Or skip pre-creation and let `specify workspace push` greenfield-bootstrap them in Step 7.)
-- Familiarity with the [single-repo change tutorial](single-repo-change.md) — `/change:plan`, `/change:execute`, and the plan lifecycle.
+- Familiarity with the [single-repo change tutorial](single-repo-change.md) — `/change:draft`, `/change:execute`, `/change:finalize`, and the plan lifecycle.
 
 ## Contents
 
@@ -37,7 +38,7 @@ Every command below should run cleanly against the current `specify` CLI on a fr
 - [1. Bootstrap the platform hub](#1-bootstrap-the-platform-hub)
 - [2. Register the two projects](#2-register-the-two-projects)
 - [3. Author the change brief](#3-author-the-change-brief)
-- [4. Plan the change](#4-plan-the-change)
+- [4. Draft the plan](#4-draft-the-plan)
 - [Assignment](#assignment)
 - [What you learned](#what-you-learned)
 - [Next](#next)
@@ -77,7 +78,7 @@ shop-platform/                              # the hub repo (this tutorial's work
 ├── AGENTS.md                               # generated hub context
 ├── registry.yaml                           # version: 1, projects: [shop-backend, shop-mobile]
 ├── change.md                           # operator brief for `oauth-login`
-├── plan.yaml                               # the plan authored by /change:plan
+├── plan.yaml                               # the plan authored by /change:draft
 └── .specify/
     ├── project.yaml                        # { hub: true, name: shop-platform } (capability: omitted)
     ├── context.lock                        # context freshness fingerprint
@@ -128,7 +129,7 @@ shop-platform/
     └── context.lock  # context freshness fingerprint
 ```
 
-`specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change create` and `specify change plan create`. It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
+`specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change draft` (which scaffolds both files together). It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
 
 > **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `capability:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
 
@@ -188,14 +189,14 @@ Two invariants the validator just enforced:
 - **`description-missing-multi-repo`**: a multi-project registry requires every entry to carry a `description`. Omitting one fails with a diagnostic naming the offending entry.
 - **`hub-cannot-be-project`**: a hub repo (`hub: true` in `project.yaml`) rejects any registry entry whose `url` is `.`. A code project always lives in its own repo. See [Validation rules](../explanation/platform-repo.md#validation-rules).
 
-The descriptions matter beyond validation: the assignment step in `/change:plan` (Step 4) infers project routing from registry descriptions. Rich, domain-specific descriptions land clean assignments; sparse descriptions force unresolved (`?`) prompts during planning.
+The descriptions matter beyond validation: the assignment step in `/change:draft` (Step 4) infers project routing from registry descriptions. Rich, domain-specific descriptions land clean assignments; sparse descriptions force unresolved (`?`) prompts during planning.
 
 ## 3. Author the change brief
 
 Scaffold the brief:
 
 ```bash
-specify change create oauth-login
+specify change draft oauth-login
 ```
 
 This rewrites `change.md` with a fresh template named after the change. Edit it to describe the feature and point the discovery brief at any supplementary documentation:
@@ -223,26 +224,26 @@ Then author `./docs/oauth-login.md` with the prose feature description — one p
 
 > **Change shape.** This walkthrough is the **new-feature** shape (sources are documentation only). The other two shapes — `migrate-legacy` (`--source <key>=<git-url>`) and `update-existing` (no flags) — flow through the same Steps 4–9 with different inputs. See the change-shapes preview at the bottom of [Working across repos: executing](cross-repo-execute.md#change-shapes-preview).
 
-## 4. Plan the change
+## 4. Draft the plan
 
-Run the planning skill:
+Run the draft skill:
 
 ```text
-/change:plan oauth-login from ./docs/oauth-login.md
+/change:draft oauth-login from ./docs/oauth-login.md
 ```
 
-`/change:plan` runs the four-phase planning pipeline (the briefs live alongside the skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/)):
+`/change:draft` runs the four-phase plan brief pipeline (the briefs live alongside the skill at [`plugins/change/skills/draft/briefs/<capability>/`](../../plugins/change/skills/draft/briefs/)):
 
 | Phase | What happens | On-disk artefact |
 |---|---|---|
 | **Discovery** | Reads `change.md` and `./docs/oauth-login.md`; emits a neutral capability inventory. | `.specify/plans/oauth-login/discovery.md` |
-| **Sync peers** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each peer slot. | `.specify/workspace/<peer>/`, `.specify/plans/oauth-login/workspace.md` |
-| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify change plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
-| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify change plan amend --project`. | `plan.yaml` (entries gain `project:`) |
+| **Sync workspace** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each project slot. | `.specify/workspace/<project>/`, `.specify/plans/oauth-login/workspace.md` |
+| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
+| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
 When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `capability: contracts@v1` and no `project` — it runs against the hub itself.
 
-`specify change plan validate` is the final gate; the skill exits non-zero on any error-level finding.
+`specify plan validate` is the final gate; the skill exits non-zero on any error-level finding.
 
 <details>
 <summary>Expected assignment table (interactive review)</summary>
@@ -261,7 +262,7 @@ The contract change is omitted from this table — only entries with a real `pro
 </details>
 
 <details>
-<summary>Expected <code>specify change plan status</code> output after planning</summary>
+<summary>Expected <code>specify plan status</code> output after planning</summary>
 
 ```text
 oauth-login
@@ -276,13 +277,18 @@ Summary: 3 pending, 0 in-progress, 0 done
 
 The plan is now the single source of truth for what runs where. Run `cat plan.yaml` to see it in full — including the auto-populated `context:` lists that focus each implementation change on the contract paths it depends on.
 
+`/change:draft` stops here. It does not run `/change:execute` for you -- the next stage is the operator review seam, by design.
+
 ## What you learned
 
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo changes. The hub holds platform state and never carries code.
-- `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:plan`.
-- `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
-- `/change:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
+- `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:draft`.
+- `specify change draft` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
+- `/change:draft` runs discovery -> sync-workspace -> propose -> assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
+- `/change:draft` ends at "plan validated, hand back to operator." Execution is a separate, operator-initiated step.
 
 ## Next
 
-[Working across repos: executing](cross-repo-execute.md) -- inspect the workspace, run `/change:execute loop` across both projects, and publish PRs with `specify workspace push`.
+[Reviewing the plan](reviewing-a-plan.md) -- the human seam between `/change:draft` and `/change:execute`: what to look at, when to use `specify plan amend`, and how to abort.
+
+Then [Working across repos: executing](cross-repo-execute.md) -- inspect the workspace, run `/change:execute loop` across both projects.

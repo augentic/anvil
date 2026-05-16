@@ -1,6 +1,6 @@
 # RT Plugin
 
-Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — both callers inline a guarded `git clone` snippet directly; see the *Cloning a source tree* subsection in [`plugins/spec/skills/analyze/SKILL.md`](../../../plugins/spec/skills/analyze/SKILL.md) (or [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md) for legacy-repo bootstrap).
+Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — both callers inline a guarded `git clone` snippet directly; see the *Cloning a source tree* subsection in [`plugins/change/skills/analyze/SKILL.md`](../../../plugins/change/skills/analyze/SKILL.md) (or [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md) for legacy-repo bootstrap).
 
 ## Skills
 
@@ -69,6 +69,6 @@ git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet)
 This pipeline is typically used alongside the core Specify workflow:
 
 1. Clone and wiretap the legacy service to capture fixtures.
-2. Use `/change:plan` with `source legacy=<path>` to plan the migration.
+2. Use `/change:draft` with `source legacy=<path>` to plan the migration.
 3. Use `/change:execute` to implement each slice.
 4. Use `/rt:replay-writer` to add regression tests that verify the new implementation matches the legacy behavior.

@@ -1,6 +1,6 @@
 # Plan and execution issues
 
-Use this page when `/change:execute` or one of the `specify change plan` verbs refuses or halts -- locks held, dirty workspace slots, plans stuck, or registry amendments required.
+Use this page when `/change:execute` or one of the `specify plan` verbs refuses or halts -- locks held, dirty workspace slots, plans stuck, or registry amendments required.
 
 ## Contents
 
@@ -18,7 +18,7 @@ Use this page when `/change:execute` or one of the `specify change plan` verbs r
 ## Prerequisites
 
 - An active multi-slice change (a `plan.yaml` exists at the repo root).
-- The change name and the diagnostic or status reason printed by the executor or `specify change plan status`.
+- The change name and the diagnostic or status reason printed by the executor or `specify plan status`.
 
 ## Lock held by another process
 
@@ -27,8 +27,8 @@ Use this page when `/change:execute` or one of the `specify change plan` verbs r
 **Cause:** Another `/change:execute` session is running, or a previous session crashed without releasing the lock.
 
 **Resolution:**
-1. Check the lock: `specify change plan lock status`
-2. If the PID is not running, release it: `specify change plan lock release`
+1. Check the lock: `specify plan lock status`
+2. If the PID is not running, release it: `specify plan lock release`
 3. If another session is running, wait for it to finish.
 
 ## Self-heal on startup
@@ -46,7 +46,7 @@ For multi-repo entries with `project`, self-heal looks at `.specify/slices/<name
 If self-heal itself fails, manually resolve:
 1. Check the stale slice: `specify slice status <name>`
 2. Complete or drop it manually.
-3. Transition the plan entry: `specify change plan transition <name> done|failed`
+3. Transition the plan entry: `specify plan transition <name> done|failed`
 
 ## Workspace slot missing
 
@@ -89,13 +89,13 @@ If self-heal itself fails, manually resolve:
 **Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`, or a structural problem in the plan (cycle, unreachable entry) is preventing progress.
 
 **Resolution:**
-1. **First triage step:** run `specify change plan doctor` -- it surfaces every structural problem (cycles, orphan sources, stale clones, unreachable entries) that `validate` would miss. See [Plan doctor diagnostics](#plan-doctor-diagnostics) below.
-2. Check plan status: `specify change plan status`
+1. **First triage step:** run `specify plan validate` -- it surfaces every structural problem (cycles, orphan sources, stale clones, unreachable entries) alongside the base shape rules. See [Plan health diagnostics](#plan-health-diagnostics) below.
+2. Check plan status: `specify plan status`
 3. Identify the blocking entries.
 4. Options:
-   - Fix and retry the failed entry: `specify change plan transition <name> pending` then `/change:execute`
-   - Skip it: `specify change plan transition <name> skipped`
-   - Remove the dependency: `specify change plan amend <downstream> --depends-on <updated-list>`
+   - Fix and retry the failed entry: `specify plan transition <name> pending` then `/change:execute`
+   - Skip it: `specify plan transition <name> skipped`
+   - Remove the dependency: `specify plan amend <downstream> --depends-on <updated-list>`
 
 ## Registry amendment required
 
@@ -112,8 +112,8 @@ specify registry add <proposed-name> \
     --capability <proposed-capability> \
     --description "<proposed-description>"
 specify workspace sync                          # bootstrap the new slot
-specify change plan amend <slice> --project <proposed-name>
-specify change plan transition <slice> pending
+specify plan amend <slice> --project <proposed-name>
+specify plan transition <slice> pending
 # re-run /change:execute
 ```
 
@@ -130,29 +130,29 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 2. Review the failure in the journal: check `.specify/slices/<name>/journal.yaml` (if it exists before archiving).
 3. To retry: reset the plan entry to `pending` and re-run `/change:execute`.
 
-## Plan doctor diagnostics
+## Plan health diagnostics
 
-`specify change plan doctor` is the first triage step when `/change:execute loop` reports `stuck`. It runs every check `validate` runs, then layers four health diagnostics.
+`specify plan validate` is the first triage step when `/change:execute loop` reports `stuck`. It runs the base shape rules, then layers four health diagnostics.
 
 ### `cycle-in-depends-on`
 
-**Symptom:** `specify change plan doctor` reports `cycle-in-depends-on` with the cycle path (e.g. `["a", "b", "a"]`).
+**Symptom:** `specify plan validate` reports `cycle-in-depends-on` with the cycle path (e.g. `["a", "b", "a"]`).
 
-**Cause:** Two or more plan entries form a `depends-on` cycle. `next_eligible` silently skips cycles at runtime, so the executor reports `stuck`; `doctor` is the only place where the cycle structure is surfaced.
+**Cause:** Two or more plan entries form a `depends-on` cycle. `next_eligible` silently skips cycles at runtime, so the executor reports `stuck`; this diagnostic is the only place where the cycle structure is surfaced.
 
-**Resolution:** Break the cycle with `specify change plan amend <name> --depends-on <updated-list>` on one of the entries on the cycle path, then re-run doctor.
+**Resolution:** Break the cycle with `specify plan amend <name> --depends-on <updated-list>` on one of the entries on the cycle path, then re-run validate.
 
 ### `orphan-source-key`
 
-**Symptom:** `specify change plan doctor` reports `orphan-source-key` (warning) for a key declared in the top-level `sources:` map but referenced by no entry.
+**Symptom:** `specify plan validate` reports `orphan-source-key` (warning) for a key declared in the top-level `sources:` map but referenced by no entry.
 
 **Cause:** A `--source <key>=<path>` was supplied at plan time but no proposed slice ended up using it (rejected during the propose loop, or scope changed).
 
-**Resolution:** Either reference the key from an entry's `sources:` list (`specify change plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `plan.yaml`. Warnings are non-fatal; the loop will proceed.
+**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `plan.yaml`. Warnings are non-fatal; the loop will proceed.
 
 ### `stale-workspace-clone`
 
-**Symptom:** `specify change plan doctor` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
+**Symptom:** `specify plan validate` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
 
 **Cause:** The workspace clone's signature has drifted from the registry, typically because `registry.yaml` was edited after the clone was first materialised.
 
@@ -160,11 +160,11 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 
 ### `unreachable-entry`
 
-**Symptom:** `specify change plan doctor` reports `unreachable-entry` for a pending entry whose dependency closure is rooted in a `failed` or `skipped` predecessor.
+**Symptom:** `specify plan validate` reports `unreachable-entry` for a pending entry whose dependency closure is rooted in a `failed` or `skipped` predecessor.
 
 **Cause:** The entry's `depends-on` list (transitively) names an entry that can never become `done` (it is in a terminal non-success state).
 
 **Resolution:** Two paths.
 
-- **Reset the predecessor:** `specify change plan transition <pred> pending` (after fixing the underlying issue) and re-run `/change:execute`.
-- **Drop the leaf:** `specify change plan transition <entry> skipped --reason "<reason>"` to remove the entry from the dependency frontier.
+- **Reset the predecessor:** `specify plan transition <pred> pending` (after fixing the underlying issue) and re-run `/change:execute`.
+- **Drop the leaf:** `specify plan transition <entry> skipped --reason "<reason>"` to remove the entry from the dependency frontier.

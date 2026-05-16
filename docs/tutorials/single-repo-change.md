@@ -9,7 +9,7 @@ When a body of work spans multiple related slices -- a migration, a new feature 
 ## Contents
 
 - [When you need a plan](#when-you-need-a-plan)
-- [1. Author the plan](#1-author-the-plan)
+- [1. Draft the plan](#1-draft-the-plan)
 - [2. Review the plan](#2-review-the-plan)
 - [3. Preview execution](#3-preview-execution)
 - [4. Run one slice](#4-run-one-slice)
@@ -30,12 +30,12 @@ A plan is useful when:
 
 For one or two independent slices, the manual define-build-merge loop is simpler.
 
-## 1. Author the plan
+## 1. Draft the plan
 
 Suppose you want to migrate an auth service from a legacy codebase. Start by telling Specify what you are working from:
 
 ```text
-/change:plan migrate-auth source legacy=./src/auth
+/change:draft migrate-auth source legacy=./src/auth
 ```
 
 <details>
@@ -65,11 +65,11 @@ Plan created: plan.yaml (4 entries)
 
 </details>
 
-The plan skill runs a three-phase internal flow:
+`/change:draft` runs a three-phase internal flow before stopping at the operator review seam:
 
 ### Discovery
 
-`/spec:analyze` reads the legacy source and produces a capability inventory in `discovery.md`. Each discovered capability gets a summary, source file hints, dependency edges, and a confidence marker.
+`/change:analyze` reads the legacy source and produces a capability inventory in `discovery.md`. Each discovered capability gets a summary, source file hints, dependency edges, and a confidence marker.
 
 You can review the discovery output at `.specify/plans/migrate-auth/discovery.md`.
 
@@ -85,7 +85,7 @@ This is an interactive loop. The agent presents each slice and waits for your de
 
 ### Validate
 
-After all slices are accepted or rejected, the skill runs `specify change plan validate` to check:
+After all slices are accepted or rejected, the skill runs `specify plan validate` to check:
 
 - No duplicate slice names.
 - No dependency cycles.
@@ -93,10 +93,10 @@ After all slices are accepted or rejected, the skill runs `specify change plan v
 
 ## 2. Review the plan
 
-After planning completes, inspect the result:
+`/change:draft` ends at "plan validated, hand back to operator." Nothing happens automatically after that -- the seam between draft and execute is the design. Inspect the result:
 
 ```bash
-specify change plan status
+specify plan status
 ```
 
 This shows the entries in topological order:
@@ -111,7 +111,7 @@ migrate-auth
   Summary: 4 pending, 0 in-progress, 0 done
 ```
 
-You can also look at `plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges.
+You can also look at `plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges. For the full review checklist -- when to edit with `specify plan amend` vs when to abort and re-draft -- see [Reviewing the plan](reviewing-a-plan.md).
 
 ## 3. Preview execution
 
@@ -151,7 +151,7 @@ The driver:
 5. Runs `/spec:merge`.
 6. Reads the phase outcome and transitions the plan entry to `done`.
 
-After this, `specify change plan status` shows:
+After this, `specify plan status` shows:
 
 ```
   done     extract-token-validation
@@ -184,9 +184,9 @@ If a slice fails during execution:
 
 If all remaining entries depend on the failed one, execution reports `stuck`. You can then:
 
-- Fix the issue and re-run: `specify change plan transition extract-token-validation pending` to reset it, then `/change:execute loop`.
-- Skip it: `specify change plan transition extract-token-validation skipped`.
-- Amend the plan: `specify change plan amend consolidate-auth-middleware --depends-on extract-session-management` to remove the dependency.
+- Fix the issue and re-run: `specify plan transition extract-token-validation pending` to reset it, then `/change:execute loop`.
+- Skip it: `specify plan transition extract-token-validation skipped`.
+- Amend the plan: `specify plan amend consolidate-auth-middleware --depends-on extract-session-management` to remove the dependency.
 
 ## 7. Drop down a layer
 
@@ -194,7 +194,7 @@ You can always fall back to manual control. If `/change:execute` is stuck or you
 
 ```text
 # Manually transition a plan entry
-specify change plan transition add-oauth-integration in-progress
+specify plan transition add-oauth-integration in-progress
 
 # Define, build, and merge manually
 /spec:define "Add OAuth2 provider integration to the auth service"
@@ -202,16 +202,16 @@ specify change plan transition add-oauth-integration in-progress
 /spec:merge
 
 # Mark it done in the plan
-specify change plan transition add-oauth-integration done
+specify plan transition add-oauth-integration done
 ```
 
 The plan is just a data file that tracks status. The CLI commands give you full control.
 
 ## What you learned
 
-- `/change:plan` discovers capabilities and proposes slices with an interactive accept/edit/reject loop.
+- `/change:draft` discovers capabilities and proposes slices with an interactive accept/edit/reject loop, then stops at the operator review seam.
 - The plan tracks slices, dependencies, and status in `plan.yaml`.
-- `/change:execute` automates the define-build-merge loop per slice.
+- `/change:execute` automates the define-build-merge loop per slice; it never runs automatically after draft.
 - `--dry-run` previews, bare invocation runs one slice, `--loop` runs until done.
 - Failures transition plan entries to `failed`. You can reset, skip, or restructure.
 - The `specify` CLI is always available as a manual fallback.

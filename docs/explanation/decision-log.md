@@ -26,7 +26,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `capability.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify capability`.
 2. **Layer 1 — Executing a change.** The single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, and the `specify slice *` verbs they wrap.
-3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, `/spec:analyze`, and the `specify change *` / `specify change plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
+3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, `/change:analyze`, and the `specify change *` / `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
@@ -42,7 +42,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Analyze/extract split
 
-**Decision:** Plan-time capability discovery (`/spec:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
+**Decision:** Plan-time capability discovery (`/change:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
 
 **Rationale:** A large monolith cannot be fully extracted in one pass -- it would be too slow and expensive. The two-skill split makes large migrations tractable: cheap scanning builds the inventory, deep extraction happens per-slice where it is focused and affordable.
 
@@ -50,9 +50,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Registry-driven multi-repo planning
 
-**Decision:** Multi-repo coordination uses a `registry.yaml` platform catalogue and an automatic sync-peers phase, not a configuration DSL or federation protocol.
+**Decision:** Multi-repo coordination uses a `registry.yaml` platform catalogue and an automatic sync-workspace phase, not a configuration DSL or federation protocol.
 
-**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what capability they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
+**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what capability they use, what domain they own). Sync-workspace runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
 **Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -241,3 +241,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from … by RFC-N" parentheticals while preserving the trail for anyone tracing a stale call site.
 
 **Source:** [RFC-9](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasi-tools.md).
+
+## Three-skill change lifecycle (RFC-23)
+
+**Decision:** RFC-23 (May 2026): split `/change:plan` (default mode + `orchestrate` umbrella) into three peer skills (`/change:draft`, `/change:execute`, `/change:finalize`); CLI verb `specify change create` renamed to `specify change draft`.
+
+**Rationale:** `/change:plan` doubled as authoring skill and orchestration umbrella, hiding the operator review pause between authoring and execution and breaking lifecycle symmetry with `/spec:define → /spec:build → /spec:merge`. Three peer skills with an explicit human seam between draft and execute restore the rhythm and make the review pause a property of the framework rather than an opt-in manual flow. The seven-step orchestration body survives, redistributed across the three skills; the umbrella mode is removed outright.
+
+**Source:** [RFC-23: Change Lifecycle](https://github.com/augentic/specify/blob/main/rfcs/rfc-23-change-lifecycle.md).

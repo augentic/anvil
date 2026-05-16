@@ -16,7 +16,7 @@ Next: <name> (sources: [<sources>])
 No changes written.
 ```
 
-Variants the skill picks based on `specify change plan next`:
+Variants the skill picks based on `specify plan next`:
 
 - `reason: "in-progress"` — replace the `Next:` line with: `Active: <name> (driver would resume/adopt this entry)`
 - `reason: "all-done"` — replace with: `Change complete — no eligible slices remain.`
@@ -69,7 +69,7 @@ Step 3/3: merge
 
 The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`. The `Workspace:` line appears only for entries with `project`. The residue line is omitted when the non-baseline worktree is clean; render `Residue: clean; no commit.` in debug transcripts when showing shell-outs.
 
-Cross-project consumer-impact findings are no longer rendered by `/change:execute`; use `specify compatibility report --change <name>` or `specify compatibility check` for the classified RM-04 report.
+Cross-project consumer-impact findings are no longer rendered by `/change:execute`; use `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) for the classified RM-04 report.
 
 ### Failure
 
@@ -92,7 +92,7 @@ Step 2/3: build
   Summary: <outcome.summary verbatim>
   Journal: .specify/slices/<name>/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify change plan transition <name> pending
+    specify plan transition <name> pending
   Status: failed
 ```
 
@@ -115,7 +115,7 @@ Step 1/3: define
 
   Question: <outcome.summary verbatim>
   Journal: .specify/slices/<name>/journal.yaml
-  Action needed: Enrich the plan description (specify change plan amend …) with the missing
+  Action needed: Enrich the plan description (specify plan amend …) with the missing
     detail, then unflag (blocked → pending) to retry.
   Status: blocked
 ```
@@ -164,7 +164,7 @@ Section rules:
 | Classification | Condition | Next action template |
 |---|---|---|
 | `all-done` | Every entry's status is in `{done, skipped}`. | `Change complete. Run specify workspace push to publish prepared specify/<change-name> branches and create or update PRs. Merge those PRs through the forge UI or gh pr merge, then close out via specify change finalize — see [specify change](../../../../docs/reference/cli/change.md#specify-change-finalize) for the closure verb.` |
-| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify change plan archive --force.` |
+| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify plan archive --force.` |
 | `halted` | Self-heal detected an ambiguous on-disk state, branch preparation refused to guess or overwrite work, baseline residue remained after merge, or the residue commit failed. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted slice: inspect the diagnostic, the project slot's git status, and .specify/slices/<name>/.metadata.yaml against plan.yaml, then re-run /change:execute loop.` |
 | `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /change:execute loop — self-heal will reclaim the interrupted slice on the next startup.` |
 

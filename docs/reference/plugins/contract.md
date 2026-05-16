@@ -44,7 +44,7 @@ The verifier intent does not modify files -- it reports issues for the brief's v
 
 It also exposes a `--mode cross-project` flag that runs the post-merge baseline gate. The mode is a thin delegate over `specify tool run contract` — it shells out through `specify`, surfaces the validator JSON envelope, and propagates its exit code (`0` clean / `1` findings / `2` tool or invocation error). The contracts capability merge brief invokes this mode after `specify slice merge run` succeeds, mapping non-zero exits to the `failure` merge outcome.
 
-Cross-project consumer-impact classification is separate from the verifier intent. Use `specify compatibility check` or `specify compatibility report --change <name>` to compare producer contracts with consumer workspace views and classify deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
+Cross-project consumer-impact classification is separate from the verifier intent. Use `specify compatibility check` (with optional `--change <name>` and `--report-only` flags) to compare producer contracts with consumer workspace views and classify deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
 ### Importer intent
 

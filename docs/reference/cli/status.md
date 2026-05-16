@@ -45,6 +45,6 @@ The top-level keys mirror the noun groups they summarise:
 ## See also
 
 - [specify slice status](change.md) -- detailed per-slice status
-- [specify slice list](change.md) -- list active slices
-- [specify change plan status](plan.md) -- per-entry plan view
+- [specify slice status](slice.md#specify-slice-status) -- inspect a single slice
+- [specify plan status](plan.md) -- per-entry plan view
 - [specify registry show](registry.md) -- raw registry contents

@@ -4,7 +4,7 @@ API contracts define the machine-readable interface shapes between components. I
 
 ## The contract-first pattern
 
-When `/change:plan` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
+When `/change:draft` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
 
 ```yaml
 changes:
@@ -26,7 +26,7 @@ The contract change defines the interface (JSON Schema payloads, OpenAPI binding
 
 ## Manual contract workflow
 
-If you are not using `/change:plan`, you can create contract changes manually:
+If you are not using `/change:draft`, you can create contract changes manually:
 
 ```text
 /spec:init https://github.com/augentic/specify/capabilities/contracts
@@ -62,8 +62,8 @@ In a multi-repo setup, contracts live in the initiating repo's `contracts/`. Aft
 Run a compatibility report when a producer contract has changed and consumer workspace clones still hold their prior view:
 
 ```bash
-specify compatibility report --change <name>
-specify compatibility check
+specify compatibility check --change <name> --report-only   # read-only RM-04 report, always exits 0
+specify compatibility check                                  # strict gate, exits 2 on non-additive findings
 ```
 
 The report is read-only. It classifies producer-to-consumer deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The existing merge gate, `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`, still validates the merged baseline's SemVer and `x-specify-id` rules; compatibility reporting is a separate consumer-impact surface.
@@ -77,13 +77,13 @@ The report is read-only. It classifies producer-to-consumer deltas as `additive`
 
 **Where the findings appear:**
 
-- `specify compatibility report --change <name>` prints a report and exits `0` when it can render the report.
-- `specify compatibility check` prints the same report and exits validation-failed if any finding is `breaking`, `ambiguous`, or `unverifiable`.
+- `specify compatibility check --change <name> --report-only` prints the report and exits `0` regardless of finding severity.
+- `specify compatibility check` prints the same payload and exits validation-failed if any finding is `breaking`, `ambiguous`, or `unverifiable`.
 
 **Triage:**
 
 - If the consumer project is intentionally lagging (e.g. mobile shipping a release behind the backend), accept the drift and capture the rationale in the change or PR.
-- If the consumer needs to be updated to match, spawn a follow-up consumer slice in the same plan or in a follow-up change. Use `specify change plan add <name> --project <consumer> --depends-on <producer-slice>` to wire it up.
+- If the consumer needs to be updated to match, spawn a follow-up consumer slice in the same plan or in a follow-up change. Use `specify plan add <name> --project <consumer> --depends-on <producer-slice>` to wire it up.
 - See [Resolve cross-project compatibility findings](resolve-cross-project-contract-warnings.md) for the full triage checklist.
 
 **What the check does not do:** it never modifies the consumer's specs, never auto-creates a follow-up change, and RM-04 does not transition plan state. RM-11 adds dependency-aware compatibility gates later.

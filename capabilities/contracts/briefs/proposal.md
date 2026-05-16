@@ -13,8 +13,8 @@ Sections:
   - **Generate from prose** — deriving machine-readable contracts from design documentation, requirements, or other prose source material
   - **Import existing contracts** — normalizing supplied OpenAPI, AsyncAPI, or JSON Schema artifacts into the platform baseline
   - **Modify existing contracts** — updating contracts already present in root `contracts/`
-  - **Extract from source code** — reverse-engineering machine-readable contracts from existing implementation source (handlers, routes, typed DTOs, validation schemas) whose API surface a prior `/spec:analyze legacy-code` run identified. Distinct from `/spec:extract`, which produces a full Specify project; this mode narrows to interface contracts only.
-- **Source Material**: List the prose documents, design notes, external contract files, baseline contract paths, or implementation source paths whose API surface was identified by a prior `/spec:analyze` run that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
+  - **Extract from source code** — reverse-engineering machine-readable contracts from existing implementation source (handlers, routes, typed DTOs, validation schemas) whose API surface a prior `/change:analyze legacy-code` run identified. Distinct from `/spec:extract`, which produces a full Specify project; this mode narrows to interface contracts only.
+- **Source Material**: List the prose documents, design notes, external contract files, baseline contract paths, or implementation source paths whose API surface was identified by a prior `/change:analyze` run that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
 - **Analysis Context** (required when Authorship Mode is **Extract from source code**): Name the `discovery.md` capability block(s) and `entry_points` this contract change transcribes, so reviewers can trace contract scope back to the analysis decision that introduced it.
 - **Impact**: Which implementation changes depend on these contracts? Reference plan entries or future changes that will consume the contract artifacts.
 
@@ -44,7 +44,7 @@ List project names and their roles (producer, consumer, or both). -->
 ## Source Material
 
 <!-- Prose docs, design notes, external contract files, baseline contract paths,
-or implementation source paths identified by /spec:analyze.
+or implementation source paths identified by /change:analyze.
 For imports, list the source file paths that build should ingest.
 For extract-from-source, list the implementation source files whose API surface
 the analysis run identified. -->

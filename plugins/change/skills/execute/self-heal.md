@@ -1,17 +1,17 @@
 # Self-heal on startup
 
-Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed. It does not invent new phase work; the only Git write it may perform is the same post-merge residue commit the live algorithm would have performed before `done`.
+Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed. It does not invent new phase work; the only Git write it may perform is the same post-merge residue commit the live algorithm would have performed before `done`.
 
 The shared handoff invariants are in [execute-state-handoff.md](../../references/execute-state-handoff.md): `.metadata.yaml:outcome` is the authoritative signal, `journal.yaml` is audit-only, terminal reasons copy `outcome.summary` verbatim, and dry-run performs no writes. Self-heal adds one local rule: every ambiguity halts the driver for human triage rather than guessing.
 
 ## Algorithm
 
-For every plan entry `E` whose `status` is `in-progress`, in the order they appear in `plan.yaml` (the loop tolerates more than one even though `specify change plan next` would flag that as a validation warning):
+For every plan entry `E` whose `status` is `in-progress`, in the order they appear in `plan.yaml` (the loop tolerates more than one even though `specify plan next` would flag that as a validation warning):
 
 1. **Locate the latest `.metadata.yaml` for `E.name`.**
    - First check `.specify/slices/<name>/.metadata.yaml` — the active slice directory. If present, that is the file to read.
    - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive`). Multiple matches are legal: a slice that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify slice outcome show <name> --format json` once the active directory is back in place.
-   - If nothing is found anywhere, the plan entry is `in-progress` but no slice has ever been created — typically because the prior driver crashed between `specify change plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-slice resume with `LifecycleStatus = None` — jump to step 3 below.
+   - If nothing is found anywhere, the plan entry is `in-progress` but no slice has ever been created — typically because the prior driver crashed between `specify plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-slice resume with `LifecycleStatus = None` — jump to step 3 below.
 
 **Multi-repo self-heal.** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
 1. Resolve the target project through `registry.yaml` (same selector preflight as step 5a of the per-slice algorithm).
@@ -25,17 +25,17 @@ For entries without a `project` field, self-heal follows the standard single-rep
 2. **Read `.metadata.yaml.outcome` and act on it.**
    - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. For a routed workspace entry, first run the post-merge residue guard from multi-repo.md in the project slot: dirty `.specify/specs/` or `.specify/archive/` halts with `baseline-residue-after-merge`; dirty non-baseline residue is committed as `specify: residue <name>`; a failed residue commit halts with `residue-commit-failed`. Only after that guard passes, run:
      ```bash
-     specify change plan transition <name> done
+     specify plan transition <name> done
      ``` No `status-reason` on success.
    - `outcome.outcome == success` and `outcome.phase ∈ {define, build}` → the phase finished but the driver crashed before launching the next phase. This is **not** a terminal state. Do NOT transition the plan. Fall through to step 3 with `LifecycleStatus ∈ {defined, complete}` to resume the next phase.
    - `outcome.outcome == failure` → run `/spec:drop <name> reason "<outcome.summary>"` (same drop skill steps 11a/b invoke for a live failure — it is idempotent against an already-dropped slice). Then:
      ```bash
-     specify change plan transition <name> failed --reason "<outcome.summary>"
+     specify plan transition <name> failed --reason "<outcome.summary>"
      ``` `--reason` copied byte-for-byte from `outcome.summary`; never paraphrase or truncate.
    - `outcome.outcome == deferred` → same shape with `blocked`:
      ```bash
      /spec:drop <name> reason "<outcome.summary>"
-     specify change plan transition <name> blocked --reason "<outcome.summary>"
+     specify plan transition <name> blocked --reason "<outcome.summary>"
      ```
    - The `outcome` field is **absent** and `LifecycleStatus` is non-terminal (`defining`, `defined`, `building`, `complete`) → no terminal outcome was ever stamped; the prior phase was in-flight at crash time. Fall through to step 3 with the on-disk `LifecycleStatus`.
    - The `outcome` field is malformed (unknown enum variant, missing `phase`, missing `summary`, …) or its `phase` contradicts `LifecycleStatus` (for example `phase: merge` with `status: defining`, or `outcome: success` with `status: dropped`) → **halt**. Emit the diagnostic line below with exit code `2` (`EXIT_VALIDATION_FAILED` — see the exit-code table in specify-cli `src/main.rs`). Leave the plan entry as `in-progress`. Do not append a recovery journal entry. Do not drop the slice. Humans triage.
@@ -60,7 +60,7 @@ For entries without a `project` field, self-heal follows the standard single-rep
    - `"applied terminal transition blocked after finding deferred outcome on define"`
    - `"resumed mid-slice build phase (LifecycleStatus=defined)"`
 
-5. **Lock scope.** Self-heal runs **inside** the driver lock already acquired at step 2 of the outer run. There is no second acquire and no inner release: the whole reconciliation pass is part of the same critical section that wraps the per-slice loop. Two `/change:execute` invocations started at the same time cannot both enter self-heal — the second one fails at `specify change plan lock acquire` with `Error::DriverBusy`.
+5. **Lock scope.** Self-heal runs **inside** the driver lock already acquired at step 2 of the outer run. There is no second acquire and no inner release: the whole reconciliation pass is part of the same critical section that wraps the per-slice loop. Two `/change:execute` invocations started at the same time cannot both enter self-heal — the second one fails at `specify plan lock acquire` with `Error::DriverBusy`.
 
 ## Diagnostic output
 

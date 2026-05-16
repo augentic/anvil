@@ -73,7 +73,7 @@ specify review --format json
 **Target surface:**
 
 ```bash
-specify change plan impact --change <name>
+specify plan impact --change <name>
 ```
 
 #### RM-12: Catalog import: Backstage adapter
@@ -110,9 +110,9 @@ specify events export
 
 **Output:** local JSONL or configurable telemetry sink with run identity.
 
-#### RM-15: Structured orchestration status for re-entry
+#### RM-15: Structured change-lifecycle status for re-entry
 
-**Goal:** Make `/change:plan <name> orchestrate` re-entry and pause points machine-readable.
+**Goal:** Make the `/change:draft` → `/change:execute` → `/change:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
 

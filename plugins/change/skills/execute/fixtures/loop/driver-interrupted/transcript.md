@@ -6,7 +6,7 @@ Per §Loop mode → SIGINT / SIGTERM handling:
 
 - Rule 1 is trivially satisfied: `/spec:build` has already returned, no phase is mid-invocation, nothing to finish.
 - Rule 2: skip `/spec:merge`. Do NOT invoke it.
-- Rule 3: leave `email-verification` as `in-progress`. Do NOT call `specify change plan transition`.
+- Rule 3: leave `email-verification` as `in-progress`. Do NOT call `specify plan transition`.
 - Rule 4: release the driver lock.
 - Rule 5: emit the terminal summary with `Completion: driver-interrupted`.
 - Rule 6: exit non-zero (130 for SIGINT).
@@ -26,8 +26,8 @@ $ /change:execute loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1: pick next.
-#   specify change plan next --format json → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
-#   specify change plan transition email-verification in-progress
+#   specify plan next --format json → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
+#   specify plan transition email-verification in-progress
 
 ## /change:execute — platform-v2
 
@@ -56,7 +56,7 @@ Step 2/3: build
 #   Rule 1 — no phase is mid-invocation; trivially satisfied.
 #   Rule 2 — skip /spec:merge. Do NOT invoke it.
 #   Rule 3 — leave email-verification as in-progress. Do NOT call
-#            specify change plan transition. The on-disk state at this
+#            specify plan transition. The on-disk state at this
 #            moment:
 #              plan.yaml: email-verification status: in-progress
 #              .metadata.yaml: LifecycleStatus: complete
@@ -65,7 +65,7 @@ Step 2/3: build
 #            using the mid-slice-resume branch of the self-heal
 #            algorithm.
 #   Rule 4 — release the driver lock:
-#            specify change plan lock release --pid <agent-session-pid>
+#            specify plan lock release --pid <agent-session-pid>
 #   Rule 5 — emit terminal summary with Completion:
 #            driver-interrupted.
 #   Rule 6 — exit 130.
@@ -96,4 +96,4 @@ Next action: Re-run /change:execute loop — self-heal will reclaim the interrup
 4. **Terminal summary emitted on interrupt.** The `Completion: driver-interrupted` line and its `Next action` tell the operator exactly how to recover. The summary is part of the interrupt handling contract (Rule 5), not optional.
 5. **Exit non-zero.** SIGINT typically maps to exit 130, SIGTERM to 143; CI / scripting treats either as "abnormal termination" and can distinguish from an `all-done` exit 0 or a `halted` exit 1.
 6. **`in-progress 1` in the progress line.** This is the observable tell that the run was interrupted: no other terminal classification leaves an `in-progress` entry. (Self-heal ambiguity `halted` also has `in-progress 1` in its progress line, but its `Completion:` value differentiates.)
-7. **No terminal plan transition on interrupt.** The driver does NOT call `specify change plan transition email-verification failed` (or anything similar). The phase succeeded; the driver simply ran out of wall-clock before invoking the next phase. Self-heal on the next run is the correct actor to advance the plan.
+7. **No terminal plan transition on interrupt.** The driver does NOT call `specify plan transition email-verification failed` (or anything similar). The phase succeeded; the driver simply ran out of wall-clock before invoking the next phase. Self-heal on the next run is the correct actor to advance the plan.
