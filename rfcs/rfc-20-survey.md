@@ -1,6 +1,6 @@
 # RFC-20 Survey to Plan
 
-> Status: Alternative Draft - Compare with [RFC-20](rfc-20-survey.md) - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
+> Status:  Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
 
 ## Abstract
 
@@ -111,7 +111,7 @@ Cuts are tried in priority order; the first that applies wins:
 4. **Worker pool / scheduled-job batch.** Workers and jobs sharing a topic or schedule prefix form their own group.
 5. **Surface enumeration.** Each group ends at its `surfaces.json` constituents.
 
-Structural depth is capped at **6 per source**. An M+ group still M+ after 6 levels is fatal and forces operator intervention. If no signal cleanly partitions an M+ node before the cap, record `unresolved: true` on that group and emit the DAG with it marked.
+Structural depth is capped at **6 per source**. When an M+ group survives the cap without a clean partition, mark it `unresolved: true` and emit the DAG with the marker preserved. Survey exits 0 in this case; `propose` is responsible for refusing to draft a plan entry from an unresolved leaf until the operator resolves it.
 
 ### Step 4: Pass 2 — Capability Clustering (semantic, bottom-up)
 
@@ -161,6 +161,8 @@ The invariant is simple: `propose` should receive XS/S candidates or explicit un
 
 Ordering comes from `depends_on`. Independent candidates may appear at the same order level and migrate in parallel.
 
+When `depends_on` forms a cycle, mark every participating leaf `unresolved: true` with `cycle_with: [<leaf-ids>]` in the unresolved candidate set and omit the cycle members from the migration order. The operator either breaks the cycle by editing `identifier-aliases.yaml` (collapsing pairs into one leaf) or by re-scoping the change.
+
 ### Step 6: Hand Candidates To Propose
 
 Survey appends capability blocks to the `## Capability inventory` heading the discovery brief wrote in Step 2. Propose remains the only stage that asks the operator to accept, edit, reject, or abort plan entries. Every accepted entry is still written through `specify plan add`.
@@ -174,11 +176,11 @@ Cross-source matching keys on a canonicalised form of `surfaces[].identifier`. O
 Framework defaults — explicit, identical for every capability:
 
 
-| Surface kind                                        | Default canonicalisation                                                                                                                                                                                              |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Strip configured version prefixes (`/v1`, `/v2`, …) by default; opt out per change with `http: { strip_version_prefix: false }` to keep `/v1` and `/v2` distinct.            |
-| `message-pub`, `message-sub`, `ws-handler`          | Case-fold, unify dot/dash/underscore separators (`user.created` ≡ `user-created` ≡ `user_created`). Strip configured environment prefixes (`prod.`, `staging.`) **only when** listed.                                 |
-| `cli-command`, `scheduled-job`, `external-call-out` | Lowercase identifier; otherwise verbatim.                                                                                                                                                                             |
+| Surface kind                                        | Default canonicalisation                                                                                                                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Strip configured version prefixes (`/v1`, `/v2`, …) by default; opt out per change with `http: { strip_version_prefix: false }` to keep `/v1` and `/v2` distinct. |
+| `message-pub`, `message-sub`, `ws-handler`          | Case-fold, unify dot/dash/underscore separators (`user.created` ≡ `user-created` ≡ `user_created`). Strip configured environment prefixes (`prod.`, `staging.`) **only when** listed.                                                                              |
+| `cli-command`, `scheduled-job`, `external-call-out` | Lowercase identifier; otherwise verbatim.                                                                                                                                                                                                                          |
 
 
 After framework canonicalisation, alias bundles merge with strict precedence:
@@ -224,13 +226,27 @@ Conceptual shape:
         "src/notifications/email.ts",
         "src/users/repository.ts"
       ],
-      "evidence": "Express route registered in src/server.ts"
+      "evidence": {
+        "kind": "framework-route",
+        "citations": ["src/server.ts:42", "src/auth/register.ts"],
+        "note": "express"
+      }
     }
   ]
 }
 ```
 
 All fields are required. `version` is `1`; bumps go through an RFC update. `surfaces[]` is sorted by `id`; `touches` is sorted alphabetically; `framework_signatures` is sorted alphabetically. No timestamps, no absolute paths, no host-state leaks.
+
+`evidence` is a structured shape rather than free prose so byte-stability survives detector phrasing changes:
+
+| Field       | Type      | Notes                                                                                                                                                                                                                       |
+| ----------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`      | string    | Closed enum: `framework-route`, `pubsub-pairing`, `http-pairing`, `ws-pairing`, `touches-overlap`, `doc-grouping`, `topic-prefix`. Extensions require an RFC update (same posture as `surfaces[].kind`).                    |
+| `citations` | string[]  | Sorted alphabetically; paths relative to `$INPUT_PATH`, optionally `:<line>` suffixed.                                                                                                                                      |
+| `note`      | string?   | Optional; kebab-case identifier or backticked-identifier only; no free prose.                                                                                                                                               |
+
+`/change:survey` owns a single renderer that turns the structured shape into the human-readable strings used in `survey.md`. Detector authors never hand-write evidence prose; byte-stability is mechanical.
 
 The surface kind enum is closed in v1:
 
@@ -249,27 +265,63 @@ One file per change. Required sections, in order:
 5. `Unresolved` — ambiguous or oversized items requiring operator input.
 6. `Migration order` — topological sort over `depends_on`.
 
-Within each node block, fields appear in fixed order so re-runs diff cleanly:
+Each node block is a fenced YAML block following a Markdown sub-heading. Fields appear in fixed order so re-runs diff cleanly:
 
-> `kind`, `terminal`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `cross_module`, `cross_source`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`
+> `kind`, `terminal`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `cross_module`, `cross_source`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`, `cycle_with`
 
-Omit fields that don't apply to the node's kind. `terminal` is always emitted (`true` for capability leaves, `false` for everything else) so consumers never have to pattern-match on `kind`.
+Omit fields that don't apply to the node's kind. `terminal` is always emitted (`true` for capability leaves, `false` for everything else) so consumers never have to pattern-match on `kind`. `cycle_with` is emitted only on `unresolved: true` leaves that participate in a `depends_on` cycle.
 
-Example capability leaf:
+The fenced-YAML form is the **canonical capability block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Capability inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit the survey-only fields (`cross_source`, `target_project` when no hint applies, etc.); survey-derived blocks always include `kind: capability` and `terminal: true`.
 
-```markdown
+Example cross-source pub/sub capability leaf:
+
+````markdown
 ### identity.user-registration [S, 1094 LOC]
 
-- kind: capability
-- terminal: true
-- sources: [legacy-monolith, legacy-workers]
-- target_project: identity-svc
-- surfaces: [legacy-monolith:http-post-users, legacy-monolith:message-pub-user-created, legacy-workers:message-sub-user-created]
-- cross_module: true
-- cross_source: true
-- evidence: pub/sub pairing on normalized identifier `user.created`; legacy-monolith is canonical owner; touched files overlap on user repository and email verification
-- depends_on: [shared-validation]
+```yaml
+kind: capability
+terminal: true
+sources: [legacy-monolith, legacy-workers]
+target_project: identity-svc
+surfaces:
+  - legacy-monolith:http-post-users
+  - legacy-monolith:message-pub-user-created
+  - legacy-workers:message-sub-user-created
+cross_module: true
+cross_source: true
+evidence:
+  kind: pubsub-pairing
+  citations:
+    - legacy-monolith:src/auth/register.ts
+    - legacy-workers:src/handlers/user_created.ts
+  note: user.created
+depends_on: [shared-validation]
 ```
+````
+
+Example cross-source HTTP-contract capability leaf — caller in one source, route owner in another; `target_project` is inherited from the route owner per [Propagation Rules](#propagation-rules):
+
+````markdown
+### orders.checkout [S, 612 LOC]
+
+```yaml
+kind: capability
+terminal: true
+sources: [legacy-monolith, legacy-orders]
+target_project: orders-svc
+surfaces:
+  - legacy-monolith:external-call-post-orders
+  - legacy-orders:http-post-orders
+cross_source: true
+evidence:
+  kind: http-pairing
+  citations:
+    - legacy-monolith:src/checkout/api.ts:88
+    - legacy-orders:src/routes.ts:14
+  note: post-orders
+depends_on: [identity.user-registration]
+```
+````
 
 Re-running on unchanged inputs (including aliases) produces byte-identical `survey.md`.
 
@@ -282,7 +334,7 @@ Operator-authored, tracked alongside the change. See [Identifier Normalization](
 The CLI scanner invoked by `/change:analyze legacy-code`:
 
 ```text
-specify change survey <source-path> --source-key <key> --format json --out <path>
+specify change survey <source-path> --source-key <key> --out <dir>
 ```
 
 The verb sits under `specify change` to make its plan-time role explicit and to keep the CLI namespace aligned with the rest of the change-lifecycle surface (`specify change draft`, `specify change finalize`, …).
@@ -295,9 +347,62 @@ It owns mechanical work only:
 - Record touched files.
 - Validate and write `surfaces.json`.
 
-The scanner does not call an LLM, infer capabilities, or write `plan.yaml`. If no detector applies, it exits non-zero with discriminant `surface-scan-no-detectors-registered` and writes no partial output.
+The scanner does not call an LLM, infer capabilities, or write `plan.yaml`.
 
-Capability-owned detector packages add framework support over time. v1 only needs enough detectors to prove the flow on the first supported stack; unsupported stacks fall back to manual source scoping until a detector exists.
+**Flags.**
+
+- `--source-key <key>` is **required**. The discovery brief always passes the key declared in `specify change draft --source <key>=<...>`; ad-hoc invocations must supply it explicitly. Synthesis is not duplicated across `analyze` and `survey` — failing closed surfaces mismatches immediately.
+- `--out <dir>` is a directory. The verb always writes `surfaces.json` inside it (matching `analyze/<source-key>/`). If the directory already contains a `surfaces.json` whose `source_key` does not match `--source-key`, the verb exits non-zero rather than overwriting.
+- `--format` is intentionally absent in v1. The output file is JSON by definition; the flag would re-introduce if and when stdout JSON envelopes are needed for shell pipelines.
+
+**Exit discriminants.** Pinned set, kebab-case per the CLI repo's coding standards:
+
+- `surface-scan-no-detectors-registered` — no detector applied to the source.
+- `surface-scan-detector-id-collision` — two detectors emitted the same `surfaces[].id`.
+- `surface-scan-source-path-missing` — `<source-path>` does not exist.
+- `surface-scan-source-path-not-readable` — `<source-path>` cannot be read.
+- `surface-scan-detector-failure` — a detector panicked or returned a malformed `Surface`.
+- `surface-scan-alias-kind-invalid` — an alias bundle loaded at survey time failed the closed-kind enum check on `kind`.
+
+No partial output is ever written; on any non-zero exit, `surfaces.json` is left untouched.
+
+Capability-owned detector packages may add framework support over time, but v1 ships a global registry (see [Detector Contract](#detector-contract)). v1 only needs enough detectors to prove the flow on the first supported stack; unsupported stacks fall back to manual source scoping until a detector exists.
+
+## Detector Contract
+
+A detector is a unit of mechanical, framework-specific surface enumeration. The contract is intentionally narrow so the v1 detector layer can be built into the binary without a sandbox.
+
+**Registration.** A thin Rust trait inside `specify-cli`, with a `DetectorRegistry` populated at binary build time. This mirrors the resolver layering in `crates/tool/src/resolver/*` and avoids the overhead of WASI for purely mechanical work. Out-of-tree detector packaging (WASI tool per RFC-13, per-capability detector packs) is **deferred**; revisit when a real out-of-tree capability needs to ship a detector.
+
+**Input shape.**
+
+```rust
+struct DetectorInput<'a> {
+    source_root: &'a Path,
+    language_hint: Option<Language>,
+}
+```
+
+**Output shape.**
+
+```rust
+struct DetectorOutput {
+    framework_signatures: Vec<String>,
+    surfaces: Vec<Surface>,
+}
+```
+
+`Surface` matches the `surfaces.json` `surfaces[]` entry verbatim (including the structured `evidence` shape from [Artifacts](#artifacts)). Detectors return owned data; the verb deduplicates, sorts, and writes.
+
+**Discovery rule.** `specify change survey` runs every registered detector against the source root. Each detector self-reports applicability: when its framework signatures are absent the detector returns an empty `DetectorOutput { framework_signatures: vec![], surfaces: vec![] }`. The verb:
+
+1. Merges `framework_signatures` across all detectors (deduplicated, sorted).
+2. Merges `surfaces` across all detectors and asserts no two detectors emitted the same `id`; on collision, exits `surface-scan-detector-id-collision`.
+3. Validates the merged output against the `surfaces.json` schema and writes it atomically.
+
+**Capability scoping.** v1 is a single global registry. Per-capability detector packs at `plugins/change/skills/survey/briefs/<cap>/detectors/` are explicitly deferred; the directory is reserved but not loaded in v1.
+
+**Failure modes.** A detector that panics or returns a malformed `Surface` fails the run with `surface-scan-detector-failure`; the failing detector's name is included in the error payload so the operator can pin a workaround.
 
 ## Skill Responsibility Split
 
@@ -325,6 +430,15 @@ When assignment infers a target project for a survey-leaf slice, signals are con
 
 Cross-source leaves carry the `target_project` of the canonical owner: publisher for pub/sub, route owner for HTTP, handler owner for WebSocket.
 
+### Propagation Rules
+
+`target_project` is propagated down the DAG by survey using a fixed set of rules so authors do not invent ad-hoc fallbacks:
+
+1. **Doc-hint propagation.** If a documentation capability with the same normalized name carries `target_project`, propagate it onto every cross-source or same-source leaf that mechanically maps to it.
+2. **Canonical-owner propagation.** Cross-source leaves inherit `target_project` from the canonical owner. Pub/sub → publisher's source; HTTP → route owner's source (e.g. an `external-call-out` from `legacy-monolith` against an `http-route` owned by `legacy-orders` inherits `legacy-orders`' `target_project`); WebSocket → handler owner's source.
+3. **Single-source, no-hint.** The leaf emits `target_project` as **absent** (not empty). Downstream assignment runs today's description-match → baseline-affinity → capability-compatibility chain. An absent field is legal and downstream-handled by design.
+4. **Conflict.** If two ancestors carry conflicting `target_project` values (for example, a doc hint disagrees with a canonical owner), the leaf is marked `unresolved: true` with both candidates listed verbatim. Survey never silently picks a winner.
+
 ## Single-Source And Multi-Source Behavior
 
 The algorithm is identical in both cases.
@@ -350,16 +464,25 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 
 ## Implementation Plan
 
-1. Add the `surfaces.json` and `identifier-aliases.yaml` schemas + validators (closed-kind enforcement on alias `kind`).
-2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, and the `surface-scan-no-detectors-registered` exit when no detector applies.
+1. Add the `surfaces.json` and `identifier-aliases.yaml` schemas + validators (closed-kind enforcement on alias `kind`; structured-`evidence` enum closed per [Artifacts](#artifacts)).
+2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, the required `--source-key` flag, the `--out <dir>` directory contract, and the full exit-discriminant set documented in [Mechanical Scanner](#mechanical-scanner).
 3. Land the framework identifier canonicaliser inside `/change:survey` with the rules in [Identifier Normalization](#identifier-normalization). Fixtures cover the canonical-form table and the operator > capability > framework alias-merge precedence.
-4. Land first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ).
-5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only.
-6. Extend the discovery brief to write the `## Capability inventory` heading wrapper before invoking survey.
-7. Add `/change:survey` with Pass 1 (priority-ordered cuts, depth cap 6/source) and Pass 2 (canonicalised cross-source pairing with canonical-owner rules and `consumes-external` annotation for unpaired subscribers). Wire it between workspace sync and propose.
-8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence).
-9. Acceptance fixtures: single-source L monolith with one cross-module capability; multi-source change with **≥ 3 source-keys** producing at least one cross-source capability and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey; greenfield documentation-only pass-through; single-source-already-S no-op (source is its own terminal candidate without further partitioning).
-10. Tutorials: monolith decomposition, legacy-fleet decomposition (with one alias-resolved `unresolved`), update `legacy-migration-at-scale.md`.
+4. Land the detector trait, `DetectorRegistry`, and `DetectorInput` / `DetectorOutput` shapes per [Detector Contract](#detector-contract), then the first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ). Landing a real detector forces the contract to be exercised end-to-end.
+5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit capability blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
+6. **Combined release.** Land the discovery-brief edit that writes the `## Capability inventory` heading wrapper *together with* the `/change:survey` skill in step 7 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
+7. Add `/change:survey` with Pass 1 (priority-ordered cuts, depth cap 6/source, `unresolved: true` markers on M+ groups that survive the cap) and Pass 2 (canonicalised cross-source pairing with canonical-owner rules, `consumes-external` annotation for unpaired subscribers, cycle detection on `depends_on`). Wired against the structured-evidence renderer from [Artifacts](#artifacts). Wire it between workspace sync and propose.
+8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence), including the propagation rules.
+9. Acceptance fixtures (ship in step 7's PR or immediately after):
+   - Single-source L monolith with one cross-module capability.
+   - Multi-source change with **≥ 3 source-keys** producing at least one cross-source capability and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey.
+   - Greenfield documentation-only pass-through (survey skipped entirely).
+   - Single-source-already-S no-op (source is its own terminal candidate without further partitioning).
+   - M+ group hitting the depth-6 cap and emitting `unresolved: true` (Pass 1 fail-safe).
+   - Subscriber with no in-scope publisher producing a `consumes-external` annotation (Pass 2 single-source fallback).
+   - Two-source `depends_on` cycle that is resolved by aliasing two surface identifiers together (`cycle_with` markers, then clean topo order after re-run).
+   - Alias bundle with an invalid `kind` value failing closed via `surface-scan-alias-kind-invalid`.
+   - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Capability inventory` is emitted exactly once.
+10. Tutorials: monolith decomposition and legacy-fleet decomposition (with one alias-resolved `unresolved`). Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
 
 ## Migration
 
@@ -367,9 +490,9 @@ This is a plan-time behavioral change for legacy-code inputs.
 
 **For operators.** `/change:analyze legacy-code` no longer infers capability summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns capability clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes get cross-source clustering automatically; ambiguous identifiers surface as `unresolved` with the candidate set listed, and the operator extends `<plan-dir>/identifier-aliases.yaml` and re-runs.
 
-**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch. Register surface detectors under `plugins/change/skills/survey/briefs/<cap>/detectors/` (mechanical AST/regex only in v1). Capability-owned alias overrides live at `plugins/change/skills/survey/briefs/<cap>/identifier-aliases.yaml` and merge against framework defaults per the precedence above.
+**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted capability block to the unified shape (`kind: capability`, `terminal: true`, plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Capability-owned alias overrides live at `plugins/change/skills/survey/briefs/<cap>/identifier-aliases.yaml` and merge against framework defaults per the precedence above.
 
-**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Capability inventory` heading in `discovery.md` is now authored by survey for legacy-code inputs; the block shape is unchanged.
+**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Capability inventory` heading in `discovery.md` is written exactly once by the discovery brief; both survey (legacy-code) and `/change:analyze documentation` append capability blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
 
 Documentation-only changes skip `/change:survey` entirely. With no `legacy-code` source, the pipeline reaches `propose` directly from discovery — there is nothing to decompose and the survey gate adds ceremony without value.
 
@@ -405,7 +528,6 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 ## References
 
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
-- [RFC-20: Survey-to-Plan Pipeline](rfc-20-survey.md)
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md)
 - [RFC-22: Migration Ledger](rfc-22-ledger.md)
 - [RFC-23: Change Lifecycle](archive/rfc-23-change-lifecycle.md)
