@@ -88,30 +88,30 @@ Before invoking survey, the discovery brief writes the `## Capability inventory`
 
 ### Step 3: Pass 1 — Structural Decomposition (mechanical, top-down)
 
-After all inputs have been analyzed, `/change:survey` builds a decomposition DAG with five node kinds:
+After all inputs have been analyzed, `/change:survey` builds a decomposition DAG with four node kinds. Each source is its own DAG root; there is no synthetic wrapper above them.
 
 
-| Kind            | Level | Sized as                                              | Slice candidate? |
-| --------------- | ----- | ----------------------------------------------------- | ---------------- |
-| `root`          | 0     | union of all source children                          | no               |
-| `source`        | 1     | union of surface-group children                       | no               |
-| `surface-group` | 2     | union of contained surface `touches`                  | no               |
-| `surface`       | 3     | union of handler `touches`                            | no               |
-| `capability`    | leaf  | dedup union of `touches` across participating sources | yes              |
+| Kind         | Sized as                                              | Terminal |
+| ------------ | ----------------------------------------------------- | -------- |
+| `source`     | union of group children                               | no       |
+| `group`      | union of child `touches`                              | no       |
+| `surface`    | union of handler `touches`                            | no       |
+| `capability` | dedup union of `touches` across participating sources | yes      |
 
+
+`terminal` is a first-class field on every node, not a predicate downstream consumers derive from `kind`. Only capability leaves consumed by `propose` are terminal; everything else is structural and exists to make the DAG reviewable.
 
 Pass 1 only descends into each source independently. There is no Pass 1 cross-source decomposition; cross-source pairing happens in Pass 2 against normalized identifiers, never against source code.
 
 Cuts are tried in priority order; the first that applies wins:
 
 1. **Size check.** XS or S → stop, leaf candidate.
-2. **Source split.** At root, always cut on `<source-key>`.
-3. **Framework module boundary.** Nest `@Module`, Rails engine, Spring `@Configuration`, Phoenix context, etc., when surfaces partition cleanly.
-4. **URI / topic / channel prefix.** Group by longest common prefix (`/users/`*, `user.`*); cut where distinct prefixes have low `touches` overlap.
-5. **Worker pool / scheduled-job batch.** Workers and jobs sharing a topic or schedule prefix form their own group.
-6. **Surface enumeration.** Each surface group ends at its `surfaces.json` constituents.
+2. **Framework module boundary.** Nest `@Module`, Rails engine, Spring `@Configuration`, Phoenix context, etc., when surfaces partition cleanly.
+3. **URI / topic / channel prefix.** Group by longest common prefix (`/users/`*, `user.`*); cut where distinct prefixes have low `touches` overlap.
+4. **Worker pool / scheduled-job batch.** Workers and jobs sharing a topic or schedule prefix form their own group.
+5. **Surface enumeration.** Each group ends at its `surfaces.json` constituents.
 
-Structural depth is capped at **6 per source**. An M+ surface-group still M+ after 6 levels is fatal and forces operator intervention. If no signal cleanly partitions an M+ node before the cap, record `unresolved: true` on that surface-group and emit the DAG with it marked.
+Structural depth is capped at **6 per source**. An M+ group still M+ after 6 levels is fatal and forces operator intervention. If no signal cleanly partitions an M+ node before the cap, record `unresolved: true` on that group and emit the DAG with it marked.
 
 ### Step 4: Pass 2 — Capability Clustering (semantic, bottom-up)
 
@@ -129,11 +129,11 @@ Clustering evidence, in priority order:
   - **Pub/sub pairing.** `message-pub` in source A + `message-sub` in source B sharing the normalized identifier → one cross-source leaf. **Publisher's source is canonical owner**; subscribers join.
   - **HTTP contract pairing.** `external-call-out` in source A whose normalized identifier matches an `http-route` in source B → one cross-source leaf. **Route owner is canonical**; caller depends on it.
   - **WebSocket contract pairing.** `external-call-out` (channel kind) matching a `ws-handler` → one cross-source leaf. **Handler owner is canonical**.
-4. **Worker-pool / topic-prefix affinity** that survives surface-group boundaries.
+4. **Worker-pool / topic-prefix affinity** that survives group boundaries.
 
 Cluster outcomes:
 
-- **Span more than one surface-group within a source** → `cross_module: true`.
+- **Span more than one group within a source** → `cross_module: true`.
 - **Span more than one source** → `cross_source: true`. Surface ids are namespaced `<source-key>:<surface-id>` so the same identifier from two repos remains distinguishable. The two flags are not exclusive.
 - `**depends_on` / `depends_on_by`** derive from contract edges (canonical owner → consumer). When producer and consumer end up in the same leaf, no edge is emitted — the dependency is internal.
 - **Subscriber surface with no in-scope publisher** → record as a `consumes-external` annotation on its single-source leaf, not an `unresolved`.
@@ -244,16 +244,16 @@ One file per change. Required sections, in order:
 
 1. `Summary` — source / surface / candidate / unresolved counts.
 2. `Source inventory` — one row per input source.
-3. `DAG` — root → source → surface-group → surface → capability.
+3. `DAG` — source → group → surface → capability (one tree per source).
 4. `Capability candidates` — proposed slice-sized leaves.
 5. `Unresolved` — ambiguous or oversized items requiring operator input.
 6. `Migration order` — topological sort over `depends_on`.
 
 Within each node block, fields appear in fixed order so re-runs diff cleanly:
 
-> `kind`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `cross_module`, `cross_source`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`
+> `kind`, `terminal`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `cross_module`, `cross_source`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`
 
-Omit fields that don't apply to the node's kind.
+Omit fields that don't apply to the node's kind. `terminal` is always emitted (`true` for capability leaves, `false` for everything else) so consumers never have to pattern-match on `kind`.
 
 Example capability leaf:
 
@@ -261,6 +261,7 @@ Example capability leaf:
 ### identity.user-registration [S, 1094 LOC]
 
 - kind: capability
+- terminal: true
 - sources: [legacy-monolith, legacy-workers]
 - target_project: identity-svc
 - surfaces: [legacy-monolith:http-post-users, legacy-monolith:message-pub-user-created, legacy-workers:message-sub-user-created]
@@ -355,7 +356,7 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 6. Extend the discovery brief to write the `## Capability inventory` heading wrapper before invoking survey.
 7. Add `/change:survey` with Pass 1 (priority-ordered cuts, depth cap 6/source) and Pass 2 (canonicalised cross-source pairing with canonical-owner rules and `consumes-external` annotation for unpaired subscribers). Wire it between workspace sync and propose.
 8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence).
-9. Acceptance fixtures: single-source L monolith with one cross-module capability; multi-source change with **≥ 3 source-keys** producing at least one cross-source capability and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey; greenfield documentation-only pass-through; root-already-S no-op.
+9. Acceptance fixtures: single-source L monolith with one cross-module capability; multi-source change with **≥ 3 source-keys** producing at least one cross-source capability and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey; greenfield documentation-only pass-through; single-source-already-S no-op (source is its own terminal candidate without further partitioning).
 10. Tutorials: monolith decomposition, legacy-fleet decomposition (with one alias-resolved `unresolved`), update `legacy-migration-at-scale.md`.
 
 ## Migration
