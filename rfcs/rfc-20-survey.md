@@ -73,7 +73,7 @@ The discovery brief still invokes `/change:analyze` once per input.
 
 For `documentation`, `/change:analyze` behaves as it does today: it extracts planning-level capability hints into `discovery.md`.
 
-For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer capability summaries directly. Instead, it invokes `specify survey` and writes two sidecars under the plan working directory:
+For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer capability summaries directly. Instead, it invokes `specify change survey` and writes two sidecars under the plan working directory:
 
 ```text
 .specify/plans/<change>/analyze/<source-key>/metadata.json
@@ -149,8 +149,8 @@ Each candidate is sized using a framework-pinned T-shirt rubric over **productio
 | Size | Production LOC | Planning meaning                         |
 | ---- | -------------- | ---------------------------------------- |
 | XS   | `< 200`        | Smaller than a normal slice; acceptable. |
-| S    | `200-1499`     | Slice-sized; acceptable.                 |
-| M    | `1500-4999`    | Too large; split or mark unresolved.     |
+| S    | `200-999`      | Slice-sized; acceptable.                 |
+| M    | `1000-4999`    | Too large; split or mark unresolved.     |
 | L    | `5000-19999`   | Too large; split or mark unresolved.     |
 | XL   | `>= 20000`     | Too large; split or mark unresolved.     |
 
@@ -176,7 +176,7 @@ Framework defaults — explicit, identical for every capability:
 
 | Surface kind                                        | Default canonicalisation                                                                                                                                                                                              |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Strip configured version prefixes (`/v1`, `/v2`, …) **only when** `http: { strip_version_prefix: true }` is enabled. |
+| `http-route`, `ui-route`                            | Lowercase host/path, strip trailing slash, fold path-parameter syntax (`{id}` ≡ `:id` ≡ `<id>`). Strip configured version prefixes (`/v1`, `/v2`, …) by default; opt out per change with `http: { strip_version_prefix: false }` to keep `/v1` and `/v2` distinct.            |
 | `message-pub`, `message-sub`, `ws-handler`          | Case-fold, unify dot/dash/underscore separators (`user.created` ≡ `user-created` ≡ `user_created`). Strip configured environment prefixes (`prod.`, `staging.`) **only when** listed.                                 |
 | `cli-command`, `scheduled-job`, `external-call-out` | Lowercase identifier; otherwise verbatim.                                                                                                                                                                             |
 
@@ -192,7 +192,7 @@ aliases:
   - kind: message-pub
     group: [user.created, users.created, user-created]
 http:
-  strip_version_prefix: true
+  strip_version_prefix: false  # default true; set false to keep /v1 vs /v2 distinct
 ```
 
 Aliases inside a `group` are bidirectional. Any alias whose `kind` fails the closed `surface kind` enum check **fails the survey**.
@@ -282,8 +282,10 @@ Operator-authored, tracked alongside the change. See [Identifier Normalization](
 The CLI scanner invoked by `/change:analyze legacy-code`:
 
 ```text
-specify survey <source-path> --source-key <key> --format json --out <path>
+specify change survey <source-path> --source-key <key> --format json --out <path>
 ```
+
+The verb sits under `specify change` to make its plan-time role explicit and to keep the CLI namespace aligned with the rest of the change-lifecycle surface (`specify change draft`, `specify change finalize`, …).
 
 It owns mechanical work only:
 
@@ -304,7 +306,7 @@ Capability-owned detector packages add framework support over time. v1 only need
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `/change:analyze documentation` | Extract capability hints from prose into `discovery.md`.                                                                                  |
 | `/change:analyze legacy-code`   | Run the mechanical scanner; write `metadata.json` + `surfaces.json`; do not infer capabilities.                                           |
-| `specify survey`                | Deterministically enumerate surfaces for one source.                                                                                      |
+| `specify change survey`         | Deterministically enumerate surfaces for one source.                                                                                      |
 | `/change:survey`                | Compose all sources, run Pass 1 + Pass 2, size candidates, write `survey.md`, append capability blocks under the discovery-owned heading. |
 | `propose` brief                 | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                             |
 
@@ -349,7 +351,7 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 ## Implementation Plan
 
 1. Add the `surfaces.json` and `identifier-aliases.yaml` schemas + validators (closed-kind enforcement on alias `kind`).
-2. Add `specify survey` with a stub detector registry, deterministic output, validation before write, and the `surface-scan-no-detectors-registered` exit when no detector applies.
+2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, and the `surface-scan-no-detectors-registered` exit when no detector applies.
 3. Land the framework identifier canonicaliser inside `/change:survey` with the rules in [Identifier Normalization](#identifier-normalization). Fixtures cover the canonical-form table and the operator > capability > framework alias-merge precedence.
 4. Land first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ).
 5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only.
@@ -369,7 +371,7 @@ This is a plan-time behavioral change for legacy-code inputs.
 
 **For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Capability inventory` heading in `discovery.md` is now authored by survey for legacy-code inputs; the block shape is unchanged.
 
-Documentation-only changes continue to work. They may pass through `/change:survey` as a no-op or skip it entirely (see Open Question 5).
+Documentation-only changes skip `/change:survey` entirely. With no `legacy-code` source, the pipeline reaches `propose` directly from discovery — there is nothing to decompose and the survey gate adds ceremony without value.
 
 ## Non-Goals
 
@@ -397,15 +399,8 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | LLM-fallback detector contract and `--fallback-llm` flag                                                 | A real legacy stack outside the mechanical-detector envelope reaches the planning pipeline.                                                          |
 | Brownfield reconciliation against `.specify/specs/` baselines (read baselines for delta-target flagging) | Brownfield-only changes reach the pipeline frequently enough that propose's missing delta-target awareness becomes a recurring complaint.            |
 | Surface `confidence` field (graded high/medium/low)                                                      | The LLM-fallback contract lands; the field then differentiates mechanical from probabilistic detection.                                              |
+| Machine-readable JSON sibling for `survey.md`                                                            | A downstream consumer (CI gate, registry sync, telemetry, plan diffing tool) needs structured survey data; v1 stays markdown-only.                   |
 
-
-## Open Questions
-
-1. Is the S-size ceiling of `1499` production LOC a good default, or should it start lower?
-2. Should `specify survey` live as a top-level verb, or under `specify change survey` to make its plan-time role clearer?
-3. Should `survey.md` have a machine-readable JSON sibling in v1, or wait for a downstream consumer?
-4. Default identifier-normalisation aggressiveness for HTTP version prefixes — opt-in is currently safer (a `/v1` ↔ `/v2` accidental pairing is the exact case operators want kept distinct), but an opt-out default may be better in single-product fleets.
-5. Should documentation-only changes invoke `/change:survey` in pass-through mode for a uniform pipeline, or skip it to reduce ceremony?
 
 ## References
 
