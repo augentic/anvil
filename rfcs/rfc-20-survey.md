@@ -313,13 +313,13 @@ The scanner does not call an LLM, infer candidates, or write `plan.yaml`.
 
 **Exit discriminants.** Initial set, kebab-case per the CLI repo's coding standards:
 
-- `surface-scan-no-detectors-registered` — no detector applied to the source.
-- `surface-scan-detector-id-collision` — two detectors emitted the same `surfaces[].id`.
-- `surface-scan-source-path-missing` — `<source-path>` does not exist (single-source form) or a row's `path` does not exist (batch form).
-- `surface-scan-source-path-not-readable` — `<source-path>` cannot be read (single-source form) or a row's `path` cannot be read (batch form).
-- `surface-scan-detector-failure` — a detector panicked or returned a malformed `Surface`.
-- `surface-scan-sources-file-missing` — the `--sources` file does not exist (batch form).
-- `surface-scan-sources-file-malformed` — the `--sources` file is not valid YAML, fails schema validation, or contains a duplicate `key` (batch form).
+- `no-detectors` — no detector applied to the source.
+- `detector-id-collision` — two detectors emitted the same `surfaces[].id`.
+- `source-path-missing` — `<source-path>` does not exist (single-source form) or a row's `path` does not exist (batch form).
+- `source-path-not-readable` — `<source-path>` cannot be read (single-source form) or a row's `path` cannot be read (batch form).
+- `detector-failure` — a detector panicked or returned a malformed `Surface`.
+- `sources-file-missing` — the `--sources` file does not exist (batch form).
+- `sources-file-malformed` — the `--sources` file is not valid YAML, fails schema validation, or contains a duplicate `key` (batch form).
 
 No partial output is ever written for a row; on any non-zero exit, the affected row's `surfaces.json` and `metadata.json` are left untouched.
 
@@ -352,12 +352,12 @@ struct DetectorOutput {
 
 **Discovery rule.** `specify change survey` runs every registered detector against the source root. Each detector self-reports applicability internally: when its framework signatures are absent the detector returns an empty `DetectorOutput { surfaces: vec![] }`. The verb:
 
-1. Merges `surfaces` across all detectors and asserts no two detectors emitted the same `id`; on collision, exits `surface-scan-detector-id-collision`.
+1. Merges `surfaces` across all detectors and asserts no two detectors emitted the same `id`; on collision, exits `detector-id-collision`.
 2. Validates the merged output against the `surfaces.json` schema and writes it atomically.
 
 **Capability scoping.** v1 is a single global registry. Per-capability detector packs at `plugins/change/skills/survey/briefs/<cap>/detectors/` are explicitly deferred; the directory is reserved but not loaded in v1.
 
-**Failure modes.** A detector that panics or returns a malformed `Surface` fails the run with `surface-scan-detector-failure`; the failing detector's name is included in the error payload so the operator can pin a workaround.
+**Failure modes.** A detector that panics or returns a malformed `Surface` fails the run with `detector-failure`; the failing detector's name is included in the error payload so the operator can pin a workaround.
 
 ## Skill Responsibility Split
 
