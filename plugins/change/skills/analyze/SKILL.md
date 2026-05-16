@@ -139,15 +139,6 @@ The detailed clustering / extraction prompt for each `kind` value lives under `p
 
 `/change:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
 
-## Process
-
-1. **Validate arguments.** Reject if `$KIND` is not in the closed enum, if `$INPUT_PATH` does not exist, or if `$OUTPUT_DIR` is not writable. Each failure is a hard exit with a clear diagnostic; no partial write to `discovery.md` ever ships.
-2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `plugins/change/skills/draft/briefs/<capability>/analyze.md`.
-3. **Invoke the brief against `$KIND`.** The brief owns clustering (for `legacy-code`) or extraction (for `documentation`) and emits capability summaries in the shape pinned above.
-4. **Write outputs.**
-   - **4a.** Write / append to `discovery.md` with the idempotent ordering rules (both branches), optionally tagging each emitted capability with `$SOURCE_KEY`. Report the list of capability names written on stdout for the discovery brief to aggregate.
-   - **4b.** For `$KIND = legacy-code` **only**, write `<plan-dir>/analyze/<source-key>/metadata.json` per §*Structural metadata*. Create the directory if it does not exist; overwrite the file if present. The documentation branch MUST NOT write this sidecar.
-
 ## Error handling
 
 - **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at `/change:draft` §*Input kinds*.
