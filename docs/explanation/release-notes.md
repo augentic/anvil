@@ -4,7 +4,7 @@ This page highlights the most recent user-visible changes to Specify. For the fu
 
 ## Change lifecycle restructured into three peer skills
 
-The change layer reads `/change:draft → /change:execute → /change:finalize`, with a deliberate operator review pause between authoring and execution. `/change:draft` mints `change.md` and `plan.yaml`, runs registry validate, walks the brief pipeline, and stops. `/change:execute loop` drives the per-slice define → build → merge loop. `/change:finalize` pushes branches, observes PR state, and runs `specify change finalize` once every PR is `MERGED`. The `orchestrate` umbrella mode is removed; the CLI verb `specify change create` is renamed to `specify change draft`. See [RFC-23](../../rfcs/rfc-23-change-lifecycle.md), the [Cross-Repo Changes tutorial](../tutorials/cross-repo-change.md), and [Change skills](../reference/change-skills/index.md).
+The change layer reads `/change:draft → /change:execute → /change:finalize`, with a deliberate operator review pause between authoring and execution. `/change:draft` mints `change.md` and `plan.yaml`, runs registry validate, walks the brief pipeline, and stops. `/change:execute loop` drives the per-slice define → build → merge loop. `/change:finalize` pushes branches, observes PR state, and runs `specify change finalize` once every PR is `MERGED`. The `orchestrate` umbrella mode is removed; the CLI verb `specify change create` is renamed to `specify change draft`. See [RFC-23](../../rfcs/archive/rfc-23-change-lifecycle.md), the [Cross-Repo Changes tutorial](../tutorials/cross-repo-change.md), and [Change skills](../reference/change-skills/index.md).
 
 ## Contracts as first-party platform artifacts
 
