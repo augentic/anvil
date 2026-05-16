@@ -4,11 +4,11 @@
 
 ## Abstract
 
-Introduce a mechanical source-survey stage inside `/change:draft` so Specify can turn legacy code into a reviewable migration plan. The legacy input may be one large monolith, many repositories, or a mix of both. The survey decomposes code from the outside in: externally observable surfaces first, the source files those surfaces touch second, capability-shaped slice candidates last.
+Introduce a mechanical source-survey stage inside `/change:draft` so Specify can turn legacy code into a reviewable migration plan. The legacy input may be one large monolith, many repositories, or a mix of both. The survey decomposes code from the outside in: externally observable surfaces first, the source files those surfaces touch second, slice-sized candidates last.
 
 The goal is not to extract full specs. The goal is to answer one planning question before `propose` runs:
 
-> What are the smallest coherent business capabilities we can migrate, and in what order?
+> What are the smallest coherent slices we can migrate, and in what order?
 
 This RFC focusses on the `/change:draft` analysis process. Detailed schemas, detector catalogues, and future reconciliation features are deliberately secondary.
 
@@ -20,11 +20,11 @@ Without that step:
 
 - A 100k LOC monolith reaches planning as one oversized input.
 - A fleet of legacy repositories reaches planning as many disconnected inputs.
-- Capability boundaries are inferred directly from code organization, which risks rebuilding the legacy architecture in the target system.
+- Slice boundaries are inferred directly from code organization, which risks rebuilding the legacy architecture in the target system.
 - Cross-repo flows such as publisher/subscriber pairs or service-to-service HTTP calls must be stitched together by hand.
 - `propose` has to negotiate slice boundaries and plan entries at the same time.
 
-The missing primitive is a source survey: a deterministic analysis pass that turns legacy code into small, capability-shaped candidates before `propose` asks the operator to accept, edit, or reject plan entries.
+The missing primitive is a source survey: a deterministic analysis pass that turns legacy code into small, slice-sized candidates before `propose` asks the operator to accept, edit, or reject plan entries.
 
 ## Core Idea
 
@@ -39,7 +39,7 @@ For every legacy source, the survey records:
 - The source files reached from that handler or call site.
 - Evidence explaining how the surface was found.
 
-Then `/change:survey` composes all sources together, clusters related surfaces into business capabilities, sizes each capability candidate, and emits the ordered candidate set consumed by `propose`.
+Then `/change:survey` composes all sources together, clusters related surfaces into candidates, sizes each candidate, and emits the ordered candidate set consumed by `propose`.
 
 ## `/change:draft` Analysis Flow
 
@@ -50,8 +50,8 @@ After this RFC, the planning pipeline inside `/change:draft` has one extra analy
 - **Registry validate** — check project and capability registry state so planning uses known targets and declared capabilities.
 - **Discovery** — gather planning-level source facts and documentation hints before slice candidates are proposed.
 - **[When multi-repo system] Workspace sync** — refresh the mult-repo workspace inventory so repository assignments and target projects reflect the current registry.
-- **[When migrating a legacy system] Source survey** — mechanically decompose legacy code into surfaces, code footprints, and capability-sized candidates.
-- **Propose** — turn accepted capability candidates into operator-reviewable plan entries.
+- **[When migrating a legacy system] Source survey** — mechanically decompose legacy code into surfaces, code footprints, and slice-sized candidates.
+- **Propose** — turn accepted candidates into operator-reviewable plan entries.
 - **[When multi-repo system] Assignment** — attach accepted plan entries to the projects or repositories that should own the work.
 - **Plan validate** — run the canonical plan validation before handing the draft back to the operator.
 - **Hand-off** — stop after producing the reviewed planning artifacts and leave execution to `/change:execute`.
@@ -71,9 +71,9 @@ The same flow covers one source and many sources. A monolith is simply one `lega
 
 The discovery brief still invokes `/change:analyze` once per input.
 
-For `documentation`, `/change:analyze` behaves as it does today: it extracts planning-level capability hints into `discovery.md`.
+For `documentation`, `/change:analyze` behaves as it does today: it extracts planning-level candidate hints into `discovery.md`.
 
-For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer capability summaries directly. Instead, it invokes `specify change survey` and writes two sidecars under the plan working directory:
+For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer candidate summaries directly. Instead, it invokes `specify change survey` and writes two sidecars under the plan working directory:
 
 ```text
 .specify/plans/<change>/analyze/<source-key>/metadata.json
@@ -84,7 +84,7 @@ For `legacy-code`, `/change:analyze` becomes mechanical. It does not infer capab
 
 This split is the key simplification: plan-time code analysis first produces structural evidence, not slice decisions.
 
-Before invoking survey, the discovery brief writes the `## Capability inventory` heading wrapper into `discovery.md` exactly once. Survey appends capability blocks under that heading; the brief never re-emits it.
+Before invoking survey, the discovery brief writes the `## Candidate inventory` heading wrapper into `discovery.md` exactly once. Survey appends candidate blocks under that heading; the brief never re-emits it.
 
 ### Step 3: Pass 1 — Structural Decomposition (mechanical, top-down)
 
@@ -96,10 +96,10 @@ After all inputs have been analyzed, `/change:survey` builds a decomposition DAG
 | `source`     | union of group children                               | no       |
 | `group`      | union of child `touches`                              | no       |
 | `surface`    | union of handler `touches`                            | no       |
-| `capability` | dedup union of `touches` across participating sources | yes      |
+| `candidate`  | dedup union of `touches` across participating sources | yes      |
 
 
-`terminal` is a first-class field on every node, not a predicate downstream consumers derive from `kind`. Only capability leaves consumed by `propose` are terminal; everything else is structural and exists to make the DAG reviewable.
+`terminal` is a first-class field on every node, not a predicate downstream consumers derive from `kind`. Only candidate leaves consumed by `propose` are terminal; everything else is structural and exists to make the DAG reviewable.
 
 Pass 1 only descends into each source independently. There is no Pass 1 cross-source decomposition; cross-source pairing happens in Pass 2 against normalized identifiers, never against source code.
 
@@ -113,18 +113,18 @@ Cuts are tried in priority order; the first that applies wins:
 
 Structural depth is capped at **6 per source**. When an M+ group survives the cap without a clean partition, mark it `unresolved: true` and emit the DAG with the marker preserved. Survey exits 0 in this case; `propose` is responsible for refusing to draft a plan entry from an unresolved leaf until the operator resolves it.
 
-### Step 4: Pass 2 — Capability Clustering (semantic, bottom-up)
+### Step 4: Pass 2 — Candidate Clustering (semantic, bottom-up)
 
-Once Pass 1 ends at surfaces, cluster surfaces into capability leaves. Inputs:
+Once Pass 1 ends at surfaces, cluster surfaces into candidate leaves. Inputs:
 
 - All `surfaces.json` files, intra-source first.
-- `discovery.md` capability hints from documentation inputs.
+- `discovery.md` candidate hints from documentation inputs.
 - `<plan-dir>/identifier-aliases.yaml` (operator) plus per-capability alias bundles, normalized as in [Identifier Normalization](#identifier-normalization).
 
 Clustering evidence, in priority order:
 
 1. **Shared `touches` overlap (≥ 50%)** within a source — the scattered-within-source case.
-2. **Documentation grouping.** When documentation explicitly groups surfaces under one capability heading, that grouping is authoritative even if identifiers do not match mechanically.
+2. **Documentation grouping.** When documentation explicitly groups surfaces under one candidate heading, that grouping is authoritative even if identifiers do not match mechanically.
 3. **Cross-source contract edges**, matched on normalized `identifier`:
   - **Pub/sub pairing.** `message-pub` in source A + `message-sub` in source B sharing the normalized identifier → one cross-source leaf. **Publisher's source is canonical owner**; subscribers join.
   - **HTTP contract pairing.** `external-call-out` in source A whose normalized identifier matches an `http-route` in source B → one cross-source leaf. **Route owner is canonical**; caller depends on it.
@@ -155,7 +155,7 @@ Each candidate is sized using a framework-pinned T-shirt rubric over **productio
 | XL   | `>= 20000`     | Too large; split or mark unresolved.     |
 
 
-For a cross-source capability, LOC is the **deduplicated union of `touches` across every participating source**.
+For a cross-source candidate, LOC is the **deduplicated union of `touches` across every participating source**.
 
 The invariant is simple: `propose` should receive XS/S candidates or explicit unresolved items. It should not receive an unsliced monolith or an undifferentiated repo fleet.
 
@@ -165,7 +165,7 @@ When `depends_on` forms a cycle, mark every participating leaf `unresolved: true
 
 ### Step 6: Hand Candidates To Propose
 
-Survey appends capability blocks to the `## Capability inventory` heading the discovery brief wrote in Step 2. Propose remains the only stage that asks the operator to accept, edit, reject, or abort plan entries. Every accepted entry is still written through `specify plan add`.
+Survey appends candidate blocks to the `## Candidate inventory` heading the discovery brief wrote in Step 2. Propose remains the only stage that asks the operator to accept, edit, reject, or abort plan entries. Every accepted entry is still written through `specify plan add`.
 
 Survey produces candidates; propose produces `plan.yaml`.
 
@@ -260,8 +260,8 @@ One file per change. Required sections, in order:
 
 1. `Summary` — source / surface / candidate / unresolved counts.
 2. `Source inventory` — one row per input source.
-3. `DAG` — source → group → surface → capability (one tree per source).
-4. `Capability candidates` — proposed slice-sized leaves.
+3. `DAG` — source → group → surface → candidate (one tree per source).
+4. `Candidates` — proposed slice-sized leaves.
 5. `Unresolved` — ambiguous or oversized items requiring operator input.
 6. `Migration order` — topological sort over `depends_on`.
 
@@ -269,17 +269,17 @@ Each node block is a fenced YAML block following a Markdown sub-heading. Fields 
 
 > `kind`, `terminal`, `sources`, `target_project`, `handler`, `touches`, `surfaces`, `cross_module`, `cross_source`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`, `cycle_with`
 
-Omit fields that don't apply to the node's kind. `terminal` is always emitted (`true` for capability leaves, `false` for everything else) so consumers never have to pattern-match on `kind`. `cycle_with` is emitted only on `unresolved: true` leaves that participate in a `depends_on` cycle.
+Omit fields that don't apply to the node's kind. `terminal` is always emitted (`true` for candidate leaves, `false` for everything else) so consumers never have to pattern-match on `kind`. `cycle_with` is emitted only on `unresolved: true` leaves that participate in a `depends_on` cycle.
 
-The fenced-YAML form is the **canonical capability block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Capability inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit the survey-only fields (`cross_source`, `target_project` when no hint applies, etc.); survey-derived blocks always include `kind: capability` and `terminal: true`.
+The fenced-YAML form is the **canonical candidate block shape**. Both survey and `/change:analyze documentation` emit blocks in this shape under the shared `## Candidate inventory` heading; propose runs a single parser that keys on field names rather than on the source of the block. Doc-derived blocks omit the survey-only fields (`cross_source`, `target_project` when no hint applies, etc.); survey-derived blocks always include `kind: candidate` and `terminal: true`.
 
-Example cross-source pub/sub capability leaf:
+Example cross-source pub/sub candidate leaf:
 
 ````markdown
 ### identity.user-registration [S, 1094 LOC]
 
 ```yaml
-kind: capability
+kind: candidate
 terminal: true
 sources: [legacy-monolith, legacy-workers]
 target_project: identity-svc
@@ -299,13 +299,13 @@ depends_on: [shared-validation]
 ```
 ````
 
-Example cross-source HTTP-contract capability leaf — caller in one source, route owner in another; `target_project` is inherited from the route owner per [Propagation Rules](#propagation-rules):
+Example cross-source HTTP-contract candidate leaf — caller in one source, route owner in another; `target_project` is inherited from the route owner per [Propagation Rules](#propagation-rules):
 
 ````markdown
 ### orders.checkout [S, 612 LOC]
 
 ```yaml
-kind: capability
+kind: candidate
 terminal: true
 sources: [legacy-monolith, legacy-orders]
 target_project: orders-svc
@@ -347,7 +347,7 @@ It owns mechanical work only:
 - Record touched files.
 - Validate and write `surfaces.json`.
 
-The scanner does not call an LLM, infer capabilities, or write `plan.yaml`.
+The scanner does not call an LLM, infer candidates, or write `plan.yaml`.
 
 **Flags.**
 
@@ -407,13 +407,13 @@ struct DetectorOutput {
 ## Skill Responsibility Split
 
 
-| Component                       | Responsibility                                                                                                                            |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `/change:analyze documentation` | Extract capability hints from prose into `discovery.md`.                                                                                  |
-| `/change:analyze legacy-code`   | Run the mechanical scanner; write `metadata.json` + `surfaces.json`; do not infer capabilities.                                           |
-| `specify change survey`         | Deterministically enumerate surfaces for one source.                                                                                      |
-| `/change:survey`                | Compose all sources, run Pass 1 + Pass 2, size candidates, write `survey.md`, append capability blocks under the discovery-owned heading. |
-| `propose` brief                 | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                             |
+| Component                       | Responsibility                                                                                                                           |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `/change:analyze documentation` | Extract candidate hints from prose into `discovery.md`.                                                                                  |
+| `/change:analyze legacy-code`   | Run the mechanical scanner; write `metadata.json` + `surfaces.json`; do not infer candidates.                                            |
+| `specify change survey`         | Deterministically enumerate surfaces for one source.                                                                                     |
+| `/change:survey`                | Compose all sources, run Pass 1 + Pass 2, size candidates, write `survey.md`, append candidate blocks under the discovery-owned heading. |
+| `propose` brief                 | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                            |
 
 
 This split keeps expensive semantic judgement out of per-source analysis and lets cross-source clustering happen with the full system in view.
@@ -434,7 +434,7 @@ Cross-source leaves carry the `target_project` of the canonical owner: publisher
 
 `target_project` is propagated down the DAG by survey using a fixed set of rules so authors do not invent ad-hoc fallbacks:
 
-1. **Doc-hint propagation.** If a documentation capability with the same normalized name carries `target_project`, propagate it onto every cross-source or same-source leaf that mechanically maps to it.
+1. **Doc-hint propagation.** If a documentation candidate with the same normalized name carries `target_project`, propagate it onto every cross-source or same-source leaf that mechanically maps to it.
 2. **Canonical-owner propagation.** Cross-source leaves inherit `target_project` from the canonical owner. Pub/sub → publisher's source; HTTP → route owner's source (e.g. an `external-call-out` from `legacy-monolith` against an `http-route` owned by `legacy-orders` inherits `legacy-orders`' `target_project`); WebSocket → handler owner's source.
 3. **Single-source, no-hint.** The leaf emits `target_project` as **absent** (not empty). Downstream assignment runs today's description-match → baseline-affinity → capability-compatibility chain. An absent field is legal and downstream-handled by design.
 4. **Conflict.** If two ancestors carry conflicting `target_project` values (for example, a doc hint disagrees with a canonical owner), the leaf is marked `unresolved: true` with both candidates listed verbatim. Survey never silently picks a winner.
@@ -443,9 +443,9 @@ Cross-source leaves carry the `target_project` of the canonical owner: publisher
 
 The algorithm is identical in both cases.
 
-For a monolith, survey usually finds cross-module candidates: one capability implemented across several internal folders, workers, or packages.
+For a monolith, survey usually finds cross-module candidates: one candidate spanning several internal folders, workers, or packages.
 
-For a repo fleet, survey can also find cross-source candidates: one capability implemented by multiple deployable systems connected by HTTP, messages, jobs, or shared external contracts.
+For a repo fleet, survey can also find cross-source candidates: one candidate spanning multiple deployable systems connected by HTTP, messages, jobs, or shared external contracts.
 
 The source count changes the breadth of the graph, not the planning model.
 
@@ -468,31 +468,31 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 2. Add `specify change survey` with a stub detector registry, deterministic output, validation before write, the required `--source-key` flag, the `--out <dir>` directory contract, and the full exit-discriminant set documented in [Mechanical Scanner](#mechanical-scanner).
 3. Land the framework identifier canonicaliser inside `/change:survey` with the rules in [Identifier Normalization](#identifier-normalization). Fixtures cover the canonical-form table and the operator > capability > framework alias-merge precedence.
 4. Land the detector trait, `DetectorRegistry`, and `DetectorInput` / `DetectorOutput` shapes per [Detector Contract](#detector-contract), then the first mechanical detectors for the initial supported stack (Express, NestJS, BullMQ). Landing a real detector forces the contract to be exercised end-to-end.
-5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit capability blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
-6. **Combined release.** Land the discovery-brief edit that writes the `## Capability inventory` heading wrapper *together with* the `/change:survey` skill in step 7 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
+5. Rewrite `/change:analyze legacy-code` to write `metadata.json` and `surfaces.json` only; rewrite `/change:analyze documentation` to emit candidate blocks in the unified fenced-YAML shape from [Artifacts](#artifacts).
+6. **Combined release.** Land the discovery-brief edit that writes the `## Candidate inventory` heading wrapper *together with* the `/change:survey` skill in step 7 — the two must ship in a single PR ("discovery + survey heading handshake") to avoid a half-state where survey expects a heading the brief doesn't write.
 7. Add `/change:survey` with Pass 1 (priority-ordered cuts, depth cap 6/source, `unresolved: true` markers on M+ groups that survive the cap) and Pass 2 (canonicalised cross-source pairing with canonical-owner rules, `consumes-external` annotation for unpaired subscribers, cycle detection on `depends_on`). Wired against the structured-evidence renderer from [Artifacts](#artifacts). Wire it between workspace sync and propose.
 8. Update `assignment.md` for the precedence in [Routing Hint Precedence](#routing-hint-precedence), including the propagation rules.
 9. Acceptance fixtures (ship in step 7's PR or immediately after):
-   - Single-source L monolith with one cross-module capability.
-   - Multi-source change with **≥ 3 source-keys** producing at least one cross-source capability and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey.
+   - Single-source L monolith with one cross-module candidate.
+   - Multi-source change with **≥ 3 source-keys** producing at least one cross-source candidate and one `unresolved` leaf resolved by adding to `identifier-aliases.yaml` and re-running survey.
    - Greenfield documentation-only pass-through (survey skipped entirely).
    - Single-source-already-S no-op (source is its own terminal candidate without further partitioning).
    - M+ group hitting the depth-6 cap and emitting `unresolved: true` (Pass 1 fail-safe).
    - Subscriber with no in-scope publisher producing a `consumes-external` annotation (Pass 2 single-source fallback).
    - Two-source `depends_on` cycle that is resolved by aliasing two surface identifiers together (`cycle_with` markers, then clean topo order after re-run).
    - Alias bundle with an invalid `kind` value failing closed via `surface-scan-alias-kind-invalid`.
-   - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Capability inventory` is emitted exactly once.
+   - Fresh `/change:draft` end-to-end exercising the discovery-brief + survey handshake and asserting `## Candidate inventory` is emitted exactly once.
 10. Tutorials: monolith decomposition and legacy-fleet decomposition (with one alias-resolved `unresolved`). Ship a stub `docs/explanation/legacy-migration-at-scale.md` alongside the tutorials, or defer the full document to the follow-on RFC that owns cross-change scale (RFC-21 / RFC-22 are the natural home).
 
 ## Migration
 
 This is a plan-time behavioral change for legacy-code inputs.
 
-**For operators.** `/change:analyze legacy-code` no longer infers capability summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns capability clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes get cross-source clustering automatically; ambiguous identifiers surface as `unresolved` with the candidate set listed, and the operator extends `<plan-dir>/identifier-aliases.yaml` and re-runs.
+**For operators.** `/change:analyze legacy-code` no longer infers candidate summaries directly into `discovery.md`. Instead it writes `metadata.json` + `surfaces.json` sidecars, and `/change:survey` owns candidate clustering and writes the candidate inventory for propose. In-flight plans do not need conversion — re-running `/change:draft` for a legacy-code change regenerates plan-time scratch artifacts in the new shape. Multi-source changes get cross-source clustering automatically; ambiguous identifiers surface as `unresolved` with the candidate set listed, and the operator extends `<plan-dir>/identifier-aliases.yaml` and re-runs.
 
-**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted capability block to the unified shape (`kind: capability`, `terminal: true`, plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Capability-owned alias overrides live at `plugins/change/skills/survey/briefs/<cap>/identifier-aliases.yaml` and merge against framework defaults per the precedence above.
+**For capability authors.** Move the `legacy-code` clustering content out of `plugins/change/skills/draft/briefs/<cap>/analyze.md` into `plugins/change/skills/survey/briefs/<cap>/cluster.md`. `analyze.md` retains only the `documentation` branch and updates its emitted candidate block to the unified shape (`kind: candidate`, `terminal: true`, plus the field set described in [Artifacts](#artifacts)). Surface detectors are registered as in-binary Rust detectors per [Detector Contract](#detector-contract); the `plugins/change/skills/survey/briefs/<cap>/detectors/` directory is reserved but not loaded in v1. Capability-owned alias overrides live at `plugins/change/skills/survey/briefs/<cap>/identifier-aliases.yaml` and merge against framework defaults per the precedence above.
 
-**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Capability inventory` heading in `discovery.md` is written exactly once by the discovery brief; both survey (legacy-code) and `/change:analyze documentation` append capability blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
+**For skill authors consuming planning artifacts.** New artifacts: `surfaces.json` per source under `<plan-dir>/analyze/<source-key>/`, and `survey.md` under `<plan-dir>/`. Both schemas pinned, byte-stable. The `## Candidate inventory` heading in `discovery.md` is written exactly once by the discovery brief; both survey (legacy-code) and `/change:analyze documentation` append candidate blocks under it using the single fenced-YAML grammar defined in [Artifacts](#artifacts). Propose runs a single parser keyed on field names; missing fields default per the SKILL table.
 
 Documentation-only changes skip `/change:survey` entirely. With no `legacy-code` source, the pipeline reaches `propose` directly from discovery — there is nothing to decompose and the survey gate adds ceremony without value.
 
@@ -515,7 +515,7 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | Item                                                                                                     | Re-open when                                                                                                                                         |
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `domain-model` as a third closed-enum kind on `/change:analyze` (structured bounded-context import)      | An operator wants a structured context-map workflow, or documentation analyze repeatedly fails to surface bounded-context attribution routing needs. |
-| `synthesize` brief and `## Reconciliation` section in `discovery.md`                                     | Propose repeatedly drafts slices that ignore documented-but-uncoded capabilities, or `domain-model` lands and produces a third corpus to reconcile.  |
+| `synthesize` brief and `## Reconciliation` section in `discovery.md`                                     | Propose repeatedly drafts slices that ignore documented-but-uncoded candidates, or `domain-model` lands and produces a third corpus to reconcile.    |
 | `specify plan size` standalone CLI verb                                                                  | Operators report wanting LOC audits outside a draft run (slice review, candidate spot-check).                                                        |
 | Per-capability `cut.md` brief separate from `cluster.md`                                                 | A capability author writes a Pass 1 refinement that materially exceeds half a page inside `cluster.md`.                                              |
 | Per-capability `sizing.toml` overrides (tighten LOC rubric, add aggregate/endpoint counts)               | A capability demonstrates LOC-only sizing produces persistently wrong slices in operator review.                                                     |
