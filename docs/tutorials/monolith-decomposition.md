@@ -1,6 +1,6 @@
 # Monolith Decomposition
 
-Decompose a single legacy monolith into slice-sized migration candidates using `/change:survey`. This tutorial walks you through a `legacy-code` source that is too large to migrate in one pass, showing how the survey stage scans surfaces, sizes code footprints, clusters overlapping handlers, and produces a candidate inventory for `propose`.
+Decompose a single legacy monolith into slice-sized migration candidates using `/change:survey`. This tutorial walks you through a `legacy-code` source that is too large to migrate in one pass, showing how the survey stage enumerates surfaces with a per-language brief, sizes code footprints, clusters overlapping handlers, and produces a candidate inventory for `propose`.
 
 **Prerequisites:**
 
@@ -13,7 +13,7 @@ Decompose a single legacy monolith into slice-sized migration candidates using `
 
 - [Scenario](#scenario)
 - [1. Record the source](#1-record-the-source)
-- [2. Survey scans surfaces](#2-survey-scans-surfaces)
+- [2. Survey drives the per-language brief](#2-survey-drives-the-per-language-brief)
 - [3. Candidate inventory in survey.md](#3-candidate-inventory-in-surveymd)
 - [4. Candidates flow into discovery.md](#4-candidates-flow-into-discoverymd)
 - [5. Propose pause point](#5-propose-pause-point)
@@ -23,9 +23,9 @@ Decompose a single legacy monolith into slice-sized migration candidates using `
 
 ## Scenario
 
-You have a TypeScript monolith at `./legacy/monolith` — approximately 2400 production LOC across 12 modules. It exposes three HTTP routes: `GET /users/:id`, `POST /users`, and `POST /orders`. You want to migrate these capabilities into a Specify-managed project, but the monolith is too large to be a single slice (anything ≥ 1000 LOC triggers decomposition). You need Specify to break it into reviewable, slice-sized candidates before planning begins.
+You have a TypeScript monolith at `./legacy/monolith` — approximately 2400 production LOC across 12 modules. It exposes three Express HTTP routes: `GET /users/:id`, `POST /users`, and `POST /orders`. You want to migrate these capabilities into a Specify-managed project, but the monolith is too large to be a single slice (anything ≥ 1000 LOC triggers decomposition). You need Specify to break it into reviewable, slice-sized candidates before planning begins.
 
-The `/change:draft` pipeline handles this automatically. When it sees a `legacy-code` source, it inserts a `/change:survey` step between workspace sync and propose. Survey mechanically scans the source for surfaces, sizes each candidate, clusters overlapping handlers, and writes a candidate inventory that `propose` consumes.
+The `/change:draft` pipeline handles this automatically. When it sees a `legacy-code` source, it inserts a `/change:survey` step between workspace sync and propose. Survey resolves a per-language enumeration brief, drives an LLM to produce a candidate `surfaces.json`, hands it to `specify change survey` for schema-validated canonical write, sizes each candidate, clusters overlapping handlers, and writes the inventory that `propose` consumes.
 
 ## 1. Record the source
 
@@ -48,16 +48,131 @@ sources:
 
 This is the batch input that `specify change survey` consumes. For a single source the batch file has one row; the same format scales to many sources (see [Legacy Fleet Decomposition](legacy-fleet-decomposition.md)).
 
-## 2. Survey scans surfaces
+## 2. Survey drives the per-language brief
 
-`/change:survey` invokes the CLI scanner once:
+Surface enumeration is split across two actors with a sharp seam between them:
 
-```bash
-specify change survey --sources .specify/plans/migrate-monolith/survey/sources.yaml \
-    --out .specify/plans/migrate-monolith/survey/
+- The **skill** drives an LLM with a per-language enumeration brief to produce a candidate `surfaces.json` for each source.
+- The **CLI** (`specify change survey`) validates the candidate against the closed schema, canonicalises field order, captures source metadata, and atomically writes the canonical sidecars. It never calls an LLM.
+
+The candidate flows through staging → validation → canonical write. If the candidate fails validation, the skill re-prompts the LLM with the structured error from the CLI and tries again — up to a bounded retry budget. The walk below shows one full pass on this monolith, including a single repair-loop iteration on a synthetic shape error.
+
+### Resolve the brief
+
+`/change:survey` detects the source language (`typescript`) and resolves the enumeration brief at [`plugins/change/skills/survey/briefs/enumerate/typescript.md`](../../plugins/change/skills/survey/briefs/enumerate/typescript.md). That brief covers Express, NestJS, BullMQ, Fastify, and Next.js. It pins the closed `kind` enum, the path-under-source-root rule, and the worked input → `Surface` mapping for each framework idiom. The TypeScript brief is the only place per-language enumeration knowledge ships; the CLI is brief-agnostic.
+
+### Stage a candidate
+
+The skill drives the LLM with the brief plus a pointer at `./legacy/monolith` and writes the resulting candidate to a staging directory:
+
+```text
+.specify/plans/migrate-monolith/survey/staged/legacy-monolith.json
 ```
 
-The scanner runs every registered detector against `./legacy/monolith`. For this TypeScript monolith, the Express detector fires and enumerates three HTTP routes. It writes two sidecar files per source-key:
+A first-pass candidate for this monolith looks like this — three Express routes pulled from `src/server.ts`, each with `handler`, `touches`, and `declared-at`:
+
+```json
+{
+  "version": 1,
+  "source-key": "legacy-monolith",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "http-get-users-id",
+      "kind": "http-route",
+      "identifier": "GET /users/:id",
+      "handler": "src/users/get.ts:getUser",
+      "touches": ["src/users/get.ts", "src/users/repository.ts"],
+      "declared-at": ["src/server.ts:18"]
+    },
+    {
+      "id": "http-post-orders",
+      "kind": "http-route",
+      "identifier": "POST /orders",
+      "handler": "src/orders/create.ts:createOrder",
+      "touches": [
+        "../shared/money.ts",
+        "src/orders/create.ts",
+        "src/orders/pricing.ts",
+        "src/orders/repository.ts",
+        "src/orders/validate.ts"
+      ],
+      "declared-at": ["src/server.ts:22"]
+    },
+    {
+      "id": "http-post-users",
+      "kind": "http-route",
+      "identifier": "POST /users",
+      "handler": "src/users/register.ts:registerUser",
+      "touches": [
+        "src/users/register.ts",
+        "src/users/repository.ts",
+        "src/users/validate.ts"
+      ],
+      "declared-at": ["src/server.ts:14"]
+    }
+  ]
+}
+```
+
+Note the second surface includes `../shared/money.ts` — a relative `import` the LLM followed out of the source root. That entry violates the path-under-source-root rule. The CLI will catch it.
+
+### Hand off to the CLI
+
+The skill writes `sources.yaml`, then invokes the CLI in batch form with `--validate-only` so the canonical output directory stays untouched while the candidate is still under review:
+
+```bash
+specify change survey \
+    --sources .specify/plans/migrate-monolith/survey/sources.yaml \
+    --staged  .specify/plans/migrate-monolith/survey/staged/ \
+    --out     .specify/plans/migrate-monolith/survey/ \
+    --validate-only
+```
+
+The validator walks every `touches[]` and `declared-at[]` entry, joins it against the source root, and rejects anything that escapes. The `../shared/money.ts` entry fails on the very first surface that contains it, and the CLI exits non-zero with the discriminant `surfaces-touches-out-of-tree` and a field-path detail. No canonical files are written.
+
+### Repair loop on a shape error
+
+`/change:survey` catches the validator exit and packages the failure into the structured envelope defined in [`references/repair-loop.md`](../../plugins/change/skills/survey/references/repair-loop.md). The envelope is fed back to the LLM together with the original brief and the failed candidate, asking it to fix only the cited rule:
+
+```json
+{
+  "failure": {
+    "code": "surfaces-touches-out-of-tree",
+    "detail": "surfaces[1].touches[0]: ../shared/money.ts"
+  },
+  "instruction": "Fix only the rule cited above. Re-emit the full surfaces.json with the offending entry corrected; do not alter unrelated surfaces."
+}
+```
+
+The TypeScript brief's `touches[]` resolution algorithm spells out the right move: paths the resolver produces outside the source root are treated as a module boundary and dropped from `touches[]`. The LLM re-emits the candidate with that single entry removed; every other surface is untouched.
+
+```json
+{
+  "id": "http-post-orders",
+  "kind": "http-route",
+  "identifier": "POST /orders",
+  "handler": "src/orders/create.ts:createOrder",
+  "touches": [
+    "src/orders/create.ts",
+    "src/orders/pricing.ts",
+    "src/orders/repository.ts",
+    "src/orders/validate.ts"
+  ],
+  "declared-at": ["src/server.ts:22"]
+}
+```
+
+The skill re-runs the CLI with `--validate-only`. This time the validator passes. The skill drops `--validate-only` and re-invokes once more to perform the canonical write:
+
+```bash
+specify change survey \
+    --sources .specify/plans/migrate-monolith/survey/sources.yaml \
+    --staged  .specify/plans/migrate-monolith/survey/staged/ \
+    --out     .specify/plans/migrate-monolith/survey/
+```
+
+The CLI canonicalises (sorts `surfaces[]` by `id`, sorts each `touches[]` and `declared-at[]` alphabetically), captures coarse source metadata, and atomically writes two sidecars under the source-key directory:
 
 **`metadata.json`** — coarse source facts:
 
@@ -124,28 +239,30 @@ The scanner runs every registered detector against `./legacy/monolith`. For this
 }
 ```
 
-> These outputs match [`plugins/change/skills/survey/fixtures/single-source-monolith/inputs/`](../../plugins/change/skills/survey/fixtures/single-source-monolith/inputs/). If the fixture changes, this tutorial must also change.
+> The canonical sidecar shape matches [`plugins/change/skills/survey/fixtures/single-source-monolith/`](../../plugins/change/skills/survey/fixtures/single-source-monolith/). If the fixture changes, this tutorial must also change.
 
 ### What just happened
 
-The scanner found three HTTP routes by reading Express route registrations in `src/server.ts`. For each surface it recorded:
+The LLM followed the TypeScript brief to enumerate three HTTP routes from Express route registrations in `src/server.ts`. For each surface it produced:
 
 - The **identifier** — the legacy spelling of the route (`GET /users/:id`, `POST /users`, `POST /orders`).
 - The **handler** — the function that implements the route.
-- The **touches** — every source file reachable from the handler (via import-graph walking, excluding `node_modules`).
+- The **touches** — every source file reachable from the handler by walking the relative `import` graph, stopping at module boundaries.
 - The **declared-at** — the line in `src/server.ts` where the route is mounted (the proof the surface exists).
 
-The scanner is mechanical. It does not call an LLM, infer business meaning, or write plan entries.
+The first attempt over-reached on one surface; the CLI's path-under-source-root invariant caught it, and the skill's bounded repair loop got a corrected candidate through within one retry (the v1 budget is three per source). The CLI never executes an LLM; the skill never canonicalises or writes sidecars. The seam is what keeps the artifact contract enforceable even when the producer is non-deterministic.
 
 ## 3. Candidate inventory in survey.md
 
-After the CLI finishes, `/change:survey` reads the sidecars and runs the candidate algorithm:
+After the CLI finishes, `/change:survey` reads the sidecars and runs the candidate algorithm. The full algorithm lives in [`references/candidate-algorithm.md`](../../plugins/change/skills/survey/references/candidate-algorithm.md); applied to this monolith:
 
-1. **Size check.** The union of all `touches` across every surface is 1320 LOC — above the 1000 LOC threshold. The monolith cannot be a single candidate, so the algorithm descends to surface-level candidates.
+1. **Size check (Decision 1).** The union of all `touches` across every surface is 1320 LOC — above the 1000 LOC threshold. The monolith cannot be a single candidate, so the algorithm descends to surface-level candidates.
 
-2. **Surface candidates.** Each surface becomes a default candidate. But two of them — `GET /users/:id` and `POST /users` — share `src/users/repository.ts` in their `touches`.
+2. **Surface candidates (Decision 2).** Each surface becomes a default candidate. But two of them — `GET /users/:id` and `POST /users` — share `src/users/repository.ts` in their `touches`.
 
-3. **Minimal clustering.** The overlap between those two surfaces is 50% (1 shared file out of the smaller set's 2 files). Their combined `touches` total 700 LOC — still below the 1000 LOC threshold. Survey merges them into one `user-management` candidate. The third surface (`POST /orders`) has no overlap with either and remains standalone as `order-creation`.
+3. **Minimal clustering (Decision 3).** The overlap between those two surfaces is 50% (1 shared file out of the smaller set's 2 files). Their combined `touches` total 700 LOC — still below the 1000 LOC threshold. Survey merges them into one `user-management` candidate. The third surface (`POST /orders`) has no overlap with either and remains standalone as `order-creation`.
+
+Decision 4 (the `too-large` post-cluster `unresolved` path) does not fire here; see [When a candidate is too large](#when-a-candidate-is-too-large) below for the case that does.
 
 The result is `.specify/plans/migrate-monolith/survey.md`:
 
@@ -328,7 +445,8 @@ An `unresolved` candidate appears in the survey summary (`Unresolved: 1`) and in
 ## What you learned
 
 - `/change:draft` automatically inserts a `/change:survey` step for `legacy-code` sources. You do not invoke survey separately.
-- The CLI scanner (`specify change survey`) is mechanical — it detects framework surfaces, records code footprints, and writes byte-stable JSON. No LLM involved.
+- Surface enumeration runs in two stages: the skill drives an LLM with the per-language brief at [`plugins/change/skills/survey/briefs/enumerate/<language>.md`](../../plugins/change/skills/survey/briefs/enumerate/), and the CLI (`specify change survey`) validates the candidate against the closed schema, canonicalises field order, and atomically writes the sidecars. The CLI never calls an LLM.
+- When the candidate fails validation, the skill enters a bounded repair loop: it replays the CLI's structured error envelope to the LLM and re-validates, up to three retries per source. The contract is pinned in [`references/repair-loop.md`](../../plugins/change/skills/survey/references/repair-loop.md); exhaustion exits `surveyor-exhausted`.
 - Survey sizes candidates by production LOC. Sources under 1000 LOC become one candidate; larger sources are decomposed into surface-level candidates with minimal same-source clustering.
 - Clustering merges surfaces that share ≥ 50% `touches` overlap, as long as the combined candidate remains under 1000 LOC.
 - Candidates that cannot be reduced below 1000 LOC are marked `unresolved: true` for operator review during `propose`.

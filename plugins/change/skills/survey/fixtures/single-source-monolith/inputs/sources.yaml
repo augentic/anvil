@@ -1,4 +1,4 @@
 version: 1
 sources:
   - key: legacy-monolith
-    path: ./legacy/monolith
+    path: ./legacy-monolith-source

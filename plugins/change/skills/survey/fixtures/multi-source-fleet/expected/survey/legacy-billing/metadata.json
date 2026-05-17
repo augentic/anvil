@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source-key": "legacy-billing",
+  "language": "typescript",
+  "loc": 780,
+  "module-count": 1,
+  "top-level-modules": [
+    "src"
+  ]
+}

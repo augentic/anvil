@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "source-key": "express-app",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "http-post-users",
+      "kind": "http-route",
+      "identifier": "POST /users",
+      "handler": "src/routes/users.ts:createUser",
+      "touches": [
+        "src/services/user-service.ts",
+        "src/routes/users.ts",
+        "src/utils/db.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:10"
+      ]
+    },
+    {
+      "id": "http-get-users",
+      "kind": "http-route",
+      "identifier": "GET /users",
+      "handler": "src/routes/users.ts:listUsers",
+      "touches": [
+        "src/services/user-service.ts",
+        "src/routes/users.ts",
+        "src/utils/db.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:9"
+      ]
+    },
+    {
+      "id": "http-get-health",
+      "kind": "http-route",
+      "identifier": "GET /health",
+      "handler": "src/server.ts:6",
+      "touches": [
+        "src/server.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:6"
+      ]
+    }
+  ]
+}

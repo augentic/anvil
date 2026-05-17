@@ -8,7 +8,7 @@ Sources: 1 | Surfaces: 3 | Candidates: 1 | Unresolved: 0
 
 | Source | Path | Language | LOC | Surfaces |
 |---|---|---|---|---|
-| legacy-widget | ./legacy/widget | typescript | 850 | 3 |
+| legacy-widget | ./legacy-widget-source | typescript | 850 | 3 |
 
 ## Candidate inventory
 

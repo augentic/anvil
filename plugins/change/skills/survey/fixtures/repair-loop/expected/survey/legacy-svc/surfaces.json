@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "source-key": "legacy-svc",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "http-get-health",
+      "kind": "http-route",
+      "identifier": "GET /health",
+      "handler": "src/handler.ts:checkHealth",
+      "touches": [
+        "src/handler.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:4"
+      ]
+    }
+  ]
+}

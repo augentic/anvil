@@ -1,0 +1,4 @@
+version: 1
+sources:
+  - key: legacy-flaky
+    path: ./legacy-flaky-source

@@ -10,7 +10,7 @@ Fixture proving the core happy path: a single `legacy-code` source whose total L
 
 ## Sizing assumptions
 
-Per-file production LOC used to compute candidate sizes (no actual source tree ships with this fixture):
+Per-file production LOC, baked into the stub source tree under `inputs/legacy-monolith-source/`:
 
 | File | Production LOC |
 |---|---|
@@ -22,8 +22,9 @@ Per-file production LOC used to compute candidate sizes (no actual source tree s
 | `src/orders/pricing.ts` | 130 |
 | `src/orders/repository.ts` | 170 |
 | `src/orders/validate.ts` | 120 |
+| `src/server.ts` | 0 (anchor for `declared-at` references; the CLI strips line suffixes before path-under-root validation) |
 
-Union-of-touches LOC: 1320 (≥ 1000 → surface candidates).
+Total source LOC: 1320. Union-of-touches LOC: 1320 (≥ 1000 → surface candidates).
 
 ## Clustering walkthrough
 
@@ -42,9 +43,11 @@ Union-of-touches LOC: 1320 (≥ 1000 → surface candidates).
 
 ## Contents
 
-- [`inputs/sources.yaml`](inputs/sources.yaml) — batch sources file with one entry.
-- [`inputs/surfaces.json`](inputs/surfaces.json) — three surfaces for `legacy-monolith`.
-- [`inputs/metadata.json`](inputs/metadata.json) — source metadata (2400 total LOC).
+- [`inputs/sources.yaml`](inputs/sources.yaml) — batch sources file with one entry, pointing at the in-fixture stub source tree.
+- [`inputs/legacy-monolith-source/`](inputs/legacy-monolith-source) — minimal TypeScript stub tree padded to the per-file LOC table above; satisfies the CLI's `path-under-root` check for every `touches[]` and `declared-at[]` entry.
+- [`inputs/staged/legacy-monolith.json`](inputs/staged/legacy-monolith.json) — LLM-produced candidate `surfaces.json` (the input to `specify change survey`).
 - [`inputs/discovery.md`](inputs/discovery.md) — pre-survey discovery with `## Candidate inventory` heading.
+- [`expected/survey/legacy-monolith/surfaces.json`](expected/survey/legacy-monolith/surfaces.json) — canonical sidecar written by the CLI after validation + canonicalisation.
+- [`expected/survey/legacy-monolith/metadata.json`](expected/survey/legacy-monolith/metadata.json) — canonical sidecar capturing LOC, module count, and top-level modules.
 - [`expected/survey.md`](expected/survey.md) — byte-stable survey output.
 - [`expected/discovery.md`](expected/discovery.md) — discovery after survey appends candidate blocks.

@@ -17,7 +17,15 @@ Source `legacy-billing`, TypeScript, 1320 total LOC. Two surfaces sharing `src/b
 | `message-sub-payment-settled` | `core.ts`, `settlement.ts`, `subscriptions.ts` | 900 |
 | `scheduled-job-invoice-sync` | `core.ts`, `invoices.ts` | 1020 |
 
-Per-file LOC: `core.ts` 600, `invoices.ts` 420, `settlement.ts` 140, `subscriptions.ts` 160.
+Per-file LOC, baked into the stub source tree under `inputs/legacy-billing-source/`:
+
+| File | Production LOC |
+|---|---|
+| `src/billing/core.ts` | 600 |
+| `src/billing/invoices.ts` | 420 |
+| `src/billing/settlement.ts` | 140 |
+| `src/billing/subscriptions.ts` | 160 |
+| `src/billing/scheduler.ts` | 0 (anchor for `declared-at` references) |
 
 ## Clustering walkthrough
 
@@ -35,9 +43,11 @@ Per-file LOC: `core.ts` 600, `invoices.ts` 420, `settlement.ts` 140, `subscripti
 
 ## Contents
 
-- [`inputs/sources.yaml`](inputs/sources.yaml) — batch sources file with one entry.
-- [`inputs/surfaces.json`](inputs/surfaces.json) — two surfaces for `legacy-billing`.
-- [`inputs/metadata.json`](inputs/metadata.json) — source metadata (1320 LOC).
+- [`inputs/sources.yaml`](inputs/sources.yaml) — batch sources file with one entry, pointing at the in-fixture stub source tree.
+- [`inputs/legacy-billing-source/`](inputs/legacy-billing-source) — minimal TypeScript stub tree padded to the per-file LOC table above; satisfies the CLI's `path-under-root` check for every `touches[]` and `declared-at[]` entry.
+- [`inputs/staged/legacy-billing.json`](inputs/staged/legacy-billing.json) — LLM-produced candidate `surfaces.json` (the input to `specify change survey`).
 - [`inputs/discovery.md`](inputs/discovery.md) — pre-survey discovery with `## Candidate inventory` heading.
+- [`expected/survey/legacy-billing/surfaces.json`](expected/survey/legacy-billing/surfaces.json) — canonical sidecar written by the CLI.
+- [`expected/survey/legacy-billing/metadata.json`](expected/survey/legacy-billing/metadata.json) — canonical sidecar capturing LOC, module count, and top-level modules.
 - [`expected/survey.md`](expected/survey.md) — byte-stable survey output with one `unresolved: true` candidate.
 - [`expected/discovery.md`](expected/discovery.md) — discovery after survey appends candidate blocks.

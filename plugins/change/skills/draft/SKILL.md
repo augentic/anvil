@@ -16,7 +16,7 @@ argument-hint: <change-name>
 4. **Plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief; runs `/change:analyze` for `documentation` inputs and writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 4(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-workspace.md](sync-workspace.md).
-   - **(c) Source survey** (legacy-code sources only) — invoke `/change:survey` to mechanically decompose legacy code into surfaces and slice-sized candidates. Skip when the change has no `legacy-code` sources. See [`/change:survey` SKILL.md](../survey/SKILL.md).
+   - **(c) Source survey** (legacy-code sources only) — invoke `/change:survey` to drive per-language enumeration briefs against legacy code, validate the result against the closed `surfaces.json` schema, and emit slice-sized candidates. Skip when the change has no `legacy-code` sources. See [`/change:survey` SKILL.md](../survey/SKILL.md).
    - **(d) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan add` for each accepted slice. See [propose.md](propose.md).
    - **(e) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
 5. **Validate** — `specify plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
@@ -39,7 +39,7 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`references/runbook.md`](references/runbook.md) | Invocation grammar, input kinds, kind defaults, verbatim six-step loop, single-writer invariant, working-directory layout, mode deltas, non-goals, state-mutation surface |
 | [`discovery.md`](discovery.md) | Discovery brief (step 4a) — `/change:analyze` for `documentation` inputs and greenfield registry bootstrap |
 | [`sync-workspace.md`](sync-workspace.md) | Sync-workspace brief (step 4b, multi-repo only) — `specify workspace sync` + `workspace.md` authoring |
-| [`../survey/SKILL.md`](../survey/SKILL.md) | Source survey (step 4c, legacy-code sources only) — `/change:survey` mechanical decomposition |
+| [`../survey/SKILL.md`](../survey/SKILL.md) | Source survey (step 4c, legacy-code sources only) — `/change:survey` agent-enumerated decomposition |
 | [`propose.md`](propose.md) | Propose brief (step 4d) — accept/edit/reject loop, `specify plan add` |
 | [`assignment.md`](assignment.md) | Assignment brief (step 4e, multi-repo only) — `--project` inference and registry-proposal sub-step |
 | [`briefs/`](briefs/) | Bundled per-capability planning briefs (`omnia/`, `vectis/`) |

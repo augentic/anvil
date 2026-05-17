@@ -8,7 +8,7 @@ Sources: 1 | Surfaces: 2 | Candidates: 2 | Unresolved: 1
 
 | Source | Path | Language | LOC | Surfaces |
 |---|---|---|---|---|
-| legacy-billing | ./legacy/billing | typescript | 1320 | 2 |
+| legacy-billing | ./legacy-billing-source | typescript | 1320 | 2 |
 
 ## Candidate inventory
 

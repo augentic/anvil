@@ -90,7 +90,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `execute` - drive a change's plan through define, build, merge per slice.
 - `finalize` - push branches, observe PR state, run `specify change finalize` once every PR is `MERGED`.
 - `analyze` - plan-time capability inference; emits capability summaries.
-- `survey` - mechanically decompose legacy-code sources into surfaces and slice-sized candidates for propose.
+- `survey` - decompose legacy-code sources into slice-sized candidates by driving per-language enumeration briefs and validating the result against the closed `surfaces.json` schema.
 
 ### Omnia Plugin (`plugins/omnia/`)
 

@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "source-key": "legacy-api",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "http-get-users",
+      "kind": "http-route",
+      "identifier": "GET /users",
+      "handler": "src/users/list.ts:listUsers",
+      "touches": [
+        "src/users/list.ts",
+        "src/users/repository.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:9"
+      ]
+    },
+    {
+      "id": "http-post-orders",
+      "kind": "http-route",
+      "identifier": "POST /orders",
+      "handler": "src/orders/create.ts:createOrder",
+      "touches": [
+        "src/orders/create.ts",
+        "src/orders/repository.ts",
+        "src/orders/validate.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:14"
+      ]
+    }
+  ]
+}

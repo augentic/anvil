@@ -8,8 +8,8 @@ Sources: 2 | Surfaces: 4 | Candidates: 3 | Unresolved: 0
 
 | Source | Path | Language | LOC | Surfaces |
 |---|---|---|---|---|
-| legacy-api | ./legacy/api | typescript | 1200 | 2 |
-| legacy-billing | ./legacy/billing | typescript | 780 | 2 |
+| legacy-api | ./legacy-api-source | typescript | 1200 | 2 |
+| legacy-billing | ./legacy-billing-source | typescript | 780 | 2 |
 
 ## Candidate inventory
 

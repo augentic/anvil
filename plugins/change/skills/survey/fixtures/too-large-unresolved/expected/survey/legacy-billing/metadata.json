@@ -3,8 +3,8 @@
   "source-key": "legacy-billing",
   "language": "typescript",
   "loc": 1320,
-  "module_count": 5,
-  "top_level_modules": [
-    "src/billing"
+  "module-count": 1,
+  "top-level-modules": [
+    "src"
   ]
 }

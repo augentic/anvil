@@ -4,11 +4,13 @@
 
 ## The scale problem
 
-A single `/change:draft` cycle decomposes one set of legacy sources into slice-sized candidates, produces a plan, and hands it to the operator. That works well for a monolith or a small fleet of repositories. But large-scale migrations involve many changes over many sources — potentially hundreds of repositories, dozens of plans, and months of execution. At that scale, single-change mechanics are necessary but not sufficient.
+A single `/change:draft` cycle decomposes one set of legacy sources into slice-sized candidates, produces a plan, and hands it to the operator. Per-source decomposition runs through `/change:survey`: for each `legacy-code` input, the skill drives an LLM with a per-language enumeration brief to produce a candidate `surfaces.json`, and `specify change survey` validates that candidate against a closed schema, canonicalises field order, and writes the canonical sidecars deterministically. Producer (the brief plus the LLM) and validator (the CLI) sit on opposite sides of a sharp seam, which is what keeps the artifact contract enforceable while still covering several languages without growing the CLI binary.
+
+That pattern works well for a monolith or a small fleet of repositories. But large-scale migrations involve many changes over many sources — potentially hundreds of repositories, dozens of plans, and months of execution. At that scale, single-change mechanics are necessary but not sufficient.
 
 The missing primitives for cross-change scale include:
 
-- **Durable source catalogues.** A registry of known legacy sources, their survey state, and which changes have consumed them — so a second change against the same source can skip re-scanning.
+- **Durable source catalogues.** A registry of known legacy sources, their survey state, and which changes have consumed them — so a second change against the same source can reuse the canonical sidecars from the first survey instead of re-running enumeration.
 - **Migration ledger.** A cumulative record of which surfaces have been migrated, which remain, and which are blocked — across all changes, not just the current one.
 - **Cross-source pairing.** Automated matching of related surfaces across repositories (e.g. an outbound HTTP call in one repo and the corresponding route in another) to propose cross-source candidates that today require manual operator intervention during `propose`.
 - **Dependency ordering across the fleet.** Inferring `depends-on` edges from contract edges so the operator does not have to manually sequence related candidates across sources.

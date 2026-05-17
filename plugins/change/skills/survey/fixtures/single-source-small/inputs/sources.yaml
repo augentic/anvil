@@ -1,4 +1,4 @@
 version: 1
 sources:
   - key: legacy-widget
-    path: ./legacy/widget
+    path: ./legacy-widget-source

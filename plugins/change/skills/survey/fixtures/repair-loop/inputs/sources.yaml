@@ -1,0 +1,4 @@
+version: 1
+sources:
+  - key: legacy-svc
+    path: ./legacy-svc-source

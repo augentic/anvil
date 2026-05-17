@@ -143,7 +143,9 @@ Follow these steps in order on every invocation. Each step is normative; every s
      a. discovery       — see ../discovery.md (greenfield registry bootstrap also).
      b. sync-workspace  — see ../sync-workspace.md (multi-repo only).
      c. survey          — see ../../survey/SKILL.md (legacy-code sources only;
-                           skip when the change has no legacy-code inputs).
+                           drives the per-language enumeration brief and
+                           validates the result before sizing; skip when the
+                           change has no legacy-code inputs).
      d. propose         — see ../propose.md.
      e. assignment      — see ../assignment.md (multi-repo only; includes
                            the registry-proposal sub-step for unresolved
@@ -191,7 +193,8 @@ Authoring artefacts live under `.specify/plans/<change-name>/`, mirroring the ch
         ├── discovery.md            # from the discovery brief (step 4a)
         ├── workspace.md            # from sync-workspace (step 4b; multi-repo only)
         ├── survey.md               # from /change:survey (step 4c; legacy-code sources only)
-        ├── survey/                  # /change:survey sidecars: `<source-key>/{metadata.json,surfaces.json}`
+        ├── survey/                  # /change:survey artefacts: `staged/<source-key>.json` (LLM-produced candidates),
+        │                            # `sources.yaml` (batch input), and canonical `<source-key>/{metadata.json,surfaces.json}` sidecars
         ├── proposal.md             # from the propose brief (step 4d) + assignment table (step 4e)
         └── analyze/                # `/change:analyze` sidecars (documentation): `<source-key>/metadata.json`
 ```
@@ -245,7 +248,7 @@ The state the skill mutates:
 2. `change.md` through `specify change draft` (step 2 only; never edited directly).
 3. `registry.yaml` indirectly via the assignment-step registry-proposal sub-step (`specify registry add` + `specify workspace sync`); never written by the skill itself.
 4. `.specify/plans/<change-name>/discovery.md` written by the discovery brief (step 4a).
-5. `.specify/plans/<change-name>/survey.md` and `.specify/plans/<change-name>/survey/<source-key>/` written by `/change:survey` (step 4c, legacy-code sources only).
+5. `.specify/plans/<change-name>/survey.md`, the staged candidates under `.specify/plans/<change-name>/survey/staged/<source-key>.json`, the `--sources` batch file at `.specify/plans/<change-name>/survey/sources.yaml`, and the canonical sidecars under `.specify/plans/<change-name>/survey/<source-key>/{surfaces,metadata}.json` written by `/change:survey` (step 4c, legacy-code sources only).
 6. `.specify/plans/<change-name>/proposal.md` written by the propose brief (step 4d).
 7. `.specify/plans/<change-name>/workspace.md` written by step 4(b) when the registry declares more than one project.
 

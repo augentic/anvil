@@ -49,7 +49,7 @@ where `<plan-dir>` is `.specify/plans/<change-name>/` — the same directory thi
 
 ### `kind: legacy-code`
 
-Legacy-code inputs are handled by [`/change:survey`](../../../survey/SKILL.md), not by `/change:analyze`. After discovery completes, `/change:survey` runs for every recorded `legacy-code` source between workspace sync and propose. Survey mechanically enumerates surfaces and code footprints, sizes candidates, applies minimal same-source clustering, and appends candidate blocks under the same `## Candidate inventory` heading in `discovery.md`.
+Legacy-code inputs are handled by [`/change:survey`](../../../survey/SKILL.md), not by `/change:analyze`. After discovery completes, `/change:survey` runs for every recorded `legacy-code` source between workspace sync and propose. Survey drives the per-language enumeration brief to produce a candidate `surfaces.json`, validates it through `specify change survey`, sizes candidates, applies minimal same-source clustering, and appends candidate blocks under the same `## Candidate inventory` heading in `discovery.md`.
 
 Source-key resolution for legacy-code inputs:
 

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "source-key": "legacy-flaky",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "http-get-stuff",
+      "kind": "http-route",
+      "identifier": "GET /stuff",
+      "handler": "src/handler.ts:getStuff",
+      "touches": [
+        "src/handler.ts",
+        "../escape.ts"
+      ],
+      "declared-at": [
+        "src/server.ts:3"
+      ]
+    }
+  ]
+}

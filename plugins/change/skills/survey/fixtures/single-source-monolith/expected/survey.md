@@ -8,7 +8,7 @@ Sources: 1 | Surfaces: 3 | Candidates: 2 | Unresolved: 0
 
 | Source | Path | Language | LOC | Surfaces |
 |---|---|---|---|---|
-| legacy-monolith | ./legacy/monolith | typescript | 2400 | 3 |
+| legacy-monolith | ./legacy-monolith-source | typescript | 1320 | 3 |
 
 ## Candidate inventory
 

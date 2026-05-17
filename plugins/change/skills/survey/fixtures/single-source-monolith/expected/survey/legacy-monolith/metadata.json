@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source-key": "legacy-monolith",
+  "language": "typescript",
+  "loc": 1320,
+  "module-count": 1,
+  "top-level-modules": [
+    "src"
+  ]
+}
