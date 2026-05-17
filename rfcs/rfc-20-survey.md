@@ -20,7 +20,7 @@ An earlier draft of RFC-20 specified a mechanical scanner: in-binary Rust detect
 - ASP.NET Core, Axum/Actix/Rocket, and CICS/IMS have no shared idiom that would let a regex detector cover them; each would require its own parser inside the CLI binary.
 - Maintenance scaled super-linearly in (frameworks × languages) and crowded out work the planning pipeline actually needs.
 
-This revision pivots the producer of `surfaces.json` from in-binary detectors to per-language LLM enumeration briefs, while keeping the schema, candidate algorithm, sizing rubric, and CLI as the deterministic spine. The `Detector` trait and `DetectorRegistry` are retained as deferred extension points so individual languages can revert to mechanical enumeration later without changing the artifact contract.
+This revision pivots the producer of `surfaces.json` from in-binary detectors to per-language LLM enumeration briefs, while keeping the schema, candidate algorithm, sizing rubric, and CLI as the deterministic spine. Pre-1.0 the `Detector` trait and `DetectorRegistry` were deleted as YAGNI carrying cost; the artifact contract (the DTOs and validators in `crates/domain/src/survey/{dto,validate,sources}.rs`) is the reversion seam — a future RFC that reintroduces mechanical enumeration for a (language, framework) pair `git revert`s the trait module rather than carrying it indefinitely.
 
 ## Motivation
 
@@ -320,7 +320,7 @@ Stacks outside the brief set fall back to manual source scoping until a brief ex
 
 **No LLM in the validator.** The CLI never calls an LLM. Validation, sorting, metadata capture, atomic writes, and exit-code mapping are deterministic.
 
-**Future mechanical reversion.** The `Detector` trait and `DetectorRegistry` remain in the workspace as deferred extension points. v1 ships the registry empty and routes every legacy-code source through the agent path. A future RFC may register an in-binary detector for a specific (language, framework) pair where regex-style enumeration is cheaper to maintain than the brief; the skill would prefer mechanical output when registered. The artifact contract does not change in either direction. See [Out Of Scope](#out-of-scope).
+**Future mechanical reversion.** Pre-1.0 the `Detector` trait, `DetectorRegistry`, and `merge_detector_outputs` helper were deleted as YAGNI carrying cost — empty registries, an unreachable merge helper, and a `Language` enum with zero production callers had become 215 LOC of dead surface plus 275 LOC of tests exercising nothing the binary could reach. v1 routes every legacy-code source through the agent path. A future RFC that reintroduces mechanical enumeration for a specific (language, framework) pair `git revert`s those modules and wires the resulting detector into the survey verb; the artifact contract — the DTOs and validators in `crates/domain/src/survey/{dto,validate,sources}.rs` — does not change in either direction. See [Out Of Scope](#out-of-scope).
 
 ## CLI Verb
 
@@ -430,7 +430,7 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 
 The detailed plan with phases, change boundaries, and dependencies lives in [`rfc-20-plan.md`](rfc-20-plan.md). High-level sequence:
 
-1. Retire the in-tree mechanical detectors (Express, NestJS, BullMQ) and their fixtures from `specify-cli`. Keep the `Detector` trait, `DetectorRegistry`, schemas, DTOs, validators, and the `--sources` file format as deferred extension points.
+1. Retire the in-tree mechanical detectors (Express, NestJS, BullMQ), their fixtures, and the now-unreachable `Detector` trait + `DetectorRegistry` + `merge_detector_outputs` modules from `specify-cli`. Keep the schemas, DTOs, validators, and the `--sources` file format as the artifact-contract spine.
 2. Refactor `specify change survey` from "run detectors → write" to "ingest staged candidate → validate → canonicalize → capture metadata → write". Introduce the new exit-discriminant set, the `--validate-only` flag, and the `--surfaces` / `--staged` inputs.
 3. Add the per-language enumeration briefs (`typescript.md`, `csharp.md`, `rust.md`, `cobol.md`) under `plugins/change/skills/survey/briefs/enumerate/`.
 4. Update `/change:survey` SKILL.md and references to drive the per-language brief, run the bounded repair loop, and call the new CLI shape.

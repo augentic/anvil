@@ -1,6 +1,8 @@
 # RFC-25: Source Profiles
 
 > Status: Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-20](rfc-20-survey.md), [RFC-21](rfc-21-catalogue.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
+>
+> Editorial note (2026-05): RFC-20's pre-1.0 F1 cleanup deleted the `Detector` trait, `DetectorRegistry`, and `merge_detector_outputs` from `specify-cli`. The "profile-keyed detector registry" portions of this RFC (§Abstract item 5, §Implementation step 6) are therefore predicated on first `git revert`-ing that deletion. The brief-pack and resolver portions of the RFC are unaffected and remain implementable today; only the in-binary detector axis carries the precondition.
 
 ## Abstract
 
