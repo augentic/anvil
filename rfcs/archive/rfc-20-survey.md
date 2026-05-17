@@ -1,6 +1,6 @@
 # RFC-20 Survey to Plan
 
-> Status: Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
+> Status: Implemented - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
 
 ## Abstract
 
@@ -107,11 +107,13 @@ This split is the key simplification: the LLM produces structural evidence, not 
 
 Once the sidecars exist, `/change:survey` walks each source independently. v1 keeps the model shallow: only `source`, `surface`, and `candidate` node kinds exist. There is no intermediate `group` kind, no cross-source pairing pass, and no target-routing inference inside survey.
 
+
 | Kind        | Sized as                                   |
 | ----------- | ------------------------------------------ |
 | `source`    | union of surface `touches`                 |
 | `surface`   | union of handler or call-site `touches`    |
 | `candidate` | dedup union of `touches` within one source |
+
 
 Only `candidate` leaves are consumed by `propose`. `source` and `surface` nodes are structural and exist to make the candidate inventory reviewable; consumers identify terminals via `kind == "candidate"`.
 
@@ -142,7 +144,7 @@ Cluster outcomes:
 
 - Surface ids in `surfaces[]` are always namespaced `<source-key>:<surface-id>` so the same identifier from two repos remains distinguishable.
 - Surfaces that look related across sources remain separate candidates in v1. The evidence is preserved for operator review, but survey does not merge them or emit dependency edges automatically.
-- **`too-large` candidate** that cannot be split further by the signals above → leaf is `unresolved: true`; the operator either edits the candidate during `propose` or rescopes the change.
+- `**too-large` candidate** that cannot be split further by the signals above → leaf is `unresolved: true`; the operator either edits the candidate during `propose` or rescopes the change.
 
 This keeps v1 focused on the repeatable work: enumerating externally visible surfaces, measuring their code footprints, and producing a candidate inventory that a human can review.
 
@@ -150,10 +152,12 @@ This keeps v1 focused on the repeatable work: enumerating externally visible sur
 
 Each candidate is sized over **production LOC** (excluding tests, generated code, vendored deps, blank lines, comment-only lines) and falls into one of two buckets:
 
+
 | Size         | Production LOC | Planning meaning                  |
 | ------------ | -------------- | --------------------------------- |
 | `acceptable` | `< 1000`       | Slice-sized; emit as candidate.   |
 | `too-large`  | `>= 1000`      | Split or mark `unresolved: true`. |
+
 
 The invariant is simple: `propose` should receive `acceptable` candidates or explicit unresolved items. It should not receive an unsliced monolith or an undifferentiated repo fleet.
 
@@ -269,6 +273,7 @@ declared-at:
   - legacy-monolith:src/server.ts:42
   - legacy-monolith:src/users/events.ts:18
 ```
+
 ```
 
 Example unresolved candidate leaf:
@@ -291,6 +296,7 @@ declared-at:
   - legacy-billing:src/billing/subscriptions.ts:11
 unresolved: true
 ```
+
 ```
 
 Re-running on unchanged inputs produces `survey.md` with the same candidate set, sizes, and field values — modulo the determinism policy above. Narrative phrasing inside `Summary` is generated from the validated counts and is therefore stable too.
@@ -348,7 +354,7 @@ The verb does not call an LLM, infer candidates, or write `plan.yaml`.
 
 A `--validate-only` flag short-circuits the metadata-and-write step. The skill's repair loop uses it to surface validator errors to the LLM without touching the canonical output directory.
 
-**`--sources` file.** Small YAML document listing one entry per source:
+`**--sources` file.** Small YAML document listing one entry per source:
 
 ```yaml
 version: 1
@@ -363,7 +369,7 @@ sources:
 
 **Staged directory layout (batch form).** For each `<source-key>` listed in `--sources`, the skill writes the candidate to `<staged-dir>/<source-key>.json` before invoking the verb. Missing staged inputs fail with `staged-input-missing`.
 
-**`--out`.** A directory. In the single-source form the verb writes `<dir>/surfaces.json` and `<dir>/metadata.json`. In the batch form `<dir>` is the parent directory and the verb writes `<dir>/<source-key>/surfaces.json` and `<dir>/<source-key>/metadata.json` per row. Either form refuses to overwrite a `surfaces.json` whose `source-key` does not match the requested key.
+`**--out`.** A directory. In the single-source form the verb writes `<dir>/surfaces.json` and `<dir>/metadata.json`. In the batch form `<dir>` is the parent directory and the verb writes `<dir>/<source-key>/surfaces.json` and `<dir>/<source-key>/metadata.json` per row. Either form refuses to overwrite a `surfaces.json` whose `source-key` does not match the requested key.
 
 **Exit discriminants.** Initial set, kebab-case per the CLI repo's coding standards:
 
@@ -382,12 +388,14 @@ No partial output is ever written for a row; on any non-zero exit, the affected 
 
 ## Skill Responsibility Split
 
+
 | Component               | Responsibility                                                                                                                                                                                                                                                                                                                                                       |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/change:analyze`       | Extract candidate hints from `documentation` inputs into `discovery.md`. Documentation is the only kind accepted in v1.                                                                                                                                                                                                                                              |
 | `/change:survey`        | For each `legacy-code` source: detect language, drive the per-language enumeration brief to produce a candidate `surfaces.json`, hand it to the CLI for validation, run the bounded repair loop on validation failure, then size candidates, apply minimal same-source clustering, write `survey.md`, and append candidate blocks under the discovery-owned heading. |
 | `specify change survey` | Validate the candidate `surfaces.json`, enforce closed-enum and path invariants, capture metadata, canonicalize, write atomically per source-key. JSON-only; no markdown, no LLM.                                                                                                                                                                                    |
 | `propose` brief         | Ask the operator to accept/edit/reject candidates and write accepted plan entries through `specify plan add`.                                                                                                                                                                                                                                                        |
+
 
 This split keeps semantic judgement out of the validator and out of `propose`, while keeping the artifact contract enforced by code rather than by prompt.
 
@@ -428,7 +436,7 @@ When a target workspace already has `.specify/specs/` baselines, survey treats b
 
 ## Implementation Plan
 
-The detailed plan with phases, change boundaries, and dependencies lives in [`rfc-20-plan.md`](rfc-20-plan.md). High-level sequence:
+The detailed plan with phases, change boundaries, and dependencies lives in `[rfc-20-plan.md](rfc-20-plan.md)`. High-level sequence:
 
 1. Retire the in-tree mechanical detectors (Express, NestJS, BullMQ), their fixtures, and the now-unreachable `Detector` trait + `DetectorRegistry` + `merge_detector_outputs` modules from `specify-cli`. Keep the schemas, DTOs, validators, and the `--sources` file format as the artifact-contract spine.
 2. Refactor `specify change survey` from "run detectors → write" to "ingest staged candidate → validate → canonicalize → capture metadata → write". Introduce the new exit-discriminant set, the `--validate-only` flag, and the `--surfaces` / `--staged` inputs.
@@ -465,6 +473,7 @@ Documentation-only changes skip `/change:survey` entirely. With no `legacy-code`
 
 Each item below was considered for v1 and deferred. Re-open triggers are concrete so the bar for adding them back is clear.
 
+
 | Item                                                                                                                                        | Re-open when                                                                                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | In-binary mechanical detectors for a (language, framework) pair                                                                             | The agent enumeration brief for that pair shows persistent shape errors, latency complaints, or cost overruns the bounded repair loop cannot absorb.                     |
@@ -488,12 +497,14 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 | Persisted `framework-signatures` field on `surfaces.json`                                                                                   | A consumer (propose, plan diffing, CI gate, telemetry, capability routing) needs to branch on the detected framework set without re-running enumeration.                 |
 | Escape-hatch acceptance fixtures: cross-source pairing, `depends-on` cycle round-trip, alias-resolved `unresolved` on a ≥ 3-source-key plan | A real plan exercises any of these escape hatches and regresses, or the matching code path lands a behavioral change that needs guarding.                                |
 
+
 ## References
 
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md)
 - [RFC-22: Migration Ledger](rfc-22-ledger.md)
 - [RFC-23: Change Lifecycle](archive/rfc-23-change-lifecycle.md)
-- [`/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md)
-- [`/change:survey` SKILL.md](../plugins/change/skills/survey/SKILL.md)
-- [`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)
+- `[/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md)
+- `[/change:survey` SKILL.md](../plugins/change/skills/survey/SKILL.md)
+- `[/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)
+

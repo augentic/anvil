@@ -80,7 +80,7 @@ Survey-derived candidates do not carry `target-project`; assignment continues to
 
 ## Determinism policy
 
-The agent producer of `surfaces.json` is non-deterministic by construction; the artifact contract stays reproducible. See [`rfcs/rfc-20-survey.md`](../../../../rfcs/rfc-20-survey.md) §"Determinism Policy" for the long form. Summary:
+The agent producer of `surfaces.json` is non-deterministic by construction; the artifact contract stays reproducible. Summary:
 
 - **Schema-stable.** `surfaces.json` is validated against the closed schema before write; unknown `kind`, missing required fields, paths outside the source root, absolute paths, or duplicate `id` values fail the run.
 - **Sort-stable.** The CLI sorts `surfaces[]` by `id` and sorts `touches[]` / `declared-at[]` alphabetically before write; the agent's output order does not affect the canonical form.
