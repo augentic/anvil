@@ -146,7 +146,7 @@ Five new findings, all gated on the slice's resolved project capability being Om
 
 `message-sub` deliberately has no uniqueness finding — multiple subscribers per topic across crates within one service is a legal and common Omnia pattern.
 
-All findings live within `EXIT_VALIDATION_FAILED=2` per [the CLI exit-code contract](../../specify-cli/AGENTS.md#exit-codes). Findings carry the standard structured shape (`code`, `severity`, `slice`, `project`, `evidence`).
+All findings live within `EXIT_VALIDATION_FAILED=2` per [the CLI exit-code contract](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#exit-codes). Findings carry the standard structured shape (`code`, `severity`, `slice`, `project`, `evidence`).
 
 ### `specify plan compose` — derived composition view
 
