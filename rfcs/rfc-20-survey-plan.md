@@ -1,6 +1,6 @@
 # RFC-20 Implementation Plan
 
-> Companion to [`rfc-20-survey.md`](rfc-20-survey.md). Repackages the RFC's normative §"Implementation Plan" into subagent-sized changes with explicit dependencies and parallelism. Each change is small enough to land in one subagent context without leaking into the next.
+> Companion to [`rfc-20-survey.md`](archive/rfc-20-survey.md). Repackages the RFC's normative §"Implementation Plan" into subagent-sized changes with explicit dependencies and parallelism. Each change is small enough to land in one subagent context without leaking into the next.
 
 ## Conventions
 

@@ -14,6 +14,16 @@ Produce a neutral, capability-agnostic inventory for the change, grouped into th
 
 At least one of `--from`, `--against`, or `--source` must be supplied.
 
+## Candidate inventory heading
+
+Before dispatching any input to `/change:analyze` or `/change:survey`, write the `## Candidate inventory` heading into `discovery.md` exactly once. Both downstream skills append candidate blocks under this heading; neither writes it. The heading is idempotent — check before writing:
+
+```bash
+grep -q '^## Candidate inventory' "$PLAN_DIR/discovery.md" || printf '\n## Candidate inventory\n' >> "$PLAN_DIR/discovery.md"
+```
+
+When `/change:survey` runs for `legacy-code` inputs (after discovery completes), it appends candidate blocks under this heading. Documentation-only changes skip `/change:survey` entirely.
+
 ## Process
 
 1. **Analyse each `--source` and `--against` input.** For every non-`--from` input, invoke `/spec:extract` to produce a domain-level capability description:
@@ -89,6 +99,11 @@ their tier heading). -->
   tokens.yaml"; omit if none>
 
 <!-- repeat one subsection per UI input in scope -->
+
+## Candidate inventory
+
+<!-- /change:analyze appends documentation-derived candidate blocks here -->
+<!-- /change:survey appends legacy-code-derived candidate blocks here -->
 
 ## Open questions
 

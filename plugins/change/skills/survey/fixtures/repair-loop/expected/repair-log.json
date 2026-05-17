@@ -1,0 +1,21 @@
+{
+  "source-key": "legacy-svc",
+  "retry-budget": 3,
+  "retries-attempted": 1,
+  "attempts": [
+    {
+      "attempt": 0,
+      "candidate": "inputs/staged/legacy-svc.json",
+      "status": "failure",
+      "failure": {
+        "code": "surfaces-touches-out-of-tree",
+        "detail": "surfaces[0].touches[1]: ../escaped/path.ts (resolves outside source root)"
+      }
+    },
+    {
+      "attempt": 1,
+      "candidate": "inputs/staged/legacy-svc.repaired.json",
+      "status": "success"
+    }
+  ]
+}

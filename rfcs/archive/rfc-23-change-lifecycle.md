@@ -1,6 +1,6 @@
 # RFC-23: Change Lifecycle
 
-> Status: Implemented - Depends: [RFC-9](rfc-9-platform.md), [RFC-13](rfc-13-extensibility.md) - See also: [RFC-20](../rfc-20-survey.md)
+> Status: Implemented - Depends: [RFC-9](rfc-9-platform.md), [RFC-13](rfc-13-extensibility.md) - See also: [RFC-20](rfc-20-survey.md)
 
 ## Abstract
 
@@ -262,12 +262,12 @@ For tutorial / how-to authors:
 
 - [RFC-9: Platform](rfc-9-platform.md) — orchestration umbrella and shape inference; the original landing of the seven-step sequence this RFC redistributes.
 - [RFC-13: Extensibility](rfc-13-extensibility.md) — Layer 2 skill composition rules.
-- [RFC-20: Survey-to-Plan Pipeline](../rfc-20-survey.md) — peer RFC; if both land together, `/change:draft`'s step 4 internally grows survey + synthesise sub-steps without affecting the draft surface.
+- [RFC-20: Survey-to-Plan Pipeline](rfc-20-survey.md) — peer RFC; if both land together, `/change:draft`'s step 4 internally grows survey + synthesise sub-steps without affecting the draft surface.
 - `[/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md) and `[/change:finalize` SKILL.md](../plugins/change/skills/finalize/SKILL.md) — the two new peer skills introduced by this RFC. Together with `/change:execute` they replace the old `/change:plan` skill that this RFC retires.
 - `[/change:draft` runbook](../plugins/change/skills/draft/references/runbook.md) and `[/change:finalize` runbook](../plugins/change/skills/finalize/references/runbook.md) — where the body of the old seven-step orchestration sequence now lives, redistributed across the draft (steps 1–4) and finalize (steps 5–7) runbooks.
 - `[/change:execute` SKILL.md](../plugins/change/skills/execute/SKILL.md) — the executor; unchanged by this RFC, but newly the explicit second stage of the change lifecycle.
 - `[/spec:define](../../plugins/spec/skills/define/SKILL.md)`, `[/spec:build](../../plugins/spec/skills/build/SKILL.md)`, `[/spec:merge](../../plugins/spec/skills/merge/SKILL.md)` — the three-skill rhythm at the spec layer that this RFC mirrors at the change layer.
-- `[specify change` CLI reference](../docs/reference/cli/change.md) — `specify change draft` (called by `/change:draft`) and `specify change finalize` (called by `/change:finalize`).
+- `[specify change` CLI reference](../../docs/reference/cli/change.md) — `specify change draft` (called by `/change:draft`) and `specify change finalize` (called by `/change:finalize`).
 - `[docs/explanation/layered-stack.md](../../docs/explanation/layered-stack.md)` — where the new three-skill change lifecycle sits in Specify's layered architecture (Layer 2).
 - `[docs/tutorials/cross-repo-change.md](../../docs/tutorials/cross-repo-change.md)` — the canonical worked example to update with the new three-skill lifecycle.
 

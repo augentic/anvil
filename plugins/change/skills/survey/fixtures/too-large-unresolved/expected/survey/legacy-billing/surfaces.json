@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "source-key": "legacy-billing",
+  "language": "typescript",
+  "surfaces": [
+    {
+      "id": "message-sub-payment-settled",
+      "kind": "message-sub",
+      "identifier": "payment.settled",
+      "handler": "src/billing/subscriptions.ts:onPaymentSettled",
+      "touches": [
+        "src/billing/core.ts",
+        "src/billing/settlement.ts",
+        "src/billing/subscriptions.ts"
+      ],
+      "declared-at": [
+        "src/billing/subscriptions.ts:11"
+      ]
+    },
+    {
+      "id": "scheduled-job-invoice-sync",
+      "kind": "scheduled-job",
+      "identifier": "invoice-sync",
+      "handler": "src/billing/invoices.ts:syncInvoices",
+      "touches": [
+        "src/billing/core.ts",
+        "src/billing/invoices.ts"
+      ],
+      "declared-at": [
+        "src/billing/scheduler.ts:24"
+      ]
+    }
+  ]
+}

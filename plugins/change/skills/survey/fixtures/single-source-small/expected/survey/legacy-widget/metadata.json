@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source-key": "legacy-widget",
+  "language": "typescript",
+  "loc": 850,
+  "module-count": 1,
+  "top-level-modules": [
+    "src"
+  ]
+}

@@ -25,6 +25,8 @@
 - [Working across repos: executing](tutorials/cross-repo-execute.md)
 - [Working across repos: landing](tutorials/landing-a-change.md)
 - [Legacy migration at scale](tutorials/legacy-migration-at-scale.md)
+- [Monolith decomposition](tutorials/monolith-decomposition.md)
+- [Legacy fleet decomposition](tutorials/legacy-fleet-decomposition.md)
 
 ---
 
@@ -113,6 +115,7 @@
 - [Workspace tiers](explanation/workspace-tiers.md)
 - [Tool declarations](explanation/tool-declarations.md)
 - [Decision log](explanation/decision-log.md)
+- [Legacy migration at scale](explanation/legacy-migration-at-scale.md)
 - [Release notes](explanation/release-notes.md)
 
 ---

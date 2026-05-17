@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source-key": "legacy-api",
+  "language": "typescript",
+  "loc": 1200,
+  "module-count": 1,
+  "top-level-modules": [
+    "src"
+  ]
+}

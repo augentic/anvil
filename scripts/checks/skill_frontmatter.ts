@@ -395,6 +395,7 @@ const IMPERATIVE_VERBS = new Set([
   "configure",
   "convert",
   "create",
+  "decompose",
   "define",
   "describe",
   "design",

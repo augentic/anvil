@@ -110,10 +110,6 @@ The authoritative contract for how `/change:execute` builds these flag values li
 
 This skill is the **define** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including define's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
-## Input
-
-The user's request should include a slice name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing slice (e.g., `/spec:define my-change design`).
-
 ## Guardrails
 
 - Create all artifacts for briefs returned by `specify capability pipeline define` before declaring the slice ready.

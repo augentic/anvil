@@ -18,6 +18,8 @@ The tutorials progress from single-slice basics through multi-repo platform chan
 | 6 | [Working across repos: executing](cross-repo-execute.md) | Workspace inspection, `/change:execute loop` across projects, `specify workspace push` | Tutorial 5 |
 | 7 | [Working across repos: landing](landing-a-change.md) | Operator PR merge, `/change:finalize`, the three change shapes | Tutorial 6 |
 | 8 | [Legacy Migration at Scale](legacy-migration-at-scale.md) | Analyze/extract split, monolith decomposition | Tutorials 5-7 |
+| 9 | [Monolith Decomposition](monolith-decomposition.md) | Surface scanning, candidate sizing, same-source clustering | Tutorial 8 |
+| 10 | [Legacy Fleet Decomposition](legacy-fleet-decomposition.md) | Multi-source survey, combined inventory, operator review | Tutorials 8-9 |
 
 ## Where to start
 

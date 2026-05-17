@@ -37,6 +37,7 @@ import {
   checkCriticalPath,
   checkInlineJsonBlocks,
   checkNoEnvelopeExamples,
+  checkNoFrontmatterRestatement,
   checkNoStepBodyDuplicatesCriticalPath,
   checkVariables,
 } from "./checks/skill_body.ts";
@@ -85,6 +86,7 @@ await Promise.all([
   checkNoLicense(),
   checkInlineJsonBlocks(),
   checkNoEnvelopeExamples(),
+  checkNoFrontmatterRestatement(),
   checkNoStepBodyDuplicatesCriticalPath(),
   checkReferences(),
   checkVariables(),
