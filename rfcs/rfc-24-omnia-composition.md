@@ -1,6 +1,6 @@
 # RFC-24: Omnia Plan Composition
 
-> Status: Draft - Depends: [RFC-20](rfc-20-survey.md), [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
+> Status: Draft - Depends: [RFC-20](archive/rfc-20-survey.md), [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
 
 ## Abstract
 
@@ -38,7 +38,7 @@ None of these are blockers; all three are friction. This RFC removes the frictio
 3. **Handlers stay where they are.** `surveys.json` and `spec.md` remain the sources of truth for handler/surface detail. `plan.yaml` carries an *audit-only digest*, mirroring RFC-22's `mapping` posture: it is summary metadata for operator review, not a re-encoding of the survey.
 4. **The validator is capability-discriminated.** None of the new findings fire for projects whose `capability` is not Omnia. Vectis, contracts, and greenfield-without-capability projects validate exactly as today.
 5. **The CLI is the single writer.** New fields are written only by `specify change draft` (propose pre-fill), `specify plan add`, and `specify plan amend`. No skill hand-edits them.
-6. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, closed surface-kind enum mirroring [RFC-20 §`surfaces.json`](rfc-20-survey.md#surfacesjson).
+6. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, closed surface-kind enum mirroring [RFC-20 §`surfaces.json`](archive/rfc-20-survey.md#surfacesjson).
 7. **No execution-time branching.** The slice loop, `/change:execute`, `/spec:define`, `/spec:build`, and `/spec:merge` ignore the new fields. They are review and audit signal only.
 
 ### `crate` field on `planSlice`
@@ -93,7 +93,7 @@ slices:
     status: pending
 ```
 
-Schema (closed-enum, mirrors [RFC-20 §`surfaces.json`](rfc-20-survey.md#surfacesjson)):
+Schema (closed-enum, mirrors [RFC-20 §`surfaces.json`](archive/rfc-20-survey.md#surfacesjson)):
 
 ```json
 "surfaces": {
@@ -128,7 +128,7 @@ Rules:
 
 - **Optional.** Every existing plan validates as today. Hand-driven plans (no survey run) may omit the field entirely; `specify plan compose` then falls back to the count-only summary derived from `surveys.json`.
 - **Closed kind enum, narrower than RFC-20.** `cli-command`, `ui-route`, and `external-call-out` are deliberately excluded — Omnia services do not host CLI entry points or UI routes, and `external-call-out` is an outbound dependency rather than a hosted surface. A survey leaf containing those kinds either splits its surfaces (keeping only Omnia-hosted ones in `plan.yaml.surfaces`) or fails the capability-gated validate finding `plan-omnia-surface-kind-unsupported`.
-- **Identifier shape.** Stored as the canonicalised form per [RFC-20 §Identifier Normalization](rfc-20-survey.md#identifier-normalization) so cross-slice comparison is deterministic. The original identifier is preserved verbatim in `surveys.json`; `plan.yaml` carries only the matching key.
+- **Identifier shape.** Stored as the canonicalised form per [RFC-20 §Identifier Normalization](archive/rfc-20-survey.md#identifier-normalization) so cross-slice comparison is deterministic. The original identifier is preserved verbatim in `surveys.json`; `plan.yaml` carries only the matching key.
 - **Sorted.** `surfaces[]` is sorted by `(kind, identifier)` for byte-stable diffs, same posture as `surfaces.json` and `migration-log.yaml`.
 - **Propose populates it.** When `propose` accepts a capability candidate from survey, it pre-fills `surfaces[]` from the leaf's `surfaces:` list, intersected with the Omnia kind enum. Operators may amend via `specify plan amend <slice> --add-surface <kind>:<identifier>` / `--remove-surface <kind>:<identifier>`. Passing `--clear-surfaces` removes the field entirely.
 
@@ -280,7 +280,7 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 
 ## References
 
-- [RFC-20: Survey-to-Plan Pipeline](rfc-20-survey.md) — surfaces, capability leaves, and the routing-hint precedence this RFC's `plan compose` joins against.
+- [RFC-20: Survey-to-Plan Pipeline](archive/rfc-20-survey.md) — surfaces, capability leaves, and the routing-hint precedence this RFC's `plan compose` joins against.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache that backs `surveys.json` between draft and execute.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
 - [`plugins/omnia/skills/crate-writer/SKILL.md`](../plugins/omnia/skills/crate-writer/SKILL.md) — the writer whose `$CRATE_NAME` contract this RFC formalises into a schema field.

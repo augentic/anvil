@@ -1,6 +1,6 @@
 # RFC-25: Source Profiles
 
-> Status: Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-20](rfc-20-survey.md), [RFC-21](rfc-21-catalogue.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
+> Status: Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-20](archive/rfc-20-survey.md), [RFC-21](rfc-21-catalogue.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
 >
 > Editorial note (2026-05): RFC-20's pre-1.0 F1 cleanup deleted the `Detector` trait, `DetectorRegistry`, and `merge_detector_outputs` from `specify-cli`. The "profile-keyed detector registry" portions of this RFC (§Abstract item 5, §Implementation step 6) are therefore predicated on first `git revert`-ing that deletion. The brief-pack and resolver portions of the RFC are unaffected and remain implementable today; only the in-binary detector axis carries the precondition.
 
@@ -358,7 +358,7 @@ At no point does propose's brief read profile-specific content. At no point does
 ## References
 
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md) — capability manifest protocol; the source-profile manifest is its parallel.
-- [RFC-20: Survey to Plan](rfc-20-survey.md) — detector contract and the deferred capability-keyed detector pack this RFC retires.
+- [RFC-20: Survey to Plan](archive/rfc-20-survey.md) — detector contract and the deferred capability-keyed detector pack this RFC retires.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` host of the new `profile` field.
 - [RFC-22: Migration Ledger](rfc-22-ledger.md) — downstream consumer of `sources[].profile`.
 - [RFC-23: Change Lifecycle](archive/rfc-23-change-lifecycle.md) — three-skill planning lifecycle this RFC fits inside.

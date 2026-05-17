@@ -127,7 +127,7 @@ The skill resolves the active capability via `specify capability resolve` and lo
 | [`briefs/`](briefs/) | Per-capability clustering briefs (`omnia/`, `vectis/`) |
 | [`fixtures/`](fixtures/) | Acceptance fixtures: single-source / multi-source / unresolved / heading-handshake / greenfield / repair-loop and repair-loop-exhausted |
 | [`../analyze/SKILL.md`](../analyze/SKILL.md) | Sibling skill for documentation-derived candidate blocks |
-| [`rfcs/rfc-20-survey.md`](../../../../rfcs/rfc-20-survey.md) | Governing RFC |
+| [`rfcs/archive/rfc-20-survey.md`](../../../../rfcs/archive/rfc-20-survey.md) | Governing RFC |
 
 ## Guardrails
 

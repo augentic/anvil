@@ -1,6 +1,6 @@
 # RFC-17: Wasm Package Distribution for WASI Tools
 
-> Status: Implemented - Depends: [RFC-15](archive/rfc-15-wasm-plugins.md), [RFC-16](archive/rfc-16-wasi-vectis.md) - Enables: [RM-21](roadmap.md#rm-21-capability-ecosystem-operating-model)
+> Status: Implemented - Depends: [RFC-15](rfc-15-wasm-plugins.md), [RFC-16](rfc-16-wasi-vectis.md) - Enables: [RM-21](../roadmap.md#rm-21-capability-ecosystem-operating-model)
 
 ## Abstract
 

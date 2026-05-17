@@ -1,6 +1,6 @@
 # RFC-20 Survey to Plan
 
-> Status: Implemented - Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-23](archive/rfc-23-change-lifecycle.md)
+> Status: Implemented - Depends: [RFC-13](rfc-13-extensibility.md), [RFC-23](rfc-23-change-lifecycle.md)
 
 ## Abstract
 
@@ -500,10 +500,10 @@ Each item below was considered for v1 and deferred. Re-open triggers are concret
 
 ## References
 
-- [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
-- [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md)
-- [RFC-22: Migration Ledger](rfc-22-ledger.md)
-- [RFC-23: Change Lifecycle](archive/rfc-23-change-lifecycle.md)
+- [RFC-13: Extensibility](rfc-13-extensibility.md)
+- [RFC-21: Source Catalogue and Tier-1 Cache](../rfc-21-catalogue.md)
+- [RFC-22: Migration Ledger](../rfc-22-ledger.md)
+- [RFC-23: Change Lifecycle](rfc-23-change-lifecycle.md)
 - `[/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md)
 - `[/change:survey` SKILL.md](../plugins/change/skills/survey/SKILL.md)
 - `[/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)

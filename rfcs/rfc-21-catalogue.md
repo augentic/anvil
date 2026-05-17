@@ -1,6 +1,6 @@
 # RFC-21: Source Catalogue and Tier-1 Cache
 
-> Status: Draft - Depends: [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-9](archive/rfc-9-platform.md), [RFC-14](archive/rfc-14-workspace.md), [RFC-20](rfc-20-survey.md)
+> Status: Draft - Depends: [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-9](archive/rfc-9-platform.md), [RFC-14](archive/rfc-14-workspace.md), [RFC-20](archive/rfc-20-survey.md)
 
 ## Abstract
 
@@ -257,7 +257,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — `registry.yaml` posture this RFC's `sources.yaml` mirrors.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — historical change-lifecycle predecessor; the new `--source @<key>` selector and `--analyze-concurrency` flag flow through the current `/change:draft` → `/change:execute` → `/change:finalize` flow.
 - [RFC-14: Workspace](archive/rfc-14-workspace.md) — workspace-tier separation this RFC preserves while adding tier-1 caching.
-- [RFC-20: Survey-to-Plan Pipeline](rfc-20-survey.md) — survey, synthesise, and assignment briefs that consume the new catalogue.
+- [RFC-20: Survey-to-Plan Pipeline](archive/rfc-20-survey.md) — survey, synthesise, and assignment briefs that consume the new catalogue.
 - [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
