@@ -13,7 +13,7 @@ Verbatim summaries `/spec:init` prints after a successful invocation. Pick the t
 ```
 ## Specify Initialized
 
-**Capability**: $CAPABILITY
+**Adapter**: $ADAPTER
 **Config**: .specify/project.yaml
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
@@ -30,7 +30,7 @@ Next steps:
 ```
 ## Specify Initialized (Existing Codebase Detected)
 
-**Capability**: $CAPABILITY
+**Adapter**: $ADAPTER
 **Config**: .specify/project.yaml
 **Context**: AGENTS.md
 **Baseline change**: .specify/slices/initial-baseline/
@@ -48,7 +48,7 @@ Next steps:
 ## Specify Initialized (Platform Hub)
 
 **Topology**: registry-only hub
-**Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
+**Config**: .specify/project.yaml (`hub: true`; `adapter:` omitted)
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)

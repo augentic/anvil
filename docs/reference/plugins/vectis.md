@@ -141,11 +141,11 @@ Platforms are declared in the proposal and determine which skills the build phas
 
 Build order: core first, shells second.
 
-## Capabilities
+## Adapters
 
-The core-writer detects which Crux capabilities your app needs from the design document:
+The core-writer detects which Crux adapters your app needs from the design document:
 
-| Capability | When to include |
+| Adapter | When to include |
 |-----------|----------------|
 | **Render** | Always (automatic) |
 | **HTTP** (`crux_http`) | App calls a REST API |

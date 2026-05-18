@@ -26,7 +26,7 @@ Before completing, verify all items from the [Specify Artifact Validation Checkl
 - [ ] **Output type completeness**: Output types document ALL fields from the type definition (including fields not populated by this component), with notes on which fields this component populates vs. which are present in the shared schema
 - [ ] **Output field types**: Output type fields document exact types (e.g., `integer` not `float` for integer fields, exact enum types not raw strings). When the source code uses a specific numeric type (e.g., `speed: integer`), do not generalize it (e.g., `speed: float`).
 - [ ] **External service classification**: All external services categorized by type (database, managed table store, cache, message broker, identity provider, API, WebSocket). Managed data stores (Azure Table Storage, Cosmos DB, DynamoDB) classified as `managed table store`, not `API`.
-- [ ] **Source capabilities summary**: Source Capabilities Summary checklist present in design.md, derived from External Services. `Table/database access` checked whenever source uses ORM, SQL, or managed table stores.
+- [ ] **Source adapters summary**: Source Capabilities Summary checklist present in design.md, derived from External Services. `Table/database access` checked whenever source uses ORM, SQL, or managed table stores.
 - [ ] **Keyword-collision renames**: Fields using language-reserved keywords as wire names are documented with their field-level rename attributes
 - [ ] **Deserialization aliases**: Fields accepting multiple wire names are documented with all alias attributes
 - [ ] **Unconditional serialization skips**: Unconditional skip attributes distinguished from conditional ones; both documented explicitly

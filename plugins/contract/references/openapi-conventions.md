@@ -28,7 +28,7 @@ openapi: "3.1.0"
 info:
   title: User API
   version: "1.0.0"
-  description: User registration, authentication, and profile management.
+  description: User registration, authentication, and adapter management.
 
 paths:
   /users:
@@ -49,7 +49,7 @@ paths:
 |-------|------|
 | `title` | Human-readable API name. Matches the file's domain (e.g. "User API" for `user-api.yaml`). |
 | `version` | **MUST parse as SemVer per [semver.org](https://semver.org)** (RFC-12), including optional prerelease labels (`1.0.0-draft.1`). Starts at `"1.0.0"` for new contracts. Bump rules (when to advance major / minor / patch) are skill-side judgement; the validator only checks that the value parses. A non-SemVer value (e.g. a `YYYY-MM-DD` date) is a hard validation failure under both the format verifier (single-mode Check 4) and the merge-time `specify tool run contract` gate. |
-| `description` | Brief description of the API's purpose and scope. Derived from the spec's behavioral description of the capability. |
+| `description` | Brief description of the API's purpose and scope. Derived from the spec's behavioral description of the adapter. |
 | `x-specify-id` | **Optional rename-stable identifier** (RFC-12). When present, MUST match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters; MUST be unique across every top-level contract under root `contracts/`. The id survives file moves and `info.version` bumps — once set on a contract, never change it. SHOULD be set on new top-level OpenAPI documents (typically the file stem, e.g. `user-api` for `user-api.yaml`). Path-based references in `registry.yaml` remain canonical; the id is a hint, not a substitute. |
 
 ### `servers` (optional)

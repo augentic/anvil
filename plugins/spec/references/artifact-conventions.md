@@ -32,7 +32,7 @@ Follow the design format and decision criteria in [`specify.md`](./specify.md) (
 
 ## Task format conventions
 
-Follow the task format and guidelines in [`specify.md`](./specify.md) (Tasks Document section). The instruction file provides the available-skills table per capability. The build phase parses checkbox format to track progress.
+Follow the task format and guidelines in [`specify.md`](./specify.md) (Tasks Document section). The instruction file provides the available-skills table per adapter. The build phase parses checkbox format to track progress.
 
 ### Agent-completable task invariant
 
@@ -47,7 +47,7 @@ Every generated task **must** be executable and verifiable by an agent using cod
 
 If a requirement appears to call for human validation, encode the equivalent code-based test or scripted verification task instead.
 
-After writing `tasks.md`, complete the **Self-Review** step in the capability's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
+After writing `tasks.md`, complete the **Self-Review** step in the adapter's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
 
 ### Skill directives (optional)
 
@@ -59,4 +59,4 @@ Format:
 - [ ] X.Y Task description <!-- skill: plugin:skill-name -->
 ```
 
-Tasks without a skill tag are implemented via the default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps cleanly to a single specialist-skill invocation. The instruction file lists available skills per capability.
+Tasks without a skill tag are implemented via the default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps cleanly to a single specialist-skill invocation. The instruction file lists available skills per adapter.

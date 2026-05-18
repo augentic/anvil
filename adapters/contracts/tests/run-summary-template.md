@@ -11,8 +11,8 @@ failure, preserve the evidence directory or notes that explain the result.
 ## Run Header
 
 - **Scenario ID:** `<contracts-describe | contracts-design | contracts-update-boundary | contracts-import | contracts-source>`
-- **Scenario file:** `<relative path, e.g. capabilities/contracts/tests/describe.md>`
-- **Capability:** `contracts@v1`
+- **Scenario file:** `<relative path, e.g. adapters/contracts/tests/describe.md>`
+- **Adapter:** `contracts@v1`
 - **Backend:** `<manual | agent | recorded | fixture>`
 - **Operator / agent:** `<name or model identifier>`
 - **Run id:** `<timestamp or uuid>`
@@ -103,7 +103,7 @@ Record what cleanup the operator actually performed, per the scenario's
 
 - **Result:** `pass | fail`
 - **Fault domain (on failure):** one of `cli-substrate`,
-  `skill-orchestration`, `capability-brief`, `specialist-generation`, or
+  `skill-orchestration`, `adapter-brief`, `specialist-generation`, or
   `unknown`.
 - **Notes:** free-form prose for context the structured fields above can't
   capture. Keep this short.

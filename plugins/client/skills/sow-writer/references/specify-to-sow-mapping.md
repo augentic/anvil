@@ -47,7 +47,7 @@ The SoW audience is a client stakeholder, not a developer. Every technical conce
 
 **Greenfield (`requirements` artifacts)**:
 
-> This Statement of Work covers the delivery of the $COMPONENT, a new capability that $PURPOSE_SUMMARY. The implementation will be built on the Omnia platform using Rust WASM.
+> This Statement of Work covers the delivery of the $COMPONENT, a new adapter that $PURPOSE_SUMMARY. The implementation will be built on the Omnia platform using Rust WASM.
 
 ### Deliverable Description Pattern
 
@@ -157,5 +157,5 @@ C. **No Material Architectural Changes**
 
 D. **Security and Compliance**
    Security and compliance requirements are met by the existing platform
-   capabilities. No additional security certifications are required.
+   adapters. No additional security certifications are required.
 ```

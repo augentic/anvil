@@ -25,7 +25,7 @@ The orchestrator passes `$CRATE_NAME` explicitly. The runbook covers what to do 
 1. **Detect mode**: `$CRATE_PATH/Cargo.toml` exists -> update; missing -> create.
 2. **Read** [rules.md](./rules.md) — the Hard Rules and Authority Hierarchy bind every step below.
 3. **Read artifacts** (`spec.md`, `design.md`) and required references; pick the matching example under [`examples/`](./examples/).
-4. **Derive Omnia capabilities** from design.md (Source Capabilities Summary, External Services, `[runtime]` constraints) via [capability-mapping.md](references/capability-mapping.md) and [wasm-constraints.md](references/wasm-constraints.md); apply artifact corrections (Hard Rule 9) before writing code.
+4. **Derive Omnia adapters** from design.md (Source Capabilities Summary, External Services, `[runtime]` constraints) via [capability-mapping.md](references/capability-mapping.md) and [wasm-constraints.md](references/wasm-constraints.md); apply artifact corrections (Hard Rule 9) before writing code.
 5. **Build the three matrices** (Side-Effect, Outbound Message, Transaction Boundary) for every changed handler; every cell must land in code.
 6. **Generate / update code** following the per-mode process below; in update mode apply categories in fixed order: structural → subtractive → modifying → additive.
 7. **Smoke check** with `cargo check`, run traceability verification, then inject or update guest wiring (when `src/lib.rs` exists). Tests come from test-writer in a later step.
@@ -50,7 +50,7 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`rules.md`](./rules.md) | Hard Rules and Authority Hierarchy that bind every generation pass |
 | [`references/sdk-api.md`](references/sdk-api.md) | `Handler<P>`, `Context`, `Reply`, `IntoBody`, `Client`, `Error`; Input Type Decision Tree; Response Types |
 | [`references/capabilities.md`](references/capabilities.md) | All 9 provider traits with exact signatures and artifact triggers |
-| [`references/capability-mapping.md`](references/capability-mapping.md) | Mapping from Specify artifact capabilities to Omnia provider traits |
+| [`references/capability-mapping.md`](references/capability-mapping.md) | Mapping from Specify artifact adapters to Omnia provider traits |
 | [`references/wasm-constraints.md`](references/wasm-constraints.md) | Translating `[runtime]` constraints to Omnia/WASM patterns |
 | [`references/providers.md`](references/providers.md) | Provider struct setup, trait composition rules, MockProvider patterns |
 | [`references/error-handling.md`](references/error-handling.md) | Error macros, domain error enums, context patterns, troubleshooting |
@@ -58,14 +58,14 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`references/cargo-toml.md`](references/cargo-toml.md) | `Cargo.toml` template and dependency rules |
 | [`references/guest-wiring.md`](references/guest-wiring.md) | How crates wire into the WASM guest |
 | [`references/checklists.md`](references/checklists.md) | Pre-generation and verification checklists |
-| [`references/todo-markers.md`](references/todo-markers.md) | TODO marker rules, capability overrides, cache-aside patterns |
+| [`references/todo-markers.md`](references/todo-markers.md) | TODO marker rules, adapter overrides, cache-aside patterns |
 | [`references/output-documents.md`](references/output-documents.md) | `Migration.md`, `Architecture.md`, `CHANGELOG.md`, `.env.example` shapes |
 | [`references/cross-cutting-matrices.md`](references/cross-cutting-matrices.md) | Side-Effect / Outbound-Message / Transaction-Boundary matrices and traceability rules |
 | [`references/update-patterns.md`](references/update-patterns.md) | Update strategy patterns by category |
 | [`references/change-classification.md`](references/change-classification.md) | How to classify artifact-vs-code differences |
 | [`references/mock-provider.md`](references/mock-provider.md) | MockProvider patterns referenced by guest/handler examples |
 | [`references/repair-patterns.md`](references/repair-patterns.md) | Common verify-loop repair patterns |
-| [`references/guest-patterns.md`](references/guest-patterns.md) | Guest wiring patterns by capability |
+| [`references/guest-patterns.md`](references/guest-patterns.md) | Guest wiring patterns by adapter |
 | [`references/providers/`](references/providers/) | Per-provider deep-dive notes |
 
 ## Guardrails

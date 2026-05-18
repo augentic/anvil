@@ -9,7 +9,7 @@ Generate a complete WASM guest project that wraps one or more domain crates cont
 - Exposes HTTP endpoints using `wasip3::http` types
 - Handles message subscription using `omnia_wasi_messaging` types
 - Handles WebSocket events using `omnia_wasi_websocket` types
-- Configures provider traits for WASI capabilities (Config, Publish, Identity, StateStore, TableStore, Blobstore, DocumentStore, etc.)
+- Configures provider traits for WASI adapters (Config, Publish, Identity, StateStore, TableStore, Blobstore, DocumentStore, etc.)
 - Bridges domain logic to the Omnia WASI runtime
 
 ## Key Principle
@@ -84,7 +84,7 @@ Generate the main guest module with manual wiring for full control over HTTP rou
 2. **Messaging Guest** -- Topic dispatcher that returns `Err` for unhandled topics
 3. **WebSocket Guest** -- Event handler that delegates to domain crate handlers
 4. **Handler invocation** -- use the builder API: `Type::handler(input)?.provider(&provider).owner("owner").await`
-5. **Provider** -- trait implementations for WASI capabilities
+5. **Provider** -- trait implementations for WASI adapters
 
 **Owner**: every handler requires an `owner` string identifying the Omnia component owner (e.g. `"at"`). See [omnia/providers/README.md](omnia/providers/README.md#owner) for details.
 

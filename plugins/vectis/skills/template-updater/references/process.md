@@ -27,7 +27,7 @@ Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/
    test ! -e "$dir"
    mkdir -p "$dir"
    cd "$dir"
-   specify init https://github.com/augentic/specify/capabilities/vectis
+   specify init https://github.com/augentic/specify/adapters/vectis
 
    specify tool run vectis -- scaffold core ScratchApp \
      --caps "<caps-combo>" \
@@ -68,13 +68,13 @@ Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/
 For each distinct error the skill collected in D1, pick one of these paths and commit to it before starting to edit. Do not speculatively rewrite templates that are not covered by at least one reproduced failure.
 
 1. **Look it up first.** Check [`known-drift.md`](known-drift.md). If the failure matches a listed item (uniffi/cargo-swift decoupling, AGP 9.x + Gradle 9.x, new RUSTSEC advisories in the full-caps combo, `facet_generate` req-string cosmetic), follow the playbook there — it is already tied to a concrete fix path.
-2. **Match the error to the upstream crate.** `unresolved module path shared::ffi` / `cannot find type RustBuffer in scope` → uniffi or cargo-swift. `error[E0432]: unresolved import crux_core::Render` → crux_core rename or capability-crate rename. `RUSTSEC-YYYY-NNNN` in a `cargo deny check` failure → supply-chain advisory. `setFileMode(Integer)` in a Gradle trace → rust-android-gradle vs Gradle major. `unresolved reference: something` under Kotlin → Android library API drift (Compose BOM, Koin, Ktor).
+2. **Match the error to the upstream crate.** `unresolved module path shared::ffi` / `cannot find type RustBuffer in scope` → uniffi or cargo-swift. `error[E0432]: unresolved import crux_core::Render` → crux_core rename or adapter-crate rename. `RUSTSEC-YYYY-NNNN` in a `cargo deny check` failure → supply-chain advisory. `setFileMode(Integer)` in a Gradle trace → rust-android-gradle vs Gradle major. `unresolved reference: something` under Kotlin → Android library API drift (Compose BOM, Koin, Ktor).
 3. **Read the relevant changelog.** Prefer upstream release notes over crates.io's rendered README (they are more reliably updated). Canonical sources: `https://github.com/redbadger/crux/releases` (crux_*), `https://github.com/mozilla/uniffi-rs/blob/main/CHANGELOG.md` (uniffi / uniffi_bindgen), `https://github.com/mozilla/rust-android-gradle/releases` (rust-android-gradle), `https://github.com/rustsec/advisory-db/` (RUSTSEC). Use the WebFetch tool.
 4. **Map the changelog entry to a concrete file or module.** The table below covers the common rename-class breakages. If the failure is structural (e.g. uniffi 0.31 decoupling from crux_core::cli::bindgen), see [`known-drift.md`](known-drift.md) for the pre-scoped rewrite task.
 
 | Symptom | Likely fix site |
 |---|---|
-| `unresolved import crux_*` or renamed `Effect::*` / `Event::*` variant | `<specify-cli>/templates/vectis/core/app.rs` (type aliases, match arms); `<specify-cli>/templates/vectis/core/ffi.rs` if the public FFI type renamed; `<specify-cli>/crates/vectis/src/scaffold/templates.rs` if a capability tag or CAP marker changed |
+| `unresolved import crux_*` or renamed `Effect::*` / `Event::*` variant | `<specify-cli>/templates/vectis/core/app.rs` (type aliases, match arms); `<specify-cli>/templates/vectis/core/ffi.rs` if the public FFI type renamed; `<specify-cli>/crates/vectis/src/scaffold/templates.rs` if a adapter tag or CAP marker changed |
 | `cannot find type RustBuffer in scope` in generated Swift / `import sharedFFI` failing | `<specify-cli>/templates/vectis/core/codegen.rs` (when the bindgen call signature changes) or the per-developer `cargo-swift` install (per-machine prereq, not a template pin) |
 | Kotlin `codegen kotlin` fails with `unresolved module path shared::ffi` | [`known-drift.md`](known-drift.md) §1 (`uniffi` / `crux_core::cli::bindgen` coupling) — structural rewrite |
 | `cargo deny check` `unmaintained`/`vulnerable` for a Crux transitive dep | `<specify-cli>/templates/vectis/core/deny.toml` `[advisories] ignore`; include a one-line rationale comment pointing at the transitive chain |
@@ -90,7 +90,7 @@ For each distinct error the skill collected in D1, pick one of these paths and c
 Apply the fix, making each edit as narrow as possible.
 
 - Edit the **template file** when the slice is visible in a scaffolded project (a renamed `use`, a new `#[allow(...)]`, a changed build flag, a new advisory in `deny.toml`). Every template file is `include_str!`-ed verbatim by `<specify-cli>/crates/vectis/src/scaffold/templates/{core,ios,android}.rs`, so editing the file is sufficient — do not touch the module unless the set of files shipped, their predicates, or their target paths has changed.
-- Edit the **template module** (`<specify-cli>/crates/vectis/src/scaffold/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Capability])}` predicate changes; a capability tag / CAP marker changes in `templates/mod.rs`; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
+- Edit the **template module** (`<specify-cli>/crates/vectis/src/scaffold/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Adapter])}` predicate changes; a adapter tag / CAP marker changes in `templates/mod.rs`; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
 - Edit `<specify-cli>/crates/vectis/embedded/versions.toml` when the accepted fix is a default pin bump. Preserve the multi-line rationale comments already in that file — they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and should only be edited when the rule itself changes, not when an ordinary pin moves. The scratch proposal remains a complete `--version-file` input until the fix is proven.
 - **Do not** edit host orchestration or WASI command behavior from this skill (`<specify-cli>/crates/vectis/src/scaffold.rs`, `<specify-cli>/src/main.rs`, or any future helper that tries to rebuild registry query / verify orchestration). If the fix requires a new command surface, stop and flag it — that is a separate CLI or WASI-tool change, not a template update.
 
@@ -117,7 +117,7 @@ for caps in "" "http" "http,kv" "http,kv,time,platform,sse"; do
   test ! -e "$dir"
   mkdir -p "$dir"
   cd "$dir"
-  specify init https://github.com/augentic/specify/capabilities/vectis
+  specify init https://github.com/augentic/specify/adapters/vectis
   specify tool run vectis -- scaffold core ScratchApp \
     --caps "$caps" \
     --version-file "{version-file}"

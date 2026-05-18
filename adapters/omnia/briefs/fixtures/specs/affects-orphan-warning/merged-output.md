@@ -1,8 +1,8 @@
 # affects-orphan-warning — merged output walkthrough
 
-Sister fixture to `extract-shared-validation/`. Pins the **step-4 warning path** of the specs brief's delta composition pass: the description references a change name that does not match any merged extract capability.
+Sister fixture to `extract-shared-validation/`. Pins the **step-4 warning path** of the specs brief's delta composition pass: the description references a change name that does not match any merged extract adapter.
 
-The plan entry's description references both `user-registration` (which matches a merged capability) and `stale-flag-never-used` (which no extracted capability produces), because the inferred scope (`src/common/validation/**`) contains no file that implements that capability.
+The plan entry's description references both `user-registration` (which matches a merged adapter) and `stale-flag-never-used` (which no extracted adapter produces), because the inferred scope (`src/common/validation/**`) contains no file that implements that adapter.
 
 ## Scope inference
 
@@ -43,11 +43,11 @@ Matching each inferred delta target against `<slice-dir>/specs/`:
      (matched — step 2)
 
 <slice-dir>/specs/shared-validation/spec.md
-  └─ NEW-CRATE spec for the extracted validation capability
+  └─ NEW-CRATE spec for the extracted validation adapter
      (no inferred target match — step 3)
 
 <slice-dir>/specs/stale-flag-never-used/spec.md
-  └─ ABSENT — no matching extract capability (step 4)
+  └─ ABSENT — no matching extract adapter (step 4)
 ```
 
 ### Warnings
@@ -56,7 +56,7 @@ Step 4 fires exactly one brief-level warning, naming the orphan inferred target 
 
 ```text
 warn: inferred delta target stale-flag-never-used had no matching
-      extract capability in <slice-dir>/specs/ after the per-source
+      extract adapter in <slice-dir>/specs/ after the per-source
       merge. The description may reference a change that this slice
       does not actually modify — amend the description via
       `specify plan amend extract-shared-validation \

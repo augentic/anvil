@@ -1,6 +1,6 @@
 # Discovery — demo
 
-## Capability inventory
+## Adapter inventory
 
 ### user-registration
 Source: legacy (src/user.rs) Description: User sign-up flow; creates a new user record.
@@ -26,4 +26,4 @@ Source: legacy (src/payments.rs) Description: Creates a payment authorisation ag
 ## Open questions
 
 - Should email-verification be a separate feature or folded into user-registration?
-- Is payment-intent a standalone capability or an implementation detail of checkout?
+- Is payment-intent a standalone adapter or an implementation detail of checkout?

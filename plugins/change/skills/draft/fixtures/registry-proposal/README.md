@@ -12,7 +12,7 @@ The operator types `alpha-gateway` as the project name. That name is not in `reg
 2. Infers `--url` from the prefix shared by the existing entries (`git@github.com:augentic/`).
 3. Defaults `--schema` to the majority schema (`omnia@v1`).
 4. Prompts the operator for `--description` (required when the resulting registry is multi-project).
-5. Shells out to `specify registry add alpha-gateway --url ... --capability ... --description "..."` and then `specify workspace sync`.
+5. Shells out to `specify registry add alpha-gateway --url ... --adapter ... --description "..."` and then `specify workspace sync`.
 6. Returns to the assignment table, sets `alpha-gateway-extract.project = alpha-gateway`, and shells out `specify plan amend alpha-gateway-extract --project alpha-gateway`.
 7. Writes a `Registry amendments` block to `proposal.md` after the assignment table.
 
@@ -24,7 +24,7 @@ The operator types `alpha-gateway` as the project name. That name is not in `reg
 | [`registry.yaml.after`](registry.yaml.after) | Post-state — `alpha-gateway` appended via `specify registry add`. |
 | [`plan.yaml.before`](plan.yaml.before) | Plan with three pending entries; `alpha-gateway-extract` has no `project` (the assignment step hasn't routed it yet). |
 | [`plan.yaml.after`](plan.yaml.after) | Same plan with all three entries routed via `specify plan amend --project ...`. |
-| [`discovery.md`](discovery.md) | The discovery brief's capability inventory that drove the propose pass. |
+| [`discovery.md`](discovery.md) | The discovery brief's adapter inventory that drove the propose pass. |
 | [`proposal.md`](proposal.md) | Final proposal artefact, including the `## Assignment` table and the new `## Registry amendments` block (RFC-9 §2B). |
 | [`transcript.md`](transcript.md) | The skill dialogue including the registry-proposal prompt, the inferred defaults, and the four shell-outs. |
 

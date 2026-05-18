@@ -47,14 +47,14 @@ You interact with Specify through **skills** -- commands prefixed with `/spec:` 
 
 | Skill | Purpose |
 |-------|---------|
-| `/spec:init` | One-time project setup; selects a capability plugin (Omnia, Vectis, …) |
+| `/spec:init` | One-time project setup; selects a adapter plugin (Omnia, Vectis, …) |
 | `/spec:define` | Generate artifacts for a new slice |
 | `/spec:build` | Implement tasks from a defined slice |
 | `/spec:merge` | Merge completed specs into the baseline |
 
 Multi-slice and cross-repo workflows are covered in [later tutorials](../tutorials/index.md).
 
-> **Note:** The word "capability" has a second meaning inside Specify spec files (a unit of behavior). This page uses only the first meaning.
+> **Note:** The word "adapter" has a second meaning inside Specify spec files (a unit of behavior). This page uses only the first meaning.
 
 For the architectural framing of how these skills compose with multi-slice and cross-repo workflows, see [The layered stack](../explanation/layered-stack.md).
 

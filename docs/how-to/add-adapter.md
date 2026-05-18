@@ -1,8 +1,8 @@
-# Add a Capability to an Existing Project
+# Add a Adapter to an Existing Project
 
-When your project already has a baseline at `.specify/specs/`, adding a new capability follows the standard define-build-merge loop. If you are modifying an existing capability, Specify generates delta specs automatically.
+When your project already has a baseline at `.specify/specs/`, adding a new adapter follows the standard define-build-merge loop. If you are modifying an existing adapter, Specify generates delta specs automatically.
 
-## Adding a new capability
+## Adding a new adapter
 
 ```text
 /spec:define "Add a notification service that sends emails on order completion"
@@ -17,7 +17,7 @@ Specify detects that `notification` does not exist in the baseline and generates
 
 After merge, `.specify/specs/notification/spec.md` appears in the baseline.
 
-## Modifying an existing capability
+## Modifying an existing adapter
 
 ```text
 /spec:define "Add SMS support to the notification service"

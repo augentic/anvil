@@ -13,7 +13,7 @@
 
 name: email-verification
 status: merged
-capability: omnia
+adapter: omnia
 created-at: 2026-04-19T09:12:00Z
 defined-at: 2026-04-19T09:17:31Z
 build-started-at: 2026-04-19T09:18:02Z

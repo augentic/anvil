@@ -1,7 +1,7 @@
-# Omnia Capability
+# Omnia Adapter
 
 - **Identifier:** `omnia` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/capabilities/omnia`
+- **URL:** `https://github.com/augentic/specify/adapters/omnia`
 - **Purpose:** Rust WASM development (greenfield or migration)
 - **Target:** Rust WASM (Omnia SDK)
 
@@ -12,7 +12,7 @@
 | Brief | Output | Dependencies |
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<capability>/spec.md` | proposal |
+| `specs.md` | `specs/<adapter>/spec.md` | proposal |
 | `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 
@@ -47,7 +47,7 @@ See [Omnia Plugin](../plugins/omnia.md) for full skill documentation.
 
 ## Domain context
 
-The Omnia capability's briefs and skills carry domain context about:
+The Omnia adapter's briefs and skills carry domain context about:
 
 - Omnia SDK patterns (provider traits, side-effect abstractions).
 - WASM constraints (no filesystem, no threading).
@@ -59,7 +59,7 @@ The Omnia capability's briefs and skills carry domain context about:
 After `/spec:init omnia`, `project.yaml` carries:
 
 ```yaml
-capability: https://github.com/augentic/specify/capabilities/omnia
+adapter: https://github.com/augentic/specify/adapters/omnia
 rules:
   - "Project-specific constraints go here"
 ```

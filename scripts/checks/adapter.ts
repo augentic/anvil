@@ -1,5 +1,5 @@
-// Capability manifest validation:
-//   - capability.yaml validates against capability.schema.json,
+// Adapter manifest validation:
+//   - adapter.yaml validates against adapter.schema.json,
 //   - pipeline brief paths exist, ids are unique, frontmatter ids
 //     match, and the `needs` graph is acyclic,
 //   - operator-facing instruction files declare an output location
@@ -7,7 +7,7 @@
 
 import {
   Ajv2020,
-  CAPABILITIES_DIR,
+  PROFILES_DIR,
   dirname,
   fail,
   join,
@@ -22,7 +22,7 @@ interface PipelineEntry {
   brief: string;
 }
 
-interface CapabilityYaml {
+interface AdapterYaml {
   name: string;
   version?: number;
   description?: string;
@@ -33,20 +33,20 @@ interface CapabilityYaml {
   };
 }
 
-export async function validateCapabilityYaml(): Promise<void> {
+export async function validateAdapterYaml(): Promise<void> {
   const ajv = new Ajv2020({ allErrors: true });
 
-  const capabilitySchema = JSON.parse(
-    await Deno.readTextFile(join(CAPABILITIES_DIR, "capability.schema.json")),
+  const adapterSchema = JSON.parse(
+    await Deno.readTextFile(join(PROFILES_DIR, "adapter.schema.json")),
   );
 
-  const validate = ajv.compile(capabilitySchema);
+  const validate = ajv.compile(adapterSchema);
 
   for await (
-    const entry of walk(CAPABILITIES_DIR, {
+    const entry of walk(PROFILES_DIR, {
       maxDepth: 2,
       includeDirs: false,
-      match: [/capability\.yaml$/],
+      match: [/adapter\.yaml$/],
     })
   ) {
     const rel = relative(REPO_ROOT, entry.path);
@@ -54,7 +54,7 @@ export async function validateCapabilityYaml(): Promise<void> {
     if (!validate(data)) {
       for (const err of validate.errors ?? []) {
         fail(
-          `Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`,
+          `Adapter validation failed: ${rel} — ${err.instancePath} ${err.message}`,
         );
       }
     }
@@ -79,26 +79,26 @@ async function parseBriefFrontmatter(
   }
 }
 
-export async function checkCapabilityIntegrity(): Promise<void> {
+export async function checkAdapterIntegrity(): Promise<void> {
   for await (
-    const entry of walk(CAPABILITIES_DIR, {
+    const entry of walk(PROFILES_DIR, {
       maxDepth: 2,
       includeDirs: false,
-      match: [/capability\.yaml$/],
+      match: [/adapter\.yaml$/],
     })
   ) {
     const dirPath = dirname(entry.path);
     const name = dirPath.split("/").pop()!;
     const manifest = parseYaml(
       await Deno.readTextFile(entry.path),
-    ) as CapabilityYaml;
+    ) as AdapterYaml;
 
     const pipeline = manifest.pipeline;
     if (!pipeline) continue;
 
     // Post-RFC-13 §3.11 the manifest carries only the slice phases
     // (define, build, merge); planning is owned by the change-draft
-    // skill and `pipeline.plan` is rejected by `capability.schema.json`.
+    // skill and `pipeline.plan` is rejected by `adapter.schema.json`.
     const allEntries: PipelineEntry[] = [
       ...(pipeline.define ?? []),
       ...(pipeline.build ?? []),
@@ -109,7 +109,7 @@ export async function checkCapabilityIntegrity(): Promise<void> {
     for (const pe of allEntries) {
       if (ids.has(pe.id)) {
         fail(
-          `Capability integrity: ${name}/capability.yaml: duplicate pipeline entry id '${pe.id}'`,
+          `Adapter integrity: ${name}/adapter.yaml: duplicate pipeline entry id '${pe.id}'`,
         );
       }
       ids.add(pe.id);
@@ -120,7 +120,7 @@ export async function checkCapabilityIntegrity(): Promise<void> {
         await Deno.stat(join(dirPath, pe.brief));
       } catch {
         fail(
-          `Capability integrity: ${name}/capability.yaml: brief not found for '${pe.id}': ${pe.brief}`,
+          `Adapter integrity: ${name}/adapter.yaml: brief not found for '${pe.id}': ${pe.brief}`,
         );
         continue;
       }
@@ -128,14 +128,14 @@ export async function checkCapabilityIntegrity(): Promise<void> {
       const fm = await parseBriefFrontmatter(join(dirPath, pe.brief));
       if (!fm) {
         fail(
-          `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
+          `Adapter integrity: ${name}/adapter.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
         );
         continue;
       }
 
       if (fm.id !== pe.id) {
         fail(
-          `Capability integrity: ${name}/capability.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
+          `Adapter integrity: ${name}/adapter.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
         );
       }
 
@@ -144,7 +144,7 @@ export async function checkCapabilityIntegrity(): Promise<void> {
         for (const dep of needs) {
           if (!ids.has(dep)) {
             fail(
-              `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
+              `Adapter integrity: ${name}/adapter.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
             );
           }
         }
@@ -181,7 +181,7 @@ export async function checkCapabilityIntegrity(): Promise<void> {
     }
     if (visited < ids.size) {
       fail(
-        `Capability integrity: ${name}/capability.yaml: cycle in brief needs graph`,
+        `Adapter integrity: ${name}/adapter.yaml: cycle in brief needs graph`,
       );
     }
   }
@@ -192,7 +192,7 @@ export async function checkInstructionPreambles(): Promise<void> {
     /^> \*\*Output location\*\*: `\.specify\/slices\//m;
 
   for await (
-    const entry of walk(CAPABILITIES_DIR, {
+    const entry of walk(PROFILES_DIR, {
       maxDepth: 3,
       includeDirs: false,
       match: [/instructions\/[a-z]+\.md$/],

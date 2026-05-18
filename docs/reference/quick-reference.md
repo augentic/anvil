@@ -24,7 +24,7 @@
 
 ```text
 /spec:init hub                                     # bootstrap a platform hub
-specify registry add <project> --url ... --capability ...
+specify registry add <project> --url ... --adapter ...
 /change:draft <name> source legacy=./path          # author the cross-repo plan
 # then proceed through /change:execute loop and /change:finalize <name> as above
 ```
@@ -39,7 +39,7 @@ specify registry add <project> --url ... --capability ...
 | `/spec:merge` | Merge completed slice into baseline |
 | `/spec:drop` | Discard a slice |
 | `/spec:extract` | Extract specs from existing code |
-| `/change:analyze` | Plan-time capability inference (invoked by `/change:draft`) |
+| `/change:analyze` | Plan-time adapter inference (invoked by `/change:draft`) |
 | `/change:draft` | Author a multi-slice plan; stop at the operator review seam |
 | `/change:execute` | Automate the plan loop |
 | `/change:finalize` | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` |
@@ -76,7 +76,7 @@ specify status                            # project dashboard
 specify slice status <name>              # single-slice view
 
 # Project setup
-specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
+specify init <adapter>                 # regular single-project scaffold (positional adapter identifier or URL)
 specify init --hub                        # registry-only platform hub
 specify context generate                  # write or refresh generated AGENTS.md guidance
 specify context generate --check          # CI dry-run; exit 1 when context would change
@@ -101,7 +101,7 @@ specify workspace push [<project>...]      # transport existing specify/<change-
 # Platform registry (multi-repo)
 specify registry show
 specify registry validate
-specify registry add <name> --url <url> --capability <schema> --description "..."
+specify registry add <name> --url <url> --adapter <schema> --description "..."
 specify registry remove <name>
 
 # Change brief and closure
@@ -121,13 +121,13 @@ specify slice merge preview <name>
 specify slice merge conflict-check <name>
 ```
 
-## Capabilities
+## Adapters
 
-| Capability | URL | Target |
+| Adapter | URL | Target |
 |------------|-----|--------|
-| Omnia | `https://github.com/augentic/specify/capabilities/omnia` | Rust WASM |
-| Vectis | `https://github.com/augentic/specify/capabilities/vectis` | Crux cross-platform |
-| Contracts | `https://github.com/augentic/specify/capabilities/contracts` | API contracts |
+| Omnia | `https://github.com/augentic/specify/adapters/omnia` | Rust WASM |
+| Vectis | `https://github.com/augentic/specify/adapters/vectis` | Crux cross-platform |
+| Contracts | `https://github.com/augentic/specify/adapters/contracts` | API contracts |
 
 ## Directory structure
 
@@ -142,7 +142,7 @@ specify slice merge conflict-check <name>
     ├── project.yaml      # project config
     ├── context.lock      # fingerprint for specify context check
     ├── plan.lock         # advisory lock for /change:execute
-    ├── .cache/           # cached capability manifest + briefs
+    ├── .cache/           # cached adapter manifest + briefs
     ├── slices/           # active slices (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
     ├── plans/            # change-draft working dirs (discovery, proposal)

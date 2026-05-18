@@ -37,7 +37,7 @@ The brief infers `--include src/common/validation/**` from the path hint and log
 
 ## After delta composition
 
-The description references "user-registration" and "email-verification" as delta targets. The brief checks `.specify/specs/` for baselines and finds both. Each match is rewritten in delta form; unmatched extracted capabilities stay as fresh new-crate specs.
+The description references "user-registration" and "email-verification" as delta targets. The brief checks `.specify/specs/` for baselines and finds both. Each match is rewritten in delta form; unmatched extracted adapters stay as fresh new-crate specs.
 
 ```text
 <slice-dir>/specs/user-registration/spec.md
@@ -49,13 +49,13 @@ The description references "user-registration" and "email-verification" as delta
      (shared validation rules moved out to shared-validation)
 
 <slice-dir>/specs/shared-validation/spec.md
-  └─ NEW-CRATE spec for the extracted validation capability
+  └─ NEW-CRATE spec for the extracted validation adapter
      (no baseline; no inferred delta match)
 ```
 
 ### Warnings
 
-Both inferred delta targets (`user-registration`, `email-verification`) matched an extracted capability, so step 4 of the composition pass fires no warnings. The pinned behaviour here is **silent-when-matched** — a clean run logs nothing. The orphan-warning path is pinned by the sibling `affects-orphan-warning/` fixture.
+Both inferred delta targets (`user-registration`, `email-verification`) matched an extracted adapter, so step 4 of the composition pass fires no warnings. The pinned behaviour here is **silent-when-matched** — a clean run logs nothing. The orphan-warning path is pinned by the sibling `affects-orphan-warning/` fixture.
 
 ## `.extract/monolith/` after merge
 

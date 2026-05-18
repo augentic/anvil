@@ -1,6 +1,6 @@
 # Discovery — counter-migration
 
-## Capability inventory
+## Adapter inventory
 
 ### Shared core
 

@@ -2,7 +2,7 @@
 
 Run declared WASI tools through the `specify` binary.
 
-`specify tool` is the operator surface for deterministic helper code declared by a project or by its resolved capability. Tools are WASI Preview 2 command components. The CLI resolves the declaration, fills the global cache, applies the declared filesystem permissions, and runs the component through the embedded Wasmtime host.
+`specify tool` is the operator surface for deterministic helper code declared by a project or by its resolved adapter. Tools are WASI Preview 2 command components. The CLI resolves the declaration, fills the global cache, applies the declared filesystem permissions, and runs the component through the embedded Wasmtime host.
 
 ## Subcommands
 
@@ -26,7 +26,7 @@ List the merged tool declarations for the current project.
 specify tool list [--format json]
 ```
 
-The list includes project-scope tools from `.specify/project.yaml` and capability-scope tools from the resolved capability's `tools.yaml` sidecar. When both sites declare the same name, the project-scope declaration wins and a `tool-name-collision` warning is emitted.
+The list includes project-scope tools from `.specify/project.yaml` and adapter-scope tools from the resolved adapter's `tools.yaml` sidecar. When both sites declare the same name, the project-scope declaration wins and a `tool-name-collision` warning is emitted.
 
 ### specify tool fetch
 
@@ -56,7 +56,7 @@ Remove cached versions that are no longer referenced by the current project's me
 specify tool gc [--all] [--format json]
 ```
 
-The first implementation scans only scopes present in the current project: `project--<project-name>` and, when the project resolves a capability, `capability--<capability-name>`. `--all` is accepted for the future broader mode; today it reports the same current-project scan.
+The first implementation scans only scopes present in the current project: `project--<project-name>` and, when the project resolves a adapter, `adapter--<adapter-name>`. `--all` is accepted for the future broader mode; today it reports the same current-project scan.
 
 ## Exit codes
 
@@ -89,10 +89,10 @@ Structured responses use the standard CLI envelope:
       "name": "contract",
       "version": "0.3.0",
       "source": "specify:contract@0.3.0",
-      "scope": "capability",
+      "scope": "adapter",
       "scope-detail": "contracts",
       "cache-status": "hit",
-      "cached-path": "/Users/alex/.cache/specify/tools/capability--contracts/contract/0.3.0/module.wasm"
+      "cached-path": "/Users/alex/.cache/specify/tools/adapter--contracts/contract/0.3.0/module.wasm"
     }
   ],
   "warnings": []
@@ -139,7 +139,7 @@ Inside the root, cache entries are segmented by declaration scope:
             └── meta.yaml
 ```
 
-Scope segments are `project--<project-name>` for tools declared in `.specify/project.yaml` and `capability--<capability-name>` for tools declared by a capability sidecar. This keeps unrelated projects and capabilities isolated even when they use the same tool name and version.
+Scope segments are `project--<project-name>` for tools declared in `.specify/project.yaml` and `adapter--<adapter-name>` for tools declared by a adapter sidecar. This keeps unrelated projects and adapters isolated even when they use the same tool name and version.
 
 ## Digest verification
 
@@ -155,7 +155,7 @@ Operators still install one binary: `specify`. Cached modules are never executed
 
 Filesystem access is deny-by-default. A tool receives only the read and write preopens declared in its manifest or embedded for first-party package declarations, and permission paths must already exist. Runtime network access is disabled for WASI tools; resolver network access for `https://` and wasm-pkg sources is separate and happens before execution.
 
-The host passes only `PROJECT_DIR` and, for capability-scope tools, `CAPABILITY_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
+The host passes only `PROJECT_DIR` and, for adapter-scope tools, `ADAPTER_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
 
 Write permissions must not directly target Specify lifecycle state such as `.specify/project.yaml`, slice metadata, archive metadata, plan locks, or archive movement directories. `$PROJECT_DIR` write preopens are valid for tools that must create root-level files, but declarations should still prefer narrower existing parent directories when possible. Lifecycle transitions remain core CLI operations.
 
@@ -168,4 +168,4 @@ A helper that genuinely needs host toolchains, network access, or platform SDKs 
 ## See also
 
 - [Tool declarations](../../explanation/tool-declarations.md) -- where tools are declared and how precedence works
-- [Anatomy of a Capability](../../contributing/capability-anatomy.md) -- optional capability `tools.yaml` sidecar
+- [Anatomy of a Adapter](../../contributing/adapter-anatomy.md) -- optional adapter `tools.yaml` sidecar

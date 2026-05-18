@@ -16,7 +16,7 @@ one artifact in isolation; every other invocation walks the full pipeline.
 1. Run `specify slice status <name> --format json`. If the CLI returns
    `not_found`, the slice is missing; if `status` is some value other than
    `defined` / `building`, warn before proceeding.
-2. Run `specify capability pipeline define --change .specify/slices/<name>
+2. Run `specify adapter pipeline define --change .specify/slices/<name>
    --format json` to resolve the brief for the target artifact ID. The
    returned `briefs[]` lists every define brief in topological order with each
    brief's `path`, `needs`, and `generates`.

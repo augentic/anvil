@@ -165,7 +165,7 @@ Start with the workflows that are hardest to reconstruct:
 - change finalize remote verification;
 - registry add, remove, show, and validate;
 - workspace sync, status, push, clone refresh, branch preparation, and PR creation/update calls;
-- capability resolve, check, and pipeline selection;
+- adapter resolve, check, and pipeline selection;
 - tool fetch, cache lookup, permission check, component load, WASI invocation, and guest exit status.
 
 Do not instrument every helper at once. The first implementation should cover command boundaries plus the cross-repo and WASI paths, then expand where debugging pain remains.
@@ -299,6 +299,6 @@ For CLI maintainers:
 
 - [RFC-1: CLI](archive/rfc-1-cli.md)
 - [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-15: WASI Capability Tools](archive/rfc-15-wasm-plugins.md)
+- [RFC-15: WASI Adapter Tools](archive/rfc-15-wasm-plugins.md)
 - `specify-cli/src/output.rs`
 - `specify-cli/docs/contributing/cli-architecture.md`

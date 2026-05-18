@@ -101,7 +101,7 @@ If self-heal itself fails, manually resolve:
 
 **Symptom:** `/change:execute loop` halts with a `registry-amendment-required` outcome on the offending slice. The slice is transitioned to `blocked` and the proposal payload is written to its `journal.yaml`.
 
-**Cause:** A phase skill (typically `/spec:extract` or a build brief) discovered that the slice targets a capability that does not fit any existing registry project, and proposed a new project. The framework never auto-modifies the registry.
+**Cause:** A phase skill (typically `/spec:extract` or a build brief) discovered that the slice targets a adapter that does not fit any existing registry project, and proposed a new project. The framework never auto-modifies the registry.
 
 **Resolution:** Follow the canonical recovery sequence:
 
@@ -109,7 +109,7 @@ If self-heal itself fails, manually resolve:
 specify slice journal show <slice>             # read the proposal payload
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --capability <proposed-capability> \
+    --adapter <proposed-adapter> \
     --description "<proposed-description>"
 specify workspace sync                          # bootstrap the new slot
 specify plan amend <slice> --project <proposed-name>
@@ -152,7 +152,7 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 
 ### `stale-workspace-clone`
 
-**Symptom:** `specify plan validate` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
+**Symptom:** `specify plan validate` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or adapter diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
 
 **Cause:** The workspace clone's signature has drifted from the registry, typically because `registry.yaml` was edited after the clone was first materialised.
 

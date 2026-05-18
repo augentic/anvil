@@ -25,7 +25,7 @@ Re-entry across all three skills: fix the cause, re-run the same skill. Nothing 
 
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
-| [/change:analyze](analyze.md) | Plan-time capability inference (invoked internally by `/change:draft`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
+| [/change:analyze](analyze.md) | Plan-time adapter inference (invoked internally by `/change:draft`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
 | [/change:draft](draft.md) | Author `plan.yaml` from inputs; stop at the operator review seam | Sources, docs, registry, baseline specs | `plan.yaml`, `change.md`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with the CLI project option via the assignment step |
 | [/change:execute](execute.md) | Drive the plan through define-build-merge per slice; supports supervised, `dry-run`, and `loop` modes with self-heal | `plan.yaml` | Plan status transitions (via CLI); prepares workspace branches, routes into workspace clones for multi-project plans, and commits non-baseline residue after merge |
 | [/change:finalize](finalize.md) | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` | `plan.yaml`, workspace clones, remote PR state | Composition only — shells out to `specify workspace push`, `gh pr list`, `specify change finalize`; never writes directly |

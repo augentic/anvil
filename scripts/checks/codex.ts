@@ -1,14 +1,14 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers rule markdown under capabilities/<cap>/codex/** plus
+//   - discovers rule markdown under adapters/<cap>/codex/** plus
 //     the optional repo-root codex/** overlay,
 //   - validates frontmatter against codex-rule.schema.json,
-//   - enforces a `## Rule` body heading and capability-namespace
+//   - enforces a `## Rule` body heading and adapter-namespace
 //     ownership (e.g. `omnia` may only emit `OMNIA-*`, `RUST-*`, `SEC-*`
 //     rule ids).
 
 import {
   Ajv2020,
-  CAPABILITIES_DIR,
+  PROFILES_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   formatSchemaError,
@@ -26,7 +26,7 @@ interface CodexFile {
 }
 
 const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
-const CODEX_CAPABILITY_NAMESPACES: Record<string, Set<string>> = {
+const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
   default: new Set(["UNI"]),
   omnia: new Set(["OMNIA", "RUST", "SEC"]),
   contracts: new Set(["IFACE"]),
@@ -37,23 +37,23 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
   const paths: string[] = [];
 
   try {
-    const stat = await Deno.stat(CAPABILITIES_DIR);
+    const stat = await Deno.stat(PROFILES_DIR);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(CAPABILITIES_DIR, {
+        const entry of walk(PROFILES_DIR, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
         if (await underSymlink(entry.path)) continue;
-        const parts = relative(CAPABILITIES_DIR, entry.path).split("/");
+        const parts = relative(PROFILES_DIR, entry.path).split("/");
         if (parts.length >= 3 && parts[1] === "codex") {
           paths.push(entry.path);
         }
       }
     }
   } catch {
-    // No capabilities/.
+    // No adapters/.
   }
 
   const rootCodexDir = join(REPO_ROOT, "codex");
@@ -77,8 +77,8 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
   return Array.from(new Set(paths)).sort();
 }
 
-function capabilityOwnerForCodexPath(path: string): string | null {
-  const parts = relative(CAPABILITIES_DIR, path).split("/");
+function adapterOwnerForCodexPath(path: string): string | null {
+  const parts = relative(PROFILES_DIR, path).split("/");
   if (parts.length >= 3 && parts[1] === "codex") return parts[0];
   return null;
 }
@@ -152,13 +152,13 @@ export async function validateCodexRuleShape(): Promise<void> {
     const id = fm.id;
     if (typeof id !== "string") continue;
 
-    const capability = capabilityOwnerForCodexPath(path);
-    if (!capability) continue;
+    const adapter = adapterOwnerForCodexPath(path);
+    if (!adapter) continue;
 
-    const allowedNamespaces = CODEX_CAPABILITY_NAMESPACES[capability];
+    const allowedNamespaces = CODEX_PROFILE_NAMESPACES[adapter];
     if (!allowedNamespaces) {
       fail(
-        `Codex namespace ownership: ${rel} — capability '${capability}' has no configured codex namespace owner; update scripts/checks/codex.ts before adding first-party rules here`,
+        `Codex namespace ownership: ${rel} — adapter '${adapter}' has no configured codex namespace owner; update scripts/checks/codex.ts before adding first-party rules here`,
       );
       continue;
     }
@@ -166,7 +166,7 @@ export async function validateCodexRuleShape(): Promise<void> {
     const namespace = namespaceForRuleId(id);
     if (namespace && !allowedNamespaces.has(namespace)) {
       fail(
-        `Codex namespace ownership: ${rel} — capability '${capability}' may only use ${
+        `Codex namespace ownership: ${rel} — adapter '${adapter}' may only use ${
           namespaceList(allowedNamespaces)
         } ids, got '${id}'`,
       );

@@ -65,7 +65,7 @@ cat .specify/plans/<change>/discovery.md
 cat .specify/plans/<change>/proposal.md
 ```
 
-If `/change:draft` ran the survey + synthesise sub-steps (multi-source decomposition), `.specify/plans/<change>/survey.md` and the `## Reconciliation` section in `discovery.md` are the ground truth for how the slices fall out of the inputs. Read them together with `plan.yaml` to confirm every capability you expected made it into the plan, and that nothing extra was invented.
+If `/change:draft` ran the survey + synthesise sub-steps (multi-source decomposition), `.specify/plans/<change>/survey.md` and the `## Reconciliation` section in `discovery.md` are the ground truth for how the slices fall out of the inputs. Read them together with `plan.yaml` to confirm every adapter you expected made it into the plan, and that nothing extra was invented.
 
 The questions to answer at this stage:
 

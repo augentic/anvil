@@ -1,20 +1,20 @@
-# Anatomy of a Capability
+# Anatomy of a Adapter
 
-A capability configures how Specify generates artifacts and builds code for a particular outcome domain. When a user runs `/spec:init <capability>`, the identifier they provide determines which brief pipelines run during define, build, and merge.
+A adapter configures how Specify generates artifacts and builds code for a particular outcome domain. When a user runs `/spec:init <adapter>`, the identifier they provide determines which brief pipelines run during define, build, and merge.
 
 ## Directory layout
 
-Each first-party capability lives under `capabilities/<name>/`:
+Each first-party adapter lives under `adapters/<name>/`:
 
 ```text
-capabilities/
-├── capability.schema.json       # JSON Schema for capability.yaml
+adapters/
+├── adapter.schema.json       # JSON Schema for adapter.yaml
 ├── default/
-│   ├── capability.yaml          # Foundational pipeline declarations
+│   ├── adapter.yaml          # Foundational pipeline declarations
 │   ├── briefs/
 │   └── codex/                   # Universal review rules
 ├── omnia/
-│   ├── capability.yaml          # Pipeline declarations
+│   ├── adapter.yaml          # Pipeline declarations
 │   ├── tools.yaml               # Optional WASI tool sidecar
 │   └── briefs/
 │       ├── proposal.md
@@ -24,7 +24,7 @@ capabilities/
 │       ├── build.md
 │       └── merge.md
 ├── vectis/
-│   ├── capability.yaml
+│   ├── adapter.yaml
 │   ├── tools.yaml               # Optional WASI tool sidecar
 │   └── briefs/
 │       ├── proposal.md
@@ -35,19 +35,19 @@ capabilities/
 │       ├── build.md
 │       └── merge.md
 └── contracts/
-    ├── capability.yaml
+    ├── adapter.yaml
     ├── tools.yaml               # Optional WASI tool sidecar
     └── briefs/...
 ```
 
-## `capability.yaml`
+## `adapter.yaml`
 
-The `capability.yaml` file is the capability's entry point. It declares the pipeline phases. It is validated against `capabilities/capability.schema.json` in this repository and against the equivalent schema bundled with the CLI.
+The `adapter.yaml` file is the adapter's entry point. It declares the pipeline phases. It is validated against `adapters/adapter.schema.json` in this repository and against the equivalent schema bundled with the CLI.
 
-Here is the Omnia capability as a concrete example:
+Here is the Omnia adapter as a concrete example:
 
 ```yaml
-# yaml-language-server: $schema=../capability.schema.json
+# yaml-language-server: $schema=../adapter.schema.json
 name: omnia
 version: 1
 description: Omnia Rust WASM workflow
@@ -74,32 +74,32 @@ pipeline:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | yes | Capability identifier (e.g. `omnia`, `vectis`). Must match the directory name under `capabilities/`. |
-| `version` | integer | yes | Capability version number (minimum 1). |
-| `description` | string | yes | Human-readable description of the capability. |
+| `name` | string | yes | Adapter identifier (e.g. `omnia`, `vectis`). Must match the directory name under `adapters/`. |
+| `version` | integer | yes | Adapter version number (minimum 1). |
+| `description` | string | yes | Human-readable description of the adapter. |
 | `pipeline` | object | yes | Pipeline phases with ordered brief references. |
 
-The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata.
+The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in adapter references and skills, not in always-loaded manifest metadata.
 
 ### Optional codex directory
 
-Capabilities may ship a `codex/` directory next to `capability.yaml` to distribute review rules owned by that capability. The directory is a repository convention, not a manifest field: do not add `codex:` to `capability.yaml`.
+Adapters may ship a `codex/` directory next to `adapter.yaml` to distribute review rules owned by that adapter. The directory is a repository convention, not a manifest field: do not add `codex:` to `adapter.yaml`.
 
-Codex files are Markdown documents with RM-03 frontmatter (`id`, `title`, `severity`, `trigger`) and a self-contained `## Rule` section. The foundational `default` capability owns capability-independent universal rules; domain capabilities may add smaller packs for their own review concerns.
+Codex files are Markdown documents with RM-03 frontmatter (`id`, `title`, `severity`, `trigger`) and a self-contained `## Rule` section. The foundational `default` adapter owns adapter-independent universal rules; domain adapters may add smaller packs for their own review concerns.
 
 ### Optional tool sidecar
 
-Capabilities may ship a `tools.yaml` sidecar next to `capability.yaml` to declare WASI helper tools for `specify tool`. The `capability.yaml` schema remains closed and unchanged; do not add a `tools:` field to it.
+Adapters may ship a `tools.yaml` sidecar next to `adapter.yaml` to declare WASI helper tools for `specify tool`. The `adapter.yaml` schema remains closed and unchanged; do not add a `tools:` field to it.
 
 ```yaml
-# capabilities/contracts/tools.yaml
+# adapters/contracts/tools.yaml
 tools:
   - "specify:contract@0.3.0"
 ```
 
 Use scalar `specify:<tool>@<semver>` package requests for first-party released WASI tools. Use object declarations with absolute local paths or `file://` URIs for vendored and first-party development artifacts; those object declarations may include `sha256` pins when cache verification is useful.
 
-Capability-scope tools may use `$CAPABILITY_DIR` in permission paths to read capability-owned templates or resources. Project-scope declarations in `.specify/project.yaml` may not use `$CAPABILITY_DIR`.
+Adapter-scope tools may use `$ADAPTER_DIR` in permission paths to read adapter-owned templates or resources. Project-scope declarations in `.specify/project.yaml` may not use `$ADAPTER_DIR`.
 
 See [specify tool](../reference/cli/tool.md), [Tool Declarations](../explanation/tool-declarations.md), and [RFC-15](../../rfcs/archive/rfc-15-wasm-plugins.md) for the command surface, declaration precedence, cache layout, and security model.
 
@@ -113,7 +113,7 @@ The `pipeline` object has three required phases -- `define`, `build`, and `merge
 | `build` | `/spec:build` (implementation) | 1 |
 | `merge` | `/spec:merge` (baseline merge) | 1 |
 
-> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-draft skill at [`plugins/change/skills/draft/briefs/<capability>/`](../../plugins/change/skills/draft/briefs/) — see [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) for the boundary that lands this rejection.
+> **No `pipeline.plan`.** Planning is orchestration, not adapter-owned slice work; both `adapters/adapter.schema.json` (this repo) and `schemas/adapter.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-draft skill at [`plugins/change/skills/draft/briefs/<adapter>/`](../../plugins/change/skills/draft/briefs/) — see [RFC-13 §"Platform components are not adapters"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-adapters) for the boundary that lands this rejection.
 
 Each phase contains an ordered array of **pipeline entries**:
 
@@ -124,8 +124,8 @@ Each phase contains an ordered array of **pipeline entries**:
 
 | Field | Description |
 |-------|-------------|
-| `id` | Brief identifier (must be unique across all phases within the capability). |
-| `brief` | Relative path from the capability directory to the brief markdown file. |
+| `id` | Brief identifier (must be unique across all phases within the adapter). |
+| `brief` | Relative path from the adapter directory to the brief markdown file. |
 
 ## Brief files
 
@@ -152,7 +152,7 @@ needs: [proposal]
 
 ### Execution order
 
-The `needs` dependencies form a directed acyclic graph. The `/spec:define` skill resolves the topological order by calling `specify capability pipeline define --change <dir>`, which returns the briefs in dependency-safe order. Skills execute each brief in sequence, reading the artifacts generated by earlier briefs.
+The `needs` dependencies form a directed acyclic graph. The `/spec:define` skill resolves the topological order by calling `specify adapter pipeline define --change <dir>`, which returns the briefs in dependency-safe order. Skills execute each brief in sequence, reading the artifacts generated by earlier briefs.
 
 For example, the Omnia define pipeline resolves to:
 
@@ -166,35 +166,35 @@ The Vectis define pipeline adds `composition` between `specs` and `design`:
 proposal → specs → composition → design → tasks
 ```
 
-## Capability resolution
+## Adapter resolution
 
-Projects reference their capability in `.specify/project.yaml`:
+Projects reference their adapter in `.specify/project.yaml`:
 
 ```yaml
-capability: https://github.com/augentic/specify/capabilities/omnia
+adapter: https://github.com/augentic/specify/adapters/omnia
 ```
 
-Capability identifiers support a bare name, an `https://…` URL, a `file:///…` URI, and an optional `@ref` suffix to pin a specific git ref:
+Adapter identifiers support a bare name, an `https://…` URL, a `file:///…` URI, and an optional `@ref` suffix to pin a specific git ref:
 
 ```text
-https://github.com/augentic/specify/capabilities/omnia@v1
+https://github.com/augentic/specify/adapters/omnia@v1
 ```
 
-The CLI resolves the capability to a local directory by checking `.specify/.cache/` first (populated at `/spec:init` time) and fetching from the remote if needed. See [Configuration Files](../reference/configuration.md) for the full resolution algorithm.
+The CLI resolves the adapter to a local directory by checking `.specify/.cache/` first (populated at `/spec:init` time) and fetching from the remote if needed. See [Configuration Files](../reference/configuration.md) for the full resolution algorithm.
 
-## Adding or modifying a capability
+## Adding or modifying a adapter
 
-1. **Create the directory** under `capabilities/<name>/` with a `capability.yaml` and a `briefs/` subdirectory. Add `codex/` only when the capability owns review rules.
+1. **Create the directory** under `adapters/<name>/` with a `adapter.yaml` and a `briefs/` subdirectory. Add `codex/` only when the adapter owns review rules.
 
 2. **Declare the pipeline.** List the define, build, and merge phases with their brief entries.
 
 3. **Write the briefs.** Each brief needs YAML frontmatter with at minimum `id` and `description`. The `needs` array declares dependencies on other briefs. The body contains the agent instructions for that pipeline stage.
 
 4. **Validate.** Run `make checks` -- the `checks.ts` script verifies:
-   - `capability.yaml` validates against `capabilities/capability.schema.json`
+   - `adapter.yaml` validates against `adapters/adapter.schema.json`
    - All `brief` paths resolve to existing files
    - Brief frontmatter `id` matches the pipeline entry `id`
    - All `needs` references point to declared brief IDs
    - The `needs` graph contains no cycles (Kahn's algorithm)
 
-5. **Register in the README.** Update `capabilities/README.md` with the new capability's entry and mention any codex pack the capability owns.
+5. **Register in the README.** Update `adapters/README.md` with the new adapter's entry and mention any codex pack the adapter owns.

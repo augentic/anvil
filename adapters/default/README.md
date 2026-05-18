@@ -1,8 +1,8 @@
-# Default Capability
+# Default Adapter
 
-The default capability is the foundational Specify capability. It carries universal codex rules that apply independently of a project's implementation domain.
+The default adapter is the foundational Specify adapter. It carries universal codex rules that apply independently of a project's implementation domain.
 
-Its pipeline is intentionally minimal and generic. Domain-specific generation, build, review, and adoption behavior belongs in capabilities such as `omnia`, `contracts`, and `vectis`.
+Its pipeline is intentionally minimal and generic. Domain-specific generation, build, review, and adoption behavior belongs in adapters such as `omnia`, `contracts`, and `vectis`.
 
 ## Codex
 

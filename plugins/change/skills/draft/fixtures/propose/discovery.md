@@ -1,6 +1,6 @@
 # Discovery — platform-v2
 
-## Capability inventory
+## Adapter inventory
 
 ### user-registration
 Source: monolith (/path/to/legacy-codebase) Description: User sign-up flow; creates a new user record.

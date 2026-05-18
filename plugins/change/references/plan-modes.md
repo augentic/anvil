@@ -27,7 +27,7 @@ No new positional is introduced beyond `extend`. A future change may add `force-
 
 ## `dry-run`
 
-Emit a readiness report, the would-be-produced capability inventory, and the would-be-proposed plan to stdout; write nothing. Dry-run folds the readiness gate, the discovery preview, and the propose preview into a single pass.
+Emit a readiness report, the would-be-produced adapter inventory, and the would-be-proposed plan to stdout; write nothing. Dry-run folds the readiness gate, the discovery preview, and the propose preview into a single pass.
 
 Under `dry-run` the skill MUST NOT:
 
@@ -38,6 +38,6 @@ Under `dry-run` the skill MUST NOT:
 
 The discovery brief's input-reading side (reading `from` files, invoking `/change:analyze` against `source` / `against` inputs) runs under `dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify plan add` call are skipped.
 
-The full output shape (banner / sources block / pipeline line / capability inventory preview / would-be-proposed plan / assignment preview) is pinned by `fixtures/dry-run/expected-output.md`, `fixtures/discovery/expected-discovery.md`, and `fixtures/propose/expected-proposal.md`. The `[dry-run]` banner on the first line is enough — body lines do not need a per-line prefix.
+The full output shape (banner / sources block / pipeline line / adapter inventory preview / would-be-proposed plan / assignment preview) is pinned by `fixtures/dry-run/expected-output.md`, `fixtures/discovery/expected-discovery.md`, and `fixtures/propose/expected-proposal.md`. The `[dry-run]` banner on the first line is enough — body lines do not need a per-line prefix.
 
 There is no `orchestrate` mode on `/change:draft`. The cross-repo execution sequence that the old umbrella owned is now the three-skill lifecycle `/change:draft <name>` → operator review → `/change:execute loop` → `/change:finalize <name>`. The pre-execute steps live in [`../skills/draft/references/runbook.md`](../skills/draft/references/runbook.md); the post-execute push / PR-observation / finalize tail lives in [`../skills/finalize/references/runbook.md`](../skills/finalize/references/runbook.md).

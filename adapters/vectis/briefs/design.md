@@ -5,9 +5,9 @@ generates: design.md
 needs: [proposal, specs]
 ---
 
-Include sections based on the platforms declared in the proposal. The Domain Model and Capabilities sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
+Include sections based on the platforms declared in the proposal. The Domain Model and Adapters sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
 
-`design.md` is a *reader* of the wired UI input set — `composition.yaml` (the lifecycle artifact emitted by [`briefs/composition.md`](composition.md) earlier in this define run), `tokens.yaml`, and `assets.yaml` — not a parallel surface for the same information (RFC-11 §H). It MUST NOT reproduce the layout tree, the asset manifest, or the token catalog; reference those artifacts by name and capture only the design implications they impose: screen names, ViewModel variants, per-page view structs, Route needs, `bind` field completeness, capability fan-out, token usage policy, asset usage policy, and platform-specific shell notes. Do not consume `layout.yaml` from `design.md` — that is the composition brief's job; `design.md` reads only the wired output.
+`design.md` is a *reader* of the wired UI input set — `composition.yaml` (the lifecycle artifact emitted by [`briefs/composition.md`](composition.md) earlier in this define run), `tokens.yaml`, and `assets.yaml` — not a parallel surface for the same information (RFC-11 §H). It MUST NOT reproduce the layout tree, the asset manifest, or the token catalog; reference those artifacts by name and capture only the design implications they impose: screen names, ViewModel variants, per-page view structs, Route needs, `bind` field completeness, adapter fan-out, token usage policy, asset usage policy, and platform-specific shell notes. Do not consume `layout.yaml` from `design.md` — that is the composition brief's job; `design.md` reads only the wired output.
 
 ## Output Structure
 
@@ -56,16 +56,16 @@ Define these types (see guidance below each):
 - All fields pub, use String for formatted display values
 
 ### Effect
-- One variant per capability, annotated with #[effect(facet_typegen)]
+- One variant per adapter, annotated with #[effect(facet_typegen)]
 
 ### Supporting types
 - Domain structs/enums used in Model, Event, or view structs -->
 
-## Capabilities
+## Adapters
 
-<!-- Crux capability table. Mark each Yes/No with details.
+<!-- Crux adapter table. Mark each Yes/No with details.
 
-| Capability | Needed? | Details |
+| Adapter | Needed? | Details |
 |---|---|---|
 | **Render** | Yes (always) | |
 | **HTTP** (`crux_http`) | | |
@@ -81,7 +81,7 @@ Define these types (see guidance below each):
      auth, rate limits, caching, versioning strategy.
      
      When no baseline contracts exist: endpoints with method, URL,
-     request/response shapes, errors. Include only when HTTP capability is used. -->
+     request/response shapes, errors. Include only when HTTP adapter is used. -->
 
 ## iOS Shell Details
 
@@ -102,7 +102,7 @@ re-list them here, only call out platform-specific customisations on top.
 - Material 3 customisations per ViewModel variant that go beyond composition.yaml
 - Platform features (edge-to-edge, system bars, haptics)
 - Koin DI requirements (when multiple non-Render effects)
-- Capability client details (Ktor for HTTP/SSE, SharedPreferences for KV) -->
+- Adapter client details (Ktor for HTTP/SSE, SharedPreferences for KV) -->
 
 ## Implementation Constraints
 
@@ -133,7 +133,7 @@ Standard platform constraints:
 
 ## Reading the wired composition
 
-By the time this brief runs, the composition brief has already emitted `composition.yaml` for any UI-bearing slice (the define pipeline orders `composition` before `design` — see [`capability.yaml`](../capability.yaml)). Read `composition.yaml` along with sibling `tokens.yaml` and `assets.yaml` (when present in the slice or under `design-system/`) and use them as the authoritative sources for layout-derived implications. The declared tool command `specify tool run vectis -- validate composition` (with auto-invoked `tokens` / `assets` modes) is the deterministic gate; this brief does not duplicate its checks.
+By the time this brief runs, the composition brief has already emitted `composition.yaml` for any UI-bearing slice (the define pipeline orders `composition` before `design` — see [`adapter.yaml`](../adapter.yaml)). Read `composition.yaml` along with sibling `tokens.yaml` and `assets.yaml` (when present in the slice or under `design-system/`) and use them as the authoritative sources for layout-derived implications. The declared tool command `specify tool run vectis -- validate composition` (with auto-invoked `tokens` / `assets` modes) is the deterministic gate; this brief does not duplicate its checks.
 
 - **Resolution.** Look for `composition.yaml` first at `.specify/slices/<name>/composition.yaml`, then at `.specify/specs/composition.yaml`. The same lookup applies to `tokens.yaml` and `assets.yaml`: slice-local files first, then project-level `design-system/tokens.yaml` / `design-system/assets.yaml`.
 - **ViewModel adoption.** Adopt the screen names, ViewModel variant names, and field names proposed by `composition.yaml`. Adjust naming only when Rust conventions or domain model considerations require it.

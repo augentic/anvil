@@ -61,7 +61,7 @@ For each `--source <key>=<path>` flag, processed in declaration order:
 
    Merge policy:
 
-   - **`specs/`** — copy each extracted capability's directory to `<slice-dir>/specs/<capability>/`. If two source keys both emit a spec for the same capability name, that is a **name collision**: halt with a brief-level error and surface both colliding paths. The propose brief is responsible for preventing this by forcing distinct capability names across sources or consolidating duplicates under one source. Do not attempt to auto-resolve.
+   - **`specs/`** — copy each extracted adapter's directory to `<slice-dir>/specs/<adapter>/`. If two source keys both emit a spec for the same adapter name, that is a **name collision**: halt with a brief-level error and surface both colliding paths. The propose brief is responsible for preventing this by forcing distinct adapter names across sources or consolidating duplicates under one source. Do not attempt to auto-resolve.
    - **`design.md`** — concatenate per-source design sections in `--source` declaration order. When two or more sources contribute, wrap each section under a level-2 heading `## Source: <key>` so the merged artifact makes provenance obvious. When there is exactly one source, emit the section content without the wrapper — the small-legacy case stays clean.
 
 After every `--source` has been processed and merged, the merged `<slice-dir>/specs/` and `<slice-dir>/design.md` are the specs-phase output.
@@ -80,21 +80,21 @@ For each referenced name, check whether a baseline exists at `.specify/specs/<na
 
 If the inferred affects set is non-empty, run the following four-step pass. If the description does not reference any existing baselines, skip this section entirely — all extracted specs remain in fresh new-crate form.
 
-1. **Reuse the merged extract output — do not re-invoke extract.** The per-source loop above has already written one `<slice-dir>/specs/<capability>/spec.md` for every capability the merged extract covers. That merged tree is the input to the matching step; no additional `/spec:extract` call is needed here. Extract remains baseline-unaware — it never reads `.specify/specs/`.
+1. **Reuse the merged extract output — do not re-invoke extract.** The per-source loop above has already written one `<slice-dir>/specs/<adapter>/spec.md` for every adapter the merged extract covers. That merged tree is the input to the matching step; no additional `/spec:extract` call is needed here. Extract remains baseline-unaware — it never reads `.specify/specs/`.
 
-2. **Rewrite matched capabilities in DELTA form.** For each name in the inferred affects set, check for a merged spec at `<slice-dir>/specs/<name>/spec.md`. When one exists:
+2. **Rewrite matched adapters in DELTA form.** For each name in the inferred affects set, check for a merged spec at `<slice-dir>/specs/<name>/spec.md`. When one exists:
 
    - Read the baseline at `.specify/specs/<name>/spec.md`.
-   - Diff the extracted capability spec against the baseline and rewrite `<slice-dir>/specs/<name>/spec.md` using the ADDED / MODIFIED / RENAMED / REMOVED delta structure documented under the define skill's [Spec format conventions → Delta-specific workflows](../../../plugins/spec/skills/define/SKILL.md#spec-format-conventions).
+   - Diff the extracted adapter spec against the baseline and rewrite `<slice-dir>/specs/<name>/spec.md` using the ADDED / MODIFIED / RENAMED / REMOVED delta structure documented under the define skill's [Spec format conventions → Delta-specific workflows](../../../plugins/spec/skills/define/SKILL.md#spec-format-conventions).
    - The delta form replaces the fresh-spec form at `<slice-dir>/specs/<name>/spec.md`; do not keep both. The baseline at `.specify/specs/<name>/spec.md` stays untouched until the change merges.
 
-3. **Leave unmatched capabilities as fresh specs.** Capabilities whose names do not match any inferred affects target keep the new-crate spec form already written by the per-source merge. No rewrite, no additional work.
+3. **Leave unmatched adapters as fresh specs.** Adapters whose names do not match any inferred affects target keep the new-crate spec form already written by the per-source merge. No rewrite, no additional work.
 
 4. **Warn on inferred targets with no extract match.** For each name in the inferred affects set with no corresponding `<slice-dir>/specs/<name>/spec.md` after the merge, emit a brief-level warning naming the orphan target. Suggest that the description may be inaccurate — the operator can amend it via `specify plan amend <change> --description "..."`.
 
    The warning is informational; the brief continues.
 
-After this pass, `<slice-dir>/specs/<name>/spec.md` is in delta form for every matched inferred target, in fresh new-crate form for every unmatched extracted capability, and absent for every unmatched inferred target (with a warning logged).
+After this pass, `<slice-dir>/specs/<name>/spec.md` is in delta form for every matched inferred target, in fresh new-crate form for every unmatched extracted adapter, and absent for every unmatched inferred target (with a warning logged).
 
 ---
 

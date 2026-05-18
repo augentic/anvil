@@ -1,6 +1,6 @@
 # Discovery — traffic
 
-## Capability inventory
+## Adapter inventory
 
 <!-- source-key: monolith -->
 ### email-verification

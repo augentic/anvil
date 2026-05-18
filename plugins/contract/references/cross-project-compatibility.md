@@ -9,7 +9,7 @@ specify compatibility check --change <name> --report-only    # read-only RM-04 r
 
 The current post-merge baseline gate remains separate: `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` validates the merged contract set for SemVer, `info.x-specify-id` format, and cross-file id uniqueness. Compatibility classification consumes the registry and workspace state to answer a different question: whether a producer contract delta is `additive`, `breaking`, `ambiguous`, or `unverifiable` for registered consumers.
 
-For the report's structural shape and exit semantics, see [`report-shape`](report-shape.md). For reviewer-facing rule prose that cites this vocabulary, see [`IFACE-005 Consumer Impact Classification`](../../../capabilities/contracts/codex/consumer-impact-classification.md).
+For the report's structural shape and exit semantics, see [`report-shape`](report-shape.md). For reviewer-facing rule prose that cites this vocabulary, see [`IFACE-005 Consumer Impact Classification`](../../../adapters/contracts/codex/consumer-impact-classification.md).
 
 ## When the check runs
 
@@ -132,4 +132,4 @@ The operator decides whether to amend the producer change, file follow-up change
 - [`report-shape`](report-shape.md) — report shapes for verifier output and the CLI compatibility report.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — single-project counterpart for delta computation; the cross-format compatibility check (Check 4 in the JSON Schema verifier) uses the same `change-kind` vocabulary against in-project baseline bindings.
 - [`artifact-structure`](artifact-structure.md) — workspace clone layout (`.specify/workspace/<peer>/`) and the materialisation contract.
-- [`IFACE-005 Consumer Impact Classification`](../../../capabilities/contracts/codex/consumer-impact-classification.md) — stable codex rule for reviewer and compatibility findings.
+- [`IFACE-005 Consumer Impact Classification`](../../../adapters/contracts/codex/consumer-impact-classification.md) — stable codex rule for reviewer and compatibility findings.

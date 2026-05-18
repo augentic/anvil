@@ -15,7 +15,7 @@ Sections:
   - **Modify existing contracts** — updating contracts already present in root `contracts/`
   - **Extract from source code** — reverse-engineering machine-readable contracts from existing implementation source (handlers, routes, typed DTOs, validation schemas) whose API surface a prior `/change:analyze legacy-code` run identified. Distinct from `/spec:extract`, which produces a full Specify project; this mode narrows to interface contracts only.
 - **Source Material**: List the prose documents, design notes, external contract files, baseline contract paths, or implementation source paths whose API surface was identified by a prior `/change:analyze` run that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
-- **Analysis Context** (required when Authorship Mode is **Extract from source code**): Name the `discovery.md` capability block(s) and `entry_points` this contract change transcribes, so reviewers can trace contract scope back to the analysis decision that introduced it.
+- **Analysis Context** (required when Authorship Mode is **Extract from source code**): Name the `discovery.md` adapter block(s) and `entry_points` this contract change transcribes, so reviewers can trace contract scope back to the analysis decision that introduced it.
 - **Impact**: Which implementation changes depend on these contracts? Reference plan entries or future changes that will consume the contract artifacts.
 
 Keep it concise (1 page). Focus on what interfaces are being defined, not how they will be implemented — implementation details belong in the consuming schema's design.md.
@@ -52,9 +52,9 @@ the analysis run identified. -->
 ## Analysis Context
 
 <!-- Required when Authorship Mode is "Extract from source code".
-Name the discovery.md capability block(s) and entry_points this contract
+Name the discovery.md adapter block(s) and entry_points this contract
 change transcribes, so reviewers can trace contract scope back to the
-analysis decision that introduced it. Example: "orders capability,
+analysis decision that introduced it. Example: "orders adapter,
 discovery.md@plan-dir, entry_points: [POST /orders, GET /orders/:orderId]". -->
 
 ## Impact

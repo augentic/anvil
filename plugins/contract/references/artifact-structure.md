@@ -34,7 +34,7 @@ contracts/
 
 ## Why Platform-Level?
 
-Contracts sit outside the per-capability spec tree. A single OpenAPI document or schema type often spans multiple capabilities — a `POST /users` endpoint might touch `user-registration`, `auth`, and `notifications` capabilities. Flattening contracts out of the capability hierarchy avoids the question of "which capability owns this schema?" — nobody does; it is platform vocabulary.
+Contracts sit outside the per-adapter spec tree. A single OpenAPI document or schema type often spans multiple adapters — a `POST /users` endpoint might touch `user-registration`, `auth`, and `notifications` adapters. Flattening contracts out of the adapter hierarchy avoids the question of "which adapter owns this schema?" — nobody does; it is platform vocabulary.
 
 Three platform concerns, three top-level locations:
 

@@ -22,4 +22,4 @@ Authenticated HTTP should follow the `Config` -> `Identity::access_token` -> `Ht
 
 ## Spec Guidance
 
-Specs and designs should name the required config keys, identity names, and provider capabilities, not secret values. If a source migration exposes an environment variable containing a secret, capture the dependency as host-managed configuration or identity and keep the value out of artifacts.
+Specs and designs should name the required config keys, identity names, and provider adapters, not secret values. If a source migration exposes an environment variable containing a secret, capture the dependency as host-managed configuration or identity and keep the value out of artifacts.

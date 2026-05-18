@@ -38,7 +38,7 @@
     {
       "name": "change",
       "source": "change",
-      "description": "Skills for Specify change orchestration: authors `plan.yaml` (`/change:draft`) and finalizes a completed change (`/change:finalize`); execution remains `/change:execute`. `/change:analyze` infers plan-time capability summaries from legacy code or documentation inputs."
+      "description": "Skills for Specify change orchestration: authors `plan.yaml` (`/change:draft`) and finalizes a completed change (`/change:finalize`); execution remains `/change:execute`. `/change:analyze` infers plan-time adapter summaries from legacy code or documentation inputs."
     },
     {
       "name": "contract",

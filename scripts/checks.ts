@@ -14,10 +14,10 @@ import {
   checkReferences,
 } from "./checks/links.ts";
 import {
-  checkCapabilityIntegrity,
+  checkAdapterIntegrity,
   checkInstructionPreambles,
-  validateCapabilityYaml,
-} from "./checks/capability.ts";
+  validateAdapterYaml,
+} from "./checks/adapter.ts";
 import {
   checkDeclaredToolEquivalentInvocations,
   checkFirstPartyToolDeclarations,
@@ -62,8 +62,8 @@ await Promise.all([
   checkSymlinks(),
 ]);
 await Promise.all([
-  validateCapabilityYaml(),
-  checkCapabilityIntegrity(),
+  validateAdapterYaml(),
+  checkAdapterIntegrity(),
   checkFirstPartyToolDeclarations(),
   checkInstructionPreambles(),
   checkWorkspaceLanding(),

@@ -1,6 +1,6 @@
 # Discovery — greenfield-app
 
-## Capability inventory
+## Adapter inventory
 
 <!-- source-key: arch-docs -->
 ### user-authentication

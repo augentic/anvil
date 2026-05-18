@@ -81,11 +81,11 @@ impl IntoBody for MyResponse {
 
 Messaging handlers use `type Output = ()` and do not need `IntoBody`.
 
-## 3. Provider Capabilities
+## 3. Provider Adapters
 
 All 9 traits live in `omnia_sdk`: `Config`, `HttpRequest`, `Publish`, `StateStore`, `Identity`, `TableStore`, `Broadcast`, `Blobstore`, `DocumentStore`. Domain crates declare which traits they need as generic bounds; the guest Provider struct satisfies those bounds with empty impls that delegate to SDK defaults.
 
-For the full capability selection table, trait signatures, usage examples, composition rules, and authentication patterns, see [capabilities.md](../references/capabilities.md).
+For the full adapter selection table, trait signatures, usage examples, composition rules, and authentication patterns, see [capabilities.md](../references/capabilities.md).
 
 ## 4. Error Handling
 

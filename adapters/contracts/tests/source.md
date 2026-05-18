@@ -1,8 +1,8 @@
 ---
 id: contracts-source
 owner: contracts
-kind: capability
-capability: contracts@v1
+kind: adapter
+adapter: contracts@v1
 backend: manual
 entrypoint: /spec:define
 stages: [define, build, merge]
@@ -42,21 +42,21 @@ Pipeline note:
   as context. Reverse-engineered interface shapes should be introduced through
   a separate `contracts@v1` change before implementation depends on them.
 - Extract-from-source changes assume `/change:analyze legacy-code` has
-  already produced a `discovery.md` capability summary identifying the API
+  already produced a `discovery.md` adapter summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
 ## Intent
 
 Prove that the `contracts@v1` slice loop can extract HTTP and JSON Schema
 artifacts from a legacy TypeScript service when a prior `/change:analyze`
-run has constrained the scope to one capability. The scenario covers
+run has constrained the scope to one adapter. The scenario covers
 analysis-bounded extraction: the contract change must stay inside the scoped
 entry points and must mark wire-level fields as `[unknown]` rather than
 guessing.
 
 ## Workspace
 
-- **Capability:** `contracts@v1`.
+- **Adapter:** `contracts@v1`.
 - **Project shape:** a single project initialised with the `contracts@v1`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable.
@@ -72,7 +72,7 @@ guessing.
 ### Discovery precondition
 
 This test assumes a prior `/change:analyze legacy-code` run against
-`vendor/orders-service/` has appended this capability block to the plan's
+`vendor/orders-service/` has appended this adapter block to the plan's
 `discovery.md` (shape pinned by `plugins/change/skills/analyze/SKILL.md`):
 
 ````markdown
@@ -196,7 +196,7 @@ Source Material:
 - vendor/orders-service/src/orders/handlers.ts
 - vendor/orders-service/src/orders/types.ts
 Analysis Context:
-- discovery.md capability: orders
+- discovery.md adapter: orders
 - entry_points: POST /orders, GET /orders/:orderId
 Participants:
 - orders-service: producer
@@ -232,7 +232,7 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
 
 The resulting specs should mark Content-Type, authentication, pagination,
 and rate-limit fields as `[unknown]` because the TypeScript source does not
-encode them. Endpoints or payloads outside the `orders` capability listed in
+encode them. Endpoints or payloads outside the `orders` adapter listed in
 Analysis Context must surface as `[manual review required]` rather than be
 silently included.
 

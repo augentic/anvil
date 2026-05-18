@@ -6,9 +6,9 @@ version: 1
 projects:
   - name: legacy-monolith
     url: git@github.com:augentic/legacy-monolith.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: TypeScript monolith hosting the existing public API.
   - name: command-centre
     url: git@github.com:augentic/command-centre.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: Operator dashboard surface and incident workflows.

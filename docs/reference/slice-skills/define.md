@@ -27,7 +27,7 @@ Create a new slice and generate all artifacts in one step.
 | Artifact | Location | Content |
 |----------|----------|---------|
 | `proposal.md` | `.specify/slices/<name>/proposal.md` | Why the slice exists and what is in scope |
-| `spec.md` (per capability) | `.specify/slices/<name>/specs/<capability>/spec.md` | Behavioral requirements with scenarios |
+| `spec.md` (per adapter) | `.specify/slices/<name>/specs/<adapter>/spec.md` | Behavioral requirements with scenarios |
 | `composition.yaml` (Vectis only) | `.specify/slices/<name>/composition.yaml` | Screen layout with regions, groups, bindings, and event wiring |
 | `design.md` | `.specify/slices/<name>/design.md` | Domain model, APIs, integrations, configuration |
 | `tasks.md` | `.specify/slices/<name>/tasks.md` | Implementation task list with checkboxes |
@@ -35,7 +35,7 @@ Create a new slice and generate all artifacts in one step.
 ## Behavior
 
 1. Creates the slice directory via `specify slice create <name>`.
-2. Reads the capability's `pipeline.define` brief sequence.
+2. Reads the adapter's `pipeline.define` brief sequence.
 3. Generates artifacts in dependency order: proposal, then specs (which may invoke `/spec:extract` if `sources` are present), then composition (Vectis only -- produces `composition.yaml`), then design, then tasks. The composition stage produces a YAML file rather than markdown; the skill dispatches on the `generates` extension in the brief frontmatter.
 4. Scans `touched-specs` via `specify slice touched-specs`.
 5. Transitions the slice to `defined`.
@@ -50,9 +50,9 @@ Create a new slice and generate all artifacts in one step.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Name collision | A change with this name already exists | Choose a different name or use `--if-exists` |
-| Capability not cached | `/spec:init` not run | Run `/spec:init` first |
+| Adapter not cached | `/spec:init` not run | Run `/spec:init` first |
 | Source resolution failure | `--source` path does not exist | Check the path |
-| Brief pipeline error | Capability brief has unresolvable dependency | Check capability configuration |
+| Brief pipeline error | Adapter brief has unresolvable dependency | Check adapter configuration |
 
 ## Examples
 

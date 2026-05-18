@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../capability.schema.json
+# yaml-language-server: $schema=../adapter.schema.json
 name: contracts
 version: 1
 description: API contract definition and validation

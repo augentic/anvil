@@ -12,7 +12,7 @@ openapi: "3.1.0"
 info:
   title: "User API"
   version: "2.0.0"
-  description: "User registration and profile management. v2 reduces PII surface area and tightens registration requirements."
+  description: "User registration and adapter management. v2 reduces PII surface area and tightens registration requirements."
 paths:
   /users:
     post:

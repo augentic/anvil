@@ -38,7 +38,7 @@ A candidate is a cohesive behavior the docs describe — *"what does the system 
 
 - **Runbooks / procedures.** Each operational procedure (rotate a key, drain a queue, roll back a deploy) is one candidate.
 - **OpenAPI.** Group endpoints by tag or by shared path prefix. A `POST /users` + `GET /users/{id}` pair with a common `tag: users` is one candidate (`user-directory`), not two. Use `operationId` or the tag's slug as a name seed.
-- **Markdown / AsciiDoc.** Top-level capability headings (`## X`) typically map 1:1 to candidates. Cluster sub-sections into their parent when the prose clearly describes one candidate across them. Do not split a single candidate just because its doc has many sub-headings.
+- **Markdown / AsciiDoc.** Top-level adapter headings (`## X`) typically map 1:1 to candidates. Cluster sub-sections into their parent when the prose clearly describes one candidate across them. Do not split a single candidate just because its doc has many sub-headings.
 - **Unstructured prose / PDFs.** Cluster by described behavior. Prefer candidate names that match the noun-phrase the doc uses for the behavior (`user-onboarding`, not `flow-3`).
 
 Candidate names are kebab-case, 2–4 tokens, noun-phrases describing the behavior.

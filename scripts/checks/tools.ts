@@ -1,12 +1,12 @@
 // First-party tool surface enforcement (RM-09):
-//   - first-party WASM tools declared in capability tools.yaml are
+//   - first-party WASM tools declared in adapter tools.yaml are
 //     exact scalar wasm-pkg package requests matching the release version,
 //   - retired host helpers (specify-vectis, specify-contract, …) must
 //     be re-routed through their declared-tool equivalent in active
 //     briefs and skill bodies.
 
 import {
-  CAPABILITIES_DIR,
+  PROFILES_DIR,
   fail,
   join,
   parseYaml,
@@ -21,7 +21,7 @@ interface ToolManifest {
 }
 
 interface ExpectedToolDeclaration {
-  capability: string;
+  adapter: string;
   name: string;
   package: string;
 }
@@ -30,28 +30,28 @@ const PACKAGE_RE = /^specify:([a-z][a-z0-9-]*)@(\d+\.\d+\.\d+)$/;
 
 const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
   {
-    capability: "contracts",
+    adapter: "contracts",
     name: "contract",
     package: "specify:contract@0.3.0",
   },
   {
-    capability: "vectis",
+    adapter: "vectis",
     name: "vectis",
     package: "specify:vectis@0.3.0",
   },
 ];
 
 export async function checkFirstPartyToolDeclarations(): Promise<void> {
-  const declarationsByCapability = new Map<
+  const declarationsByAdapter = new Map<
     string,
     Map<string, string>
   >();
 
   for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
-    if (declarationsByCapability.has(expected.capability)) continue;
+    if (declarationsByAdapter.has(expected.adapter)) continue;
     const manifestPath = join(
-      CAPABILITIES_DIR,
-      expected.capability,
+      PROFILES_DIR,
+      expected.adapter,
       "tools.yaml",
     );
     const rel = relative(REPO_ROOT, manifestPath);
@@ -84,16 +84,16 @@ export async function checkFirstPartyToolDeclarations(): Promise<void> {
       }
       declarations.set(match[1], tool);
     }
-    declarationsByCapability.set(
-      expected.capability,
+    declarationsByAdapter.set(
+      expected.adapter,
       declarations,
     );
   }
 
   for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
-    const rel = `capabilities/${expected.capability}/tools.yaml`;
-    const packageRequest = declarationsByCapability
-      .get(expected.capability)
+    const rel = `adapters/${expected.adapter}/tools.yaml`;
+    const packageRequest = declarationsByAdapter
+      .get(expected.adapter)
       ?.get(expected.name);
     if (!packageRequest) {
       fail(
@@ -166,13 +166,13 @@ async function activeBriefAndSkillFiles(): Promise<string[]> {
   const files: string[] = [];
 
   for await (
-    const entry of walk(CAPABILITIES_DIR, {
+    const entry of walk(PROFILES_DIR, {
       exts: [".md"],
       includeDirs: false,
     })
   ) {
     if (await underSymlink(entry.path)) continue;
-    const parts = relative(CAPABILITIES_DIR, entry.path).split("/");
+    const parts = relative(PROFILES_DIR, entry.path).split("/");
     if (parts.length >= 3 && parts[1] === "briefs") files.push(entry.path);
   }
 

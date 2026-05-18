@@ -6,7 +6,7 @@ argument-hint: "[slice-name]"
 
 # Merge
 
-Merge a completed slice. Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
+Merge a completed slice. Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-adapter merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
 
 When working plan-driven (a `plan.yaml` exists), after `specify slice merge run` returns successfully the plan entry should be transitioned to `done`:
 
@@ -74,7 +74,7 @@ Run:
 specify slice merge run <name> --format json
 ```
 
-This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<capability>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually. Workspace-clone auto-commit semantics (which trees get committed, warning-vs-error, residue handling) live in [`references/merge-runbook.md`](references/merge-runbook.md#workspace-clone-auto-commit).
+This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<adapter>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually. Workspace-clone auto-commit semantics (which trees get committed, warning-vs-error, residue handling) live in [`references/merge-runbook.md`](references/merge-runbook.md#workspace-clone-auto-commit).
 
 ### 6. Handle outcomes
 

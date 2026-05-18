@@ -10,7 +10,7 @@ Arguments (used by all skills):
 - CRATE_NAME: the spec folder name (`specs/<crate>/spec.md`)
 - CRATE_PATH: `crates/CRATE_NAME`
 
-The four implementing skills invoked below are bundled with the omnia capability:
+The four implementing skills invoked below are bundled with the omnia adapter:
 
 - [`omnia-guest-writer`](../../../plugins/omnia/skills/guest-writer/SKILL.md) — generate the WASM guest project
 - [`omnia-crate-writer`](../../../plugins/omnia/skills/crate-writer/SKILL.md) — generate or update the domain crate

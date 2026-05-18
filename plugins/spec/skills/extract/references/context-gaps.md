@@ -365,13 +365,13 @@ Flattening nested types or not documenting all fields.
 
 **Don't flatten:**
 ```markdown
-❌ Output: { id, name, profile }
+❌ Output: { id, name, adapter }
 ```
 
 **Show full nesting:**
 ```markdown
 ✓ Output Types:
-  ``` User { "id": "string", "name": "string", "profile": { "age": "number", "location": "string", "preferences": { "theme": "string", "notifications": "boolean" } } }
+  ``` User { "id": "string", "name": "string", "adapter": { "age": "number", "location": "string", "preferences": { "theme": "string", "notifications": "boolean" } } }
   ```
 ```
 
@@ -722,7 +722,7 @@ If algorithm steps stay narrative, add an optional subsection per Business Logic
 
 ### Why It Matters
 
-Without actionable data-access cues, downstream code generators correctly identify the capabilities needed but generate TODOs instead of concrete data access code. A small, consistent convention (canonical phrasing or optional one-line hints) lets generators map to their framework's patterns without inflating the artifacts.
+Without actionable data-access cues, downstream code generators correctly identify the adapters needed but generate TODOs instead of concrete data access code. A small, consistent convention (canonical phrasing or optional one-line hints) lets generators map to their framework's patterns without inflating the artifacts.
 
 ---
 

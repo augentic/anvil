@@ -16,7 +16,7 @@ Use this page when `specify registry` verbs or `specify init --hub` refuse with 
 **Resolution:** Two paths.
 
 - **Stay on the hub:** remove the entry. `specify registry remove <name>`. Code projects must live in their own repos and be referenced via a remote URL.
-- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <capability>` without `--hub`. See [Platform repo topologies](../../explanation/platform-repo.md).
+- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <adapter>` without `--hub`. See [Platform repo topologies](../../explanation/platform-repo.md).
 
 ## `description-missing-multi-repo`
 
@@ -29,7 +29,7 @@ Use this page when `specify registry` verbs or `specify init --hub` refuse with 
 ```bash
 specify registry add <existing-name> \
     --url <existing-url> \
-    --capability <existing-schema> \
+    --adapter <existing-schema> \
     --description "..."
 ```
 

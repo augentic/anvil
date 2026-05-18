@@ -1,25 +1,25 @@
-# specify capability
+# specify adapter
 
-Capability resolution, validation, and brief pipeline queries.
+Adapter resolution, validation, and brief pipeline queries.
 
 ## Subcommands
 
-### specify capability resolve
+### specify adapter resolve
 
-Resolve a capability identifier or URL to its local cache path.
+Resolve a adapter identifier or URL to its local cache path.
 
 ```bash
-specify capability resolve <capability>
+specify adapter resolve <adapter>
 ```
 
-Returns the filesystem path to the cached capability. Used by skills to locate brief files.
+Returns the filesystem path to the cached adapter. Used by skills to locate brief files.
 
-### specify capability pipeline
+### specify adapter pipeline
 
 Show the brief pipeline for a phase.
 
 ```bash
-specify capability pipeline <phase> [--change <slice-dir>] [--format json]
+specify adapter pipeline <phase> [--change <slice-dir>] [--format json]
 ```
 
 | Phase | Description |
@@ -29,7 +29,7 @@ specify capability pipeline <phase> [--change <slice-dir>] [--format json]
 | `build` | Briefs that drive implementation |
 | `merge` | Briefs that drive spec merging |
 
-*\* `composition` is Vectis-capability only.*
+*\* `composition` is Vectis-adapter only.*
 
 Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
 
@@ -37,5 +37,5 @@ When `--change` is provided, the `present` flag reflects whether each brief's ou
 
 ## See also
 
-- [Capabilities](../capabilities/index.md) -- available first-party capabilities and manifest structure
-- [Configuration Files](../configuration.md) -- capability references in project.yaml
+- [Adapters](../adapters/index.md) -- available first-party adapters and manifest structure
+- [Configuration Files](../configuration.md) -- adapter references in project.yaml

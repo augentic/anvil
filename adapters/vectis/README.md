@@ -1,6 +1,6 @@
-# Vectis Capability
+# Vectis Adapter
 
-- **URL**: `https://github.com/augentic/specify/capabilities/vectis`
+- **URL**: `https://github.com/augentic/specify/adapters/vectis`
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
 - **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `capability.yaml` | Pipeline stages and per-stage brief references |
+| `adapter.yaml` | Pipeline stages and per-stage brief references |
 | `composition.schema.json` | JSON Schema for `composition.yaml` validation |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
@@ -23,7 +23,7 @@
 
 ## Blueprints
 
-The capability declares five blueprints in dependency order:
+The adapter declares five blueprints in dependency order:
 
 1. **proposal** — initial proposal document (`proposal.md`)
 2. **specs** — detailed specifications (`specs/**/*.md`), requires proposal
@@ -58,6 +58,6 @@ The proposal declares which platforms a change targets. Platforms determine whic
 | `android` | Kotlin/Jetpack Compose Android shell | `vectis:android-writer` |
 | `web` | Web shell (future) | — |
 
-## Capability Framework
+## Adapter Framework
 
-For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).
+For general adapter concepts — directory structure, field reference for `adapter.yaml`, adapter resolution, composition, caching, and rules override — see the [Adapters README](../README.md).

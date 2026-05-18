@@ -1,4 +1,4 @@
-# Spec — capability `a`
+# Spec — adapter `a`
 
 ## Purpose
 

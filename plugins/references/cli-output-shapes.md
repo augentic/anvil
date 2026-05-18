@@ -27,7 +27,7 @@ Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
 {
   "action": "amend",
   "entry": {
-    "capability": null,
+    "adapter": null,
     "depends-on": [
       "a",
       "b"
@@ -100,7 +100,7 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 {
   "action": "create",
   "entry": {
-    "capability": "contracts@v1",
+    "adapter": "contracts@v1",
     "depends-on": [],
     "description": null,
     "name": "foo",
@@ -148,7 +148,7 @@ Source fixture: `tests/fixtures/plan/next-all-done.json`
 ```json
 {
   "active": null,
-  "capability": null,
+  "adapter": null,
   "description": null,
   "envelope-version": 6,
   "next": null,
@@ -165,7 +165,7 @@ Source fixture: `tests/fixtures/plan/next-first-pending.json`
 ```json
 {
   "active": null,
-  "capability": null,
+  "adapter": null,
   "description": null,
   "envelope-version": 6,
   "next": "b",
@@ -182,7 +182,7 @@ Source fixture: `tests/fixtures/plan/next-in-progress.json`
 ```json
 {
   "active": "a",
-  "capability": null,
+  "adapter": null,
   "description": null,
   "envelope-version": 6,
   "next": null,
@@ -199,7 +199,7 @@ Source fixture: `tests/fixtures/plan/next-stuck.json`
 ```json
 {
   "active": null,
-  "capability": null,
+  "adapter": null,
   "description": null,
   "envelope-version": 6,
   "next": null,

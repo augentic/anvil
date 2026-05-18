@@ -26,7 +26,7 @@ The skill drives an **agent team** — three specialist reviewers (Structural, Q
 
 When the orchestrator passes `orchestrated: true` (Vectis build phase), the reviewer returns classified `design_findings` for cross-platform consolidation. When invoked standalone (default), it delegates accumulated design-level findings to `/spec:define` as a `review-{app}-android-{date}` slice. Cross-artifact checks against `composition.yaml` / `tokens.yaml` / `assets.yaml` degrade gracefully when those inputs are absent — but the no-hardcoded-literal portions of AND-005..007 stay enforced even when `tokens.yaml` is missing.
 
-This skill consumes the writer's output, not its inputs — `android-writer` owns generation, `android-reviewer` owns the audit. Codex rule prose is read from the resolved project codex (`capabilities/default/codex/`, `capabilities/vectis/codex/`); the reviewer never copies that prose into reports.
+This skill consumes the writer's output, not its inputs — `android-writer` owns generation, `android-reviewer` owns the audit. Codex rule prose is read from the resolved project codex (`adapters/default/codex/`, `adapters/vectis/codex/`); the reviewer never copies that prose into reports.
 
 See [`references/runbook.md`](references/runbook.md) for arguments, per-step spawn prompts, the universal-checks skip table, synthesis / auto-fix / loop-control rules, severity definitions, the verification checklist, and the Specify-workflow integration diagram.
 

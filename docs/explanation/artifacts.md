@@ -15,29 +15,29 @@ contracts: "contracts/\n(shape)" {shape: page}
 design: "design.md\n(how)" {shape: page}
 tasks: "tasks.md\n(sequence)" {shape: page}
 
-proposal -> specs: "scopes capabilities"
+proposal -> specs: "scopes adapters"
 specs -> contracts: "alignment check"
 contracts -> design: "shapes referenced"
 specs -> design: "behavioral input"
 design -> tasks: "what to build"
 ```
 
-The Vectis capability inserts a `composition.yaml` stage between contracts and design.
+The Vectis adapter inserts a `composition.yaml` stage between contracts and design.
 
 ## Core artifacts
 
-All capabilities produce these four artifacts:
+All adapters produce these four artifacts:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
 | `proposal.md` | *Why* does this slice exist? What is in scope? | `.specify/slices/<name>/proposal.md` |
-| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/slices/<name>/specs/<capability>/spec.md` |
+| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/slices/<name>/specs/<adapter>/spec.md` |
 | `design.md` | *How* will the behavior be implemented? | `.specify/slices/<name>/design.md` |
 | `tasks.md` | In what *sequence* should it be built? | `.specify/slices/<name>/tasks.md` |
 
-## Capability-specific artifacts
+## Adapter-specific artifacts
 
-Some capabilities add artifacts to the define pipeline. The Vectis capability adds:
+Some adapters add artifacts to the define pipeline. The Vectis adapter adds:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
@@ -70,13 +70,13 @@ The composition surface ships as two sibling artifacts, both validated against t
 
 ### Proposal
 
-The proposal captures motivation and scope. It names the capabilities (crates, features) that the slice will affect. Each capability listed in the proposal will need a corresponding spec file.
+The proposal captures motivation and scope. It names the adapters (crates, features) that the slice will affect. Each adapter listed in the proposal will need a corresponding spec file.
 
 Proposals are concise -- one to two pages. They focus on the "why" and the "what", not the "how".
 
 ### Specs
 
-Specs are behavioral. Each capability gets its own spec file at `specs/<name>/spec.md`. A spec contains:
+Specs are behavioral. Each adapter gets its own spec file at `specs/<name>/spec.md`. A spec contains:
 
 - A **purpose** statement.
 - **Requirements** with stable IDs (`REQ-001`, `REQ-002`, ...).
@@ -86,7 +86,7 @@ Specs are behavioral. Each capability gets its own spec file at `specs/<name>/sp
 
 Specs stay platform-neutral -- they describe what the system must do, not how it should be implemented in a particular framework or language.
 
-When modifying an existing capability, specs use a **delta format** with `ADDED`, `MODIFIED`, `REMOVED`, and `RENAMED` sections. The stable `REQ-XXX` IDs serve as merge keys.
+When modifying an existing adapter, specs use a **delta format** with `ADDED`, `MODIFIED`, `REMOVED`, and `RENAMED` sections. The stable `REQ-XXX` IDs serve as merge keys.
 
 ### Design
 

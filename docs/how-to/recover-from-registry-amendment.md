@@ -1,6 +1,6 @@
 # Recover from `registry-amendment-required`
 
-When `/change:execute loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
+When `/change:execute loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a adapter that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
 
 This how-to walks the canonical recovery sequence end-to-end. The framework pins this exact sequence so phase skills, executors, and the change-lifecycle skills (`/change:draft`, `/change:execute`, `/change:finalize`) compose against it.
 
@@ -11,7 +11,7 @@ This how-to walks the canonical recovery sequence end-to-end. The framework pins
 
 ## 1. Read the proposal payload
 
-The driver records the proposal payload (`{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }`) on the dropped change's `journal.yaml` before transitioning the entry to `blocked`. Read it via:
+The driver records the proposal payload (`{ proposed-name, proposed-url, proposed-adapter, proposed-description, rationale }`) on the dropped change's `journal.yaml` before transitioning the entry to `blocked`. Read it via:
 
 ```bash
 specify slice journal show <change>
@@ -25,9 +25,9 @@ Three legitimate decisions:
 
 | Decision | When | Action |
 |----------|------|--------|
-| **Accept** | The proposal is sound -- the capability genuinely belongs in a new project. | Continue to step 3. |
+| **Accept** | The proposal is sound -- the adapter genuinely belongs in a new project. | Continue to step 3. |
 | **Reject and re-route** | An existing registry project is a better fit (the phase skill's heuristic missed it). | Skip to step 4. |
-| **Reject and abort** | The capability does not belong in this change at all. | `specify plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
+| **Reject and abort** | The adapter does not belong in this change at all. | `specify plan transition <change> skipped --reason "..."` and continue with the rest of the plan. |
 
 For "Accept," continue with the canonical sequence below. For "Reject and re-route," skip to [Re-route to an existing project](#re-route-to-an-existing-project).
 
@@ -40,7 +40,7 @@ Four CLI verbs in this exact order. Skipping or reordering any step breaks the v
 ```bash
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --capability <proposed-capability> \
+    --adapter <proposed-adapter> \
     --description "<proposed-description>"
 ```
 
@@ -90,7 +90,7 @@ specify plan transition <change> pending
 /change:execute loop
 ```
 
-The phase skill that proposed the amendment will not see the rejection; the journal entry stays in place as audit. If the same proposal recurs on the next run, that is a signal the capability is genuinely ambiguous and the phase skill's heuristic deserves an update -- file an issue.
+The phase skill that proposed the amendment will not see the rejection; the journal entry stays in place as audit. If the same proposal recurs on the next run, that is a signal the adapter is genuinely ambiguous and the phase skill's heuristic deserves an update -- file an issue.
 
 ## Verify the recovery
 

@@ -2,14 +2,14 @@ version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       Real-time traffic ingestion and route optimisation.
       Owns Kafka consumers, the routing engine, and the
       traffic-state read model.
   - name: command-centre
     url: git@github.com:org/command-centre.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       Operator dashboard and alerting. Owns the web UI,
       notification dispatch, and escalation workflows.

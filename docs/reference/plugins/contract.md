@@ -16,9 +16,9 @@ Each skill carries three intents internally and dispatches via its own intent ta
 
 | Intent | Trigger | Sibling file |
 |--------|---------|--------------|
-| Author or extend | contracts capability build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
+| Author or extend | contracts adapter build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
 | Import or normalise | operator drops an external document into a slice's `contracts/` directory | `importer.md` |
-| Verify (single mode) or run the post-merge baseline gate (cross-project mode) | contracts capability build brief in `/spec:build` (verify-repair loop); contracts capability merge brief post-merge | `verifier.md` |
+| Verify (single mode) or run the post-merge baseline gate (cross-project mode) | contracts adapter build brief in `/spec:build` (verify-repair loop); contracts adapter merge brief post-merge | `verifier.md` |
 
 ### Author intent
 
@@ -42,7 +42,7 @@ Read-only validation of contract artifacts after the author intent completes. Ch
 
 The verifier intent does not modify files -- it reports issues for the brief's verify-repair loop to act on.
 
-It also exposes a `--mode cross-project` flag that runs the post-merge baseline gate. The mode is a thin delegate over `specify tool run contract` — it shells out through `specify`, surfaces the validator JSON envelope, and propagates its exit code (`0` clean / `1` findings / `2` tool or invocation error). The contracts capability merge brief invokes this mode after `specify slice merge run` succeeds, mapping non-zero exits to the `failure` merge outcome.
+It also exposes a `--mode cross-project` flag that runs the post-merge baseline gate. The mode is a thin delegate over `specify tool run contract` — it shells out through `specify`, surfaces the validator JSON envelope, and propagates its exit code (`0` clean / `1` findings / `2` tool or invocation error). The contracts adapter merge brief invokes this mode after `specify slice merge run` succeeds, mapping non-zero exits to the `failure` merge outcome.
 
 Cross-project consumer-impact classification is separate from the verifier intent. Use `specify compatibility check` (with optional `--change <name>` and `--report-only` flags) to compare producer contracts with consumer workspace views and classify deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
@@ -72,14 +72,14 @@ Format-specific patterns and examples (OpenAPI conventions, AsyncAPI conventions
 
 ## How the plugin is invoked
 
-The Contract plugin is capability-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
+The Contract plugin is adapter-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
 
-- The **Contracts capability** -- for dedicated contract slices (authoring and import).
-- The **Omnia capability** -- for alignment validation during implementation slices.
-- The **Vectis capability** -- for alignment validation during implementation slices.
+- The **Contracts adapter** -- for dedicated contract slices (authoring and import).
+- The **Omnia adapter** -- for alignment validation during implementation slices.
+- The **Vectis adapter** -- for alignment validation during implementation slices.
 
 The brief picks the format-appropriate skill (OpenAPI for HTTP / resource APIs, AsyncAPI for evented / pub-sub / streaming, JSON Schema for shared payload schemas) and dispatches to its author intent (alignment validation and delta production), then to its verifier intent (post-generation consistency checks), with a verify-repair loop of up to 2 iterations.
 
 ## CLI counterpart
 
-The matching baseline-validation CLI surface is the declared [`contract` WASI tool](../cli/contract.md), run as `specify tool run contract -- <BASELINE_DIR> --format json`. It walks a baseline `contracts/` directory and runs the contract validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The contracts capability merge brief shells out to it as the post-merge baseline gate (see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md)). The earlier in-binary `specify contract` family was retired; the WASI tool is the capability-owned replacement, with a byte-compatible JSON envelope for normal validator runs. The separate consumer-impact CLI surface is `specify compatibility`.
+The matching baseline-validation CLI surface is the declared [`contract` WASI tool](../cli/contract.md), run as `specify tool run contract -- <BASELINE_DIR> --format json`. It walks a baseline `contracts/` directory and runs the contract validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The contracts adapter merge brief shells out to it as the post-merge baseline gate (see [`adapters/contracts/briefs/merge.md`](../../../adapters/contracts/briefs/merge.md)). The earlier in-binary `specify contract` family was retired; the WASI tool is the adapter-owned replacement, with a byte-compatible JSON envelope for normal validator runs. The separate consumer-impact CLI surface is `specify compatibility`.

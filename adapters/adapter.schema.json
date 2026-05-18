@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify/capabilities/capability.schema.json",
-  "title": "Specify capability manifest",
-  "description": "Validates the structure of a Specify capability manifest (capability.yaml). The manifest is the declarative surface the core loads before running the slice loop. Defined by RFC-13 §Capability manifest and protocol; the manifest field set is closed (additionalProperties: false) so the dropped fields domain, extends, and pipeline.plan are actively rejected rather than tolerated. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` planning skill (`plugins/change/skills/plan/`); see RFC-13 §3.11 for the migration that landed this rejection.",
+  "$id": "https://github.com/augentic/specify/adapters/adapter.schema.json",
+  "title": "Specify adapter manifest",
+  "description": "Validates the structure of a Specify adapter manifest (adapter.yaml). The manifest is the declarative surface the core loads before running the slice loop. Defined by RFC-13 §Adapter manifest and protocol; the manifest field set is closed (additionalProperties: false) so the dropped fields domain, extends, and pipeline.plan are actively rejected rather than tolerated. Planning is orchestration, not adapter-owned slice work, and lives on the `specify change` planning skill (`plugins/change/skills/plan/`); see RFC-13 §3.11 for the migration that landed this rejection.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "description", "pipeline"],
@@ -10,17 +10,17 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "Capability identifier in kebab-case (e.g. omnia, contracts, vectis). Must match the directory name under capabilities/."
+      "description": "Adapter identifier in kebab-case (e.g. omnia, contracts, vectis). Must match the directory name under adapters/."
     },
     "version": {
       "type": "integer",
       "minimum": 1,
-      "description": "Major capability version. Increments when the capability ships breaking pipeline or contract changes."
+      "description": "Major adapter version. Increments when the adapter ships breaking pipeline or contract changes."
     },
     "description": {
       "type": "string",
       "minLength": 1,
-      "description": "Human-readable, single-sentence summary of the capability's outcome domain."
+      "description": "Human-readable, single-sentence summary of the adapter's outcome domain."
     },
     "pipeline": {
       "type": "object",
@@ -64,7 +64,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$",
-          "description": "Path to the brief markdown file, relative to the capability manifest. Must not be an absolute path or a URI."
+          "description": "Path to the brief markdown file, relative to the adapter manifest. Must not be an absolute path or a URI."
         }
       }
     }

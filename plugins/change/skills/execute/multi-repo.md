@@ -18,7 +18,7 @@ Read `project` from the `specify plan next` response (step 4 of the per-slice al
   specify workspace prepare-branch <project> \
       --change <change-name> \
       [source <absolute-source-path> ...] \
-      [output <capability-owned-output-path> ...] \
+      [output <adapter-owned-output-path> ...] \
       --format json
   ```
   The target branch is exactly `specify/<change-name>`. The helper fetches the remote-backed slot, resolves `origin/HEAD`, creates or reuses the local change branch, fast-forwards from `origin/specify/<change-name>` when appropriate, and classifies dirty work against the active slice boundary.
@@ -48,7 +48,7 @@ When the branch-preparation failure occurs before the slice directory exists, th
 For a routed project entry, `/spec:merge` success is not enough to mark the entry `done`. RFC-14 splits commit ownership:
 
 1. `specify slice merge run` owns the merge-baseline commit and commits only `.specify/specs/` plus `.specify/archive/` with message `specify: merge <slice-name>`.
-2. `/change:execute` owns any remaining project-output residue produced by define/build/merge, such as `crates/`, `contracts/`, `apps/`, generated tests, or other capability-owned files.
+2. `/change:execute` owns any remaining project-output residue produced by define/build/merge, such as `crates/`, `contracts/`, `apps/`, generated tests, or other adapter-owned files.
 
 Immediately after reading `outcome: success` from `/spec:merge`, while still `chdir`ed into the project slot:
 

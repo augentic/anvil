@@ -1,12 +1,12 @@
 # Discovery — sample-migration
 
-## Capability inventory
+## Adapter inventory
 
 <!-- source-key: ops-docs -->
 ### user-management
 
 ```yaml
-summary: Manage user accounts and profiles.
+summary: Manage user accounts and adapters.
 sources:
   - ops-docs
 depends-on: []

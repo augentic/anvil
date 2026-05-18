@@ -28,7 +28,7 @@ Extract Specify artifacts from existing source code.
 
 | Artifact | Location | Content |
 |----------|----------|---------|
-| `spec.md` (per capability) | `<slice-dir>/specs/<capability>/spec.md` | Requirements with BDD scenarios extracted from source |
+| `spec.md` (per adapter) | `<slice-dir>/specs/<adapter>/spec.md` | Requirements with BDD scenarios extracted from source |
 | `design.md` | `<slice-dir>/design.md` | Domain model, APIs, dependencies, business logic with tags |
 
 ## Behavior
@@ -36,7 +36,7 @@ Extract Specify artifacts from existing source code.
 1. Reads the source tree at `source-path` (optionally filtered by `--include`/`--exclude`/`--manifest`).
 2. Identifies the structure: modules, entry points, dependencies.
 3. Extracts business logic and classifies it with tags (`[domain]`, `[infrastructure]`, `[mechanical]`, `[unknown]`).
-4. Produces behavioral specs: one spec file per discovered capability, with requirements, scenarios, and error conditions.
+4. Produces behavioral specs: one spec file per discovered adapter, with requirements, scenarios, and error conditions.
 5. Produces a design document capturing the technical shape.
 
 ## Key principle
@@ -71,7 +71,7 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 **Brownfield onboarding flow:**
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/omnia
+/spec:init https://github.com/augentic/specify/adapters/omnia
 /spec:extract . .specify/slices/initial-baseline/
 /spec:merge initial-baseline
 ```
@@ -79,5 +79,5 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 ## See also
 
 - [/spec:define](define.md) -- invokes extract when `source` is provided
-- [/change:analyze](../change-skills/analyze.md) -- the plan-time counterpart (cheap capability summaries vs deep extraction)
+- [/change:analyze](../change-skills/analyze.md) -- the plan-time counterpart (cheap adapter summaries vs deep extraction)
 - [Tutorial: Brownfield Onboarding](../../tutorials/brownfield-onboarding.md) -- full walkthrough

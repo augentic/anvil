@@ -15,7 +15,7 @@
 
 name: shopping-cart
 status: defining
-capability: omnia
+adapter: omnia
 created-at: 2026-04-19T13:00:00Z
 outcome:
   phase: merge

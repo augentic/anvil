@@ -22,8 +22,8 @@ Merge a completed slice into the baseline.
 
 | Artifact | Location | Content |
 |----------|----------|---------|
-| Merged baseline specs | `.specify/specs/<capability>/spec.md` | Updated or new baseline spec files |
-| Capability output files | Capability-owned paths such as `contracts/` or generated source trees | Updated project outputs produced by the slice |
+| Merged baseline specs | `.specify/specs/<adapter>/spec.md` | Updated or new baseline spec files |
+| Adapter output files | Adapter-owned paths such as `contracts/` or generated source trees | Updated project outputs produced by the slice |
 | Merged baseline composition (Vectis) | `.specify/specs/composition.yaml` | Updated baseline screen layouts |
 | Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | The full slice directory, preserved for audit |
 

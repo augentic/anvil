@@ -1,7 +1,7 @@
-# Vectis Capability
+# Vectis Adapter
 
 - **Identifier:** `vectis` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/capabilities/vectis`
+- **URL:** `https://github.com/augentic/specify/adapters/vectis`
 - **Purpose:** Cross-platform Crux application development
 - **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
 
@@ -33,7 +33,7 @@ Build order: core first, shells second. Each skill reads the single feature spec
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus capability-owned post-merge validation through `specify tool run vectis -- validate composition`) |
+| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus adapter-owned post-merge validation through `specify tool run vectis -- validate composition`) |
 
 The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; writer, reviewer, and template-updater skills own those platform workflow steps.
 
@@ -54,7 +54,7 @@ See [Vectis Plugin](../plugins/vectis.md) for full skill documentation.
 
 ## Feature-centric specs
 
-The Vectis capability organises specs by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
+The Vectis adapter organises specs by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
 
 - **Core requirements** (main body) -- platform-neutral behavioral requirements that drive the Crux shared crate.
 - **Platform sections** (optional) -- `## iOS Shell Requirements`, `## Android Shell Requirements`, etc.
@@ -75,10 +75,10 @@ The proposal declares which platforms a slice targets:
 
 ## Domain context
 
-The Vectis capability's briefs and skills carry domain context about:
+The Vectis adapter's briefs and skills carry domain context about:
 
 - Crux application architecture (Model, Event, ViewModel, Effect, `update()`, `view()`).
-- Crux capabilities (Render, HTTP, Key-Value, Time, Platform).
+- Crux adapters (Render, HTTP, Key-Value, Time, Platform).
 - UniFFI FFI scaffolding for cross-platform bridging.
 - SwiftUI and Jetpack Compose patterns for shell implementation.
 - Shell-local theme code emitted from `tokens.yaml` by each shell writer.
@@ -88,7 +88,7 @@ The Vectis capability's briefs and skills carry domain context about:
 After `/spec:init vectis`, `project.yaml` carries:
 
 ```yaml
-capability: https://github.com/augentic/specify/capabilities/vectis
+adapter: https://github.com/augentic/specify/adapters/vectis
 rules:
   - "Project-specific constraints go here"
 ```

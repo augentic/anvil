@@ -271,7 +271,7 @@ impl Default for Response {
 }
 
 /// Collection of fetch request configurations that can be used in an Augentic
-/// `HttpRequest` capability.
+/// `HttpRequest` adapter.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Fetcher {
     /// List of fetch request configurations.

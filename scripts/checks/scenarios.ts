@@ -10,7 +10,7 @@
 
 import {
   Ajv2020,
-  CAPABILITIES_DIR,
+  PROFILES_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   join,
@@ -100,18 +100,18 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // Optional root.
   }
 
-  // Discovery roots 4 & 5: capabilities/<cap>/tests/<scenario>.md
-  // and capabilities/<cap>/tests/<scenario>/scenario.md
+  // Discovery roots 4 & 5: adapters/<cap>/tests/<scenario>.md
+  // and adapters/<cap>/tests/<scenario>/scenario.md
   try {
-    const stat = await Deno.stat(CAPABILITIES_DIR);
+    const stat = await Deno.stat(PROFILES_DIR);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(CAPABILITIES_DIR, {
+        const entry of walk(PROFILES_DIR, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
-        const rel = relative(CAPABILITIES_DIR, entry.path).split("/");
+        const rel = relative(PROFILES_DIR, entry.path).split("/");
         // Flat: <cap>/tests/<scenario>.md  → 3 parts
         if (rel.length === 3 && rel[1] === "tests") {
           candidates.push(entry.path);
@@ -127,7 +127,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
       }
     }
   } catch {
-    // No capabilities/.
+    // No adapters/.
   }
 
   // Discovery root 6:

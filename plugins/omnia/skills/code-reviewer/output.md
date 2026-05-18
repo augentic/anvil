@@ -11,7 +11,7 @@ Every finding in `REVIEW.md` carries a review-local prefix so the originating re
 | `SEC-` | Security Reviewer | Security, WASM Constraints | CRITICAL |
 | `COR-` | Correctness Reviewer | Error Handling, Validation Logic, Provider Misuse | CRITICAL (errors) / HIGH (validation, provider) |
 | `QUA-` | Quality Reviewer | Performance, Code Quality | MEDIUM (perf) / LOW (quality) |
-| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA | Per `capabilities/default/codex/` |
+| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA | Per `adapters/default/codex/` |
 | `NEW-` | Antagonist counter-scan | Anything missed by the four passes above | As supplied by antagonist |
 
 Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the antagonist upgrades or downgrades a finding, the original prefix is preserved and the severity change is recorded in the **Adversarial Review** section.

@@ -10,7 +10,7 @@ Task-oriented recipes for common Specify operations. Each guide assumes you have
 
 ## Setup
 
-- [Add a capability to an existing project](add-capability.md)
+- [Add a adapter to an existing project](add-adapter.md)
 - [Bootstrap a platform hub](bootstrap-a-platform-hub.md)
 - [Onboard a team member](onboard-team-member.md)
 

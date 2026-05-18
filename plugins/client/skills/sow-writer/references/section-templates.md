@@ -23,7 +23,7 @@ Use today's date in `DD MMMM YYYY` format. Version uses `YYYYMMDD_1` format.
 ## Background framing
 
 - **Migration** (`code-analysis` origin): Frame as modernisation of an existing system. Reference the source system, what it does, and the target platform (Rust WASM / Omnia). Close with "This Statement of Work defines the scope of the $PROJECT_NAME migration in accordance with the specifications provided by $CLIENT_NAME."
-- **Greenfield** (`requirements` origin): Frame as new capability delivery. Reference the business need from the Component purpose. Close with "This Statement of Work defines the scope of the $PROJECT_NAME delivery in accordance with the requirements specified in $SOURCE_REFERENCE."
+- **Greenfield** (`requirements` origin): Frame as new adapter delivery. Reference the business need from the Component purpose. Close with "This Statement of Work defines the scope of the $PROJECT_NAME delivery in accordance with the requirements specified in $SOURCE_REFERENCE."
 
 Use the Component purpose summary and any context from the design.md Notes section.
 
@@ -78,7 +78,7 @@ For `code-analysis` artifacts, reference the source TypeScript files. For `requi
 | DESCRIPTION | COST |
 | --- | --- |
 | **$DELIVERABLE_TITLE** | $X,XXX (N d) |
-| $NARRATIVE_DESCRIPTION — 2-4 sentences describing what this capability does. Focus on what the client gets, not how it is built. | |
+| $NARRATIVE_DESCRIPTION — 2-4 sentences describing what this adapter does. Focus on what the client gets, not how it is built. | |
 | Specifically: | |
 | - $SPECIFIC_ITEM_1 | |
 | - $SPECIFIC_ITEM_2 | |
@@ -91,12 +91,12 @@ Map artifact sections to deliverables:
 
 | Artifact Source | Deliverable |
 | --------------- | ----------- |
-| Spec requirements / Business Logic | Core component capabilities |
+| Spec requirements / Business Logic | Core component adapters |
 | API Contracts (design.md) | API endpoints |
-| External Service Dependencies (design.md) | Integration capabilities |
+| External Service Dependencies (design.md) | Integration adapters |
 | Publication & Timing Patterns (design.md) | Event processing |
 | Domain Model (design.md) | Domain types and validation |
-| Requirements / BDD Scenarios (specs) | Feature capabilities |
+| Requirements / BDD Scenarios (specs) | Feature adapters |
 
 Always include an **Automated Test Suite** deliverable. Never invent cost figures — every value is `$X,XXX (N d)` for the Client Strategist.
 

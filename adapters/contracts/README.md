@@ -1,6 +1,6 @@
 # Contracts Schema
 
-- **URL**: `https://github.com/augentic/specify/capabilities/contracts`
+- **URL**: `https://github.com/augentic/specify/adapters/contracts`
 - **Purpose**: Dedicated API contract changes — defining or importing machine-readable interface shapes (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) without generating implementation code
 - **Source**: Manual
 - **Target**: Contract artifacts (`contracts/`)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `capability.yaml` | Pipeline stages and per-stage brief references |
+| `adapter.yaml` | Pipeline stages and per-stage brief references |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
 | `briefs/tasks.md` | Generation brief for the tasks stage |
@@ -66,10 +66,10 @@ Use the `contracts` schema when:
 - Modifying existing platform contracts independently of implementation changes
 - Reverse-engineering contracts from an existing implementation whose API surface has been identified by `/change:analyze` (extract-from-source pattern)
 
-Use Omnia or Vectis capabilities when:
+Use Omnia or Vectis adapters when:
 - Implementing code that conforms to existing contracts
-- The `contracts` brief in those capabilities validates alignment automatically
+- The `contracts` brief in those adapters validates alignment automatically
 
-## Capability Framework
+## Adapter Framework
 
-For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).
+For general adapter concepts — directory structure, field reference for `adapter.yaml`, adapter resolution, composition, caching, and rules override — see the [Adapters README](../README.md).

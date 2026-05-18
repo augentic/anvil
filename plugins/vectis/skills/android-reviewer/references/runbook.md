@@ -22,7 +22,7 @@ Keep review-local finding IDs separate from stable codex rule IDs:
 - **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-007-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
 - **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
 
-Use the resolved project codex when the caller provides it. Read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`. Do not copy full codex prose into reports or prompts.
+Use the resolved project codex when the caller provides it. Read first-party rules directly from `adapters/default/codex/` and `adapters/vectis/codex/`. Do not copy full codex prose into reports or prompts.
 
 Vectis-specific mappings for Android review:
 
@@ -189,7 +189,7 @@ The specialists analyze the shell concurrently. Each reads all `.kt` files under
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, apply universal codex rules `UNI-001` through `UNI-021` per [`universal-checks.md`](universal-checks.md), which lists the skip table (rules already covered by AND/KTL specialists) and the per-rule Kotlin/Android heuristics. Read `capabilities/default/codex/*.md` for the canonical rule prose; do not copy it into reports.
+After all specialists report, apply universal codex rules `UNI-001` through `UNI-021` per [`universal-checks.md`](universal-checks.md), which lists the skip table (rules already covered by AND/KTL specialists) and the per-rule Kotlin/Android heuristics. Read `adapters/default/codex/*.md` for the canonical rule prose; do not copy it into reports.
 
 #### 2d. Adversarial challenge
 
@@ -264,7 +264,7 @@ Classify each design-level finding:
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Use the matching default codex rule's Spec Guidance from `capabilities/default/codex/`.
+Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Use the matching default codex rule's Spec Guidance from `adapters/default/codex/`.
 
 #### When `orchestrated: true` (build-phase invocation)
 

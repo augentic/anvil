@@ -61,7 +61,7 @@ Use three sources, in this order of trust:
 Initial corpus targets:
 
 - 300-800 real or extract-derived pairs.
-- 2,000-5,000 filtered synthetic pairs for coverage of capability combinations and edge cases.
+- 2,000-5,000 filtered synthetic pairs for coverage of adapter combinations and edge cases.
 - A 50-slice held-out set covering single-handler, multi-handler, update-mode, matrix, and WASM guardrail cases.
 
 ### Scoring Gate
@@ -115,12 +115,12 @@ USER:
   <existing crate inventory when updating>
 
 ASSISTANT:
-  <derived capabilities, mode, Side-Effect Matrix, Outbound Message Matrix,
+  <derived adapters, mode, Side-Effect Matrix, Outbound Message Matrix,
    Transaction Boundary Matrix>
   <Cargo.toml and source files in deterministic path order>
 ```
 
-The assistant output starts with the implementation plan because the existing Omnia skill already requires derived capabilities, the three matrices, and traceability checks before handoff. Keeping that structure in the training target makes the generated crate easier to score and repair.
+The assistant output starts with the implementation plan because the existing Omnia skill already requires derived adapters, the three matrices, and traceability checks before handoff. Keeping that structure in the training target makes the generated crate easier to score and repair.
 
 ### Workflow Integration
 
@@ -137,7 +137,7 @@ This makes the SLM an operational optimization, not a new delivery process. Spec
 | Risk | Mitigation |
 | --- | --- |
 | The SLM passes syntax checks but misses behavior | Keep MockProvider replay, traceability, and substance checks in `score-crate`. |
-| Novel capabilities regress | Fall back to the frontier model after failed repair attempts. |
+| Novel adapters regress | Fall back to the frontier model after failed repair attempts. |
 | Synthetic data erodes conventions | Filter synthetic pairs through the scorer and preserve the Specify authority hierarchy. |
 | SDK changes cause drift | Retrieve current references at inference and run cheap delta fine-tunes only when needed. |
 | Update-mode generation is weaker than create-mode | Keep update-mode as a first-class training category, with existing crate inventory in the prompt. |

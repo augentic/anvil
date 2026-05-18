@@ -12,7 +12,7 @@ The local substrate is now credible: slice/change vocabulary, registry-aware pla
 At scale, Specify spans three connected layers:
 
 1. **Platform:** models, tools, sandboxes, logs, and long-running execution.
-2. **Knowledge:** repositories, owners, dependencies, standards, capabilities, and plans.
+2. **Knowledge:** repositories, owners, dependencies, standards, adapters, and plans.
 3. **Enforcement:** review, compatibility checks, standards checks, and stale-context detection.
 
 Specify owns the workflow semantics across those layers: intent becomes artifacts; artifacts become plans; plans route work to repositories; repositories change through controlled phases; outcomes are reviewed and recorded for audit and recovery.
@@ -99,7 +99,7 @@ specify registry diff <source>
 #### RM-14: Local structured workflow events
 
 **Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
-**Events include:** command/version, project/capability, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
+**Events include:** command/version, project/adapter, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
 **Target surface:**
 
 ```bash
@@ -159,9 +159,9 @@ specify execute resume <run-id>
 
 **Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
 
-#### RM-21: Capability ecosystem operating model
+#### RM-21: Adapter ecosystem operating model
 
-**Goal:** Make capabilities feel like a dependable ecosystem rather than bespoke first-party packages.
+**Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
 
 #### RM-22: Hosted observability dashboards
@@ -189,7 +189,7 @@ specify execute resume <run-id>
 - Which acceptance fixtures best represent the product proof path?
 - What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work across multiple operators or agents?
-- What compatibility guarantees should capability authors provide across capability and declared-tool versions?
+- What compatibility guarantees should adapter authors provide across adapter and declared-tool versions?
 - How much telemetry should emit by default, and what requires explicit opt-in?
 - What approval model is required before hosted execution can push branches or open pull requests?
 

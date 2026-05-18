@@ -6,11 +6,11 @@ The verifier runs in two modes, but RM-04 compatibility reporting is a CLI surfa
 
 | Surface | Output format | Caller | Trigger |
 |---|---|---|---|
-| Format verifier `single` (default) | Markdown | contracts capability build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
-| Format verifier `cross-project` | JSON envelope from `specify tool run contract` | contracts capability merge brief | Post-merge baseline validation gate |
+| Format verifier `single` (default) | Markdown | contracts adapter build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
+| Format verifier `cross-project` | JSON envelope from `specify tool run contract` | contracts adapter merge brief | Post-merge baseline validation gate |
 | `specify compatibility check --change <name> --report-only` | Versioned CLI JSON or text | operator / CI | Read-only producer-to-consumer compatibility classification |
 
-`single` mode is human-readable; the contracts capability build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope. The RM-04 compatibility report is produced by the `specify compatibility` CLI family and classifies consumer impact as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
+`single` mode is human-readable; the contracts adapter build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope. The RM-04 compatibility report is produced by the `specify compatibility` CLI family and classifies consumer impact as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
 Both modes share the **read-only** contract — the verifier MUST NOT generate, modify, or delete any files in either mode.
 

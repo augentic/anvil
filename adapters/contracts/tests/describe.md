@@ -1,8 +1,8 @@
 ---
 id: contracts-describe
 owner: contracts
-kind: capability
-capability: contracts@v1
+kind: adapter
+adapter: contracts@v1
 backend: manual
 entrypoint: /spec:define
 stages: [define, build, merge]
@@ -12,11 +12,11 @@ assertions:
   - files-exist
   - contract-validator-clean
 expected-artifacts:
-  - contracts/schemas/create-profile-request.yaml
-  - contracts/schemas/profile.yaml
-  - contracts/schemas/update-profile-request.yaml
+  - contracts/schemas/create-adapter-request.yaml
+  - contracts/schemas/adapter.yaml
+  - contracts/schemas/update-adapter-request.yaml
   - contracts/schemas/error-response.yaml
-  - contracts/http/profile-api.yaml
+  - contracts/http/adapter-api.yaml
 negative-expectations:
   - artifacts-outside-contracts-directory
   - implementation-shapes-authored-inline
@@ -47,7 +47,7 @@ greenfield contract change with no pre-existing source document.
 
 ## Workspace
 
-- **Capability:** `contracts@v1`.
+- **Adapter:** `contracts@v1`.
 - **Project shape:** a single project initialised with the `contracts@v1`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable; this scenario does not exercise
@@ -65,43 +65,43 @@ the `/spec:define` prompt itself; see **Invocation** below.
 ## Invocation
 
 ```text
-/spec:define user-profile-api
+/spec:define user-adapter-api
 
 Generate API contracts from prose.
 
 Authorship Mode: Generate from prose
 Participants:
-- profile-service: producer
+- adapter-service: producer
 - mobile-app: consumer
 - admin-console: consumer
 
-Define a User Profile HTTP API.
+Define a User Adapter HTTP API.
 
 Endpoints:
-1. POST /profiles
+1. POST /adapters
    - Request body CreateProfileRequest:
      - user_id: string, required
      - display_name: string, required, 1-80 chars
      - timezone: string, optional, IANA timezone
-   - 201 response Profile:
+   - 201 response Adapter:
      - id: string
      - user_id: string
      - display_name: string
      - timezone: string|null
      - created_at: string date-time
    - 400 ErrorResponse for invalid fields
-   - 409 ErrorResponse when a profile already exists for user_id
+   - 409 ErrorResponse when a adapter already exists for user_id
 
-2. GET /profiles/{profile_id}
-   - path parameter profile_id: string, required
-   - 200 response Profile
+2. GET /adapters/{adapter_id}
+   - path parameter adapter_id: string, required
+   - 200 response Adapter
    - 404 ErrorResponse when not found
 
-3. PATCH /profiles/{profile_id}
+3. PATCH /adapters/{adapter_id}
    - Request body UpdateProfileRequest:
      - display_name: string, optional, 1-80 chars
      - timezone: string|null, optional
-   - 200 response Profile
+   - 200 response Adapter
    - 400 ErrorResponse for invalid fields
    - 404 ErrorResponse when not found
 
@@ -109,8 +109,8 @@ All endpoints use application/json. ErrorResponse has code: string, message:
 string, and optional details: object.
 ```
 
-After `/spec:define` succeeds, drive `/spec:build user-profile-api` to produce
-the contract YAML, then optionally `/spec:merge user-profile-api` to promote
+After `/spec:define` succeeds, drive `/spec:build user-adapter-api` to produce
+the contract YAML, then optionally `/spec:merge user-adapter-api` to promote
 the deltas into the baseline.
 
 ## Expected Artifacts
@@ -118,11 +118,11 @@ the deltas into the baseline.
 During `/spec:build`, the slice should produce these change-local contract
 deltas. After merge, the same paths become root `contracts/` baseline files.
 
-- `contracts/schemas/create-profile-request.yaml`
-- `contracts/schemas/profile.yaml`
-- `contracts/schemas/update-profile-request.yaml`
+- `contracts/schemas/create-adapter-request.yaml`
+- `contracts/schemas/adapter.yaml`
+- `contracts/schemas/update-adapter-request.yaml`
 - `contracts/schemas/error-response.yaml`
-- `contracts/http/profile-api.yaml`
+- `contracts/http/adapter-api.yaml`
 
 ## Assertions
 
@@ -148,8 +148,8 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
 Drop or archive the slice before moving to the next scenario unless you
 explicitly want the new baseline contracts to persist:
 
-- `specify slice drop user-profile-api` to discard without merging, or
-- `/spec:merge user-profile-api` to merge the baseline contracts; the merge
+- `specify slice drop user-adapter-api` to discard without merging, or
+- `/spec:merge user-adapter-api` to merge the baseline contracts; the merge
   skill calls `slice merge run`, which atomically merges, transitions the
   slice to `merged`, and archives it.
 

@@ -150,7 +150,7 @@ The RFC-20 `change.md:inputs[]` schema gains a sibling form too: an entry with `
 
 With `sources.yaml` and the shared tier-1 cache in place, `/change:draft`'s discovery brief (RFC-20 step 3a) gains a *parallel* fan-out: `/change:analyze` invocations per source are independent (they write to disjoint `analyze/<key>/` slots and append to a shared `discovery.md` whose merge contract is owned by `/change:analyze`). The brief may dispatch up to `--analyze-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
 
-The byte-stable output contract is unchanged: `/change:analyze` already sorts capability blocks alphabetically within each source-key block, and the discovery brief sorts source-key blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each writes its own `<key>/` sidecar (which they already do) and the brief defers the final merge until all invocations have completed.
+The byte-stable output contract is unchanged: `/change:analyze` already sorts adapter blocks alphabetically within each source-key block, and the discovery brief sorts source-key blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each writes its own `<key>/` sidecar (which they already do) and the brief defers the final merge until all invocations have completed.
 
 This is a brief-level change, not a CLI change; the existing `/change:analyze` contract is unmodified. The `--analyze-concurrency` knob lives on `/change:draft` (and is propagated through the change lifecycle).
 
@@ -202,7 +202,7 @@ For operators:
 - After upgrade, the tier-1 cache directory `.specify/.cache/sources/` will appear when you next run `specify sources sync` or a change with `--source @<key>`. Add `.specify/.cache/` to `.gitignore` (the `specify init` defaults will be updated to include it).
 - The symlink view for `.specify/plans/<change>/analyze/<key>/` is transparent to `/change:analyze`; nothing changes for skill consumers.
 
-For capability authors:
+For adapter authors:
 
 - No required changes. The discovery brief and `/change:analyze` skill contracts are unchanged.
 - Survey briefs that want to read `sources.yaml` may do so; it is now a stable file under the platform-repo root. Existing survey briefs that ignore it continue to work.
@@ -221,7 +221,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Snapshot the entire tier-1 clone into archives instead of recording a snapshot reference.** Rejected. With 80+ repos and frequent re-plans, copying gigabytes per archive is impractical. The recorded `.snapshot.yaml` (commit SHA, source URL, materialisation date) preserves the audit trail at constant cost; operators who genuinely need byte-snapshots can opt in by hand.
 
-**Put the cache under `.specify/sources/` rather than `.specify/.cache/sources/`.** Rejected. The leading dot makes it clear the directory is framework-managed scratch (like `.specify/.cache/`, the existing capability resolver cache). Operators expect non-dot directories under `.specify/` to be authored or curated state.
+**Put the cache under `.specify/sources/` rather than `.specify/.cache/sources/`.** Rejected. The leading dot makes it clear the directory is framework-managed scratch (like `.specify/.cache/`, the existing adapter resolver cache). Operators expect non-dot directories under `.specify/` to be authored or curated state.
 
 **Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
 

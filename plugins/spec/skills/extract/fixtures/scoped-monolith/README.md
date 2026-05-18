@@ -2,10 +2,10 @@
 
 Demonstrates `/spec:extract` with `include` shrinking the read set without disturbing language / dependency detection.
 
-`source/` is a tiny TypeScript monolith with two capabilities (`a`, `b`) and a shared util. Running extract with `--include 'src/a/**'` should:
+`source/` is a tiny TypeScript monolith with two adapters (`a`, `b`) and a shared util. Running extract with `--include 'src/a/**'` should:
 
 - Still detect TypeScript as the source language and read `package.json` + top-level `README.md` (sentinels).
-- Emit specs + design covering capability `a` only.
+- Emit specs + design covering adapter `a` only.
 - Skip `src/b/` and `src/common/` from business-logic extraction.
 
 Compare `expected/` with what extract actually produces against `source/`. The expected artifacts are illustrative — they pin the scoping behaviour, not byte-for-byte reproducibility.

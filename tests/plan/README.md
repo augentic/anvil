@@ -11,9 +11,9 @@ This is intentionally not an automated harness. There is no runner, fake forge, 
 
 ## Relationship To Acceptance
 
-These are shared plan-generation scenario documents. They live under `tests/plan/` because `/change:draft` is orchestration: it authors a change-level plan that coordinates slices rather than owning one capability's slice loop.
+These are shared plan-generation scenario documents. They live under `tests/plan/` because `/change:draft` is orchestration: it authors a change-level plan that coordinates slices rather than owning one adapter's slice loop.
 
-End-to-end cross-repo acceptance remains in [`tests/cross-repo/`](../cross-repo/). Capability-local tests, such as the contracts scenarios, stay under `capabilities/<capability>/tests/`.
+End-to-end cross-repo acceptance remains in [`tests/cross-repo/`](../cross-repo/). Adapter-local tests, such as the contracts scenarios, stay under `adapters/<adapter>/tests/`.
 
 Static checks validate the YAML frontmatter and scenario ID for files in this directory that start with frontmatter. Prose-only documents such as this README and [`run-summary-template.md`](run-summary-template.md) are skipped by the scenario frontmatter check.
 

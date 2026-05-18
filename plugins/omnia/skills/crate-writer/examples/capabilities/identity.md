@@ -33,7 +33,7 @@ pub struct UserProfileResponse {
     pub email: String,
 }
 
-async fn fetch_user_profile<P>(
+async fn fetch_user_adapter<P>(
     _owner: &str,
     provider: &P,
     req: UserProfileRequest,
@@ -65,10 +65,10 @@ where
         .map_err(|err| bad_gateway!("API request failed: {err}"))?;
 
     // Step 5: Parse response
-    let profile: UserProfileResponse = serde_json::from_slice(response.body())
-        .map_err(|err| server_error!("failed to parse profile response: {err}"))?;
+    let adapter: UserProfileResponse = serde_json::from_slice(response.body())
+        .map_err(|err| server_error!("failed to parse adapter response: {err}"))?;
 
-    Ok(profile)
+    Ok(adapter)
 }
 
 impl<P: Config + Identity + HttpRequest> Handler<P> for UserProfileRequest {
@@ -77,7 +77,7 @@ impl<P: Config + Identity + HttpRequest> Handler<P> for UserProfileRequest {
     type Output = UserProfileResponse;
 
     async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<UserProfileResponse>> {
-        Ok(fetch_user_profile(ctx.owner, ctx.provider, self).await?.into())
+        Ok(fetch_user_adapter(ctx.owner, ctx.provider, self).await?.into())
     }
 
     fn from_input(input: Self::Input) -> Result<Self> {

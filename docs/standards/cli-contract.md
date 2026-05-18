@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:draft`, `/change:execute`, `/change:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
+The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:draft`, `/change:execute`, `/change:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
 
 The CLI itself is built in the sibling [augentic/specify-cli](https://github.com/augentic/specify-cli) repository. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -18,7 +18,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Project
 
-- `specify init <capability>` — scaffold `.specify/`, resolve/cache the capability identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `capability:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `capability:` field is omitted). `specify init` invoked with neither (or both) errors with `init-requires-capability-or-hub`.
+- `specify init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specify init` invoked with neither (or both) errors with `init-requires-adapter-or-hub`.
 - `specify status` — project dashboard summarising registry, active change, and active slices (single-slice view lives at `specify slice status <name>`).
 
 ### Slice (per-slice lifecycle)
@@ -42,10 +42,10 @@ The CLI surface the skills depend on, grouped by resource:
 - `specify registry {add, remove, show, validate}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
 - `specify workspace {sync, status, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specify workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
-### Capability and declared tools
+### Adapter and declared tools
 
-- `specify capability {resolve, check, pipeline}` — capability resolution and brief topology.
-- `specify tool {list, fetch, show, run}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `capability.yaml` (capability scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$CAPABILITY_DIR` (capability scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
+- `specify adapter {resolve, check, pipeline}` — adapter resolution and brief topology.
+- `specify tool {list, fetch, show, run}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
 
 Today the per-slice verbs live under `specify slice *` and the umbrella verbs live under `specify change *`.
 
@@ -65,9 +65,9 @@ The three change-lifecycle skills (`/change:draft`, `/change:execute`, `/change:
 
 ## Contracts as a declared WASI tool
 
-The contract plugin (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) carries author / import / verify intents internally and dispatches via its own intent table. Each skill exposes three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@v1` capability, and the `contracts/` baseline directory keep their original names — `contract` is the Cursor plugin / slash-command surface only.
+The contract plugin (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) carries author / import / verify intents internally and dispatches via its own intent table. Each skill exposes three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@v1` adapter, and the `contracts/` baseline directory keep their original names — `contract` is the Cursor plugin / slash-command surface only.
 
-The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party capability owning its own validation behaviour; the contracts capability merge brief now shells out through `specify tool run` as the post-merge baseline gate.
+The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party adapter owning its own validation behaviour; the contracts adapter merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
 Cross-project consumer-impact classification is exposed separately as `specify compatibility check` (with `--change <name>` to echo the change name and `--report-only` for read-only audits), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk unless `--report-only` is passed.
 
@@ -79,8 +79,8 @@ The canonical envelope shapes — including the success / error variants and per
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `init-requires-capability-or-hub` — `specify init` invoked with neither or both of `<capability>` / `--hub`.
-- `registry-amendment-required` — `/change:execute` phase outcome carrying a structured proposal payload for capabilities that need a new registry project.
+- `init-requires-adapter-or-hub` — `specify init` invoked with neither or both of `<adapter>` / `--hub`.
+- `registry-amendment-required` — `/change:execute` phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
 - `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
 - `no-branch` — `specify workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.

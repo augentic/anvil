@@ -2,7 +2,7 @@
 
 Illustrative fixture pinning the on-disk shapes emitted by `/change:analyze`. This fixture is **structural**, not a test target — it exists so reviewers and downstream briefs can eyeball the exact shapes without squinting at prose.
 
-The real documentation extraction fixtures land with the per-capability brief fixtures.
+The real documentation extraction fixtures land with the per-adapter brief fixtures.
 
 ## Contents
 

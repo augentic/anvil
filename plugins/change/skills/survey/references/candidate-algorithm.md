@@ -22,7 +22,7 @@ Merge same-source surface candidates only when ALL of the following conditions h
 
 - One of the three clustering signals fires:
   1. **Shared `touches` overlap >= 50%** — computed as `|intersection| / |smaller set|` between two surfaces' `touches` lists. When the overlap is >= 50%, the two surfaces share enough implementation to warrant a single candidate.
-  2. **Documentation grouping** — when `discovery.md`'s `## Candidate inventory` or `## Capability inventory` explicitly groups surfaces under one candidate heading, that grouping is authoritative even if identifiers do not match mechanically.
+  2. **Documentation grouping** — when `discovery.md`'s `## Candidate inventory` or `## Adapter inventory` explicitly groups surfaces under one candidate heading, that grouping is authoritative even if identifiers do not match mechanically.
   3. **Shared handler or call site** — multiple routes, topics, or jobs handled by the same function or class (matching `surfaces[].handler` values within the source).
 
 - The combined candidate's LOC remains `acceptable` (< 1000). If merging would push the candidate over the threshold, do not merge.

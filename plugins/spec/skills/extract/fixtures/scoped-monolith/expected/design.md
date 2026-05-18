@@ -1,4 +1,4 @@
-# Design — capability `a` (scoped extract)
+# Design — adapter `a` (scoped extract)
 
 ## Context
 

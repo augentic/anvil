@@ -158,7 +158,7 @@ If `/change:finalize` halts (a PR is not yet `MERGED`, the workspace is dirty, e
 
 ### Variant: migrate-legacy
 
-Sources arrive via `--source <key>=<git-url-or-path>`. `/change:analyze` (inside `/change:draft`) clones each source into `.specify/plans/<change>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per slice. Targets are existing or newly-minted registered projects.
+Sources arrive via `--source <key>=<git-url-or-path>`. `/change:analyze` (inside `/change:draft`) clones each source into `.specify/plans/<change>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow adapter inventory; deep `/spec:extract` runs at define time per slice. Targets are existing or newly-minted registered projects.
 
 Run against an empty hub:
 
@@ -223,7 +223,7 @@ Pre-flight forbids `--from`, `--against`, and `--source` under this shape; suppl
 
 What each skill does:
 
-1. **`/change:draft`.** `change.md` is scaffolded with `inputs: []`; the operator writes one paragraph naming the capabilities being polished. Multi-project registry; descriptions complete, no mutation. Discovery falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` because the input set is empty. Propose surfaces two slices (one per project, **no contract change** -- the polish does not change the API surface). Assignment routes each slice to its existing project.
+1. **`/change:draft`.** `change.md` is scaffolded with `inputs: []`; the operator writes one paragraph naming the adapters being polished. Multi-project registry; descriptions complete, no mutation. Discovery falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` because the input set is empty. Propose surfaces two slices (one per project, **no contract change** -- the polish does not change the API surface). Assignment routes each slice to its existing project.
 2. **Operator review.**
 3. **`/change:execute loop`.** Both slices drive to `done`.
 4. **`/change:finalize`.** Pushes branches, halts on the two open PRs. After the operator merges them, re-run to archive.

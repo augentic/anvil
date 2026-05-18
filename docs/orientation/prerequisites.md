@@ -53,16 +53,16 @@ Verify the installation:
 specify --version
 ```
 
-## Capability-specific prerequisites
+## Adapter-specific prerequisites
 
-Depending on which capability you use, you may need additional tooling.
+Depending on which adapter you use, you may need additional tooling.
 
-### Omnia capability
+### Omnia adapter
 
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
 
-### Vectis capability
+### Vectis adapter
 
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - [Rust Analyzer](https://open-vsx.org/extension/rust-lang/rust-analyzer) Cursor extension
@@ -90,6 +90,6 @@ Run through this checklist to confirm everything is ready:
 
 1. **CLI installed:** `specify --version` prints a version number.
 2. **Cursor plugins:** Open Cursor Settings > Plugins and confirm the Augentic plugins are listed.
-3. **Capability tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
+3. **Adapter tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
 
 If all three checks pass, proceed to the [Quick Start](../tutorials/quick-start.md).

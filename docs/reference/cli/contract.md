@@ -1,6 +1,6 @@
 # Contract validator (WASI tool)
 
-The contracts capability declares a `contract` WASI tool that walks a baseline `contracts/` directory, projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files.
+The contracts adapter declares a `contract` WASI tool that walks a baseline `contracts/` directory, projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files.
 
 The legacy in-binary `specify contract` family has been retired. The canonical user-visible merge gate is the declared WASI tool:
 
@@ -28,7 +28,7 @@ Format detection: a YAML file is top-level iff its root carries `openapi:` or `a
 | `1` | One or more findings. Caller (typically the contracts merge brief) MUST treat as `failure`. |
 | `2` | The tool could not run, either because `specify` could not resolve/instantiate it or because the validator rejected its invocation. Caller MUST treat as `failure`. |
 
-The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capability skills can branch on the exit code without needing the broader `specify` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
+The `0` / `1` / `2` mapping is the conventional shell-friendly shape so adapter skills can branch on the exit code without needing the broader `specify` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
 
 ## JSON Envelope
 
@@ -66,16 +66,16 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts capability ships `capabilities/contracts/tools.yaml`, a sidecar declaration next to `capability.yaml`. That sidecar declares the exact `specify:contract@0.3.0` package request; the CLI derives the tool name and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
+The contracts adapter ships `adapters/contracts/tools.yaml`, a sidecar declaration next to `adapter.yaml`. That sidecar declares the exact `specify:contract@0.3.0` package request; the CLI derives the tool name and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
 Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 
-During local development, project authors may override the capability declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
+During local development, project authors may override the adapter declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
 
 ## See Also
 
 - [specify tool](tool.md) — the declared WASI tool runner surface.
-- [Tool declarations](../../explanation/tool-declarations.md) — project and capability declaration sites, precedence, cache, permissions, and digest pins.
+- [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
 - [Contract plugin](../plugins/contract.md) — the per-slice `/contract:openapi`, `/contract:asyncapi`, and `/contract:json-schema` skills that produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
-- [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.
+- [`adapters/contracts/briefs/merge.md`](../../../adapters/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

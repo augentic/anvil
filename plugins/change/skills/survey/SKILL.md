@@ -6,7 +6,7 @@ argument-hint: <change-name>
 
 # Survey skill
 
-> **Decompose legacy-code sources into slice-sized candidates for `propose`.** `/change:survey` sits between workspace sync and propose in the `/change:draft` pipeline. For each `legacy-code` source it resolves the per-language enumeration brief at [`briefs/enumerate/<language>.md`](briefs/enumerate/), drives an LLM to produce a candidate `surfaces.json`, hands it to `specify change survey` for validation and canonical write, repairs on bounded validator failure, then sizes candidates and emits the inventory consumed by `propose`. The per-capability clustering briefs at [`briefs/omnia/cluster.md`](briefs/omnia/cluster.md) and [`briefs/vectis/cluster.md`](briefs/vectis/cluster.md) live on a separate axis (capability-axis clustering, not language-axis enumeration) and keep their current shape.
+> **Decompose legacy-code sources into slice-sized candidates for `propose`.** `/change:survey` sits between workspace sync and propose in the `/change:draft` pipeline. For each `legacy-code` source it resolves the per-language enumeration brief at [`briefs/enumerate/<language>.md`](briefs/enumerate/), drives an LLM to produce a candidate `surfaces.json`, hands it to `specify change survey` for validation and canonical write, repairs on bounded validator failure, then sizes candidates and emits the inventory consumed by `propose`. The per-adapter clustering briefs at [`briefs/omnia/cluster.md`](briefs/omnia/cluster.md) and [`briefs/vectis/cluster.md`](briefs/vectis/cluster.md) live on a separate axis (adapter-axis clustering, not language-axis enumeration) and keep their current shape.
 
 ## Critical Path
 
@@ -106,14 +106,14 @@ On any non-zero exit from `specify change survey` other than the three repair-el
 | `sources-file-malformed` | Refuse to compose `survey.md`; surface CLI error verbatim. (skill bug) |
 | `surveyor-exhausted` | Skill-emitted: exit non-zero, persist last failing candidate + validator output under `.specify/plans/<change>/survey/staged/<source-key>.last-failure.json`. |
 
-## Per-capability clustering briefs
+## Per-adapter clustering briefs
 
-The detailed clustering prompts live on the capability axis under `briefs/<capability>/cluster.md`:
+The detailed clustering prompts live on the adapter axis under `briefs/<adapter>/cluster.md`:
 
 - [`briefs/omnia/cluster.md`](briefs/omnia/cluster.md) — Omnia's source-local clustering refinements.
 - [`briefs/vectis/cluster.md`](briefs/vectis/cluster.md) — Vectis's source-local clustering refinements.
 
-The skill resolves the active capability via `specify capability resolve` and loads the relevant brief for capability-specific clustering signals. The global algorithm in [references/candidate-algorithm.md](references/candidate-algorithm.md) applies first; capability briefs refine within those bounds. These briefs are unchanged from earlier versions of the skill — they live on a separate axis from the per-language enumeration briefs that drive the agent producer.
+The skill resolves the active adapter via `specify adapter resolve` and loads the relevant brief for adapter-specific clustering signals. The global algorithm in [references/candidate-algorithm.md](references/candidate-algorithm.md) applies first; adapter briefs refine within those bounds. These briefs are unchanged from earlier versions of the skill — they live on a separate axis from the per-language enumeration briefs that drive the agent producer.
 
 ## Reference Documentation
 
@@ -124,7 +124,7 @@ The skill resolves the active capability via `specify capability resolve` and lo
 | [references/sources-yaml-shape.md](references/sources-yaml-shape.md) | `--sources` YAML format and `--staged` pairing |
 | [references/repair-loop.md](references/repair-loop.md) | Bounded retry contract: structured feedback, 3-retry budget, `surveyor-exhausted` exit |
 | [`briefs/enumerate/`](briefs/enumerate/) | Per-language enumeration briefs (TypeScript / C# / Rust / COBOL) |
-| [`briefs/`](briefs/) | Per-capability clustering briefs (`omnia/`, `vectis/`) |
+| [`briefs/`](briefs/) | Per-adapter clustering briefs (`omnia/`, `vectis/`) |
 | [`fixtures/`](fixtures/) | Acceptance fixtures: single-source / multi-source / unresolved / heading-handshake / greenfield / repair-loop and repair-loop-exhausted |
 | [`../analyze/SKILL.md`](../analyze/SKILL.md) | Sibling skill for documentation-derived candidate blocks |
 | [`rfcs/archive/rfc-20-survey.md`](../../../../rfcs/archive/rfc-20-survey.md) | Governing RFC |

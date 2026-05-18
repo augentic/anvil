@@ -1,28 +1,28 @@
-# Capabilities and Plugins
+# Adapters and Plugins
 
-Specify's core workflow -- define, build, merge -- is the same regardless of what you are building. **Capabilities** and **plugins** determine *how* that workflow executes for your particular technology stack.
+Specify's core workflow -- define, build, merge -- is the same regardless of what you are building. **Adapters** and **plugins** determine *how* that workflow executes for your particular technology stack.
 
-## Capabilities
+## Adapters
 
-A capability is a versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. When you run `/spec:init`, you provide a capability identifier (a bare name, an `https://…` URL, or a `file:///…` URI) that configures the project.
+A adapter is a versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. When you run `/spec:init`, you provide a adapter identifier (a bare name, an `https://…` URL, or a `file:///…` URI) that configures the project.
 
-Each capability declares:
+Each adapter declares:
 
 - **Brief pipelines** for each phase (define, build, merge) -- the ordered sequence of prompts that generate artifacts.
 - **Domain context** (carried in the briefs and skills) -- terminology, constraints, and patterns specific to the target outcome domain.
 - **Specialist skill references** -- which plugin skills the build phase should delegate to.
 
-### Available capabilities
+### Available adapters
 
-| Capability | Identifier or URL | Target | Use case |
+| Adapter | Identifier or URL | Target | Use case |
 |------------|-------------------|--------|----------|
-| Omnia | `https://github.com/augentic/specify/capabilities/omnia` | Rust WASM (Omnia SDK) | Greenfield or migration to Omnia services |
-| Vectis | `https://github.com/augentic/specify/capabilities/vectis` | Rust + Swift + Kotlin (Crux) | Cross-platform mobile/desktop applications |
-| Contracts | `https://github.com/augentic/specify/capabilities/contracts` | JSON Schema / OpenAPI / AsyncAPI | Dedicated API contract changes |
+| Omnia | `https://github.com/augentic/specify/adapters/omnia` | Rust WASM (Omnia SDK) | Greenfield or migration to Omnia services |
+| Vectis | `https://github.com/augentic/specify/adapters/vectis` | Rust + Swift + Kotlin (Crux) | Cross-platform mobile/desktop applications |
+| Contracts | `https://github.com/augentic/specify/adapters/contracts` | JSON Schema / OpenAPI / AsyncAPI | Dedicated API contract changes |
 
-Capability identifiers support an optional `@ref` suffix to pin a version (e.g. `omnia@v1`).
+Adapter identifiers support an optional `@ref` suffix to pin a version (e.g. `omnia@v1`).
 
-### Implementation capability artifact chain
+### Implementation adapter artifact chain
 
 Omnia and Vectis share the same core implementation artifact chain:
 
@@ -33,11 +33,11 @@ Omnia and Vectis share the same core implementation artifact chain:
 
 The specs and design briefs read any baseline contracts at `contracts/` as context. Implementation changes conform to those baseline contracts; new or changed interface shapes are introduced through dedicated `contracts@v1` changes instead of being derived inline.
 
-The Vectis capability extends this with a **composition** stage between specs and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
+The Vectis adapter extends this with a **composition** stage between specs and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
 
-The Contracts capability is different: define captures proposal, specs, and build tasks, while `/spec:build` authors or imports the contract artifacts and then verifies them.
+The Contracts adapter is different: define captures proposal, specs, and build tasks, while `/spec:build` authors or imports the contract artifacts and then verifies them.
 
-The artifact structure and lifecycle are capability-agnostic. Capabilities fill in the brief *content* within each phase and may add capability-specific stages to the pipeline.
+The artifact structure and lifecycle are adapter-agnostic. Adapters fill in the brief *content* within each phase and may add adapter-specific stages to the pipeline.
 
 ## Plugins
 
@@ -52,19 +52,19 @@ Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin
 | **RT** | `/rt:` | Fixture capture and regression testing for migration |
 | **Client** | `/client:` | Client-facing deliverables (SoW, proposals, pricing) |
 
-### How capabilities and plugins compose
+### How adapters and plugins compose
 
-The **Specify** plugin provides the workflow skeleton -- the `/spec:*` skills that every project uses. The capability determines which **specialist** plugin skills are invoked during the build phase.
+The **Specify** plugin provides the workflow skeleton -- the `/spec:*` skills that every project uses. The adapter determines which **specialist** plugin skills are invoked during the build phase.
 
-For example, with the Omnia capability:
+For example, with the Omnia adapter:
 
 ```text
 /spec:define --> generates artifacts using Omnia brief pipelines
 /spec:build  --> delegates tasks to /omnia:crate-writer, /omnia:test-writer, etc.
-/spec:merge  --> merges specs into baseline (capability-agnostic)
+/spec:merge  --> merges specs into baseline (adapter-agnostic)
 ```
 
-With the Vectis capability:
+With the Vectis adapter:
 
 ```text
 /spec:define --> generates artifacts using Vectis brief pipelines (incl. composition.yaml)
@@ -72,7 +72,7 @@ With the Vectis capability:
 /spec:merge  --> merges specs + composition into baseline
 ```
 
-The define-build-merge loop is invariant. Swapping the capability swaps the brief content and the specialist skills -- nothing else changes.
+The define-build-merge loop is invariant. Swapping the adapter swaps the brief content and the specialist skills -- nothing else changes.
 
 ### Workspace rules
 

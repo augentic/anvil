@@ -9,7 +9,7 @@ This gets you from zero to a merged slice with no explanation. For the "why" beh
 Open your project in Cursor and type in the agent chat:
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/omnia
+/spec:init https://github.com/augentic/specify/adapters/omnia
 ```
 
 <details>
@@ -17,7 +17,7 @@ Open your project in Cursor and type in the agent chat:
 
 ```text
 Specify Initialized
-  Capability: omnia@latest
+  Adapter: omnia@latest
   Project config: .specify/project.yaml
   Agent context: AGENTS.md
   Context lock: .specify/context.lock
@@ -82,7 +82,7 @@ All tasks complete. Run /spec:merge to finalise.
 
 ```text
 Merge preview:
-  + specs/greeting/spec.md (new capability)
+  + specs/greeting/spec.md (new adapter)
 
 Merge complete.
   Baseline updated: .specify/specs/greeting/spec.md
@@ -98,5 +98,5 @@ Your project now has a baseline specification at `.specify/specs/`. Future chang
 **Next steps:**
 
 - [Your First Slice](first-change.md) -- understand what just happened and why each artifact exists.
-- [Iterating on a Baseline](iterating-on-baseline.md) -- modify an existing capability with delta specs.
+- [Iterating on a Baseline](iterating-on-baseline.md) -- modify an existing adapter with delta specs.
 - [Quick Reference Card](../reference/quick-reference.md) -- all skills and commands on one page.

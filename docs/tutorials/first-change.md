@@ -9,7 +9,7 @@ This tutorial walks you through the complete Specify workflow: initialise a proj
 Open your project in Cursor and type the following in the agent chat:
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/omnia
+/spec:init https://github.com/augentic/specify/adapters/omnia
 ```
 
 > Replace `omnia` with `vectis` if you are building a cross-platform Crux application.
@@ -19,7 +19,7 @@ Open your project in Cursor and type the following in the agent chat:
 
 ```text
 Specify Initialized
-  Capability: omnia@latest
+  Adapter: omnia@latest
   Project config: .specify/project.yaml
   Agent context: AGENTS.md
   Context lock: .specify/context.lock
@@ -35,7 +35,7 @@ AGENTS.md                  # generated agent context
 .specify/
 ├── project.yaml           # project configuration
 ├── context.lock           # context freshness fingerprint
-├── .cache/omnia/           # cached capability and briefs
+├── .cache/omnia/           # cached adapter and briefs
 ├── slices/                # will hold active slices
 ├── specs/                 # will hold merged baseline specs
 └── archive/               # will hold finalized slices
@@ -68,9 +68,9 @@ Slice defined (4 tasks).
 
 </details>
 
-Specify generates four artifacts (five for the Vectis capability, which adds `composition.yaml` for screen layout):
+Specify generates four artifacts (five for the Vectis adapter, which adds `composition.yaml` for screen layout):
 
-1. **`proposal.md`** -- captures the motivation and scope. It names the capabilities that will be affected.
+1. **`proposal.md`** -- captures the motivation and scope. It names the adapters that will be affected.
 2. **`specs/greeting/spec.md`** -- behavioral requirements with scenarios:
    - `REQ-001`: The system SHALL accept a name and return a greeting.
    - Scenario: WHEN a valid name is provided, THEN return "Hello, {name}!".
@@ -127,7 +127,7 @@ Implementation Complete
 The agent reads the build brief and works through the tasks in `tasks.md`. For each task:
 
 - If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
-- If the task has no tag, the agent implements it using the capability's default build instruction.
+- If the task has no tag, the agent implements it using the adapter's default build instruction.
 
 As each task completes, the agent marks it done via `specify slice task mark`. You can watch the checkboxes flip in `tasks.md`.
 
@@ -146,7 +146,7 @@ Finalise the slice:
 
 ```text
 Merge preview:
-  + specs/greeting/spec.md (new capability)
+  + specs/greeting/spec.md (new adapter)
 
 Merge complete.
   Baseline updated: .specify/specs/greeting/spec.md
@@ -195,4 +195,4 @@ If you decide a slice should not be merged, see [Drop a slice](../how-to/drop-a-
 
 ## Next
 
-[Iterating on a Baseline](iterating-on-baseline.md) -- make a second slice that modifies an existing capability and learn about delta specs.
+[Iterating on a Baseline](iterating-on-baseline.md) -- make a second slice that modifies an existing adapter and learn about delta specs.

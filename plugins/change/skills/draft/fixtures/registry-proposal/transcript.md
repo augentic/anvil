@@ -30,7 +30,7 @@ Project `alpha-gateway` does not exist in registry.yaml. Create it now? [y/N] y
 
 Proposed defaults (edit any field, or accept all):
   --url    git@github.com:augentic/alpha-gateway.git   (inferred from existing prefix)
-  --capability omnia@v1                                   (majority schema)
+  --adapter omnia@v1                                   (majority schema)
 
 Accept the URL? [Y/n] y
 Accept the schema? [Y/n] y
@@ -43,7 +43,7 @@ project. Enter a one-line description for `alpha-gateway`:
 Running:
   $ specify registry add alpha-gateway \
         --url git@github.com:augentic/alpha-gateway.git \
-        --capability omnia@v1 \
+        --adapter omnia@v1 \
         --description "Inbound traffic gateway carved out of the monolith's edge layer."
   ok: appended `alpha-gateway` to registry.yaml (3 projects)
 

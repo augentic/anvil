@@ -6,7 +6,7 @@ argument-hint: <image-path>...
 
 # Vectis Image Layout Inferer
 
-> **Layout recovery, not visual design extraction.** Convert screenshots into a schema-valid `layout.yaml` document using the unwired subset of [`composition.schema.json`](../../../../capabilities/vectis/composition.schema.json). Never invent token names from pixels, never crop production assets, never emit define-owned wiring (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation events, `*-when` keys). The producer surface every layout inferer shares lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md); read it first.
+> **Layout recovery, not visual design extraction.** Convert screenshots into a schema-valid `layout.yaml` document using the unwired subset of [`composition.schema.json`](../../../../adapters/vectis/composition.schema.json). Never invent token names from pixels, never crop production assets, never emit define-owned wiring (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation events, `*-when` keys). The producer surface every layout inferer shares lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md); read it first.
 
 ## Critical Path
 
@@ -37,9 +37,9 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`references/runbook.md`](references/runbook.md) | Authority hierarchy, full argument table, vision prerequisite, pipeline stages 1–7, token / asset rules, idempotence, mode detection, verification mechanics, terminal summary, fixtures, operator ergonomics |
 | [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md) | Producer-side contract every layout inferer follows (arguments, output rules, idempotence, component directive emission, verification, terminal summary) |
 | [`fixtures/`](fixtures/) | Paired regression fixtures: `<name>/input.png` + `<name>/expected.layout.yaml` |
-| [`../../../../capabilities/vectis/composition.schema.json`](../../../../capabilities/vectis/composition.schema.json) | Schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against |
-| [`../../../../capabilities/vectis/tokens.schema.json`](../../../../capabilities/vectis/tokens.schema.json) | Sibling input schema cross-artifact reference checks consume when present |
-| [`../../../../capabilities/vectis/assets.schema.json`](../../../../capabilities/vectis/assets.schema.json) | Sibling input schema cross-artifact reference checks consume when present |
+| [`../../../../adapters/vectis/composition.schema.json`](../../../../adapters/vectis/composition.schema.json) | Schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against |
+| [`../../../../adapters/vectis/tokens.schema.json`](../../../../adapters/vectis/tokens.schema.json) | Sibling input schema cross-artifact reference checks consume when present |
+| [`../../../../adapters/vectis/assets.schema.json`](../../../../adapters/vectis/assets.schema.json) | Sibling input schema cross-artifact reference checks consume when present |
 | [`../../../../rfcs/archive/rfc-11-ui-spec.md`](../../../../rfcs/archive/rfc-11-ui-spec.md) | RFC-11: normative source for §A (shared contract), §C (image inferer specifics), §G (component primitives), §J (skill naming + plugin layout) |
 
 ## Guardrails

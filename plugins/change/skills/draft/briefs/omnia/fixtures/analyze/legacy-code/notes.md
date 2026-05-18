@@ -8,12 +8,12 @@ The legacy-code branch of `/change:analyze` is byte-deterministic. Re-running
 
 on an unchanged `inputs/monolith/` tree MUST produce byte-identical `expected/discovery.md` and `expected/plans/legacy-code/analyze/monolith/metadata.json`.
 
-This is the acceptance gate for propose-time slicing stability: propose (RFC-3a C24) caches its `scope.<k>.include` decisions off each capability's `sources` list, and `specify plan validate` (RFC-3a C25) diffs `metadata.json` across runs to surface drift. If either artifact drifts under unchanged inputs, both downstream consumers see spurious change signals.
+This is the acceptance gate for propose-time slicing stability: propose (RFC-3a C24) caches its `scope.<k>.include` decisions off each adapter's `sources` list, and `specify plan validate` (RFC-3a C25) diffs `metadata.json` across runs to surface drift. If either artifact drifts under unchanged inputs, both downstream consumers see spurious change signals.
 
 ## Specific stability points
 
-- **Capability order.** Alphabetical by name: `billing-subscription`, `email-verification`, `shared-validation`, `user-registration`.
-- **`sources` order inside each capability.** Alphabetical. The `user-registration` block lists `src/auth/verify.ts` before `src/users/register.ts` before `src/users/validation.ts`.
+- **Adapter order.** Alphabetical by name: `billing-subscription`, `email-verification`, `shared-validation`, `user-registration`.
+- **`sources` order inside each adapter.** Alphabetical. The `user-registration` block lists `src/auth/verify.ts` before `src/users/register.ts` before `src/users/validation.ts`.
 - **`depends-on` order.** Alphabetical (e.g. `[email-verification, shared-validation]` for `user-registration`).
 - **`hints.entry_points` order.** Alphabetical (e.g. `[GET /auth/verify, POST /auth/verify-email]` for `email-verification`).
 - **`hints.external_deps` order.** Alphabetical kebab-case (e.g. `[postgres, sendgrid]`).

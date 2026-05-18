@@ -1,4 +1,4 @@
-# Capability-scope tool declarations for the contracts capability.
+# Adapter-scope tool declarations for the contracts adapter.
 # Schema: ../../../specify-cli/schemas/tool.schema.json
 #
 tools:

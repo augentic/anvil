@@ -10,7 +10,7 @@ After the propose brief completes step 4(c) and all accepted entries have been w
 2. For each entry, infer a project assignment using the following signal priority:
    - **Description match.** Compare the entry's `description` against each project's `Description` bullet in `workspace.md`. Domain-term overlap is the primary signal.
    - **Baseline spec affinity.** If a peer already has baseline specs whose names or domains overlap with the entry, that peer is a strong candidate. This signal is only available for brownfield (materialised workspace with existing specs listed in the `Specify tree` bullet).
-   - **Capability compatibility.** If the entry's nature (e.g. UI vs backend logic) aligns with only one capability in the registry (via the `Capability` bullet), use that as a tiebreaker.
+   - **Adapter compatibility.** If the entry's nature (e.g. UI vs backend logic) aligns with only one adapter in the registry (via the `Adapter` bullet), use that as a tiebreaker.
    - **Ambiguity → human.** When no signal clearly differentiates, or when confidence is low, surface the assignment as "unresolved" and require operator input. Never silently assign a low-confidence match.
 3. Present the full assignment table to the operator in a batch review:
 
@@ -52,7 +52,7 @@ Step 4(d) routes entries to **existing** registry projects. When the operator's 
 
 2. **Gather defaults.** On accept:
    - **`--url`.** Default to `git@github.com:<org>/<name>.git` where `<org>` is inferred from the longest common `<host>:<org>/` prefix across `registry.yaml:projects[].url` entries (when the registry already has at least one entry with that prefix). If no prefix can be inferred (e.g. greenfield registry, or every existing entry uses a different host or path layout), prompt the operator to supply the URL by hand. The operator can always override the suggested default.
-   - **`--capability`.** Default to the capability used by the **majority** of existing registry entries; on a tie, prompt with the legal candidates. If the registry is empty, prompt with the canonical capability list (`omnia@v1`, `vectis@v1`, `contracts@v1`, `hub` — the closed enum from `Registry::validate_shape`). Bail with a hard exit on an empty response or an unknown value.
+   - **`--adapter`.** Default to the adapter used by the **majority** of existing registry entries; on a tie, prompt with the legal candidates. If the registry is empty, prompt with the canonical adapter list (`omnia@v1`, `vectis@v1`, `contracts@v1`, `hub` — the closed enum from `Registry::validate_shape`). Bail with a hard exit on an empty response or an unknown value.
    - **`--description`.** Required when the addition produces a multi-project registry (`description-missing-multi-repo` invariant from RFC-3b). The operator supplies free-form prose; the skill never paraphrases.
 
 3. **Apply.** Shell out **in this exact order**:
@@ -60,7 +60,7 @@ Step 4(d) routes entries to **existing** registry projects. When the operator's 
    ```text
    specify registry add <name> \
        --url <url> \
-       --capability <capability> \
+       --adapter <adapter> \
        [--description "<description>"]
 
    specify workspace sync
@@ -76,9 +76,9 @@ Step 4(d) routes entries to **existing** registry projects. When the operator's 
 
    The skill never bundles the registry-add and the plan-amend into one step — the registry is the producer of legal project names; the plan is the consumer. Two writes, two verbs, in that order.
 
-5. **Audit trail.** Append a `Registry amendments` block to `.specify/plans/<change-name>/proposal.md` listing every `(name, url, capability, description)` tuple created during the run, plus the rationale (the entry that triggered the proposal). The block sits after the assignment table.
+5. **Audit trail.** Append a `Registry amendments` block to `.specify/plans/<change-name>/proposal.md` listing every `(name, url, adapter, description)` tuple created during the run, plus the rationale (the entry that triggered the proposal). The block sits after the assignment table.
 
-**`--dry-run`.** Do **not** shell `specify registry add` or `specify workspace sync`; do **not** invoke `specify plan amend`. The dry-run output emits a `Would propose registry amendments:` block listing the same `(name, url, capability, description)` tuples the writing path would have created, plus the rationale per entry. The block sits after the assignment preview.
+**`--dry-run`.** Do **not** shell `specify registry add` or `specify workspace sync`; do **not** invoke `specify plan amend`. The dry-run output emits a `Would propose registry amendments:` block listing the same `(name, url, adapter, description)` tuples the writing path would have created, plus the rationale per entry. The block sits after the assignment preview.
 
 **`--extend`.** Same as default, with one wrinkle: an `--extend` run can land additional entries that route to a project added in an earlier `/change:draft` run. When the assignment table names a project that **does** exist in `registry.yaml`, no proposal sub-step runs (the project is already legal). The proposal sub-step only fires for genuinely new project names.
 

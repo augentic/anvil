@@ -1,6 +1,6 @@
 // src/orders.rs — cart + order lifecycle for the legacy monolith.
 //
-// Surfaces three capabilities:
+// Surfaces three adapters:
 //   - cart_management   (add/remove items from the active cart)
 //   - order_create      (turn a cart into a pending order)
 //   - order_update      (modify an existing order: quantities, address)
@@ -33,7 +33,7 @@ pub enum OrderStatus { Pending, Placed, Cancelled }
 
 /// Cart management.
 ///
-/// Capability: `cart_management` (depends on `registration`).
+/// Adapter: `cart_management` (depends on `registration`).
 /// Add/remove items on a user's active cart.
 pub fn add_to_cart(user: &User, sku: &str, qty: u32) -> Cart {
     let mut cart = load_cart(user.id);
@@ -51,7 +51,7 @@ pub fn remove_from_cart(user: &User, sku: &str) -> Cart {
 
 /// Order creation.
 ///
-/// Capability: `order_create` (depends on `cart_management`).
+/// Adapter: `order_create` (depends on `cart_management`).
 /// Snapshot the user's active cart into a new `Order` with
 /// `status = Pending`. Clears the cart.
 pub fn create_order(user: &User) -> Order {
@@ -69,7 +69,7 @@ pub fn create_order(user: &User) -> Order {
 
 /// Order update.
 ///
-/// Capability: `order_update`.
+/// Adapter: `order_update`.
 /// Modify quantities or shipping details on an existing order.
 pub fn update_order(order_id: u64, patch: OrderPatch) -> Order {
     let mut order = load_order(order_id);

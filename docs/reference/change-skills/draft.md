@@ -46,7 +46,7 @@ There is no umbrella mode and no automatic transition into execution. The pause 
 
 ## Critical Path
 
-The skill runs a fixed six-step loop driven by the active capability's `capability.yaml`. See [`plugins/change/skills/draft/references/runbook.md`](../../../plugins/change/skills/draft/references/runbook.md) for the verbatim step bodies.
+The skill runs a fixed six-step loop driven by the active adapter's `adapter.yaml`. See [`plugins/change/skills/draft/references/runbook.md`](../../../plugins/change/skills/draft/references/runbook.md) for the verbatim step bodies.
 
 1. **Pre-flight** — validate `<change-name>` as kebab-case; require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`; refuse if `plan.yaml` already exists (unless `extend`).
 2. **Brief scaffold** — `specify change draft <change-name> [--source <key>=<path-or-url> ...]`. Writes `change.md` and `plan.yaml` together (atomic refusal if either already exists). Skipped under `extend`.
@@ -61,7 +61,7 @@ The skill runs a fixed six-step loop driven by the active capability's `capabili
 |----------|----------|---------|
 | `plan.yaml` | `plan.yaml` | Ordered slice list with dependencies and status |
 | `change.md` | `change.md` | Operator brief written by step 2 alongside `plan.yaml` |
-| `discovery.md` | `.specify/plans/<name>/discovery.md` | Capability inventory from input analysis |
+| `discovery.md` | `.specify/plans/<name>/discovery.md` | Adapter inventory from input analysis |
 | `proposal.md` | `.specify/plans/<name>/proposal.md` | Audit trail of slice accept/edit/reject decisions |
 | `workspace.md` | `.specify/plans/<name>/workspace.md` | Peer inventory for cross-repo planning (multi-repo only) |
 | `metadata.json` | `.specify/plans/<name>/analyze/<key>/metadata.json` | Source-tree structural metadata (legacy-code only) |
@@ -76,12 +76,12 @@ The skill runs a fixed six-step loop driven by the active capability's `capabili
 
 `/change:draft` automatically determines how API contracts enter the plan based on registry topology, source declarations, and API boundary detection. Three patterns emerge:
 
-**Contract-first (dedicated contract slice).** When the plan contains slices in multiple projects that share an API boundary, `/change:draft` inserts a dedicated contract slice before the implementation slices on both sides. The contract slice uses `capability: contracts@v1` (no `project`) and defines interface-level behavioral specs. Implementation slices `depends-on` the contract slice and validate alignment:
+**Contract-first (dedicated contract slice).** When the plan contains slices in multiple projects that share an API boundary, `/change:draft` inserts a dedicated contract slice before the implementation slices on both sides. The contract slice uses `adapter: contracts@v1` (no `project`) and defines interface-level behavioral specs. Implementation slices `depends-on` the contract slice and validate alignment:
 
 ```yaml
 changes:
   - name: user-api-contract
-    capability: contracts@v1
+    adapter: contracts@v1
     description: "Define the user registration API contract"
     status: pending
 
@@ -100,7 +100,7 @@ changes:
 
 **Spec-first (inline derivation).** For single-repo slices with no identified API boundary and no external consumers, no separate contract slice is inserted. The `contracts` brief derives interface shapes inline during the slice's define phase.
 
-After the loop, `specify plan validate` checks structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
+After the loop, `specify plan validate` checks structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `adapter-mismatch-workspace`).
 
 ## Lifecycle transitions
 

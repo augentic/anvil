@@ -1,6 +1,6 @@
 # Contributing to Specify
 
-This section is for developers working on the Specify framework itself -- the skills, capabilities, references, and CLI that power the `/spec:*` workflow. If you are looking for how to *use* Specify in your own project, start with [What is Specify?](../orientation/index.md).
+This section is for developers working on the Specify framework itself -- the skills, adapters, references, and CLI that power the `/spec:*` workflow. If you are looking for how to *use* Specify in your own project, start with [What is Specify?](../orientation/index.md).
 
 ## Repository map
 
@@ -8,16 +8,16 @@ Specify spans two repositories:
 
 | Repository | Contents | Language |
 |------------|----------|----------|
-| [`augentic/specify`](https://github.com/augentic/specify) | Skills, capabilities, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML, TypeScript (checks) |
+| [`augentic/specify`](https://github.com/augentic/specify) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML, TypeScript (checks) |
 | [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specify` binary and its workspace crates | Rust |
 
-The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (capabilities and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
+The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
 The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify change draft ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
 
 ## Development environment
 
-**For skill and capability work** (specify repo):
+**For skill and adapter work** (specify repo):
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [Deno](https://deno.land) -- runs `scripts/checks.ts` via `make checks`
@@ -42,7 +42,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 ## What to read next
 
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
-- [Anatomy of a Capability](capability-anatomy.md) -- how capabilities declare brief pipelines
+- [Anatomy of a Adapter](adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
 - [Consistency Checks](checks.md) -- what `make checks` enforces and how to extend it

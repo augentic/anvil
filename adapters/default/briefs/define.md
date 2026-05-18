@@ -6,4 +6,4 @@ generates: proposal.md
 
 Use the standard Specify artifact responsibilities from `plugins/references/specify.md`.
 
-The default capability has no domain-specific define mechanics. When this brief is used directly, write only the smallest proposal needed to describe the operator's requested change and defer any domain-specific behavior to the project capability or explicit instructions.
+The default adapter has no domain-specific define mechanics. When this brief is used directly, write only the smallest proposal needed to describe the operator's requested change and defer any domain-specific behavior to the project adapter or explicit instructions.

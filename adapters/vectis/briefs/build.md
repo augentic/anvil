@@ -23,7 +23,7 @@ specify tool run vectis -- validate composition
 
 That single call covers:
 
-1. **Composition schema validity** — `composition.yaml` conforms to `capabilities/vectis/composition.schema.json` (regions, group hierarchy, allowed wiring keys, slug grammar, reserved-slug prohibitions).
+1. **Composition schema validity** — `composition.yaml` conforms to `adapters/vectis/composition.schema.json` (regions, group hierarchy, allowed wiring keys, slug grammar, reserved-slug prohibitions).
 2. **RFC-7 wiring coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value; every shell-facing Event variant relevant to a screen has an `event` wiring; every `maps_to` resolves to a declared ViewModel variant; every overlay `trigger` matches an `event` name in the same screen; every `Navigate(X)` argument has a corresponding screen slug and Route variant.
 3. **§G structural identity** — every `component:` slug reused across screens has a structurally identical skeleton (per the RFC-11 §G edge cases for `*-when`-gated sub-groups, state-replaced bodies, and per-instance `platforms.*` overrides).
 4. **Auto-invoked `tokens` mode** — when a sibling `tokens.yaml` is present, every token reference in `composition.yaml` (and in `assets.yaml` when present) resolves against it.
@@ -225,7 +225,7 @@ Check whether `{PROJECT_DIR}/shared/src/app.rs` exists:
 - If `app.rs` does not exist, use create mode.
 - If `app.rs` exists, use update mode.
 
-The core-writer reads the main body of the feature spec (core requirements) and the design.md Domain Model and Capabilities sections. Platform-specific sections in the spec are not relevant to core generation.
+The core-writer reads the main body of the feature spec (core requirements) and the design.md Domain Model and Adapters sections. Platform-specific sections in the spec are not relevant to core generation.
 
 ### Create mode (app.rs does NOT exist -- new core)
 

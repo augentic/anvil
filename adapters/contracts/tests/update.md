@@ -1,8 +1,8 @@
 ---
 id: contracts-update-boundary
 owner: contracts
-kind: capability-boundary
-capability: contracts@v1
+kind: adapter-boundary
+adapter: contracts@v1
 backend: manual
 entrypoint: /spec:define
 stages: [define, build, merge]
@@ -52,7 +52,7 @@ verifies cleanly.
 
 ## Workspace
 
-- **Capability under test:** `contracts@v1` (boundary).
+- **Adapter under test:** `contracts@v1` (boundary).
 - **Project shape:** the negative path runs in an implementation-schema
   project (Omnia or Vectis) where `/spec:define` produces a slice with
   `design.md`. The regression path runs in a project initialised with the
@@ -101,7 +101,7 @@ Run inside an implementation-schema project. Start with a high-level change:
 ```text
 /spec:define loyalty-enrollment
 
-Create a loyalty enrollment capability. It should expose an HTTP API, but leave
+Create a loyalty enrollment adapter. It should expose an HTTP API, but leave
 endpoint details initially high level:
 - customers can enroll in loyalty
 - duplicate enrollment is rejected

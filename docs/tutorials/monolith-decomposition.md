@@ -23,7 +23,7 @@ Decompose a single legacy monolith into slice-sized migration candidates using `
 
 ## Scenario
 
-You have a TypeScript monolith at `./legacy/monolith` — approximately 2400 production LOC across 12 modules. It exposes three Express HTTP routes: `GET /users/:id`, `POST /users`, and `POST /orders`. You want to migrate these capabilities into a Specify-managed project, but the monolith is too large to be a single slice (anything ≥ 1000 LOC triggers decomposition). You need Specify to break it into reviewable, slice-sized candidates before planning begins.
+You have a TypeScript monolith at `./legacy/monolith` — approximately 2400 production LOC across 12 modules. It exposes three Express HTTP routes: `GET /users/:id`, `POST /users`, and `POST /orders`. You want to migrate these adapters into a Specify-managed project, but the monolith is too large to be a single slice (anything ≥ 1000 LOC triggers decomposition). You need Specify to break it into reviewable, slice-sized candidates before planning begins.
 
 The `/change:draft` pipeline handles this automatically. When it sees a `legacy-code` source, it inserts a `/change:survey` step between workspace sync and propose. Survey resolves a per-language enumeration brief, drives an LLM to produce a candidate `surfaces.json`, hands it to `specify change survey` for schema-validated canonical write, sizes each candidate, clusters overlapping handlers, and writes the inventory that `propose` consumes.
 

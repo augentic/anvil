@@ -6,9 +6,9 @@ needs: [build]
 
 Before merging, confirm all task checkboxes in `tasks.md` are complete and the slice status is `complete`. Delta-spec merging, baseline coherence validation, the lifecycle transition, and the archive move are delegated to the `specify` CLI: `specify slice merge preview`, `specify slice merge conflict-check`, `specify slice merge run`, and `specify slice validate`.
 
-Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The contracts capability adds **one capability-specific gate** on top of that flow: the post-merge baseline check via the declared `contract` WASI tool (RFC-13 §"Merge and adoption contract", RFC-15). Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
+Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The contracts adapter adds **one adapter-specific gate** on top of that flow: the post-merge baseline check via the declared `contract` WASI tool (RFC-13 §"Merge and adoption contract", RFC-15). Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
 
-## Capability-specific adoption gate
+## Adapter-specific adoption gate
 
 After `specify slice merge run` exits zero (i.e. the slice's `contracts/` deltas have been promoted into root `contracts/` and the lifecycle has transitioned to `merged`), run the declared tool against the now-updated baseline:
 
@@ -43,7 +43,7 @@ The JSON envelope is the canonical shape callers parse. Field reference (matches
 
 When the slice does not touch `contracts/` at all (e.g. a planning-metadata-only contracts slice), still run the validator after merge — the baseline as a whole must remain well-formed, and the tool is cheap on a clean baseline. When `contracts/` is absent entirely, `specify tool run` exits `2` before or during validator invocation; treat that as `failure` per the §failure branch below (the merge brief should not be running for a contracts slice that has no baseline to validate).
 
-The WASI tool is a deterministic, capability-owned gate; it does not parse the slice's deltas in isolation. If the operator needs to inspect the slice's contributions before merge, run the format-verifier `single` mode through `/spec:build` — the merge brief intentionally validates the merged baseline, not the staged delta, because cross-repo id uniqueness only resolves once the deltas are promoted.
+The WASI tool is a deterministic, adapter-owned gate; it does not parse the slice's deltas in isolation. If the operator needs to inspect the slice's contributions before merge, run the format-verifier `single` mode through `/spec:build` — the merge brief intentionally validates the merged baseline, not the staged delta, because cross-repo id uniqueness only resolves once the deltas are promoted.
 
 ### Consumer-project pin updates
 
@@ -56,7 +56,7 @@ Pin updates that the operator can publish map to `success` (the merge brief retu
 
 ## Outcome signalling (Merge and adoption contract)
 
-The contracts capability merge brief is the slice loop's first capability-owned baseline gate. RFC-13 §"Merge and adoption contract" pins the protocol: the brief decides go/no-go and signals it through `specify slice outcome set` plus `specify slice journal append`. The core proceeds with archival on `success` and halts on `failure` / `deferred`, surfacing the journal entries to the operator. Capability diagnostics round-trip as opaque journal entries — the core does not parse them.
+The contracts adapter merge brief is the slice loop's first adapter-owned baseline gate. RFC-13 §"Merge and adoption contract" pins the protocol: the brief decides go/no-go and signals it through `specify slice outcome set` plus `specify slice journal append`. The core proceeds with archival on `success` and halts on `failure` / `deferred`, surfacing the journal entries to the operator. Adapter diagnostics round-trip as opaque journal entries — the core does not parse them.
 
 The shared phase contract (outcome values, journal kinds, the verbatim-`summary` rule, plan-mutation rules) is authored once at [`plugins/spec/references/phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches below are the merge-phase deltas; the brief MUST pick exactly one before returning control.
 

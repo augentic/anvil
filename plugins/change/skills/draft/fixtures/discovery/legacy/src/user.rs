@@ -1,6 +1,6 @@
 // src/user.rs — user lifecycle for the legacy monolith.
 //
-// Surfaces two capabilities:
+// Surfaces two adapters:
 //   - registration       (sign-up flow; inserts a new user row)
 //   - email_verification (one-time link confirmation; flips `active`)
 //
@@ -22,7 +22,7 @@ pub struct VerificationToken {
 
 /// User registration.
 ///
-/// Capability: `registration`.
+/// Adapter: `registration`.
 /// Creates a new `User` row with `active = false` and issues a
 /// `VerificationToken` for the email-verification flow.
 pub fn register(email: &str, password: &str) -> User {
@@ -38,7 +38,7 @@ pub fn register(email: &str, password: &str) -> User {
 
 /// Email verification.
 ///
-/// Capability: `email_verification` (depends on `registration`).
+/// Adapter: `email_verification` (depends on `registration`).
 /// Consumes a `VerificationToken` and flips the owning user's
 /// `active` flag.
 pub fn verify_email(token: &str) -> Result<(), &'static str> {

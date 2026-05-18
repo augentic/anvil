@@ -31,7 +31,7 @@ Optional internal positionals (recognised by the verifier sibling):
 - `mode single` — default. Validate the slice's AsyncAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
 - `mode cross-project` — merge-time baseline validation delegate. Walks the merged `contracts/` directory through `specify tool run contract`; it does not compare consumer workspace clones. Read-only, JSON envelope. See `verifier.md` §Cross-project mode.
 
-When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. Consumer-impact reporting is a CLI concern under `specify compatibility`.
+When invoked from the contracts adapter build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. Consumer-impact reporting is a CLI concern under `specify compatibility`.
 
 ## Artifact layout
 
@@ -65,9 +65,9 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend the AsyncAPI document from a spec | contracts capability build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
+| Author or extend the AsyncAPI document from a spec | contracts adapter build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
 | Import or normalise an external AsyncAPI document | operator drops an AsyncAPI file into a slice's `contracts/messages/` directory | `importer.md` |
-| Verify internal consistency or run merge-time baseline validation | contracts capability build verification; post-merge contract baseline gate; operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
+| Verify internal consistency or run merge-time baseline validation | contracts adapter build verification; post-merge contract baseline gate; operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
 
 The three intents share a common artefact contract (channel addresses, message naming, `$ref` discipline) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefact ready for merge; an author run normally ends with a verifier run too.
 

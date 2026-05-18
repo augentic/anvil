@@ -11,7 +11,7 @@ specify context check
 
 ## Description
 
-`specify context generate` writes a fenced `AGENTS.md` block at the repository root. The content is deterministic and derived from Specify project metadata, capability briefs, registry data, active slice metadata, shallow root-marker detection, and the running CLI version.
+`specify context generate` writes a fenced `AGENTS.md` block at the repository root. The content is deterministic and derived from Specify project metadata, adapter briefs, registry data, active slice metadata, shallow root-marker detection, and the running CLI version.
 
 `specify context check` compares the current renderer inputs and fenced body against `.specify/context.lock`. It exits non-zero when `AGENTS.md` is missing, the lock is missing, renderer inputs drifted, or generated fenced content was edited by hand.
 

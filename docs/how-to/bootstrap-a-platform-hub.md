@@ -26,14 +26,14 @@ The hub itself is a git repo so the platform state (registry, change briefs, arc
 specify init --hub --name shop-platform
 ```
 
-In hub mode, **no positional** capability argument is passed -- `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because later change commands use it when scaffolding operator-facing artifacts.
+In hub mode, **no positional** adapter argument is passed -- `--hub` is the discriminator. Combining a adapter positional with `--hub` is rejected with `init-requires-adapter-or-hub`. `--name` must be kebab-case because later change commands use it when scaffolding operator-facing artifacts.
 
 <details>
 <summary>Expected output</summary>
 
 ```text
 Initialized .specify/ as a registry-only platform hub
-  capability: (none — hub mode)
+  adapter: (none — hub mode)
   config: /…/shop-platform/.specify/project.yaml
   cache present: false
   directories created: /…/shop-platform/.specify
@@ -50,7 +50,7 @@ shop-platform/
 ├── registry.yaml     # version: 1, projects: []
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    ├── project.yaml  # hub: true (capability: omitted)
+    ├── project.yaml  # hub: true (adapter: omitted)
     └── context.lock  # context freshness fingerprint
 ```
 
@@ -63,12 +63,12 @@ Add at least two projects (descriptions are mandatory once the registry has more
 ```bash
 specify registry add shop-backend \
     --url git@github.com:org/shop-backend.git \
-    --capability omnia@v1 \
+    --adapter omnia@v1 \
     --description "User registration, account management, and the authoritative implementation of the shop's HTTP API."
 
 specify registry add shop-mobile \
     --url git@github.com:org/shop-mobile.git \
-    --capability vectis@v1 \
+    --adapter vectis@v1 \
     --description "iOS and Android mobile clients. Owns login screens, the cart, checkout, and OAuth redirect handling."
 ```
 
@@ -83,7 +83,7 @@ specify registry show
 
 `validate` confirms three invariants the hub topology relies on:
 
-- Every entry has a kebab-case `name`, a well-formed `url`, and a non-empty `capability` capability value.
+- Every entry has a kebab-case `name`, a well-formed `url`, and a non-empty `adapter` adapter value.
 - Every entry has a `description` (the `description-missing-multi-repo` invariant fires above one project).
 - No entry has `url: .` (the `hub-cannot-be-project` invariant fires when `project.yaml: hub: true`).
 
@@ -102,7 +102,7 @@ The hub is now ready to drive a change. The recommended next step is the cross-r
 
 | Check | Command | Expect |
 |-------|---------|--------|
-| Hub markers in place | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
+| Hub markers in place | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `adapter:` line. |
 | Phase pipelines disabled | `ls .specify/` | `project.yaml` and `context.lock` only. **No** `slices/`, `specs/`, or `.cache/`. |
 | Context generated | `test -f AGENTS.md && specify context check` | Exit 0. |
 | Registry validates | `specify registry validate` | Exit 0, no diagnostics. |

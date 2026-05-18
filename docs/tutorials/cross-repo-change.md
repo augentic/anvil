@@ -57,7 +57,7 @@ The plan that lands has three changes:
 ```yaml
 changes:
   - name: oauth-login-contract     # platform-level contract change
-    capability: contracts@v1
+    adapter: contracts@v1
     depends-on: []
   - name: add-oauth-tokens         # backend implementation
     project: shop-backend
@@ -80,7 +80,7 @@ shop-platform/                              # the hub repo (this tutorial's work
 ├── change.md                           # operator brief for `oauth-login`
 ├── plan.yaml                               # the plan authored by /change:draft
 └── .specify/
-    ├── project.yaml                        # { hub: true, name: shop-platform } (capability: omitted)
+    ├── project.yaml                        # { hub: true, name: shop-platform } (adapter: omitted)
     ├── context.lock                        # context freshness fingerprint
     ├── plans/oauth-login/                  # discovery, workspace, proposal markdown
     ├── archive/                            # finalised changes (after Step 9)
@@ -101,14 +101,14 @@ git remote add origin git@github.com:org/shop-platform.git
 specify init --hub --name shop-platform
 ```
 
-In hub mode, **no positional** capability argument is passed — `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because later change commands use it when scaffolding operator-facing artifacts.
+In hub mode, **no positional** adapter argument is passed — `--hub` is the discriminator. Combining a adapter positional with `--hub` is rejected with `init-requires-adapter-or-hub`. `--name` must be kebab-case because later change commands use it when scaffolding operator-facing artifacts.
 
 <details>
 <summary>Expected output</summary>
 
 ```text
 Initialized .specify/ as a registry-only platform hub
-  capability: (none — hub mode)
+  adapter: (none — hub mode)
   config: /…/shop-platform/.specify/project.yaml
   cache present: false
   directories created: /…/shop-platform/.specify
@@ -125,31 +125,31 @@ shop-platform/
 ├── registry.yaml     # version: 1, projects: []
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    ├── project.yaml  # hub: true (capability: omitted)
+    ├── project.yaml  # hub: true (adapter: omitted)
     └── context.lock  # context freshness fingerprint
 ```
 
 `specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change draft` (which scaffolds both files together). It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
 
-> **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `capability:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
+> **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `adapter:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
 
 ## 2. Register the two projects
 
-Add the backend (Omnia capability):
+Add the backend (Omnia adapter):
 
 ```bash
 specify registry add shop-backend \
     --url git@github.com:org/shop-backend.git \
-    --capability omnia@v1 \
+    --adapter omnia@v1 \
     --description "User registration, account management, and the authoritative implementation of the shop's HTTP API. Owns persistence, OAuth provider integration, token storage, and order processing."
 ```
 
-Add the mobile app (Vectis capability):
+Add the mobile app (Vectis adapter):
 
 ```bash
 specify registry add shop-mobile \
     --url git@github.com:org/shop-mobile.git \
-    --capability vectis@v1 \
+    --adapter vectis@v1 \
     --description "iOS and Android mobile clients for the shop. Owns login and registration screens, the cart, checkout, and OAuth redirect handling. Calls the shop's HTTP API from the user-facing flows."
 ```
 
@@ -168,14 +168,14 @@ version: 1
 projects:
   - name: shop-backend
     url: git@github.com:org/shop-backend.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       User registration, account management, and the authoritative
       implementation of the shop's HTTP API. Owns persistence, OAuth
       provider integration, token storage, and order processing.
   - name: shop-mobile
     url: git@github.com:org/shop-mobile.git
-    capability: vectis@v1
+    adapter: vectis@v1
     description: >
       iOS and Android mobile clients for the shop. Owns login and
       registration screens, the cart, checkout, and OAuth redirect
@@ -220,7 +220,7 @@ Both sides depend on a shared HTTP contract for the auth endpoints,
 so the contract change must land before either implementation.
 ```
 
-Then author `./docs/oauth-login.md` with the prose feature description — one paragraph per requirement is plenty. The discovery brief reads it as `kind: documentation` and folds the capabilities into the inventory.
+Then author `./docs/oauth-login.md` with the prose feature description — one paragraph per requirement is plenty. The discovery brief reads it as `kind: documentation` and folds the adapters into the inventory.
 
 > **Change shape.** This walkthrough is the **new-feature** shape (sources are documentation only). The other two shapes — `migrate-legacy` (`--source <key>=<git-url>`) and `update-existing` (no flags) — flow through the same Steps 4–9 with different inputs. See the change-shapes preview at the bottom of [Working across repos: executing](cross-repo-execute.md#change-shapes-preview).
 
@@ -232,16 +232,16 @@ Run the draft skill:
 /change:draft oauth-login from ./docs/oauth-login.md
 ```
 
-`/change:draft` runs the four-phase plan brief pipeline (the briefs live alongside the skill at [`plugins/change/skills/draft/briefs/<capability>/`](../../plugins/change/skills/draft/briefs/)):
+`/change:draft` runs the four-phase plan brief pipeline (the briefs live alongside the skill at [`plugins/change/skills/draft/briefs/<adapter>/`](../../plugins/change/skills/draft/briefs/)):
 
 | Phase | What happens | On-disk artefact |
 |---|---|---|
-| **Discovery** | Reads `change.md` and `./docs/oauth-login.md`; emits a neutral capability inventory. | `.specify/plans/oauth-login/discovery.md` |
+| **Discovery** | Reads `change.md` and `./docs/oauth-login.md`; emits a neutral adapter inventory. | `.specify/plans/oauth-login/discovery.md` |
 | **Sync workspace** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each project slot. | `.specify/workspace/<project>/`, `.specify/plans/oauth-login/workspace.md` |
 | **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
 | **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
-When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `capability: contracts@v1` and no `project` — it runs against the hub itself.
+When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `adapter: contracts@v1` and no `project` — it runs against the hub itself.
 
 `specify plan validate` is the final gate; the skill exits non-zero on any error-level finding.
 
@@ -282,7 +282,7 @@ The plan is now the single source of truth for what runs where. Run `cat plan.ya
 ## What you learned
 
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo changes. The hub holds platform state and never carries code.
-- `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:draft`.
+- `specify registry add` registers code projects with kebab-case names, adapter identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:draft`.
 - `specify change draft` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
 - `/change:draft` runs discovery -> sync-workspace -> propose -> assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 - `/change:draft` ends at "plan validated, hand back to operator." Execution is a separate, operator-initiated step.

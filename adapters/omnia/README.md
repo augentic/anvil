@@ -1,6 +1,6 @@
 # Omnia Schema
 
-- **URL**: `https://github.com/augentic/specify/capabilities/omnia`
+- **URL**: `https://github.com/augentic/specify/adapters/omnia`
 - **Purpose**: Rust WASM development (greenfield or migration)
 - **Source**: Git Repository, Source Code, or Manual (all analyzed via `/spec:extract`)
 - **Target**: Rust WASM (Omnia SDK)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `capability.yaml` | Pipeline stages and per-stage brief references |
+| `adapter.yaml` | Pipeline stages and per-stage brief references |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
 | `briefs/design.md` | Generation brief for the design stage |
@@ -34,6 +34,6 @@ Build requires tasks to be complete and is tracked via `tasks.md`.
 
 Omnia review rules live under [`codex/`](codex/). This first cut is intentionally small and covers the highest-value checks that are specific to Rust WASM guest components using the Omnia SDK.
 
-## Capability Framework
+## Adapter Framework
 
-For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).
+For general adapter concepts — directory structure, field reference for `adapter.yaml`, adapter resolution, composition, caching, and rules override — see the [Adapters README](../README.md).

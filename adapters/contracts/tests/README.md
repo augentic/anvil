@@ -8,13 +8,13 @@ interface generation. They exercise the dedicated contract slice loop:
    `contracts/**/*.yaml` deltas.
 3. `/spec:merge` promotes those deltas into the root `contracts/` baseline.
 
-Implementation capabilities such as Omnia and Vectis consume baseline contracts
+Implementation adapters such as Omnia and Vectis consume baseline contracts
 as context. They do not generate new or changed interface shapes inline.
 
 ## Relationship To Acceptance
 
 These are owner-local scenario documents. They live next to the `contracts`
-capability because the behavior under test is one capability's slice loop in
+adapter because the behavior under test is one adapter's slice loop in
 isolation. Static checks validate their YAML frontmatter and scenario IDs; the
 scenario bodies remain human-readable operator instructions.
 
@@ -26,15 +26,15 @@ or agent follows the prose, runs the prompts, and fills out a
 
 | Scenario file                              | Scenario ID                  | Kind                  | Authorship mode          | Backend  |
 | ------------------------------------------ | ---------------------------- | --------------------- | ------------------------ | -------- |
-| [`describe.md`](describe.md)               | `contracts-describe`         | `capability`          | Generate from prose      | `manual` |
-| [`design.md`](design.md)                   | `contracts-design`           | `capability`          | Generate from prose      | `manual` |
-| [`update.md`](update.md)                   | `contracts-update-boundary`  | `capability-boundary` | Generate from prose      | `manual` |
-| [`import.md`](import.md)                   | `contracts-import`           | `capability`          | Import existing contracts | `manual` |
-| [`source.md`](source.md)                   | `contracts-source`           | `capability`          | Extract from source code  | `manual` |
+| [`describe.md`](describe.md)               | `contracts-describe`         | `adapter`          | Generate from prose      | `manual` |
+| [`design.md`](design.md)                   | `contracts-design`           | `adapter`          | Generate from prose      | `manual` |
+| [`update.md`](update.md)                   | `contracts-update-boundary`  | `adapter-boundary` | Generate from prose      | `manual` |
+| [`import.md`](import.md)                   | `contracts-import`           | `adapter`          | Import existing contracts | `manual` |
+| [`source.md`](source.md)                   | `contracts-source`           | `adapter`          | Extract from source code  | `manual` |
 
-Scenario IDs are kebab-case, prefixed with the capability name, and globally
+Scenario IDs are kebab-case, prefixed with the adapter name, and globally
 unique within the opted-in scenario set in this repo. `update.md` is marked
-`capability-boundary` because the scenario asserts the *absence* of contract
+`adapter-boundary` because the scenario asserts the *absence* of contract
 output during the first define run; the regression path that produces real
 contract artifacts is then exercised as a separate sequence within the same
 file. See [Scenario Pack Shape](#scenario-pack-shape) for the canonical
@@ -44,13 +44,13 @@ sections every scenario file uses.
 
 Every scenario file in this directory uses the same compact shape:
 
-1. **YAML frontmatter** — machine-readable routing (id, owner, kind, capability,
+1. **YAML frontmatter** — machine-readable routing (id, owner, kind, adapter,
    backend, entrypoint, stages, isolation, optional assertions and
    expected-artifacts hints).
 2. **Heading + `Scenario ID:` line** — the id restated as a visible field so
    it survives any environment that suppresses frontmatter rendering.
 3. **Intent** — what behavior the scenario proves.
-4. **Workspace** — capability, project shape, isolation rules, and any
+4. **Workspace** — adapter, project shape, isolation rules, and any
    precondition the operator must satisfy before invocation.
 5. **Inputs** — files or source trees the operator must create before
    invocation. The actual file bodies live here as fenced blocks; the prompts
@@ -77,13 +77,13 @@ The body remains canonical for human-readable prose.
 ---
 id: contracts-describe                # required, kebab-case, globally unique
 owner: contracts                      # required
-kind: capability                      # required: capability | capability-boundary
-capability: contracts@v1              # required for capability and capability-boundary
+kind: adapter                      # required: adapter | adapter-boundary
+adapter: contracts@v1              # required for adapter and adapter-boundary
 backend: manual                       # required: manual | agent | recorded | fixture
 entrypoint: /spec:define              # required: slash-command, /<plugin>:<skill>
 stages: [define, build, merge]        # required: subset of define | build | merge | drop
 isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice
-authorship-mode: prose                # optional capability-specific hint
+authorship-mode: prose                # optional adapter-specific hint
 assertions:                           # optional, named assertion ids
   - files-exist
   - contract-validator-clean
@@ -138,7 +138,7 @@ Use this prompt when you want an agent to run every scenario in sequence without
 asking for manual confirmation between steps:
 
 ```text
-Run all contract test scenarios in capabilities/contracts/tests/ in this order:
+Run all contract test scenarios in adapters/contracts/tests/ in this order:
 1. describe.md
 2. design.md
 3. update.md

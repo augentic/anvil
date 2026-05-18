@@ -1,6 +1,6 @@
 # OpenAPI — Importer
 
-> **When to read this.** Read this when an operator supplies an external OpenAPI (or Swagger 2.0) document and the contracts capability build brief needs the file normalised onto Specify conventions under a slice's `contracts/http/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when an operator supplies an external OpenAPI (or Swagger 2.0) document and the contracts adapter build brief needs the file normalised onto Specify conventions under a slice's `contracts/http/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
@@ -302,7 +302,7 @@ Schemas that are already `$ref` pointers to `../schemas/` are left untouched.
 | Context | Naming rule | Example |
 |---|---|---|
 | `components/schemas/<Name>` | Kebab-case the key | `User` → `user.yaml` |
-| Inline schema with `title:` | Kebab-case the title | `title: "User Profile"` → `user-profile.yaml` |
+| Inline schema with `title:` | Kebab-case the title | `title: "User Adapter"` → `user-adapter.yaml` |
 | `paths./users.post.requestBody` (no title) | `<resource>-<action>-request` | `user-create-request.yaml` |
 | `paths./users.post.responses.201` (no title) | Use baseline schema name if shape matches; else `<resource>-<action>-response` | `user-create-response.yaml` |
 | `paths./users/{user_id}.get.responses.200` (no title) | Use the resource singular | `user.yaml` |

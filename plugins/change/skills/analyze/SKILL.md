@@ -1,6 +1,6 @@
 ---
 name: change-analyze
-description: Extract plan-time candidate hints from documentation inputs and emit them into `discovery.md` — not full specs. Use when the plan-time discovery brief needs a capability-level inventory of a documentation source before `propose` slices it.
+description: Extract plan-time candidate hints from documentation inputs and emit them into `discovery.md` — not full specs. Use when the plan-time discovery brief needs a adapter-level inventory of a documentation source before `propose` slices it.
 argument-hint: <input-path> <output-dir> [source-key]
 ---
 
@@ -10,7 +10,7 @@ argument-hint: <input-path> <output-dir> [source-key]
 
 1. **Validate invocation** — require a local `$INPUT_PATH` and writable `$OUTPUT_DIR`; fail before partial writes.
 2. **Materialize remotes outside analyze** — if the source is remote, use the guarded clone snippet first and pass the resulting local path as `$INPUT_PATH`.
-3. **Resolve capability prompt** — run capability resolution and load `plugins/change/skills/draft/briefs/<capability>/analyze.md`; never embed clustering heuristics in this SKILL.
+3. **Resolve adapter prompt** — run adapter resolution and load `plugins/change/skills/draft/briefs/<adapter>/analyze.md`; never embed clustering heuristics in this SKILL.
 4. **Emit candidate blocks only** — append fenced-YAML candidate blocks under the pre-existing `## Candidate inventory` heading in `<output-dir>/discovery.md`. Do not write the heading itself; the discovery brief owns it.
 5. **Tag and deduplicate** — carry `<source-key>` markers when supplied, overwrite same-name candidates from this run, and preserve unrelated prior candidate blocks.
 6. **Preserve idempotency** — keep field order fixed, sort lists, reject malformed brief output, and prevent timestamps, absolute paths, or host state from leaking into outputs.
@@ -77,14 +77,14 @@ When `<source-key>` is supplied, the skill carries it into `discovery.md` as a t
 
 A byte-stable output lets the propose brief cache its slicing decisions and surfaces regressions via `git diff`.
 
-## Per-capability prompts (planning-skill-owned)
+## Per-adapter prompts (planning-skill-owned)
 
-The detailed extraction prompt lives under `plugins/change/skills/draft/briefs/<capability>/analyze.md` (planning briefs ship with the change-draft skill rather than the capability manifest):
+The detailed extraction prompt lives under `plugins/change/skills/draft/briefs/<adapter>/analyze.md` (planning briefs ship with the change-draft skill rather than the adapter manifest):
 
 - [`plugins/change/skills/draft/briefs/omnia/analyze.md`](../draft/briefs/omnia/analyze.md) — Omnia's documentation extraction prompt.
-- Other capabilities ship their own variant alongside under `plugins/change/skills/draft/briefs/<capability>/`.
+- Other adapters ship their own variant alongside under `plugins/change/skills/draft/briefs/<adapter>/`.
 
-`/change:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls.
+`/change:analyze` resolves the active adapter via `specify adapter resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are adapter-specific judgement calls.
 
 ## Error handling
 
@@ -98,6 +98,6 @@ The detailed extraction prompt lives under `plugins/change/skills/draft/briefs/<
 ## Guardrails
 
 - Never emit full specs; analyze produces candidate blocks only. Deep extraction is `/spec:extract`'s job, run per-slice at define time.
-- Never embed clustering heuristics in this SKILL; those live in the capability-owned brief (§*Per-capability prompts*).
+- Never embed clustering heuristics in this SKILL; those live in the adapter-owned brief (§*Per-adapter prompts*).
 - Never let timestamps, absolute paths, or run IDs leak into `discovery.md` — idempotency is a hard contract, not a nicety.
 - Never mutate files outside `discovery.md`. The skill appends candidate blocks under the pre-existing `## Candidate inventory` heading; it does not write the heading and does not write any sidecar files.

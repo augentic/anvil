@@ -1,6 +1,6 @@
 // src/payments.rs — payment flow for the legacy monolith.
 //
-// Surfaces two capabilities:
+// Surfaces two adapters:
 //   - checkout        (completes payment for a cart; depends on
 //                      cart_management, emits a payment_intent)
 //   - payment_intent  (wraps the payment-gateway authorisation call;
@@ -19,7 +19,7 @@ pub enum IntentStatus { Requires, Authorised, Failed }
 
 /// Checkout.
 ///
-/// Capability: `checkout` (depends on `cart_management`).
+/// Adapter: `checkout` (depends on `cart_management`).
 /// Completes payment for a user's pending order: computes the
 /// amount owed, asks the gateway for a payment intent, and
 /// records the result on the order.
@@ -32,7 +32,7 @@ pub fn checkout(order: &Order) -> Result<PaymentIntent, &'static str> {
 
 /// Payment intent.
 ///
-/// Capability: `payment_intent` (depends on `checkout`).
+/// Adapter: `payment_intent` (depends on `checkout`).
 /// Thin wrapper over the payment-gateway authorisation call.
 /// Returns a `PaymentIntent` in the `Requires` or `Authorised`
 /// state depending on the gateway response.

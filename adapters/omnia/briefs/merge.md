@@ -6,11 +6,11 @@ needs: [build]
 
 Before merging, confirm all task checkboxes in `tasks.md` are complete and the slice status is `complete`. Delta-spec merging, baseline coherence validation, the lifecycle transition, and the archive move are delegated to the `specify` CLI: `specify slice merge preview`, `specify slice merge conflict-check`, `specify slice merge run`, and `specify slice validate`.
 
-Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the full driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. Omnia adds no capability-specific adoption mechanics on top of that flow: every artefact under `specs/` is promoted by the standard delta merge, and there are no extra format validators or generated outputs to refresh at merge time.
+Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the full driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. Omnia adds no adapter-specific adoption mechanics on top of that flow: every artefact under `specs/` is promoted by the standard delta merge, and there are no extra format validators or generated outputs to refresh at merge time.
 
 ## Outcome signalling (Merge and adoption contract)
 
-The merge brief is the omnia capability's first contact with the slice loop's adoption contract. RFC-13 §"Merge and adoption contract" pins the protocol: the brief decides go/no-go and signals it through `specify slice outcome set` plus `specify slice journal append`. The core proceeds with archival on `success` and halts on `failure` / `deferred`, surfacing the journal entries to the operator. Capability diagnostics round-trip as opaque journal entries — the core does not parse them.
+The merge brief is the omnia adapter's first contact with the slice loop's adoption contract. RFC-13 §"Merge and adoption contract" pins the protocol: the brief decides go/no-go and signals it through `specify slice outcome set` plus `specify slice journal append`. The core proceeds with archival on `success` and halts on `failure` / `deferred`, surfacing the journal entries to the operator. Adapter diagnostics round-trip as opaque journal entries — the core does not parse them.
 
 The shared phase contract (outcome values, journal kinds, the verbatim-`summary` rule, plan-mutation rules) is authored once at [`plugins/spec/references/phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches below are the merge-phase deltas; the brief MUST pick exactly one before returning control.
 

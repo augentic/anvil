@@ -1,8 +1,8 @@
 ---
 id: contracts-design
 owner: contracts
-kind: capability
-capability: contracts@v1
+kind: adapter
+adapter: contracts@v1
 backend: manual
 entrypoint: /spec:define
 stages: [define, build, merge]
@@ -48,7 +48,7 @@ exercises the source-document path of the prose authorship mode end-to-end.
 
 ## Workspace
 
-- **Capability:** `contracts@v1`.
+- **Adapter:** `contracts@v1`.
 - **Project shape:** a single project initialised with the `contracts@v1`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable.

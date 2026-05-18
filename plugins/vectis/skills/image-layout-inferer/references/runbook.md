@@ -8,7 +8,7 @@ When conflicts arise, follow this strict precedence:
 
 1. **The image-specific pipeline rules in SKILL.md and this runbook** — image-specific pipeline rules and prerequisite checks.
 2. **[`layout-inferer-contract.md`](layout-inferer-contract.md)** — the producer-side contract every inferer shares (arguments, output, idempotence, component directive, verification, terminal summary).
-3. **[`capabilities/vectis/composition.schema.json`](../../../../../capabilities/vectis/composition.schema.json)** — the YAML the skill emits MUST validate against the unwired subset.
+3. **[`adapters/vectis/composition.schema.json`](../../../../../adapters/vectis/composition.schema.json)** — the YAML the skill emits MUST validate against the unwired subset.
 4. **Existing `layout.yaml` content** — preserve operator edits and previously emitted comments; refine, never overwrite.
 5. **Source images** — reference for visible content only.
 6. **Inferred suggestions** — emit as `# TODO` / `# candidate component` comments rather than committed YAML when in doubt.
@@ -31,7 +31,7 @@ Accepted image formats: PNG and JPEG only. HEIC, TIFF, PDF, SVG, WebP, and GIF M
 
 ## Vision Prerequisite
 
-The skill assumes the agent runtime can inspect attached images. The check is **positive**: at least one of the input image paths MUST be successfully read through the runtime's native attachment / file-read mechanism. The skill MUST NOT consult a host-provided "vision capability" flag (those are announced inconsistently across runtimes), and it MUST NOT fall back to filename-based or metadata-only inference.
+The skill assumes the agent runtime can inspect attached images. The check is **positive**: at least one of the input image paths MUST be successfully read through the runtime's native attachment / file-read mechanism. The skill MUST NOT consult a host-provided "vision adapter" flag (those are announced inconsistently across runtimes), and it MUST NOT fall back to filename-based or metadata-only inference.
 
 When the check fails, exit `1` with a single-line message naming the supported runtimes:
 
@@ -229,5 +229,5 @@ When adding a fixture, follow the existing convention:
 
 - [`layout-inferer-contract.md`](layout-inferer-contract.md) — the producer-side contract every layout inferer follows (arguments, output rules, idempotence rules, component-directive emission policy, verification, terminal summary).
 - [RFC-11: UI Specification Workflow](../../../../../rfcs/archive/rfc-11-ui-spec.md) — normative source for §A (shared contract), §C (image inferer specifics), §G (component primitives), §J (skill naming + plugin layout).
-- [`capabilities/vectis/composition.schema.json`](../../../../../capabilities/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
-- [`capabilities/vectis/tokens.schema.json`](../../../../../capabilities/vectis/tokens.schema.json) and [`capabilities/vectis/assets.schema.json`](../../../../../capabilities/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume when their files exist.
+- [`adapters/vectis/composition.schema.json`](../../../../../adapters/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
+- [`adapters/vectis/tokens.schema.json`](../../../../../adapters/vectis/tokens.schema.json) and [`adapters/vectis/assets.schema.json`](../../../../../adapters/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume when their files exist.

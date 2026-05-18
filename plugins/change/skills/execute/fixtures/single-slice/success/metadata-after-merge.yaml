@@ -7,7 +7,7 @@ name: user-registration
 status: merged
 created-at: 2026-04-19T10:00:00Z
 updated-at: 2026-04-19T10:31:45Z
-capability: omnia
+adapter: omnia
 outcome:
   phase: merge
   outcome: success

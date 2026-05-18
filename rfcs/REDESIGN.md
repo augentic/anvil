@@ -1,14 +1,14 @@
 # Specify redesign — concise sketch
 
-> Status: Draft sketch — captures the high-level redesign discussion before drilling into details. Not yet an RFC.
+> Status: Historical sketch — captures the high-level redesign discussion that preceded [RFC-25 (Rename `capability` → `profile`)](rfc-25-profile-rename.md). The rename was taken as a standalone step; the structural redesign sketched below is deferred and remains open for a future RFC.
 
-I read `REVIEW.md`, `rfc-20-plan.md`, `rfc-25-source-profiles.md`, and `capabilities/omnia/capability.yaml` to ground this against the current code path. Below is a single-pass redesign at the highest level; everything is open for drill-down.
+I read `REVIEW.md`, `rfc-20-plan.md`, the now-deleted `rfc-25-source-profiles.md` (superseded by RFC-25), and `profiles/omnia/profile.yaml` to ground this against the current code path. Below is a single-pass redesign at the highest level; everything is open for drill-down.
 
 ## Core observation
 
-Today's design has the wrong primary axis. It treats **Layer 1 vs Layer 2** as the organising spine and bolts source-side concerns onto target-keyed structures. RFC-25 already noticed this and proposed a parallel `source-profile` apparatus next to `capability/`. Building two parallel-but-duplicate plugin systems is the symptom; the cure is to make the **source / target distinction** the primary axis and collapse both into one extension model.
+Today's design has the wrong primary axis. It treats **Layer 1 vs Layer 2** as the organising spine and bolts source-side concerns onto target-keyed structures. RFC-25 already noticed this and proposed a parallel `source-profile` apparatus next to `profile/`. Building two parallel-but-duplicate plugin systems is the symptom; the cure is to make the **source / target distinction** the primary axis and collapse both into one extension model.
 
-A second mis-design: `project.yaml.capability` is **singular**. A real system is often `omnia + contracts`, or `vectis + contracts`, or all three. The framework should compose, not pick one.
+A second mis-design: `project.yaml.profile` is **singular**. A real system is often `omnia + contracts`, or `vectis + contracts`, or all three. The framework should compose, not pick one.
 
 A third observation: once legacy migration finishes, the source axis simply has nothing plugged into it. There's no "mode" to switch — emptiness is the off state.
 
@@ -16,7 +16,7 @@ A third observation: once legacy migration finishes, the source axis simply has 
 
 ### 1. One plugin shape, two axes
 
-Replace both `capabilities/<name>/capability.yaml` and RFC-25's `source-profiles/<name>/profile.yaml` with a single concept — call it a **lens** (or module / extension; name TBD).
+Replace both `profiles/<name>/profile.yaml` and RFC-25's `source-profiles/<name>/profile.yaml` with a single concept — call it a **lens** (or module / extension; name TBD).
 
 ```yaml
 # lenses/<name>/lens.yaml
@@ -52,9 +52,9 @@ lenses:
 
 This is what kills the "Layer 1 vs Layer 2" framing as a design primitive: a layer is just a phase set, and any project may include any subset of phases.
 
-### 3. Each phase is a **composition** of lens contributions, not a pipeline owned by one capability
+### 3. Each phase is a **composition** of lens contributions, not a pipeline owned by one profile
 
-Current `capability.yaml:pipeline.define = [proposal, specs, design, tasks]` is a single ordered pipeline owned by one capability. Replace with a per-phase composition rule:
+Current `profile.yaml:pipeline.define = [proposal, specs, design, tasks]` is a single ordered pipeline owned by one profile. Replace with a per-phase composition rule:
 
 - The **framework** owns the cross-target shared briefs (`proposal.md` — what & why is target-agnostic).
 - Each enabled **target lens** contributes target-specific briefs to that phase (`omnia/design.md`, `vectis/design.md`, `contracts/design.md`), dispatched per target.
@@ -86,7 +86,7 @@ No code in the host binary changes. The RFC-20 F1 deletion is the right move pre
 ## What goes away
 
 - The parallel `source-profile` scaffolding RFC-25 proposes (schema, resolver, verb, cache, validators) — collapsed into the unified lens model.
-- `project.yaml.capability` as a singular field.
+- `project.yaml.profile` as a singular field.
 - The `kind: legacy-code | documentation` switch baked into `/change:analyze`'s skill body.
 - Source-side prose inside target-keyed `briefs/<cap>/analyze.md` files.
 - The "Layer 1 vs Layer 2" framing as the structural primitive (it survives as a *phase grouping* — define/build/merge vs draft/execute/finalize — but stops dictating the plugin shape).
@@ -102,15 +102,15 @@ No code in the host binary changes. The RFC-20 F1 deletion is the right move pre
 ## Migration shape (rough, for drill-down)
 
 1. Land the unified `lens.yaml` schema next to (not replacing) the existing two.
-2. Move `capabilities/<name>/` directories under `lenses/<name>/` with `axis: target`; symlink the old path for one release.
+2. Move `profiles/<name>/` directories under `lenses/<name>/` with `axis: target`; symlink the old path for one release.
 3. Introduce `lenses/{typescript-node, documentation, default}/` with the content RFC-25 already specifies (this is RFC-25's payload — just under the unified directory).
-4. Bump `project.yaml` to support `lenses.targets: [...]` while keeping the singular `capability` field as a compat alias for one release.
-5. Refactor each phase skill body to resolve lenses and iterate, instead of hard-coding "the capability".
+4. Bump `project.yaml` to support `lenses.targets: [...]` while keeping the singular `profile` field as a compat alias for one release.
+5. Refactor each phase skill body to resolve lenses and iterate, instead of hard-coding "the profile".
 6. Retire the old paths and the singular field in the next major.
 
 ---
 
 ## Open questions for drill-down
 
-- **Naming.** "Lens" is one option; "module", "extension", "facet", "profile" are others. The name carries the redesign — "profile" reads as source-only, "capability" reads as target-only, neither survives the merge.
+- **Naming.** "Lens" is one option; "module", "extension", "facet", "profile" are others. The name carries the redesign — "profile" reads as source-only, "profile" reads as target-only, neither survives the merge.
 - **Brief-composition semantics.** When multiple target lenses are active in one slice, does each contribute its own `design.md` (per-target artifacts in `.specify/slices/<name>/design/<target>.md`), or do we merge into one `design.md` with target-keyed sections? The former is mechanically simpler; the latter reads better for an operator reviewing a slice.

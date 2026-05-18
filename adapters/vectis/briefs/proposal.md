@@ -7,8 +7,8 @@ generates: proposal.md
 Sections:
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?
 - **Source**: Always **Manual** for Crux projects. Requirements are described directly in the proposal and subsequent artifacts.
-- **What Changes**: Bullet list of changes. Be specific about new capabilities, modifications, or removals. Mark breaking changes with **BREAKING**.
-- **Features**: Identify which features will be created or modified. Each feature describes a business capability — not a software component. Name features after what the app does (e.g., `todo-app`, `weather-forecast`, `user-settings`), not after implementation layers (avoid names like `todo-core` or `todo-ios`).
+- **What Changes**: Bullet list of changes. Be specific about new adapters, modifications, or removals. Mark breaking changes with **BREAKING**.
+- **Features**: Identify which features will be created or modified. Each feature describes a business adapter — not a software component. Name features after what the app does (e.g., `todo-app`, `weather-forecast`, `user-settings`), not after implementation layers (avoid names like `todo-core` or `todo-ios`).
   - **New Features**: List features being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names.
   - **Modified Features**: List existing features whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `.specify/specs/` for existing spec names. Leave empty if no requirement changes.
 - **Platforms**: Declare which platforms this change targets. This determines which skills the build phase invokes:
@@ -39,14 +39,14 @@ Manual
 
 ## What Changes
 
-<!-- Describe what will change. Be specific about new capabilities or modifications. -->
+<!-- Describe what will change. Be specific about new adapters or modifications. -->
 
 ## Features
 
 ### New Features
 
 <!-- List features being introduced. Each becomes a new specs/<name>/spec.md.
-Use kebab-case names that describe the business capability.
+Use kebab-case names that describe the business adapter.
 
 Example:
 - **todo-app** — Todo list with CRUD, persistence, and sync.

@@ -1,6 +1,6 @@
 # /change:analyze
 
-Plan-time capability inference for legacy code and documentation inputs.
+Plan-time adapter inference for legacy code and documentation inputs.
 
 ## Synopsis
 
@@ -19,13 +19,13 @@ Plan-time capability inference for legacy code and documentation inputs.
 
 ## When to use
 
-Typically invoked by the discovery phase during `/change:draft`, not directly. Reads one input and appends capability summaries to `discovery.md`.
+Typically invoked by the discovery phase during `/change:draft`, not directly. Reads one input and appends adapter summaries to `discovery.md`.
 
 ## Artifacts produced
 
 | Artifact | Location | Content |
 |----------|----------|---------|
-| Capability summaries | `<output-dir>/discovery.md` (appended) | Per-capability: name, summary, source files, dependencies, confidence |
+| Adapter summaries | `<output-dir>/discovery.md` (appended) | Per-adapter: name, summary, source files, dependencies, confidence |
 | Structural metadata | `<output-dir>/analyze/<key>/metadata.json` | Language, LOC, module count (legacy-code only) |
 
 ## Behavior
@@ -37,19 +37,19 @@ Branches on `--kind`:
 1. Reads the source tree at `input-path`.
 2. Identifies modules, entry points, and dependency structure.
 3. Produces structural metadata (`metadata.json`): language, lines of code, module count.
-4. Extracts capability summaries: name, one-line summary, `sources:` file-hint list, `depends-on:` edges, `confidence:` marker.
+4. Extracts adapter summaries: name, one-line summary, `sources:` file-hint list, `depends-on:` edges, `confidence:` marker.
 5. Appends summaries to `discovery.md`.
 
 ### `documentation`
 
 1. Reads the documentation file(s) at `input-path`.
-2. Identifies capabilities described in the documentation.
-3. Extracts capability summaries in the same format as legacy-code.
+2. Identifies adapters described in the documentation.
+3. Extracts adapter summaries in the same format as legacy-code.
 4. Appends summaries to `discovery.md`.
 
 ### Key principle
 
-Analyze produces **capability summaries**, not full specs. It is deliberately cheap -- it scans the whole source to build an inventory without deep extraction. Deep per-capability extraction happens later at `/spec:define` time via `/spec:extract`.
+Analyze produces **adapter summaries**, not full specs. It is deliberately cheap -- it scans the whole source to build an inventory without deep extraction. Deep per-adapter extraction happens later at `/spec:define` time via `/spec:extract`.
 
 This two-skill split is a scaling strategy:
 

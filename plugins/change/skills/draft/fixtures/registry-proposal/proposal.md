@@ -24,14 +24,14 @@ The registry-proposal sub-step (step 3(d).1) added one new project to `registry.
 |---|---|---|---|
 | alpha-gateway | git@github.com:augentic/alpha-gateway.git | omnia@v1 | Inbound traffic gateway carved out of the monolith's edge layer. |
 
-Trigger: `alpha-gateway-extract` was unresolved during step 3(d) — no existing project (`legacy-monolith`, `command-centre`) was a clean owner for the gateway capability. The operator opted to create a new project rather than route the slice to one of the incumbents. Subsequent shell-outs ran in this exact order:
+Trigger: `alpha-gateway-extract` was unresolved during step 3(d) — no existing project (`legacy-monolith`, `command-centre`) was a clean owner for the gateway adapter. The operator opted to create a new project rather than route the slice to one of the incumbents. Subsequent shell-outs ran in this exact order:
 
-1. `specify registry add alpha-gateway --url git@github.com:augentic/alpha-gateway.git --capability omnia@v1 --description "Inbound traffic gateway carved out of the monolith's edge layer."`
+1. `specify registry add alpha-gateway --url git@github.com:augentic/alpha-gateway.git --adapter omnia@v1 --description "Inbound traffic gateway carved out of the monolith's edge layer."`
 2. `specify workspace sync`
 3. `specify plan amend alpha-gateway-extract --project alpha-gateway`
 
 ## Notes
 
-- Heuristics applied (Omnia, from `plugins/change/skills/draft/briefs/omnia/propose.md`): one slice per discovered capability; emit order follows `depends-on`.
+- Heuristics applied (Omnia, from `plugins/change/skills/draft/briefs/omnia/propose.md`): one slice per discovered adapter; emit order follows `depends-on`.
 - Slice 3 was originally surfaced with `confidence: medium` because no existing baseline spec covered the gateway layer; the operator confirmed the carve-out and approved the new registry entry.
 - `specify plan validate` — no errors.

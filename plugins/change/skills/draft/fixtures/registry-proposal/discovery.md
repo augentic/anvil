@@ -1,6 +1,6 @@
 # Discovery — platform-modernisation
 
-## Capability inventory
+## Adapter inventory
 
 <!-- source-key: monolith -->
 ### ingest-pipeline-refactor
@@ -50,8 +50,8 @@ sources:
   - src/edge/normalise.ts
 depends-on: []
 hints:
-  baseline-overlap: none — capability is greenfield in spec terms
-  schema-tier: backend service (no shell-side capability)
+  baseline-overlap: none — adapter is greenfield in spec terms
+  schema-tier: backend service (no shell-side adapter)
 confidence: medium
 ```
 
