@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Refactor Specify into a small **core** plus two directional adapter roles — **source adapters** and **target adapters**. Source adapters turn evidence (intent, documentation, legacy code, OpenAPI, …) into candidates and slice-time evidence packs. Target adapters turn Specify artifacts into runnable code (omnia, vectis, contracts, …). Both share one plugin implementation shape (manifest + briefs + optional WASI tools + resolver + cache). A single slice may bind multiple sources; slice authoring synthesises evidence from all bound sources with explicit per-requirement provenance and a `[conflict]` tag for genuine disagreements.
+Refactor Specify into a small **core** plus two directional adapter roles — **source adapters** and **target adapters**. Source adapters turn evidence (intent, documentation, legacy code, OpenAPI, …) into candidates and slice-time evidence packs. Target adapters turn Specify artifacts into runnable code (omnia, vectis, contracts, …). Both share one plugin implementation shape (manifest + briefs + optional WASI tools + resolver + cache). A single slice may bind multiple sources; slice authoring synthesises evidence from all bound sources with explicit per-requirement provenance and a `[conflict]` tag for genuine disagreements. Documentation-driven specification is a default source path, implemented through the same source-adapter contract as every other input, not a side channel.
 
 The redesign deletes today's two-path bifurcation between documentation analysis and legacy-code survey, retires `/change:survey` and `/spec:extract` as named skills, replaces the unqualified `adapter` axis with `source adapter` and `target adapter`, and makes greenfield, migration, and mixed-evidence work three values of one parameter (the bound source set) rather than three forked code paths.
 
@@ -20,14 +20,14 @@ Three structural problems made the current shape brittle.
 
 **The adapter slot has no name for inputs.** Today, unqualified `adapter` names the *target* runtime (omnia, vectis, contracts). There is no symmetrical phrase for the *source* of evidence; the framework gestures at it through `kind`, through `language`, through per-language brief directories, through the `source` CLI noun on `/change:draft`. The asymmetry shows up as cognitive load on every skill author trying to add a new input.
 
-The redesign collapses these three problems into one move: qualify adapters by direction, give source and target adapters the same implementation shape, and put legacy-code support outside the core.
+The redesign collapses these three problems into one move: qualify adapters by direction, give source and target adapters the same implementation shape, make documentation-driven specification a first-class default source path, and put legacy-code support outside the core.
 
 ## Design
 
 ### Principles
 
 1. **Two adapter roles, one implementation shape.** Source adapters and target adapters are distinct roles that share one plugin implementation shape (manifest + briefs + optional WASI tools + resolver + cache). Same loader, same validator, same cache layout, same `specify {source,target} {resolve,list,validate}` verb family.
-2. **Core is small.** Core ships the workflow (`/spec:`*, `/change:*`), the plugin resolver, the candidate-block grammar, the `discovery.md` handshake, the single `intent` source adapter, and the CLI primitives. Every other source adapter and every target adapter is an add-on.
+2. **Core is small.** Core ships the workflow (`/spec:`*, `/change:*`), the plugin resolver, the candidate-block grammar, the `discovery.md` handshake, the default `intent` and `documentation` source adapters, and the CLI primitives. Legacy-code, contract-import, and every target adapter remain add-ons.
 3. **Multi-source is the general case.** A slice's evidence is a *set* of source evidence packs. Single-source slices are a degenerate case. Greenfield, pure migration, and realistic mixed-evidence work are three values of one parameter.
 4. **Provenance is mechanical.** Every requirement in `spec.md` records which source(s) supplied it. Conflicts between sources halt the slice with an explicit `[conflict]` tag rather than silent resolution.
 5. **Authority is hierarchical and explicit.** When sources disagree on the same fact, a published authority hierarchy decides which evidence wins. Operators can override per-requirement; the framework never silently picks.
@@ -115,7 +115,45 @@ evidence:
     response-shape: { ok: boolean }
 ```
 
-The pack's `kind` enum is closed and shared across all source adapters. New kinds require an RFC update. The `authority` field is the source adapter's self-classification (see §Authority hierarchy); the operator may override at slice-binding time. Evidence packs do not store raw source bodies by default: they store structured facts, relative paths, line spans, content hashes, and bounded excerpts only when the adapter contract explicitly allows them.
+Documentation sources use the same shape. The evidence entries differ, but the workflow does not:
+
+```yaml
+# .specify/slices/<slice>/evidence/<source-key>.yaml
+source: product-requirements
+adapter: documentation
+candidate: user-registration
+authority: design-spec
+evidence:
+  - kind: requirement-statement
+    path: docs/registration.md
+    heading: Registration policy
+    lines: [34, 51]
+    sha256: 1f42...
+    excerpt: |
+      Users must register with a verified email address before they can create a workspace.
+  - kind: acceptance-criterion
+    path: docs/registration.md
+    heading: Acceptance criteria
+    lines: [62, 67]
+    sha256: 7b19...
+  - kind: decision-record
+    path: docs/adr/004-registration.md
+    title: Use external email verification
+    sha256: c913...
+```
+
+The pack's `kind` enum is closed and shared across all source adapters. Initial kinds include `intent-text`, `requirement-statement`, `acceptance-criterion`, `decision-record`, `document-section`, `diagram-reference`, `contract-reference`, `code-excerpt`, `type-definition`, and `external-call`. New kinds require an RFC update. The `authority` field is the source adapter's self-classification (see §Authority hierarchy); the operator may override at slice-binding time. Evidence packs do not store raw source bodies by default: they store structured facts, relative paths, line spans, content hashes, and bounded excerpts only when the adapter contract explicitly allows them.
+
+### Default source adapters
+
+Core ships two source adapters by default.
+
+| Adapter | Role | Default authority |
+| ------- | ---- | ----------------- |
+| `intent` | Captures operator-authored briefs, inline requirements, and explicit corrections. Used when no other source is bound, or alongside other sources when the operator adds clarifying intent. | `intent` |
+| `documentation` | Captures requirements documents, design notes, proposals, RFCs, existing specs, architecture records, and other written product or technical intent. Used for the ordinary documentation-driven path into specs and design. | `design-spec` |
+
+Both are true source adapters with manifests, `enumerate` briefs, and `extract` briefs. They are default-packaged for usability, but they do not get special workflow rules. `/change:draft` still calls `enumerate`; `/spec:define` still calls `extract`; slice synthesis still consumes evidence packs.
 
 ### Target adapter contract
 
@@ -167,7 +205,7 @@ The slice loop does not branch on archetype. The synthesis step (§Slice authori
 
 1. **Resolve** the bound target adapter (one) and each bound source adapter (N).
 2. **Extract** in parallel: call `extract(candidate, source-binding)` on each bound source. Each returns one persisted evidence pack.
-3. **Synthesise**: invoke the target adapter's `specs` and `design` briefs with all N evidence packs as input. The briefs are written to consume pack sets, not single packs.
+3. **Synthesise**: invoke the Specify artifact-synthesis contract with all N evidence packs as input. Target adapters contribute their `specs` and `design` briefs where target-specific shaping is required, but the source-to-`spec.md` / `design.md` contract is uniform and Specify-owned. The briefs are written to consume pack sets, not single packs.
 4. **Tag provenance**: every requirement in `specs/<crate>/spec.md` carries a `Sources:` line listing the source keys whose evidence backed it. Same for design-section blocks.
 5. **Flag conflicts**: when evidence packs disagree on the same fact, the synthesis tags the requirement `[conflict]` and emits a `Conflicting evidence` block beneath it, naming each source's claim. The slice halts for operator review. `[conflict]` is a peer of today's `[unknown]` tag.
 6. **Write artifacts** via the existing `/spec:define` writer; `.metadata.yaml` transitions through `defining` → `awaiting-review` as today.
@@ -227,8 +265,8 @@ Plugin manifests, briefs, and WASI tools are materialised under their axis subdi
 # .specify/project.yaml
 specify_version: 2.0.0
 sources:                          # set of source adapters available in this project
-  - intent                        # always present; framework-provided
-  - documentation
+  - intent                        # default source adapter
+  - documentation                 # default source adapter
   - legacy-code-typescript
 targets:                          # set of target adapters this project produces
   - omnia
@@ -286,7 +324,7 @@ Retirements:
 - `/spec:{init,define,build,merge,drop}`
 - `/change:{draft,execute,finalize}`
 - The candidate-block grammar and `discovery.md` handshake.
-- The `intent` source adapter (the only one shipped with core).
+- The `intent` and `documentation` source adapters, shipped as default source paths.
 - The unified resolver, cache layout, and `plugin.schema.json`.
 - `plugins/references/` — cross-cutting references.
 
@@ -298,12 +336,11 @@ Retirements:
 | `targets/omnia`                                                 | `augentic/specify-targets-omnia` (or equivalent monorepo subdir) | Carved from `adapters/omnia/`.                                                                                                           |
 | `targets/vectis`                                                | `augentic/specify-targets-vectis`                                | Carved from `adapters/vectis/`.                                                                                                          |
 | `targets/contracts`                                             | `augentic/specify-targets-contracts`                             | Carved from `adapters/contracts/`.                                                                                                       |
-| `sources/documentation`                                         | `augentic/specify-sources-docs`                                  | New, absorbs `plugins/change/skills/draft/briefs/<target>/analyze.md` prose.                                                             |
 | `sources/legacy-code-{typescript,cobol,csharp,rust,javascript}` | `augentic/specify-sources-legacy`                                | New, absorbs `plugins/change/skills/survey/briefs/enumerate/<language>.md`, the repair loop, `surfaces.json` schema, language detection. |
 | `sources/openapi`, `sources/asyncapi`, `sources/json-schema`    | `augentic/specify-sources-contracts`                             | New, mirrors today's `/contract:`* import surface as evidence sources.                                                                   |
 
 
-Removing the legacy-code add-on removes COBOL/TS enumeration and extraction; documentation work and greenfield work keep functioning. The framework's pure spec-driven form is the `intent` source adapter plus whatever target adapters are installed.
+Removing the legacy-code add-on removes COBOL/TS enumeration and extraction; documentation work and greenfield work keep functioning. The framework's pure spec-driven form is the `intent` and `documentation` source adapters plus whatever target adapters are installed.
 
 ### `surfaces.json` and per-language briefs
 
@@ -358,15 +395,15 @@ The named verbs `/change:analyze`, `/change:survey`, and `/spec:extract` are rem
 1. **Schemas.** Land `schemas/plugin.schema.json` (shared implementation shape), `schemas/source.schema.json` (axis-specific), `schemas/target.schema.json` (rename + axis-specific). Delete `schemas/adapter.schema.json`. Update `schemas/plan/plan.schema.json` to rename `adapter` → `target` and make `sources` a required list with min 0 entries. Update `schemas/sources/sources.schema.json` to add source-adapter binding fields.
 2. **Domain rename.** Mass-rename unqualified `Adapter`* → `Target*` across today's target-runtime code in `crates/domain/`, `crates/tool/`, `crates/error/`, `src/`. Update `Error` discriminants. Update `Plan::resolve_adapter` → `Plan::resolve_target`. Land the new `Plan::resolve_sources` returning `Vec<SourceAdapter>`.
 3. **Plugin loader.** New module `crates/domain/src/plugin/` containing `resolver.rs`, `cache.rs`, `manifest.rs`, `axis.rs`. Replaces `crates/domain/src/adapter/`. One loader, two axes.
-4. **`intent` source adapter.** Ship in core under `sources/intent/`. Manifest, `briefs/enumerate.md`, `briefs/extract.md`. Trivial implementations: enumerate emits one candidate from the operator's brief; extract emits the brief text as a single `kind: intent-text` evidence entry.
-5. **Slice synthesis.** Refactor `/spec:define` brief authoring to accept N evidence packs. New brief contract: `briefs/specs.md` and `briefs/design.md` consume an evidence-pack set, emit `Sources:` and `Status:` lines per requirement, halt with `[conflict]` on disagreement.
+4. **Default source adapters.** Ship `sources/intent/` and `sources/documentation/` in core. Each has a manifest, `briefs/enumerate.md`, and `briefs/extract.md`. `intent` enumerate emits one candidate from the operator's brief and extract emits the brief text as `kind: intent-text`; `documentation` enumerate reads bound docs and emits candidate blocks, then extract emits documentation-native evidence entries such as `requirement-statement`, `acceptance-criterion`, `decision-record`, and `document-section`.
+5. **Slice synthesis.** Refactor `/spec:define` brief authoring to accept N evidence packs. New brief contract: `briefs/specs.md` and `briefs/design.md` consume an evidence-pack set, emit `Sources:` and `Status:` lines per requirement, halt with `[conflict]` on disagreement, and produce the same artifact shape whether the bound sources are `intent`, `documentation`, legacy code, contracts, or any mixture.
 6. **Provenance tags.** Extend `spec.md` parser in `crates/domain/src/specs/` to require `ID:`, `Sources:`, `Status:` lines on every requirement block. Add `[conflict]` and `[divergence]` to the closed tag enum alongside `[unknown]`.
 7. **Discovery handshake.** Implement stable-id merging plus reviewable name/alias correlation in the discovery writer. Add fixture and golden coverage.
 8. **CLI surface.** New verbs: `specify source {resolve,list,validate}`. Rename: `specify adapter` → `specify target`. New flags: `specify plan amend <slice> --add-source <key>`, `--remove-source`. Delete: `specify change survey`.
-9. **Carve out the legacy-code, documentation, contracts, and target adapters.** Move into their own repositories (or top-level directories in a monorepo). Each ships its own README, manifest, briefs, and WASI tools where applicable. The `surfaces.json` schema and repair loop move with `sources/legacy-code-`*.
+9. **Carve out the legacy-code, contracts, and target adapters.** Move into their own repositories (or top-level directories in a monorepo). Each ships its own README, manifest, briefs, and WASI tools where applicable. The `surfaces.json` schema and repair loop move with `sources/legacy-code-`*.
 10. **`discovery-summary.md` rename.** Implement the generic form. Update fixtures.
 11. **Documentation rewrite.** `AGENTS.md`, `.cursor/rules/project.mdc`, `docs/` — every unqualified mention of `adapter` becomes `source adapter` or `target adapter`; every mention of `analyze`/`survey`/`extract` becomes "the source adapter's enumerate/extract capability". RFC-22, RFC-24 prose updated.
-12. **Acceptance.** Cross-repo Deno suite gains: a multi-source slice with one legacy and one doc source asserting `Sources: [...]` provenance; a `[conflict]` halt fixture; a `[divergence]` non-halt fixture; a pure-intent slice asserting trivial synthesis.
+12. **Acceptance.** Cross-repo Deno suite gains: a documentation-only slice asserting standard `spec.md` / `design.md` output and `Sources: [<doc-source>]` provenance; a multi-source slice with one legacy and one doc source asserting `Sources: [...]` provenance; a `[conflict]` halt fixture; a `[divergence]` non-halt fixture; a pure-intent slice asserting trivial synthesis.
 
 ## Migration
 
@@ -415,7 +452,7 @@ The justification for breaking compatibility is that the rename and restructure 
 
 ## Open Questions
 
-1. Should the `intent` source adapter be packaged as a true plugin implementation (with `source.yaml` etc.) or hard-wired into the core CLI as a built-in? Current preference: true plugin implementation, shipped in-repo under `sources/intent/`, so the plugin shape has zero exceptions.
+1. Should the default `intent` and `documentation` source adapters be packaged as true plugin implementations (with `source.yaml` etc.) or hard-wired into the core CLI as built-ins? Current preference: true plugin implementations, shipped in-repo under `sources/intent/` and `sources/documentation/`, so the plugin shape has zero exceptions.
 2. Should `Status: divergence` halt the slice (operator must explicitly accept the behaviour change) or proceed (the synthesis already picked the higher-authority claim)? Current preference: proceed but emit a `divergence` finding in `specify slice validate`; halting is `[conflict]`-only.
 3. Should `surfaces.json` move with the legacy-code adapter family or stay in core as a shared "structured evidence" schema? Current preference: move with the adapter family — it is legacy-code-shaped and other sources do not need it.
 4. How should `extract` be sandboxed when a source adapter ships a WASI tool? Current preference: same posture as RFC-15 — the WASI tool runs under the existing `specify tool run` sandbox; briefs read its output.
