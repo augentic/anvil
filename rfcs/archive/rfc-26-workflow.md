@@ -1,14 +1,14 @@
 # RFC-26: Workflow Collapse (archived — folded into RFC-25)
 
-> Status: Archived — never shipped as a standalone RFC. The workflow-collapse design described below was folded into [RFC-25: Directional Adapters and Workflow Collapse](../rfc-25-adapters.md) at draft stage; that RFC is the live source of truth for everything here. This document is retained for the design history only — every cross-reference into it should be repointed at the relevant §section of RFC-25.
+> Status: Archived — never shipped as a standalone RFC. The workflow-collapse design described below was folded into [RFC-25: Directional Adapters and Workflow Collapse](../rfc-25-workflow.md) at draft stage; that RFC is the live source of truth for everything here. This document is retained for the design history only — every cross-reference into it should be repointed at the relevant §section of RFC-25.
 >
-> Original status line: Draft — Depends: [RFC-25](../rfc-25-adapters.md). Supersedes: [RFC-23 (archived)](rfc-23-change-lifecycle.md).
+> Original status line: Draft — Depends: [RFC-25](../rfc-25-workflow.md). Supersedes: [RFC-23 (archived)](rfc-23-change-lifecycle.md).
 
 ## Abstract
 
 Collapse the `/change:*` and `/spec:*` skill families into a single `/spec:*` operator surface. The default rhythm becomes `/spec:plan → /spec:execute → /spec:finalize`, with `/spec:refine`, `/spec:build`, and `/spec:merge` as first-class step-through breakouts. One structural review gate — Gate 1, between planning and execution — is a CLI-stamped lifecycle state (`reviewed`) observable on `plan.yaml`, rather than a skill exit or a `--review-only` flag. `change.md` and `plan.yaml` survive at every slice count, including N=1; the trivial single-slice path runs through the same workflow as a degenerate case.
 
-v1 ships the supervised default loop only — no automation flags. Synthesis review is operator-driven via inline `[conflict]` / `[divergence]` / `[unknown]` tags in `spec.md` — no second parking gate in v1; see §Non-Goals. The CLI substrate barely moves: this is almost entirely a skill / brief redesign on top of [RFC-25](../rfc-25-adapters.md)'s source-adapter contract. **There is no backward compatibility** — `/change:*` skills, `specify change *` verbs, and `/spec:define` all retire in lockstep at the 3.0 hard cut.
+v1 ships the supervised default loop only — no automation flags. Synthesis review is operator-driven via inline `[conflict]` / `[divergence]` / `[unknown]` tags in `spec.md` — no second parking gate in v1; see §Non-Goals. The CLI substrate barely moves: this is almost entirely a skill / brief redesign on top of [RFC-25](../rfc-25-workflow.md)'s source-adapter contract. **There is no backward compatibility** — `/change:*` skills, `specify change *` verbs, and `/spec:define` all retire in lockstep at the 3.0 hard cut.
 
 ## Motivation
 
@@ -251,7 +251,7 @@ Acceptance scenarios #11–#12 exercise this contract; operators never manually 
 
 ### CLI surface
 
-RFC-26 deltas on top of [RFC-25 §CLI surface](../rfc-25-adapters.md#cli-surface):
+RFC-26 deltas on top of [RFC-25 §CLI surface](../rfc-25-workflow.md#cli-surface):
 
 - `specify change draft` → `specify plan create`; `specify change finalize` → `specify plan finalize`
 - **New transition:** `specify plan transition <change> reviewed` — Gate 1; `/spec:execute` refuses until set
@@ -372,7 +372,7 @@ If any of #1-4 fail the ergonomics test (operator confusion, lost time, surprise
 
 ## Migration
 
-Ships as Specify 3.0 with **no backward compatibility** ([RFC-25 §Migration](../rfc-25-adapters.md#migration)). Operators on 1.x install 3.0 directly; there is no 2.x intermediate release to pin against.
+Ships as Specify 3.0 with **no backward compatibility** ([RFC-25 §Migration](../rfc-25-workflow.md#migration)). Operators on 1.x install 3.0 directly; there is no 2.x intermediate release to pin against.
 
 `migrate-to-3.0.sh` (release notes) absorbs both the RFC-25 adapter-axis renames and this RFC's workflow collapse in one pass: mechanical renames against `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `.specify/.cache/`, and `.specify/archive/` (`yq` + `sed`); skill-directory renames (`change/*` → `spec/{plan,execute,finalize}`, `define` → `refine`); bumps `specify_version` to `3.0.0`; adds `reviewed` to plan lifecycle on first 3.0 read; updates marketplace manifest. Plugin cache re-fetches on next invocation. There is **no** `specify upgrade` verb. Dry-run the combined script against a real 1.x consumer fixture before tagging — the single-release blast radius is larger than either RFC alone.
 
@@ -427,7 +427,7 @@ Enables CI and hosted runners to observe planning and synthesis without parsing 
 ## References
 
 - [RFC-19: Observability](../rfc-19-observability.md) — journal events for the plan gate and synthesis outcomes (§Observability).
-- [RFC-25: Directional Adapters](../rfc-25-adapters.md) — adapter-axis prerequisite; §Synthesis contract, multi-source v1 floor, and pipeline split. The deferred second gate is decoupled from multi-source — see §Non-Goals.
+- [RFC-25: Directional Adapters](../rfc-25-workflow.md) — adapter-axis prerequisite; §Synthesis contract, multi-source v1 floor, and pipeline split. The deferred second gate is decoupled from multi-source — see §Non-Goals.
 - [RFC-23: Change Lifecycle (archived)](rfc-23-change-lifecycle.md) - the three-skill model RFC-26 supersedes. Gate 1 is the structural successor to RFC-23's "explicit human seam"; the seam itself survives, the verb names do not.
 - [RFC-22: Migration Ledger and Slice Mapping](../rfc-22-ledger.md) - unaffected by the collapse; the per-change ledger continues to live alongside `change.md` and `plan.yaml`.
 - [RFC-24: Omnia Plan Composition](../rfc-24-omnia.md) - unaffected; per-slice composition lives on `planSlice` regardless of which verb wrote it.
