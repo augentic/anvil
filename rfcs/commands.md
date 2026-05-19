@@ -1,4 +1,4 @@
-# specify CLI commands (post RFC-25 + RFC-26)
+# specify CLI commands (post RFC-25)
 
 Specify 3.0 v1 target surface. Global on all rows: `--format text|json` (`SPECIFY_FORMAT`).
 
@@ -78,7 +78,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 
 `specify completions <shell>` — no skill caller, but `clap_complete` is one line and shell completion is the most-expected nicety in a CLI. Ship when the `clap_complete` dependency is paid for any reason.
 
-**Retired RFC-25/26 surface (pre-redesign verbs that never reach v1):**
+**Retired RFC-25 surface (pre-redesign verbs that never reach v1):**
 
 `specify adapter *`, `specify change *`, `specify change survey`, `specify plan doctor`.
 
