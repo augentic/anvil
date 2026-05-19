@@ -96,7 +96,7 @@ Defaults and transitions:
 
 - **Default on `specify sources add`** — `pending`.
 - **`pending` → `in-progress`** — when any active plan slice references the key in its `sources[]` list and the slice is in `pending` or `in-progress` status.
-- **`in-progress` → `migrated`** — when the ledger contains at least one entry for the key *and* every active plan slice referencing the key has reached `done` or `skipped`. Computed at `specify change finalize` time.
+- **`in-progress` → `migrated`** — when the ledger contains at least one entry for the key *and* every active plan slice referencing the key has reached `done`. Computed at finalize time. RFC-26 v1 has no per-entry `skipped` state; a future skip state can extend this rule when it returns.
 - **Any state → `abandoned`** — operator-driven only, via `specify sources status <key> abandoned --reason "..."`. Refuses if any active plan slice still references the key.
 
 The transitions are **automatic** for `pending` ↔ `in-progress` ↔ `migrated`. Operators may also force a transition with `specify sources status <key> <value>`, which prompts for confirmation and records the override in `.specify/migration-log.yaml` as a special operator-override entry:
@@ -131,7 +131,7 @@ The ledger has many consumers; none of them write:
   6. Adapter compatibility (existing).
   7. Ambiguity → human (existing).
 
-- **Propose brief (RFC-20)** — when survey shows a adapter whose source has been fully migrated, propose may pre-mark the slice `skipped` with `status-reason: "previously migrated in change <name>"`.
+- **Propose brief (RFC-20 / RFC-26)** — when survey shows an adapter whose source has been fully migrated, propose surfaces the prior migration and omits the slice unless the operator explicitly keeps it. RFC-26 v1 has no per-entry `skipped` state to pre-mark.
 - **`specify sources show`** — joins the catalogue with the ledger to render a per-source migration history.
 
 A new dedicated read verb is also provided:

@@ -22,7 +22,7 @@ The collapse promotes planning onto `/spec:*`, keeps `/spec:refine` as the per-s
 
 1. **Collapse the operator vocabulary, not the planning contract.** Source `enumerate` and source `extract` stay separate; `plan.yaml` stays single-writer; the operator-review pause stays a structural seam. What changes is that the operator types `/spec:` for everything.
 2. **On-disk state is the resume mechanism.** `/spec:execute` carries no in-memory state across invocations. Re-running it re-reads `plan.yaml.lifecycle` and slice `.metadata.yaml` and dispatches to the next phase. There is no `--continue` flag, no session token, no in-flight handoff.
-3. **The plan gate is a CLI-stamped lifecycle state, not a flag.** Crossing Gate 1 means running `specify plan transition <change> reviewed`; `/spec:execute` refuses to run until set. v1 ships exactly one structural gate; review of synthesis output is operator-driven through inline `[conflict]` / `[unknown]` tags in `spec.md` rather than a second parking state. See §The plan gate.
+3. **The plan gate is a CLI-stamped lifecycle state, not a flag.** Crossing Gate 1 means running `specify plan transition <change> reviewed`; `/spec:execute` refuses to run until set. v1 ships exactly one structural gate; review of synthesis output is operator-driven through inline `[conflict]` / `[unknown]` tags in `spec.md` rather than a second parking state or build precondition. See §The plan gate.
 4. **Single writer.** The CLI remains the only writer of `plan.yaml`, `.metadata.yaml`, archive paths, and lifecycle transitions. Phase skills (`/spec:plan`, `/spec:execute`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:finalize`) drive the agent-side work; deterministic transitions go through the CLI.
 5. **Always plan, always enumerate.** Every change runs `enumerate` and produces a `plan.yaml`. N=1 is degenerate, not absent. There is no shortcut path that skips the loop verb.
 6. **Breakouts are first-class.** `/spec:refine`, `/spec:build`, and `/spec:merge` are documented step-through verbs the operator reaches for when `/spec:execute` parks on a stop, or when they want to inspect a slice mid-flight. They are not "manual mode" or legacy. The same skill body is invoked from `/spec:execute`'s loop and from a direct operator call.
@@ -42,7 +42,7 @@ The collapse promotes planning onto `/spec:*`, keeps `/spec:refine` as the per-s
 | **breakout verb** | concept | `/spec:refine`, `/spec:build`, `/spec:merge` — step-through verbs run directly when `/spec:execute` parks on a stop, or for mid-flight inspection. |
 | **active slice** | concept | The slice whose plan entry is currently `in-progress`, regardless of which command put it there. |
 | **plan lifecycle** | enum | On `plan.yaml`: `pending → reviewed → in-progress → drained`. `/spec:plan` writes `pending`; the operator stamps `reviewed`; `/spec:execute` (or manual `specify plan next`) advances to `in-progress`; the last per-entry `done` leaves the plan `drained`. |
-| **per-entry lifecycle** | enum | On each `plan.yaml` entry: `pending → in-progress → done`, or `→ blocked`. |
+| **per-entry lifecycle** | enum | On each `plan.yaml` entry: `pending → in-progress → done`. Build failures and merge conflicts leave the active entry `in-progress`; they do not stamp a separate blocked state in v1. |
 | **slice lifecycle** | enum | On each `.specify/slices/<name>/.metadata.yaml`: `defining → defined → built → merged`. |
 
 The slice-vs-change distinction in [`.cursor/rules/project.mdc`](../.cursor/rules/project.mdc) survives on disk; only the slash-command layer collapses to `/spec:*`.
@@ -85,14 +85,14 @@ The default rhythm is uniform at every scale: N=1 plans run through `/spec:execu
   |-- plan validate
   +-- === GATE 1 === specify plan transition <scope> reviewed
         (skill exits; operator reviews change.md + plan.yaml, then
-         runs /spec:execute to drive the plan - or /spec:refine to step
-         into the first slice manually)
+         runs /spec:execute to drive the plan - or runs specify plan next
+         followed by /spec:refine to step into the first slice manually)
 
 /spec:execute                                  ---- SUPERVISED LOOP (DEFAULT) ------
   |-- refuse unless plan.lifecycle == reviewed
   |-- acquire plan lock (at the hub root in hub mode)
   |-- loop:
-  |     specify plan next -> slice <name> + project <project>   (entry -> in-progress)
+  |     specify plan next -> active slice, or next pending slice (entry -> in-progress)
   |     [hub only] resolve <project> via registry.yaml
   |     [hub only] sync workspace slot if missing
   |     [hub only] specify workspace prepare-branch <project> --change <scope>
@@ -123,17 +123,18 @@ The default rhythm is uniform at every scale: N=1 plans run through `/spec:execu
 ```text
 /spec:refine                                   ---- SLICE AUTHORING -----------------
   |-- refuse unless plan.lifecycle == reviewed
-  |-- active slice: already in-progress from `specify plan next`, OR operator
-  |     ran `specify plan next` first (refine never writes in-progress itself)
+  |-- require an active slice already in-progress from `specify plan next`
+  |     (refine never auto-selects or writes in-progress itself)
   |-- slice create .specify/slices/<name>/    (idempotent - no-op if present)
   |-- bound source.extract -> evidence/<source-key>.yaml
   |-- synthesise per RFC-25 §Synthesis contract; specify slice validate
   |     (synthesis writes [conflict] / [unknown] tags inline in spec.md when needed;
-  |      no parking state, no synthesis halt — operator reviews and hand-edits if required)
+  |      no parking state, no synthesis halt — operator may review and hand-edit)
   +-- slice transition defined
 
 /spec:build                                    ---- IMPLEMENTATION ------------------
   |-- refuse unless slice lifecycle is defined
+  |-- do not refuse on unresolved [conflict] / [unknown] tags; they are review signals
   |-- run tasks.md tasks in order (resume from last failed task on re-entry)
   +-- slice transition built
 
@@ -147,10 +148,10 @@ The default rhythm is uniform at every scale: N=1 plans run through `/spec:execu
 
 Two responsibility rules keep the breakout / loop paths consistent:
 
-1. **`specify plan next` is the only writer of the per-entry `in-progress` transition.** Both `/spec:execute`'s loop and an operator stepping in manually call it; `/spec:refine` never does. This lets `/spec:refine` operate uniformly on "the active slice" regardless of who selected it.
+1. **`specify plan next` is the only writer of the per-entry `in-progress` transition.** Both `/spec:execute`'s loop and an operator stepping in manually call it; `/spec:refine` never does. If an entry is already `in-progress`, `plan next` returns that active entry and does not advance. Only when no entry is active does it transition the next eligible `pending` entry to `in-progress`. This lets `/spec:refine` operate uniformly on "the active slice" without selecting work implicitly.
 2. **`/spec:merge` is the only writer of the per-entry `done` transition.** Per-slice closure lives with the verb that produces the terminal state, not the loop driver, so a manual `/spec:merge` leaves the plan in exactly the state `/spec:execute` would have left it in - and a subsequent `/spec:execute` invocation just pulls the next entry.
 
-**Stop / resume.** `/spec:execute` is a state-machine driver, not a session — it re-reads `plan.yaml.lifecycle`, `specify plan next`, and the active slice's `.metadata.yaml` on every invocation. Breakout verbs leave all artifacts and transitions observable to the next `/spec:execute` call; there is no `--continue` flag.
+**Stop / resume.** `/spec:execute` is a state-machine driver, not a session — it re-reads `plan.yaml.lifecycle`, calls `specify plan next`, and reads the active slice's `.metadata.yaml` on every invocation. Build failures and merge conflicts leave the entry `in-progress`; the next `/spec:execute` call sees the same active entry and resumes from its slice lifecycle. Breakout verbs leave all artifacts and transitions observable to the next `/spec:execute` call; there is no `--continue` flag.
 
 | Trigger | What `/spec:execute` does | Operator next step |
 |---|---|---|
@@ -158,7 +159,7 @@ Two responsibility rules keep the breakout / loop paths consistent:
 | `/spec:merge` reports a baseline conflict | Exits with conflicting spec paths | Resolve, then `/spec:execute` |
 | `specify plan next` reports drained | Exits cleanly; notes `/spec:finalize` ready | Run `/spec:finalize` |
 
-Synthesis tags (`[conflict]` / `[unknown]`) do not stop the loop — they are printed in the per-slice transition message. To hand-edit before build, run `/spec:refine` directly or interrupt between stops.
+Synthesis tags (`[conflict]` / `[unknown]`) do not stop the loop and do not cause `/spec:build` to refuse. They are printed in the per-slice transition message and emitted as journal events; the operator may interrupt and hand-edit before build, but v1 does not add a second gate or an `--allow-unresolved` flag.
 
 ### The plan gate
 
@@ -168,9 +169,9 @@ Synthesis tags (`[conflict]` / `[unknown]`) do not stop the loop — they are pr
 
 Gate 1 is the structural successor to RFC-23's "explicit human seam" — same logical spot, now CLI-stamped on `plan.yaml.lifecycle`.
 
-**No Gate 2 in v1.** Synthesis tags in `spec.md` are operator-review signals; lifecycle goes straight `defined → built`. A structural second gate (`defined_provisional`) lands with the multi-source extension (RFC-25 §Non-Goals).
+**No Gate 2 in v1.** Synthesis tags in `spec.md` are operator-review signals; lifecycle goes straight `defined → built`, and `/spec:build` refuses only on slice lifecycle preconditions. A structural second gate (`defined_provisional`) lands with the multi-source extension (RFC-25 §Non-Goals).
 
-**Stepping in without `/spec:execute`:** After Gate 1, run `specify plan next`, then `/spec:refine` directly. `plan next` owns the `in-progress` transition; refine only consumes the active slice.
+**Stepping in without `/spec:execute`:** After Gate 1, run `specify plan next`, then `/spec:refine` directly. `plan next` owns the `in-progress` transition; refine only consumes the active slice and exits if no entry is active.
 
 ### Combined lifecycle (RFC-25 + RFC-26)
 
@@ -184,9 +185,6 @@ in-progress (plan)        defining                       extract + synthesise
   │                       defined                        synth wrote spec.md (with inline tags if any)
   │                       built                          /spec:build
   │                       merged                         /spec:merge → plan entry done
-drained                   —                              /spec:finalize
-```
-
 drained                   —                              /spec:finalize
 ```
 
@@ -230,7 +228,7 @@ slices:
 
 ### Where pipeline stages live
 
-| Stage | Specify 2.x | Specify 3.x |
+| Stage | Before (Specify 1.x / pre-collapse) | After (Specify 3.0) |
 |---|---|---|
 | `source.enumerate` | `/change:draft` | `/spec:plan` |
 | `source.extract` + core synthesis | `/spec:define` | `/spec:refine` |
@@ -337,18 +335,17 @@ The hub's own `slices/` directory is unused (the hub never authors slices direct
 
 ## Implementation Plan
 
-Strictly incremental on top of RFC-25. Land RFC-25 acceptance fixtures (especially synthesis and provenance) **before** step 4 below.
+Strictly incremental on top of RFC-25. Land RFC-25 acceptance fixtures (especially synthesis and provenance) **before** step 3 below.
 
-1. **Land RFC-25.** The collapse depends on symmetric `enumerate` / `extract`, core synthesis, and the single-source v1 floor.
+1. **Land RFC-25.** The collapse depends on symmetric `enumerate` / `extract`, core synthesis, and the single-source v1 floor. RFC-25 and RFC-26 ship in lockstep as Specify 3.0; this step is intra-release ordering, not a separate release.
 2. **Promote the review seam inside `/change:draft`** as a no-behaviour-change refactor. Add `reviewed` to plan lifecycle; `specify plan transition <change> reviewed` stamps Gate 1.
-3. **Parallel plugin channel for 2.x early adopters (not an in-repo feature flag).** Ship `/spec:plan` and `/spec:refine` skills on a `specify-3.0-preview` marketplace tag while 2.x defaults keep `/change:*`. Operators opt in by plugin pin; 3.0 hard cut removes `/change:*` entirely — consistent with RFC-25's no-graceful-degradation stance.
-4. **Rename `/change:execute loop` -> `/spec:execute` and add the §Internal structure stop/resume contract.** The loop algorithm is unchanged; what is new is that the skill stops on build failure and merge conflict with operator-facing hints, and resumes by re-reading on-disk state on the next invocation. `/change:finalize` becomes `/spec:finalize` (no behaviour change). **This is the load-bearing step** - the collapsed default workflow becomes `/spec:plan -> /spec:execute -> /spec:finalize` only once this step lands.
-5. **Make `/spec:plan`, `/spec:execute`, `/spec:finalize` the documented default workflow** and `/spec:refine`, `/spec:build`, `/spec:merge` the documented step-through breakouts. Rewrite `AGENTS.md`, `.cursor/rules/project.mdc`, the README, the marketplace manifest, and the tutorial walkthrough. `/change:*` and `/spec:define` move to a "removed" section.
-6. **Delete `/change:draft`, `/change:execute`, `/change:finalize`, and `/spec:define`.** The `plugins/change/` directory is removed. `plugins/spec/skills/define/` is renamed to `plugins/spec/skills/refine/`.
+3. **Rename `/change:execute loop` -> `/spec:execute` and add the §Internal structure stop/resume contract.** The loop algorithm is unchanged; what is new is that the skill stops on build failure and merge conflict with operator-facing hints, and resumes by re-reading on-disk state on the next invocation. `/change:finalize` becomes `/spec:finalize` (no behaviour change). **This is the load-bearing step** - the collapsed default workflow becomes `/spec:plan -> /spec:execute -> /spec:finalize` only once this step lands.
+4. **Make `/spec:plan`, `/spec:execute`, `/spec:finalize` the documented default workflow** and `/spec:refine`, `/spec:build`, `/spec:merge` the documented step-through breakouts. Rewrite `AGENTS.md`, `.cursor/rules/project.mdc`, the README, the marketplace manifest, and the tutorial walkthrough. `/change:*` and `/spec:define` move to a "removed" section. Acceptance scenario #1 (Pure intent, one slice) is a release-blocker for this step — see §Acceptance scenarios — because single-release collapse means N=1 `/spec:plan` ergonomics surface to every operator at once with no 2.x discovery window.
+5. **Delete `/change:draft`, `/change:execute`, `/change:finalize`, and `/spec:define`.** The `plugins/change/` directory is removed. `plugins/spec/skills/define/` is renamed to `plugins/spec/skills/refine/`.
 
 ### Acceptance scenarios
 
-Run these against the collapsed skills before step 6. Each is an honest stress test of where the collapse can fail.
+Run these against the collapsed skills before step 5. Each is an honest stress test of where the collapse can fail.
 
 | # | Scenario | What it stress-tests |
 |---|---|---|
@@ -365,13 +362,13 @@ Run these against the collapsed skills before step 6. Each is an honest stress t
 | 11 | **Hub breakout after build failure in a slot.** `/spec:execute` parks on `auth-rotate` (in `project-a`); operator stays at hub root and runs `/spec:build`. | Project-routing rule for breakout verbs; active-slice resolution across the hub/slot boundary; correct chdir without operator intervention. |
 | 12 | **Dual-driving refused.** Project registered in a hub; operator runs `/spec:plan` from the project root with a hub-driven plan active. | One-driving-mode-per-project invariant (§Single-repo vs multi-repo). |
 
-If any of #1-4 fail the ergonomics test (operator confusion, lost time, surprised state), revisit §Planning at every scale before pushing through step 6.
+If any of #1-4 fail the ergonomics test (operator confusion, lost time, surprised state), revisit §Planning at every scale before pushing through step 5.
 
 ## Migration
 
-Ships as Specify 3.0 with **no backward compatibility** ([RFC-25 §Migration](rfc-25-adapters.md#migration)). Operators on 1.x install 3.0 directly once both RFCs land, or stop at 2.0 and pin.
+Ships as Specify 3.0 with **no backward compatibility** ([RFC-25 §Migration](rfc-25-adapters.md#migration)). Operators on 1.x install 3.0 directly; there is no 2.x intermediate release to pin against.
 
-`migrate-to-3.0.sh` (release notes): renames skill directories (`change/*` → `spec/{plan,execute,finalize}`, `define` → `refine`); bumps `specify_version`; adds `reviewed` to plan lifecycle on first 3.0 read; updates marketplace manifest. Plugin cache re-fetches on next invocation. There is **no** `specify upgrade` verb.
+`migrate-to-3.0.sh` (release notes) absorbs both the RFC-25 adapter-axis renames and this RFC's workflow collapse in one pass: mechanical renames against `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `.specify/.cache/`, and `.specify/archive/` (`yq` + `sed`); skill-directory renames (`change/*` → `spec/{plan,execute,finalize}`, `define` → `refine`); bumps `specify_version` to `3.0.0`; adds `reviewed` to plan lifecycle on first 3.0 read; updates marketplace manifest. Plugin cache re-fetches on next invocation. There is **no** `specify upgrade` verb. Dry-run the combined script against a real 1.x consumer fixture before tagging — the single-release blast radius is larger than either RFC alone.
 
 **Skill authors:** `/change:*` and `/spec:define` retire; use `/spec:execute` and let stop conditions surface to the operator.
 
@@ -379,7 +376,7 @@ Ships as Specify 3.0 with **no backward compatibility** ([RFC-25 §Migration](rf
 
 ## Alternatives Considered
 
-- **Fold RFC-26 into RFC-25 as one 2.0 release** — independent concerns; sequencing reduces blast radius.
+- **Ship RFC-25 as 2.0 first, RFC-26 as 3.0 second, with a `specify-3.0-preview` parallel plugin channel during 2.x** — earlier rejected on independent-concerns / blast-radius grounds; **reconsidered and reversed**. The "sequencing reduces blast radius" argument relied on a 2.x adopter population that would discover regressions early; with no such population in evidence, the two-release plan only doubled the migration script, kept a preview channel alive for nobody, and forced the "skill authors should not invest in `/change:*` changes during 2.x" caveat (RFC-25 §Migration, previous draft) — which is itself the strongest evidence the 2.x line had no productive lifetime. Single-release collapse preserves the intra-release ordering (RFC-25 implementation plan steps 1–13 precede this RFC's collapse) while removing the doubled scripts and the preview channel.
 - **Overload a phase verb with the loop (`/spec:refine --loop`)** — loop drivers and per-slice phases stay distinct; `/spec:execute` is the supervised loop.
 - **`/spec:plan` as a shell wrapper around `/change:draft + /change:execute`** — the collapse is a real brief refactor, not a shim.
 - **Keep `/spec:define` as the slice authoring verb** — after collapse, "defining" is planning; per-slice work is refining a named slice.
@@ -394,7 +391,7 @@ See §Non-Goals for out-of-scope items.
 - Deleting or renaming `change.md` / `plan.yaml`. The single-writer invariant on these files is load-bearing; the collapse keeps both intact.
 - Auto-resolution of `[conflict]` markers in `spec.md`. The operator decides.
 - A "manual mode" where `/spec:execute` does not exist. The supervised loop is the documented default at every slice count, including N=1.
-- Backward compatibility with 2.x `/change:*` skills, `specify change *` verbs, or `/spec:define` invocations. All retire at the 3.0 hard cut.
+- Backward compatibility with pre-3.0 `/change:*` skills, `specify change *` verbs, or `/spec:define` invocations. All retire at the 3.0 hard cut.
 
 **Deferred from v1, reinstated when a real caller asks:**
 
@@ -428,6 +425,6 @@ Enables CI and hosted runners to observe planning and synthesis without parsing 
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) - unaffected by the collapse; the per-change ledger continues to live alongside `change.md` and `plan.yaml`.
 - [RFC-24: Omnia Plan Composition](rfc-24-omnia.md) - unaffected; per-slice composition lives on `planSlice` regardless of which verb wrote it.
 - [`plugins/spec/skills/init/SKILL.md`](../plugins/spec/skills/init/SKILL.md) - `hub:` discriminator, the only context primitive the collapse needs.
-- [`plugins/change/references/plan-single-writer.md`](../plugins/change/references/plan-single-writer.md) - the single-writer invariant preserved by the collapse. Note: this reference will move when `plugins/change/` is removed by step 6 of §Implementation Plan; the invariant survives, the path does not.
+- [`plugins/change/references/plan-single-writer.md`](../plugins/change/references/plan-single-writer.md) - the single-writer invariant preserved by the collapse. Note: this reference will move when `plugins/change/` is removed by step 5 of §Implementation Plan; the invariant survives, the path does not.
 - [`AGENTS.md`](../AGENTS.md) §Plan-driven loop - vocabulary this RFC substantially rewrites.
 - [`.cursor/rules/project.mdc`](../.cursor/rules/project.mdc) §Vocabulary - slice vs change distinction the collapse blurs at the verb level but preserves on disk.

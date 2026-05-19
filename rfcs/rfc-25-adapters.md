@@ -1,6 +1,6 @@
 # RFC-25: Directional Adapters
 
-> Status: Draft — Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md). Pairs with [RFC-26: Workflow Collapse](rfc-26-workflow.md), which depends on this RFC's `enumerate`/`extract` symmetry. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership); [RFC-23](archive/rfc-23-change-lifecycle.md) survives through 2.x and is retired by RFC-26.
+> Status: Draft — Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md). Ships in lockstep with [RFC-26: Workflow Collapse](rfc-26-workflow.md) as Specify 3.0 — RFC-26 depends on this RFC's `enumerate`/`extract` symmetry, and the two land together with one migration script. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership); [RFC-23](archive/rfc-23-change-lifecycle.md) is retired by RFC-26 in this same release.
 
 ## Abstract
 
@@ -8,7 +8,7 @@ Refactor Specify into a small **core** plus two directional adapter roles — **
 
 **v1 ships single-source slices.** `planSlice.sources` is a list in the schema and `EvidencePackSet` is the core-facing input type, but every v1 slice binds exactly one source. Multi-source synthesis is deferred — see §Non-Goals. The v1 floor still exercises every architectural seam: source adapters return `CandidateSet`s and `EvidencePack`s, core owns synthesis, target adapters shape and implement.
 
-This is a ground-up redesign of the adapter axis. **There is no backward compatibility** — `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `adapters/`, brief paths, CLI verbs, schema field names, and adapter-touching skill files all change shape in lockstep. The workflow skill family (`/change:{draft,execute,finalize}`, `/spec:{define,build,merge}`) keeps today's shapes through this RFC; their renames are RFC-26's territory.
+This is a ground-up redesign of the adapter axis. **There is no backward compatibility** — `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `adapters/`, brief paths, CLI verbs, schema field names, and adapter-touching skill files all change shape in lockstep. The workflow skill family (`/change:{draft,execute,finalize}`, `/spec:{define,build,merge}`) is renamed and collapsed by [RFC-26](rfc-26-workflow.md), which ships alongside this RFC in the same Specify 3.0 release; this RFC's scope is the adapter axis, RFC-26's scope is the operator-facing workflow.
 
 ## Motivation
 
@@ -104,9 +104,9 @@ Rules:
 
 A source adapter contributes two capabilities to the workflow. These capabilities return intermediate representations consumed by Specify core; they do not write final Specify artifacts.
 
-**`enumerate(source-binding) → CandidateSet`.** Called at plan time by `/change:draft`. Reads the bound evidence (a local path, a documentation file, a free-text intent string) and emits candidate blocks under `## Candidate inventory` in `discovery.md`. Output grammar is the existing candidate-block format from RFC-20 §`discovery.md`, extended with stable candidate ids and optional correlation hints.
+**`enumerate(source-binding) → CandidateSet`.** Called at plan time by `/spec:plan` ([RFC-26](rfc-26-workflow.md)). Reads the bound evidence (a local path, a documentation file, a free-text intent string) and emits candidate blocks under `## Candidate inventory` in `discovery.md`. Output grammar is the existing candidate-block format from RFC-20 §`discovery.md`, extended with stable candidate ids and optional correlation hints.
 
-**`extract(candidate, source-binding) → EvidencePack`.** Called at slice time by `/spec:define` for each source bound to the slice. Returns a structured evidence pack persisted under the slice before synthesis:
+**`extract(candidate, source-binding) → EvidencePack`.** Called at slice time by `/spec:refine` ([RFC-26](rfc-26-workflow.md)) for each source bound to the slice. Returns a structured evidence pack persisted under the slice before synthesis:
 
 ```yaml
 # .specify/slices/<slice>/evidence/<source-key>.yaml
@@ -132,9 +132,80 @@ evidence:
     response-shape: { ok: boolean }
 ```
 
-Documentation sources use the same envelope with doc-flavoured `kind:` values (`requirement-statement`, `acceptance-criterion`, `decision-record`, `document-section`, `diagram-reference`) in place of `code-excerpt` / `type-definition` / `external-call`.
+Documentation sources use the same envelope with doc-flavoured `kind:` values in place of `code-excerpt` / `type-definition` / `external-call`. `requirement-statement` is reserved for normative product or system behaviour ("must", "shall", "the system ..."). `acceptance-criterion` is reserved for directly testable examples, bullets, or Given/When/Then-style checks. `decision-record` captures rationale or explicit trade-offs. `document-section` captures supporting context that may inform `proposal.md` or `design.md` but is not itself a requirement. `diagram-reference` points at an external figure or image when the source document relies on it.
 
 The pack's `kind` enum is closed and shared across all source adapters. Initial kinds: `intent-text`, `requirement-statement`, `acceptance-criterion`, `decision-record`, `document-section`, `diagram-reference`, `contract-reference`, `code-excerpt`, `type-definition`, `external-call`. New kinds require an RFC update. Evidence packs do not store raw source bodies by default — only structured facts, relative paths, line spans, content hashes, and bounded excerpts when the adapter contract explicitly allows them.
+
+**Documentation extraction example.** Given this input document:
+
+```markdown
+# Password reset
+
+The account service should let a registered user request a password reset link by email.
+
+Acceptance:
+- Unknown email addresses receive the same outward response as known users.
+- Reset links expire after 30 minutes.
+
+Decision: use the existing transactional email provider rather than introducing a new notification service.
+```
+
+`documentation.extract` returns one evidence pack:
+
+```yaml
+source: product-notes
+adapter: documentation
+candidate: password-reset
+evidence:
+  - kind: requirement-statement
+    path: docs/account.md
+    lines: [3, 3]
+    sha256: 4f39...
+    statement: "The account service should let a registered user request a password reset link by email."
+  - kind: acceptance-criterion
+    path: docs/account.md
+    lines: [6, 6]
+    sha256: 91aa...
+    criterion: "Unknown email addresses receive the same outward response as known users."
+  - kind: acceptance-criterion
+    path: docs/account.md
+    lines: [7, 7]
+    sha256: 0d8b...
+    criterion: "Reset links expire after 30 minutes."
+  - kind: decision-record
+    path: docs/account.md
+    lines: [9, 9]
+    sha256: f6c2...
+    decision: "Use the existing transactional email provider rather than introducing a new notification service."
+```
+
+Core synthesis turns that pack into normal Specify artifacts. The resulting `spec.md` carries provenance on every requirement:
+
+```markdown
+### Requirement: Password reset request
+
+ID: REQ-001
+Sources: [product-notes]
+Status: agreed
+
+The system lets a registered user request a password reset link by email.
+
+### Requirement: Password reset response privacy
+
+ID: REQ-002
+Sources: [product-notes]
+Status: agreed
+
+The system returns the same outward response for known and unknown email addresses.
+
+### Requirement: Password reset expiry
+
+ID: REQ-003
+Sources: [product-notes]
+Status: agreed
+
+The system expires password reset links after 30 minutes.
+```
 
 The pack envelope reserves an optional `authority:` field for the source adapter's self-classification, populated when the multi-source extension lands. v1 synthesis ignores the field (single-source slices have no cross-source ranking to perform). The schema accepts it as an optional string so source adapters that already emit it remain valid.
 
@@ -149,9 +220,9 @@ Core ships two source adapters by default.
 | `intent` | Captures operator-authored briefs, inline requirements, and explicit corrections. Used when no other source is bound. |
 | `documentation` | Captures requirements documents, design notes, proposals, RFCs, existing specs, architecture records, and other written product or technical intent. The ordinary documentation-driven path into specs and design. |
 
-Both are true source adapters with manifests, `enumerate` briefs, and `extract` briefs. They are default-packaged for usability, but they do not get special workflow rules. `/change:draft` still calls `enumerate`; `/spec:define` still calls `extract`; slice synthesis still consumes an evidence pack.
+Both are true source adapters with manifests, `enumerate` briefs, and `extract` briefs. They are default-packaged for usability, but they do not get special workflow rules. `/spec:plan` ([RFC-26](rfc-26-workflow.md)) calls `enumerate`; `/spec:refine` calls `extract`; slice synthesis consumes an evidence pack.
 
-**2.x inline-intent path:** when `/spec:define` starts without an accepted plan candidate, the workflow binds `intent` implicitly, runs a degenerate slice-time `intent.enumerate` (one synthetic candidate), then `intent.extract`, then synthesises. **3.0** ([RFC-26](rfc-26-workflow.md)) moves all enumeration to `/spec:plan`; orphan define without `plan.yaml` is not supported.
+There is no orphan-define path: every slice originates from a `plan.yaml` entry, even N=1 greenfield work, which `/spec:plan` handles via a degenerate `intent.enumerate` (one synthetic candidate). See [RFC-26 §Planning at every scale](rfc-26-workflow.md#planning-at-every-scale).
 
 ### Target adapter contract
 
@@ -202,7 +273,7 @@ Mixed-evidence slices (`[code-source, doc-source, …]`) validate against the sc
 
 ### Slice authoring synthesis
 
-`/spec:define` (2.x) and `/spec:refine` (3.0, [RFC-26](rfc-26-workflow.md)) share one pipeline:
+`/spec:refine` ([RFC-26](rfc-26-workflow.md)) runs one pipeline:
 
 1. **Resolve** the bound target adapter (one) and the bound source adapter (one in v1).
 2. **Extract** per §Extraction reliability — call `extract(candidate, source-binding)` on the bound source; persist the pack under `.specify/slices/<slice>/evidence/<source-key>.yaml`.
@@ -210,7 +281,7 @@ Mixed-evidence slices (`[code-source, doc-source, …]`) validate against the sc
 4. **Validate** — `specify slice validate` checks structural requirements (`Sources:`, `Status:`, closed tags) and emits findings for `[conflict]` and `[unknown]`.
 5. **Lifecycle** — transition to `defined`. Tags on requirements (`[conflict]` for intra-pack contradictions, `[unknown]` for missing facts) are operator-visible signals to review `spec.md` before `/spec:build`, but they do not park the slice in a separate lifecycle state.
 
-**N=1 in v1:** `[conflict]` comes from intra-pack contradiction or unreconciled evidence; `[unknown]` covers missing facts. **N=0** normalises to `[intent]` plus a synthetic candidate on the 2.x inline path; 3.0 requires a plan entry ([RFC-26](rfc-26-workflow.md)). The `Status:` enum reserves `divergence` for the multi-source extension (§Non-Goals); v1 never writes it.
+**N=1 in v1:** `[conflict]` comes from intra-pack contradiction or unreconciled evidence; `[unknown]` covers missing facts. **N=0** normalises to `[intent]` plus a synthetic candidate written by `/spec:plan` ([RFC-26](rfc-26-workflow.md) §Planning at every scale); every slice has a plan entry. The `Status:` enum reserves `divergence` for the multi-source extension (§Non-Goals); v1 never writes it.
 
 ### Per-requirement provenance and tags
 
@@ -258,7 +329,7 @@ Core-owned synthesis is the single writer of `proposal.md`, `spec.md`, `design.m
 | **Agent** | Semantic authoring from evidence packs and shape guidance (brief body under `plugins/spec/references/synthesis/`) |
 | **CLI** | `specify slice validate` (structure, provenance lines, tag enum), `specify slice transition` (lifecycle stamps) |
 
-**Substep order (v1).** Hand-coded in `/spec:define` (2.x) or `/spec:refine` (3.0): `proposal` → `specs` → `design` → `tasks`, optionally injecting `target.shape` guidance from `specify target resolve`. Every brief is core-owned; targets do not register define-phase briefs.
+**Substep order (v1).** Hand-coded in `/spec:refine`: `proposal` → `specs` → `design` → `tasks`, optionally injecting `target.shape` guidance from `specify target resolve`. Every brief is core-owned; targets do not register define-phase briefs.
 
 **Halt rules.** Synthesis writes through every requirement; `[conflict]` and `[unknown]` tags surface in `spec.md` for operator review but do not abort the pass or park the slice. Slice lifecycle is `defining → defined → built → merged` — see [RFC-26 §Combined lifecycle](rfc-26-workflow.md#combined-lifecycle-rfc-25--rfc-26).
 
@@ -293,18 +364,16 @@ Plugin manifests, briefs, and WASI tools are materialised under their axis subdi
 
 ```yaml
 # .specify/project.yaml
-specify_version: 2.0.0
+specify_version: 3.0.0
 sources:                          # set of source adapters available in this project
   - intent                        # default source adapter
   - documentation                 # default source adapter
   - legacy-code-typescript
-targets:                          # set of target adapters this project produces
-  - omnia
-  - contracts
+target: omnia                     # single target adapter this project produces in v1
 hub: false
 ```
 
-`sources` lists source adapters available for binding to slices, not bindings themselves. Source bindings live on individual sources (a path, a doc location, the operator's intent text) and are recorded in `sources.yaml` per [RFC-21](rfc-21-catalogue.md). `targets` lists target adapters this project can produce; per-slice targeting lives on `planSlice.target`.
+`sources` lists source adapters available for binding to slices, not bindings themselves. Source bindings live on individual sources (a path, a doc location, the operator's intent text) and are recorded in `sources.yaml` per [RFC-21](rfc-21-catalogue.md). `target` names the single target adapter this project produces in v1. `planSlice.target` remains explicit for hub plans and future multi-target projects, but v1 validation requires it to match the resolved project's `project.yaml.target`.
 
 The old singular `project.yaml.profile` / `project.yaml.adapter` field is gone.
 
@@ -321,9 +390,9 @@ The full v1 CLI floor — including verbs cut from v1 and post-v1 deferrals — 
 
 | Verb / Skill            | Replaced by                                                                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/change:analyze`       | One discovery stage in `/change:draft` that resolves the bound source adapter and calls `enumerate`.                                             |
+| `/change:analyze`       | One discovery stage in `/spec:plan` ([RFC-26](rfc-26-workflow.md)) that resolves the bound source adapter and calls `enumerate`.                 |
 | `/change:survey`        | Same — when the bound source adapter is a `legacy-code-*` flavour, `enumerate` does what `survey` does today.                                    |
-| `/spec:extract`         | The bound source adapter's `extract` capability, called from `/spec:define`.                                                                     |
+| `/spec:extract`         | The bound source adapter's `extract` capability, called from `/spec:refine` ([RFC-26](rfc-26-workflow.md)).                                       |
 | `specify change survey` | Folded into the source-adapter-driven discovery stage. The bounded repair loop becomes a contract on the source adapter's `enumerate` capability. |
 
 
@@ -333,7 +402,7 @@ v1 keeps every adapter inside the `augentic/specify` monorepo. The repository ca
 
 **Layout in `augentic/specify` (v1):**
 
-- `/spec:{init,define,build,merge,drop}`, `/change:{draft,execute,finalize}` — workflow skills.
+- `/spec:{init,plan,refine,execute,build,merge,finalize,drop}` — workflow skills ([RFC-26](rfc-26-workflow.md) operator surface).
 - `plugins/references/` — cross-cutting references.
 - `sources/intent/`, `sources/documentation/` — default source adapters.
 - `sources/legacy-code-typescript/` — the single legacy-code language v1 ships, carved from `plugins/change/skills/survey/briefs/enumerate/typescript.md` and the existing repair loop.
@@ -366,10 +435,10 @@ Legacy-code-only columns (LOC, language, `surfaces.json` digest) populate only w
 2. **Domain rename.** Mass-rename unqualified `Adapter`* → `Target*` across today's target-runtime code in `crates/domain/`, `crates/tool/`, `crates/error/`, `src/`. Update `Error` discriminants. Update `Plan::resolve_adapter` → `Plan::resolve_target`. Land the new `Plan::resolve_source` returning `SourceAdapter` (single binding in v1; switches to `Plan::resolve_sources` returning `Vec<SourceAdapter>` with the multi-source extension).
 3. **Plugin loader.** New module `crates/domain/src/plugin/` containing `resolver.rs`, `cache.rs`, `manifest.rs`, `axis.rs`. Replaces `crates/domain/src/adapter/`. One loader, two axes.
 4. **Default source adapters.** Ship `sources/intent/` and `sources/documentation/` in core. Each has a manifest, `briefs/enumerate.md`, and `briefs/extract.md`. `intent` enumerate emits one candidate from the operator's brief and extract emits the brief text as `kind: intent-text`; `documentation` enumerate reads bound docs and emits candidate blocks, then extract emits documentation-native evidence entries such as `requirement-statement`, `acceptance-criterion`, `decision-record`, and `document-section`.
-5. **Slice synthesis.** Implement §Synthesis contract: core briefs under `plugins/spec/references/synthesis/`, `/spec:define` refactored to extract → synthesise → validate, substep order hand-coded in the skill body for v1. Migrate target define briefs into core synthesis + `shape` briefs. The `specify slice synthesize` topology verb is deferred until a third-party target needs custom brief ordering.
+5. **Slice synthesis.** Implement §Synthesis contract: core briefs under `plugins/spec/references/synthesis/`, `/spec:refine` ([RFC-26](rfc-26-workflow.md)) implements extract → synthesise → validate, substep order hand-coded in the skill body for v1. Migrate target define briefs into core synthesis + `shape` briefs. The `specify slice synthesize` topology verb is deferred until a third-party target needs custom brief ordering.
 6. **Provenance tags.** Extend `spec.md` parser in `crates/domain/src/specs/` to require `ID:`, `Sources:`, `Status:` lines on every requirement block. Add `[conflict]` to the closed tag enum alongside the existing `[unknown]`. (`[divergence]` ships with the multi-source extension.)
 7. **Discovery handshake.** Implement stable-id replace-by-id in the discovery writer (no append-and-skip behaviour, no cross-source merge). Add fixture and golden coverage for re-enumerate idempotence.
-8. **CLI surface.** New v1 verb: `specify source resolve <name>` (materialises briefs + WASI tools). Rename: `specify adapter resolve` → `specify target resolve`. Retire `specify adapter pipeline {define,build,merge}` — the substep order is hand-coded in `/spec:define` (2.x) or `/spec:refine` (3.0), `/spec:build`, `/spec:merge`. Delete: `specify change survey`. See [`commands.md`](commands.md) for the full v1 floor and cut verbs.
+8. **CLI surface.** New v1 verb: `specify source resolve <name>` (materialises briefs + WASI tools). Rename: `specify adapter resolve` → `specify target resolve`. Retire `specify adapter pipeline {define,build,merge}` — the substep order is hand-coded in `/spec:refine`, `/spec:build`, `/spec:merge` ([RFC-26](rfc-26-workflow.md)). Delete: `specify change survey`. See [`commands.md`](commands.md) for the full v1 floor and cut verbs.
 9. **Target brief migration.** Move today's target-owned `proposal`, `specs`, `design`, and `tasks` brief content into the core synthesis contract where it is target-neutral, and into target `shape` briefs where it is target-specific. Update RFC-24 and target skill prose to describe `shape` as guidance, not artifact ownership.
 10. **Documentation rewrite.** `AGENTS.md`, `.cursor/rules/project.mdc`, `docs/explanation/decision-log.md` (§Decision-log supersessions), `docs/contributing/adapter-anatomy.md` — adapter vocabulary, pipeline split, and superseded "analyze/extract split" / define-phase target ownership. RFC-22, RFC-24 prose updated.
 11. **`discovery-summary.md` rename.** Implement the generic form. Update fixtures.
@@ -378,13 +447,13 @@ Legacy-code-only columns (LOC, language, `surfaces.json` digest) populate only w
 
 ## Migration
 
-**There is no backward compatibility.** This RFC ships as Specify 2.0.
+**There is no backward compatibility.** This RFC ships as part of Specify 3.0 alongside [RFC-26](rfc-26-workflow.md); the two land together with a single release tag and a single migration script.
 
-A one-shot `migrate-to-2.0.sh` script performs mechanical renames against `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `.specify/.cache/`, and `.specify/archive/` (`yq` + `sed`). The plugin cache re-fetches on next invocation; operators who stay on 1.x pin plugin and CLI versions. There is **no** `specify upgrade` verb — see [`commands.md`](commands.md).
+The adapter-axis half of the migration is covered by [RFC-26 §Migration](rfc-26-workflow.md#migration)'s `migrate-to-3.0.sh`, which performs mechanical renames against `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, `.specify/.cache/`, and `.specify/archive/` (`yq` + `sed`) in addition to RFC-26's skill-directory moves and `reviewed` lifecycle addition. The plugin cache re-fetches on next invocation; operators who stay on 1.x pin plugin and CLI versions. There is **no** `specify upgrade` verb — see [`commands.md`](commands.md).
 
-Plugin authors ship renamed manifests against the new schemas; `adapter.yaml` fails to load on 2.0 with no grace period. JSON envelopes rename `adapter` → `target`; add `sources[]` consumers where slice-level evidence matters.
+Plugin authors ship renamed manifests against the new schemas; `adapter.yaml` fails to load on 3.0 with no grace period. JSON envelopes rename `adapter` → `target`; add `sources[]` consumers where slice-level evidence matters.
 
-**RFC-26 (Specify 3.0):** most teams jump **1.x → 3.0** once both RFCs land. Combined migration (`migrate-to-3.0.sh`) and workflow-skill renames are [RFC-26 §Migration](rfc-26-workflow.md#migration). Skill authors should not invest in `/change:*` changes during the 2.x line.
+There is no 2.x intermediate release. The earlier draft sequenced RFC-25 as 2.0 and RFC-26 as 3.0 with a parallel preview channel for early adopters; that sequencing carried doubled migration scripts, a `specify-3.0-preview` marketplace tag, and a "do not invest in `/change:*` changes during 2.x" caveat that pointed at zero productive lifetime. Single-release collapse removes all three. The intra-release ordering is preserved: RFC-25 §Implementation Plan steps 1–13 precede the RFC-26 workflow collapse inside the same 3.0 release.
 
 ## Alternatives Considered
 
@@ -415,12 +484,12 @@ Key rejections (full rationale in [`docs/explanation/decision-log.md`](../docs/e
 - Repository carve-out (per-adapter or per-family repos). v1 keeps everything in `augentic/specify`.
 - Legacy-code source families beyond `legacy-code-typescript`.
 - Contract-source adapters (`sources/{openapi,asyncapi,json-schema}`). Today's `/contract:*` skills cover the v1 import path.
+- Multi-target projects. v1 project configuration has exactly one `target`; a future RFC may relax this when a real bi-targeting case lands.
 
 ## Open Questions
 
 1. Should the default `intent` and `documentation` source adapters be packaged as true plugin implementations (with `source.yaml` etc.) or hard-wired into the core CLI as built-ins? Current preference: true plugin implementations, shipped in-repo under `sources/intent/` and `sources/documentation/`, so the plugin shape has zero exceptions.
 2. How should `extract` be sandboxed when a source adapter ships a WASI tool? Current preference: same posture as RFC-15 — the WASI tool runs under the existing `specify tool run` sandbox; briefs read its output.
-3. Should `specify target` accept multiple targets per project for projects that produce both an Omnia service and a Vectis app from the same artifacts? Current preference: deferred — today's one-target-per-project assumption is held; a future RFC may relax it once a real bi-targeting case lands.
 
 ## References
 
@@ -428,7 +497,7 @@ Key rejections (full rationale in [`docs/explanation/decision-log.md`](../docs/e
 - [RFC-20: Survey-to-Plan Pipeline (archived)](archive/rfc-20-survey.md) — the survey pipeline this RFC folds into the `sources/legacy-code` adapter family.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` survives; binding fields extend to record source-adapter identity.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — adapter-typed entries become target-typed; otherwise unchanged.
-- [RFC-23: Change Lifecycle (archived)](archive/rfc-23-change-lifecycle.md) — the `/change:draft` → `/change:execute` → `/change:finalize` three-skill model survives this RFC; the discovery stage inside `/change:draft` is restructured here. RFC-23's three-skill model is itself superseded by [RFC-26](rfc-26-workflow.md).
+- [RFC-23: Change Lifecycle (archived)](archive/rfc-23-change-lifecycle.md) — the `/change:draft` → `/change:execute` → `/change:finalize` three-skill model is superseded by [RFC-26](rfc-26-workflow.md) in the same 3.0 release; the discovery stage inside what was `/change:draft` is restructured here and consumed by `/spec:plan`.
 - [RFC-24: Omnia Plan Composition](rfc-24-omnia.md) — adapter-gated findings become target-gated, and Omnia artifact-authoring briefs become target `shape` guidance. `omnia` becomes a target adapter.
 - [RFC-26: Workflow Collapse](rfc-26-workflow.md) — planned follow-on; collapses the `/change:*` and `/spec:*` skill families into one operator surface on top of this RFC's adapter axis.
 - [RFC-15: WASM Plugins (archived)](archive/rfc-15-wasm-plugins.md) — the WASI tool surface reused as the deterministic-CLI seam inside source and target adapters.

@@ -214,7 +214,7 @@ When a value may contain user-controlled content, log a count, hash, enum, or st
 Specify should not run a metrics server or daemon. It is a short-lived CLI, so the first observability layer should express metrics as structured span close events and summary events:
 
 - command duration and exit code;
-- plan entries inspected, selected, skipped, blocked, failed, and completed;
+- plan entries inspected, selected, resumed, and completed in v1; skipped, blocked, and failed counters return only if those terminal states are reintroduced;
 - files parsed and validation findings counted;
 - cache hit/miss/stale/install counts;
 - tool fetch and run durations;
