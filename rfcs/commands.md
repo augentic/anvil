@@ -12,7 +12,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 | `specify target resolve` | `<value>` | `--project-dir` |
 | `specify plan create` | `<name>` | `--source` |
 | `specify plan add` | `<name>` | `--depends-on`, `--sources`, `--description`, `--project`, `--target`, `--context` |
-| `specify plan amend` | `<name>` | `--depends-on`, `--sources`, `--description`, `--project`, `--target`, `--context` |
+| `specify plan amend` | `<name>` | `--depends-on`, `--sources`, `--add-source`, `--remove-source`, `--description`, `--project`, `--target`, `--context` |
 | `specify plan transition` | `<name>`, `<target>` | `--reason` |
 | `specify plan next` | | |
 | `specify plan finalize` | `<name>` | `--clean`, `--dry-run` |
@@ -25,7 +25,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 | `specify workspace prepare-branch` | `<project>` | `--change`, `--source`, `--output` |
 | `specify tool run` | `<name>`, `[args…]` | arguments after `--` |
 
-`<target>` for `specify plan transition`: plan lifecycle `reviewed`; per-entry `done`. `pending` is written by `plan add` / `plan amend`, and `in-progress` is written only by `plan next`. `plan next` returns the active `in-progress` entry before selecting a new `pending` entry, and reports drained only when no active or pending entries remain. v1 has no per-entry `blocked`, `failed`, or `skipped` state; build failures and merge conflicts leave the active entry `in-progress`. `<target>` for `specify slice transition`: `defining`, `defined`, `built`, `dropped` (`--reason` only for `dropped`; the `merged` state is stamped by `specify slice merge`, never `slice transition`). Repeatable flags: `plan create --source`, `plan add` / `amend` `--depends-on` / `--sources` / `--context`, `workspace prepare-branch` `--source` / `--output`.
+`<target>` for `specify plan transition`: plan lifecycle `reviewed`; per-entry `done`. `pending` is written by `plan add` / `plan amend`, and `in-progress` is written only by `plan next`. `plan next` returns the active `in-progress` entry before selecting a new `pending` entry, and reports drained only when no active or pending entries remain. v1 has no per-entry `blocked`, `failed`, or `skipped` state; build failures and merge conflicts leave the active entry `in-progress`. `<target>` for `specify slice transition`: `defining`, `defined`, `built`, `dropped` (`--reason` only for `dropped`; the `merged` state is stamped by `specify slice merge`, never `slice transition`). Repeatable flags: `plan create --source`, `plan add` / `amend` `--depends-on` / `--sources` / `--add-source` / `--remove-source` / `--context`, `workspace prepare-branch` `--source` / `--output`. `plan amend --add-source` / `--remove-source` only succeed while the slice's per-entry lifecycle is `pending` and the plan lifecycle is at most `reviewed`; rebinding an already-extracted slice requires `slice transition dropped` and re-add.
 
 ## What was cut and why
 
@@ -56,10 +56,11 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 - `specify slice task progress`, `specify slice task mark` — `/spec:build` greps `- [ ]` in `tasks.md` and edits the checkbox in place.
 - `specify compatibility check` — defer until a real cross-project consumer exists.
 
-**Deferred with the multi-source extension (RFC-25 §Non-Goals).**
+**Deferred — separate consumer ask.**
 
-- `specify plan amend --add-source <key>` / `--remove-source <key>` — slice rebinding is only meaningful when a slice can carry more than one source. v1 binds one source at `specify plan add` and that binding is the slice's. Reinstate together with the rest of the multi-source surface (authority hierarchy, `[divergence]` tag, inter-pack `[conflict]` detection, parallel extract).
-- `slice transition defined_provisional` — the second structural gate (operator review of synthesis output as a parking state) ships with the multi-source extension. v1 surfaces `[conflict]` / `[unknown]` inline in `spec.md` as review signals; `/spec:build` does not refuse on those tags.
+- `slice transition defined_provisional` — the second structural gate (operator review of synthesis output as a parking state). Multi-source synthesis ships in v1 (RFC-25); `/spec:refine` surfaces `[conflict]` / `[divergence]` / `[unknown]` inline in `spec.md` as review signals and `/spec:build` does not refuse on those tags. The parking state returns when a real consumer demands review-then-promote ergonomics, automation hooks, or CI gating around synthesis output.
+- `--parallel-extract` flag (or implicit parallelism) on `/spec:refine`. v1 runs `extract` serially in `planSlice.sources` declaration order for deterministic goldens; parallel extraction returns when extract latency becomes a real workflow cost.
+- `plan.yaml.slices[].authority-override` and per-claim authority overrides. v1 uses adapter-class defaults; per-slice and per-claim overrides return when editing `spec.md` after `[divergence]` is no longer an adequate operator seam.
 
 **Operator-curated YAML — hand-edit, validation on first use.**
 

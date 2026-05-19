@@ -6,7 +6,7 @@
 
 Collapse the `/change:*` and `/spec:*` skill families into a single `/spec:*` operator surface. The default rhythm becomes `/spec:plan → /spec:execute → /spec:finalize`, with `/spec:refine`, `/spec:build`, and `/spec:merge` as first-class step-through breakouts. One structural review gate — Gate 1, between planning and execution — is a CLI-stamped lifecycle state (`reviewed`) observable on `plan.yaml`, rather than a skill exit or a `--review-only` flag. `change.md` and `plan.yaml` survive at every slice count, including N=1; the trivial single-slice path runs through the same workflow as a degenerate case.
 
-v1 ships the supervised default loop only — no automation flags. Synthesis review is operator-driven via inline `[conflict]` / `[unknown]` tags in `spec.md` (no second parking gate until the multi-source extension — RFC-25 §Non-Goals). The CLI substrate barely moves: this is almost entirely a skill / brief redesign on top of [RFC-25](rfc-25-adapters.md)'s source-adapter contract. **There is no backward compatibility** — `/change:*` skills, `specify change *` verbs, and `/spec:define` all retire in lockstep at the 3.0 hard cut.
+v1 ships the supervised default loop only — no automation flags. Synthesis review is operator-driven via inline `[conflict]` / `[divergence]` / `[unknown]` tags in `spec.md` — no second parking gate in v1; see §Non-Goals. The CLI substrate barely moves: this is almost entirely a skill / brief redesign on top of [RFC-25](rfc-25-adapters.md)'s source-adapter contract. **There is no backward compatibility** — `/change:*` skills, `specify change *` verbs, and `/spec:define` all retire in lockstep at the 3.0 hard cut.
 
 ## Motivation
 
@@ -22,7 +22,7 @@ The collapse promotes planning onto `/spec:*`, keeps `/spec:refine` as the per-s
 
 1. **Collapse the operator vocabulary, not the planning contract.** Source `enumerate` and source `extract` stay separate; `plan.yaml` stays single-writer; the operator-review pause stays a structural seam. What changes is that the operator types `/spec:` for everything.
 2. **On-disk state is the resume mechanism.** `/spec:execute` carries no in-memory state across invocations. Re-running it re-reads `plan.yaml.lifecycle` and slice `.metadata.yaml` and dispatches to the next phase. There is no `--continue` flag, no session token, no in-flight handoff.
-3. **The plan gate is a CLI-stamped lifecycle state, not a flag.** Crossing Gate 1 means running `specify plan transition <change> reviewed`; `/spec:execute` refuses to run until set. v1 ships exactly one structural gate; review of synthesis output is operator-driven through inline `[conflict]` / `[unknown]` tags in `spec.md` rather than a second parking state or build precondition. See §The plan gate.
+3. **The plan gate is a CLI-stamped lifecycle state, not a flag.** Crossing Gate 1 means running `specify plan transition <change> reviewed`; `/spec:execute` refuses to run until set. v1 ships exactly one structural gate; review of synthesis output is operator-driven through inline `[conflict]` / `[divergence]` / `[unknown]` tags in `spec.md` rather than a second parking state or build precondition. See §The plan gate.
 4. **Single writer.** The CLI remains the only writer of `plan.yaml`, `.metadata.yaml`, archive paths, and lifecycle transitions. Phase skills (`/spec:plan`, `/spec:execute`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:finalize`) drive the agent-side work; deterministic transitions go through the CLI.
 5. **Always plan, always enumerate.** Every change runs `enumerate` and produces a `plan.yaml`. N=1 is degenerate, not absent. There is no shortcut path that skips the loop verb.
 6. **Breakouts are first-class.** `/spec:refine`, `/spec:build`, and `/spec:merge` are documented step-through verbs the operator reaches for when `/spec:execute` parks on a stop, or when they want to inspect a slice mid-flight. They are not "manual mode" or legacy. The same skill body is invoked from `/spec:execute`'s loop and from a direct operator call.
@@ -98,8 +98,8 @@ The default rhythm is uniform at every scale: N=1 plans run through `/spec:execu
   |     [hub only] specify workspace prepare-branch <project> --change <scope>
   |     [hub only] chdir .specify/workspace/<project>/
   |     if slice lifecycle < defined:        invoke /spec:refine
-  |                                          (writes spec.md with inline [conflict] / [unknown]
-  |                                          tags when synthesis surfaces them; loop continues)
+  |                                          (writes spec.md with inline [conflict] / [divergence] /
+  |                                          [unknown] tags when synthesis surfaces them; loop continues)
   |     if slice lifecycle < built:          invoke /spec:build
   |       -> on non-zero exit:               -- stop -- (build failure)
   |     if slice lifecycle < merged:         invoke /spec:merge
@@ -128,13 +128,13 @@ The default rhythm is uniform at every scale: N=1 plans run through `/spec:execu
   |-- slice create .specify/slices/<name>/    (idempotent - no-op if present)
   |-- bound source.extract -> evidence/<source-key>.yaml
   |-- synthesise per RFC-25 §Synthesis contract; specify slice validate
-  |     (synthesis writes [conflict] / [unknown] tags inline in spec.md when needed;
+  |     (synthesis writes [conflict] / [divergence] / [unknown] tags inline in spec.md when needed;
   |      no parking state, no synthesis halt — operator may review and hand-edit)
   +-- slice transition defined
 
 /spec:build                                    ---- IMPLEMENTATION ------------------
   |-- refuse unless slice lifecycle is defined
-  |-- do not refuse on unresolved [conflict] / [unknown] tags; they are review signals
+  |-- do not refuse on unresolved [conflict] / [divergence] / [unknown] tags; they are review signals
   |-- run tasks.md tasks in order (resume from last failed task on re-entry)
   +-- slice transition built
 
@@ -159,7 +159,7 @@ Two responsibility rules keep the breakout / loop paths consistent:
 | `/spec:merge` reports a baseline conflict | Exits with conflicting spec paths | Resolve, then `/spec:execute` |
 | `specify plan next` reports drained | Exits cleanly; notes `/spec:finalize` ready | Run `/spec:finalize` |
 
-Synthesis tags (`[conflict]` / `[unknown]`) do not stop the loop and do not cause `/spec:build` to refuse. They are printed in the per-slice transition message and emitted as journal events; the operator may interrupt and hand-edit before build, but v1 does not add a second gate or an `--allow-unresolved` flag.
+Synthesis tags (`[conflict]` / `[divergence]` / `[unknown]`) do not stop the loop and do not cause `/spec:build` to refuse. They are printed in the per-slice transition message and emitted as journal events; the operator may interrupt and hand-edit before build, but v1 does not add a second gate or an `--allow-unresolved` flag.
 
 ### The plan gate
 
@@ -169,7 +169,7 @@ Synthesis tags (`[conflict]` / `[unknown]`) do not stop the loop and do not caus
 
 Gate 1 is the structural successor to RFC-23's "explicit human seam" — same logical spot, now CLI-stamped on `plan.yaml.lifecycle`.
 
-**No Gate 2 in v1.** Synthesis tags in `spec.md` are operator-review signals; lifecycle goes straight `defined → built`, and `/spec:build` refuses only on slice lifecycle preconditions. A structural second gate (`defined_provisional`) lands with the multi-source extension (RFC-25 §Non-Goals).
+**No Gate 2 in v1.** Synthesis tags in `spec.md` are operator-review signals; lifecycle goes straight `defined → built`, and `/spec:build` refuses only on slice lifecycle preconditions. A structural second gate (`defined_provisional` parking state) returns when operator demand for a discrete review-then-promote ergonomics — automation hooks, CI gating, parking semantics for `[conflict]` and `[divergence]` tags — surfaces in real workflows. See §Non-Goals.
 
 **Stepping in without `/spec:execute`:** After Gate 1, run `specify plan next`, then `/spec:refine` directly. `plan next` owns the `in-progress` transition; refine only consumes the active slice and exits if no entry is active.
 
@@ -337,7 +337,7 @@ The hub's own `slices/` directory is unused (the hub never authors slices direct
 
 Strictly incremental on top of RFC-25. Land RFC-25 acceptance fixtures (especially synthesis and provenance) **before** step 3 below.
 
-1. **Land RFC-25.** The collapse depends on symmetric `enumerate` / `extract`, core synthesis, and the single-source v1 floor. RFC-25 and RFC-26 ship in lockstep as Specify 3.0; this step is intra-release ordering, not a separate release.
+1. **Land RFC-25.** The collapse depends on symmetric `enumerate` / `extract`, core synthesis (including the authority hierarchy, `claim-id` fusion, and `[divergence]` emission), and the multi-source v1 floor. RFC-25 and RFC-26 ship in lockstep as Specify 3.0; this step is intra-release ordering, not a separate release.
 2. **Promote the review seam inside `/change:draft`** as a no-behaviour-change refactor. Add `reviewed` to plan lifecycle; `specify plan transition <change> reviewed` stamps Gate 1.
 3. **Rename `/change:execute loop` -> `/spec:execute` and add the §Internal structure stop/resume contract.** The loop algorithm is unchanged; what is new is that the skill stops on build failure and merge conflict with operator-facing hints, and resumes by re-reading on-disk state on the next invocation. `/change:finalize` becomes `/spec:finalize` (no behaviour change). **This is the load-bearing step** - the collapsed default workflow becomes `/spec:plan -> /spec:execute -> /spec:finalize` only once this step lands.
 4. **Make `/spec:plan`, `/spec:execute`, `/spec:finalize` the documented default workflow** and `/spec:refine`, `/spec:build`, `/spec:merge` the documented step-through breakouts. Rewrite `AGENTS.md`, `.cursor/rules/project.mdc`, the README, the marketplace manifest, and the tutorial walkthrough. `/change:*` and `/spec:define` move to a "removed" section. Acceptance scenario #1 (Pure intent, one slice) is a release-blocker for this step — see §Acceptance scenarios — because single-release collapse means N=1 `/spec:plan` ergonomics surface to every operator at once with no 2.x discovery window.
@@ -354,6 +354,10 @@ Run these against the collapsed skills before step 5. Each is an honest stress t
 | 3 | **Documentation, multi-slice.** Operator binds docs that map to N candidates. | Propose/edit/reject loop; Gate 1 amendment flow. |
 | 4 | **Legacy-code, multi-slice.** Operator binds a legacy repo. | `legacy-code-typescript.enumerate`; survey/repair loop under the new skill; under-slicing failure mode. |
 | 5 | **Synthesis surfaces `[conflict]` inline.** Single-source slice where synthesis cannot reconcile an intra-pack contradiction. | `[conflict]` written into `spec.md`; lifecycle still transitions to `defined`; operator can hand-edit and run `/spec:build` without a parking-state ceremony. |
+| 5a | **Combined evidence (legacy-code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice. | RFC-25 §Synthesis contract end-to-end: serial `extract` per binding; `EvidencePackSet` cardinality 2; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `defined` cleanly when packs agree. |
+| 5b | **`[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes (e.g. docs say "30 minutes" expiry, code observed 24 hours). | `Status: divergence` written; design-spec winner becomes the operative requirement; observed-behaviour preserved as inline commentary; lifecycle transitions to `defined`; operator may hand-edit before build. |
+| 5c | **`[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim. | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `defined`; operator must reconcile by editing or amending bindings before the requirement is meaningful. |
+| 5d | **Optional binding fail-soft.** Combined-evidence slice with one `optional: true` binding whose `extract` fails. | Synthesis proceeds with the surviving packs; structured warning emitted; `Sources:` lines reflect surviving contributors only. |
 | 6 | **Multi-repo assignment from a hub.** Operator runs `/spec:plan` in a hub. | `hub:` discriminator; per-candidate `--project` at propose; workspace sync timing. |
 | 7 | **Operator amends one-slice plan into two slices at Gate 1.** | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend. |
 | 8 | **Step-through breakout mid-execute.** Operator starts `/spec:execute`; on the second slice they cancel, run `/spec:build` directly to investigate, then re-invoke `/spec:execute`. | Stop/resume contract; that step-through verbs leave on-disk state consistent for `/spec:execute` to resume without flags. |
@@ -395,7 +399,7 @@ See §Non-Goals for out-of-scope items.
 
 **Deferred from v1, reinstated when a real caller asks:**
 
-- A second structural gate between synthesis and build (`defined_provisional` parking state, `/spec:refine --resume` promotion verb, `--yes-gate2` automation flag). Lands with the multi-source extension (RFC-25 §Non-Goals) when same-fact conflict between evidence packs gives operator review a discrete decision to mechanise.
+- A second structural gate between synthesis and build (`defined_provisional` parking state, `/spec:refine --resume` promotion verb, `--yes-gate2` automation flag). Multi-source synthesis (RFC-25) emits `[conflict]` and `[divergence]` tags inline today; the second gate returns when operator demand for a parking state — discrete review-then-promote ergonomics, automation hooks, CI gating — surfaces in real workflows.
 - `/spec:execute` automation flags: `--yes-plan` (Gate 1 auto-clear), `--one`, `--until <slice>`, `--dry-run`, `--continue-on-build-fail`. v1 ships the supervised default loop with no flags.
 - Cross-mode driving for the same project (a registered project driven both via its hub and standalone from its project root). v1 refuses the second mode at plan-create time. The `stale-workspace-clone` warning surface, the lock-holder PID visibility on a non-existent `specify plan status`, and the "operators are responsible for not racing themselves" disclaimer all return with the cross-mode feature, not before.
 
@@ -413,6 +417,7 @@ Emit journal events (complete by 3.0):
 | `plan.transition.reviewed` | Gate 1 cleared |
 | `slice.transition.defined` | Synthesis completed |
 | `slice.synthesis.conflict` | `[conflict]` markers written into `spec.md` |
+| `slice.synthesis.divergence` | `[divergence]` markers written into `spec.md` |
 | `slice.synthesis.unknown` | `[unknown]` markers written into `spec.md` |
 
 Enables CI and hosted runners to observe planning and synthesis without parsing skill exit codes.
@@ -420,7 +425,7 @@ Enables CI and hosted runners to observe planning and synthesis without parsing 
 ## References
 
 - [RFC-19: Observability](rfc-19-observability.md) — journal events for the plan gate and synthesis outcomes (§Observability).
-- [RFC-25: Directional Adapters](rfc-25-adapters.md) — adapter-axis prerequisite; §Synthesis contract, single-source v1 floor, and pipeline split. The deferred second gate lands with RFC-25's multi-source extension (RFC-25 §Non-Goals).
+- [RFC-25: Directional Adapters](rfc-25-adapters.md) — adapter-axis prerequisite; §Synthesis contract, multi-source v1 floor, and pipeline split. The deferred second gate is decoupled from multi-source — see §Non-Goals.
 - [RFC-23: Change Lifecycle (archived)](archive/rfc-23-change-lifecycle.md) - the three-skill model RFC-26 supersedes. Gate 1 is the structural successor to RFC-23's "explicit human seam"; the seam itself survives, the verb names do not.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) - unaffected by the collapse; the per-change ledger continues to live alongside `change.md` and `plan.yaml`.
 - [RFC-24: Omnia Plan Composition](rfc-24-omnia.md) - unaffected; per-slice composition lives on `planSlice` regardless of which verb wrote it.
