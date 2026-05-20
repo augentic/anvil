@@ -4,14 +4,14 @@
 >
 > Companion: [commands.md](commands.md) is the CLI floor. This document now contains the normative workflow, worked examples, and acceptance scenarios.
 
-## Summary
+## Abstract
 
 RFC-25 makes Specify 3.0 one coherent workflow:
 
 1. **Source adapters produce evidence.** They enumerate slice candidates at plan time and extract `EvidencePack`s at slice time.
 2. **Target adapters produce code.** They provide `shape` guidance plus `build` and `merge`; they do not synthesize `spec.md` or `design.md`.
 3. **Core owns synthesis.** Core fuses one or more evidence packs into `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, with provenance and conflict tags.
-4. **Operators use one `/spec:`* surface.** `/change:`* retires; `/spec:plan`, `/spec:execute`, and `/spec:finalize` become the default rhythm.
+4. *Operators use one `/spec:` surface.** `/change:`* retires; `/spec:plan`, `/spec:execute`, and `/spec:finalize` become the default rhythm.
 5. **Every change has a plan and Gate 1.** N=1 is degenerate, not special. Gate 1 is `plan.lifecycle == reviewed`.
 6. **3.0 is a hard cut.** No compatibility aliases for old manifests, verbs, brief paths, or `/change:`*.
 
@@ -40,7 +40,7 @@ source adapters --enumerate--> discovery.md / plan.yaml
 
 ## Motivation
 
-This RFC unifies the adapter-direction axis and the operator-surface axis in one release. Earlier drafts split them into two RFCs; that doubled migration scripts and cross-references without a 2.x adopter population to justify it.
+This RFC unifies two significant changes to Specify in a single release. The changes, source and target adapters, and plan-led workflow to reduce the Specify core to the orchestration of small point changes through to large-scale migrations.
 
 **Adapter axis.** `/change:analyze` and `/change:survey` are one operation with two evidence sources; `/spec:define` and `/spec:extract` repeat the pattern at slice time. Legacy migration archaeology belongs in add-on source adapters, not core. Unqualified `adapter` only names outputs today, leaving no symmetrical term for inputs.
 
@@ -117,11 +117,13 @@ in-progress               defining                       extract + synthesize
 drained                   -                              /spec:finalize
 ```
 
+The plan transitions to `drained` once every entry has transitioned to `done`; `/spec:execute` exits at that point and `/spec:finalize` becomes legal.
+
 `**/spec:plan**` runs pre-flight, scaffolds `change.md` and `plan.yaml`, runs hub registry validation and workspace sync when needed, enumerates each source, proposes candidate slices, assigns hub projects when needed, validates the plan, and stamps **Gate 1** with `specify plan transition <scope> reviewed`.
 
 `**/spec:execute`** refuses unless the plan is `reviewed`, acquires the plan lock (hub root in hub mode), and loops: `specify plan next` -> hub project resolution and slot prep when needed -> `/spec:refine` if needed -> `/spec:build` -> `/spec:merge` -> residue commit and return to hub root when needed -> repeat until drained.
 
-`**/spec:finalize**` requires all entries `done`, pushes branches, observes PRs until `MERGED`, then runs `specify plan finalize` to archive the plan.
+`**/spec:finalize`** requires all entries `done`, pushes branches, observes PRs until `MERGED`, then runs `specify plan finalize` to archive the plan.
 
 **Breakouts** share skill bodies with the loop. `/spec:refine` requires an active `in-progress` entry from `plan next` and never writes `in-progress` itself. `/spec:build` refuses only on slice lifecycle, not on synthesis tags. `/spec:merge` is the only writer of per-entry `done`.
 
@@ -186,20 +188,20 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 ### Adapter vocabulary
 
 
-| Term                              | Meaning                                                                                                             |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **source adapter**                | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `legacy-code-typescript`, `openapi`.      |
-| **target adapter**                | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`. |
-| **plugin**                        | Shared implementation shape for either role.                                                                        |
-| **candidate** / **candidate set** | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                         |
-| **evidence pack**                 | Structured facts from `extract`; persisted before synthesis.                                                        |
-| **evidence pack set**             | All packs bound to one slice; synthesis input.                                                                      |
-| **provenance**                    | Source bindings behind one requirement (`Sources:` list).                                                           |
-| **conflict** / **divergence**     | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                |
-| **authority**                     | Closed enum: `intent                                                                                                |
+| Term                              | Meaning                                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **source adapter**                | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `legacy-code-typescript`, `openapi`.             |
+| **target adapter**                | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.        |
+| **plugin**                        | Shared implementation shape for either role.                                                                               |
+| **candidate** / **candidate set** | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                |
+| **evidence pack**                 | Structured facts from `extract`; persisted before synthesis.                                                               |
+| **evidence pack set**             | All packs bound to one slice; synthesis input.                                                                             |
+| **provenance**                    | Source bindings behind one requirement (`Sources:` list).                                                                  |
+| **conflict** / **divergence**     | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                       |
+| **authority**                     | Closed enum: `intent`, `external-contract`, `design-spec`, `observed-behaviour` (highest first; see §Authority hierarchy). |
 
 
-`provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:*`.
+`provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:`*.
 
 ### Workflow vocabulary
 
@@ -207,7 +209,7 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 | Term                     | Meaning                                                                   |
 | ------------------------ | ------------------------------------------------------------------------- |
 | **change**               | On-disk umbrella: `change.md`, `plan.yaml`, archive; not a slash command. |
-| **plan**                 | `/spec:plan`, `specify plan `*, Gate 1.                                   |
+| **plan**                 | `/spec:plan`, `specify plan` *, Gate 1.                                   |
 | **slice**                | One refine -> build -> merge unit.                                        |
 | **refine** / **execute** | `/spec:refine` (per slice); `/spec:execute` (supervised driver).          |
 | **gate**                 | CLI-stamped transition; v1: Gate 1 only.                                  |
@@ -219,6 +221,20 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 
 
 ## Implementation contract
+
+### Types
+
+Names used in function signatures and table cells throughout this RFC. Concrete shape is the canonical example or schema noted in the right column.
+
+
+| Name              | Shape                                                                                                                     | Reference                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `source-binding`  | Plan-level pair: source-key (kebab-case) -> path or value. Lives under `plan.yaml.sources`.                               | §Planning at every scale; §`planSlice.sources`.                        |
+| `CandidateSet`    | Ordered list of candidate blocks emitted by `enumerate`; each has stable `id`, `sources[]`, optional `correlates-with[]`. | §Discovery handshake; `schemas/discovery/candidate-block.schema.json`. |
+| `EvidencePack`    | Per-binding result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                       | §`extract`; `schemas/evidence-pack.schema.json`.                       |
+| `EvidencePackSet` | All packs bound to one slice (one per entry in `planSlice.sources`); the input to synthesis.                              | §Synthesis contract.                                                   |
+| `planSlice`       | One slice entry under `plan.yaml.slices[]`; carries `target`, `sources[]`, `project`, `status`.                           | §`planSlice.sources`; §On-disk and tooling.                            |
+
 
 ### Writer ownership
 
@@ -319,6 +335,20 @@ Both are true source adapters with no special workflow rules. N=1 greenfield use
 
 Each candidate block has stable `id`, `sources[]`, and optional `correlates-with[]`. Operator merges cross-source duplicates at propose time. Re-enumerating the same source replaces by `id`; enumerating a different source appends new ids. Schema: `schemas/discovery/candidate-block.schema.json`. `discovery.md` remains the plan-time source of truth; no `candidates.yaml` in v1.
 
+Minimal candidate block, as written under `## Candidate inventory` in `discovery.md`:
+
+```markdown
+### user-registration
+
+- id: user-registration
+- sources: [legacy-monolith]
+- correlates-with: [identity-design-notes#user-signup]
+- summary: Registration endpoint accepting email + password with RFC-5322 validation.
+- evidence-hint: src/users/register.ts (legacy-monolith)
+```
+
+`id` is the stable handle re-enumeration writes against. `sources[]` lists the source-bindings that surfaced this candidate. `correlates-with[]` is an operator-merge hint: it names sibling candidate ids from other sources that look like the same unit of work, and is what `specify plan add` consumes when the operator merges duplicates into one slice.
+
 ### `planSlice.sources`
 
 `planSlice.sources` is a list of one or more binding keys:
@@ -348,7 +378,7 @@ slices:
 Target adapters do not own `spec.md` or `design.md` synthesis. They may declare:
 
 - `**shape**`: idiom guidance consumed by core synthesis.
-- `**build` / `merge**`: implementation and landing briefs/tools.
+- `**build**` / `**merge**`: implementation and landing briefs/tools.
 
 `specify adapter pipeline {define,build,merge}` retires. Topology verbs can return when a third-party target needs custom ordering; see [commands.md](commands.md). RFC-24 "adapter-gated" becomes "target-gated"; `planSlice.adapter` becomes `planSlice.target`.
 
@@ -360,11 +390,11 @@ Core owns `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Inputs are `Evi
 
 1. Resolve target and sources.
 2. Run serial `extract` per §Extraction reliability.
-3. Synthesize per this contract.
-4. Run `specify slice validate`.
-5. Transition to `defined`.
+3. Synthesize in fixed substep order: `proposal` -> `specs` -> `design` -> `tasks`. Substeps are hand-coded in `/spec:refine` in v1 (no `specify slice synthesize` verb; see [commands.md](commands.md)).
+4. Run `specify slice validate` ([commands.md](commands.md)).
+5. Transition to `defined` via `specify slice transition <name> defined`.
 
-Tags `[unknown]`, `[conflict]`, and `[divergence]` are review signals; they do not park the slice.
+Tags `[unknown]`, `[conflict]`, and `[divergence]` are review signals; they do not park the slice. Synthesis never aborts on tags; the slice lifecycle stays `defining -> defined -> built -> merged` regardless of tag content.
 
 ### Requirement block contract
 
@@ -397,7 +427,7 @@ Highest authority wins:
 | No pack                      | `Status: unknown`, `[unknown]`                            |
 
 
-Substep order in v1 is hand-coded in `/spec:refine`: `proposal` -> `specs` -> `design` -> `tasks`. Synthesis never aborts on tags; lifecycle stays `defining -> defined -> built -> merged`.
+Substep order and lifecycle behavior live with the `/spec:refine` pipeline above.
 
 ### Extraction reliability
 
@@ -559,7 +589,7 @@ Hub: plan and discovery artifacts at hub root; slices under `workspace/<project>
 
 Full v1 floor, cuts, and deferrals: [commands.md](commands.md).
 
-Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter resolve`); `specify plan transition ... reviewed`; `specify plan amend --add-source` / `--remove-source`; `specify change *` and `specify adapter pipeline` retire. Skill/slash retirements match §Commands.
+Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter resolve`); `specify plan transition ... reviewed`; `specify plan amend --add-source` / `--remove-source`; `specify change *` and `specify adapter pipeline` retire. Skill/slash retirements match §Operator workflow -> Commands.
 
 ### Skill / `SKILL.md` changes
 
@@ -577,9 +607,20 @@ Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter re
 
 ### Repository layout (monorepo v1)
 
-- `/spec:{init,plan,refine,execute,build,merge,finalize,drop}`
-- `sources/{intent,documentation,legacy-code-typescript}/`
-- `targets/{omnia,vectis,contracts}/` (from `adapters/`)
+```text
+/
+|-- plugins/
+|   `-- spec/skills/{init,plan,refine,execute,build,merge,finalize,drop}/
+|-- sources/
+|   |-- intent/                       # source.yaml, briefs/
+|   |-- documentation/
+|   `-- legacy-code-typescript/       # surfaces.json moves here (was under change/)
+|-- targets/                          # was adapters/
+|   |-- omnia/                        # target.yaml, briefs/{shape,build,merge}.md
+|   |-- vectis/
+|   `-- contracts/
+`-- schemas/                          # plugin, source, target, evidence-pack, candidate-block
+```
 
 Deferred: other legacy-code languages; contract source adapters; per-adapter repo split.
 
@@ -612,6 +653,8 @@ Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workfl
 ## Acceptance scenarios
 
 Run these against the merged skills before implementation step 17. Each row stress-tests a place the redesign can fail.
+
+**Scenario id convention.** Numeric ids (`#1`-`#12`) are independent scenarios. Letter-suffixed ids under a number (`#5`, `#5a`-`#5h`) share a theme — here, single-source and multi-source synthesis behavior. Implementation-plan acceptance columns and inline cross-references use these ids verbatim.
 
 If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surprised state), revisit §Planning at every scale before pushing through step 17.
 
@@ -661,7 +704,7 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 - Target adapters in discovery: rejected; RFC-22 ledger territory.
 - Defer multi-source synthesis: rejected; migration routinely combines code + docs.
 - 2.0 adapter + 3.0 workflow split / separate RFC-25 + RFC-26: reversed; single release, single migration script.
-- `/spec:refine --loop`, `/spec:plan` as shim over `/change:`*, `/spec:define` kept, `/change:*` aliases: rejected.
+- `/spec:refine --loop`, `/spec:plan` as shim over `/change:`*, `/spec:define` kept, `/change:`* aliases: rejected.
 
 ## Non-goals
 
