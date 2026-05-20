@@ -110,7 +110,7 @@ For each leaf, copy the visible text content into `content:` / `label:` (preserv
 
 When a sibling `assets.yaml` exists, disambiguate icon and image leaves that belong to a variant family — a set of asset IDs sharing a common base with visual-state suffixes. The sub-stage runs after leaf inference (Stage 5) and before candidate-component detection (Stage 6).
 
-1. **Discover variant families.** Scan `assets.yaml` IDs and group by longest shared kebab-case prefix where the remaining suffix is a recognised state token: `default`, `active`, `focussed`, `focused`, `selected`, `checked`, `disabled`, `empty`, `highlighted`, `pressed`, `hovered`. Example: `{nav-lists-default, nav-lists-active, nav-lists-focussed}` → family `nav-lists` with 3 variants. When an entry carries an explicit `variant_of` field, use that grouping instead of the suffix heuristic.
+1. **Discover variant families.** Scan `assets.yaml` IDs and group by longest shared kebab-case prefix where the remaining suffix is a recognised state token: `default`, `active`, `focussed`, `focused`, `selected`, `checked`, `disabled`, `empty`, `highlighted`, `pressed`, `hovered`, `high`, `medium`, `low`. Example: `{nav-lists-default, nav-lists-active, nav-lists-focussed}` → family `nav-lists` with 3 variants. When an entry carries an explicit `variant_of` field, use that grouping instead of the suffix heuristic.
 
 2. **Identify candidate leaves.** Walk the inferred layout and collect every `icon`, `icon-button`, or `image` leaf whose `name:` or `icon:` matches any entry in a variant family.
 
