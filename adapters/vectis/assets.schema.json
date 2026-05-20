@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify/schemas/vectis/assets.schema.json",
+  "$id": "https://github.com/augentic/specify/adapters/vectis/assets.schema.json",
   "title": "Specify Assets Artifact",
   "description": "Schema for assets.yaml — image and icon inventory consumed by shell writers.",
   "type": "object",
@@ -71,8 +71,7 @@
     },
 
     "variantOf": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "$ref": "#/$defs/assetId",
       "description": "Base asset ID this entry is a variant of. Groups related visual states under a common family for variant-aware tooling."
     },
     "usageHint": {
