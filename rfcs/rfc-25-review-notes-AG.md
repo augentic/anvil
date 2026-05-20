@@ -1,7 +1,7 @@
 # RFC-25 Review Notes
 
 > Reviewer: Andrew Goldie
-> Status: In progress
+> Status: Submitted to author
 > Subject: [RFC-25: Workflow](rfc-25-workflow.md)
 
 ## Open items
@@ -62,7 +62,11 @@ RFC-25 says "Specify 2.0" throughout (Abstract, §Normative decisions, §Migrati
 
 ### Motivation
 
+*No issues identified.*
+
 ### Normative decisions
+
+*No issues identified.*
 
 ### Operator workflow
 
@@ -102,6 +106,8 @@ The refine pipeline is a closed list: `proposal` → `specs` → `design` → `t
 
 ### Worked examples
 
+*No issues identified.*
+
 ### On-disk and tooling
 
 Two different path notations for hub slice storage. §Hub routing says "slice artifacts live in `.specify/workspace/<project>/`" (under the hub's `.specify/`). §`.specify/` layout says "slices under `workspace/<project>/.specify/slices/`" (under the repo root). These can't both be right — one has the wrong nesting.
@@ -110,12 +116,24 @@ Two different path notations for hub slice storage. §Hub routing says "slice ar
 
 ### Implementation plan
 
+*No issues identified.*
+
 ### Acceptance scenarios
+
+*No issues identified.*
 
 ### Migration
 
+*No issues identified.*
+
 ### Alternatives considered
+
+*No issues identified.*
 
 ### Non-goals
 
+*No issues identified.*
+
 ### Open questions
+
+*No issues identified.*
