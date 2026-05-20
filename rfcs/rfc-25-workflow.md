@@ -198,7 +198,7 @@ Plan artifacts live at the workspace root; slice artifacts live in `.specify/slo
 | **evidence**                  | Per-source result of `extract`; a structured document with `claims:`; persisted before synthesis.                                                        |
 | **provenance**                | Sources behind one requirement (`Sources:` list).                                                                                                        |
 | **conflict** / **divergence** | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                                                     |
-| **authority**                 | Closed enum: `intent`, `obligation`, `documentation`, `behaviour` (highest first; see §Authority hierarchy).                                                |
+| **authority**                 | Closed enum: `intent`, `documentation`, `behaviour` (highest first; see §Authority hierarchy).                                                              |
 
 
 `provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:`*.
@@ -316,16 +316,16 @@ claims:
 
 Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`. New kinds require an RFC update. No raw source bodies by default.
 
-Top-level `authority:` is required per `Evidence` unless provided by manifest `default-authority`. Optional `claim-id` on claim-shaped entries enables deterministic fusion; semantic correlation applies when absent. `Evidence` validates against `schemas/evidence.schema.json`; CLI writes paths and adapters return content via briefs/tools only.
+Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` claim kinds (deterministic fusion); other kinds may carry it as well. `Evidence` validates against `schemas/evidence.schema.json`; CLI writes paths and adapters return content via briefs/tools only.
 
 Claim `path:` carries an optional GitHub-style anchor: `<path>` for whole-file claims, `<path>#L<n>` for a single line, `<path>#L<start>-L<end>` for a range. The schema enforces the grammar; consumers that need numeric bounds parse the anchor.
 
 ### Default source adapters
 
 
-| Adapter         | `default-authority` | Role                              |
-| --------------- | ------------------- | --------------------------------- |
-| `intent`        | `intent`            | Operator briefs and overrides.    |
+| Adapter         | Authority emitted   | Role                                                |
+| --------------- | ------------------- | --------------------------------------------------- |
+| `intent`        | `intent`            | Operator briefs and overrides.                      |
 | `documentation` | `documentation`     | Operator-provided written product/technical intent. |
 
 
@@ -335,7 +335,7 @@ Both are true source adapters with no special workflow rules. N=1 greenfield use
 
 `discovery.md` is the single plan-time discovery artifact. 1.x `survey.md` retires; its `Summary` and `Source inventory` sections fold into `discovery.md` rather than a sibling file. Required sections, in order:
 
-1. `## Summary` — one-line counts (`Sources`, `Candidates`, and adapter-specific tallies such as `Surfaces` / `Unresolved` when the source adapter emits them).
+1. `## Summary` — one-line counts (`Sources`, `Candidates`); adapter-specific tallies are permitted but unspecified here.
 2. `## Source inventory` — one row per bound source (key, adapter, path or value).
 3. `## Candidate inventory` — one block per candidate (see below).
 
@@ -351,7 +351,6 @@ Minimal candidate block under `## Candidate inventory`:
 - id: user-registration
 - sources: [legacy-monolith]
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
-- evidence-hint: src/users/register.ts (legacy-monolith)
 ```
 
 `id` is the stable handle re-enumeration writes against. `sources[]` lists the sources that surfaced this candidate. Cross-source merge decisions are recorded in `plan.yaml.slices[].sources[]` rather than on the candidate block — see §Synthesis contract -> Plan-time fusion.
@@ -387,7 +386,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis. They may declare:
 - `**shape**`: idiom guidance consumed by core synthesis.
 - `**build**` / `**merge**`: implementation and landing briefs/tools.
 
-`specify adapter pipeline {define,build,merge}` retires. Topology verbs can return when a third-party target needs custom ordering; see [commands.md](commands.md). RFC-24 "adapter-gated" becomes "target-gated"; `Slice.adapter` becomes `Slice.target`.
+`specify adapter pipeline {define,build,merge}` retires. RFC-24 "adapter-gated" becomes "target-gated"; `Slice.adapter` becomes `Slice.target`.
 
 ## Synthesis contract
 
@@ -402,7 +401,7 @@ Agent authors from `plugins/spec/references/synthesis/`; CLI validates structure
 
 `/spec:plan` runs `propose` after `enumerate` and before plan validate / Gate 1. The agent reads the full `## Candidate inventory` in `discovery.md` and writes `slices[]` rows:
 
-1. Identify candidates that name the same unit of work across sources, using each candidate's `id`, `summary`, `evidence-hint`, and `sources[]`.
+1. Identify candidates that name the same unit of work across sources, using each candidate's `id`, `summary`, and `sources[]`.
 2. Drive `specify plan add` per proposed slice, passing every contributing candidate id and source binding. The CLI writes the slice row with merged `sources[]`; per-entry lifecycle starts at `pending` (unchanged from §Workflow vocabulary). The merge record lives in `plan.yaml.slices[].sources[]`; no cross-reference is written back into `discovery.md`.
 3. Annotate uncertain merges with `tentative: true` on the contributing candidate blocks in `discovery.md`, and call them out in a `## Tentative merges` block in `change.md` with prose reasoning.
 
@@ -437,9 +436,8 @@ Status: agreed
 Highest authority wins:
 
 1. `intent`: operator override at slice time.
-2. `obligation`: published APIs, regulation.
-3. `documentation`: operator-provided written product/technical intent (internal docs, RFCs, product notes). Matches the `documentation` source adapter; distinct from synthesized `design.md` and the refine substep `design`.
-4. `behaviour`: what legacy code does.
+2. `documentation`: operator-provided written product/technical intent (internal docs, RFCs, product notes). Matches the `documentation` source adapter; distinct from synthesized `design.md` and the refine substep `design`.
+3. `behaviour`: what legacy code does.
 
 
 | Agreement                    | Output                                                    |
@@ -459,9 +457,7 @@ Substep order and lifecycle behavior live with the `/spec:refine` pipeline above
 | Rule                         | Behavior                                                         |
 | ---------------------------- | ---------------------------------------------------------------- |
 | **Order**                    | Serial in `Slice.sources` declaration order.                     |
-| **Required**                 | Default; `optional: true` on source allows fail-soft.            |
-| **Hard failure**             | Required `extract` fails -> stay `refining`, no synthesis.       |
-| **Soft failure**             | Optional fails -> warning, synthesis with remaining `Evidence`.  |
+| **Failure**                  | Any `extract` fails -> stay `refining`, no synthesis. Operator amends the plan to drop the source if they want to proceed without it. |
 | **Empty / Invalid Evidence** | Empty `claims: []` valid; invalid fails schema before synthesis. |
 
 
@@ -597,9 +593,9 @@ Regular project: `change.md`, `plan.yaml`, and `discovery.md` at root; `slices/<
 
 Workspace: plan and discovery artifacts at workspace root; slices under `slots/<project>/.specify/slices/`. Workspace root `slices/` is unused.
 
-### `surfaces.json` and `discovery.md`
+### `discovery.md` consolidation
 
-`surfaces.json` schema moves into `sources/code-typescript/`. `specify change survey` and per-plan `survey.md` retire. Enumeration metadata and candidates share one file: `discovery.md` with `## Summary`, `## Source inventory`, and `## Candidate inventory` (§Discovery handshake). Code adapters validate staged `surfaces.json` through source-local tooling before `/spec:plan` appends candidates.
+`specify change survey` and per-plan `survey.md` retire. Enumeration metadata and candidates share one file: `discovery.md` with `## Summary`, `## Source inventory`, and `## Candidate inventory` (§Discovery handshake). Code source adapters validate their staged enumeration output through source-local tooling before `/spec:plan` appends candidates; the schema for that intermediate output is an adapter-internal concern.
 
 ### CLI surface
 
@@ -630,7 +626,7 @@ Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter re
 |-- sources/
 |   |-- intent/                       # adapter.yaml, briefs/
 |   |-- documentation/
-|   `-- code-typescript/       # surfaces.json moves here (was under change/)
+|   `-- code-typescript/       # adapter-internal enumeration schema (was under change/)
 |-- targets/                          # was adapters/
 |   |-- omnia/                        # adapter.yaml, briefs/{shape,build,merge}.md
 |   |-- vectis/
@@ -700,9 +696,8 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 | 5a  | D2-D4      | **Combined evidence (code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice.                                                                          | Synthesis end-to-end: serial `extract` per source; two-entry `Evidence[]`; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `refined` cleanly when sources agree. |
 | 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; documentation authority wins as the operative requirement; behaviour preserved as inline commentary; lifecycle transitions to `refined`; operator may hand-edit before build.                        |
 | 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `refined`; operator must reconcile by editing or amending sources before the requirement is meaningful.           |
-| 5d  | D2-D4      | **Optional source fail-soft.** Combined-evidence slice with one `optional: true` source whose `extract` fails.                                                                                                   | Synthesis proceeds with the surviving `Evidence`; structured warning emitted; `Sources:` lines reflect surviving contributors only.                                                                                          |
 | 5e  | D3, D11    | **Cross-source propose-time merge.** Two adapters surface the same candidate; the `/spec:plan` agent merges them automatically at `propose`.                                                                                                                                                                                                                                                                                                | `specify plan add` writes one slice with combined `sources:` without operator ceremony; uncertain merges annotated `tentative: true` and surfaced in `change.md`; operator overrides via `specify plan amend` at Gate 1 if the merge is wrong; downstream `extract` runs against every contributing source. |
-| 5f  | D2, D3     | **Required-source extract failure.** Required source's `extract` fails.                                                                                                                                          | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                         |
+| 5f  | D2, D3     | **Extract failure.** A bound source's `extract` fails.                                                                                                                                                            | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                         |
 | 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                              |
 | 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                 |
 | 6   | D9         | **Multi-repo assignment from a workspace.** Operator runs `/spec:plan` in a workspace.                                                                                                                                       | `workspace:` discriminator; per-candidate `--project` at propose; slot sync timing.                                                                                                                                           |
@@ -749,11 +744,9 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 
 1. Default source adapters as true plugins vs CLI built-ins? **Preference:** in-repo plugins under `sources/`.
 2. `extract` WASI sandboxing? **Preference:** RFC-15 `specify tool run` posture.
-3. Required per-Evidence `authority:` vs manifest default? **Preference:** manifest default; explicit per-Evidence for mixed-class adapters later.
-4. Required `claim-id` for `documentation` claim kinds? **Preference:** yes for `requirement` / `criterion`.
-5. `[divergence]` override seam? **Preference:** edit `spec.md` in v1.
-6. Slice dir at `plan add` vs extract start? **Preference:** at extract (Gate 1 plan-pure).
-7. Lifecycle wire format? **Preference:** snake_case.
+3. `[divergence]` override seam? **Preference:** edit `spec.md` in v1.
+4. Slice dir at `plan add` vs extract start? **Preference:** at extract (Gate 1 plan-pure).
+5. Lifecycle wire format? **Preference:** snake_case.
 
 ## Observability ([RFC-19](rfc-19-observability.md))
 
