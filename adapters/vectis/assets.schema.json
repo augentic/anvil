@@ -70,6 +70,16 @@
       ]
     },
 
+    "variantOf": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Base asset ID this entry is a variant of. Groups related visual states under a common family for variant-aware tooling."
+    },
+    "usageHint": {
+      "type": "string",
+      "description": "Short human/machine-readable description of when or how this asset variant should be used, and what visually distinguishes it from siblings in the same family."
+    },
+
     "rasterEntry": {
       "type": "object",
       "required": ["kind", "role", "sources"],
@@ -79,6 +89,8 @@
         "role": { "$ref": "#/$defs/role" },
         "alt": { "type": "string" },
         "tint": { "$ref": "#/$defs/tokenRef" },
+        "variant_of": { "$ref": "#/$defs/variantOf" },
+        "usage_hint": { "$ref": "#/$defs/usageHint" },
         "sources": {
           "type": "object",
           "minProperties": 1,
@@ -120,6 +132,8 @@
         "role": { "$ref": "#/$defs/role" },
         "alt": { "type": "string" },
         "tint": { "$ref": "#/$defs/tokenRef" },
+        "variant_of": { "$ref": "#/$defs/variantOf" },
+        "usage_hint": { "$ref": "#/$defs/usageHint" },
         "source": {
           "$ref": "#/$defs/filePath",
           "description": "Canonical vector source (typically SVG) used as the artefact the operator re-exports from. Never copied into a shell tree on its own."
@@ -155,6 +169,8 @@
         "role": { "$ref": "#/$defs/role" },
         "alt": { "type": "string" },
         "tint": { "$ref": "#/$defs/tokenRef" },
+        "variant_of": { "$ref": "#/$defs/variantOf" },
+        "usage_hint": { "$ref": "#/$defs/usageHint" },
         "symbols": {
           "type": "object",
           "minProperties": 1,
