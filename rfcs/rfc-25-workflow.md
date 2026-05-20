@@ -61,7 +61,7 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 | **D6 Gate 1 only**                      | Human review happens between planning and execution via `plan.lifecycle == reviewed`.                                       | No Gate 2 and no synthesis review state in v1.                                                                    |
 | **D7 Supervised execute**               | `/spec:execute` is the only v1 driver and resumes from on-disk state.                                                       | No `--yes-plan`, `--one`, `--until`, `--dry-run`, or `--continue`.                                                |
 | **D8 CLI owns workflow writes**         | CLI is the single writer for lifecycle and deterministic files.                                                             | Never hand-write `plan.yaml`, `.metadata.yaml`, archive paths, `discovery.md`, `sources.yaml`, or `targets.yaml`. |
-| **D9 Hub routing is uniform**           | Loop and breakout verbs share the same hub root -> project slot routing.                                                    | Breakouts resolve the active slice project before phase work.                                                     |
+| **D9 Workspace routing is uniform**           | Loop and breakout verbs share the same workspace root -> project slot routing.                                                    | Breakouts resolve the active slice project before phase work.                                                     |
 | **D10 Hard cut at 2.0**                 | 1.x manifests, verbs, brief paths, and `/change:`* retire together.                                                         | Migration script performs mechanical renames; no compatibility aliases.                                           |
 
 
@@ -119,9 +119,9 @@ drained                   -                              /spec:finalize
 
 The plan transitions to `drained` once every entry has transitioned to `done`; `/spec:execute` exits at that point and `/spec:finalize` becomes legal.
 
-`**/spec:plan**` runs pre-flight, scaffolds `change.md` and `plan.yaml`, runs hub registry validation and workspace sync when needed, enumerates each source, proposes candidate slices, assigns hub projects when needed, validates the plan, and stamps **Gate 1** with `specify plan transition <scope> reviewed`.
+`**/spec:plan**` runs pre-flight, scaffolds `change.md` and `plan.yaml`, runs workspace registry validation and slot sync when needed, enumerates each source, proposes candidate slices, assigns workspace projects when needed, validates the plan, and stamps **Gate 1** with `specify plan transition <scope> reviewed`.
 
-`**/spec:execute`** refuses unless the plan is `reviewed`, acquires the plan lock (hub root in hub mode), and loops: `specify plan next` -> hub project resolution and slot prep when needed -> `/spec:refine` if needed -> `/spec:build` -> `/spec:merge` -> residue commit and return to hub root when needed -> repeat until drained.
+`**/spec:execute`** refuses unless the plan is `reviewed`, acquires the plan lock (workspace root in workspace mode), and loops: `specify plan next` -> workspace project resolution and slot prep when needed -> `/spec:refine` if needed -> `/spec:build` -> `/spec:merge` -> residue commit and return to workspace root when needed -> repeat until drained.
 
 `**/spec:finalize`** requires all entries `done`, pushes branches, observes PRs until `MERGED`, then runs `specify plan finalize` to archive the plan.
 
@@ -171,17 +171,17 @@ slices:
 ### Single-repo vs multi-repo
 
 
-| `hub:`  | `/spec:plan` behavior                                                                   |
+| `workspace:`  | `/spec:plan` behavior                                                                   |
 | ------- | --------------------------------------------------------------------------------------- |
-| `false` | Single root; skip sync-workspace and assignment.                                        |
-| `true`  | `registry.yaml`; sync-workspace before enumerate; per-candidate `--project` at propose. |
+| `false` | Single root; skip sync-slot and assignment.                                        |
+| `true`  | `registry.yaml`; sync-slot before enumerate; per-candidate `--project` at propose. |
 
 
-**One driving mode per project in v1.** Hub-registered projects are hub-driven only; `/spec:plan` from a project root while a hub plan is active is refused at plan-create.
+**One driving mode per project in v1.** Workspace-registered projects are workspace-driven only; `/spec:plan` from a project root while a workspace plan is active is refused at plan-create.
 
-### Hub routing
+### Workspace routing
 
-Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace/<project>/`. Breakouts and `/spec:execute` share routing: plan lock at hub root -> resolve active slice project -> sync slot -> `chdir` -> phase work -> return.
+Plan artifacts live at the workspace root; slice artifacts live in `.specify/slots/<project>/`. Breakouts and `/spec:execute` share routing: plan lock at workspace root -> resolve active slice project -> sync slot -> `chdir` -> phase work -> return.
 
 ## Concepts
 
@@ -309,13 +309,14 @@ candidate: user-registration
 claims:
   - kind: excerpt
     claim-id: users.register.email-validation
-    path: src/users/register.ts
-    lines: [12, 87]
+    path: src/users/register.ts#L12-L87
 ```
 
 Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`. New kinds require an RFC update. No raw source bodies by default.
 
 Top-level `authority:` is required per `Evidence` unless provided by manifest `default-authority`. Optional `claim-id` on claim-shaped entries enables deterministic fusion; semantic correlation applies when absent. `Evidence` validates against `schemas/evidence.schema.json`; CLI writes paths and adapters return content via briefs/tools only.
+
+Claim `path:` carries an optional GitHub-style anchor: `<path>` for whole-file claims, `<path>#L<n>` for a single line, `<path>#L<start>-L<end>` for a range. The schema enforces the grammar; consumers that need numeric bounds parse the anchor.
 
 ### Default source adapters
 
@@ -476,22 +477,18 @@ candidate: password-reset
 claims:
   - kind: requirement
     claim-id: password-reset.request
-    path: docs/account.md
-    lines: [3, 3]
+    path: docs/account.md#L3
     statement: "The account service should let a registered user request a password reset link by email."
   - kind: criterion
     claim-id: password-reset.response-privacy
-    path: docs/account.md
-    lines: [6, 6]
+    path: docs/account.md#L6
     criterion: "Unknown email addresses receive the same outward response as known users."
   - kind: criterion
     claim-id: password-reset.expiry
-    path: docs/account.md
-    lines: [7, 7]
+    path: docs/account.md#L7
     criterion: "Reset links expire after 30 minutes."
   - kind: decision
-    path: docs/account.md
-    lines: [9, 9]
+    path: docs/account.md#L9
     decision: "Use the existing transactional email provider rather than introducing a new notification service."
 ```
 
@@ -571,16 +568,16 @@ Note: legacy-monolith observed 24-hour expiry; the documentation authority overr
 specify-version: 2.0.0
 sources: [intent, documentation, code-typescript]
 target: omnia
-hub: false
+workspace: false
 ```
 
-`sources` lists available adapters; configured sources live in `sources.yaml` ([RFC-21](rfc-21-catalogue.md)). v1 supports one `target` per project; `Slice.target` must match for hub entries. `profile` and singular `adapter` are removed.
+`sources` lists available adapters; configured sources live in `sources.yaml` ([RFC-21](rfc-21-catalogue.md)). v1 supports one `target` per project; `Slice.target` must match for workspace entries. `profile` and singular `adapter` are removed.
 
 ### `.specify/` layout
 
 Regular project: `change.md`, `plan.yaml`, and `discovery.md` at root; `slices/<name>/` contains artifacts plus `evidence/<source-key>.yaml`.
 
-Hub: plan and discovery artifacts at hub root; slices under `workspace/<project>/.specify/slices/`. Hub root `slices/` is unused.
+Workspace: plan and discovery artifacts at workspace root; slices under `slots/<project>/.specify/slices/`. Workspace root `slices/` is unused.
 
 ### `surfaces.json` and `discovery.md`
 
@@ -628,6 +625,19 @@ Deferred: other code languages; contract source adapters; per-adapter repo split
 ## Implementation plan
 
 Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workflow collapse in the same 2.0 release.
+
+### Note to the implementing agent
+
+This RFC renames or reshapes several names that are already deeply embedded in the Specify codebase. Treat every rename as a cross-cutting refactor, not a documentation edit: chase each old name through `crates/`, `tests/`, `schemas/`, `plugins/`, `docs/`, `AGENTS.md`, fixtures, golden files, and the sibling `augentic/specify-cli` repo before declaring a step done. The renames currently in scope include, but are not limited to:
+
+- `hub` -> `workspace` (project-yaml discriminator, CLI flags, error codes such as `init-requires-adapter-or-hub` and `hub-cannot-be-project`, doc prose, fixture names, `init_hub` test helpers).
+- `.specify/workspace/<project>/` -> `.specify/slots/<project>/`, and the corresponding `specify workspace sync` -> `specify slot sync` verb (tier-2 executor checkouts only; tier-1 source caches under `.specify/.cache/sources/` are unaffected).
+- `specify_version` -> `specify-version` in YAML surfaces only (kebab-case on disk, snake_case Rust field names stay snake_case — only `#[serde(rename = "specify-version")]` and the on-disk emit change).
+- `Adapter*` types -> `Target*` (per implementation step 2); the `plugins/adapter/` loader -> `plugins/plugin/` (per step 3).
+- `change survey` and `adapter pipeline` CLI verbs are retired (per step 8).
+- `/change:*` and `/spec:define` skills are deleted (per step 17).
+
+For each rename: update the symbol, the JSON Schema, the YAML on-disk form, every test fixture and golden file, every error-code discriminant, every doc reference (including this RFC's siblings and the parent `AGENTS.md`), and the CLI `--help` text in the same change. Where the old name appears in archived RFCs under `rfcs/archive/`, leave it alone — archives are historical record. When in doubt, run `rg '<old-name>'` across both repos before opening the PR.
 
 
 | Step | Decisions   | Deliverable                                                                                                        | Acceptance           |
@@ -677,13 +687,13 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 | 5f  | D2, D3     | **Required-source extract failure.** Required source's `extract` fails.                                                                                                                                          | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                         |
 | 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                              |
 | 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                 |
-| 6   | D9         | **Multi-repo assignment from a hub.** Operator runs `/spec:plan` in a hub.                                                                                                                                       | `hub:` discriminator; per-candidate `--project` at propose; workspace sync timing.                                                                                                                                           |
+| 6   | D9         | **Multi-repo assignment from a workspace.** Operator runs `/spec:plan` in a workspace.                                                                                                                                       | `workspace:` discriminator; per-candidate `--project` at propose; slot sync timing.                                                                                                                                           |
 | 7   | D3, D6     | **Operator amends one-slice plan into two slices at Gate 1.**                                                                                                                                                    | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.                                                                                                                                                     |
 | 8   | D7, D9     | **Step-through breakout mid-execute.** Operator starts `/spec:execute`; on the second slice they cancel, run `/spec:build` directly to investigate, then re-invoke `/spec:execute`.                              | Stop/resume contract; step-through verbs leave on-disk state consistent for `/spec:execute` to resume without flags.                                                                                                         |
 | 9   | D7         | `**/spec:execute` parks on a build failure, operator fixes, resumes.** Slice's `cargo test` fails; operator patches the crate; runs `/spec:execute`.                                                             | Build-failure stop hint; build resumes from the failed task; loop continues to merge.                                                                                                                                        |
-| 10  | D9         | **Hub `/spec:execute` across two projects.** Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the hub root.                                                            | Per-slice project routing; slot materialisation; `prepare-branch`; `chdir` + residue commit; plan-lock semantics at the hub root while phase work runs in slots.                                                             |
-| 11  | D7, D9     | **Hub breakout after build failure in a slot.** `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at hub root and runs `/spec:build`.                                                        | Project-routing rule for breakout verbs; active-slice resolution across the hub/slot boundary; correct `chdir` without operator intervention.                                                                                |
-| 12  | D9         | **Dual-driving refused.** Project registered in a hub; operator runs `/spec:plan` from the project root with a hub-driven plan active.                                                                           | One-driving-mode-per-project invariant.                                                                                                                                                                                      |
+| 10  | D9         | **Workspace `/spec:execute` across two projects.** Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the workspace root.                                                            | Per-slice project routing; slot materialisation; `prepare-branch`; `chdir` + residue commit; plan-lock semantics at the workspace root while phase work runs in slots.                                                             |
+| 11  | D7, D9     | **Workspace breakout after build failure in a slot.** `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at workspace root and runs `/spec:build`.                                                        | Project-routing rule for breakout verbs; active-slice resolution across the workspace/slot boundary; correct `chdir` without operator intervention.                                                                                |
+| 12  | D9         | **Dual-driving refused.** Project registered in a workspace; operator runs `/spec:plan` from the project root with a workspace-driven plan active.                                                                           | One-driving-mode-per-project invariant.                                                                                                                                                                                      |
 
 
 Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenarios, especially #1 and #8-#9, gate steps 15-16.
@@ -715,7 +725,7 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 - Cross-repo source sharing; bidirectional adapters; source adapters editing post-authoring artifacts.
 - `/spec:execute` session tokens, `--continue`, or folding finalize into merge.
 - Deleting `change.md` / `plan.yaml`; "manual mode" without execute.
-- Gate 2, `/spec:execute` automation flags, parallel extract, per-claim authority overrides, multi-target projects, cross-mode hub+standalone driving; reinstate when a real consumer asks. [commands.md](commands.md) tracks the deferrals.
+- Gate 2, `/spec:execute` automation flags, parallel extract, per-claim authority overrides, multi-target projects, cross-mode workspace+standalone driving; reinstate when a real consumer asks. [commands.md](commands.md) tracks the deferrals.
 
 ## Open questions
 

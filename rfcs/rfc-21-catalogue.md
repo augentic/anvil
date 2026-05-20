@@ -31,7 +31,7 @@ This RFC is the smallest set of additions that fix all four issues without viola
 
 ### Principles
 
-1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / hub root alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
+1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace root alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
 2. **The CLI is the single writer.** `specify sources {add, remove, sync}` are the only writers to `sources.yaml`. No skill hand-edits the file; this mirrors the writer rules for `registry.yaml` and `plan.yaml`.
 3. **The tier-1 boundary is preserved.** `.specify/.cache/sources/<key>/` is read-only with respect to `/change:analyze` and every other planner-time skill. Nothing in this RFC writes into a source clone.
 4. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.
@@ -217,7 +217,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Extend `registry.yaml` with a `sources:` block instead of a separate file.** Rejected. Sources and targets have different lifecycles, validation rules, materialisation strategies (read-only cache vs read-write working tree), and audiences (planner-time vs executor-time). Mixing them violates the registry's existing role and the workspace-tier separation.
 
-**Promote `specify sources sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises tier-2 (executor) clones into `.specify/workspace/`; `sources sync` materialises tier-1 (analyze) clones into `.specify/.cache/sources/`. Conflating them re-introduces the workspace-tier confusion that [`workspace-tiers.md`](../docs/explanation/workspace-tiers.md) was written to dispel.
+**Promote `specify sources sync` into `specify slot sync`.** Rejected. `slot sync` materialises tier-2 (executor) clones into `.specify/slots/`; `sources sync` materialises tier-1 (analyze) clones into `.specify/.cache/sources/`. Conflating them re-introduces the workspace-tier confusion that [`workspace-tiers.md`](../docs/explanation/workspace-tiers.md) was written to dispel.
 
 **Snapshot the entire tier-1 clone into archives instead of recording a snapshot reference.** Rejected. With 80+ repos and frequent re-plans, copying gigabytes per archive is impractical. The recorded `.snapshot.yaml` (commit SHA, source URL, materialisation date) preserves the audit trail at constant cost; operators who genuinely need byte-snapshots can opt in by hand.
 
@@ -243,7 +243,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## Open Questions
 
-1. Should `specify sources sync` accept `--depth <n>` for shallow clones? Current preference: yes, with a default of `1` for remotes (matching `specify workspace sync`'s posture for tier-2).
+1. Should `specify sources sync` accept `--depth <n>` for shallow clones? Current preference: yes, with a default of `1` for remotes (matching `specify slot sync`'s posture for tier-2).
 2. How should the tier-1 cache handle stale clones? Current preference: `specify sources sync` is `git fetch` for remotes (no merge, no rebase); operators get a warning if `HEAD` differs from the `head_sha` recorded in any open plan's `.snapshot.yaml`.
 3. Should `--source @<key>` accept the kind suffix only, or fall back to `sources.yaml:sources[].language` to infer kind? Current preference: explicit suffix only; `language` is advisory.
 4. Should `specify sources` validation check URL reachability? Current preference: no — keep validation offline; reachability surfaces during `specify sources sync`.
