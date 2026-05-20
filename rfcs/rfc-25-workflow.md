@@ -226,12 +226,12 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 Names used in function signatures and table cells throughout this RFC. Concrete shape is the canonical example or schema noted in the right column.
 
 
-| Name        | Shape                                                                                                                                                                     | Reference                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `Source`    | Plan-level entry under `plan.yaml.sources`: source-key (kebab-case) -> adapter + path or value.                                                                           | §Planning at every scale; §`Slice.sources`.                            |
+| Name        | Shape                                                                                                                                                             | Reference                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `Source`    | Plan-level entry under `plan.yaml.sources`: source-key (kebab-case) -> adapter + path or value.                                                                   | §Planning at every scale; §`Slice.sources`.                      |
 | `Candidate` | Slice-sized unit emitted by `enumerate`; one markdown block under `## Candidate inventory` in `discovery.md` with stable `id`, `sources[]`, optional `related[]`. | §Discovery handshake; `schemas/discovery/candidate.schema.json`. |
-| `Evidence`  | Per-source result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                                                                        | §`extract`; `schemas/evidence.schema.json`.                            |
-| `Slice`     | One slice entry under `plan.yaml.slices[]`; carries `target`, `sources[]`, `project`, `status`.                                                                           | §`Slice.sources`; §On-disk and tooling.                                |
+| `Evidence`  | Per-source result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                                                                | §`extract`; `schemas/evidence.schema.json`.                      |
+| `Slice`     | One slice entry under `plan.yaml.slices[]`; carries `target`, `sources[]`, `project`, `status`.                                                                   | §`Slice.sources`; §On-disk and tooling.                          |
 
 
 ### Writer ownership
@@ -241,10 +241,10 @@ The CLI MUST be the single writer for deterministic workflow state:
 
 | Artifact                          | Writer                                              |
 | --------------------------------- | --------------------------------------------------- |
-| `plan.yaml` lifecycle and entries | `specify plan `*                                    |
-| `.metadata.yaml` lifecycle        | `specify slice *`                                   |
+| `plan.yaml` lifecycle and entries | `specify plan` *                                    |
+| `.metadata.yaml` lifecycle        | `specify slice `*                                   |
 | Archive moves                     | `specify plan finalize`, `specify slice merge/drop` |
-| `discovery.md` candidates   | `/spec:plan` through CLI helpers                    |
+| `discovery.md` candidates         | `/spec:plan` through CLI helpers                    |
 | `sources.yaml` / `targets.yaml`   | CLI registry/catalogue commands                     |
 
 
@@ -435,7 +435,7 @@ Substep order and lifecycle behavior live with the `/spec:refine` pipeline above
 | **Required**                 | Default; `optional: true` on source allows fail-soft.            |
 | **Hard failure**             | Required `extract` fails -> stay `refining`, no synthesis.       |
 | **Soft failure**             | Optional fails -> warning, synthesis with remaining `Evidence`.  |
-| **Empty / invalid Evidence** | Empty `claims: []` valid; invalid fails schema before synthesis. |
+| **Empty / Invalid Evidence** | Empty `claims: []` valid; invalid fails schema before synthesis. |
 
 
 ## Worked examples
@@ -560,7 +560,7 @@ Note: legacy-monolith observed 24-hour expiry; the design-doc authority override
 ### `project.yaml`
 
 ```yaml
-specify_version: 2.0.0
+specify-version: 2.0.0
 sources: [intent, documentation, legacy-code-typescript]
 target: omnia
 hub: false
@@ -622,25 +622,25 @@ Deferred: other legacy-code languages; contract source adapters; per-adapter rep
 Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workflow collapse in the same 2.0 release.
 
 
-| Step | Decisions   | Deliverable                                                                                                              | Acceptance           |
-| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| Step | Decisions   | Deliverable                                                                                                        | Acceptance           |
+| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | 1    | D1, D3, D6  | Schemas: `plugin`, `source`, `target`, `evidence`, `candidate`; plan `target` + `sources[]`; `reviewed` lifecycle. | #5g                  |
-| 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                          | #5a                  |
-| 3    | D1          | `crates/domain/src/plugin/` loader replaces `adapter/`.                                                                  | #2, #4               |
-| 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                        | #1, #2               |
-| 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                  | #5, #5a-#5h          |
-| 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                              | #1, #5a-#5c          |
-| 7    | D3          | Discovery `related`; stable-id replace.                                                                          | #5e                  |
-| 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                                   | #3, #4, #7           |
-| 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                                    | #5h                  |
-| 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                             | Documentation review |
-| 11   | D1          | `discovery-summary.md` generic form.                                                                                     | #4                   |
-| 12   | D1-D4, D9   | Adapter-axis acceptance lands before step 16.                                                                            | #1-#5h, #10          |
-| 13   | D4          | RFC-19 journal events for extract and synthesis tags.                                                                    | #5b-#5d              |
-| 14   | D6          | `reviewed` lifecycle + `plan transition reviewed` with no behavior change in draft.                                      | #1-#4                |
-| 15   | D7, D9      | `/spec:execute` stop/resume; load-bearing workflow collapse step.                                                        | #8-#11               |
-| 16   | D5-D7       | Document default `/spec:plan` -> execute -> finalize; scenario #1 release blocker.                                       | #1, #8, #9           |
-| 17   | D10         | Delete `/change:*`, `/spec:define`; remove `plugins/change/`.                                                            | Full matrix          |
+| 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                    | #5a                  |
+| 3    | D1          | `crates/domain/src/plugin/` loader replaces `adapter/`.                                                            | #2, #4               |
+| 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                  | #1, #2               |
+| 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                            | #5, #5a-#5h          |
+| 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                        | #1, #5a-#5c          |
+| 7    | D3          | Discovery `related`; stable-id replace.                                                                            | #5e                  |
+| 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                             | #3, #4, #7           |
+| 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                              | #5h                  |
+| 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                       | Documentation review |
+| 11   | D1          | `discovery-summary.md` generic form.                                                                               | #4                   |
+| 12   | D1-D4, D9   | Adapter-axis acceptance lands before step 16.                                                                      | #1-#5h, #10          |
+| 13   | D4          | RFC-19 journal events for extract and synthesis tags.                                                              | #5b-#5d              |
+| 14   | D6          | `reviewed` lifecycle + `plan transition reviewed` with no behavior change in draft.                                | #1-#4                |
+| 15   | D7, D9      | `/spec:execute` stop/resume; load-bearing workflow collapse step.                                                  | #8-#11               |
+| 16   | D5-D7       | Document default `/spec:plan` -> execute -> finalize; scenario #1 release blocker.                                 | #1, #8, #9           |
+| 17   | D10         | Delete `/change:*`, `/spec:define`; remove `plugins/change/`.                                                      | Full matrix          |
 
 
 ## Acceptance scenarios
@@ -665,7 +665,7 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 | 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; design-doc winner becomes the operative requirement; behaviour preserved as inline commentary; lifecycle transitions to `refined`; operator may hand-edit before build.                        |
 | 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `refined`; operator must reconcile by editing or amending sources before the requirement is meaningful.           |
 | 5d  | D2-D4      | **Optional source fail-soft.** Combined-evidence slice with one `optional: true` source whose `extract` fails.                                                                                                   | Synthesis proceeds with the surviving `Evidence`; structured warning emitted; `Sources:` lines reflect surviving contributors only.                                                                                          |
-| 5e  | D3         | `**related` propose-time merge.** Two adapters surface the same candidate; operator merges them at propose.                                                                                              | `specify plan add` writes one slice with combined `sources:`; downstream extract runs against every contributing source.                                                                                                     |
+| 5e  | D3         | `**related` propose-time merge.** Two adapters surface the same candidate; operator merges them at propose.                                                                                                      | `specify plan add` writes one slice with combined `sources:`; downstream extract runs against every contributing source.                                                                                                     |
 | 5f  | D2, D3     | **Required-source extract failure.** Required source's `extract` fails.                                                                                                                                          | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                         |
 | 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                              |
 | 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                 |
@@ -682,7 +682,7 @@ Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenari
 
 ## Migration
 
-Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify_version`; and adds `reviewed` on first read. There is no `specify upgrade`; see [commands.md](commands.md). Dry-run against a 1.x fixture before tag.
+Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; and adds `reviewed` on first read. There is no `specify upgrade`; see [commands.md](commands.md). Dry-run against a 1.x fixture before tag.
 
 Plugin authors: `adapter.yaml` fails on 2.0. Skill authors: use `/spec:execute`; stop conditions surface to the operator. Automation: Gate 1 is `plan.lifecycle == reviewed`; synthesis warnings come from `spec.md` or journal events.
 
