@@ -10,7 +10,7 @@ RFC-25 makes Specify 2.0 a single coherent workflow:
 
 1. **Source adapters produce evidence.** They enumerate slice candidates at plan time and extract `Evidence` at slice time.
 2. **Target adapters produce code.** They provide `shape` guidance plus `build` and `merge`; they do not synthesize `spec.md` or `design.md`.
-3. **Core owns synthesis.** Core fuses an `EvidenceSet` into `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, with provenance and conflict tags.
+3. **Core owns synthesis.** Core fuses an `Evidence[]` into `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, with provenance and conflict tags.
 4. *Operators use one `/spec:` surface.* `/change:`* retires; `/spec:plan`, `/spec:execute`, and `/spec:finalize` become the default rhythm.
 5. **Every change has a plan and Gate 1.** N=1 is degenerate, not special. Gate 1 is `plan.lifecycle == reviewed`.
 6. **2.0 is a hard cut.** No compatibility aliases for old manifests, verbs, brief paths, or `/change:`*.
@@ -53,9 +53,9 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 
 | ID                                      | Decision                                                                                                                    | Implementation consequence                                                                                        |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **D1 Source/target split**              | Replace unqualified adapters with source adapters (`enumerate`, `extract`) and target adapters (`shape`, `build`, `merge`). | `sources/<name>/source.yaml`, `targets/<name>/target.yaml`, axis-aware resolver and cache.                        |
+| **D1 Source/target split**              | Replace unqualified adapters with source adapters (`enumerate`, `extract`) and target adapters (`shape`, `build`, `merge`). | `sources/<name>/adapter.yaml`, `targets/<name>/adapter.yaml`, axis-aware resolver and cache.                      |
 | **D2 Core synthesis**                   | Source adapters emit evidence only; target adapters supply `shape` only; core owns canonical artifacts.                     | `/spec:refine` runs extraction, synthesis, validation, and lifecycle transition.                                  |
-| **D3 Multi-source slices**              | `planSlice.sources` is a list with cardinality >= 1.                                                                        | Combined evidence is first-class; pure intent/port/design are degenerate one-source cases.                        |
+| **D3 Multi-source slices**              | `Slice.sources` is a list with cardinality >= 1.                                                                            | Combined evidence is first-class; pure intent/port/design are degenerate one-source cases.                        |
 | **D4 Provenance and disagreement tags** | Requirements carry `ID:`, `Sources:`, and `Status:`.                                                                        | Core emits `agreed`, `unknown`, `conflict`, or `divergence`; tags never park the slice.                           |
 | **D5 Always plan**                      | Every change runs through `enumerate` and `plan.yaml`, including N=1.                                                       | `/spec:define` retires; trivial work uses degenerate `intent.enumerate`.                                          |
 | **D6 Gate 1 only**                      | Human review happens between planning and execution via `plan.lifecycle == reviewed`.                                       | No Gate 2 and no synthesis review state in v1.                                                                    |
@@ -76,7 +76,7 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 | `/spec:define`, `/spec:extract`                      | `/spec:refine` (`source.extract` + core synthesis)                                       |
 | `/change:execute loop`                               | `/spec:execute`                                                                          |
 | `/change:finalize`                                   | `/spec:finalize`                                                                         |
-| `adapters/<name>/adapter.yaml`, `planSlice.adapter`  | `targets/<name>/target.yaml`, `planSlice.target`                                         |
+| `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `targets/<name>/adapter.yaml`, `Slice.target`                                            |
 | `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see [commands.md](commands.md) |
 
 
@@ -188,17 +188,16 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 ### Adapter vocabulary
 
 
-| Term                              | Meaning                                                                                                                    |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **source adapter**                | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `legacy-code-typescript`, `openapi`.             |
-| **target adapter**                | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.        |
-| **plugin**                        | Shared implementation shape for either role.                                                                               |
-| **candidate** / **candidate set** | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                |
-| **Evidence**                      | Per-binding result of `extract`; a structured document with `claims:`; persisted before synthesis.                         |
-| **Evidence set**                  | All `Evidence` bound to one slice; synthesis input (`EvidenceSet`).                                                        |
-| **provenance**                    | Source bindings behind one requirement (`Sources:` list).                                                                  |
-| **conflict** / **divergence**     | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                       |
-| **authority**                     | Closed enum: `intent`, `external-contract`, `design-doc`, `behaviour` (highest first; see §Authority hierarchy). |
+| Term                          | Meaning                                                                                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **source adapter**            | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `legacy-code-typescript`, `openapi`.                                           |
+| **target adapter**            | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.                                      |
+| **plugin**                    | Shared shape for either adapter role; schema `plugin.schema.json`, loader `crates/domain/src/plugin/`, audience tag for source + target adapter authors. |
+| **candidate**                 | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                                              |
+| **evidence**                  | Per-source result of `extract`; a structured document with `claims:`; persisted before synthesis.                                                        |
+| **provenance**                | Sources behind one requirement (`Sources:` list).                                                                                                        |
+| **conflict** / **divergence** | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                                                     |
+| **authority**                 | Closed enum: `intent`, `obligation`, `design-doc`, `behaviour` (highest first; see §Authority hierarchy).                                                |
 
 
 `provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:`*.
@@ -227,13 +226,12 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 Names used in function signatures and table cells throughout this RFC. Concrete shape is the canonical example or schema noted in the right column.
 
 
-| Name             | Shape                                                                                                                     | Reference                                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `source-binding` | Plan-level pair: source-key (kebab-case) -> path or value. Lives under `plan.yaml.sources`.                               | §Planning at every scale; §`planSlice.sources`.                        |
-| `CandidateSet`   | Ordered list of candidate blocks emitted by `enumerate`; each has stable `id`, `sources[]`, optional `correlates-with[]`. | §Discovery handshake; `schemas/discovery/candidate-block.schema.json`. |
-| `Evidence`       | Per-binding result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                       | §`extract`; `schemas/evidence.schema.json`.                            |
-| `EvidenceSet`    | All `Evidence` bound to one slice (one per entry in `planSlice.sources`); the input to synthesis.                         | §Synthesis contract.                                                   |
-| `planSlice`      | One slice entry under `plan.yaml.slices[]`; carries `target`, `sources[]`, `project`, `status`.                           | §`planSlice.sources`; §On-disk and tooling.                            |
+| Name        | Shape                                                                                                                                                                     | Reference                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `Source`    | Plan-level entry under `plan.yaml.sources`: source-key (kebab-case) -> adapter + path or value.                                                                           | §Planning at every scale; §`Slice.sources`.                            |
+| `Candidate` | Slice-sized unit emitted by `enumerate`; one markdown block under `## Candidate inventory` in `discovery.md` with stable `id`, `sources[]`, optional `related[]`. | §Discovery handshake; `schemas/discovery/candidate.schema.json`. |
+| `Evidence`  | Per-source result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                                                                        | §`extract`; `schemas/evidence.schema.json`.                            |
+| `Slice`     | One slice entry under `plan.yaml.slices[]`; carries `target`, `sources[]`, `project`, `status`.                                                                           | §`Slice.sources`; §On-disk and tooling.                                |
 
 
 ### Writer ownership
@@ -243,40 +241,40 @@ The CLI MUST be the single writer for deterministic workflow state:
 
 | Artifact                          | Writer                                              |
 | --------------------------------- | --------------------------------------------------- |
-| `plan.yaml` lifecycle and entries | `specify plan` *                                    |
-| `.metadata.yaml` lifecycle        | `specify slice` *                                   |
+| `plan.yaml` lifecycle and entries | `specify plan `*                                    |
+| `.metadata.yaml` lifecycle        | `specify slice *`                                   |
 | Archive moves                     | `specify plan finalize`, `specify slice merge/drop` |
-| `discovery.md` candidate blocks   | `/spec:plan` through CLI helpers                    |
+| `discovery.md` candidates   | `/spec:plan` through CLI helpers                    |
 | `sources.yaml` / `targets.yaml`   | CLI registry/catalogue commands                     |
 
 
-Skills and adapters MAY author briefs, evidence content, artifacts, and implementation code when their contract allows it. They MUST NOT hand-edit lifecycle files or archive paths.
+Adapters retain ownership of the briefs they ship. Skills and adapters retain write authority over evidence content, artifacts, and implementation code when their contract allows it. They MUST NOT hand-edit lifecycle files or archive paths.
 
 ### Adapter implementation shape
 
-Source: `sources/<name>/source.yaml`. Target: `targets/<name>/target.yaml`.
+Source: `sources/<name>/adapter.yaml`. Target: `targets/<name>/adapter.yaml`.
 
-Shared rules: kebab-case `name` unique per axis; `axis: source | target`; closed `capabilities[]` (`enumerate`/`extract` for sources, `shape`/`build`/`merge` for targets); `briefs.<capability>` required; optional `tools[]` per RFC-15 into `.specify/.cache/{sources,targets}/<name>/`.
+Shared rules: kebab-case `name` unique per axis; `axis: source | target`; closed `operations[]` (`enumerate`/`extract` for sources, `shape`/`build`/`merge` for targets); `briefs.<operation>` required; optional `tools[]` per RFC-15 into `.specify/.cache/{sources,targets}/<name>/`.
 
 `detect[]` auto-detection from paths is deferred; operators bind explicitly (`source legacy=./repo`).
 
 ```yaml
-# sources/<name>/source.yaml
+# sources/<name>/adapter.yaml
 name: legacy-code-typescript
 version: 1
 axis: source
-capabilities: [enumerate, extract]
+operations: [enumerate, extract]
 briefs:
   enumerate: briefs/enumerate.md
   extract:   briefs/extract.md
 ```
 
 ```yaml
-# targets/<name>/target.yaml
+# targets/<name>/adapter.yaml
 name: omnia
 version: 1
 axis: target
-capabilities: [shape, build, merge]
+operations: [shape, build, merge]
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md
@@ -295,11 +293,11 @@ One resolver module (`crates/domain/src/plugin/`) routes by axis.
 
 ## Source adapter contract
 
-### `enumerate(source-binding) -> CandidateSet`
+### `enumerate(Source) -> Candidate[]`
 
-Runs at plan time. `/spec:plan` writes candidate blocks to `discovery.md` using the RFC-20 grammar plus stable `id`, `sources[]`, and optional `correlates-with[]`.
+Runs at plan time. `/spec:plan` writes candidates to `discovery.md` using the RFC-20 grammar plus stable `id`, `sources[]`, and optional `related[]`.
 
-### `extract(candidate, source-binding) -> Evidence`
+### `extract(Candidate, Source) -> Evidence`
 
 Runs at slice time. `/spec:refine` persists `Evidence` under `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 
@@ -309,14 +307,13 @@ adapter: legacy-code-typescript
 authority: behaviour
 candidate: user-registration
 claims:
-  - kind: code-excerpt
+  - kind: excerpt
     claim-id: users.register.email-validation
     path: src/users/register.ts
     lines: [12, 87]
-    sha256: 6c25...
 ```
 
-Closed `kind` enum: `intent-text`, `requirement-statement`, `acceptance-criterion`, `decision-record`, `document-section`, `diagram-reference`, `contract-reference`, `code-excerpt`, `type-definition`, `external-call`. New kinds require an RFC update. No raw source bodies by default.
+Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`. New kinds require an RFC update. No raw source bodies by default.
 
 Top-level `authority:` is required per `Evidence` unless provided by manifest `default-authority`. Optional `claim-id` on claim-shaped entries enables deterministic fusion; semantic correlation applies when absent. `Evidence` validates against `schemas/evidence.schema.json`; CLI writes paths and adapters return content via briefs/tools only.
 
@@ -326,32 +323,32 @@ Top-level `authority:` is required per `Evidence` unless provided by manifest `d
 | Adapter         | `default-authority` | Role                              |
 | --------------- | ------------------- | --------------------------------- |
 | `intent`        | `intent`            | Operator briefs and overrides.    |
-| `documentation` | `design-doc`       | Written product/technical intent. |
+| `documentation` | `design-doc`        | Written product/technical intent. |
 
 
 Both are true source adapters with no special workflow rules. N=1 greenfield uses degenerate `intent.enumerate`.
 
 ### Discovery handshake
 
-Each candidate block has stable `id`, `sources[]`, and optional `correlates-with[]`. Operator merges cross-source duplicates at propose time. Re-enumerating the same source replaces by `id`; enumerating a different source appends new ids. Schema: `schemas/discovery/candidate-block.schema.json`. `discovery.md` remains the plan-time source of truth; no `candidates.yaml` in v1.
+Each candidate has stable `id`, `sources[]`, and optional `related[]`. Operator merges cross-source duplicates at propose time. Re-enumerating the same source replaces by `id`; enumerating a different source appends new ids. Schema: `schemas/discovery/candidate.schema.json`. `discovery.md` remains the plan-time source of truth; no `candidates.yaml` in v1.
 
-Minimal candidate block, as written under `## Candidate inventory` in `discovery.md`:
+Minimal candidate, as written under `## Candidate inventory` in `discovery.md`:
 
 ```markdown
 ### user-registration
 
 - id: user-registration
 - sources: [legacy-monolith]
-- correlates-with: [identity-design-notes#user-signup]
+- related: [identity-design-notes#user-signup]
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 - evidence-hint: src/users/register.ts (legacy-monolith)
 ```
 
-`id` is the stable handle re-enumeration writes against. `sources[]` lists the source-bindings that surfaced this candidate. `correlates-with[]` is an operator-merge hint: it names sibling candidate ids from other sources that look like the same unit of work, and is what `specify plan add` consumes when the operator merges duplicates into one slice.
+`id` is the stable handle re-enumeration writes against. `sources[]` lists the sources that surfaced this candidate. `related[]` is an operator-merge hint: it names sibling candidate ids from other sources that look like the same unit of work, and is what `specify plan add` consumes when the operator merges duplicates into one slice.
 
-### `planSlice.sources`
+### `Slice.sources`
 
-`planSlice.sources` is a list of one or more binding keys:
+`Slice.sources` is a list of one or more source keys:
 
 ```yaml
 slices:
@@ -371,7 +368,7 @@ slices:
 | Combined evidence | `[<doc>, <legacy>, ...]` | Authority hierarchy resolves disagreements. |
 
 
-`specify plan add` enforces at most one `intent` per slice, at most one binding per key, and at least one binding total.
+`specify plan add` enforces at most one `intent` per slice, at most one source per key, and at least one source total.
 
 ## Target adapter contract
 
@@ -380,11 +377,11 @@ Target adapters do not own `spec.md` or `design.md` synthesis. They may declare:
 - `**shape**`: idiom guidance consumed by core synthesis.
 - `**build**` / `**merge**`: implementation and landing briefs/tools.
 
-`specify adapter pipeline {define,build,merge}` retires. Topology verbs can return when a third-party target needs custom ordering; see [commands.md](commands.md). RFC-24 "adapter-gated" becomes "target-gated"; `planSlice.adapter` becomes `planSlice.target`.
+`specify adapter pipeline {define,build,merge}` retires. Topology verbs can return when a third-party target needs custom ordering; see [commands.md](commands.md). RFC-24 "adapter-gated" becomes "target-gated"; `Slice.adapter` becomes `Slice.target`.
 
 ## Synthesis contract
 
-Core owns `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Inputs are `EvidenceSet`, `planSlice`, and optional target `shape` brief. Agent authors from `plugins/spec/references/synthesis/`; CLI validates structure and stamps lifecycle.
+Core owns `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Inputs are `Evidence[]`, `Slice`, and optional target `shape` brief. Agent authors from `plugins/spec/references/synthesis/`; CLI validates structure and stamps lifecycle.
 
 `/spec:refine` pipeline:
 
@@ -413,7 +410,7 @@ Status: agreed
 Highest authority wins:
 
 1. `intent`: operator override at slice time.
-2. `external-contract`: published APIs, regulation.
+2. `obligation`: published APIs, regulation.
 3. `design-doc`: internal docs, RFCs.
 4. `behaviour`: what legacy code does.
 
@@ -434,8 +431,8 @@ Substep order and lifecycle behavior live with the `/spec:refine` pipeline above
 
 | Rule                         | Behavior                                                         |
 | ---------------------------- | ---------------------------------------------------------------- |
-| **Order**                    | Serial in `planSlice.sources` declaration order.                 |
-| **Required**                 | Default; `optional: true` on binding allows fail-soft.           |
+| **Order**                    | Serial in `Slice.sources` declaration order.                     |
+| **Required**                 | Default; `optional: true` on source allows fail-soft.            |
 | **Hard failure**             | Required `extract` fails -> stay `refining`, no synthesis.       |
 | **Soft failure**             | Optional fails -> warning, synthesis with remaining `Evidence`.  |
 | **Empty / invalid Evidence** | Empty `claims: []` valid; invalid fails schema before synthesis. |
@@ -469,28 +466,24 @@ adapter: documentation
 authority: design-doc
 candidate: password-reset
 claims:
-  - kind: requirement-statement
+  - kind: requirement
     claim-id: password-reset.request
     path: docs/account.md
     lines: [3, 3]
-    sha256: 4f39...
     statement: "The account service should let a registered user request a password reset link by email."
-  - kind: acceptance-criterion
+  - kind: criterion
     claim-id: password-reset.response-privacy
     path: docs/account.md
     lines: [6, 6]
-    sha256: 91aa...
     criterion: "Unknown email addresses receive the same outward response as known users."
-  - kind: acceptance-criterion
+  - kind: criterion
     claim-id: password-reset.expiry
     path: docs/account.md
     lines: [7, 7]
-    sha256: 0d8b...
     criterion: "Reset links expire after 30 minutes."
-  - kind: decision-record
+  - kind: decision
     path: docs/account.md
     lines: [9, 9]
-    sha256: f6c2...
     decision: "Use the existing transactional email provider rather than introducing a new notification service."
 ```
 
@@ -573,7 +566,7 @@ target: omnia
 hub: false
 ```
 
-`sources` lists available adapters; bindings live in `sources.yaml` ([RFC-21](rfc-21-catalogue.md)). v1 supports one `target` per project; `planSlice.target` must match for hub entries. `profile` and singular `adapter` are removed.
+`sources` lists available adapters; configured sources live in `sources.yaml` ([RFC-21](rfc-21-catalogue.md)). v1 supports one `target` per project; `Slice.target` must match for hub entries. `profile` and singular `adapter` are removed.
 
 ### `.specify/` layout
 
@@ -598,7 +591,7 @@ Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter re
 | ------------------------------------------------------------ | ------------------------------------------------------- |
 | `plugins/spec/skills/plan/SKILL.md`                          | New, from `change/draft`.                               |
 | `plugins/spec/skills/execute/SKILL.md`                       | New, from `change/execute loop`.                        |
-| `plugins/spec/skills/refine/SKILL.md`                        | Renamed from `define/`; plan-resolved bindings.         |
+| `plugins/spec/skills/refine/SKILL.md`                        | Renamed from `define/`; plan-resolved sources.          |
 | `plugins/spec/skills/{build,merge,finalize}/SKILL.md`        | Build/merge breakouts; finalize from `change/finalize`. |
 | `plugins/spec/skills/init/SKILL.md`                          | Mention `/spec:plan`.                                   |
 | `plugins/spec/skills/drop/SKILL.md`                          | Unchanged.                                              |
@@ -612,14 +605,14 @@ Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter re
 |-- plugins/
 |   `-- spec/skills/{init,plan,refine,execute,build,merge,finalize,drop}/
 |-- sources/
-|   |-- intent/                       # source.yaml, briefs/
+|   |-- intent/                       # adapter.yaml, briefs/
 |   |-- documentation/
 |   `-- legacy-code-typescript/       # surfaces.json moves here (was under change/)
 |-- targets/                          # was adapters/
-|   |-- omnia/                        # target.yaml, briefs/{shape,build,merge}.md
+|   |-- omnia/                        # adapter.yaml, briefs/{shape,build,merge}.md
 |   |-- vectis/
 |   `-- contracts/
-`-- schemas/                          # plugin, source, target, evidence, candidate-block
+`-- schemas/                          # plugin, source, target, evidence, candidate
 ```
 
 Deferred: other legacy-code languages; contract source adapters; per-adapter repo split.
@@ -631,13 +624,13 @@ Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workfl
 
 | Step | Decisions   | Deliverable                                                                                                              | Acceptance           |
 | ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------- |
-| 1    | D1, D3, D6  | Schemas: `plugin`, `source`, `target`, `evidence`, `candidate-block`; plan `target` + `sources[]`; `reviewed` lifecycle. | #5g                  |
+| 1    | D1, D3, D6  | Schemas: `plugin`, `source`, `target`, `evidence`, `candidate`; plan `target` + `sources[]`; `reviewed` lifecycle. | #5g                  |
 | 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                          | #5a                  |
 | 3    | D1          | `crates/domain/src/plugin/` loader replaces `adapter/`.                                                                  | #2, #4               |
 | 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                        | #1, #2               |
 | 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                  | #5, #5a-#5h          |
 | 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                              | #1, #5a-#5c          |
-| 7    | D3          | Discovery `correlates-with`; stable-id replace.                                                                          | #5e                  |
+| 7    | D3          | Discovery `related`; stable-id replace.                                                                          | #5e                  |
 | 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                                   | #3, #4, #7           |
 | 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                                    | #5h                  |
 | 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                             | Documentation review |
@@ -661,28 +654,28 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 **Release blocker:** scenario #1 (pure intent, one slice) must pass before step 16 lands. Single-release collapse means N=1 `/spec:plan` ergonomics surface to every operator at once.
 
 
-| #   | Decisions  | Scenario                                                                                                                                                                                                         | What it stress-tests                                                                                                                                                                                                               |
-| --- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | D3, D5, D6 | **Pure intent, one slice.** Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.                                                                                                                           | Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance.                                                                                 |
-| 2   | D1, D3, D4 | **Documentation, one slice.** Operator binds a single docs path.                                                                                                                                                 | `documentation.enumerate` correctness at the new entry point; `Sources: [<doc-key>]` provenance.                                                                                                                                   |
-| 3   | D3, D5, D6 | **Documentation, multi-slice.** Operator binds docs that map to N candidates.                                                                                                                                    | Propose/edit/reject loop; Gate 1 amendment flow.                                                                                                                                                                                   |
-| 4   | D1, D3     | **Legacy-code, multi-slice.** Operator binds a legacy repo.                                                                                                                                                      | `legacy-code-typescript.enumerate`; survey/repair loop under the new skill; under-slicing failure mode; `Sources: [<legacy-key>]` provenance.                                                                                      |
-| 5   | D2, D4     | **Intra-Evidence `[conflict]`.** Single-source slice where synthesis cannot reconcile contradictory `claims` within one `Evidence` document.                                                                     | `[conflict]` written into `spec.md`; lifecycle still transitions to `refined`; operator can hand-edit and run `/spec:build` without a parking-state ceremony.                                                                      |
-| 5a  | D2-D4      | **Combined evidence (legacy-code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice.                                                                          | Synthesis end-to-end: serial `extract` per binding; `EvidenceSet` cardinality 2; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `refined` cleanly when sources agree. |
-| 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; design-doc winner becomes the operative requirement; behaviour preserved as inline commentary; lifecycle transitions to `refined`; operator may hand-edit before build.                    |
-| 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `refined`; operator must reconcile by editing or amending bindings before the requirement is meaningful.                |
-| 5d  | D2-D4      | **Optional binding fail-soft.** Combined-evidence slice with one `optional: true` binding whose `extract` fails.                                                                                                 | Synthesis proceeds with the surviving `Evidence`; structured warning emitted; `Sources:` lines reflect surviving contributors only.                                                                                                |
-| 5e  | D3         | `**correlates-with` propose-time merge.** Two adapters surface the same candidate; operator merges them at propose.                                                                                              | `specify plan add` writes one slice with combined `sources:`; downstream extract runs against every contributing source.                                                                                                           |
-| 5f  | D2, D3     | **Required-source extract failure.** Required binding's `extract` fails.                                                                                                                                         | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                               |
-| 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                                    |
-| 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                       |
-| 6   | D9         | **Multi-repo assignment from a hub.** Operator runs `/spec:plan` in a hub.                                                                                                                                       | `hub:` discriminator; per-candidate `--project` at propose; workspace sync timing.                                                                                                                                                 |
-| 7   | D3, D6     | **Operator amends one-slice plan into two slices at Gate 1.**                                                                                                                                                    | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.                                                                                                                                                           |
-| 8   | D7, D9     | **Step-through breakout mid-execute.** Operator starts `/spec:execute`; on the second slice they cancel, run `/spec:build` directly to investigate, then re-invoke `/spec:execute`.                              | Stop/resume contract; step-through verbs leave on-disk state consistent for `/spec:execute` to resume without flags.                                                                                                               |
-| 9   | D7         | `**/spec:execute` parks on a build failure, operator fixes, resumes.** Slice's `cargo test` fails; operator patches the crate; runs `/spec:execute`.                                                             | Build-failure stop hint; build resumes from the failed task; loop continues to merge.                                                                                                                                              |
-| 10  | D9         | **Hub `/spec:execute` across two projects.** Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the hub root.                                                            | Per-slice project routing; slot materialisation; `prepare-branch`; `chdir` + residue commit; plan-lock semantics at the hub root while phase work runs in slots.                                                                   |
-| 11  | D7, D9     | **Hub breakout after build failure in a slot.** `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at hub root and runs `/spec:build`.                                                        | Project-routing rule for breakout verbs; active-slice resolution across the hub/slot boundary; correct `chdir` without operator intervention.                                                                                      |
-| 12  | D9         | **Dual-driving refused.** Project registered in a hub; operator runs `/spec:plan` from the project root with a hub-driven plan active.                                                                           | One-driving-mode-per-project invariant.                                                                                                                                                                                            |
+| #   | Decisions  | Scenario                                                                                                                                                                                                         | What it stress-tests                                                                                                                                                                                                         |
+| --- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | D3, D5, D6 | **Pure intent, one slice.** Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.                                                                                                                           | Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance.                                                                           |
+| 2   | D1, D3, D4 | **Documentation, one slice.** Operator binds a single docs path.                                                                                                                                                 | `documentation.enumerate` correctness at the new entry point; `Sources: [<doc-key>]` provenance.                                                                                                                             |
+| 3   | D3, D5, D6 | **Documentation, multi-slice.** Operator binds docs that map to N candidates.                                                                                                                                    | Propose/edit/reject loop; Gate 1 amendment flow.                                                                                                                                                                             |
+| 4   | D1, D3     | **Legacy-code, multi-slice.** Operator binds a legacy repo.                                                                                                                                                      | `legacy-code-typescript.enumerate`; survey/repair loop under the new skill; under-slicing failure mode; `Sources: [<legacy-key>]` provenance.                                                                                |
+| 5   | D2, D4     | **Intra-Evidence `[conflict]`.** Single-source slice where synthesis cannot reconcile contradictory `claims` within one `Evidence` document.                                                                     | `[conflict]` written into `spec.md`; lifecycle still transitions to `refined`; operator can hand-edit and run `/spec:build` without a parking-state ceremony.                                                                |
+| 5a  | D2-D4      | **Combined evidence (legacy-code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice.                                                                          | Synthesis end-to-end: serial `extract` per source; two-entry `Evidence[]`; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `refined` cleanly when sources agree. |
+| 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; design-doc winner becomes the operative requirement; behaviour preserved as inline commentary; lifecycle transitions to `refined`; operator may hand-edit before build.                        |
+| 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `refined`; operator must reconcile by editing or amending sources before the requirement is meaningful.           |
+| 5d  | D2-D4      | **Optional source fail-soft.** Combined-evidence slice with one `optional: true` source whose `extract` fails.                                                                                                   | Synthesis proceeds with the surviving `Evidence`; structured warning emitted; `Sources:` lines reflect surviving contributors only.                                                                                          |
+| 5e  | D3         | `**related` propose-time merge.** Two adapters surface the same candidate; operator merges them at propose.                                                                                              | `specify plan add` writes one slice with combined `sources:`; downstream extract runs against every contributing source.                                                                                                     |
+| 5f  | D2, D3     | **Required-source extract failure.** Required source's `extract` fails.                                                                                                                                          | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                         |
+| 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                              |
+| 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                 |
+| 6   | D9         | **Multi-repo assignment from a hub.** Operator runs `/spec:plan` in a hub.                                                                                                                                       | `hub:` discriminator; per-candidate `--project` at propose; workspace sync timing.                                                                                                                                           |
+| 7   | D3, D6     | **Operator amends one-slice plan into two slices at Gate 1.**                                                                                                                                                    | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.                                                                                                                                                     |
+| 8   | D7, D9     | **Step-through breakout mid-execute.** Operator starts `/spec:execute`; on the second slice they cancel, run `/spec:build` directly to investigate, then re-invoke `/spec:execute`.                              | Stop/resume contract; step-through verbs leave on-disk state consistent for `/spec:execute` to resume without flags.                                                                                                         |
+| 9   | D7         | `**/spec:execute` parks on a build failure, operator fixes, resumes.** Slice's `cargo test` fails; operator patches the crate; runs `/spec:execute`.                                                             | Build-failure stop hint; build resumes from the failed task; loop continues to merge.                                                                                                                                        |
+| 10  | D9         | **Hub `/spec:execute` across two projects.** Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the hub root.                                                            | Per-slice project routing; slot materialisation; `prepare-branch`; `chdir` + residue commit; plan-lock semantics at the hub root while phase work runs in slots.                                                             |
+| 11  | D7, D9     | **Hub breakout after build failure in a slot.** `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at hub root and runs `/spec:build`.                                                        | Project-routing rule for breakout verbs; active-slice resolution across the hub/slot boundary; correct `chdir` without operator intervention.                                                                                |
+| 12  | D9         | **Dual-driving refused.** Project registered in a hub; operator runs `/spec:plan` from the project root with a hub-driven plan active.                                                                           | One-driving-mode-per-project invariant.                                                                                                                                                                                      |
 
 
 Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenarios, especially #1 and #8-#9, gate steps 15-16.
@@ -721,7 +714,7 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 1. Default source adapters as true plugins vs CLI built-ins? **Preference:** in-repo plugins under `sources/`.
 2. `extract` WASI sandboxing? **Preference:** RFC-15 `specify tool run` posture.
 3. Required per-Evidence `authority:` vs manifest default? **Preference:** manifest default; explicit per-Evidence for mixed-class adapters later.
-4. Required `claim-id` for `documentation` claim kinds? **Preference:** yes for `requirement-statement` / `acceptance-criterion`.
+4. Required `claim-id` for `documentation` claim kinds? **Preference:** yes for `requirement` / `criterion`.
 5. `[divergence]` override seam? **Preference:** edit `spec.md` in v1.
 6. Slice dir at `plan add` vs extract start? **Preference:** at extract (Gate 1 plan-pure).
 7. Lifecycle wire format? **Preference:** snake_case.
