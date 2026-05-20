@@ -10,7 +10,7 @@ When setting up a project through the Specify plugin, `/spec:init` can bootstrap
 brew install augentic/tap/specify
 ```
 
-See [Prerequisites](../../orientation/prerequisites.md) for all install paths and capability-specific tooling.
+See [Prerequisites](../../orientation/prerequisites.md) for all install paths and adapter-specific tooling.
 
 ## Conventions
 
@@ -42,13 +42,13 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition change plans | Multi-slice operations |
 | [specify change](change.md) | Scaffold the change pair (`change.md` + `plan.yaml`), render the brief, and finalize landed changes | Multi-slice and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
-| [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
+| [specify adapter](adapter.md) | Adapter resolution and brief pipeline queries | Adapter infrastructure |
 | [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |
 | [specify compatibility](compatibility.md) | Classify producer contract deltas against consumer workspace views | Cross-project contract reporting |
 | [specify context](context.md) | Generate and check refreshable `AGENTS.md` guidance | Agent context |
 | [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
-| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify tool run` | Capability-owned validation + render-only scaffolding |
+| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify tool run` | Adapter-owned validation + render-only scaffolding |
 
 Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).

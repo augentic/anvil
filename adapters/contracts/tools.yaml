@@ -1,0 +1,5 @@
+# Adapter-scope tool declarations for the contracts adapter.
+# Schema: ../../../specify-cli/schemas/tool.schema.json
+#
+tools:
+  - "specify:contract@0.3.0"

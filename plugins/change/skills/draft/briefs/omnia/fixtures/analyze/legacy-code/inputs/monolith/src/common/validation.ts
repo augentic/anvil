@@ -1,9 +1,9 @@
 /**
  * Shared validation primitives.
  *
- * Low-level predicates reused by every capability that accepts
+ * Low-level predicates reused by every adapter that accepts
  * user-facing input. No domain knowledge here — callers layer
- * capability-specific rules on top.
+ * adapter-specific rules on top.
  */
 
 export function isNonEmpty(value: unknown): value is string {

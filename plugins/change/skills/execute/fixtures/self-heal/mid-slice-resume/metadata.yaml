@@ -22,6 +22,6 @@
 
 name: product-catalog
 status: defined
-capability: omnia
+adapter: omnia
 created-at: 2026-04-19T14:00:00Z
 defined-at: 2026-04-19T14:11:43Z

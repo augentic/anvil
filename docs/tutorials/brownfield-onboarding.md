@@ -9,7 +9,7 @@ If you have an existing codebase, you do not need to start from scratch. Specify
 Start by initialising Specify in your existing project:
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/omnia
+/spec:init https://github.com/augentic/specify/adapters/omnia
 ```
 
 When init detects existing source code, it will offer to create an `initial-baseline` change for extraction. Accept the offer, or proceed manually with the steps below.
@@ -28,7 +28,7 @@ Run extract against your codebase:
 ```text
 Extracting from . ...
   Scanning source files...
-  Discovered capabilities: auth, payments, notifications
+  Discovered adapters: auth, payments, notifications
 
 Generating artifacts...
   ✓ specs/auth/spec.md (5 requirements)
@@ -43,7 +43,7 @@ Extraction complete. Review artifacts, then run /spec:merge initial-baseline.
 
 The agent reads your source code and produces:
 
-- **`spec.md` files** (one per discovered capability) -- behavioral requirements extracted from the source. Each requirement gets a stable ID and scenarios based on the code's actual behavior.
+- **`spec.md` files** (one per discovered adapter) -- behavioral requirements extracted from the source. Each requirement gets a stable ID and scenarios based on the code's actual behavior.
 - **`design.md`** -- the technical shape: domain models, API contracts, dependencies, and business logic tagged with `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`.
 
 The extraction is **language-agnostic**. The artifacts describe *what* the code does, not how it is implemented. A TypeScript service and a Go service that do the same thing should produce equivalent specs.
@@ -95,7 +95,7 @@ Your baseline now reflects the existing system:
 
 ## 5. Start making changes
 
-With a populated baseline, new changes benefit from context. When you define a slice that modifies an existing capability, Specify reads the baseline spec and produces a delta:
+With a populated baseline, new changes benefit from context. When you define a slice that modifies an existing adapter, Specify reads the baseline spec and produces a delta:
 
 ```text
 /spec:define "Add two-factor authentication to the auth service"

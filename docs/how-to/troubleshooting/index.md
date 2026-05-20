@@ -27,8 +27,8 @@ This section catalogs common failure modes and how to recover from them.
 | Schema metadata incomplete | [Contract issues](contracts.md) |
 | Binding completeness failures | [Contract issues](contracts.md) |
 | Alignment warnings | [Contract issues](contracts.md) |
-| Capability resolution failure | [Init and capability issues](init-and-capabilities.md) |
-| Cache stale after capability update | [Init and capability issues](init-and-capabilities.md) |
+| Adapter resolution failure | [Init and adapter issues](init-and-adapters.md) |
+| Cache stale after adapter update | [Init and adapter issues](init-and-adapters.md) |
 | `hub-cannot-be-project` | [Hub and registry issues](hub-and-registry.md) |
 | `description-missing-multi-repo` | [Hub and registry issues](hub-and-registry.md) |
 | `no-branch` from `workspace push` | [Change landing issues](change-landing.md) |

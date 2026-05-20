@@ -50,7 +50,7 @@ safety, and alignment with the target architecture.
 
 ### Objectives
 
-- Migrate the notification processing capability to Rust WASM with full
+- Migrate the notification processing adapter to Rust WASM with full
   functional parity
 - Preserve all existing integrations with the Route API and message broker
 - Deliver a comprehensive automated test suite covering all business logic
@@ -205,7 +205,7 @@ D. **No Material Architectural Changes**
 
 E. **Security and Compliance**
    Security and compliance requirements are met by the existing Omnia
-   platform capabilities. No additional security certifications are required.
+   platform adapters. No additional security certifications are required.
 
 ## Acceptance
 

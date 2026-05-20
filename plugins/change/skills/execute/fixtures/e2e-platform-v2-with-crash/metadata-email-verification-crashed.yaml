@@ -15,7 +15,7 @@ complete-at: 2025-03-12T10:58:03Z
 merged-at:  2025-03-12T11:04:41Z
 
 touched-specs:
-  - { capability: email-verification, classification: new }
+  - { adapter: email-verification, classification: new }
 
 outcome:
   outcome: success

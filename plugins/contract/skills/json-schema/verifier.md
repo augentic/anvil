@@ -1,6 +1,6 @@
 # JSON Schema — Verifier
 
-> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by the contracts capability merge brief in `cross-project` mode against the merged baseline (RFC-13 §"Merge and adoption contract"), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts adapter build brief in `single` mode after the author or importer sibling produces output, by the contracts adapter merge brief in `cross-project` mode against the merged baseline (RFC-13 §"Merge and adoption contract"), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -10,8 +10,8 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
-| `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
-| `cross-project` | contracts capability merge brief | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify tool run contract` |
+| `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
+| `cross-project` | contracts adapter merge brief | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify tool run contract` |
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specify tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
@@ -56,7 +56,7 @@ If `$CHANGE_SCHEMAS` does not exist or contains no files, report all checks as p
 ### `cross-project` mode
 
 - `specify` is on `$PATH` and supports `specify tool run`.
-- The current project resolves the contracts capability sidecar that declares the `contract` tool.
+- The current project resolves the contracts adapter sidecar that declares the `contract` tool.
 - `$BASELINE_CONTRACTS` (`$PROJECT_ROOT/contracts`) is the directory the tool will walk. The declared read permission points at `$PROJECT_DIR/contracts`; if that directory is absent, `specify tool run` exits `2`. Callers MUST NOT pre-stat the path.
 
 ## Single-mode checks
@@ -222,7 +222,7 @@ All checks passed (19 $ref pointers, 7 schemas, 0 $id collisions, 0 backwards-in
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The contracts capability merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/change:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
+`cross-project` mode runs **after** a producer's contract change merges. The contracts adapter merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/change:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
 
 The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/change:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the RFC-12 §Validation rules over the merged baseline's top-level OpenAPI / AsyncAPI documents:
 
@@ -286,7 +286,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 ### Why a WASI tool delegate?
 
-The contracts capability owns merge gating through the declared `contract` WASI tool: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
+The contracts adapter owns merge gating through the declared `contract` WASI tool: a deterministic, adapter-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
 Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` (with optional `--change <name>` and `--report-only` flags).
 
@@ -356,6 +356,6 @@ Before completing the run:
 - [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report shape this verifier emits.
 - [`../../references/cross-project-compatibility.md`](../../references/cross-project-compatibility.md) — `change-kind` enumeration used by Check 4 (single-mode cross-format consumer compatibility).
-- [`../../../../capabilities/contracts/briefs/merge.md`](../../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge `specify tool run contract` invocation and the §Merge and adoption contract three-branch outcome wiring.
+- [`../../../../adapters/contracts/briefs/merge.md`](../../../../adapters/contracts/briefs/merge.md) — merge brief that owns the post-merge `specify tool run contract` invocation and the §Merge and adoption contract three-branch outcome wiring.
 - [`author.md`](./author.md) — sibling for spec-driven authoring.
 - [`importer.md`](./importer.md) — sibling for normalising external documents.

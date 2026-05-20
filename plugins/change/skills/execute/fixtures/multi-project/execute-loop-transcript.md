@@ -7,7 +7,7 @@ Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (tota
 
 Self-heal: no in-progress entries found.
 
-# specify plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
+# specify plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone adapter.", "sources": ["monolith"] }
 # registry selector: traffic → git@github.com:org/traffic.git
 # specify workspace status traffic --format json → git-clone, branch=main, dirty=false
 # specify workspace prepare-branch traffic --change platform-v2 --source /path/to/legacy-codebase --format json

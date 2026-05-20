@@ -57,7 +57,7 @@ Token changes in `tokens.yaml` are picked up by each shell writer, which emits s
 
 - Are specs complete with requirements and scenarios?
 - Does design.md include the full Crux type system (Model, Event, ViewModel, Effect)?
-- Are capabilities explicitly listed in the design?
+- Are adapters explicitly listed in the design?
 
 ### iOS Shell Build Fails
 

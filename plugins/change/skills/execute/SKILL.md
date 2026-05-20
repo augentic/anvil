@@ -55,7 +55,7 @@ These invariants constrain this skill's behaviour.
 /change:execute loop       # run until no eligible slice remains
 ```
 
-The plan path is fixed at `plan.yaml`; multi-plan support is a future capability.
+The plan path is fixed at `plan.yaml`; multi-plan support is a future adapter.
 
 ## Driver lock
 

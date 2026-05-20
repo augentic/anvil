@@ -81,16 +81,16 @@ When finished, revert to published plugins:
 make use-team-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
-### Testing capability changes
+### Testing adapter changes
 
-Capabilities are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on capabilities in a target project, symlink them:
+Adapters are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on adapters in a target project, symlink them:
 
 ```bash
 SPECIFY_REPO="path/to/augentic/specify"
-ln -sf "$SPECIFY_REPO/capabilities" capabilities
+ln -sf "$SPECIFY_REPO/adapters" adapters
 ```
 
-Capability edits take effect immediately -- no cache clear or restart needed.
+Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 

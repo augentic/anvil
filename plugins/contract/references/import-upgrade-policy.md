@@ -78,7 +78,7 @@ Some inputs cannot be normalised by any importer running in isolation. The impor
 | File whose top-level format cannot be classified | Custom IDL, malformed YAML, BOM corruption | Skip; flag for manual review. Do not attempt to guess the format. |
 | Multi-file bundle distributed across nested directories | An OpenAPI document with `$ref` chains spanning a vendor bundle | Process the entry-point file; chase `$ref`s only to siblings the operator placed in the slice directory. Flag every unresolved external `$ref`. |
 | Construct that implies behaviour beyond wire shape (e.g. `x-rate-limit` extensions, custom auth flows) | Vendor extensions that look semantically meaningful | Preserve verbatim; flag as "preserved but not validated" in the report. The operator decides whether to lift the construct into `design.md`. |
-| Conflict between source-declared `$id` / `title` and the filename Specify would assign | Source `title: "User Profile"`, source filename `acct.yaml` | Prefer `title` (and rewrite the filename); flag as a normalisation entry. When neither resolves cleanly, request operator input. |
+| Conflict between source-declared `$id` / `title` and the filename Specify would assign | Source `title: "User Adapter"`, source filename `acct.yaml` | Prefer `title` (and rewrite the filename); flag as a normalisation entry. When neither resolves cleanly, request operator input. |
 
 The importer never **silently** decides any of the above. The report's "Manual Review Required" section is the canonical surface for these decisions; the verifier confirms the importer did not paper over them.
 

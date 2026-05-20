@@ -11,17 +11,17 @@ This plugin provides the core Specify workflow skills: define a slice, build (va
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 
-## Capability Structure
+## Adapter Structure
 
-Capabilities define the artifact graph, briefs, and heading conventions. Each capability directory contains:
+Adapters define the artifact graph, briefs, and heading conventions. Each adapter directory contains:
 
 ```text
-capabilities/<name>/
-├── capability.yaml
+adapters/<name>/
+├── adapter.yaml
 └── briefs/
 ```
 
-`capability.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter.
+`adapter.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter.
 
 ## Slice Lifecycle
 
@@ -54,7 +54,7 @@ defining -> defined -> building -> complete -> merged
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
 - **define**: Create a slice directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
-- **build**: Validate artifacts against `capability.yaml` rules and cross-blueprint consistency, then implement tasks from the slice, marking them complete as you go
+- **build**: Validate artifacts against `adapter.yaml` rules and cross-blueprint consistency, then implement tasks from the slice, marking them complete as you go
 - **merge**: Preview merge operations, finalize a completed slice, merge delta specs into baseline
 - **drop**: Discard an active slice, set `status: dropped`, and move it to archive without merging specs
 - **extract**: Extract Specify artifacts (specs + design.md) from existing source code

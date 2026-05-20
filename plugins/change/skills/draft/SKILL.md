@@ -6,14 +6,14 @@ argument-hint: <change-name>
 
 # Draft skill
 
-> **Author `plan.yaml` by running the capability's planning brief pipeline and stop at the operator review seam.** `/change:draft` is the Layer 2 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change draft` (initial scaffold) or `specify plan {add, amend}` (subsequent edits).
+> **Author `plan.yaml` by running the adapter's planning brief pipeline and stop at the operator review seam.** `/change:draft` is the Layer 2 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change draft` (initial scaffold) or `specify plan {add, amend}` (subsequent edits).
 
 ## Critical Path
 
 1. **Pre-flight** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
 2. **Brief scaffold** — `specify change draft <change-name> [--source <key>=<path-or-url> ...]`. Writes `change.md` and `plan.yaml` together (atomic refusal if either already exists). Skipped under `extend`.
-3. **Registry validate** — `specify registry validate`. Halts on validation failures (description-missing-multi-repo, kebab violations, invalid URL, capability typo) before any brief work.
-4. **Plan brief pipeline** from `capability.yaml`:
+3. **Registry validate** — `specify registry validate`. Halts on validation failures (description-missing-multi-repo, kebab violations, invalid URL, adapter typo) before any brief work.
+4. **Plan brief pipeline** from `adapter.yaml`:
    - **(a) Discovery** — invoke the discovery brief; runs `/change:analyze` for `documentation` inputs and writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 4(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-workspace.md](sync-workspace.md).
    - **(c) Source survey** (legacy-code sources only) — invoke `/change:survey` to drive per-language enumeration briefs against legacy code, validate the result against the closed `surfaces.json` schema, and emit slice-sized candidates. Skip when the change has no `legacy-code` sources. See [`/change:survey` SKILL.md](../survey/SKILL.md).
@@ -24,7 +24,7 @@ argument-hint: <change-name>
 
 ## Orientation
 
-`/change:draft` runs a six-step loop driven by the active capability's `capability.yaml`: pre-flight → scaffold → registry-validate → brief-pipeline → plan-validate → hand-off. Every shell-out targets the `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify plan validate` plus an explicit hand-off summary is the contract this skill owes its caller — execution is a separate skill, invoked by the operator only after they have reviewed the draft.
+`/change:draft` runs a six-step loop driven by the active adapter's `adapter.yaml`: pre-flight → scaffold → registry-validate → brief-pipeline → plan-validate → hand-off. Every shell-out targets the `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify plan validate` plus an explicit hand-off summary is the contract this skill owes its caller — execution is a separate skill, invoked by the operator only after they have reviewed the draft.
 
 The brief pipeline varies by input kind and registry shape. Documentation-only changes run two steps for single-repo (discovery → propose) or four for multi-repo (discovery → sync-workspace → propose → assignment). Legacy-code changes add a source survey between sync-workspace and propose: three steps for single-repo (discovery → survey → propose) or five for multi-repo (discovery → sync-workspace → survey → propose → assignment). `/change:survey` owns the legacy-code decomposition; `/change:analyze` handles `documentation` inputs only.
 
@@ -42,7 +42,7 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`../survey/SKILL.md`](../survey/SKILL.md) | Source survey (step 4c, legacy-code sources only) — `/change:survey` agent-enumerated decomposition |
 | [`propose.md`](propose.md) | Propose brief (step 4d) — accept/edit/reject loop, `specify plan add` |
 | [`assignment.md`](assignment.md) | Assignment brief (step 4e, multi-repo only) — `--project` inference and registry-proposal sub-step |
-| [`briefs/`](briefs/) | Bundled per-capability planning briefs (`omnia/`, `vectis/`) |
+| [`briefs/`](briefs/) | Bundled per-adapter planning briefs (`omnia/`, `vectis/`) |
 | [`fixtures/`](fixtures/) | Per-flow regression fixtures (discovery, propose, multi-project, registry-proposal, dry-run, plan-multi-repo) |
 | [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md) | Shared single-writer contract for `plan.yaml` writes |
 | [`../../references/plan-invocation.md`](../../references/plan-invocation.md) | Positional grammar, kind suffix syntax, input-sufficiency rule |
@@ -52,5 +52,5 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 
 - **Single-writer for `plan.yaml`.** Every write goes through `specify change draft` (initial scaffold, alongside `change.md`) or `specify plan {add, amend}` (subsequent edits); never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
 - **Never skip `specify plan validate` (step 5).** A plan that ships to `/change:execute` without a clean validate is a regression. Validate `<change-name>` as kebab-case before any filesystem read or CLI shell-out.
-- **`dry-run` MUST NOT write under `.specify/`** (no `draft` / `add` / `amend` / `transition`, no `discovery.md`). **`extend` skips step 2 entirely** and only `amend --project` may touch newly added entries — never pre-existing ones. A missing `briefs/<capability>/{discovery,propose}.md` for the active capability is a hard failure: print the resolved capability and expected paths, then exit non-zero.
+- **`dry-run` MUST NOT write under `.specify/`** (no `draft` / `add` / `amend` / `transition`, no `discovery.md`). **`extend` skips step 2 entirely** and only `amend --project` may touch newly added entries — never pre-existing ones. A missing `briefs/<adapter>/{discovery,propose}.md` for the active adapter is a hard failure: print the resolved adapter and expected paths, then exit non-zero.
 - **Stop at the hand-off seam.** This skill never invokes `/change:execute` and never pushes branches or finalizes the change. After step 6, the operator decides whether to run `specify plan amend`, hand the plan to a teammate, or proceed to `/change:execute loop`; the post-execute tail is owned by `/change:finalize`.

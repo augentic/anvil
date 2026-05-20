@@ -10,7 +10,7 @@ When ready to implement, run `/spec:build`.
 
 When working plan-driven (a `plan.yaml` exists), the active entry is claimed before `/spec:define` starts. If this skill uncovers a neighbouring slice or dependency that should be tracked, mutate the plan only through the commands allowed by the shared [phase outcome contract](../../references/phase-outcome-contract.md).
 
-Deterministic bookkeeping — name validation, `.metadata.yaml` writes, capability resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
+Deterministic bookkeeping — name validation, `.metadata.yaml` writes, adapter resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
 
 ## Critical Path
 
@@ -22,7 +22,7 @@ If no clear input was provided, ask in normal chat:
 
 From the description, derive a kebab-case slice name (e.g., "add user authentication" → `add-user-auth`). Do **not** proceed without understanding what the user wants to build.
 
-Read `.specify/project.yaml` for `capability`, `domain`, and `rules`. If the file is missing, run `/spec:init` first and stop. `domain` and `rules` guide how you write artifacts — they are constraints for the agent, never content to copy into any artifact output. If `domain` is absent or a placeholder, fall back to any domain guidance carried by the active capability's briefs and references. Capability resolution and pipeline topology are handled by the CLI in later steps; no need to invoke `specify capability resolve` here.
+Read `.specify/project.yaml` for `adapter`, `domain`, and `rules`. If the file is missing, run `/spec:init` first and stop. `domain` and `rules` guide how you write artifacts — they are constraints for the agent, never content to copy into any artifact output. If `domain` is absent or a placeholder, fall back to any domain guidance carried by the active adapter's briefs and references. Adapter resolution and pipeline topology are handled by the CLI in later steps; no need to invoke `specify adapter resolve` here.
 
 ### 2. Handle regenerate mode (artifact ID supplied)
 
@@ -36,13 +36,13 @@ Run `specify slice create <name> --if-exists continue --format json` and branch 
 
 Run `specify slice overlap <name> --format json`. For each entry in the `overlaps` array, warn:
 
-> "The capability `<capability>` is also being modified by change `<other-change>`. This may cause conflicts at merge time."
+> "The adapter `<adapter>` is also being modified by change `<other-change>`. This may cause conflicts at merge time."
 
 Informational only — do not block the proposal. The CLI only reports overlaps against the slice's current `touched-specs`; step 6 updates those after artifacts are created.
 
 ### 5. Resolve the define pipeline
 
-Run `specify capability pipeline define --change .specify/slices/<name> --format json`. The response lists every define brief in topological order with its absolute `path`, `needs` edges, `generates` target, and current `present` flag relative to this slice. Use this list — not `capability.yaml` directly — to drive the generation loop in step 6.
+Run `specify adapter pipeline define --change .specify/slices/<name> --format json`. The response lists every define brief in topological order with its absolute `path`, `needs` edges, `generates` target, and current `present` flag relative to this slice. Use this list — not `adapter.yaml` directly — to drive the generation loop in step 6.
 
 ### 6. Generate artifacts in dependency order
 
@@ -66,7 +66,7 @@ specify slice touched-specs <name> --scan --format json
 specify slice transition <name> defined --format json
 ```
 
-`touched-specs --scan` walks `.specify/slices/<name>/specs/*`, classifies each capability as `new` (no baseline under `.specify/specs/`) or `modified` (baseline exists), and writes the list into `.metadata.yaml`. `slice transition` stamps `defined-at` and enforces the `defining → defined` edge.
+`touched-specs --scan` walks `.specify/slices/<name>/specs/*`, classifies each adapter as `new` (no baseline under `.specify/specs/`) or `modified` (baseline exists), and writes the list into `.metadata.yaml`. `slice transition` stamps `defined-at` and enforces the `defining → defined` edge.
 
 Summarize:
 
@@ -112,14 +112,14 @@ This skill is the **define** phase of the `/change:execute` driver loop. Apply t
 
 ## Guardrails
 
-- Create all artifacts for briefs returned by `specify capability pipeline define` before declaring the slice ready.
+- Create all artifacts for briefs returned by `specify adapter pipeline define` before declaring the slice ready.
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/slices/<name>/`**.
 - If context is critically unclear, ask the user — but prefer making reasonable decisions to keep momentum.
 - Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; plan amendments only when the run uncovers neighbouring work and only via `specify plan add` / `specify plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md).
 - Never implement code or flip task checkboxes here — implementation is `/spec:build`'s phase; define stops once artifacts are written and the slice is `defined`.
 - Never extract specs from external source code directly — delegate to `/spec:extract` (invoked by define briefs in driver-supplied `<source>` mode).
-- Never run plan-time capability inference — that lives in `/change:analyze`, orchestrated by the `/change:draft` discovery brief.
+- Never run plan-time adapter inference — that lives in `/change:analyze`, orchestrated by the `/change:draft` discovery brief.
 - If a slice with that name already exists, use `specify slice status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

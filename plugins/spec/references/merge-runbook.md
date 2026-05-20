@@ -12,12 +12,12 @@ Render this from the `operations[]` array returned by
 ```text
 Merge Preview: <slice-name>
 
-<capability-1>/spec.md (existing baseline)
+<adapter-1>/spec.md (existing baseline)
 - REMOVING: REQ-001 — <name>
 - MODIFYING: REQ-002 — <name>
 - ADDING: REQ-003 — <name>
 
-<capability-2>/spec.md (new baseline)
+<adapter-2>/spec.md (new baseline)
 - CREATING baseline with N requirements
 ```
 
@@ -27,10 +27,10 @@ delta specs to merge" and stop.
 ## Conflict-check surfacing
 
 If `slice merge conflict-check` returns any entries under `conflicts`, surface
-them clearly — each entry names the capability, the slice's `defined-at`, and
+them clearly — each entry names the adapter, the slice's `defined-at`, and
 the baseline's `baseline-modified-at`:
 
-> "The baseline for `<capability>` was modified at `<baseline-modified-at>`
+> "The baseline for `<adapter>` was modified at `<baseline-modified-at>`
 > (after this slice was defined at `<defined-at>`). Another change may have
 > already touched it."
 
@@ -57,8 +57,8 @@ Slice:     <slice-name>
 Merged to: .specify/archive/YYYY-MM-DD-<name>/
 
 Specs Merged
-- <capability-1>: merged into .specify/specs/<capability-1>/spec.md
-- <capability-2>: new baseline created at .specify/specs/<capability-2>/spec.md
+- <adapter-1>: merged into .specify/specs/<adapter-1>/spec.md
+- <adapter-2>: new baseline created at .specify/specs/<adapter-2>/spec.md
 
 (or "No delta specs to merge" if `specify slice merge preview` returned an
 empty `specs` array)

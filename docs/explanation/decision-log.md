@@ -24,7 +24,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `capability.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify capability`.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify adapter`.
 2. **Layer 1 — Executing a change.** The single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, and the `specify slice *` verbs they wrap.
 3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, `/change:analyze`, and the `specify change *` / `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
 
@@ -42,7 +42,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Analyze/extract split
 
-**Decision:** Plan-time capability discovery (`/change:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
+**Decision:** Plan-time adapter discovery (`/change:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
 
 **Rationale:** A large monolith cannot be fully extracted in one pass -- it would be too slow and expensive. The two-skill split makes large migrations tractable: cheap scanning builds the inventory, deep extraction happens per-slice where it is focused and affordable.
 
@@ -52,7 +52,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Multi-repo coordination uses a `registry.yaml` platform catalogue and an automatic sync-workspace phase, not a configuration DSL or federation protocol.
 
-**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what capability they use, what domain they own). Sync-workspace runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
+**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what adapter they use, what domain they own). Sync-workspace runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
 **Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -60,23 +60,23 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The execute driver routes each change to its target project by changing working directory to the workspace clone before invoking phase skills. Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`) are completely unaware of multi-repo routing -- they run unmodified in whatever directory the driver places them in.
 
-**Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the capability via their normal `.specify/project.yaml` walk from CWD.
+**Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the adapter via their normal `.specify/project.yaml` walk from CWD.
 
 **Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## One plan entry, one project
 
-**Decision:** Each plan entry targets exactly one registry project. Capabilities that span multiple repos are decomposed into separate slices (one per project) linked by `depends-on` edges.
+**Decision:** Each plan entry targets exactly one registry project. Adapters that span multiple repos are decomposed into separate slices (one per project) linked by `depends-on` edges.
 
-**Rationale:** Allowing a single slice to span repos would require the execution loop to manage multiple project roots, multiple capabilities, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
+**Rationale:** Allowing a single slice to span repos would require the execution loop to manage multiple project roots, multiple adapters, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting adapters into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
 **Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Project assignment is a framework concern
 
-**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside capability-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
+**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside adapter-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
 
-**Rationale:** A multi-repo plan spans projects with different capabilities, so assignment is inherently a cross-capability concern. Placing it in individual propose briefs would duplicate the logic across capabilities and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
+**Rationale:** A multi-repo plan spans projects with different adapters, so assignment is inherently a cross-adapter concern. Placing it in individual propose briefs would duplicate the logic across adapters and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
 
 **Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -114,9 +114,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Contracts as platform-level artifacts, not per-project
 
-**Decision:** API contracts live at `contracts/` alongside `registry.yaml` and `plan.yaml`, not nested inside any project's capability tree or spec directory.
+**Decision:** API contracts live at `contracts/` alongside `registry.yaml` and `plan.yaml`, not nested inside any project's adapter tree or spec directory.
 
-**Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's capability tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
+**Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's adapter tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
 
 **Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
 
@@ -150,33 +150,33 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** When specs evolve over multiple changes, the system needs a way to match "this modification applies to that requirement." Titles are human-facing and change frequently. Stable IDs give the merge engine a reliable key while keeping the spec format readable.
 
-## Capability-agnostic lifecycle, capability-specific briefs
+## Adapter-agnostic lifecycle, adapter-specific briefs
 
-**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across capabilities. Capabilities control the *content* of brief pipelines, may add capability-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
+**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across adapters. Adapters control the *content* of brief pipelines, may add adapter-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
-**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this capability-agnostic means every project gets the same tooling regardless of target platform. Capabilities customise the generation content and may extend the pipeline without fragmenting the workflow.
+**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this adapter-agnostic means every project gets the same tooling regardless of target platform. Adapters customise the generation content and may extend the pipeline without fragmenting the workflow.
 
-## Planning briefs ship with the skill, not the capability manifest
+## Planning briefs ship with the skill, not the adapter manifest
 
-**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/change:plan` skill under `plugins/change/skills/plan/briefs/<capability>/` rather than under `capability.yaml:pipeline.plan`. The capability manifest schema actively rejects a `pipeline.plan` block.
+**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/change:plan` skill under `plugins/change/skills/plan/briefs/<adapter>/` rather than under `adapter.yaml:pipeline.plan`. The adapter manifest schema actively rejects a `pipeline.plan` block.
 
-**Rationale:** Planning is orchestration, not capability-owned slice work. A capability decides what define/build/merge produces inside an individual slice; it does not decide how a *change* (potentially spanning many slices and projects) gets composed. Putting plan briefs in the capability manifest blurred that boundary and forced every capability to ship near-duplicate plan briefs. Keeping the briefs with the plan skill keeps the framework concern at the framework, with capabilities free to ship their own plan-time variants by name (`briefs/<capability>/`).
+**Rationale:** Planning is orchestration, not adapter-owned slice work. A adapter decides what define/build/merge produces inside an individual slice; it does not decide how a *change* (potentially spanning many slices and projects) gets composed. Putting plan briefs in the adapter manifest blurred that boundary and forced every adapter to ship near-duplicate plan briefs. Keeping the briefs with the plan skill keeps the framework concern at the framework, with adapters free to ship their own plan-time variants by name (`briefs/<adapter>/`).
 
 **Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
 
-## Capability vs `--hub` is mutually exclusive at init
+## Adapter vs `--hub` is mutually exclusive at init
 
-**Decision:** `specify init` accepts either a capability positional or `--hub`, never both and never neither. A regular project carries a `capability:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `capability:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) with the stable `init-requires-capability-or-hub` diagnostic.
+**Decision:** `specify init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) with the stable `init-requires-adapter-or-hub` diagnostic.
 
-**Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no capability to resolve. Allowing an empty capability would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
+**Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
 **Source:** [RFC-9: Platform](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
 
-## Platform components are not capabilities
+## Platform components are not adapters
 
-**Decision:** The registry and the change orchestrator are first-party **platform components**, not capabilities. They have commands, libraries, and files, but they never appear in any `capability.yaml`, never participate in the manifest protocol, and are never activated through a capability-name switch. The dependency direction is fixed at the crate level: `specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.
+**Decision:** The registry and the change orchestrator are first-party **platform components**, not adapters. They have commands, libraries, and files, but they never appear in any `adapter.yaml`, never participate in the manifest protocol, and are never activated through a adapter-name switch. The dependency direction is fixed at the crate level: `specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.
 
-**Rationale:** Treating the registry and change orchestration as capabilities created a circular activation problem — the surface that decides which capabilities are active was itself a capability. Promoting them to platform components keeps capability composition strictly downward and means a capability author never has to think about whether the registry or change loop is "available." The hard-coded crate dependency direction makes the invariant a build-time guarantee rather than a convention.
+**Rationale:** Treating the registry and change orchestration as adapters created a circular activation problem — the surface that decides which adapters are active was itself a adapter. Promoting them to platform components keeps adapter composition strictly downward and means a adapter author never has to think about whether the registry or change loop is "available." The hard-coded crate dependency direction makes the invariant a build-time guarantee rather than a convention.
 
 **Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
 
@@ -188,19 +188,19 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** [RFC-14: Workspace](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-14-workspace.md)
 
-## Declared WASI capability tools
+## Declared WASI adapter tools
 
-**Decision:** Helper tools shipped by capabilities or projects are declared as WASI command components in a `tools.yaml` sidecar (capability scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a capability-shipped tool to a local build or pinned mirror without editing the capability. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
+**Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
 
-**Rationale:** Capabilities used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a capability can ship behavior without growing the host.
+**Rationale:** Adapters used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a adapter can ship behavior without growing the host.
 
 **Source:** [RFC-15: WASM Plugins](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md)
 
-## One `specify` binary; capability-specific helpers ship as declared tools
+## One `specify` binary; adapter-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `capabilities/vectis/tools.yaml`. Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in Vectis skills as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `adapters/vectis/tools.yaml`. Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in Vectis skills as ordinary shell commands the agent runs and journals.
 
-**Rationale:** A separate capability-specific binary would double the install, packaging, release, and version-coordination surface for every capability that needs helpers. Applying the declared-tool model from RFC-15 keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
+**Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model from RFC-15 keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
 **Source:** [RFC-16: WASI Vectis](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md)
 
@@ -228,14 +228,14 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## CLI verb renames (RFC-9 / RFC-13)
 
-**Decision:** Several CLI verb groups were renamed during the RFC-9 → RFC-13 cutover so the top-level surface matches the operator-facing nouns (slice / change / registry / workspace / capability):
+**Decision:** Several CLI verb groups were renamed during the RFC-9 → RFC-13 cutover so the top-level surface matches the operator-facing nouns (slice / change / registry / workspace / adapter):
 
 - `specify change *` (per-slice verbs) → `specify slice *` (RFC-13 §3.2).
 - `specify change *` (umbrella verbs) → `specify change *` (RFC-13 §3.5); `specify change create` was renamed from the v1 `specify change init`.
-- `specify schema {resolve, check, pipeline}` → `specify capability {resolve, check, pipeline}` (RFC-13 §Migration).
+- `specify schema {resolve, check, pipeline}` → `specify adapter {resolve, check, pipeline}` (RFC-13 §Migration).
 - `specify registry {add, remove}` were added by RFC-9 §2A and both validate the resulting shape after the write.
-- The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party capability owning its own validation behaviour; the contracts merge brief now shells out through `specify tool run contract` as the post-merge baseline gate (RFC-15).
-- `specify init --hub` (RFC-9 §1D) is the mutually exclusive alternative to `specify init <capability>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
+- The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specify tool run contract` as the post-merge baseline gate (RFC-15).
+- `specify init --hub` (RFC-9 §1D) is the mutually exclusive alternative to `specify init <adapter>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
 - `specify workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from … by RFC-N" parentheticals while preserving the trail for anyone tracing a stale call site.

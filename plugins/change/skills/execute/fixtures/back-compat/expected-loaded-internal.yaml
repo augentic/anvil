@@ -10,7 +10,7 @@
 # rename_all on the struct, optional fields included only when present
 # on disk.
 version: 1
-capability: omnia
+adapter: omnia
 status: merged
 created-at: "2024-08-01T10:00:00Z"
 defined-at: "2024-08-01T12:30:00Z"

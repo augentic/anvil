@@ -1,21 +1,21 @@
 # Change Component
 
-The change component is a first-party Specify component, not a capability — it coordinates an outcome from brief through executable plan, execution state, and close-out.
+The change component is a first-party Specify component, not a adapter — it coordinates an outcome from brief through executable plan, execution state, and close-out.
 
 ## What is the change component?
 
 The change component (implemented in the `specify-change` crate) coordinates an outcome from **brief** (`change.md`) through **executable plan** (`plan.yaml`), **execution state** (`.specify/slices/<name>/.metadata.yaml`), and **close-out** (`specify change finalize` and `specify change archive`). It consumes registry project ids, materialised project paths, and core slice phase outcomes — but it does not own any of those.
 
-The change component is **not** a capability: it has commands, libraries, and files, but it does not appear in any `capability.yaml`, it is not activated through the manifest protocol, and the core never switches on a capability name to invoke it. See [Platform components are not capabilities](../explanation/decision-log.md#platform-components-are-not-capabilities).
+The change component is **not** a adapter: it has commands, libraries, and files, but it does not appear in any `adapter.yaml`, it is not activated through the manifest protocol, and the core never switches on a adapter name to invoke it. See [Platform components are not adapters](../explanation/decision-log.md#platform-components-are-not-adapters).
 
 ## Files and state
 
 | Path                                   | Owner             | Purpose                                                                                                                                                                                  |
 | -------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `change.md`                            | operator          | Operator-authored brief at the repo root: desired outcome, scope, impacted projects, close-out criteria.                                                                            |
-| `plan.yaml`                            | change skills + operator | Executable dependency-aware plan at the repo root: sequenced slice entries, per-entry scope (project, capability, sources), and lifecycle status.                                  |
+| `plan.yaml`                            | change skills + operator | Executable dependency-aware plan at the repo root: sequenced slice entries, per-entry scope (project, adapter, sources), and lifecycle status.                                  |
 | `.specify/slices/<name>/.metadata.yaml` | core (slice loop) | Per-slice phase outcomes (`define`, `build`, `merge`) consumed by the plan.                                                                                                          |
-| `.specify/slices/<name>/journal.yaml` | core (slice loop) | Append-only audit log per slice. Capability merge briefs append `failure` and `recovery` entries here for the change component to surface.                                               |
+| `.specify/slices/<name>/journal.yaml` | core (slice loop) | Append-only audit log per slice. Adapter merge briefs append `failure` and `recovery` entries here for the change component to surface.                                               |
 | `.specify/plan.lock`                   | change component  | Advisory PID stamp serialising concurrent `/change:execute` drivers.                                                                                                                       |
 | `.specify/archive/plans/<YYYYMMDD>-<name>/` | change component | Archive destination written atomically by `specify change finalize` once every per-project PR has merged.                                                                                |
 
@@ -59,7 +59,7 @@ The change component owns only the change + plan surface. The per-slice verbs (`
 The change component is downstream of the registry and the slice loop:
 
 ```text
-specify-change → specify-registry → specify-capability
+specify-change → specify-registry → specify-adapter
               → specify-slice    (per-loop primitives)
               → specify-core
 ```
@@ -74,30 +74,30 @@ Concretely:
 
 - The change component owns `change.md` (intent) and `plan.yaml` (executable graph).
 - Each plan entry names a slice that the slice loop will materialise as `.specify/slices/<name>/` and run `define → build → merge` against.
-- Cross-capability outcomes are coordinated by additional plan entries, not by fusing capabilities into a larger hidden slice.
+- Cross-adapter outcomes are coordinated by additional plan entries, not by fusing adapters into a larger hidden slice.
 
 ## What the change component must NOT own
 
 The change component is user intent, an executable plan, and the close-out protocol:
 
-- **Domain artefact ownership.** Specs, contracts, code, fixtures — every mutable artefact has exactly one capability owner. The change component never reaches into a capability's baseline directories.
+- **Domain artefact ownership.** Specs, contracts, code, fixtures — every mutable artefact has exactly one adapter owner. The change component never reaches into a adapter's baseline directories.
 - **Topology materialisation.** Project clones and symlinks are derived registry state owned by `specify registry`. The change component reads materialised project roots; it does not create them.
-- **Hidden multi-capability transactions.** A single slice runs against exactly one capability/scope. Cross-capability outcomes are explicit plan entries — never one slice that writes multiple capabilities' baselines.
+- **Hidden multi-adapter transactions.** A single slice runs against exactly one adapter/scope. Cross-adapter outcomes are explicit plan entries — never one slice that writes multiple adapters' baselines.
 
 ## Merge and adoption contract
 
-The slice loop and the change component share a thin go/no-go protocol with capability merge skills:
+The slice loop and the change component share a thin go/no-go protocol with adapter merge skills:
 
-1. The capability merge skill validates the staged artefacts, decides whether each is promoted / replaced / generated / cleaned up, and runs any capability-specific drift or format checks.
+1. The adapter merge skill validates the staged artefacts, decides whether each is promoted / replaced / generated / cleaned up, and runs any adapter-specific drift or format checks.
 2. The skill records the decision via `specify slice outcome set --phase merge --outcome {success,failed,blocked}` and appends opaque diagnostics via `specify slice journal append --kind {failure,recovery}`.
 3. The core reads what the merge phase reports back. On `success` it proceeds with archival; on `failed` or `blocked` it halts archival and surfaces the journal entries to the user.
 4. The change component reads the slice's terminal outcome to drive the matching plan-entry transition (`done` / `failed` / `blocked` / `skipped`) and to gate finalization.
 
-The core does not parse capability diagnostics — they round-trip as opaque journal entries, and the change component surfaces them verbatim.
+The core does not parse adapter diagnostics — they round-trip as opaque journal entries, and the change component surfaces them verbatim.
 
 ## See also
 
-- [Capabilities](capabilities/index.md) — capability manifest protocol and the dependency direction sister page.
+- [Adapters](adapters/index.md) — adapter manifest protocol and the dependency direction sister page.
 - [Registry](registry.md) — topology ledger and workspace materialisation.
 - [`/change:draft`](change-skills/draft.md) — change plan authoring skill.
 - [`/change:execute`](change-skills/execute.md) — change execution driver.

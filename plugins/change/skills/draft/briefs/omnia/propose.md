@@ -1,17 +1,17 @@
 ---
 id: propose
-description: Map the capability inventory 1:1 onto plan entries and drive the accept/edit/reject/abort loop.
+description: Map the adapter inventory 1:1 onto plan entries and drive the accept/edit/reject/abort loop.
 needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/change:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Turn the adapter inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered adapter. Adapter boundaries were decided upstream by `/change:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
-- `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first. The file contains both `## Capability inventory` blocks and `## Candidate inventory` blocks — the latter appended by `/change:analyze` (documentation) and `/change:survey` (legacy-code).
-- **`.specify/plans/<name>/workspace.md`** when present (multi-repo). Authored by `/change:draft` step 4(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
-- Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Candidate blocks under `## Candidate inventory` use the fenced-YAML grammar (`kind`, `sources`, `handler`, `touches`, `surfaces`, `declared-at`, `unresolved`). Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
+- `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first. The file contains both `## Adapter inventory` blocks and `## Candidate inventory` blocks — the latter appended by `/change:analyze` (documentation) and `/change:survey` (legacy-code).
+- **`.specify/plans/<name>/workspace.md`** when present (multi-repo). Authored by `/change:draft` step 4(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach adapters that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
+- Assumed shape: unified adapter summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Candidate blocks under `## Candidate inventory` use the fenced-YAML grammar (`kind`, `sources`, `handler`, `touches`, `surfaces`, `declared-at`, `unresolved`). Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
 
 ### `unresolved: true` candidates
 
@@ -21,15 +21,15 @@ Candidate blocks with `unresolved: true` are **refused** — do not draft a plan
 
 The operator workflow: edit the candidate block in `discovery.md` to remove `unresolved: true` (typically by narrowing `touches` or splitting the block into two smaller candidates that are each `acceptable`), then re-run propose. Propose never auto-resolves unresolved candidates.
 
-## Decomposition — 1:1 capability → slice
+## Decomposition — 1:1 adapter → slice
 
-`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is capability-owned inside `/change:analyze`.
+`discovery.md` already carries adapter boundaries. Propose's job is to mechanically map each adapter to a plan entry. The clustering judgement is adapter-owned inside `/change:analyze`.
 
 ### Mapping rule
 
-For each `### <capability-name>` block:
+For each `### <adapter-name>` block:
 
-| Capability field       | Plan entry field                                         |
+| Adapter field       | Plan entry field                                         |
 | ---------------------- | -------------------------------------------------------- |
 | `name`                 | `name`                                                   |
 | `summary` + `sources:` | `description` (rich prose — see §Rich description generation) |
@@ -38,7 +38,7 @@ For each `### <capability-name>` block:
 | `hints.*`              | Retained in `discovery.md` for operator reference; not carried into `plan.yaml`. |
 | `confidence`           | Drives the interactive flag (see §Confidence handling).  |
 
-The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` heading identifies the capability's origin source. Its value is the plan entry's sole `sources:` entry.
+The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` heading identifies the adapter's origin source. Its value is the plan entry's sole `sources:` entry.
 
 ### Peer registry sources (multi-repo)
 
@@ -46,9 +46,9 @@ Project assignment is handled by the plan skill's assignment step (RFC-3b §*Ass
 
 When the assignment step (4(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the draft skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/draft/assignment.md` → §"Step 4(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify plan amend --project <name>` for the entry. This brief never proposes registry entries directly.
 
-### Documentation capabilities (no source-key marker for code)
+### Documentation adapters (no source-key marker for code)
 
-Capabilities produced from `/change:analyze documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the capability came from. For these:
+Adapters produced from `/change:analyze documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the adapter came from. For these:
 - Plan entry `sources:` stays `[<doc-key>]`.
 - `depends-on` still carries over.
 - `description` is `[from docs] <summary>` so the operator knows the intent source. No file-path hints are included since documentation inputs have no extractable file tree.
@@ -59,11 +59,11 @@ Emit in dependency order using `depends-on`: leaves first, transitive dependents
 
 ### Rich description generation
 
-The `description` field carries all scoping and delta-targeting intent as free-form prose. For each capability, assemble the description from these inputs:
+The `description` field carries all scoping and delta-targeting intent as free-form prose. For each adapter, assemble the description from these inputs:
 
-1. **Capability summary** — the `summary` text from discovery, forming the opening sentence(s).
-2. **File-path hints** — if the capability's `sources:` list contains file paths, append a sentence such as "Focus on `src/common/validation/`." or "Relevant files: `src/auth/verify.ts`, `src/users/register.ts`." Use directory prefixes when multiple files share a common parent; use individual paths when the list is short (≤ 3 entries).
-3. **Delta-targeting intent** — when the capability overlaps with a prior baseline (an existing spec set from a merged change), append "Delta-targets `<prior-change-name>`." so the define brief knows to produce deltas, not a full extraction.
+1. **Adapter summary** — the `summary` text from discovery, forming the opening sentence(s).
+2. **File-path hints** — if the adapter's `sources:` list contains file paths, append a sentence such as "Focus on `src/common/validation/`." or "Relevant files: `src/auth/verify.ts`, `src/users/register.ts`." Use directory prefixes when multiple files share a common parent; use individual paths when the list is short (≤ 3 entries).
+3. **Delta-targeting intent** — when the adapter overlaps with a prior baseline (an existing spec set from a merged change), append "Delta-targets `<prior-change-name>`." so the define brief knows to produce deltas, not a full extraction.
 4. **Scope-narrowing language** — incorporate any narrowing hints from the discovery phase's `hints` or `constraints` (e.g. "Excludes legacy migration paths." or "Limited to the v2 API surface.").
 
 The generated description is presented to the operator in the interactive loop and can be refined during an edit action.
@@ -71,11 +71,11 @@ The generated description is presented to the operator in the interactive loop a
 ### Confidence handling
 
 - `confidence: high` / `medium` → ordinary candidate in the accept/edit/reject/abort loop.
-- `confidence: low` → surface with a **⚠ review before accepting** flag on the first line of the prompt. The flag is advisory; it never auto-rejects. Low-confidence capabilities are where clustering was least certain — typical triggers for a rename or a description edit.
+- `confidence: low` → surface with a **⚠ review before accepting** flag on the first line of the prompt. The flag is advisory; it never auto-rejects. Low-confidence adapters are where clustering was least certain — typical triggers for a rename or a description edit.
 
 ## Omnia carry-through
 
-Capability names flow directly into change names; the one-WASM-crate-per-slice convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-capability merges in this brief — edits happen through the interactive loop, one slice at a time.
+Adapter names flow directly into change names; the one-WASM-crate-per-slice convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-adapter merges in this brief — edits happen through the interactive loop, one slice at a time.
 
 ## `specify plan add` invocation
 
@@ -100,7 +100,7 @@ For each candidate slice in emit order:
 4. If `confidence: low`, prepend **⚠ review before accepting** to the first line of the prompt.
 5. Accept one of four actions:
    - **accept** — shell out to `specify plan add` with the mapped flags above. Record the entry in the proposal table.
-   - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the capability, drop a dependency edge, or refine the description prose.
+   - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the adapter, drop a dependency edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an implicit `depends-on` on this slice lose that edge before they are presented; if a later slice is semantically blocked by the rejection, flag it during its own review.
    - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/change:draft <name> extend` to resume.
 
@@ -158,7 +158,7 @@ Propose emits (dependency order, alphabetical within layer):
        --description "Create new user accounts with email verification. Relevant files: src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification."
    ```
 
-`src/auth/verify.ts` appears under two capabilities.
+`src/auth/verify.ts` appears under two adapters.
 `user-registration`'s description carries a delta-targeting hint
 (`Delta-targets email-verification.`) so the define brief knows
 to produce deltas against the already-extracted baseline from

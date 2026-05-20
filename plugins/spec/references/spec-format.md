@@ -13,7 +13,7 @@ A requirement block starts at a `### Requirement:` heading, includes the immedia
 
 ## Delta Operations
 
-Delta specs for modified capabilities use these top-level headings:
+Delta specs for modified adapters use these top-level headings:
 
 | Operation | Heading |
 |-----------|---------|

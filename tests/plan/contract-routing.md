@@ -53,9 +53,9 @@ The scenario checks durable plan structure only. It should not fail because the 
 
 - **Suite:** plan.
 - **Project shape:** one temporary registry-only hub plus two temporary registered projects.
-- **Hub capability:** none; initialize the hub with `specify init --hub`.
-- **Backend project capability:** `omnia@v1`.
-- **Mobile project capability:** `vectis@v1`.
+- **Hub adapter:** none; initialize the hub with `specify init --hub`.
+- **Backend project adapter:** `omnia@v1`.
+- **Mobile project adapter:** `vectis@v1`.
 - **Registry shape:** the hub registry contains exactly the backend and mobile projects for this run.
 - **Isolation:** `fresh-project`. Use disposable directories and start with empty Specify state.
 - **Backend:** `manual` - a human or agent follows this script and records results in the [run summary](run-summary-template.md).
@@ -63,7 +63,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 Prerequisites:
 
 - A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
-- The `contracts@v1`, `omnia@v1`, and `vectis@v1` capabilities are resolvable in the local development environment.
+- The `contracts@v1`, `omnia@v1`, and `vectis@v1` adapters are resolvable in the local development environment.
 - Git is available if the local `specify workspace sync` path needs repository metadata. Do not add fake `gh` or fake forge behavior for this scenario.
 
 ## Inputs

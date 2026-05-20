@@ -11,7 +11,7 @@ The output of an `/contract:*` skill's author intent (`/contract:openapi`, `/con
 A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Contracts capture the *shape* of interfaces -- endpoint paths, methods, payload schemas, error codes, channel names, message structures. They complement behavioral specs, which capture *what* the system does.
 
 **Artifact**
-A structured document that defines part of a change. The core artifacts are `proposal.md`, `spec.md`, `contracts/**/*.yaml`, `design.md`, and `tasks.md`. Capability-specific artifacts extend this set -- the Vectis capability adds `composition.yaml` for screen layout. Artifacts are the contract between human intent and agent execution.
+A structured document that defines part of a change. The core artifacts are `proposal.md`, `spec.md`, `contracts/**/*.yaml`, `design.md`, and `tasks.md`. Adapter-specific artifacts extend this set -- the Vectis adapter adds `composition.yaml` for screen layout. Artifacts are the contract between human intent and agent execution.
 
 **Archive**
 The `.specify/archive/` directory where finalized changes (merged or dropped) and completed plans are stored for audit.
@@ -22,18 +22,18 @@ The `.specify/archive/` directory where finalized changes (merged or dropped) an
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. For Vectis projects, also includes the merged `composition.yaml` for screen layout. Represents the current known behavioral and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file provided by a capability that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
+A markdown prompt file provided by a adapter that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
 
 **Brief pipeline**
-An ordered sequence of briefs declared by a capability for a given phase. The Omnia define pipeline runs: proposal, specs, contracts, design, tasks. The Vectis define pipeline runs: proposal, specs, contracts, composition, design, tasks.
+An ordered sequence of briefs declared by a adapter for a given phase. The Omnia define pipeline runs: proposal, specs, contracts, design, tasks. The Vectis define pipeline runs: proposal, specs, contracts, composition, design, tasks.
 
 ## C
 
-**Capability** (extension primitive)
-A versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. Selected at `/spec:init <capability>` time. Each first-party capability lives at `capabilities/<name>/capability.yaml` and contributes brief pipelines for the fixed `define → build → merge` slice loop. See also: the unit-of-behaviour reading below.
+**Adapter** (extension primitive)
+A versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. Selected at `/spec:init <adapter>` time. Each first-party adapter lives at `adapters/<name>/adapter.yaml` and contributes brief pipelines for the fixed `define → build → merge` slice loop. See also: the unit-of-behaviour reading below.
 
-**Capability** (unit of behaviour)
-A discrete unit of system behavior that gets its own spec file. In the Omnia capability, capabilities (in this sense) typically correspond to crates. In the Vectis capability, they correspond to features. The same word is overloaded inside the spec / baseline directory layout (`specs/<capability>/spec.md`); context disambiguates.
+**Adapter** (unit of behaviour)
+A discrete unit of system behavior that gets its own spec file. In the Omnia adapter, adapters (in this sense) typically correspond to crates. In the Vectis adapter, they correspond to features. The same word is overloaded inside the spec / baseline directory layout (`specs/<adapter>/spec.md`); context disambiguates.
 
 **Composition artifact**
 A schema-validated YAML document (`composition.yaml`) that describes the spatial layout of each screen in a Vectis application. Organises content into named regions (`header`, `body`, `footer`, `fab`) with a container tree of items and groups carrying flexbox-like layout properties, enriched with the `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` wiring keys that connect the layout to ViewModels and specs. Produced by the Vectis define pipeline (the composition brief) between specs and design from a `layout.yaml` input (when present) or from existing baseline composition; consumed by shell writers for deterministic layout generation. The unwired pre-define input is a sibling artifact, [`layout.yaml`](#l): `composition.yaml` carries the wired Specify lifecycle artifact and `layout.yaml` carries the input layout intent.
@@ -54,7 +54,7 @@ The optional `context` field on a plan entry -- a list of baseline paths (relati
 The repository where an operator runs a coordinated change. It owns `registry.yaml`, `plan.yaml`, `change.md`, `.specify/plans/`, and the registry workspace under `.specify/workspace/`. For a hub topology, the coordinator root may contain no product code; for platform-as-project, it is also one of the registered projects.
 
 **Contract-first**
-Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/change:draft` inserts these automatically when it detects an API boundary between projects. The contract change uses `capability: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
+Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/change:draft` inserts these automatically when it detects an API boundary between projects. The contract change uses `adapter: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
 
 **Contract-given**
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/change:draft` inserts import changes when a source is flagged as external.
@@ -68,10 +68,10 @@ The RM-04 CLI report produced by `specify compatibility check` (strict gate) or 
 The first phase of the slice lifecycle. Generates all artifacts from a description, optionally enriched by source code extraction.
 
 **Delta spec**
-A spec that describes modifications to an existing capability using `ADDED`, `MODIFIED`, `REMOVED`, and `RENAMED` sections. Delta specs merge into the baseline by matching on stable `REQ-XXX` IDs.
+A spec that describes modifications to an existing adapter using `ADDED`, `MODIFIED`, `REMOVED`, and `RENAMED` sections. Delta specs merge into the baseline by matching on stable `REQ-XXX` IDs.
 
 **Discovery**
-The output of `/change:analyze` during plan authoring. A `discovery.md` file containing capability summaries (name, description, source files, dependencies, confidence) derived from input analysis.
+The output of `/change:analyze` during plan authoring. A `discovery.md` file containing adapter summaries (name, description, source files, dependencies, confidence) derived from input analysis.
 
 **Draft**
 The authoring skill (`/change:draft`) at the head of the change lifecycle. Mints `change.md` and `plan.yaml` (via `specify change draft`), runs `specify registry validate`, walks the brief pipeline (discovery → optional sync-workspace → propose → optional assignment), and stops at a hand-off summary so the operator can review `plan.yaml` before any per-slice work runs. The deliberate pause between draft and `/change:execute` is the design — the framework does not auto-transition between authoring and execution. Re-entry is via `extend` mode.
@@ -92,17 +92,17 @@ The closure skill (`/change:finalize`) at the tail of the change lifecycle. Wrap
 ## G
 
 **Greenfield bootstrapping**
-The `specify workspace sync` fallback for registry projects whose remote repos do not yet exist. Creates the workspace slot, runs `git init`, sets the remote, and scaffolds `.specify/project.yaml` via `specify init` using the initiating repo's capability cache.
+The `specify workspace sync` fallback for registry projects whose remote repos do not yet exist. Creates the workspace slot, runs `git init`, sets the remote, and scaffolds `.specify/project.yaml` via `specify init` using the initiating repo's adapter cache.
 
 ## H
 
 **Hub** (also: **Platform hub**)
-A registry-only platform repo. Identified by `project.yaml: hub: true` (with the `capability:` field omitted). Holds platform state -- `registry.yaml`, `change.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. Code projects live in their own repos and are materialised under `.specify/workspace/<name>/` by `specify workspace sync`. Scaffolded via `specify init --hub`. Contrast with the [platform-as-project](#p) shape where the initiating repo is both the platform repo and a code project (`url: .` in `registry.yaml`). See [Platform repo topologies](../explanation/platform-repo.md).
+A registry-only platform repo. Identified by `project.yaml: hub: true` (with the `adapter:` field omitted). Holds platform state -- `registry.yaml`, `change.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. Code projects live in their own repos and are materialised under `.specify/workspace/<name>/` by `specify workspace sync`. Scaffolded via `specify init --hub`. Contrast with the [platform-as-project](#p) shape where the initiating repo is both the platform repo and a code project (`url: .` in `registry.yaml`). See [Platform repo topologies](../explanation/platform-repo.md).
 
 ## I
 
 **Contract id**
-The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. The id is a **rename-stable hint** that survives file moves and `info.version` bumps — once set on a contract, never change it. Path-based references in `registry.yaml` remain canonical; the id is not a substitute. Format and uniqueness are enforced by the declared `contract` WASI tool (`specify tool run contract`, the contracts capability's post-merge baseline gate) and by the `/contract:openapi` / `/contract:asyncapi` verifier intents only when the field is present — contracts without one remain valid indefinitely.
+The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. The id is a **rename-stable hint** that survives file moves and `info.version` bumps — once set on a contract, never change it. Path-based references in `registry.yaml` remain canonical; the id is not a substitute. Format and uniqueness are enforced by the declared `contract` WASI tool (`specify tool run contract`, the contracts adapter's post-merge baseline gate) and by the `/contract:openapi` / `/contract:asyncapi` verifier intents only when the field is present — contracts without one remain valid indefinitely.
 
 **Change shapes (three)**
 The three input topologies the platform-first loop handles uniformly: `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same three-skill change lifecycle (`/change:draft → /change:execute → /change:finalize`).
@@ -113,7 +113,7 @@ The three input topologies the platform-first loop handles uniformly: `migrate-l
 A schema-validated YAML document (`layout.yaml`, Vectis only) that captures the spatial layout intent for each screen *before* `/spec:define` runs — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, with no `bind` / `event` / `maps_to` / overlay `trigger` / navigation / `*-when` wiring keys yet. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers) or hand-authored. Validated by `specify tool run vectis -- validate layout`, which rejects the wiring keys and enforces the structural-identity rule. Consumed by the composition brief during `/spec:define`, which produces the wired [composition artifact](#c).
 
 **Layered stack**
-Specify is organised in three layers above the `specify` CLI substrate: Layer 0 — configuration (`project.yaml`, `capability.yaml`, `specify init`, `specify capability`); Layer 1 — executing a change (the single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, plus supporting skills); and Layer 2 — planning a change (the three peer skills `/change:draft`, `/change:execute`, `/change:finalize`, plus `/change:analyze`, all of which read or write `registry.yaml` and `plan.yaml`). See [The Layered Stack](../explanation/layered-stack.md) for the full picture.
+Specify is organised in three layers above the `specify` CLI substrate: Layer 0 — configuration (`project.yaml`, `adapter.yaml`, `specify init`, `specify adapter`); Layer 1 — executing a change (the single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, plus supporting skills); and Layer 2 — planning a change (the three peer skills `/change:draft`, `/change:execute`, `/change:finalize`, plus `/change:analyze`, all of which read or write `registry.yaml` and `plan.yaml`). See [The Layered Stack](../explanation/layered-stack.md) for the full picture.
 
 **Lifecycle state**
 The current status of a slice: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
@@ -137,7 +137,7 @@ The merge semantics used for contract files. Unlike spec files (which use the AD
 ## P
 
 **Phase outcome**
-A classification (`success`, `failure`, `deferred`, or `registry-amendment-required`) written to `.metadata.yaml` after a phase completes. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`. The `registry-amendment-required` variant carries a structured payload `{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }` and triggers the operator-driven recovery sequence -- the framework never auto-modifies the registry.
+A classification (`success`, `failure`, `deferred`, or `registry-amendment-required`) written to `.metadata.yaml` after a phase completes. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`. The `registry-amendment-required` variant carries a structured payload `{ proposed-name, proposed-url, proposed-adapter, proposed-description, rationale }` and triggers the operator-driven recovery sequence -- the framework never auto-modifies the registry.
 
 **Plan**
 An ordered, dependency-aware list of slices stored in `plan.yaml`. The change's table of contents.
@@ -149,7 +149,7 @@ The four extra checks `specify plan validate` layers on top of its base shape ru
 *Historical:* the planning skill `/change:plan` that authored `plan.yaml` (default mode) and, with the `orchestrate` positional, drove brief → registry validate → plan → execute → push → PR merge → finalize as one command. Replaced by the three-skill change lifecycle: authoring is owned by `/change:draft`, per-slice execution by `/change:execute`, and post-execute close by `/change:finalize`. The `orchestrate` umbrella mode is removed outright. The matching CLI verb `specify change create` is renamed to `specify change draft`. See the [decision log](../explanation/decision-log.md#three-skill-change-lifecycle-rfc-23) for the rename trail.
 
 **Platform-as-project**
-The single-repo platform topology where the initiating repo is both the platform repo and a code project. Identified by `url: .` on the repo's own registry entry. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability (`hub:` is absent or `false`). Still permitted for single-repo and small-team cases. Contrast with [Hub](#h). See [Platform repo topologies](../explanation/platform-repo.md).
+The single-repo platform topology where the initiating repo is both the platform repo and a code project. Identified by `url: .` on the repo's own registry entry. Phase pipelines run normally because `project.yaml:adapter:` resolves to a real adapter (`hub:` is absent or `false`). Still permitted for single-repo and small-team cases. Contrast with [Hub](#h). See [Platform repo topologies](../explanation/platform-repo.md).
 
 **Plugin**
 A Cursor marketplace package that provides skills, rules, and references for a specific domain (Specify, Change, Omnia, Vectis, Contract, RT, Client).
@@ -158,18 +158,18 @@ A Cursor marketplace package that provides skills, rules, and references for a s
 The `project` field on a plan entry that names the registry project a change targets. Required on every entry when `registry.yaml` declares multiple projects; optional (or absent) for single-repo plans. Drives CWD-based routing during execution.
 
 **Project assignment**
-The step during `/change:draft` (multi-repo only, brief-pipeline step 4(d)) that infers which registry project each plan entry targets. Uses description match, baseline-spec affinity, and capability compatibility as signals. Assignments are presented to the operator for review and written via `specify plan amend --project`.
+The step during `/change:draft` (multi-repo only, brief-pipeline step 4(d)) that infers which registry project each plan entry targets. Uses description match, baseline-spec affinity, and adapter compatibility as signals. Assignments are presented to the operator for review and written via `specify plan amend --project`.
 
 **Proposal**
-The first artifact generated during define. Captures why the change exists, what is in scope, and which capabilities are affected.
+The first artifact generated during define. Captures why the change exists, what is in scope, and which adapters are affected.
 
 ## R
 
 **Registry**
-`registry.yaml` -- a platform catalogue declaring the repos in a multi-repo system. Each entry has a name, URL, capability identifier, and domain description.
+`registry.yaml` -- a platform catalogue declaring the repos in a multi-repo system. Each entry has a name, URL, adapter identifier, and domain description.
 
 **Registry amendment** (also: **`registry-amendment-required`**)
-The phase outcome variant raised when a phase skill discovers that a capability needs a new registry project (e.g. `/spec:extract` surfacing tangled code that should split into a new repo). The driver classifies the outcome as `blocked`, records the structured payload in the dropped change's `journal.yaml`, and surfaces the proposal. The canonical recovery sequence is `specify registry add <proposed-name> --url <proposed-url> --capability <proposed-capability> --description "<proposed-description>"` -> `specify workspace sync` -> `specify plan amend <change> --project <proposed-name>` -> `specify plan transition <change> pending` -> re-run `/change:execute`. The framework never auto-modifies the registry.
+The phase outcome variant raised when a phase skill discovers that a adapter needs a new registry project (e.g. `/spec:extract` surfacing tangled code that should split into a new repo). The driver classifies the outcome as `blocked`, records the structured payload in the dropped change's `journal.yaml`, and surfaces the proposal. The canonical recovery sequence is `specify registry add <proposed-name> --url <proposed-url> --adapter <proposed-adapter> --description "<proposed-description>"` -> `specify workspace sync` -> `specify plan amend <change> --project <proposed-name>` -> `specify plan transition <change> pending` -> re-run `/change:execute`. The framework never auto-modifies the registry.
 
 **Registry workspace**
 The derived local view of registry projects under `.specify/workspace/`. `specify workspace sync` creates or refreshes slots from `registry.yaml`; without selectors it syncs all registry projects, and with selectors it materialises only the selected slots. The registry workspace is scratch execution state, not durable source state.
@@ -192,7 +192,7 @@ An HTML comment in `tasks.md` (e.g. `<!-- skill: omnia:crate-writer -->`) that r
 The single unit that flows through the fixed `define -> build -> merge` loop. Each slice has its own proposal, specs, design, tasks, metadata, and merge step, and lives under `.specify/slices/<name>/`.
 
 **Spec**
-A behavioral specification at `specs/<capability>/spec.md`. Contains requirements with stable IDs, scenarios (WHEN/THEN), error conditions, and optional metrics.
+A behavioral specification at `specs/<adapter>/spec.md`. Contains requirements with stable IDs, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **Spec-first (inline derivation)**
 Authorship pattern where contracts are derived inline from specs during a single slice's define phase. Used as a convenience fallback for single-repo services with no external consumers and no API boundary. The baseline is empty, so the delta is the full contract set.

@@ -26,11 +26,11 @@ Layer1: "Layer 1 — Executing a change" {
 
 Layer0: "Layer 0 — Configuration" {
   projectYaml: "project.yaml"
-  capabilityYaml: "capability.yaml"
+  adapterYaml: "adapter.yaml"
   schemas: "schemas/"
   toolsYaml: "tools.yaml"
   initVerb: "specify init"
-  capabilityVerb: "specify capability"
+  adapterVerb: "specify adapter"
 }
 
 Layer2 -> Layer1
@@ -39,23 +39,23 @@ Layer1 -> Layer0
 
 ## Layer 0: Configuration
 
-Layer 0 is the static project configuration that every higher layer reads. It declares **what** a project is — which capability it uses, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed. Layer 0 is read by Layer 1 and Layer 2 verbs; Layer 0 itself does not run a workflow.
+Layer 0 is the static project configuration that every higher layer reads. It declares **what** a project is — which adapter it uses, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed. Layer 0 is read by Layer 1 and Layer 2 verbs; Layer 0 itself does not run a workflow.
 
 The configuration surfaces:
 
-- **`.specify/project.yaml`** — per-project manifest: `capability:` (or `hub: true` for a registry-only platform hub), `specify_version`, declared `tools:`.
-- **`capability.yaml`** — capability manifest declaring the brief pipelines (`define`, `build`, `merge`) consumed by Layer 1.
+- **`.specify/project.yaml`** — per-project manifest: `adapter:` (or `hub: true` for a registry-only platform hub), `specify_version`, declared `tools:`.
+- **`adapter.yaml`** — adapter manifest declaring the brief pipelines (`define`, `build`, `merge`) consumed by Layer 1.
 - **`schemas/`** — JSON Schema files distributed with the binary and consumed by validation.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
-- **`tools.yaml`** — declared WASI command components (capability or project scoped).
+- **`tools.yaml`** — declared WASI command components (adapter or project scoped).
 
 The CLI verbs that read or change Layer 0 state:
 
 - **`specify init`** / **`specify init --hub`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify capability {resolve, check, pipeline}`** — inspect the active capability manifest and its pipeline shape.
+- **`specify adapter {resolve, check, pipeline}`** — inspect the active adapter manifest and its pipeline shape.
 - **`specify status`** — surfaces a summary that includes Layer 0 state.
 
-Layer 0 settles before any change starts. Once `project.yaml` exists and the capability resolves, Layer 1 and Layer 2 can run.
+Layer 0 settles before any change starts. Once `project.yaml` exists and the adapter resolves, Layer 1 and Layer 2 can run.
 
 ## Layer 1: Executing a change
 
@@ -65,7 +65,7 @@ Layer 1 is the single-slice define-build-merge loop. It operates on **one slice*
 /spec:define  -->  /spec:build  -->  /spec:merge
 ```
 
-Each skill is an agent-driven orchestrator. It elicits intent from the user, reads the brief pipeline declared by the active capability (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
+Each skill is an agent-driven orchestrator. It elicits intent from the user, reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
 
 The full set of Layer 1 skills:
 
@@ -90,7 +90,7 @@ Layer 2 coordinates **multi-slice changes** through `plan.yaml` and (for cross-r
 | `/change:draft` | Author `plan.yaml` from inputs (legacy code, docs, or both); stop at the operator review seam |
 | `/change:execute` | Drive the plan through the Layer 1 define-build-merge loop |
 | `/change:finalize` | Push branches, observe PR state, and run `specify change finalize` once every PR is merged |
-| `/change:analyze` | Plan-time capability inference (used internally by `/change:draft`) |
+| `/change:analyze` | Plan-time adapter inference (used internally by `/change:draft`) |
 
 The plan is the change's table of contents. `/change:draft` produces it by analysing inputs and proposing slices, then halts so the operator can review (and, if needed, edit with `specify plan amend`). `/change:execute` consumes the reviewed plan by picking the next eligible slice, running the Layer 1 loop, and updating the plan's status. `/change:finalize` closes the change once execution is done by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 

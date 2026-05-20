@@ -1,6 +1,6 @@
 # Testing Patterns
 
-How to generate tests for Omnia crates. Tests use a `MockProvider` that implements the required capability traits, and the `Client` typestate builder to invoke handlers.
+How to generate tests for Omnia crates. Tests use a `MockProvider` that implements the required adapter traits, and the `Client` typestate builder to invoke handlers.
 
 ## Test Directory Structure
 

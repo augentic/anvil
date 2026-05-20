@@ -44,7 +44,7 @@ $REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md
 The skill drives an agent team — three specialist reviewers plus an antagonist — coordinated by the lead. The pipeline implements the seven-step Critical Path above:
 
 1. The lead spawns the three specialists concurrently with the prompts in [`team-protocol.md`](team-protocol.md). Each specialist owns a slice of the categories enumerated in [`categories.md`](categories.md).
-2. Once all specialists report, the lead runs the **universal checks** pass over `src/`, using the default codex (`capabilities/default/codex/`) for `UNI-001` through `UNI-021` and applying only the checks not already covered by SEC/COR/QUA per the skip table in [`categories.md`](categories.md#universal-checks-uni--prefix).
+2. Once all specialists report, the lead runs the **universal checks** pass over `src/`, using the default codex (`adapters/default/codex/`) for `UNI-001` through `UNI-021` and applying only the checks not already covered by SEC/COR/QUA per the skip table in [`categories.md`](categories.md#universal-checks-uni--prefix).
 3. The lead forwards the combined findings (`SEC-`, `COR-`, `QUA-`, `UNI-`) to the antagonist. The antagonist confirms, upgrades, downgrades, or disputes each finding and runs a counter-scan that may emit `NEW-` findings.
 4. The lead synthesizes the final report using the template in [`output.md`](output.md), assigns a confidence level via the [Agent Team Patterns](references/agent-teams.md#confidence-scoring), and writes `$REVIEW_OUTPUT`.
 5. If `$AUTO_FIX == true`, the lead applies safe fixes per [`auto-fix.md`](auto-fix.md), then shuts down the team.
@@ -71,8 +71,8 @@ Key invariants the lead must preserve:
 - [`team-protocol.md`](team-protocol.md) — Specialist spawn prompts, antagonist protocol, synthesis rules.
 - [`auto-fix.md`](auto-fix.md) — `fix` scope, success-rate table, regression guard, recovery process.
 - [`output.md`](output.md) — `REVIEW.md` template and finding-ID conventions.
-- [Default Codex](../../../../capabilities/default/codex/) — Source of truth for universal rules `UNI-001`…`UNI-021`.
-- [Omnia Codex](../../../../capabilities/omnia/codex/) — Source of truth for Omnia-specific rules `OMNIA-001`, `OMNIA-002`, `RUST-001`, and `SEC-001`.
+- [Default Codex](../../../../adapters/default/codex/) — Source of truth for universal rules `UNI-001`…`UNI-021`.
+- [Omnia Codex](../../../../adapters/omnia/codex/) — Source of truth for Omnia-specific rules `OMNIA-001`, `OMNIA-002`, `RUST-001`, and `SEC-001`.
 - [Agent Team Patterns](references/agent-teams.md) — Shared team roles, antagonist protocol, synthesis rules, and file ownership.
 - [CodeRabbit Study: AI Code Creates 1.7× More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)

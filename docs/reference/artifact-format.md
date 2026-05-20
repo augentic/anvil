@@ -14,20 +14,20 @@ This is the definitive reference for the structure and conventions of Specify ar
 
 ## Spec files (behavioral "what")
 
-One spec file per capability, at `specs/<name>/spec.md`.
+One spec file per adapter, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They describe what the system must do, not how it should be implemented in a particular framework.
 
-### Baseline / new capability format
+### Baseline / new adapter format
 
 New specs and merged baselines use a flat requirement format:
 
 ````markdown
-# <Capability Name> Specification
+# <Adapter Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this capability does>
+<1-2 sentence description of what this adapter does>
 
 ### Requirement: <Behavior Name>
 
@@ -62,12 +62,12 @@ Key rules:
 - Error conditions are listed at the end as a cross-cutting summary.
 - Metrics are only included when they are explicit in the source material.
 
-### Delta spec format (modified capability)
+### Delta spec format (modified adapter)
 
-When modifying an existing capability, specs use operation headers to describe what changed:
+When modifying an existing adapter, specs use operation headers to describe what changed:
 
 ````markdown
-# <Capability Name> Specification
+# <Adapter Name> Specification
 
 ## Purpose
 
@@ -171,7 +171,7 @@ Create a full design if any of the following apply:
 
 If none apply, create a minimal `design.md` noting that a full design is not warranted and referencing the proposal and specs.
 
-For multi-capability changes, structure the document with capability-specific sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
+For multi-adapter changes, structure the document with adapter-specific sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
 
 ### Business logic tags
 
@@ -205,7 +205,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 `proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
 
-The **Crates** (or **Capabilities**) section creates the contract between proposal and specs phases -- each capability listed will need a corresponding spec file at `specs/<name>/spec.md`.
+The **Crates** (or **Adapters**) section creates the contract between proposal and specs phases -- each adapter listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
 Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- implementation details belong in the design.
 
@@ -242,11 +242,11 @@ Tasks may include a skill directive as an HTML comment. The build phase parses t
 - [ ] 2.3 Manual integration step
 ```
 
-Tasks without a skill tag are implemented via the capability's default build instruction.
+Tasks without a skill tag are implemented via the adapter's default build instruction.
 
 ## Composition document (Vectis only)
 
-`composition.yaml` describes the spatial layout of each screen, enriched with the wiring (`bind`, `event`, `maps_to`, overlay `trigger`, navigation, `*-when`) that connects layout to ViewModels and specs. It is a schema-validated YAML document produced by the Vectis capability's define pipeline between the specs and design stages. The JSON Schema lives at `capabilities/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
+`composition.yaml` describes the spatial layout of each screen, enriched with the wiring (`bind`, `event`, `maps_to`, overlay `trigger`, navigation, `*-when`) that connects layout to ViewModels and specs. It is a schema-validated YAML document produced by the Vectis adapter's define pipeline between the specs and design stages. The JSON Schema lives at `adapters/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
 
 ### Layout vs composition
 
@@ -338,7 +338,7 @@ delta:
 - Every shell-facing Event should have an `event` wiring (composition.yaml only).
 - `event` values follow PascalCase: `EventName` or `EventName(arg1, arg2)`.
 
-For the full schema definition and item vocabulary, see the [Vectis composition schema](../../capabilities/vectis/composition.schema.json).
+For the full schema definition and item vocabulary, see the [Vectis composition schema](../../adapters/vectis/composition.schema.json).
 
 ## Contract artifacts (API "shape")
 
@@ -413,7 +413,7 @@ Contract deletion is rare and handled as a manual baseline edit. The slice-level
 
 ### Behavioral specs
 
-- One spec file per capability
+- One spec file per adapter
 - Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - Specs stay behavioral and avoid platform-binding detail
 - Traceability is present for each requirement via stable IDs
@@ -432,7 +432,7 @@ Contract deletion is rare and handled as a manual baseline edit. The slice-level
 
 ### Composition (Vectis only)
 
-- `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`
+- `composition.yaml` conforms to the JSON Schema at `adapters/vectis/composition.schema.json`
 - Screen slugs are kebab-case
 - Every per-page view struct field has a `bind` on some item (composition.yaml only)
 - Every shell-facing Event has an `event` wiring (composition.yaml only)

@@ -12,8 +12,8 @@ specify codex export --format json
 
 `specify codex export` resolves the active review rule set for the current project and emits the catalogue as JSON. Resolution is deterministic:
 
-1. The foundational `default` capability's `codex/` directory.
-2. The project capability's `codex/` directory.
+1. The foundational `default` adapter's `codex/` directory.
+2. The project adapter's `codex/` directory.
 3. Shared codex catalogs, reserved for a future configuration surface.
 4. The repo-root `codex/` overlay.
 
@@ -21,9 +21,9 @@ Within each source, Markdown files are loaded in lexical path order. Duplicate r
 
 ## Distribution
 
-First-party codex rules ship beside first-party capabilities under `capabilities/<name>/codex/`. Regular `specify init <capability>` caches the selected capability into `.specify/.cache/<capability>/`; when the selected capability comes from a distribution tree that also contains a sibling `default` capability, init also caches that sibling into `.specify/.cache/default/`.
+First-party codex rules ship beside first-party adapters under `adapters/<name>/codex/`. Regular `specify init <adapter>` caches the selected adapter into `.specify/.cache/<adapter>/`; when the selected adapter comes from a distribution tree that also contains a sibling `default` adapter, init also caches that sibling into `.specify/.cache/default/`.
 
-`specify codex export` then resolves `default` exactly like any other capability: cache first, then the project-local fallback. This keeps real projects independent from the plugin checkout after init while avoiding a separate packaged rule store.
+`specify codex export` then resolves `default` exactly like any other adapter: cache first, then the project-local fallback. This keeps real projects independent from the plugin checkout after init while avoiding a separate packaged rule store.
 
 ## Subcommands
 
@@ -37,7 +37,7 @@ Exports the resolved codex as the consumer contract for future review tooling. T
 
 Each rule includes frontmatter fields, Markdown `body`, `source-path`, and an internally-tagged `kind` plus provenance-specific fields:
 
-- Capability rules (`"kind": "capability"`) include `name` and `version`.
+- Adapter rules (`"kind": "adapter"`) include `name` and `version`.
 - Catalog rules (`"kind": "catalog"`) include `name`.
 - Repo overlay rules (`"kind": "repo"`) carry no provenance-specific fields.
 - Missing optional `review-mode` is emitted as `null`.
@@ -48,5 +48,5 @@ When resolution fails — bad frontmatter, duplicate ids, missing required headi
 
 ## See also
 
-- [specify capability](capability.md) -- capability resolution and cache behavior.
-- [Capabilities](../capabilities/index.md) -- capability-owned codex directories and manifest boundaries.
+- [specify adapter](adapter.md) -- adapter resolution and cache behavior.
+- [Adapters](../adapters/index.md) -- adapter-owned codex directories and manifest boundaries.

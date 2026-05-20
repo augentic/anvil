@@ -19,13 +19,13 @@ contracts/                                  # Baseline API contracts
     └── <domain>-events.yaml
 
 .specify/
-├── project.yaml                            # Project configuration (capability, domain, rules) — `capability:` is omitted on hubs (where `hub: true` is the sentinel)
+├── project.yaml                            # Project configuration (adapter, domain, rules) — `adapter:` is omitted on hubs (where `hub: true` is the sentinel)
 ├── context.lock                            # Fingerprint sidecar for `specify context check`
 ├── plan.lock                               # Advisory lock held by /change:execute
 │
-├── .cache/                                 # Cached capability manifest and brief files
-│   └── <capability>/
-│       ├── capability.yaml
+├── .cache/                                 # Cached adapter manifest and brief files
+│   └── <adapter>/
+│       ├── adapter.yaml
 │       └── briefs/
 │           ├── proposal.md
 │           ├── specs.md
@@ -41,8 +41,8 @@ contracts/                                  # Baseline API contracts
 │       ├── composition.yaml               # Screen layout (Vectis only)
 │       ├── design.md                      # Technical design
 │       ├── tasks.md                       # Implementation checklist
-│       ├── specs/                         # Behavioral specs (one per capability)
-│       │   └── <capability>/
+│       ├── specs/                         # Behavioral specs (one per adapter)
+│       │   └── <adapter>/
 │       │       └── spec.md
 │       └── contracts/                     # Per-slice contract delta (when API interactions exist)
 │           ├── schemas/
@@ -52,12 +52,12 @@ contracts/                                  # Baseline API contracts
 ├── specs/                                 # Merged baseline specs
 │   ├── composition.yaml                   # Baseline screen layout (Vectis only)
 │   ├── .composition-checksums.yaml        # Per-screen hashes for conflict detection
-│   └── <capability>/
+│   └── <adapter>/
 │       └── spec.md                        # Accumulated behavioral requirements
 │
 ├── plans/                                 # Change-draft working directories
 │   └── <plan-name>/
-│       ├── discovery.md                   # Capability inventory from /change:analyze
+│       ├── discovery.md                   # Adapter inventory from /change:analyze
 │       ├── proposal.md                    # Slice accept/edit/reject audit trail
 │       ├── workspace.md                   # Peer inventory (multi-repo only)
 │       └── analyze/
@@ -88,7 +88,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create`.
 
-A slice directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
+A slice directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per adapter. Vectis changes also include `composition.yaml` for screen layout.
 
 ### `contracts/`
 
@@ -104,7 +104,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. For Vect
 
 ### `.cache/`
 
-Capability manifest and brief files fetched at `/spec:init` time. These are read by phase skills during define and build. The cache is populated once per capability version and updated when you re-init with a different capability identifier or ref. The active capability is named by the project's `capability` field in `project.yaml`; on a hub the field is omitted (and `.cache/` is not scaffolded).
+Adapter manifest and brief files fetched at `/spec:init` time. These are read by phase skills during define and build. The cache is populated once per adapter version and updated when you re-init with a different adapter identifier or ref. The active adapter is named by the project's `adapter` field in `project.yaml`; on a hub the field is omitted (and `.cache/` is not scaffolded).
 
 ### `plans/`
 

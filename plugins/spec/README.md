@@ -15,7 +15,7 @@ Per-slice workflow orchestration for spec-driven development: define slices, bui
 
 ## References
 
-- [Capability Resolution](references/capability-resolution.md)
+- [Adapter Resolution](references/adapter-resolution.md)
 - [Spec Format](references/spec-format.md)
 
 ## See also

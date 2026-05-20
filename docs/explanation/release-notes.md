@@ -8,15 +8,15 @@ The change layer reads `/change:draft → /change:execute → /change:finalize`,
 
 ## Contracts as first-party platform artifacts
 
-API contracts live at `contracts/` alongside `registry.yaml` and `plan.yaml`, using JSON Schema for payloads with OpenAPI 3.1 and AsyncAPI 3.0 as protocol bindings. The contracts capability owns the merge-time validator, and `/change:draft` automatically inserts a contract slice before implementation work whenever it detects an API boundary between projects. See the [Contracts capability](../reference/capabilities/contracts.md) reference and [Work with contracts across repos](../how-to/cross-repo-contracts.md).
+API contracts live at `contracts/` alongside `registry.yaml` and `plan.yaml`, using JSON Schema for payloads with OpenAPI 3.1 and AsyncAPI 3.0 as protocol bindings. The contracts adapter owns the merge-time validator, and `/change:draft` automatically inserts a contract slice before implementation work whenever it detects an API boundary between projects. See the [Contracts adapter](../reference/adapters/contracts.md) reference and [Work with contracts across repos](../how-to/cross-repo-contracts.md).
 
 ## Hub vs platform-as-project topologies
 
 A multi-repo change can start from a **registry-only platform hub** (`specify init --hub --name shop-platform`) that holds `registry.yaml`, `change.md`, `plan.yaml`, and the `workspace/` slots but is never itself a code project. The older platform-as-project shape — an initiating repo with `url: .` — is still supported for single-repo and small-team cases. See [Platform repo topologies](platform-repo.md) and [Bootstrap a platform hub](../how-to/bootstrap-a-platform-hub.md).
 
-## Declared WASI capability tools
+## Declared WASI adapter tools
 
-Capability authors and project authors declare WASI command components in `tools.yaml` (capability scope) or `.specify/project.yaml` (project scope), and `specify tool {list, fetch, show, run}` resolves, caches, permissions, and executes them through a single CLI surface. Permissions are directory preopens — no globs, no symlink escapes, no writes to Specify lifecycle state — and project scope wins on collision so operators can redirect a capability-shipped helper without editing the capability. See [Tool declarations](tool-declarations.md) and [`specify tool`](../reference/cli/tool.md).
+Adapter authors and project authors declare WASI command components in `tools.yaml` (adapter scope) or `.specify/project.yaml` (project scope), and `specify tool {list, fetch, show, run}` resolves, caches, permissions, and executes them through a single CLI surface. Permissions are directory preopens — no globs, no symlink escapes, no writes to Specify lifecycle state — and project scope wins on collision so operators can redirect a adapter-shipped helper without editing the adapter. See [Tool declarations](tool-declarations.md) and [`specify tool`](../reference/cli/tool.md).
 
 ## Slice and change vocabulary
 

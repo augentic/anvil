@@ -22,9 +22,9 @@ which parts are stable enough to automate later.
 
 These are shared outside-in scenario documents. They live under
 `tests/cross-repo/` because the cross-repo workflow spans the hub, registry,
-workspace, change plan, contract capability, and implementation capabilities.
-Capability-local tests, such as the contracts scenarios, stay under
-`capabilities/<capability>/tests/`.
+workspace, change plan, contract adapter, and implementation adapters.
+Adapter-local tests, such as the contracts scenarios, stay under
+`adapters/<adapter>/tests/`.
 
 Static checks validate the YAML frontmatter and scenario ID. The scenario body
 remains the human-readable operator contract.
@@ -38,7 +38,7 @@ remains the human-readable operator contract.
 ## Scenario Pack Shape
 
 The scenario follows the same compact shape used by
-[`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md):
+[`adapters/contracts/tests/`](../../adapters/contracts/tests/README.md):
 
 1. **YAML frontmatter** - machine-readable routing and assertions.
 2. **Heading + `Scenario ID:` line** - visible copy of the scenario ID.

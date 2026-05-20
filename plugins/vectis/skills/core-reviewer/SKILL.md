@@ -26,7 +26,7 @@ The skill drives an **agent team** — three specialist reviewers (Structural, L
 
 Unlike the platform reviewers, the core reviewer has no `orchestrated` mode — when design-level findings accumulate it always delegates to `/spec:define` to scaffold a `review-{app}-{date}` slice with proposal, design, specs, and tasks ready for `/spec:build`. The Logic Specialist requires `spec.md` (the Vectis artifact path, `.specify/slices/<change>/specs/<feature>/spec.md`, not the project root) so it can run LOG-008 spec-to-test coverage and LOG-009 stale-test checks.
 
-This skill consumes the writer's output, not its inputs — `core-writer` owns generation, `core-reviewer` owns the audit. Codex rule prose is read from the resolved project codex (`capabilities/default/codex/`, `capabilities/vectis/codex/`); the reviewer never copies that prose into reports.
+This skill consumes the writer's output, not its inputs — `core-writer` owns generation, `core-reviewer` owns the audit. Codex rule prose is read from the resolved project codex (`adapters/default/codex/`, `adapters/vectis/codex/`); the reviewer never copies that prose into reports.
 
 See [`references/runbook.md`](references/runbook.md) for arguments, per-step spawn prompts (including the full LOG-001..009 logic specialist prompt), the comparative-review heuristics, synthesis / auto-fix / loop-control rules, severity definitions, the verification checklist, and the Specify-workflow integration diagram.
 

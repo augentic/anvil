@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `scripts/checks.ts` that validates documentation, skills, capability manifests, and the marketplace manifest. Run it before every pull request.
+The `specify` repo includes an automated consistency checker at `scripts/checks.ts` that validates documentation, skills, adapter manifests, and the marketplace manifest. Run it before every pull request.
 
 ## Running checks
 
@@ -28,15 +28,15 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 No markdown file may reference a stale checklist count from an earlier version of the documentation. The specific patterns are defined in `scripts/checks.ts`.
 
-### 3. Capability manifest YAML validation
+### 3. Adapter manifest YAML validation
 
-Every `capabilities/<name>/capability.yaml` file (at most two directory levels deep) must validate against `capabilities/capability.schema.json` using JSON Schema 2020-12.
+Every `adapters/<name>/adapter.yaml` file (at most two directory levels deep) must validate against `adapters/adapter.schema.json` using JSON Schema 2020-12.
 
 **Common fix:** check that all required fields (`name`, `version`, `description`, `pipeline`) are present and correctly typed.
 
-### 4. Capability referential integrity
+### 4. Adapter referential integrity
 
-For each `capability.yaml`, the check validates:
+For each `adapter.yaml`, the check validates:
 
 - **Brief files exist** -- every pipeline entry's `brief` path resolves to a file
 - **Frontmatter present** -- each brief file has valid YAML frontmatter between `---` markers
@@ -44,7 +44,7 @@ For each `capability.yaml`, the check validates:
 - **Needs resolution** -- every `needs` reference in a brief points to a declared pipeline `id`
 - **No cycles** -- the `needs` dependency graph is acyclic (verified by Kahn's topological sort)
 
-**Common fix:** ensure the brief's frontmatter `id` matches the pipeline entry, and that `needs` references use exact `id` values from the same capability.
+**Common fix:** ensure the brief's frontmatter `id` matches the pipeline entry, and that `needs` references use exact `id` values from the same adapter.
 
 ### 5. Symlink integrity
 
@@ -90,7 +90,7 @@ Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 ### 12. Instruction file preambles
 
-Files matching `capabilities/**/instructions/<name>.md` must contain an output location preamble:
+Files matching `adapters/**/instructions/<name>.md` must contain an output location preamble:
 
 ```markdown
 > **Output location**: `.specify/slices/...`
@@ -105,11 +105,11 @@ Acceptance scenario files are validated against `.cursor/schemas/scenario.schema
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
 3. `tests/plan/<scenario>.md` — shared plan-generation scenarios.
-4. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
-5. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
+4. `adapters/<adapter>/tests/<scenario>.md` — flat owner-local adapter scenarios.
+5. `adapters/<adapter>/tests/<scenario>/scenario.md` — directory-form owner-local adapter scenarios.
 6. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local adapter pack is the contracts test suite under [`adapters/contracts/tests/`](../../adapters/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -117,8 +117,8 @@ An opt-in scenario looks like:
 ---
 id: contracts-describe
 owner: contracts
-kind: capability
-capability: contracts@v1
+kind: adapter
+adapter: contracts@v1
 backend: manual
 entrypoint: /spec:define
 stages: [define, build, merge]
@@ -128,7 +128,7 @@ assertions:
   - files-exist
   - contract-validator-clean
 expected-artifacts:
-  - contracts/schemas/profile.yaml
+  - contracts/schemas/adapter.yaml
 negative-expectations:
   - artifacts-outside-contracts-directory
 ---
@@ -140,10 +140,10 @@ Scenario ID: `contracts-describe`
 
 The check enforces:
 
-- **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `capability` is required when `kind` is `capability` or `capability-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `capability-boundary`. `kind` is an open enum (`capability`, `capability-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `capability` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
+- **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `adapter` is required when `kind` is `adapter` or `adapter-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `adapter-boundary`. `kind` is an open enum (`adapter`, `adapter-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `adapter` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
 - **Stages prefix** — `stages` must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`. `[define, build, merge]` is valid; `[build, define]`, `[define, merge]`, `[merge]` are not.
 - **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
-- **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-capability prefix (e.g. `contracts/`) so future capabilities are not over-constrained.
+- **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-adapter prefix (e.g. `contracts/`) so future adapters are not over-constrained.
 - **Cross-file id uniqueness** — every opted-in scenario `id` is unique across the repo; duplicates are reported with both file paths.
 
 Internal markdown link resolution within scenarios is handled by check 1 (markdown link resolution); the scenario validator does not duplicate it.
@@ -151,14 +151,14 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
-FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: capabilities/contracts/tests/_probe.md, capabilities/contracts/tests/describe.md
+FAIL: Scenario frontmatter: adapters/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+FAIL: Scenario frontmatter: adapters/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
+FAIL: Scenario frontmatter: adapters/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+FAIL: Scenario frontmatter: adapters/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/contracts/tests/_probe.md, adapters/contracts/tests/describe.md
 ```
 
-Common fixes: align `kind`/`capability` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
 
 ### 15. Recorded trace freshness
 
@@ -169,7 +169,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 16. First-party codex rule shape
 
-First-party codex rule files are validated under `capabilities/*/codex/**/*.md`.
+First-party codex rule files are validated under `adapters/*/codex/**/*.md`.
 The optional repo-root `codex/**/*.md` overlay is also included when present.
 
 The check is format-only. It does not run consumer-project review and does not
@@ -187,11 +187,11 @@ invoke the `specify` CLI validator. It validates:
 **Example failure messages:**
 
 ```text
-FAIL: Codex rule frontmatter: capabilities/default/codex/example.md — / missing required property 'trigger'
-FAIL: Codex rule frontmatter: capabilities/default/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-FAIL: Codex rule body: capabilities/default/codex/example.md — missing required '## Rule' heading
-FAIL: Codex namespace ownership: capabilities/default/codex/example.md — capability 'default' may only use UNI-* ids, got 'SEC-001'
-FAIL: Codex rule duplicate id 'UNI-001' across files: capabilities/default/codex/a.md, capabilities/default/codex/b.md
+FAIL: Codex rule frontmatter: adapters/default/codex/example.md — / missing required property 'trigger'
+FAIL: Codex rule frontmatter: adapters/default/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+FAIL: Codex rule body: adapters/default/codex/example.md — missing required '## Rule' heading
+FAIL: Codex namespace ownership: adapters/default/codex/example.md — adapter 'default' may only use UNI-* ids, got 'SEC-001'
+FAIL: Codex rule duplicate id 'UNI-001' across files: adapters/default/codex/a.md, adapters/default/codex/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -199,7 +199,7 @@ frontmatter fields; use canonical severity values (`critical`, `important`,
 `suggestion`, `optional`) and review modes (`deterministic`,
 `model-assisted`, `hybrid`); keep ids in the reserved namespace-plus-three-digit
 shape such as `UNI-001`; add the `## Rule` heading; and coordinate with content
-subagents before reusing or moving ids between capability-owned namespaces.
+subagents before reusing or moving ids between adapter-owned namespaces.
 
 ## Extending the checks
 

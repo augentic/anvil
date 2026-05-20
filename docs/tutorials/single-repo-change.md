@@ -46,7 +46,7 @@ Planning migrate-auth...
 
 Discovery:
   Analyzing ./src/auth...
-  Found 4 capabilities: token-validation, session-management,
+  Found 4 adapters: token-validation, session-management,
     oauth-integration, auth-middleware
 
 Propose:
@@ -69,13 +69,13 @@ Plan created: plan.yaml (4 entries)
 
 ### Discovery
 
-`/change:analyze` reads the legacy source and produces a capability inventory in `discovery.md`. Each discovered capability gets a summary, source file hints, dependency edges, and a confidence marker.
+`/change:analyze` reads the legacy source and produces a adapter inventory in `discovery.md`. Each discovered adapter gets a summary, source file hints, dependency edges, and a confidence marker.
 
 You can review the discovery output at `.specify/plans/migrate-auth/discovery.md`.
 
 ### Propose
 
-The skill proposes slices based on the discovered capabilities. For each proposed slice, you can:
+The skill proposes slices based on the discovered adapters. For each proposed slice, you can:
 
 - **Accept** -- add it to the plan as-is.
 - **Edit** -- modify the description, dependencies, or scope.
@@ -209,7 +209,7 @@ The plan is just a data file that tracks status. The CLI commands give you full 
 
 ## What you learned
 
-- `/change:draft` discovers capabilities and proposes slices with an interactive accept/edit/reject loop, then stops at the operator review seam.
+- `/change:draft` discovers adapters and proposes slices with an interactive accept/edit/reject loop, then stops at the operator review seam.
 - The plan tracks slices, dependencies, and status in `plan.yaml`.
 - `/change:execute` automates the define-build-merge loop per slice; it never runs automatically after draft.
 - `--dry-run` previews, bare invocation runs one slice, `--loop` runs until done.

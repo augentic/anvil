@@ -1,6 +1,6 @@
 # Vectis WASI tools
 
-Vectis deterministic helpers are declared capability tools and are run through [`specify tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
+Vectis deterministic helpers are declared adapter tools and are run through [`specify tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
 
 ## Tools
 
@@ -14,10 +14,10 @@ specify tool run vectis -- validate <mode> [path]
 
 | Mode | Validates |
 |------|-----------|
-| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../capabilities/vectis/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
+| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../adapters/vectis/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
 | `composition` | `composition.yaml` (wired or unwired), including schema shape, structural identity, and cross-artifact reference resolution against sibling `tokens.yaml` / `assets.yaml`. Auto-invokes `tokens` and `assets` modes when those siblings exist. |
-| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../capabilities/vectis/tokens.schema.json). |
-| `assets` | `assets.yaml` against [`assets.schema.json`](../../../capabilities/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
+| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../adapters/vectis/tokens.schema.json). |
+| `assets` | `assets.yaml` against [`assets.schema.json`](../../../adapters/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
 | `all` | Runs all four modes against the active slice and baseline. |
 
 The optional `[path]` argument names the file to validate. When omitted, each mode resolves its default from the Vectis artifact cascade: slice-local files first, then project-level design-system files or the merged composition baseline. An explicit `[path]` always wins.
@@ -40,7 +40,7 @@ specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-fil
 specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
-`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
+`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `adapters/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
 
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
 
@@ -48,5 +48,5 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 
 - [specify tool](tool.md) -- declared WASI tool runner surface
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
-- [Vectis Capability](../capabilities/vectis.md) -- capability reference for cross-platform projects
-- [`capabilities/vectis/tools.yaml`](../../../capabilities/vectis/tools.yaml) -- Vectis capability tool declarations
+- [Vectis Adapter](../adapters/vectis.md) -- adapter reference for cross-platform projects
+- [`adapters/vectis/tools.yaml`](../../../adapters/vectis/tools.yaml) -- Vectis adapter tool declarations

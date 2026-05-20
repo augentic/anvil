@@ -2,7 +2,7 @@
 
 Read this at step 2c of the review-fix cycle, after the specialists complete and before the antagonist runs.
 
-The lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex (`capabilities/default/codex/*.md`). Several universal checks overlap with categories already covered by the specialists; skip those:
+The lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex (`adapters/default/codex/*.md`). Several universal checks overlap with categories already covered by the specialists; skip those:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

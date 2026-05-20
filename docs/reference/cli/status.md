@@ -40,7 +40,7 @@ The top-level keys mirror the noun groups they summarise:
 |-----|-------------|
 | `registry` | Project count, schemas in use, multi-repo flag (or `null` when no `registry.yaml` exists). |
 | `plan` | Per-status counts (`pending`, `in-progress`, `done`, `blocked`, `failed`, `skipped`), current entry, blocking entries (or `null` when no `plan.yaml` exists). |
-| `changes` | Array of active slices, each with `name`, `status`, `capability`, `tasks`, `artifacts`. |
+| `changes` | Array of active slices, each with `name`, `status`, `adapter`, `tasks`, `artifacts`. |
 
 ## See also
 

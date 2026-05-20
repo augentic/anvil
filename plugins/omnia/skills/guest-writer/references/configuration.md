@@ -116,12 +116,12 @@ name = "<guest-name>"
 path = "examples/<guest-name>.rs"
 ```
 
-### Release Profile
+### Release Adapter
 
 Optimize for WASM size and performance:
 
 ```toml
-[profile.release]
+[adapter.release]
 lto = "thin"
 opt-level = "s"
 strip = "symbols"

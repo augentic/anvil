@@ -16,14 +16,14 @@ The missing primitives for cross-change scale include:
 - **Dependency ordering across the fleet.** Inferring `depends-on` edges from contract edges so the operator does not have to manually sequence related candidates across sources.
 - **Cross-change reconciliation.** Detecting when two in-flight changes touch the same legacy surface, or when a completed change invalidates an in-progress plan's assumptions.
 
-## Deferred capabilities
+## Deferred adapters
 
 These items were considered for the v1 survey implementation and explicitly deferred. Each has a concrete re-open trigger documented in the design:
 
 - Cross-source contract pairing (pub/sub, HTTP, WebSocket)
 - Survey-inferred dependency ordering from contract edges
 - Survey-emitted `target-project` and canonical-owner routing
-- Operator-authored `identifier-aliases.yaml` and per-capability alias bundles
+- Operator-authored `identifier-aliases.yaml` and per-adapter alias bundles
 - Durable source catalogues and cross-change source caches
 - Migration ledger and cumulative surface-migration tracking
 - Cross-change reconciliation against existing baselines

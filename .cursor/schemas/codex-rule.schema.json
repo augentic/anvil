@@ -34,12 +34,12 @@
       "additionalProperties": false,
       "description": "Small V1 applicability filter. These fields narrow where a rule is likely relevant; they are not suppressions, exceptions, or policy overrides.",
       "properties": {
-        "capabilities": {
+        "adapters": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/capabilityRef" },
-          "description": "Capability identifiers, optionally versioned as `<name>@v<major>`."
+          "items": { "$ref": "#/$defs/adapterRef" },
+          "description": "Adapter identifiers, optionally versioned as `<name>@v<major>`."
         },
         "languages": {
           "type": "array",
@@ -149,7 +149,7 @@
       "type": "string",
       "pattern": "^(UNI|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
     },
-    "capabilityRef": {
+    "adapterRef": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*(?:@v[1-9][0-9]*)?$"
     },

@@ -23,14 +23,14 @@ Specify solves this with a **two-skill split**:
 
 | Skill | When | Depth | Scope | Cost |
 |-------|------|-------|-------|------|
-| `/change:analyze` | Plan time | Shallow (capability summaries) | Entire source | Low |
+| `/change:analyze` | Plan time | Shallow (adapter summaries) | Entire source | Low |
 | `/spec:extract` | Define time | Deep (full specs + design) | Per-change slice | Higher, but focused |
 
 At plan time, analyze scans the whole monolith cheaply to build an inventory. At define time, extract runs deeply against only the files relevant to each change.
 
 ## 1. Set up the registry
 
-Define the target repos where migrated capabilities will land:
+Define the target repos where migrated adapters will land:
 
 ```yaml
 # registry.yaml
@@ -38,21 +38,21 @@ version: 1
 projects:
   - name: auth-service
     url: git@github.com:org/auth-service.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       Authentication and authorization. Token management,
       OAuth providers, session handling, RBAC.
 
   - name: order-service
     url: git@github.com:org/order-service.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       Order processing. Cart management, checkout flow,
       payment integration, order lifecycle.
 
   - name: notification-service
     url: git@github.com:org/notification-service.git
-    capability: omnia@v1
+    adapter: omnia@v1
     description: >
       Notification dispatch. Email, SMS, push notifications,
       template management, delivery tracking.
@@ -75,7 +75,7 @@ Planning modernise-platform...
 Discovery:
   Analyzing /path/to/legacy-monolith...
   Language: TypeScript, ~245,000 LOC, 47 modules
-  Found 12 capabilities across 3 domains
+  Found 12 adapters across 3 domains
 
   Writing .specify/plans/modernise-platform/discovery.md
 ```
@@ -84,7 +84,7 @@ Discovery:
 
 ### Discovery phase
 
-`/change:analyze` scans the entire monolith at plan time. For each discovered capability, it emits a summary to `discovery.md`:
+`/change:analyze` scans the entire monolith at plan time. For each discovered adapter, it emits a summary to `discovery.md`:
 
 ```markdown
 ### token-validation
@@ -105,7 +105,7 @@ It also produces structural metadata at `.specify/plans/modernise-platform/analy
 }
 ```
 
-This is intentionally shallow. Analyze identifies *what capabilities exist* and *where they live*, not the full behavioral specification.
+This is intentionally shallow. Analyze identifies *what adapters exist* and *where they live*, not the full behavioral specification.
 
 ### Workspace sync
 
@@ -113,7 +113,7 @@ Because the registry declares multiple projects, the sync-workspace phase clones
 
 ### Propose phase
 
-The propose phase decomposes discovered capabilities into plan entries. Each proposed change is presented for review:
+The propose phase decomposes discovered adapters into plan entries. Each proposed change is presented for review:
 
 ```
 Proposed: extract-token-validation
@@ -141,7 +141,7 @@ The operator can override any assignment. Once confirmed, the draft skill writes
 
 ## 3. Handle tangled code
 
-Legacy monoliths often have tangled dependencies. A capability's source files may be scattered across multiple modules, or a single file may contain logic for multiple capabilities.
+Legacy monoliths often have tangled dependencies. A adapter's source files may be scattered across multiple modules, or a single file may contain logic for multiple adapters.
 
 ### Manifest scopes
 
@@ -163,7 +163,7 @@ When multiple slices touch the same source files, `specify slice overlap` detect
 
 - Merge the slices into one.
 - Sequence them with `depends-on` so one extracts first.
-- Accept the overlap if the capabilities are truly independent.
+- Accept the overlap if the adapters are truly independent.
 
 ## 4. Execute the migration
 
@@ -183,8 +183,8 @@ Each merged slice adds to the target repo's baseline. Subsequent slices see the 
 
 A migration plan often includes both:
 
-- **Extraction slices** -- migrating existing capabilities from the monolith (have `sources`).
-- **Greenfield slices** -- adding new capabilities that do not exist in the legacy code (no `sources`).
+- **Extraction slices** -- migrating existing adapters from the monolith (have `sources`).
+- **Greenfield slices** -- adding new adapters that do not exist in the legacy code (no `sources`).
 
 Both types coexist in a single plan. The define phase handles them differently:
 
@@ -227,8 +227,8 @@ specify plan status
 ## What you learned
 
 - The **analyze/extract split** makes large migrations tractable: cheap scanning at plan time, deep extraction at define time.
-- Discovery produces capability summaries with source-file hints and dependency edges.
-- The propose phase decomposes capabilities into plan entries; the assignment step matches them to target projects.
+- Discovery produces adapter summaries with source-file hints and dependency edges.
+- The propose phase decomposes adapters into plan entries; the assignment step matches them to target projects.
 - Tangled code is handled with manifest scopes and overlap detection.
 - Extraction and greenfield changes coexist in a single plan.
 - Baseline accumulation in target repos gives subsequent changes context.

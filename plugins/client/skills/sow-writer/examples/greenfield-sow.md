@@ -43,7 +43,7 @@ The generated SoW at `./SOW-gtfs-generator.md`:
 
 ### Background
 
-Auckland Transport requires a new capability to generate GTFS (General
+Auckland Transport requires a new adapter to generate GTFS (General
 Transit Feed Specification) data from contract and timetable sources. This
 feed data enables journey planning applications and third-party transit
 information services to provide accurate, up-to-date public transport
@@ -51,7 +51,7 @@ information to commuters.
 
 ### Objectives
 
-- Deliver an automated GTFS feed generation capability from contract and
+- Deliver an automated GTFS feed generation adapter from contract and
   timetable data sources
 - Ensure generated feeds pass GTFS specification validation
 - Enable scheduled and on-demand feed generation
@@ -78,7 +78,7 @@ platform using Rust WASM.
 | DESCRIPTION | COST |
 | ----------- | ---- |
 | **GTFS Feed Generation** | $X,XXX (N d) |
-| We will implement the core feed generation capability, extracting data | |
+| We will implement the core feed generation adapter, extracting data | |
 | from contract and timetable sources and transforming it into valid GTFS | |
 | format. This involves: | |
 | - Extracting contract data from the Contract API | |
@@ -230,7 +230,7 @@ E. **No Material Architectural Changes**
 
 F. **Security and Compliance**
    Security and compliance requirements are met by the existing Omnia
-   platform capabilities. No additional security certifications are required.
+   platform adapters. No additional security certifications are required.
 
 ## Acceptance
 
@@ -261,7 +261,7 @@ F. **Security and Compliance**
 
 ## Key Observations
 
-1. **Greenfield framing**: Background focuses on new capability delivery, not migration.
+1. **Greenfield framing**: Background focuses on new adapter delivery, not migration.
 2. **Requirements → Deliverables**: The 5 requirements were grouped into 3 logical deliverables plus a test suite.
 3. **Multiple external APIs → Multiple dependencies**: Each API from External Service Dependencies became a separate dependency.
 4. **3 `[unknown]` tokens → 3 assumptions**: Schedule, CDN cache, and retention became assumptions A-C.

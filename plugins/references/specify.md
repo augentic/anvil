@@ -8,7 +8,7 @@ Specify artifacts split change intent into four human-facing layers:
 
 | Artifact | Purpose |
 | --- | --- |
-| `proposal.md` | Why the slice exists, what is in scope, and which capabilities are affected |
+| `proposal.md` | Why the slice exists, what is in scope, and which adapters are affected |
 | `specs/*/spec.md` | Behavioral requirements only: what the system must do |
 | `design.md` | Technical shape and decisions needed to implement the behavior |
 | `tasks.md` | Implementation sequencing and checkpoints |
@@ -45,7 +45,7 @@ $BASELINE_SPECS   = $PROJECT_DIR/.specify/specs
 
 ## Spec Files (Behavioral "What")
 
-One spec file per capability or crate, at `specs/<name>/spec.md`.
+One spec file per adapter or crate, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They should not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions.
 
@@ -58,7 +58,7 @@ New crate specs and merged baselines use a flat requirement format. The hard-cod
 
 ## Purpose
 
-<1-2 sentence description of what this crate or capability does>
+<1-2 sentence description of what this crate or adapter does>
 
 ### Requirement: <Behavior Name>
 
@@ -88,7 +88,7 @@ Source: <source function or design section>
 
 ### Delta Spec Format (Modified Crate)
 
-When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the capability's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
+When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the adapter's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (extract)
 
@@ -168,7 +168,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 ## Proposal Document
 
-Use `proposal.md` to capture why the slice exists and what is in scope. The capability's brief file (`briefs/proposal.md`) provides the full output template.
+Use `proposal.md` to capture why the slice exists and what is in scope. The adapter's brief file (`briefs/proposal.md`) provides the full output template.
 
 The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
 
@@ -212,7 +212,7 @@ Tasks may optionally include a skill directive as an HTML comment. The build pha
 - [ ] 2.3 Add fixture-backed integration tests for API behavior <!-- skill: omnia:test-writer -->
 ```
 
-Tasks without a skill tag are implemented via the capability's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
+Tasks without a skill tag are implemented via the adapter's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
 
 ## Tags Reference
 
@@ -240,7 +240,7 @@ Use explicit unknown markers instead of guessing.
 
 ### Behavioral Specs
 
-- [ ] One spec file per capability or crate
+- [ ] One spec file per adapter or crate
 - [ ] Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - [ ] Specs stay behavioral and avoid platform-binding detail
 - [ ] Traceability is present for each requirement and can refer to its stable ID

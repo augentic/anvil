@@ -17,7 +17,7 @@ defined-at: 2025-03-13T14:38:44Z
 built-at:   null
 
 touched-specs:
-  - { capability: product-catalog, classification: new }
+  - { adapter: product-catalog, classification: new }
 
 # No `outcome` field — /spec:build did not reach its
 # `specify slice outcome set` call before SIGKILL arrived.

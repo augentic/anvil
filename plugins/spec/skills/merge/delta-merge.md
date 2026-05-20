@@ -10,12 +10,12 @@ The `specify` CLI implements this algorithm — `specify slice merge run` for th
 
 **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline is preserved as-is.
 
-**New capability** (no baseline):
+**New adapter** (no baseline):
 
 - If the delta contains no delta operation headers: copy verbatim as the new baseline
 - If the delta contains delta operation headers: extract only requirement blocks from the ADDED section
 
-**Existing capability** (baseline exists) -- apply operations in strict order:
+**Existing adapter** (baseline exists) -- apply operations in strict order:
 
 1. **RENAMED**: For each `ID:` + `TO:` pair, find the matching requirement block by ID and update its heading. Preserve the `ID:` line.
 2. **REMOVED**: For each requirement, delete the matching block by ID.

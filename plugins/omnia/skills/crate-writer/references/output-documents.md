@@ -6,7 +6,7 @@ Documentation artifacts generated alongside the crate.
 
 **Create mode**: 2-3 paragraphs: key transformation decisions, areas of uncertainty, critical design choices.
 
-**Update mode**: Update (not replace) the existing Migration.md with new entries for new TODO markers, capability gaps, and behavioral changes.
+**Update mode**: Update (not replace) the existing Migration.md with new entries for new TODO markers, adapter gaps, and behavioral changes.
 
 ## Architecture.md
 

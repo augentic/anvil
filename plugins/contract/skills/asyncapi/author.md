@@ -1,6 +1,6 @@
 # AsyncAPI — Author
 
-> **When to read this.** Read this when authoring or extending the AsyncAPI document for a Specify change — i.e. when the contracts capability build brief during `/spec:build` selects the author intent, or an operator wants to add new evented interactions to the platform's messaging baseline. Skip this file when importing an external document (use [`importer.md`](./importer.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when authoring or extending the AsyncAPI document for a Specify change — i.e. when the contracts adapter build brief during `/spec:build` selects the author intent, or an operator wants to add new evented interactions to the platform's messaging baseline. Skip this file when importing an external document (use [`importer.md`](./importer.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
@@ -25,7 +25,7 @@ If the specs and baseline disagree on a shape (e.g. the spec asserts a `partitio
 
 ## The 4-step author algorithm
 
-The author runs four steps end-to-end whenever the contracts capability build brief asks for messaging coverage. Each step is a focused, independently-checkable phase; downstream steps assume the upstream output is well-formed.
+The author runs four steps end-to-end whenever the contracts adapter build brief asks for messaging coverage. Each step is a focused, independently-checkable phase; downstream steps assume the upstream output is well-formed.
 
 ### Step 1 — Read the baseline
 
@@ -167,7 +167,7 @@ Operation names must be unique across all AsyncAPI files in the contract tree.
 Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/contract:json-schema`). The author of an AsyncAPI file does **not** create or edit schema files — it only references them.
 
 - **Always `$ref`** message payloads to `../schemas/<type>.yaml`. The `$ref` lives on the message's `payload` field inside `components/messages`.
-- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (the contracts capability build brief calls the json-schema skill first per the cross-format ordering rule).
+- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (the contracts adapter build brief calls the json-schema skill first per the cross-format ordering rule).
 - **`$ref` resolution scope.** All payload `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this slice's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Headers stay inline.** Message headers describe the envelope (correlation IDs, partition keys, trace context) and are typically a small map of primitive types. Inline them as a `headers` object on the message — do not extract them to `../schemas/`. The body is the payload; the envelope is not.
 - **Internal `$ref`s for channel→message and operation→channel** stay on the `#/components/messages/...` and `#/channels/...` form — those are document-internal pointers, not cross-file schema references.
@@ -185,7 +185,7 @@ AsyncAPI deltas fall into three categories — every entry in the delta belongs 
 Computation rules applied at file scope:
 
 1. **One file per event domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time, so it must contain every existing channel, operation, and message alongside the new ones.
-2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the slice requires a version bump, the contracts capability build brief flags it for human review. The verifier sibling enforces SemVer in single mode (Check 4), and `specify tool run contract` enforces it again at merge time on the baseline (RFC-13 §"Merge and adoption contract"); a non-SemVer value is a hard validation failure at both gates.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the slice requires a version bump, the contracts adapter build brief flags it for human review. The verifier sibling enforces SemVer in single mode (Check 4), and `specify tool run contract` enforces it again at merge time on the baseline (RFC-13 §"Merge and adoption contract"); a non-SemVer value is a hard validation failure at both gates.
 3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level AsyncAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
 4. **Preserve channel addresses and operation keys verbatim.** When extending a baseline file, every existing `address` and `operationId` stays exactly as it is. Renaming an address breaks consumers; renaming an operation breaks tooling.
 5. **Diff at the entry level.** When modifying an existing channel or message, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
@@ -242,7 +242,7 @@ Headers describe the message envelope, not the payload. Payload shape belongs in
 
 ## Alignment report
 
-Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the slice can proceed.
+Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts adapter build brief — the YAML files are the artefact, but the report is how the brief decides whether the slice can proceed.
 
 ```markdown
 ## Alignment Report (Messaging)
@@ -276,7 +276,7 @@ After producing the report, run [`verifier.md`](./verifier.md) in `single` mode 
 
 | Scenario | Handling |
 |---|---|
-| Spec references a payload type not yet authored | Mark `[unknown]` in the report; the json-schema skill (called first by the contracts capability build brief) should have produced the schema. If it did not, halt and surface the gap. |
+| Spec references a payload type not yet authored | Mark `[unknown]` in the report; the json-schema skill (called first by the contracts adapter build brief) should have produced the schema. If it did not, halt and surface the gap. |
 | Spec describes a command pattern (`order.cancel`) rather than an event | Use present-tense address (`order.cancel`) and pair with `action: send` from the requester and `action: receive` from the handler — see the conventions reference. |
 | Two specs claim the same channel address with different message shapes | Surface the conflict as a warning; do not write a delta until the specs are reconciled. |
 | Baseline channel uses inline payload (legacy from a manual import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |

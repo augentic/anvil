@@ -25,17 +25,17 @@
     "owner": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "The capability, plugin, skill, or suite that owns this scenario (kebab-case)."
+      "description": "The adapter, plugin, skill, or suite that owns this scenario (kebab-case)."
     },
     "kind": {
       "type": "string",
-      "enum": ["capability", "capability-boundary", "suite", "skill"],
-      "description": "Open enum. C03 actively validates `capability` and `capability-boundary`; `suite` and `skill` are accepted so C06/skill-fixture promotions can opt in without re-touching this schema."
+      "enum": ["adapter", "adapter-boundary", "suite", "skill"],
+      "description": "Open enum. C03 actively validates `adapter` and `adapter-boundary`; `suite` and `skill` are accepted so C06/skill-fixture promotions can opt in without re-touching this schema."
     },
-    "capability": {
+    "adapter": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*@v\\d+$",
-      "description": "Versioned capability identifier, e.g. `contracts@v1`. Required when `kind` is `capability` or `capability-boundary` (enforced by allOf below)."
+      "description": "Versioned adapter identifier, e.g. `contracts@v1`. Required when `kind` is `adapter` or `adapter-boundary` (enforced by allOf below)."
     },
     "backend": {
       "type": "string",
@@ -64,7 +64,7 @@
     "authorship-mode": {
       "type": "string",
       "minLength": 1,
-      "description": "Optional capability-specific hint (e.g. `prose`, `import`, `extract`)."
+      "description": "Optional adapter-specific hint (e.g. `prose`, `import`, `extract`)."
     },
     "assertions": {
       "type": "array",
@@ -79,22 +79,22 @@
     "negative-expectations": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "description": "Forbidden-condition ids. Required (with at least one entry) when `kind` is `capability-boundary`."
+      "description": "Forbidden-condition ids. Required (with at least one entry) when `kind` is `adapter-boundary`."
     }
   },
   "allOf": [
     {
       "if": {
         "properties": {
-          "kind": { "enum": ["capability", "capability-boundary"] }
+          "kind": { "enum": ["adapter", "adapter-boundary"] }
         },
         "required": ["kind"]
       },
-      "then": { "required": ["capability"] }
+      "then": { "required": ["adapter"] }
     },
     {
       "if": {
-        "properties": { "kind": { "const": "capability-boundary" } },
+        "properties": { "kind": { "const": "adapter-boundary" } },
         "required": ["kind"]
       },
       "then": {

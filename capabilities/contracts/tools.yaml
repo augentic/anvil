@@ -1,5 +1,0 @@
-# Capability-scope tool declarations for the contracts capability.
-# Schema: ../../../specify-cli/schemas/tool.schema.json
-#
-tools:
-  - "specify:contract@0.3.0"

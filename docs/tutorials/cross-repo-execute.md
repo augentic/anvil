@@ -245,7 +245,7 @@ See [`specify plan validate`](../reference/cli/plan.md#specify-plan-validate) fo
 Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/change:execute` is holding `.specify/plan.lock`. If it is dead, `specify plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
-- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <capability>` without `--hub`.
+- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <adapter>` without `--hub`.
 - **Breaking compatibility findings** — run `specify compatibility check --change <name> --report-only` to inspect producer-to-consumer contract deltas, then see [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md).
 
 ## Verification
@@ -254,7 +254,7 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 
 | After | Command | Expect |
 |---|---|---|
-| Step 1 | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
+| Step 1 | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `adapter:` line. |
 | Step 1 | `ls .specify/` | `project.yaml`, `context.lock`. **No** `slices/`, `specs/`, or `.cache/` (phase pipelines disabled). |
 | Step 1 | `test -f AGENTS.md && specify context check` | Exit 0. |
 | Step 2 | `specify registry validate` | Exit 0; no diagnostics. |

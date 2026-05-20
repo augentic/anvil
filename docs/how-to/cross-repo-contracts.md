@@ -9,7 +9,7 @@ When `/change:draft` detects an API boundary between two projects in the registr
 ```yaml
 changes:
   - name: auth-api-contract
-    capability: contracts@v1
+    adapter: contracts@v1
     description: "Define the auth API contract"
     depends-on: []
 
@@ -29,7 +29,7 @@ The contract change defines the interface (JSON Schema payloads, OpenAPI binding
 If you are not using `/change:draft`, you can create contract changes manually:
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/contracts
+/spec:init https://github.com/augentic/specify/adapters/contracts
 
 /spec:define "Define the user registration API contract"
 /spec:build
@@ -47,7 +47,7 @@ contracts/
 
 ## Alignment validation
 
-When you define an implementation change (Omnia or Vectis capability), the define pipeline includes a **contracts alignment** stage. This compares your specs against baseline contracts and reports:
+When you define an implementation change (Omnia or Vectis adapter), the define pipeline includes a **contracts alignment** stage. This compares your specs against baseline contracts and reports:
 
 - **Coverage:** Interactions already defined in contracts.
 - **Alignment warnings:** Spec-vs-contract mismatches.
@@ -93,5 +93,5 @@ The report is read-only. It classifies producer-to-consumer deltas as `additive`
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- tutorial on multi-repo planning
 - [Resolve cross-project compatibility findings](resolve-cross-project-contract-warnings.md) -- triage checklist
 - [Contract plugin](../reference/plugins/contract.md) -- plugin reference
-- [Contracts capability](../reference/capabilities/contracts.md) -- capability reference
+- [Contracts adapter](../reference/adapters/contracts.md) -- adapter reference
 - [Artifact Format (contracts)](../reference/artifact-format.md#contract-artifacts-api-shape) -- format details

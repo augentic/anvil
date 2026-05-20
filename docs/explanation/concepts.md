@@ -49,11 +49,11 @@ A **change** coordinates one or more slices. It sits in `change.md` and `plan.ya
 
 Most beginners never need a change -- a single slice is enough for the vast majority of day-to-day work. Reach for a change when you have multiple slices that must land together, or when the work crosses repository boundaries.
 
-## Capabilities
+## Adapters
 
-A **capability** is the extension that tells Specify how to generate artifacts and build code for a particular outcome domain. The first-party capabilities today are **Omnia** (Rust WASM service crates), **Vectis** (cross-platform UI applications), and **Contracts** (standalone API contract changes). You pick one when you scaffold a project with `/spec:init <capability>`, and that choice configures which artifacts the define pipeline produces and which specialist skills the build phase delegates to.
+A **adapter** is the extension that tells Specify how to generate artifacts and build code for a particular outcome domain. The first-party adapters today are **Omnia** (Rust WASM service crates), **Vectis** (cross-platform UI applications), and **Contracts** (standalone API contract changes). You pick one when you scaffold a project with `/spec:init <adapter>`, and that choice configures which artifacts the define pipeline produces and which specialist skills the build phase delegates to.
 
-> **Note:** The word "capability" has a second meaning inside Specify. Inside a slice's specs (`specs/<capability>/spec.md`) it refers to a unit of behaviour with its own spec file -- a crate in Omnia, a feature in Vectis. This primer uses "capability" only in the first sense (the project-level extension). The two meanings are kept distinct in the [glossary](../appendices/glossary.md).
+> **Note:** The word "adapter" has a second meaning inside Specify. Inside a slice's specs (`specs/<adapter>/spec.md`) it refers to a unit of behaviour with its own spec file -- a crate in Omnia, a feature in Vectis. This primer uses "adapter" only in the first sense (the project-level extension). The two meanings are kept distinct in the [glossary](../appendices/glossary.md).
 
 ## Skills
 

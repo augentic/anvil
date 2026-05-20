@@ -2,21 +2,21 @@
 
 ## What this fixture pins
 
-The C22 monolith discovery fixture produces three capability summaries keyed by the `<!-- source-key: monolith -->` marker. This fixture pins the **expected plan shape** from the three-slice inventory:
+The C22 monolith discovery fixture produces three adapter summaries keyed by the `<!-- source-key: monolith -->` marker. This fixture pins the **expected plan shape** from the three-slice inventory:
 
 [`inputs/discovery.md`](inputs/discovery.md) (byte-identical to C22 `expected/discovery.md`) → [`expected/plan.yaml`](expected/plan.yaml): every entry carries file-path hints and delta-targeting intent in the `description` field. The define skill infers extract filters and baseline targets from description at execution time.
 
-## 1:1 mapping — capability → plan entry
+## 1:1 mapping — adapter → plan entry
 
 Per [`plugins/change/skills/draft/briefs/omnia/propose.md` §Mapping rule](../../../briefs/omnia/propose.md):
 
-| Capability                                         | Plan entry `name`     | `sources`    | `description` (carries path hints + delta intent)                                                                   | `depends-on`                                    |
+| Adapter                                         | Plan entry `name`     | `sources`    | `description` (carries path hints + delta intent)                                                                   | `depends-on`                                    |
 | -------------------------------------------------- | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
 | `email-verification` (`confidence: high`)          | `email-verification`  | `[monolith]` | Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts.                          | `[]`                                            |
 | `shared-validation` (`confidence: medium`)         | `shared-validation`   | `[monolith]` | Validate common user-facing inputs with reusable primitives. Focus on src/common/validation.ts.                     | `[]`                                            |
 | `user-registration` (`confidence: high`)           | `user-registration`   | `[monolith]` | Create new user accounts with email verification. Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification and shared-validation. | `[email-verification, shared-validation]`       |
 
-No field is invented; every value is lifted from the capability block. `hints.*` is intentionally dropped — the brief leaves it in `discovery.md` for operator reference and does not project it into `plan.yaml`.
+No field is invented; every value is lifted from the adapter block. `hints.*` is intentionally dropped — the brief leaves it in `discovery.md` for operator reference and does not project it into `plan.yaml`.
 
 ## Emit order
 
@@ -30,7 +30,7 @@ Matches the order `specify plan next` would walk at execution time.
 
 ## Confidence flags
 
-- All three capabilities are `high` or `medium`, so none trips the `⚠ review before accepting` flag in the loop.
+- All three adapters are `high` or `medium`, so none trips the `⚠ review before accepting` flag in the loop.
 - When `user-registration` is `confidence: low`, the brief surfaces the review flag and the human can enrich the description to narrow scope.
 
 ## Stability points

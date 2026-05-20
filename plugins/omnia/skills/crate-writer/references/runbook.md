@@ -29,7 +29,7 @@ Before generating or updating code, read these documents:
 
 1. [sdk-api.md](sdk-api.md) -- Handler<P>, Context, Reply, IntoBody, Client, Error types
 2. [capabilities.md](capabilities.md) -- all 9 provider traits with exact signatures and artifact triggers
-3. [capability-mapping.md](capability-mapping.md) -- mapping from Specify artifact capabilities to Omnia provider traits
+3. [capability-mapping.md](capability-mapping.md) -- mapping from Specify artifact adapters to Omnia provider traits
 4. [wasm-constraints.md](wasm-constraints.md) -- translating `[runtime]` constraints to Omnia/WASM patterns
 5. [providers.md](providers.md) -- Provider struct setup, trait composition rules, MockProvider patterns
 6. [error-handling.md](error-handling.md) -- error macros, domain error enums, context patterns
@@ -40,7 +40,7 @@ Before generating or updating code, read these documents:
 **Both modes** -- also read:
 
 10. [checklists.md](checklists.md) -- pre-generation and verification checklists
-11. [todo-markers.md](todo-markers.md) -- TODO marker rules, capability overrides, cache-aside patterns
+11. [todo-markers.md](todo-markers.md) -- TODO marker rules, adapter overrides, cache-aside patterns
 12. [output-documents.md](output-documents.md) -- Migration.md, Architecture.md, CHANGELOG.md, .env.example
 
 **Update mode only** -- also read:
@@ -55,7 +55,7 @@ Before generating or updating code, read these documents:
 - [single-handler.md](../examples/single-handler.md) -- messaging handler crate (like r9k-adapter)
 - [multi-handler.md](../examples/multi-handler.md) -- multiple HTTP handlers crate (like cars)
 - [anti-patterns.md](../examples/anti-patterns.md) -- common LLM mistakes with wrong/right pairs
-- [capabilities/](../examples/capabilities/) -- per-capability worked examples (StateStore, Identity, TableStore, Broadcast, etc.)
+- [adapters/](../examples/capabilities/) -- per-adapter worked examples (StateStore, Identity, TableStore, Broadcast, etc.)
 
 **Update mode** (read at least one matching your update scenario):
 
@@ -163,7 +163,7 @@ After generating or updating the crate, inject or update wiring in the guest pro
 3. Topic match arms (messaging handlers)
 4. WebSocket handler delegation (WebSocket handlers) -- add delegation inside existing WebSocket Guest impl, or create the full WebSocket Guest export block if none exists
 5. Handler functions with `#[omnia_wasi_otel::instrument]`
-6. Provider trait impls if new capabilities needed
+6. Provider trait impls if new adapters needed
 7. Crate dependency in `Cargo.toml`
 
 ### Guest Wiring by Category (update mode)
@@ -180,7 +180,7 @@ After generating or updating the crate, inject or update wiring in the guest pro
 - Append only in create mode -- do not replace or reorder existing content
 - No duplicates -- skip if route/topic/WebSocket handler/import already exists
 - All handler functions get `#[omnia_wasi_otel::instrument]`
-- Update Provider trait impls if capabilities changed
+- Update Provider trait impls if adapters changed
 - Update `ensure_env!` entries for config key changes
 
 Before starting code generation, verify artifact completeness per [checklists.md](checklists.md#pre-generation-checklist). If any item is NO or UNCLEAR, mark with TODO in generated code and note it in Migration.md.
@@ -194,15 +194,15 @@ Before starting code generation, verify artifact completeness per [checklists.md
 1. Read Specify artifacts from `$SLICE_DIR`:
    - Read the spec file from `$SPECS_DIR/$CRATE_NAME/spec.md` (single consolidated file with flat `### Requirement:` / `#### Scenario:` blocks)
    - Read design.md from `$DESIGN_PATH`
-2. **Derive Omnia capabilities from artifacts:**
-   - Read the design.md **Source Capabilities Summary** checklist and map each checked capability to an Omnia provider trait using [capability-mapping.md](capability-mapping.md).
+2. **Derive Omnia adapters from artifacts:**
+   - Read the design.md **Source Capabilities Summary** checklist and map each checked adapter to an Omnia provider trait using [capability-mapping.md](capability-mapping.md).
    - Read the design.md **External Services** and cross-reference service types against the mapping table. Verify that SQL databases map to `TableStore`, Azure Table Storage and document databases (Cosmos DB, MongoDB) map to `DocumentStore`, blob stores (Azure Blob Storage, AWS S3) map to `Blobstore`, caches map to `StateStore`, etc.
    - Read the design.md **Implementation Requirements** `[runtime]` constraints and translate each to an Omnia pattern using [wasm-constraints.md](wasm-constraints.md).
    - Scan design.md **Business Logic** for data access phrasing (`Table access:`, `Cache:`, `Document:`, `Blob:`) and map to appropriate traits.
 3. **Artifact correction — fix known misassignments before generating** (SKILL.md > artifacts per authority hierarchy):
    - If design.md External Services lists a SQL database but the Source Capabilities Summary does not check `Table/database access`: **add `TableStore`** to the derived traits.
-   - If design.md External Services lists Azure Table Storage, Cosmos DB document API, or MongoDB but the capabilities do not include document access: **add `DocumentStore`** to the derived traits.
-   - If design.md External Services lists Azure Blob Storage or AWS S3 but the capabilities do not include blob access: **add `Blobstore`** to the derived traits.
+   - If design.md External Services lists Azure Table Storage, Cosmos DB document API, or MongoDB but the adapters do not include document access: **add `DocumentStore`** to the derived traits.
+   - If design.md External Services lists Azure Blob Storage or AWS S3 but the adapters do not include blob access: **add `Blobstore`** to the derived traits.
    - If any algorithm step phrases managed data store access as an HTTP call: **override to the correct trait** (`TableStore` for SQL, `DocumentStore` for document/table stores, `Blobstore` for blob stores).
    - If the artifacts describe pre-populating a cache via external cron/ETL for data the source loads on startup: **override to on-demand cache-aside** (StateStore + data source trait).
 4. Determine artifact origin from design.md Context section
@@ -307,7 +307,7 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 **Modifying Changes**: Update existing handler logic, types, or provider bounds:
 1. Update type definitions (fields, serde attributes, derive macros)
 2. Update handler business logic to match updated artifacts
-3. Update provider trait bounds if new capabilities are needed
+3. Update provider trait bounds if new adapters are needed
 4. Update `from_input()` for structural validation changes
 5. Update `handle()` for temporal/contextual validation changes
 6. Preserve function signatures where possible; when signatures change, update all call sites
@@ -340,7 +340,7 @@ Full verification (fmt, clippy, test suite, regression detection) runs at the or
 
 | Topic                    | Reference                                                                                                                                                              |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TODO markers             | [todo-markers.md](todo-markers.md) — marker format, capability overrides, cache-aside patterns. Never silently drop artifact steps; mark at call site and document in Migration.md. |
+| TODO markers             | [todo-markers.md](todo-markers.md) — marker format, adapter overrides, cache-aside patterns. Never silently drop artifact steps; mark at call site and document in Migration.md. |
 | Verification checklist   | [checklists.md](checklists.md#verification-checklist) — compilation, handler compliance, artifact fidelity, type quality, guest wiring, update-mode checks. |
 | Output documents         | [output-documents.md](output-documents.md) — Migration.md, Architecture.md, CHANGELOG.md (update mode), `.env.example`.                                     |
 | Troubleshooting          | [error-handling.md](error-handling.md#troubleshooting) — common issues and resolutions in both modes.                                                       |

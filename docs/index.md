@@ -11,7 +11,7 @@ Specify turns ad-hoc AI prompting into a repeatable, auditable workflow. Every s
 ## See it in action
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/omnia
+/spec:init https://github.com/augentic/specify/adapters/omnia
 
 /spec:define "Add a greeting endpoint that accepts a name and returns a message"
   --> generates proposal.md, spec.md, design.md, tasks.md

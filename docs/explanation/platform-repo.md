@@ -22,7 +22,7 @@ hub: "Registry-only hub" {
 
 pap: "Platform-as-project" {
   shape: rectangle
-  papProj: "project.yaml\n{capability: omnia@v1}" {shape: page}
+  papProj: "project.yaml\n{adapter: omnia@v1}" {shape: page}
   papReg: "registry.yaml\n[my-app (url: .), peer-b]" {shape: page}
   papChanges: "changes/" {shape: cylinder}
   papSpecs: "specs/" {shape: cylinder}
@@ -44,7 +44,7 @@ platform-repo/
 ├── change.md         # operator brief (per-change)
 ├── plan.yaml             # dependency-aware change list (per-change)
 └── .specify/
-    ├── project.yaml      # { hub: true, … }   -- `capability:` is omitted on a hub
+    ├── project.yaml      # { hub: true, … }   -- `adapter:` is omitted on a hub
     ├── archive/
     │   └── plans/        # finalised changes
     └── workspace/
@@ -53,7 +53,7 @@ platform-repo/
 
 A single marker identifies a hub:
 
-- `project.yaml:hub: true` -- the hub sentinel. Its presence (paired with the **absence** of `capability:`) is what disables capability resolution and the per-project phase pipelines (define / build / merge), so the hub never runs `/spec:define` or `/spec:build` against its own working tree. The same flag flips `Registry::validate_shape` into hub-only mode, which rejects any registry entry whose `url` is `.`.
+- `project.yaml:hub: true` -- the hub sentinel. Its presence (paired with the **absence** of `adapter:`) is what disables adapter resolution and the per-project phase pipelines (define / build / merge), so the hub never runs `/spec:define` or `/spec:build` against its own working tree. The same flag flips `Registry::validate_shape` into hub-only mode, which rejects any registry entry whose `url` is `.`.
 
 The hub never appears in its own `registry.yaml`. Code projects always live in their own repos -- they are referenced by the registry's `projects[]` list and materialised under `.specify/workspace/<name>/` by `specify workspace sync`.
 
@@ -70,11 +70,11 @@ my-app/
 ├── change.md         # (optional)
 ├── plan.yaml             # (optional)
 └── .specify/
-    ├── project.yaml      # { capability: omnia@v1, … }   -- a real capability
+    ├── project.yaml      # { adapter: omnia@v1, … }   -- a real adapter
     └── slices/           # active slices for this project
 ```
 
-The `url: .` entry tells `specify workspace sync` to materialise the platform repo as its own workspace slot via a symlink. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability manifest. `project.yaml:hub` is absent (or `false`).
+The `url: .` entry tells `specify workspace sync` to materialise the platform repo as its own workspace slot via a symlink. Phase pipelines run normally because `project.yaml:adapter:` resolves to a real adapter manifest. `project.yaml:hub` is absent (or `false`).
 
 **When to choose platform-as-project.** Single-repo projects, small teams that have not factored their codebase into multiple repos, and migrations where peeling code out into a separate platform repo is itself unnecessary churn. The platform-first vision still works in this shape -- the operator just runs `/change:draft`, `/change:execute`, and `/change:finalize` against the same repo they edit code in.
 
@@ -102,17 +102,17 @@ Use `specify init --hub` to scaffold the canonical hub shape:
 specify init --hub --name <kebab-name>
 ```
 
-`--hub` is the discriminator; **no positional argument** is passed in hub mode. Combining a capability positional with `--hub` is rejected with the diagnostic `init-requires-capability-or-hub` -- the same error you get if you pass neither. A hub does not have a capability.
+`--hub` is the discriminator; **no positional argument** is passed in hub mode. Combining a adapter positional with `--hub` is rejected with the diagnostic `init-requires-adapter-or-hub` -- the same error you get if you pass neither. A hub does not have a adapter.
 
 The command writes:
 
-- `.specify/project.yaml` with `hub: true`, the kebab-cased name, and a current `specify-version` floor. **`capability:` is omitted** -- the absence of the field is what tells the CLI to disable capability resolution. The `rules:` block is also omitted; a hub has no phase pipelines to scaffold.
+- `.specify/project.yaml` with `hub: true`, the kebab-cased name, and a current `specify-version` floor. **`adapter:` is omitted** -- the absence of the field is what tells the CLI to disable adapter resolution. The `rules:` block is also omitted; a hub has no phase pipelines to scaffold.
 - `registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` or by hand-editing.
 - `.gitignore` upserts for `.specify/.cache/` and `.specify/workspace/`.
 
 `change.md` and `plan.yaml` are not created by `specify init --hub`; `specify change draft` mints them together when a specific change begins (typically invoked through `/change:draft`). The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
 
-For the platform-as-project shape, use the regular `specify init <capability>` form (no `--hub` flag) where `<capability>` is a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI. The CLI rejects `specify init` with neither a capability positional nor `--hub` -- exactly one of the two is required, never both. See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
+For the platform-as-project shape, use the regular `specify init <adapter>` form (no `--hub` flag) where `<adapter>` is a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI. The CLI rejects `specify init` with neither a adapter positional nor `--hub` -- exactly one of the two is required, never both. See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
 
 ## See also
 

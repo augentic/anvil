@@ -133,7 +133,7 @@ export async function checkWorkspaceLanding(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
-    join(REPO_ROOT, "capabilities"),
+    join(REPO_ROOT, "adapters"),
     join(REPO_ROOT, ".cursor"),
   ];
   const SCAN_FILES = [
@@ -238,7 +238,7 @@ export async function checkInvocationPositionals(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "docs"),
     join(REPO_ROOT, "plugins"),
-    join(REPO_ROOT, "capabilities"),
+    join(REPO_ROOT, "adapters"),
   ];
   const SCAN_FILES = [
     join(REPO_ROOT, "README.md"),

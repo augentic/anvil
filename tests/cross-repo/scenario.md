@@ -81,9 +81,9 @@ run.
 - **Suite:** cross-repo.
 - **Project shape:** one temporary registry-only hub plus two temporary
   registered projects.
-- **Hub capability:** none; initialize the hub with `specify init --hub`.
-- **Backend project capability:** `omnia@v1`.
-- **Mobile project capability:** `vectis@v1`.
+- **Hub adapter:** none; initialize the hub with `specify init --hub`.
+- **Backend project adapter:** `omnia@v1`.
+- **Mobile project adapter:** `vectis@v1`.
 - **Registry shape:** the hub registry contains exactly the backend and mobile
   projects for this run.
 - **Isolation:** `fresh-project`. Use disposable directories and start with
@@ -95,7 +95,7 @@ Prerequisites:
 
 - A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in
   the run summary if the operator uses an explicit binary.
-- The `contracts@v1`, `omnia@v1`, and `vectis@v1` capabilities are resolvable in
+- The `contracts@v1`, `omnia@v1`, and `vectis@v1` adapters are resolvable in
   the local development environment.
 - Git is available for local branches and remotes. The backend and mobile
   projects should be Git repositories with an `origin` remote configured before
@@ -321,7 +321,7 @@ The run should leave these artifacts or states for inspection:
   `shop-mobile`.
 - `plan.yaml` exists after `/change:draft` and validates cleanly.
 - The plan has exactly one contract slice and two implementation slices.
-- The contract slice targets the contract capability and has no routed
+- The contract slice targets the contract adapter and has no routed
   implementation project.
 - The backend implementation slice routes to `shop-backend`.
 - The mobile implementation slice routes to `shop-mobile`.

@@ -1,6 +1,6 @@
 # Tool Declarations
 
-Specify tools are WASI components that a project or capability declares for deterministic helper work. The `specify` binary resolves, caches, and runs them with explicit permissions through `specify tool`.
+Specify tools are WASI components that a project or adapter declares for deterministic helper work. The `specify` binary resolves, caches, and runs them with explicit permissions through `specify tool`.
 
 ## Declaration sites
 
@@ -12,7 +12,7 @@ Project authors declare project-local tools in `.specify/project.yaml`:
 
 ```yaml
 name: payments-service
-capability: https://github.com/augentic/specify/capabilities/contracts
+adapter: https://github.com/augentic/specify/adapters/contracts
 
 tools:
   - name: contract
@@ -25,36 +25,36 @@ tools:
       write: []
 ```
 
-Project-scope declarations are owned by the project author. They are available even when the project is a hub project with no capability, and they survive capability changes.
+Project-scope declarations are owned by the project author. They are available even when the project is a hub project with no adapter, and they survive adapter changes.
 
-Use project scope when a repo needs a local override, a development build, a private helper, or a tool that is not part of the capability contract.
+Use project scope when a repo needs a local override, a development build, a private helper, or a tool that is not part of the adapter contract.
 
-### Capability scope
+### Adapter scope
 
-Capability authors may ship a `tools.yaml` sidecar next to `capability.yaml`:
+Adapter authors may ship a `tools.yaml` sidecar next to `adapter.yaml`:
 
 ```text
-capabilities/contracts/
-├── capability.yaml
+adapters/contracts/
+├── adapter.yaml
 ├── tools.yaml
 └── briefs/
 ```
 
 ```yaml
-# capabilities/contracts/tools.yaml
+# adapters/contracts/tools.yaml
 tools:
   - "specify:contract@0.3.0"
 ```
 
-First-party capability entries are exact wasm-pkg package requests in the `specify` namespace. The CLI derives the tool name and version from the package request and applies embedded permission defaults for first-party tools. `capability.yaml` itself remains closed and does not gain a `tools:` field.
+First-party adapter entries are exact wasm-pkg package requests in the `specify` namespace. The CLI derives the tool name and version from the package request and applies embedded permission defaults for first-party tools. `adapter.yaml` itself remains closed and does not gain a `tools:` field.
 
-Use capability scope when the helper is part of the capability's promised behavior, such as a merge validator or a deterministic artifact checker.
+Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 
 ## Precedence
 
 `specify tool` resolves the current project, loads both declaration sites, and merges by `name`.
 
-Project scope wins on collision. This lets an operator redirect a capability-shipped tool to a local build or a pinned internal mirror without editing the capability. The CLI emits a `tool-name-collision` warning and keeps going.
+Project scope wins on collision. This lets an operator redirect a adapter-shipped tool to a local build or a pinned internal mirror without editing the adapter. The CLI emits a `tool-name-collision` warning and keeps going.
 
 Within a single declaration site, tool names must be unique.
 
@@ -62,10 +62,10 @@ Within a single declaration site, tool names must be unique.
 
 Permission entries may use:
 
-- `$PROJECT_DIR` in both project-scope and capability-scope declarations.
-- `$CAPABILITY_DIR` only in capability-scope declarations.
+- `$PROJECT_DIR` in both project-scope and adapter-scope declarations.
+- `$ADAPTER_DIR` only in adapter-scope declarations.
 
-`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for hub projects or projects whose capability changes later.
+`$ADAPTER_DIR` is rejected in project-scope tools because project declarations must remain valid even for hub projects or projects whose adapter changes later.
 
 Variables are expanded only in `permissions.read` and `permissions.write`. They are not expanded in `source`, and they are not expanded in arguments passed after `--`.
 
@@ -83,13 +83,13 @@ The global cache is segmented by declaration scope:
 │   └── contract/1.0.0/
 │       ├── module.wasm
 │       └── meta.yaml
-└── capability--contracts/
+└── adapter--contracts/
     └── contract/1.0.0/
         ├── module.wasm
         └── meta.yaml
 ```
 
-Project and capability entries stay isolated even when the name, version, and source are identical. This keeps ownership explicit and prevents one declarer from silently changing another declarer's cached bytes.
+Project and adapter entries stay isolated even when the name, version, and source are identical. This keeps ownership explicit and prevents one declarer from silently changing another declarer's cached bytes.
 
 The cache root follows the `specify tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
 
@@ -130,25 +130,25 @@ Re-running `init` never overwrites an operator-edited file; deleting it falls ba
 Choose project scope when:
 
 - The tool is repo-private.
-- The project needs a temporary or permanent override of a capability tool.
-- The project is a hub and has no capability.
-- The tool should remain available after changing capabilities.
+- The project needs a temporary or permanent override of a adapter tool.
+- The project is a hub and has no adapter.
+- The tool should remain available after changing adapters.
 
-Choose capability scope when:
+Choose adapter scope when:
 
-- The tool is part of the capability's documented behavior.
-- Briefs or skills in the capability call `specify tool run <name>`.
-- The capability author owns updates, digest pins, and distribution.
-- `$CAPABILITY_DIR` is needed for read-only templates or bundled resources.
+- The tool is part of the adapter's documented behavior.
+- Briefs or skills in the adapter call `specify tool run <name>`.
+- The adapter author owns updates, digest pins, and distribution.
+- `$ADAPTER_DIR` is needed for read-only templates or bundled resources.
 
 ## Examples
 
-Project-scope override of a capability tool:
+Project-scope override of a adapter tool:
 
 ```yaml
 # .specify/project.yaml
 name: payments-service
-capability: https://github.com/augentic/specify/capabilities/contracts
+adapter: https://github.com/augentic/specify/adapters/contracts
 tools:
   - name: contract
     version: 1.0.1-dev
@@ -159,10 +159,10 @@ tools:
       write: []
 ```
 
-Capability-scope tool with a bundled read-only template directory:
+Adapter-scope tool with a bundled read-only template directory:
 
 ```yaml
-# capabilities/example/tools.yaml
+# adapters/example/tools.yaml
 tools:
   - name: example-generate
     version: 1.2.0
@@ -170,16 +170,16 @@ tools:
     sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     permissions:
       read:
-        - "$CAPABILITY_DIR/templates"
+        - "$ADAPTER_DIR/templates"
         - "$PROJECT_DIR/specs"
       write:
         - "$PROJECT_DIR/generated"
 ```
 
-First-party capability-scope package that must create root-level project files:
+First-party adapter-scope package that must create root-level project files:
 
 ```yaml
-# capabilities/vectis/tools.yaml
+# adapters/vectis/tools.yaml
 tools:
   - "specify:vectis@0.3.0"
 ```
@@ -205,4 +205,4 @@ The current CLI already validates tool declaration structure during `specify too
 ## See also
 
 - [specify tool](../reference/cli/tool.md) -- command reference
-- [Anatomy of a Capability](../contributing/capability-anatomy.md) -- capability sidecar conventions
+- [Anatomy of a Adapter](../contributing/adapter-anatomy.md) -- adapter sidecar conventions

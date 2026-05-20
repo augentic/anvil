@@ -29,13 +29,13 @@ Before starting code generation, verify artifact completeness:
 - [ ] Error model with exact variant count and codes?
 - [ ] Every named external system call (`eventStore.put`, `keyVault.getSecret`, third-party HTTP, etc.) mapped to one of the 9 Omnia traits, OR flagged as TODO **in the code at the call site** (not just in Migration.md)?
 
-### Required Capabilities
+### Required Adapters
 
 - [ ] design.md "Source Capabilities Summary" section, "External Services", and relevant Business Logic cues read in full?
-- [ ] Capability-to-trait mapping applied per [capability-mapping.md](capability-mapping.md)?
+- [ ] Adapter-to-trait mapping applied per [capability-mapping.md](capability-mapping.md)?
 - [ ] `[runtime]` constraints translated per [wasm-constraints.md](wasm-constraints.md)?
 - [ ] Every named external system in business logic steps maps to one of the 9 Omnia traits, or flagged for TODO?
-- [ ] Managed data store override applied? If design.md External Services lists a managed table store but algorithm steps phrase it as HTTP, override to `DocumentStore` per SKILL.md authority (see [todo-markers.md](todo-markers.md) "Capability override for managed data stores").
+- [ ] Managed data store override applied? If design.md External Services lists a managed table store but algorithm steps phrase it as HTTP, override to `DocumentStore` per SKILL.md authority (see [todo-markers.md](todo-markers.md) "Adapter override for managed data stores").
 
 ### Publication Patterns
 
@@ -76,8 +76,8 @@ Before completing, verify ALL items.
 - [ ] All `[unknown]` items have TODO markers
 - [ ] All `[infrastructure]` steps either map to Omnia traits or have TODO markers
 - [ ] All `[domain]` steps that call a named external system either map to a provider trait or have TODO markers
-- [ ] Every capability in design.md "Source Capabilities Summary" (and derived from External Services or Business Logic cues) is mapped to an Omnia trait, bound in `Handler<P>`, or has a TODO marker and Migration.md entry
-- [ ] No managed data store accessed via `HttpRequest` — Azure Table Storage and document databases use `DocumentStore`, SQL databases use `TableStore`, Redis uses `StateStore`, blob stores use `Blobstore` (see [todo-markers.md](todo-markers.md) "Capability override for managed data stores")
+- [ ] Every adapter in design.md "Source Capabilities Summary" (and derived from External Services or Business Logic cues) is mapped to an Omnia trait, bound in `Handler<P>`, or has a TODO marker and Migration.md entry
+- [ ] No managed data store accessed via `HttpRequest` — Azure Table Storage and document databases use `DocumentStore`, SQL databases use `TableStore`, Redis uses `StateStore`, blob stores use `Blobstore` (see [todo-markers.md](todo-markers.md) "Adapter override for managed data stores")
 - [ ] No data-fetching logic deferred to assumed external cron/ETL — if legacy loads from a data store, the handler fetches on demand via cache-aside (see [todo-markers.md](todo-markers.md) "Startup cache → on-demand cache-aside")
 - [ ] Every config key in the design.md Configuration section appears in `.env.example` — even keys whose implementation is a TODO
 - [ ] No artifact algorithm steps silently dropped
@@ -100,7 +100,7 @@ Before completing, verify ALL items.
 - [ ] All WebSocket handlers registered in guest `src/lib.rs`
 - [ ] Handler types imported from the generated crate
 - [ ] Guest `Cargo.toml` includes the new crate
-- [ ] Provider trait implementations cover required capabilities
+- [ ] Provider trait implementations cover required adapters
 - [ ] No duplicate routes, topics, WebSocket handlers, or imports
 
 ### Update Mode Only

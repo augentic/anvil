@@ -16,7 +16,7 @@
 
 name: email-verification
 status: complete
-capability: omnia
+adapter: omnia
 created-at: 2026-04-19T14:02:00Z
 defined-at: 2026-04-19T14:07:12Z
 build-started-at: 2026-04-19T14:07:44Z

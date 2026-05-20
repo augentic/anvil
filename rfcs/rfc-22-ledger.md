@@ -8,7 +8,7 @@ Add the cumulative cross-change state required to plan, route, and audit migrati
 
 This RFC adds:
 
-1. **`.specify/migration-log.yaml`** — a cumulative ledger recording, per source key, which target projects each capability landed in, when, and via which change. Written only by `specify plan transition <slice> done` and `specify change finalize`; read by survey, assignment, propose, and the new `specify migration-log show` verb.
+1. **`.specify/migration-log.yaml`** — a cumulative ledger recording, per source key, which target projects each adapter landed in, when, and via which change. Written only by `specify plan transition <slice> done` and `specify change finalize`; read by survey, assignment, propose, and the new `specify migration-log show` verb.
 2. **A `status` field on `sources.yaml:sources[]`** (closed enum: `pending` / `in-progress` / `migrated` / `abandoned`) — driven by the same ledger writers. Operators can override via an explicit `specify sources status` verb, but normal lifecycle transitions are framework-driven.
 3. **An optional `mapping` field on each `planSlice`** (`one-to-one` / `many-to-one` / `one-to-many` / `greenfield`) — produced by survey, consumed by audit, validated by `specify plan validate`. Audit-only; the slice loop does not branch on it.
 
@@ -45,13 +45,13 @@ version: 1
 entries:
   - source_key: legacy-billing
     target_project: billing-svc
-    capabilities: [dunning, invoicing]
+    adapters: [dunning, invoicing]
     change: migrate-billing-2026-q2
     slice: extract-billing-core
     finalized_at: 2026-04-15
   - source_key: legacy-billing
     target_project: billing-svc
-    capabilities: [refunds]
+    adapters: [refunds]
     change: extend-billing-refunds
     slice: extract-billing-refunds
     finalized_at: 2026-05-02
@@ -64,7 +64,7 @@ Schema rules (`additionalProperties: false`):
 | `version` | yes | `1` only. Future bumps go through an RFC update. |
 | `entries[].source_key` | yes | Must match a key in `sources.yaml` at write time. Pinned in the ledger even if the catalogue entry is later removed. |
 | `entries[].target_project` | yes | Kebab-case; matches `registry.yaml:projects[].name` at write time. |
-| `entries[].capabilities` | yes | Kebab-case capability names; sorted alphabetically; non-empty. Derived from the slice's `specs/<crate>/spec.md` `### Requirement:` block titles, deduplicated and kebab-cased. |
+| `entries[].adapters` | yes | Kebab-case adapter names; sorted alphabetically; non-empty. Derived from the slice's `specs/<crate>/spec.md` `### Requirement:` block titles, deduplicated and kebab-cased. |
 | `entries[].change` | yes | Kebab-case change name. |
 | `entries[].slice` | yes | Kebab-case slice name within that change. |
 | `entries[].finalized_at` | yes | ISO 8601 date, UTC, day precision (no time component). The deterministic part of finalize time; chosen over a full timestamp to keep the file diff-friendly and preserve the framework's idempotency posture. |
@@ -75,7 +75,7 @@ Idempotency: entries are stored sorted by `(source_key, finalized_at, slice)`. R
 
 The **only** writers to `migration-log.yaml`:
 
-- **`specify plan transition <slice> done`** — when a slice with `sources: [...]` and `project: <name>` transitions to `done`, appends one entry per `(source_key, target_project)` pair derived from the slice's `sources[]` list. The `capabilities` list is computed from `specs/<crate>/spec.md` requirement titles. For greenfield slices (`sources: []`), nothing is written.
+- **`specify plan transition <slice> done`** — when a slice with `sources: [...]` and `project: <name>` transitions to `done`, appends one entry per `(source_key, target_project)` pair derived from the slice's `sources[]` list. The `adapters` list is computed from `specs/<crate>/spec.md` requirement titles. For greenfield slices (`sources: []`), nothing is written.
 - **`specify change finalize`** — defensive idempotency. Walks every `done` slice in the change, ensures the matching ledger entries exist, and writes any missing ones. Also updates `sources.yaml:sources[].status` (see below).
 
 The ledger never gets a writer in any phase skill (`/spec:define`, `/spec:build`, `/spec:merge`). Plan transitions are the natural single-writer site for cross-change durable state.
@@ -96,7 +96,7 @@ Defaults and transitions:
 
 - **Default on `specify sources add`** — `pending`.
 - **`pending` → `in-progress`** — when any active plan slice references the key in its `sources[]` list and the slice is in `pending` or `in-progress` status.
-- **`in-progress` → `migrated`** — when the ledger contains at least one entry for the key *and* every active plan slice referencing the key has reached `done` or `skipped`. Computed at `specify change finalize` time.
+- **`in-progress` → `migrated`** — when the ledger contains at least one entry for the key *and* every active plan slice referencing the key has reached `done`. Computed at finalize time. RFC-25 v1 has no per-entry `skipped` state; a future skip state can extend this rule when it returns.
 - **Any state → `abandoned`** — operator-driven only, via `specify sources status <key> abandoned --reason "..."`. Refuses if any active plan slice still references the key.
 
 The transitions are **automatic** for `pending` ↔ `in-progress` ↔ `migrated`. Operators may also force a transition with `specify sources status <key> <value>`, which prompts for confirmation and records the override in `.specify/migration-log.yaml` as a special operator-override entry:
@@ -104,7 +104,7 @@ The transitions are **automatic** for `pending` ↔ `in-progress` ↔ `migrated`
 ```yaml
 - source_key: legacy-billing
   target_project: ""              # empty for status overrides
-  capabilities: []                # empty for status overrides
+  adapters: []                # empty for status overrides
   change: ""                      # empty for status overrides
   slice: ""                       # empty for status overrides
   finalized_at: 2026-05-08
@@ -128,10 +128,10 @@ The ledger has many consumers; none of them write:
   3. Survey mapping recommendation (RFC-20).
   4. Description match (existing).
   5. Baseline spec affinity (existing).
-  6. Capability compatibility (existing).
+  6. Adapter compatibility (existing).
   7. Ambiguity → human (existing).
 
-- **Propose brief (RFC-20)** — when survey shows a capability whose source has been fully migrated, propose may pre-mark the slice `skipped` with `status-reason: "previously migrated in change <name>"`.
+- **Propose brief (RFC-20 / RFC-25)** — when survey shows an adapter whose source has been fully migrated, propose surfaces the prior migration and omits the slice unless the operator explicitly keeps it. RFC-25 v1 has no per-entry `skipped` state to pre-mark.
 - **`specify sources show`** — joins the catalogue with the ledger to render a per-source migration history.
 
 A new dedicated read verb is also provided:
@@ -231,10 +231,10 @@ For operators:
 - The `status` field on `sources[]` is optional and defaults to `pending` on existing entries when first read by a writer. The framework auto-promotes `pending` → `in-progress` → `migrated` based on plan / ledger state; manual overrides go through `specify sources status`.
 - The `mapping` field on plan slices is optional. Existing plans validate without it; new plans authored after upgrade may set it manually or accept the propose brief's pre-fill from survey recommendations.
 
-For capability authors:
+For adapter authors:
 
 - Survey and synthesise briefs (RFC-20) gain a new readable input (`migration-log.yaml`) and a new column in the source-inventory table (`Migrated`). Existing briefs without survey/synthesise are unaffected.
-- The `mapping` enum is shared vocabulary; capability briefs may consume it but are not required to produce it.
+- The `mapping` enum is shared vocabulary; adapter briefs may consume it but are not required to produce it.
 
 For skill authors:
 

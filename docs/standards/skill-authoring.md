@@ -59,7 +59,7 @@ The canonical "skills MUST NOT" list:
 - **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition`, `specify slice outcome set`, `specify slice journal append`, or `specify plan transition`.
 - **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify change draft`; the CLI owns directory shape.
 - **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge run`, `specify slice drop`, `specify plan archive`, and `specify change finalize`.
-- **Never reimplement validation, capability resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
+- **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with a stable anchor instead.
 
 ## Envelope examples and wire contract
@@ -75,7 +75,7 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
 
@@ -105,17 +105,17 @@ What is fine; *when* is missing. `AI-powered` is filler — the scorer cannot te
 
 > "Review code (per the internal §3B writer-protocol classification)."
 
-Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no capability or trigger. Repo-history references belong in [docs/explanation/decision-log.md](../explanation/decision-log.md), not in a discovery `description`.
+Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no adapter or trigger. Repo-history references belong in [docs/explanation/decision-log.md](../explanation/decision-log.md), not in a discovery `description`.
 
 **Forbidden frontmatter (and why).** The Anthropic spec is permissive; this repository narrows the surface explicitly. Enforced via `additionalProperties: false` in [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json).
 
 - **`license`** — already declared in the plugin manifest and the repo `LICENSE`; not part of the Anthropic SKILL.md spec.
 - **`compatibility`** — environment requirements belong in a body "Prerequisites" / "Setup" section.
 - **`metadata`** — open-ended key-value bag; if a value is worth carrying it deserves a named field or body prose.
-- **`disable-model-invocation`** — Claude Code knob. Source skills stay agent-invocable in Cursor; export profiles can add this for mutating workflows on stricter hosts.
+- **`disable-model-invocation`** — Claude Code knob. Source skills stay agent-invocable in Cursor; export adapters can add this for mutating workflows on stricter hosts.
 - **`when_to_use`** — Claude Code's appended-trigger field. Triggers belong in `description` per Anthropic's own guidance; carrying them twice doubles the metadata cost without doubling the signal.
 - **`user-invocable`** — Claude Code's hide-from-`/`-menu knob; Cursor source visibility is governed by plugin manifests and slash commands.
 - **`context`** — Claude Code context-attachment metadata. Source skills load durable context through body links and `<!-- skill: ... -->` directives.
 - **`paths`** — Claude Code auto-activation glob. Specify skills are invoked by slash command, by phase pipeline, or by direct trigger phrases — not by file pattern.
 
-**Portability posture.** Source skills are Cursor-plugin-first; the Cursor-only surface (marketplace layout, `/plugin:skill` slash routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, `<!-- skill: plugin:skill -->` directives) is part of the source contract because that is how skills compose inside Cursor. A Claude Code / upstream Agent Skills consumer should ship a separate compatibility *profile* that strips or maps Cursor-only fields, replaces Cursor-only tool names, translates `<!-- skill: ... -->` delegation, and (where useful) adds target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or `paths`. Source visibility for mutating workflows is governed at runtime by skill bodies and the `specify` CLI; export profiles may choose stricter activation policy.
+**Portability posture.** Source skills are Cursor-plugin-first; the Cursor-only surface (marketplace layout, `/plugin:skill` slash routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, `<!-- skill: plugin:skill -->` directives) is part of the source contract because that is how skills compose inside Cursor. A Claude Code / upstream Agent Skills consumer should ship a separate compatibility *adapter* that strips or maps Cursor-only fields, replaces Cursor-only tool names, translates `<!-- skill: ... -->` delegation, and (where useful) adds target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or `paths`. Source visibility for mutating workflows is governed at runtime by skill bodies and the `specify` CLI; export adapters may choose stricter activation policy.

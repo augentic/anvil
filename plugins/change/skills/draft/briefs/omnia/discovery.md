@@ -1,10 +1,10 @@
 ---
 id: discovery
-description: Read --from artefacts and/or analyse codebases; emit a neutral capability inventory.
+description: Read --from artefacts and/or analyse codebases; emit a neutral adapter inventory.
 generates: .specify/plans/<name>/discovery.md
 ---
 
-Produce a neutral, schema-agnostic capability inventory for the change. Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
+Produce a neutral, schema-agnostic adapter inventory for the change. Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
 
 Every input reaching this brief carries a `kind` drawn from the closed enum `{legacy-code, documentation}`. Any other value is a brief-level error; the brief must refuse to produce an inventory rather than guess a default or silently skip the input. Kind assignment for CLI-supplied inputs is performed upstream by `/change:draft` (see its SKILL.md §*Kind defaults for CLI flags*); this brief receives pre-classified inputs and does not re-apply defaults.
 
@@ -38,7 +38,7 @@ For each documentation input, invoke [`/change:analyze`](../../../analyze/SKILL.
 /change:analyze <input-path> <plan-dir> documentation <k>
 ```
 
-where `<plan-dir>` is `.specify/plans/<change-name>/` — the same directory this brief writes `discovery.md` to — and `<k>` is the source key used to tag the emitted capabilities:
+where `<plan-dir>` is `.specify/plans/<change-name>/` — the same directory this brief writes `discovery.md` to — and `<k>` is the source key used to tag the emitted adapters:
 
 - `--from <p>` → `--source-key <basename(p) without extension, kebab-cased>`.
 - `--source <k>=<p>:documentation` → `--source-key <k>`.
@@ -77,23 +77,23 @@ This brief does NOT re-write, re-sort, or re-deduplicate either skill's output; 
 ````markdown
 # Discovery — <change-name>
 
-## Capability inventory
+## Adapter inventory
 
 <!-- source-key: <k> -->
-### <capability-name>
+### <adapter-name>
 
 ```yaml
 summary: <one-sentence imperative description>
 sources:
   - <literal artefact path, optionally with fragment>
-depends-on: [<other capability names>]
+depends-on: [<other adapter names>]
 hints:
   entry_points: [<trigger / command / HTTP verb-path strings>]
   external_deps: [<named external systems>]
 confidence: <high | medium | low>
 ```
 
-<!-- repeat one block per capability, alphabetically sorted by name -->
+<!-- repeat one block per adapter, alphabetically sorted by name -->
 
 ## Candidate inventory
 
@@ -111,16 +111,16 @@ confidence: <high | medium | low>
 
 Section rules:
 
-- The `# Discovery — <change-name>` header, the `## Capability inventory` wrapper, and the `## Candidate inventory` heading are written by this brief before invoking `/change:analyze` or `/change:survey`. `/change:analyze` appends its `### <name>` capability blocks — each preceded by a `<!-- source-key: <k> -->` marker — under `## Capability inventory`. Both `/change:analyze` and `/change:survey` append candidate blocks under `## Candidate inventory`.
-- Every capability block is emitted by `/change:analyze`; candidate blocks are emitted by either `/change:analyze` (documentation) or `/change:survey` (legacy-code). Both share the unified fenced-YAML candidate block shape pinned in [`analyze/SKILL.md` §Output contract](../../../analyze/SKILL.md).
+- The `# Discovery — <change-name>` header, the `## Adapter inventory` wrapper, and the `## Candidate inventory` heading are written by this brief before invoking `/change:analyze` or `/change:survey`. `/change:analyze` appends its `### <name>` adapter blocks — each preceded by a `<!-- source-key: <k> -->` marker — under `## Adapter inventory`. Both `/change:analyze` and `/change:survey` append candidate blocks under `## Candidate inventory`.
+- Every adapter block is emitted by `/change:analyze`; candidate blocks are emitted by either `/change:analyze` (documentation) or `/change:survey` (legacy-code). Both share the unified fenced-YAML candidate block shape pinned in [`analyze/SKILL.md` §Output contract](../../../analyze/SKILL.md).
 - The `## Constraints (from documentation)` and `## Open questions (from documentation)` blocks are documentation-branch-only. Omit either heading when empty; never emit an empty section. If no documentation inputs were supplied, both headings are absent.
-- A run with only legacy-code inputs produces `## Capability inventory` and `## Candidate inventory` (candidate blocks appended by `/change:survey` after discovery). A run with only documentation inputs produces `## Capability inventory`, `## Candidate inventory` (candidate blocks appended by `/change:analyze`), and the two appendix blocks (when non-empty).
+- A run with only legacy-code inputs produces `## Adapter inventory` and `## Candidate inventory` (candidate blocks appended by `/change:survey` after discovery). A run with only documentation inputs produces `## Adapter inventory`, `## Candidate inventory` (candidate blocks appended by `/change:analyze`), and the two appendix blocks (when non-empty).
 
 ## Idempotency
 
 Running discovery twice on the same inputs MUST produce the same `discovery.md`. The contract is inherited from `/change:analyze`:
 
-- Capabilities alphabetically sorted by `name`.
+- Adapters alphabetically sorted by `name`.
 - Fixed field order inside each YAML block (`summary`, `sources`, `depends-on`, `hints`, `confidence`).
 - `sources`, `depends-on`, `hints.entry_points`, and `hints.external_deps` sorted alphabetically.
 - No timestamps, run IDs, working-directory paths, or absolute paths anywhere in the file.
@@ -130,4 +130,4 @@ See [`analyze/SKILL.md` §Idempotency](../../../analyze/SKILL.md) for the author
 
 ## Example fragment
 
-See [`../../fixtures/discovery/monolith/expected/discovery.md`](../../fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three capability summaries (no documentation appendix), and [`../../fixtures/discovery/mixed-inputs/expected/discovery.md`](../../fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four capability summaries plus the documentation appendix blocks.
+See [`../../fixtures/discovery/monolith/expected/discovery.md`](../../fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three adapter summaries (no documentation appendix), and [`../../fixtures/discovery/mixed-inputs/expected/discovery.md`](../../fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four adapter summaries plus the documentation appendix blocks.

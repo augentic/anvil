@@ -341,5 +341,5 @@ targets = [
     "wasm32-unknown-unknown",
     "x86_64-apple-ios",
 ]
-profile = "minimal"
+adapter = "minimal"
 ```

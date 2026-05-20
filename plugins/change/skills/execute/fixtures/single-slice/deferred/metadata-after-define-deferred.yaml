@@ -15,7 +15,7 @@ name: notification-preferences
 status: defining
 created-at: 2026-04-19T12:00:00Z
 updated-at: 2026-04-19T12:08:55Z
-capability: omnia
+adapter: omnia
 outcome:
   phase: define
   outcome: deferred

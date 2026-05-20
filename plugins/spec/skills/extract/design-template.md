@@ -59,7 +59,7 @@ Write `$DESIGN_PATH` with the following sections (see [specify.md](references/sp
     - `[runtime]` Source uses `setTimeout`/`setInterval` for periodic cache refresh
     - `[runtime]` Source uses circuit breaker library for outbound HTTP
     - `[runtime]` Source caches OAuth tokens in process memory When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
-11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
+11. **Source Capabilities Summary** — derive from External Services; checklist of generic adapter categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
 12. **Dependencies** — external packages with manifest version specifier (for generated project dependency declaration) and lock file resolved version (for API compatibility reference). Include feature flags / optional features enabled.
 13. **Risks / Open Questions** — unknowns, `[unknown]` items, missing lock file, ambiguous source patterns
 14. **Notes** — additional observations, source-specific constructs, performance/security considerations
@@ -79,7 +79,7 @@ When the source code uses `@azure/data-tables`, `TableClient`, `listEntities`, `
 
 Write a single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` using the flat baseline format:
 
-1. `## Purpose` — 1-2 sentence description of what the crate/capability does overall
+1. `## Purpose` — 1-2 sentence description of what the crate/adapter does overall
 2. `### Requirement: <Behavior Name>` — one top-level block per distinct business rule (use `The system SHALL ...` format). Add `ID: REQ-XXX` immediately after the heading, numbering requirements sequentially in file order. Each requirement includes:
    - Source traceability (source function path)
    - `#### Scenario: <name>` entries derived from algorithm steps (happy path), error handling (error paths), and edge cases

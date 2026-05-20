@@ -48,7 +48,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 
 - **Suite:** plan.
 - **Project shape:** one temporary project.
-- **Project capability:** `omnia@v1`.
+- **Project adapter:** `omnia@v1`.
 - **Registry shape:** not applicable; this scenario does not use `registry.yaml`.
 - **Isolation:** `fresh-project`. Use a disposable directory and start with empty Specify state.
 - **Backend:** `manual` - a human or agent follows this script and records results in the [run summary](run-summary-template.md).
@@ -56,7 +56,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 Prerequisites:
 
 - A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
-- The `omnia@v1` capability is resolvable in the local development environment.
+- The `omnia@v1` adapter is resolvable in the local development environment.
 
 ## Inputs
 

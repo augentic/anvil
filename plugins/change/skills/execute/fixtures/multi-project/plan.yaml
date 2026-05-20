@@ -6,7 +6,7 @@ changes:
     project: traffic
     sources: [monolith]
     status: pending
-    description: "Extract the Kafka ingestion pipeline into a standalone capability."
+    description: "Extract the Kafka ingestion pipeline into a standalone adapter."
   - name: operator-dashboard
     project: command-centre
     status: pending

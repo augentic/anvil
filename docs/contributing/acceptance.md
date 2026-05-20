@@ -24,7 +24,7 @@ This repository does not add a Deno/Rust runner, fake forge, transcript replay, 
 
 The plan-generation scenarios ask an operator to create disposable workspaces and run `/change:draft` only. They check durable plan-authoring outcomes: `plan.yaml` exists, `specify plan validate` exits cleanly, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
 
-These scenarios deliberately stop before `/change:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared orchestration scenarios because `/change:draft` coordinates slices; capability slice-loop scenarios stay under `capabilities/<capability>/tests/`.
+These scenarios deliberately stop before `/change:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared orchestration scenarios because `/change:draft` coordinates slices; adapter slice-loop scenarios stay under `adapters/<adapter>/tests/`.
 
 ## Evidence
 

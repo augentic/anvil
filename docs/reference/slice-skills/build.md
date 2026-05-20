@@ -26,18 +26,18 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 
 1. Validates that the slice is in `defined` or `building` state.
 2. Transitions the slice from `defined` to `building` (if not already).
-3. Reads the capability's build brief.
+3. Reads the adapter's build brief.
 4. Runs pre-shell validation when `composition.yaml` is present (Vectis only): checks field coverage, event coverage, ViewModel mapping, overlay trigger consistency, and navigation graph consistency. Errors halt shell generation; warnings are logged.
 5. Works through tasks sequentially:
    - Tasks with a **skill directive tag** (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist skill.
-   - Tasks without a skill tag are implemented via the capability's default build instruction.
+   - Tasks without a skill tag are implemented via the adapter's default build instruction.
 6. Marks each task complete via `specify slice task mark`.
 7. On completion of all tasks, transitions to `complete`.
 8. Writes phase outcome.
 
 ### Contract-only changes
 
-Changes using the `contracts` capability have a different build behavior. The build brief delegates to the format-appropriate `/contract:*` skill -- `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas -- rather than code-generation skills. It runs author or importer intent to produce change-local contract artifacts, then verifier intent for structural validation. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
+Changes using the `contracts` adapter have a different build behavior. The build brief delegates to the format-appropriate `/contract:*` skill -- `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas -- rather than code-generation skills. It runs author or importer intent to produce change-local contract artifacts, then verifier intent for structural validation. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
 
 ## Lifecycle transitions
 

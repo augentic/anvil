@@ -19,7 +19,7 @@ The on-disk contracts the authoring skill depends on are:
 | `change.md` | library (`Change::draft`) | Operator brief; scaffolded together with `plan.yaml` by `specify change draft`. Atomic refusal when either file already exists. |
 | `registry.yaml` | library (`Registry::{add, remove, validate}`) | Registered project list; validated in step 3 before any brief work. |
 | `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify plan archive` alongside the plan itself. |
-| `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 4(a) and 4(d). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. The capability manifest schema rejects a `pipeline.plan` block — planning is orchestration, not capability-owned slice work, so the briefs ride with this skill rather than the capability manifest. |
+| `briefs/<adapter>/{discovery,propose}.md` | skill (this directory) | Per-adapter planning briefs the skill renders for steps 4(a) and 4(d). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further adapters ship their planning brief variant alongside. The adapter manifest schema rejects a `pipeline.plan` block — planning is orchestration, not adapter-owned slice work, so the briefs ride with this skill rather than the adapter manifest. |
 
 ## Invocation
 
@@ -37,8 +37,8 @@ Every input eventually analysed by the draft flow — whether slash-supplied (`f
 
 | kind            | Purpose                                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
-| `legacy-code`   | Source code to be inferred into capability summaries at plan time and extracted per-slice at define time. |
-| `documentation` | Prose, PDFs, runbooks, API specs — parsed for capability summaries, constraints, and open questions.    |
+| `legacy-code`   | Source code to be inferred into adapter summaries at plan time and extracted per-slice at define time. |
+| `documentation` | Prose, PDFs, runbooks, API specs — parsed for adapter summaries, constraints, and open questions.    |
 
 The enum is closed: any other value is a hard error at the analyse phase (see `/change:analyze`). This enum is frozen — NEVER extend it from this skill. This keeps the plan-time discovery contract auditable — every line in `discovery.md` is traceable to the kind-branch that produced it.
 
@@ -125,20 +125,20 @@ Follow these steps in order on every invocation. Each step is normative; every s
       output is reported and the loop continues.
 
    Operator-actionable validation failures (missing description,
-   kebab-case violation, invalid URL, capability identifier typo)
+   kebab-case violation, invalid URL, adapter identifier typo)
    halt the loop with the validator's diagnostic verbatim. The
    operator amends `registry.yaml` via `specify registry add` /
    `specify registry remove`, runs `specify workspace sync` to
    refresh clones, and re-runs the skill.
 
-4. Plan brief pipeline — run from `capability.yaml`.
+4. Plan brief pipeline — run from `adapter.yaml`.
 
    The briefs are bundled with this skill under
-   `briefs/<capability>/`. Resolve the active capability via:
-     specify capability resolve --format json
+   `briefs/<adapter>/`. Resolve the active adapter via:
+     specify adapter resolve --format json
 
-   Then load `briefs/<capability>/discovery.md` and
-   `briefs/<capability>/propose.md` from this skill directory and
+   Then load `briefs/<adapter>/discovery.md` and
+   `briefs/<adapter>/propose.md` from this skill directory and
    run each in order:
      a. discovery       — see ../discovery.md (greenfield registry bootstrap also).
      b. sync-workspace  — see ../sync-workspace.md (multi-repo only).
@@ -224,7 +224,7 @@ Every shell-out this skill performs is listed below so reviewers can grep for ac
 | Pre-flight | `specify --version`, `specify change show --format json` |
 | 2 Brief scaffold | `specify change draft <name> [--source <key>=<path-or-url> ...]` |
 | 3 Registry validate | `specify registry validate`, `specify registry show --format json` |
-| 4 Plan brief pipeline | `specify capability resolve --format json`, `/change:analyze`, `/change:survey`, `specify plan add`, `specify plan amend`, `specify registry add`, `specify workspace sync` |
+| 4 Plan brief pipeline | `specify adapter resolve --format json`, `/change:analyze`, `/change:survey`, `specify plan add`, `specify plan amend`, `specify registry add`, `specify workspace sync` |
 | 5 Plan validate | `specify plan validate` |
 | 6 Hand-off | `specify plan status` (preview only — the skill prints the summary; the operator runs `status` themselves) |
 
@@ -234,12 +234,12 @@ Every shell-out this skill performs is listed below so reviewers can grep for ac
 - **Push branches, observe PRs, or finalize the change.** Never. Those are `/change:finalize`'s concern.
 - **Modify existing plan entries.** Never. `extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify plan amend` by the human, not by this skill.
 - **Skip `specify plan validate`.** Never. Step 5 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/change:execute`, or `/change:finalize`.** Never. `/change:draft` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify` CLI for scaffolding, registry validation, entry creation, and final validation.
+- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/change:execute`, or `/change:finalize`.** Never. `/change:draft` only invokes the planning briefs bundled with this skill under `briefs/<adapter>/`, plus the `specify` CLI for scaffolding, registry validation, entry creation, and final validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `documentation` source URLs are passed to `/change:analyze`; `legacy-code` source URLs are passed to `/change:survey`. Multi-repo **workspace** materialisation is exclusively `specify workspace sync`, invoked only in the sync-workspace step when `len(registry.projects) > 1`.
 - **Merge PRs.** Never. PR observation and the merge wait belong to `/change:finalize`; the operator merges through the forge UI or a hand-run `gh pr merge`.
-- **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
+- **Author propose brief bodies.** Never. The propose brief body is owned by the adapter; the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify plan validate`.** Never. Step 5's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
 The state the skill mutates:

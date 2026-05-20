@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../adapter.schema.json
+name: vectis
+version: 3
+description: Vectis workflow
+
+pipeline:
+  define:
+    - id: proposal
+      brief: briefs/proposal.md
+    - id: specs
+      brief: briefs/specs.md
+    - id: composition
+      brief: briefs/composition.md
+    - id: design
+      brief: briefs/design.md
+    - id: tasks
+      brief: briefs/tasks.md
+  build:
+    - id: build
+      brief: briefs/build.md
+  merge:
+    - id: merge
+      brief: briefs/merge.md

@@ -6,27 +6,27 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Core concepts
 
-- [Artifact Format](artifact-format.md) -- full specification of the core artifacts (proposal, spec, design, tasks) and capability-specific artifacts (composition), including delta formats, tags, and validation checklists.
+- [Artifact Format](artifact-format.md) -- full specification of the core artifacts (proposal, spec, design, tasks) and adapter-specific artifacts (composition), including delta formats, tags, and validation checklists.
 - [Lifecycle](lifecycle.md) -- state diagram, transitions, `.metadata.yaml` shape, plan entry states.
 - [Directory Layout](directory-layout.md) -- annotated `.specify/` tree with explanations.
 
 ### Skills
 
 - [Slice Skills](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
-- [Change Skills](change-skills/index.md) -- the three-skill change lifecycle (`/change:draft`, `/change:execute`, `/change:finalize`) plus `/change:analyze` for plan-time capability inference.
+- [Change Skills](change-skills/index.md) -- the three-skill change lifecycle (`/change:draft`, `/change:execute`, `/change:finalize`) plus `/change:analyze` for plan-time adapter inference.
 
 ### CLI
 
-- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, capability, codex, tool, init, plus the Vectis WASI tools run through `specify tool`).
+- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, adapter, codex, tool, init, plus the Vectis WASI tools run through `specify tool`).
 - [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) -- first-party helper migration boundary for `specify tool run`.
 
 ### Plugins
 
 - [Plugins](plugins/index.md) -- specialist skills organized by plugin (Omnia, Vectis, RT, Client).
 
-### Capabilities
+### Adapters
 
-- [Capabilities](capabilities/index.md) -- brief pipelines, specialist skills, and domain context for each first-party capability (Omnia, Vectis, Contracts).
+- [Adapters](adapters/index.md) -- brief pipelines, specialist skills, and domain context for each first-party adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 
@@ -42,7 +42,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 | Understand lifecycle states | [Lifecycle](lifecycle.md) |
 | Configure my project | [Configuration Files](configuration.md) |
 | See what a plugin provides | [Plugins](plugins/index.md) |
-| Understand capability differences | [Capabilities](capabilities/index.md) |
+| Understand adapter differences | [Adapters](adapters/index.md) |
 | Look up a term | [Glossary](../appendices/glossary.md) |
 | Troubleshoot an error | [Troubleshooting](../how-to/troubleshooting/index.md) |
 

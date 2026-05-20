@@ -60,7 +60,7 @@ Each slice directory contains a `.metadata.yaml` file managed exclusively by the
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
 - **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify slice outcome set`. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
-- **`capability`** -- the capability identifier used for this slice.
+- **`adapter`** -- the adapter identifier used for this slice.
 - **`touched_specs`** -- the list of spec files this slice affects.
 
 Never hand-edit `.metadata.yaml`. All writes flow through the CLI.

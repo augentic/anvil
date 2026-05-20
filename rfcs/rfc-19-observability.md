@@ -165,7 +165,7 @@ Start with the workflows that are hardest to reconstruct:
 - change finalize remote verification;
 - registry add, remove, show, and validate;
 - workspace sync, status, push, clone refresh, branch preparation, and PR creation/update calls;
-- capability resolve, check, and pipeline selection;
+- adapter resolve, check, and pipeline selection;
 - tool fetch, cache lookup, permission check, component load, WASI invocation, and guest exit status.
 
 Do not instrument every helper at once. The first implementation should cover command boundaries plus the cross-repo and WASI paths, then expand where debugging pain remains.
@@ -214,7 +214,7 @@ When a value may contain user-controlled content, log a count, hash, enum, or st
 Specify should not run a metrics server or daemon. It is a short-lived CLI, so the first observability layer should express metrics as structured span close events and summary events:
 
 - command duration and exit code;
-- plan entries inspected, selected, skipped, blocked, failed, and completed;
+- plan entries inspected, selected, resumed, and completed in v1; skipped, blocked, and failed counters return only if those terminal states are reintroduced;
 - files parsed and validation findings counted;
 - cache hit/miss/stale/install counts;
 - tool fetch and run durations;
@@ -299,6 +299,6 @@ For CLI maintainers:
 
 - [RFC-1: CLI](archive/rfc-1-cli.md)
 - [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-15: WASI Capability Tools](archive/rfc-15-wasm-plugins.md)
+- [RFC-15: WASI Adapter Tools](archive/rfc-15-wasm-plugins.md)
 - `specify-cli/src/output.rs`
 - `specify-cli/docs/contributing/cli-architecture.md`

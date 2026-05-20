@@ -1,10 +1,10 @@
 # Iterating on a Baseline
 
-In the [previous tutorial](first-change.md), you created a greeting capability and merged it into the baseline. Now you will modify that capability, learning how delta specs work and how to verify that your code matches the baseline.
+In the [previous tutorial](first-change.md), you created a greeting adapter and merged it into the baseline. Now you will modify that adapter, learning how delta specs work and how to verify that your code matches the baseline.
 
 **Prerequisites:** Complete [Your First Slice](first-change.md). You should have a baseline spec at `.specify/specs/greeting/spec.md`.
 
-## 1. Define a slice that modifies an existing capability
+## 1. Define a slice that modifies an existing adapter
 
 ```text
 /spec:define "Add support for an optional language parameter to the greeting endpoint, defaulting to English"
@@ -30,7 +30,7 @@ Slice defined (3 tasks).
 
 </details>
 
-This time, Specify detects that the `greeting` capability already exists in the baseline. Instead of writing a fresh spec, it generates a **delta spec** (see [Glossary](../appendices/glossary.md)) that describes only what changed.
+This time, Specify detects that the `greeting` adapter already exists in the baseline. Instead of writing a fresh spec, it generates a **delta spec** (see [Glossary](../appendices/glossary.md)) that describes only what changed.
 
 Open `.specify/slices/<name>/specs/greeting/spec.md` and notice the delta structure:
 
@@ -103,7 +103,7 @@ The merge key (see [Glossary](../appendices/glossary.md)) is always the `ID: REQ
 
 ## What you learned
 
-- Changes against existing capabilities produce **delta specs**, not full rewrites.
+- Changes against existing adapters produce **delta specs**, not full rewrites.
 - Delta sections (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED`) describe precisely what changed.
 - Stable `REQ-XXX` IDs are the merge keys that connect deltas to the baseline.
 - The baseline is the cumulative record of all merged specs.

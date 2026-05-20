@@ -1,10 +1,10 @@
 ---
 id: discovery
-description: Read --from artefacts and/or analyse codebases; emit a neutral capability inventory grouped by shared-core / iOS / Android, plus a cross-cutting UI inputs section for layout / tokens / assets work.
+description: Read --from artefacts and/or analyse codebases; emit a neutral adapter inventory grouped by shared-core / iOS / Android, plus a cross-cutting UI inputs section for layout / tokens / assets work.
 generates: .specify/plans/<name>/discovery.md
 ---
 
-Produce a neutral, capability-agnostic inventory for the change, grouped into the three Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), and **Android shell** (Jetpack Compose views and bindings). When the change also touches **input artifacts** that the shells consume — `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml` — surface them in a separate **cross-cutting UI inputs** section after the three tiers (RFC-11 §L: token / asset / layout work is input context, not a peer platform). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
+Produce a neutral, adapter-agnostic inventory for the change, grouped into the three Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), and **Android shell** (Jetpack Compose views and bindings). When the change also touches **input artifacts** that the shells consume — `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml` — surface them in a separate **cross-cutting UI inputs** section after the three tiers (RFC-11 §L: token / asset / layout work is input context, not a peer platform). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
 
 ## Inputs
 
@@ -26,17 +26,17 @@ When `/change:survey` runs for `legacy-code` inputs (after discovery completes),
 
 ## Process
 
-1. **Analyse each `--source` and `--against` input.** For every non-`--from` input, invoke `/spec:extract` to produce a domain-level capability description:
+1. **Analyse each `--source` and `--against` input.** For every non-`--from` input, invoke `/spec:extract` to produce a domain-level adapter description:
    - For a git URL `--source`: materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../analyze/SKILL.md` §*Cloning a source tree*](../../../analyze/SKILL.md)), then run `/spec:extract legacy/<key> .specify/plans/<name>/extract/<key>/`.
    - For a local path `--source` or `--against`: run `/spec:extract <path> .specify/plans/<name>/extract/<key>/` directly (use `against` as the key for `--against`).
    - The extract artefacts under `.specify/plans/<name>/extract/` are intermediate — the inventory below is the only human-facing output.
-2. **Read each `--from` artefact.** Open every `--from` file (or every file under a `--from` directory). Parse any clearly delimited capability structure (e.g. headings named "Capability", "Feature", "Screen", "Component"); otherwise treat each top-level heading as a capability candidate and record the accompanying prose verbatim.
-3. **Classify each capability into a Crux tier or UI input.** Every capability lands in exactly one of three tiers or, when it describes an operator-maintained input artifact, in the cross-cutting **UI inputs** section instead:
+2. **Read each `--from` artefact.** Open every `--from` file (or every file under a `--from` directory). Parse any clearly delimited adapter structure (e.g. headings named "Adapter", "Feature", "Screen", "Component"); otherwise treat each top-level heading as a adapter candidate and record the accompanying prose verbatim.
+3. **Classify each adapter into a Crux tier or UI input.** Every adapter lands in exactly one of three tiers or, when it describes an operator-maintained input artifact, in the cross-cutting **UI inputs** section instead:
    - **Shared core** — cross-platform business logic expressed as a Crux `App` trait (`Model`, `Event`, `ViewModel`, `Effect`, `Command`). Anything that must run identically on iOS and Android belongs here. Heuristic: if a legacy screen has behaviour that is platform-agnostic (state machines, data fetching, validation), the behaviour is shared-core; only the rendering is shell.
    - **iOS shell** — SwiftUI views, iOS-specific bindings, platform extensions (`UIKit` bridges, Swift Package integrations). Names typically end in `-ios-view`, `-ios-binding`, or describe an iOS-only affordance.
    - **Android shell** — Jetpack Compose views, Material 3 components, Kotlin bindings. Names typically end in `-android-view`, `-android-binding`, or describe an Android-only affordance.
-   - **Cross-cutting UI inputs** — operator-maintained input artifacts the shells read directly per RFC-11 §L: `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml`. A capability lands here only when it describes the *input artifact itself* (e.g. "lift legacy CSS variables into `tokens.yaml`", "import Figma layout into `layout.yaml`"), not when it describes a feature screen that happens to consume tokens. UI inputs are NOT a peer Crux tier — they have no runtime presence — and `vectis:ios-writer` / `vectis:android-writer` consume them directly without an intermediate "design-system" generation step. Record the artifact name on each UI-input capability so `propose.md` can decide whether the work is independently reviewable. Capabilities that legitimately span tiers (e.g. "counter" covering the shared `App` AND the iOS/Android views) are split into one entry per tier so `propose.md` can slice them independently; capabilities that span a tier and a UI input (e.g. a screen that requires both a new shared-core ViewModel AND new tokens) are similarly split, with the UI input surfacing in the cross-cutting section.
-4. **Merge into a single inventory.** Deduplicate capabilities that recur across sources within the same tier (e.g. "counter-core" in both a brief and a monolith extract). Record every source that mentions a capability rather than picking one.
+   - **Cross-cutting UI inputs** — operator-maintained input artifacts the shells read directly per RFC-11 §L: `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml`. A adapter lands here only when it describes the *input artifact itself* (e.g. "lift legacy CSS variables into `tokens.yaml`", "import Figma layout into `layout.yaml`"), not when it describes a feature screen that happens to consume tokens. UI inputs are NOT a peer Crux tier — they have no runtime presence — and `vectis:ios-writer` / `vectis:android-writer` consume them directly without an intermediate "design-system" generation step. Record the artifact name on each UI-input adapter so `propose.md` can decide whether the work is independently reviewable. Adapters that legitimately span tiers (e.g. "counter" covering the shared `App` AND the iOS/Android views) are split into one entry per tier so `propose.md` can slice them independently; adapters that span a tier and a UI input (e.g. a screen that requires both a new shared-core ViewModel AND new tokens) are similarly split, with the UI input surfacing in the cross-cutting section.
+4. **Merge into a single inventory.** Deduplicate adapters that recur across sources within the same tier (e.g. "counter-core" in both a brief and a monolith extract). Record every source that mentions a adapter rather than picking one.
 5. **Write `.specify/plans/<name>/discovery.md`.** The output has a fixed shape (see "Output" below). Overwrite any existing file.
 
 ## Output
@@ -44,11 +44,11 @@ When `/change:survey` runs for `legacy-code` inputs (after discovery completes),
 ```markdown
 # Discovery — <change-name>
 
-## Capability inventory
+## Adapter inventory
 
 ### Shared core
 
-#### <capability name>
+#### <adapter name>
 
 - **Source(s)**: <key>, <path>, <literal artefact path>, ...
 - **Description**: <one or two sentences, source-neutral>
@@ -57,11 +57,11 @@ When `/change:survey` runs for `legacy-code` inputs (after discovery completes),
 - **Scope hints**: <e.g. "legacy iOS view logic to lift into
   App trait", "greenfield state machine"; omit if none>
 
-<!-- repeat one subsection per shared-core capability -->
+<!-- repeat one subsection per shared-core adapter -->
 
 ### iOS shell
 
-#### <capability name>
+#### <adapter name>
 
 - **Source(s)**: <key>, <path>, ...
 - **Description**: <one or two sentences, source-neutral>
@@ -70,11 +70,11 @@ When `/change:survey` runs for `legacy-code` inputs (after discovery completes),
 - **Scope hints**: <e.g. "legacy SwiftUI view", "new Compose
   binding needed"; omit if none>
 
-<!-- repeat one subsection per iOS-shell capability -->
+<!-- repeat one subsection per iOS-shell adapter -->
 
 ### Android shell
 
-<!-- same shape as iOS shell, one subsection per capability -->
+<!-- same shape as iOS shell, one subsection per adapter -->
 
 ## Cross-cutting UI inputs
 
@@ -84,7 +84,7 @@ consume — they are NOT a peer Crux tier (RFC-11 §L). Surface each
 input the change authors, migrates, or refines as a subsection
 here. Omit the entire section when no UI-input work is in scope.
 Subsections are level-3 headings (no enclosing tier wrapper, unlike
-the capability subsections above which sit one level deeper inside
+the adapter subsections above which sit one level deeper inside
 their tier heading). -->
 
 ### <input name>
@@ -111,13 +111,13 @@ their tier heading). -->
 - <...>
 ```
 
-Empty tiers are emitted as the `### <tier>` heading followed by an `_No capabilities in this tier._` italic line; the three tier headings (shared core, iOS shell, Android shell) are always present so downstream tooling can rely on their order. The `## Cross-cutting UI inputs` section is omitted entirely when no input-artifact work is in scope — its absence is meaningful (no UI inputs to surface), so do not emit a placeholder italic line for it.
+Empty tiers are emitted as the `### <tier>` heading followed by an `_No adapters in this tier._` italic line; the three tier headings (shared core, iOS shell, Android shell) are always present so downstream tooling can rely on their order. The `## Cross-cutting UI inputs` section is omitted entirely when no input-artifact work is in scope — its absence is meaningful (no UI inputs to surface), so do not emit a placeholder italic line for it.
 
 ## Idempotency
 
 Running discovery twice on the same inputs MUST produce the same `discovery.md`. Implications:
 
-- Tier order is fixed: shared core, iOS shell, Android shell. Within each tier, order capabilities alphabetically by name. The cross-cutting UI inputs section, when emitted, follows the three tiers — order its subsections alphabetically by input name (the same as a tier).
+- Tier order is fixed: shared core, iOS shell, Android shell. Within each tier, order adapters alphabetically by name. The cross-cutting UI inputs section, when emitted, follows the three tiers — order its subsections alphabetically by input name (the same as a tier).
 - Do not include timestamps, run IDs, or working-directory paths.
 - `/spec:extract` re-runs on unchanged sources must yield equivalent inventory text; if a re-extract surfaces new detail, it replaces the prior inventory entry wholesale.
 
@@ -126,7 +126,7 @@ Running discovery twice on the same inputs MUST produce the same `discovery.md`.
 ```markdown
 # Discovery — counter-migration
 
-## Capability inventory
+## Adapter inventory
 
 ### Shared core
 
