@@ -77,12 +77,12 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 | `/change:execute loop`                               | `/spec:execute`                                                                          |
 | `/change:finalize`                                   | `/spec:finalize`                                                                         |
 | `adapters/<name>/adapter.yaml`, `planSlice.adapter`  | `targets/<name>/target.yaml`, `planSlice.target`                                         |
-| `specify adapter` *, `specify change `*              | `specify source *`, `specify target *`, `specify plan *`; see [commands.md](commands.md) |
+| `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see [commands.md](commands.md) |
 
 
 ### Commands
 
-Default rhythm: `/spec:plan` -> operator review -> `/spec:execute` -> review on stops -> `/spec:finalize`.
+Default rhythm: `/spec:plan` -> review -> `/spec:execute` -> review on stops -> `/spec:finalize`.
 
 
 | Stage      | Command                                        | Replaces                                             |
@@ -110,8 +110,8 @@ PLAN (plan.yaml)          SLICE (.metadata.yaml)           STAGE
 pending                   -                              /spec:plan
   | (operator)            -                              Gate 1: reviewed
 reviewed                  -                              /spec:execute allowed
-in-progress               defining                       extract + synthesize
-  |                       defined                        spec.md (+ inline tags)
+in-progress               refining                       extract + synthesize
+  |                       refined                        spec.md (+ inline tags)
   |                       built                          /spec:build
   |                       merged                         /spec:merge -> entry done
 drained                   -                              /spec:finalize
@@ -140,9 +140,9 @@ After Gate 1 without execute: `specify plan next`, then `/spec:refine`.
 ### The plan gate
 
 
-| Gate       | Position                            | Mechanism                                  |
-| ---------- | ----------------------------------- | ------------------------------------------ |
-| **Gate 1** | After plan validate, before extract | `specify plan transition <scope> reviewed` |
+| Gate       | Position                                    | Mechanism                                  |
+| ---------- | ------------------------------------------- | ------------------------------------------ |
+| **Gate 1** | After plan validate, before `/spec:execute` | `specify plan transition <scope> reviewed` |
 
 
 Gate 1 is the successor to RFC-23's explicit human seam. No Gate 2 ships in v1; see §Non-goals.
@@ -198,7 +198,7 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 | **Evidence set**                  | All `Evidence` bound to one slice; synthesis input (`EvidenceSet`).                                                        |
 | **provenance**                    | Source bindings behind one requirement (`Sources:` list).                                                                  |
 | **conflict** / **divergence**     | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                       |
-| **authority**                     | Closed enum: `intent`, `external-contract`, `design-spec`, `observed-behaviour` (highest first; see §Authority hierarchy). |
+| **authority**                     | Closed enum: `intent`, `external-contract`, `design-doc`, `behaviour` (highest first; see §Authority hierarchy). |
 
 
 `provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:`*.
@@ -217,7 +217,7 @@ Plan artifacts live at the hub root; slice artifacts live in `.specify/workspace
 | **active slice**         | Plan entry currently `in-progress`.                                       |
 | **plan lifecycle**       | `pending -> reviewed -> in-progress -> drained`.                          |
 | **per-entry lifecycle**  | `pending -> in-progress -> done`.                                         |
-| **slice lifecycle**      | `defining -> defined -> built -> merged`.                                 |
+| **slice lifecycle**      | `refining -> refined -> built -> merged`.                                 |
 
 
 ## Implementation contract
@@ -306,7 +306,7 @@ Runs at slice time. `/spec:refine` persists `Evidence` under `.specify/slices/<s
 ```yaml
 source: legacy-monolith
 adapter: legacy-code-typescript
-authority: observed-behaviour
+authority: behaviour
 candidate: user-registration
 claims:
   - kind: code-excerpt
@@ -326,7 +326,7 @@ Top-level `authority:` is required per `Evidence` unless provided by manifest `d
 | Adapter         | `default-authority` | Role                              |
 | --------------- | ------------------- | --------------------------------- |
 | `intent`        | `intent`            | Operator briefs and overrides.    |
-| `documentation` | `design-spec`       | Written product/technical intent. |
+| `documentation` | `design-doc`       | Written product/technical intent. |
 
 
 Both are true source adapters with no special workflow rules. N=1 greenfield uses degenerate `intent.enumerate`.
@@ -392,9 +392,9 @@ Core owns `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Inputs are `Evi
 2. Run serial `extract` per §Extraction reliability.
 3. Synthesize in fixed substep order: `proposal` -> `specs` -> `design` -> `tasks`. Substeps are hand-coded in `/spec:refine` in v1 (no `specify slice synthesize` verb; see [commands.md](commands.md)).
 4. Run `specify slice validate` ([commands.md](commands.md)).
-5. Transition to `defined` via `specify slice transition <name> defined`.
+5. Transition to `refined` via `specify slice transition <name> refined`.
 
-Tags `[unknown]`, `[conflict]`, and `[divergence]` are review signals; they do not park the slice. Synthesis never aborts on tags; the slice lifecycle stays `defining -> defined -> built -> merged` regardless of tag content.
+Tags `[unknown]`, `[conflict]`, and `[divergence]` are review signals; they do not park the slice. Synthesis never aborts on tags; the slice lifecycle stays `refining -> refined -> built -> merged` regardless of tag content.
 
 ### Requirement block contract
 
@@ -414,8 +414,8 @@ Highest authority wins:
 
 1. `intent`: operator override at slice time.
 2. `external-contract`: published APIs, regulation.
-3. `design-spec`: internal docs, RFCs.
-4. `observed-behaviour`: what legacy code does.
+3. `design-doc`: internal docs, RFCs.
+4. `behaviour`: what legacy code does.
 
 
 | Agreement                    | Output                                                    |
@@ -436,7 +436,7 @@ Substep order and lifecycle behavior live with the `/spec:refine` pipeline above
 | ---------------------------- | ---------------------------------------------------------------- |
 | **Order**                    | Serial in `planSlice.sources` declaration order.                 |
 | **Required**                 | Default; `optional: true` on binding allows fail-soft.           |
-| **Hard failure**             | Required `extract` fails -> stay `defining`, no synthesis.       |
+| **Hard failure**             | Required `extract` fails -> stay `refining`, no synthesis.       |
 | **Soft failure**             | Optional fails -> warning, synthesis with remaining `Evidence`.  |
 | **Empty / invalid Evidence** | Empty `claims: []` valid; invalid fails schema before synthesis. |
 
@@ -466,7 +466,7 @@ Decision: use the existing transactional email provider rather than introducing 
 ```yaml
 source: product-notes
 adapter: documentation
-authority: design-spec
+authority: design-doc
 candidate: password-reset
 claims:
   - kind: requirement-statement
@@ -557,9 +557,9 @@ ID: REQ-007
 Sources: [identity-design-notes, legacy-monolith]
 Status: divergence
 
-The system expires password reset links after 30 minutes. (from identity-design-notes; design-spec)
+The system expires password reset links after 30 minutes. (from identity-design-notes; design-doc)
 
-Note: legacy-monolith observed 24-hour expiry; the design-spec authority overrides. Operator review recommended.
+Note: legacy-monolith observed 24-hour expiry; the design-doc authority overrides. Operator review recommended.
 ```
 
 ## On-disk and tooling
@@ -667,14 +667,14 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 | 2   | D1, D3, D4 | **Documentation, one slice.** Operator binds a single docs path.                                                                                                                                                 | `documentation.enumerate` correctness at the new entry point; `Sources: [<doc-key>]` provenance.                                                                                                                                   |
 | 3   | D3, D5, D6 | **Documentation, multi-slice.** Operator binds docs that map to N candidates.                                                                                                                                    | Propose/edit/reject loop; Gate 1 amendment flow.                                                                                                                                                                                   |
 | 4   | D1, D3     | **Legacy-code, multi-slice.** Operator binds a legacy repo.                                                                                                                                                      | `legacy-code-typescript.enumerate`; survey/repair loop under the new skill; under-slicing failure mode; `Sources: [<legacy-key>]` provenance.                                                                                      |
-| 5   | D2, D4     | **Intra-Evidence `[conflict]`.** Single-source slice where synthesis cannot reconcile contradictory `claims` within one `Evidence` document.                                                                     | `[conflict]` written into `spec.md`; lifecycle still transitions to `defined`; operator can hand-edit and run `/spec:build` without a parking-state ceremony.                                                                      |
-| 5a  | D2-D4      | **Combined evidence (legacy-code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice.                                                                          | Synthesis end-to-end: serial `extract` per binding; `EvidenceSet` cardinality 2; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `defined` cleanly when sources agree. |
-| 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; design-spec winner becomes the operative requirement; observed-behaviour preserved as inline commentary; lifecycle transitions to `defined`; operator may hand-edit before build.                    |
-| 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `defined`; operator must reconcile by editing or amending bindings before the requirement is meaningful.                |
+| 5   | D2, D4     | **Intra-Evidence `[conflict]`.** Single-source slice where synthesis cannot reconcile contradictory `claims` within one `Evidence` document.                                                                     | `[conflict]` written into `spec.md`; lifecycle still transitions to `refined`; operator can hand-edit and run `/spec:build` without a parking-state ceremony.                                                                      |
+| 5a  | D2-D4      | **Combined evidence (legacy-code + documentation), one slice.** Operator binds a legacy repo and a design-notes path on the same slice.                                                                          | Synthesis end-to-end: serial `extract` per binding; `EvidenceSet` cardinality 2; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `refined` cleanly when sources agree. |
+| 5b  | D2, D4     | `**[divergence]` from authority resolution.** Combined-evidence slice where docs and legacy code disagree at different authority classes, for example docs say "30 minutes" expiry while code observed 24 hours. | `Status: divergence` written; design-doc winner becomes the operative requirement; behaviour preserved as inline commentary; lifecycle transitions to `refined`; operator may hand-edit before build.                    |
+| 5c  | D2, D4     | `**[conflict]` from same-authority disagreement.** Combined-evidence slice where two `documentation` sources disagree on the same claim.                                                                         | `Status: conflict` written with both values preserved as inline commentary; lifecycle still transitions to `refined`; operator must reconcile by editing or amending bindings before the requirement is meaningful.                |
 | 5d  | D2-D4      | **Optional binding fail-soft.** Combined-evidence slice with one `optional: true` binding whose `extract` fails.                                                                                                 | Synthesis proceeds with the surviving `Evidence`; structured warning emitted; `Sources:` lines reflect surviving contributors only.                                                                                                |
 | 5e  | D3         | `**correlates-with` propose-time merge.** Two adapters surface the same candidate; operator merges them at propose.                                                                                              | `specify plan add` writes one slice with combined `sources:`; downstream extract runs against every contributing source.                                                                                                           |
-| 5f  | D2, D3     | **Required-source extract failure.** Required binding's `extract` fails.                                                                                                                                         | Slice stays in `defining`, no synthesis runs, structured error names the source key.                                                                                                                                               |
-| 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `defining`.                                                                                                                                                    |
+| 5f  | D2, D3     | **Required-source extract failure.** Required binding's `extract` fails.                                                                                                                                         | Slice stays in `refining`, no synthesis runs, structured error names the source key.                                                                                                                                               |
+| 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                                    |
 | 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                       |
 | 6   | D9         | **Multi-repo assignment from a hub.** Operator runs `/spec:plan` in a hub.                                                                                                                                       | `hub:` discriminator; per-candidate `--project` at propose; workspace sync timing.                                                                                                                                                 |
 | 7   | D3, D6     | **Operator amends one-slice plan into two slices at Gate 1.**                                                                                                                                                    | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.                                                                                                                                                           |
@@ -732,7 +732,7 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 | Event                                                   | When                      |
 | ------------------------------------------------------- | ------------------------- |
 | `plan.transition.reviewed`                              | Gate 1 cleared            |
-| `slice.transition.defined`                              | Synthesis completed       |
+| `slice.transition.refined`                              | Synthesis completed       |
 | `slice.extract.completed`                               | Per source key per slice  |
 | `slice.synthesis.conflict` / `.divergence` / `.unknown` | Tags written to `spec.md` |
 
