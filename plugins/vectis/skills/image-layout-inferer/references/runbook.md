@@ -125,7 +125,7 @@ When a sibling `assets.yaml` exists, disambiguate icon and image leaves that bel
 
 ### 6. Detect candidate components
 
-Walk every screen produced by stages 3–5 and compare every `group` against every other `group` in the same run for **structural identity** (§G):
+Walk every screen produced by stages 3–5b and compare every `group` against every other `group` in the same run for **structural identity** (§G):
 
 - Same ordered nested item kinds.
 - Same nested-group shape.
