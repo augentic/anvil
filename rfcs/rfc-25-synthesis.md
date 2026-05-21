@@ -1,6 +1,6 @@
-# RFC-25 review — is the 2-step multi-source synthesis the right shape?
+# RFC-25 synthesis — is the 2-step multi-source synthesis the right shape?
 
-**Status:** review note, not a normative RFC. Synthesises three independent best-of-N analyses of [`rfc-25-workflow.md`](./rfc-25-workflow.md) and [`rfc-25-plan.md`](./rfc-25-plan.md) by `claude-opus-4-7-thinking-high`, `gpt-5.5-high`, and `composer-2.5-fast`, each run in an isolated worktree against `HEAD = 4e0b69f`.
+**Status:** review note, not a normative RFC. Synthesises three independent best-of-N analyses of `[rfc-25-workflow.md](./rfc-25-workflow.md)` and `[rfc-25-plan.md](./rfc-25-plan.md)` by `claude-opus-4-7-thinking-high`, `gpt-5.5-high`, and `composer-2.5-fast`, each run in an isolated worktree against `HEAD = 4e0b69f`.
 
 **Question under review:** Is the 2-step multi-source analysis (`enumerate` → operator-fused `propose` → slice-time `extract` → core synthesis) introduced by RFC-25 the most effective way to produce specs for code generation? Or is there a better way?
 
@@ -16,12 +16,12 @@ Most of RFC-25's power comes from one deeper architectural choice that is easy t
 
 Specifically:
 
-1. **`enumerate` answers "what are the slice-sized units of work?"** It is cheap (one walk per source), produces headlines + stable ids, and writes [`discovery.md`](./rfc-25-workflow.md) `## Candidate inventory` blocks.
-2. **`propose` fuses candidates across sources** into `slices[].sources[]` rows of `{ key, candidate }` tuples — making cross-source alignment a structured lookup rather than a free-form LLM judgement at synthesis time.
+1. `**enumerate` answers "what are the slice-sized units of work?"** It is cheap (one walk per source), produces headlines + stable ids, and writes `[discovery.md](./rfc-25-workflow.md)` `## Candidate inventory` blocks.
+2. `**propose` fuses candidates across sources** into `slices[].sources[]` rows of `{ key, candidate }` tuples — making cross-source alignment a structured lookup rather than a free-form LLM judgement at synthesis time.
 3. **Gate 1 (`plan.lifecycle: pending → reviewed`) is an on-disk operator stamp** that any CI / hosted runner / restarted agent can key off. `/spec:execute` refuses unless `reviewed`. The two-step exists in part to give Gate 1 something concrete to gate on — the `slices[]` array is the artifact under review.
-4. **`extract` answers "what claims support this one slice?"** with `$SOURCE_DIR` read-only, no `$PROJECT_DIR` grant, no host env, no network. Bounded scope, schema-validated `Evidence`, per-axis cache.
+4. `**extract` answers "what claims support this one slice?"** with `$SOURCE_DIR` read-only, no `$PROJECT_DIR` grant, no host env, no network. Bounded scope, schema-validated `Evidence`, per-axis cache.
 5. **Synthesis fuses multi-source evidence into `spec.md` / `design.md` / `tasks.md`** with per-requirement `Sources:` lines, `Status: agreed | unknown | conflict | divergence`, and inline `[conflict]` / `[divergence]` / `[unknown]` tags. The closed authority enum (`intent > documentation > behaviour`) controls resolution; losers survive as commentary.
-6. **`shape` is consumed, not authored.** Target adapters declare idiom but do not write `spec.md`. `Slice.target` is what `build` consumes; target-specific manifests (Vectis `composition.yaml`, contract files) are build outputs, not Specify artifacts.
+6. `**shape` is consumed, not authored.** Target adapters declare idiom but do not write `spec.md`. `Slice.target` is what `build` consumes; target-specific manifests (Vectis `composition.yaml`, contract files) are build outputs, not Specify artifacts.
 
 The combined effect for code generation is that the chain from generated Rust → `tasks.md` → `design.md` → `spec.md` → `Evidence` → source claim is mechanically auditable, not "the model said so."
 
@@ -43,9 +43,9 @@ The combined effect for code generation is that the chain from generated Rust �
 3. **N=1 pays double cost for no benefit.** Pure intent runs `intent.enumerate` (which echoes the input), `propose` (one slice), Gate 1, `intent.extract` (echoes again), then synthesis. Three CLI calls and a journal event for "fix a typo." The architectural stance — "N=1 is degenerate, not special" — is defensible but produces real ergonomic friction that will push operators toward muscle-memorising `specify plan transition <name> reviewed`.
 4. **Plan-time fusion is underpowered.** RFC-25 admits authority does not apply at `propose` because there is no Evidence yet. The riskiest merge decision (do these two candidates from different sources describe the same slice?) happens with the least information.
 5. **Synthesis quality has a ceiling set by claim shape, not source coverage.** Fusion is supposed to key on `claim-id`, but `claim-id` is only required on `requirement` / `criterion` kinds and is adapter-derived independently across sources. Most cross-source claim alignment ends up happening on LLM judgement during synthesis — the work `enumerate` was meant to do once at plan time.
-6. **`[conflict]` and `[unknown]` do not stop `build`.** They are review signals, not gates. A conflict-tagged spec can still become generated code unless the operator notices. There is no `refined-but-blocked-build` state.
-7. **`/spec:refine` is not idempotent against operator hand-edits.** The RFC is honest: "re-running it discards manual reconciliation." Operators who edit `spec.md` to resolve a `[divergence]` must never re-refine, or amend the plan and re-refine cleanly. There is no merge-edits-back-into-evidence story.
-8. **Writer-ownership tension on `divergence: likely`.** [`AGENTS.md`](../AGENTS.md) and the RFC say `plan.yaml` is CLI-owned, but `plugins/spec/skills/plan/SKILL.md` directly appends `divergence: likely` because the CLI only accepts `accepted | rejected`. This is exactly the kind of exception that erodes the deterministic spine. The CLI should own `likely` too.
+6. `**[conflict]` and `[unknown]` do not stop `build`.** They are review signals, not gates. A conflict-tagged spec can still become generated code unless the operator notices. There is no `refined-but-blocked-build` state.
+7. `**/spec:refine` is not idempotent against operator hand-edits.** The RFC is honest: "re-running it discards manual reconciliation." Operators who edit `spec.md` to resolve a `[divergence]` must never re-refine, or amend the plan and re-refine cleanly. There is no merge-edits-back-into-evidence story.
+8. **Writer-ownership tension on `divergence: likely`.** `[AGENTS.md](../AGENTS.md)` and the RFC say `plan.yaml` is CLI-owned, but `plugins/spec/skills/plan/SKILL.md` directly appends `divergence: likely` because the CLI only accepts `accepted | rejected`. This is exactly the kind of exception that erodes the deterministic spine. The CLI should own `likely` too.
 9. **Determinism vs cache invalidation are in tension.** "Same source, same brief, same tool version" needs an explicit fingerprint model (source path + adapter version + brief version + tool version + candidate id) if re-runs are to be trusted across model versions. "Deterministic" today means "byte-stable goldens against fixtures," not "byte-stable production runs."
 10. **Extraction failure is unforgiving and the journal is event-thin.** Any `extract` failure keeps the slice in `refining`; there is no partial-synthesis fallback. The journal taxonomy fires on transitions and divergences but not on `extract.started`, per-claim provenance traces, or synthesis token cost — light for code-gen audit.
 
@@ -126,7 +126,7 @@ RFC-25 §Non-goals defers this; bring it into v1. The "docs always beat code" de
 
 ### 3. Add a thin reconciliation index — not a graph database
 
-Synthesis writes `slices/<slice>/fusion.yaml` listing every `REQ-*` id in `spec.md` and the contributing `(source-key, claim-id)` pairs plus the authority outcome.
+Synthesis writes `slices/<slice>/fusion.yaml` listing every `REQ-`* id in `spec.md` and the contributing `(source-key, claim-id)` pairs plus the authority outcome.
 
 This is the smallest possible answer to the "graph of claims" direction. It keeps the markdown-and-YAML story intact, but gives the operator a single inspectable artifact to consult when synthesis surprises them — without re-reading every `evidence/*.yaml`.
 
