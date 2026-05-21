@@ -1,8 +1,6 @@
 # RFC-25: Workflow
 
 > Status: Draft. Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md) and [RFC-23 (archived)](archive/rfc-23-change-lifecycle.md). Ships as Specify 2.0. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership).
->
-> Companion: [commands.md](commands.md) is the CLI floor. This document now contains the normative workflow, worked examples, and acceptance scenarios.
 
 ## Abstract
 
@@ -31,7 +29,7 @@ source adapters --enumerate--> discovery.md --core propose--> plan.yaml
 
 | Audience                | Start here                                                               |
 | ----------------------- | ------------------------------------------------------------------------ |
-| Operator / skill author | §Operator workflow -> §Execution model -> [commands.md](commands.md)     |
+| Operator / skill author | §Operator workflow -> §Execution model -> §CLI surface                   |
 | Source adapter author   | §Source adapter contract -> §Synthesis contract -> §Worked examples      |
 | Target adapter author   | §Target adapter contract -> §Synthesis contract (`shape` only)           |
 | CLI implementer         | §Normative decisions -> §Implementation contract -> §Implementation plan |
@@ -78,7 +76,7 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 | `/change:execute loop`                               | `/spec:execute`                                                                          |
 | `/change:finalize`                                   | `/spec:finalize`                                                                         |
 | `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `targets/<name>/adapter.yaml`, `Slice.target`                                            |
-| `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see [commands.md](commands.md) |
+| `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see §CLI surface               |
 
 
 ### Commands
@@ -184,7 +182,7 @@ Plan artifacts live at the workspace root; each project's slot lives at `.specif
 
 ### Plan lock
 
-The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or an execute-plus-breakout pair) from racing on the same plan. It is a sidecar lockfile at `.specify/plan.lock` (in single-repo mode) or at `<workspace-root>/.specify/plan.lock` (in workspace mode), acquired with an exclusive advisory file lock (`flock(LOCK_EX | LOCK_NB)` on POSIX, `LockFileEx` on Windows) and released on process exit. The lockfile body carries the holder's pid, hostname, and acquisition timestamp for diagnostics; the lock identity is the file lock itself, not the body. Acquisition is non-blocking — a second `/spec:execute` (or a breakout) that finds the lock held exits immediately with structured error `plan-lock-busy` carrying the holder's pid; the operator either waits or, if the holder is dead, removes the stale lockfile by hand. v1 has no `specify plan lock {acquire,release,status}` verb (see [commands.md](commands.md)) — the lock is purely internal to `/spec:execute` and the breakout verbs. Stale-lock detection (pid liveness, watchdog auto-release) is deferred until a real consumer asks; an operator-removed lockfile is the v1 escape hatch.
+The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or an execute-plus-breakout pair) from racing on the same plan. It is a sidecar lockfile at `.specify/plan.lock` (in single-repo mode) or at `<workspace-root>/.specify/plan.lock` (in workspace mode), acquired with an exclusive advisory file lock (`flock(LOCK_EX | LOCK_NB)` on POSIX, `LockFileEx` on Windows) and released on process exit. The lockfile body carries the holder's pid, hostname, and acquisition timestamp for diagnostics; the lock identity is the file lock itself, not the body. Acquisition is non-blocking — a second `/spec:execute` (or a breakout) that finds the lock held exits immediately with structured error `plan-lock-busy` carrying the holder's pid; the operator either waits or, if the holder is dead, removes the stale lockfile by hand. v1 has no `specify plan lock {acquire,release,status}` verb (see §CLI surface) — the lock is purely internal to `/spec:execute` and the breakout verbs. Stale-lock detection (pid liveness, watchdog auto-release) is deferred until a real consumer asks; an operator-removed lockfile is the v1 escape hatch.
 
 ## Concepts
 
@@ -500,7 +498,7 @@ Agent authors from `plugins/spec/references/synthesis/`; CLI validates structure
 
 Tentative annotations are review signals: the plan still progresses to validate and Gate 1, and the per-entry lifecycle is unaffected. The operator reconciles tentative merges by editing `change.md` or running `specify plan amend` (split, merge, relabel, rebind sources) before stamping `reviewed`. Hard tie-breakers (e.g. two candidates share a name across docs and legacy with divergent summaries) emit both rows annotated `tentative: true` rather than failing the plan.
 
-The `divergence:` field on slice entries follows the same review-signal posture: the plan still progresses to validate and Gate 1, and slice-time synthesis is not gated on operator response. The field is a closed enum with values `none` (default; absent in YAML), `likely` (set by `propose`), `accepted` (operator acknowledges the predicted divergence and wants execute to proceed), and `rejected` (operator disagrees with the prediction and intends to split, rebind, or otherwise amend the plan). The operator progresses the state via `specify plan amend <slice> --divergence accepted` (or `rejected`); see §Types and [commands.md](commands.md). The field is advisory metadata in v1 — no halt or park is wired against any value — and exists so the slice carries a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change. The pair-level detail lives in the `## Likely divergences` block of `change.md`; the slice-level field is the load-bearing state.
+The `divergence:` field on slice entries follows the same review-signal posture: the plan still progresses to validate and Gate 1, and slice-time synthesis is not gated on operator response. The field is a closed enum with values `none` (default; absent in YAML), `likely` (set by `propose`), `accepted` (operator acknowledges the predicted divergence and wants execute to proceed), and `rejected` (operator disagrees with the prediction and intends to split, rebind, or otherwise amend the plan). The operator progresses the state via `specify plan amend <slice> --divergence accepted` (or `rejected`); see §Types and §CLI surface. The field is advisory metadata in v1 — no halt or park is wired against any value — and exists so the slice carries a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change. The pair-level detail lives in the `## Likely divergences` block of `change.md`; the slice-level field is the load-bearing state.
 
 Authority hierarchy does not apply at `propose`; without `Evidence`, candidate fusion runs on headlines alone. Authority activates at slice-time synthesis (see §Authority hierarchy).
 
@@ -509,8 +507,8 @@ Authority hierarchy does not apply at `propose`; without `Evidence`, candidate f
 1. Resolve target and sources. Each `slices[].sources[]` binding supplies the `(source-key, candidate-id)` tuple that drives one `extract` call; the source key resolves to the top-level `plan.yaml.sources.<key>` binding, and the candidate id resolves to the matching block in `discovery.md`.
 2. Create the slice directory via `specify slice create <name> --target <target>`; this is the first step that materialises any path under `.specify/slices/<name>/`. The CLI stamps `.metadata.yaml` at `refining` as part of create.
 3. Run serial `extract` per §Extraction reliability, one call per `slices[].sources[]` binding, passing the binding's `candidate` id as the `Candidate` argument.
-4. Synthesize in fixed substep order: `proposal` -> `specs` -> `design` -> `tasks`. Substeps are hand-coded in `/spec:refine` in v1 (no `specify slice synthesize` verb; see [commands.md](commands.md)).
-5. Run `specify slice validate` ([commands.md](commands.md)).
+4. Synthesize in fixed substep order: `proposal` -> `specs` -> `design` -> `tasks`. Substeps are hand-coded in `/spec:refine` in v1 (no `specify slice synthesize` verb; see §CLI surface).
+5. Run `specify slice validate` (§CLI surface).
 6. Transition to `refined` via `specify slice transition <name> refined`.
 
 Tags `[unknown]`, `[conflict]`, and `[divergence]` are review signals; they do not park the slice. Synthesis never aborts on tags; the slice lifecycle stays `refining -> refined -> built -> merged` regardless of tag content.
@@ -700,9 +698,99 @@ Slice directories appear lazily: `specify plan add` writes only into `plan.yaml`
 
 ### CLI surface
 
-Full v1 floor, cuts, and deferrals: [commands.md](commands.md).
+Specify 2.0 v1 target surface. Global on all rows: `--format text|json` (`SPECIFY_FORMAT`).
 
-Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter resolve`); `specify plan transition ... reviewed`; `specify plan amend --add-source` / `--remove-source`; `specify change *` and `specify adapter pipeline` retire. Skill/slash retirements match §Operator workflow -> Commands.
+The v1 floor: the CLI is the single writer of files the skills must not hand-edit (`project.yaml`, `plan.yaml`, `.metadata.yaml`, archive paths), plus a small set of computations and side effects the agent shouldn't reimplement. Everything else — status, show, list, diagnostic helpers — is cut. Operators read YAML and Markdown files directly; skills do the same. Verbs return when a real caller asks for them.
+
+| Command | Positionals | Flags |
+|---------|-------------|-------|
+| `specify init` | `<target>` | `--name`, `--domain` |
+| `specify init` | | `--workspace`, `--name`, `--domain` |
+| `specify source resolve` | `<name>` | `--project-dir` |
+| `specify target resolve` | `<value>` | `--project-dir` |
+| `specify plan create` | `<name>` | `--source` |
+| `specify plan add` | `<name>` | `--depends-on`, `--sources`, `--description`, `--project`, `--target`, `--context` |
+| `specify plan amend` | `<name>` | `--depends-on`, `--sources`, `--add-source`, `--remove-source`, `--description`, `--project`, `--target`, `--context`, `--divergence` |
+| `specify plan transition` | `<name>`, `<target>` | `--reason` |
+| `specify plan next` | | |
+| `specify plan finalize` | `<name>` | `--clean`, `--dry-run` |
+| `specify slice create` | `<name>` | `--target`, `--if-exists` |
+| `specify slice transition` | `<name>`, `<target>` | `--reason` |
+| `specify slice validate` | `<name>` | |
+| `specify slice merge` | `<name>` | `--dry-run`, `--check-only` |
+| `specify workspace sync` | `[<project>…]` | |
+| `specify workspace push` | `[<project>…]` | `--dry-run` |
+| `specify workspace prepare-branch` | `<project>` | `--change`, `--source`, `--output` |
+| `specify tool run` | `<name>`, `[args…]` | arguments after `--` |
+
+`<target>` for `specify plan transition`: plan lifecycle `reviewed`; per-entry `done`. `pending` is written by `plan add` / `plan amend`, and `in-progress` is written only by `plan next`. `plan next` returns the active `in-progress` entry before selecting a new `pending` entry, and reports drained only when no active or pending entries remain. v1 has no per-entry `blocked`, `failed`, or `skipped` state; build failures and merge conflicts leave the active entry `in-progress`. `<target>` for `specify slice transition`: `refining`, `refined`, `built`, `dropped` (`--reason` only for `dropped`; the `merged` state is stamped by `specify slice merge`, never `slice transition`). Repeatable flags: `plan create --source`, `plan add` / `amend` `--depends-on` / `--sources` / `--add-source` / `--remove-source` / `--context`, `workspace prepare-branch` `--source` / `--output`. `plan add` / `plan amend` `--sources` and `--add-source` take `<key>=<candidate-id>` arguments — the source key references a top-level `plan.yaml.sources.<key>` binding and the candidate id references a `## Candidate inventory` block in `discovery.md`; the bare `<key>` shorthand is accepted only when the candidate id equals the slice's own `name` (typical for `intent`). `--remove-source` takes `<key>` alone (one binding per key per slice). `plan amend --add-source` / `--remove-source` only succeed while the slice's per-entry lifecycle is `pending` and the plan lifecycle is at most `reviewed`; rebinding an already-extracted slice requires `slice transition dropped` and re-add. `plan amend --divergence <accepted|rejected>` writes `slices[].divergence` and is accepted at any per-entry lifecycle state; the field is advisory metadata in v1 (no halt/park is wired against any value) and records operator acknowledgement (or rejection) of the `propose`-time `likely` prediction. `none` cannot be set explicitly — absence is none — and `likely` is reserved for the `propose` sub-step.
+
+Axis deltas from 1.x: `specify source resolve`; `specify target resolve` (was `adapter resolve`); `specify plan transition ... reviewed`; `specify plan amend --add-source` / `--remove-source`; `specify change *` and `specify adapter pipeline` retire. Skill/slash retirements match §Operator workflow -> Commands.
+
+#### What was cut and why
+
+**Reads — operator or agent opens the file directly.**
+
+`specify status`, `specify plan show`, `specify plan status`, `specify slice status`, `specify workspace status`, `specify registry show`, `specify source list`, `specify target list`, `specify tool list`, `specify tool show`, `specify slice journal show`, `specify slice outcome show`, `specify slice task progress`. Every one of these formatted a YAML or Markdown file that anyone can `cat`. No skill needs the CLI to read state back to it; the agent reads `.specify/project.yaml`, `.specify/plan.yaml`, `.specify/slices/<name>/.metadata.yaml` directly.
+
+**Validation folded into the write verb.**
+
+- `specify plan validate` — `plan add` and `plan amend` refuse to write an invalid plan; first-use validation is the seam.
+- `specify source validate`, `specify target validate` — `source resolve` and `target resolve` validate the manifest on load.
+- `specify registry validate` — `workspace sync` and `/spec:plan` refuse to operate on a malformed registry.
+- `specify context check` — not needed without `context generate`.
+
+**Folded into a parent verb.**
+
+- `specify slice drop` -> `specify slice transition <name> dropped --reason "..."`.
+- `specify slice outcome set` — not needed in v1. Slice lifecycle alone tells `/spec:execute` where to resume; the chat session and on-disk artifacts carry the failure diagnostic. Persisted phase outcomes are observability and belong with RFC-19. Reinstate when crash-recovery diagnostics must survive an agent restart.
+- `specify slice journal append` — defer to RFC-19; nothing in v1 signals through the journal.
+- `specify context generate` — `specify init` writes the initial `AGENTS.md` and `.specify/context.lock`. Drift detection (`--check`) is a CI affordance; ship when a CI integration asks for it.
+- `specify tool fetch` — `specify tool run` fetches `.wasm` on first call.
+
+**No skill caller in v1 — topology and helpers hand-coded in skills until a real caller appears.**
+
+- `specify slice synthesize`, `specify target build`, `specify target merge` — synthesis and target brief topology for the two or three known target adapters (omnia, vectis, contracts) is hand-coded in `/spec:refine`, `/spec:build`, `/spec:merge`. Reinstate when a third-party target ships with custom brief ordering.
+- `specify slice touched-specs` — `/spec:merge` diffs the slice's `specs/` against the baseline inline.
+- `specify slice overlap` — parallel-slice safety; single-operator v1 has no parallel slices to coordinate.
+- `specify slice task progress`, `specify slice task mark` — `/spec:build` greps `- [ ]` in `tasks.md` and edits the checkbox in place.
+- `specify compatibility check` — defer until a real cross-project consumer exists.
+
+**Deferred — separate consumer ask.**
+
+- `slice transition refined_provisional` — the second structural gate (operator review of synthesis output as a parking state). Multi-source synthesis ships in v1; `/spec:refine` surfaces `[conflict]` / `[divergence]` / `[unknown]` inline in `spec.md` as review signals and `/spec:build` does not refuse on those tags. The `divergence:` enum on slice entries already carries the Gate-1 acknowledgement signal a future park would consume, with `surfaced` / `confirmed` / `resolved` reserved as forward-compatible values, so the parking state can be wired in without a schema change when a real consumer demands review-then-promote ergonomics, automation hooks, or CI gating around synthesis output.
+- `--parallel-extract` flag (or implicit parallelism) on `/spec:refine`. v1 runs `extract` serially in `planSlice.sources` declaration order for deterministic goldens; parallel extraction returns when extract latency becomes a real workflow cost.
+- `plan.yaml.slices[].authority-override` and per-claim authority overrides. v1 uses adapter-class defaults; per-slice and per-claim overrides return when editing `spec.md` after `[divergence]` is no longer an adequate operator seam.
+
+**Operator-curated YAML — hand-edit, validation on first use.**
+
+`specify registry add`, `specify registry remove`. `AGENTS.md` does not forbid hand-editing `registry.yaml` (the off-limits list is `.metadata.yaml`, archive paths, and `.specify/` scaffolding). Operators edit `registry.yaml` directly; `workspace sync` and `/spec:plan` validate at first use.
+
+**Permanent surface for transient or never-existing need.**
+
+- `specify upgrade` — migration ships as `migrate-to-2.0.sh` with the release notes.
+- `specify plan archive` — covered by `plan finalize`.
+- `specify plan lock {acquire, release, status}` — internal to `/spec:execute` and the breakout verbs.
+- `specify tool gc` — `rm -rf .specify/.cache/` until cache pressure is a real workflow.
+- `specify codex export` — moves into a `codex` target adapter under `specify target *`.
+
+**Borderline — ship if trivial, otherwise defer.**
+
+`specify completions <shell>` — no skill caller, but `clap_complete` is one line and shell completion is the most-expected nicety in a CLI. Ship when the `clap_complete` dependency is paid for any reason.
+
+**Retired pre-redesign surface (verbs that never reach v1):**
+
+`specify adapter *`, `specify change *`, `specify change survey`, `specify plan doctor`.
+
+#### When verbs come back
+
+Add a verb when at least one of these is true:
+
+1. A skill body is reimplementing nontrivial domain logic that should live in the CLI.
+2. A documented external consumer (CI, hosted runner, third-party adapter) needs the structured shape.
+3. The on-disk file the verb writes is documented as off-limits to hand-editing.
+
+Speculation — "we might need this someday" — is not on the list.
 
 ### Skill / `SKILL.md` changes
 
@@ -826,7 +914,7 @@ Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenari
 
 ## Migration
 
-Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); removes `plugins/vectis/skills/image-layout-inferer/` (its body lifts into `sources/screenshots/`); retires baseline `layout.yaml` paths and warns when it finds an existing `composition.yaml` (now a build output, regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`); and adds `reviewed` on first read. There is no `specify upgrade`; see [commands.md](commands.md). Dry-run against a 1.x fixture before tag.
+Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); removes `plugins/vectis/skills/image-layout-inferer/` (its body lifts into `sources/screenshots/`); retires baseline `layout.yaml` paths and warns when it finds an existing `composition.yaml` (now a build output, regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`); and adds `reviewed` on first read. There is no `specify upgrade`; see §CLI surface. Dry-run against a 1.x fixture before tag.
 
 Plugin authors: `adapter.yaml` fails on 2.0. Skill authors: use `/spec:execute`; stop conditions surface to the operator. Automation: Gate 1 is `plan.lifecycle == reviewed`; synthesis warnings come from `spec.md` or journal events.
 
@@ -851,7 +939,7 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 - Cross-repo source sharing; bidirectional adapters; source adapters editing post-authoring artifacts.
 - `/spec:execute` session tokens, `--continue`, or folding finalize into merge.
 - Deleting `change.md` / `plan.yaml`; "manual mode" without execute.
-- Gate 2, `/spec:execute` automation flags, parallel extract, per-claim authority overrides, multi-target projects, cross-mode workspace+standalone driving; reinstate when a real consumer asks. [commands.md](commands.md) tracks the deferrals.
+- Gate 2, `/spec:execute` automation flags, parallel extract, per-claim authority overrides, multi-target projects, cross-mode workspace+standalone driving; reinstate when a real consumer asks. §CLI surface tracks the deferrals.
 
 ## Open questions
 
@@ -879,7 +967,6 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 - [RFC-23 (archived)](archive/rfc-23-change-lifecycle.md) - superseded lifecycle.
 - [RFC-24](rfc-24-omnia.md) - target `shape`; Omnia as target adapter.
 - [RFC-15 (archived)](archive/rfc-15-wasm-plugins.md) - WASI tools.
-- [commands.md](commands.md) - CLI v1 floor.
 - [specify-cli/AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) - exit codes.
 - [project.mdc](../.cursor/rules/project.mdc) - artifact authority; synthesis hierarchy in §Synthesis contract.
 - [AGENTS.md](../AGENTS.md) - plan-driven loop vocabulary.

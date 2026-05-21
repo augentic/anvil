@@ -257,7 +257,7 @@ RFC-26 deltas on top of [RFC-25 §CLI surface](../rfc-25-workflow.md#cli-surface
 - **New transition:** `specify plan transition <change> reviewed` — Gate 1; `/spec:execute` refuses until set
 - `specify change *` retires with no deprecation aliases (hard cut at 3.0)
 
-The v1 floor is 18 verbs; every cut and deferred verb is listed in [`commands.md`](../commands.md). The collapse is almost entirely a skill / brief redesign — the CLI substrate barely moves and shrinks.
+The v1 floor is 18 verbs; every cut and deferred verb is listed in [RFC-25 §CLI surface](../rfc-25-workflow.md#cli-surface). The collapse is almost entirely a skill / brief redesign — the CLI substrate barely moves and shrinks.
 
 ### Skill / SKILL.md changes
 
