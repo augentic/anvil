@@ -283,8 +283,7 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 - [RFC-20: Survey-to-Plan Pipeline](archive/rfc-20-survey.md) — surfaces, adapter leaves, and the routing-hint precedence this RFC's `plan compose` joins against.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache that backs `surveys.json` between draft and execute.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
-- [`plugins/omnia/skills/crate-writer/SKILL.md`](../plugins/omnia/skills/crate-writer/SKILL.md) — the writer whose `$CRATE_NAME` contract this RFC formalises into a schema field.
-- [`plugins/omnia/skills/guest-writer/SKILL.md`](../plugins/omnia/skills/guest-writer/SKILL.md) — the writer that owns the Omnia service workspace into which the surveyed handlers land.
+- [`targets/omnia/briefs/build.md`](../targets/omnia/briefs/build.md) — the build brief (formerly the `omnia-crate-writer` and `omnia-guest-writer` skill bodies) whose `$CRATE_NAME` contract this RFC formalises into a schema field, and which owns the Omnia service workspace into which surveyed handlers land.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `crate` and `surfaces`.
 - [`schemas/adapter.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/adapter.schema.json) — adapter manifest format the validator consults for the Omnia gate.
 - [`crates/domain/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/catalog.rs) — `Registry::projects[].adapter` source the adapter resolution reads.

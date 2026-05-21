@@ -11,6 +11,7 @@
 import {
   Ajv2020,
   PROFILES_DIR,
+  TARGETS_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   join,
@@ -101,17 +102,19 @@ async function discoverScenarioCandidates(): Promise<string[]> {
   }
 
   // Discovery roots 4 & 5: adapters/<cap>/tests/<scenario>.md
-  // and adapters/<cap>/tests/<scenario>/scenario.md
-  try {
-    const stat = await Deno.stat(PROFILES_DIR);
-    if (stat.isDirectory) {
+  // and adapters/<cap>/tests/<scenario>/scenario.md (plus the matching
+  // targets/<target>/tests/... layout post-RFC-25 source/target split).
+  for (const root of [PROFILES_DIR, TARGETS_DIR]) {
+    try {
+      const stat = await Deno.stat(root);
+      if (!stat.isDirectory) continue;
       for await (
-        const entry of walk(PROFILES_DIR, {
+        const entry of walk(root, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
-        const rel = relative(PROFILES_DIR, entry.path).split("/");
+        const rel = relative(root, entry.path).split("/");
         // Flat: <cap>/tests/<scenario>.md  → 3 parts
         if (rel.length === 3 && rel[1] === "tests") {
           candidates.push(entry.path);
@@ -125,9 +128,9 @@ async function discoverScenarioCandidates(): Promise<string[]> {
           candidates.push(entry.path);
         }
       }
+    } catch {
+      // Optional root.
     }
-  } catch {
-    // No adapters/.
   }
 
   // Discovery root 6:

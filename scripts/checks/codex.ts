@@ -9,6 +9,7 @@
 import {
   Ajv2020,
   PROFILES_DIR,
+  TARGETS_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   formatSchemaError,
@@ -36,24 +37,25 @@ const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
 async function discoverCodexRuleFiles(): Promise<string[]> {
   const paths: string[] = [];
 
-  try {
-    const stat = await Deno.stat(PROFILES_DIR);
-    if (stat.isDirectory) {
+  for (const root of [PROFILES_DIR, TARGETS_DIR]) {
+    try {
+      const stat = await Deno.stat(root);
+      if (!stat.isDirectory) continue;
       for await (
-        const entry of walk(PROFILES_DIR, {
+        const entry of walk(root, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
         if (await underSymlink(entry.path)) continue;
-        const parts = relative(PROFILES_DIR, entry.path).split("/");
+        const parts = relative(root, entry.path).split("/");
         if (parts.length >= 3 && parts[1] === "codex") {
           paths.push(entry.path);
         }
       }
+    } catch {
+      // Optional root.
     }
-  } catch {
-    // No adapters/.
   }
 
   const rootCodexDir = join(REPO_ROOT, "codex");
@@ -78,8 +80,12 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
 }
 
 function adapterOwnerForCodexPath(path: string): string | null {
-  const parts = relative(PROFILES_DIR, path).split("/");
-  if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+  for (const root of [PROFILES_DIR, TARGETS_DIR]) {
+    const rel = relative(root, path);
+    if (rel.startsWith("..") || rel.startsWith("/")) continue;
+    const parts = rel.split("/");
+    if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+  }
   return null;
 }
 

@@ -111,17 +111,9 @@ Generate or update the Kotlin/Jetpack Compose Android shell.
 
 Review Android shell code using an agent team (structural, quality, integration specialists + antagonist).
 
-### /vectis:image-layout-inferer
+### Screenshots source adapter
 
-Reconstruct `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline.
-
-**Inputs:** PNG or JPEG images of application screens. Optional `--platform ios|android|web` hint for chrome cropping. Optional `--baseline` to refine an existing `layout.yaml` rather than starting fresh.
-
-**Outputs:** `layout.yaml` -- a schema-valid, unwired layout document that `/spec:define` can later wire into `composition.yaml`. Validates staged output via `specify tool run vectis -- validate layout` before writing.
-
-**Pipeline:** triage images into screens/states, crop platform chrome, infer regions (header/body/footer/fab/overlays), infer containers (rows, columns, cards, lists), infer leaves (text, controls, images, icons), detect candidate components across screens, emit gap comments for ambiguities.
-
-**When to use:** an operator supplies PNG or JPEG screenshots and wants a layout document without hand-authoring YAML; or when refining an existing `layout.yaml` from new screenshot evidence. Follows the shared layout-inferer contract at `plugins/vectis/references/layout-inferer-contract.md`.
+Spatial inference over screenshots lives on the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml), not the Vectis plugin. The two operations of the source adapter — [`enumerate`](../../../sources/screenshots/briefs/enumerate.md) and [`extract`](../../../sources/screenshots/briefs/extract.md) — replace the retired `vectis-image-layout-inferer` skill; the inference algorithm is unchanged. `/spec:plan` runs `enumerate` to identify candidate screens; `/spec:refine` runs `extract` to emit `region` / `container` / `leaf` Evidence claims with `documentation` authority. Downstream `targets/vectis/build` consumes those claims when regenerating `composition.yaml` from the synthesised `spec.md` / `design.md`.
 
 ### /vectis:template-updater
 

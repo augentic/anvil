@@ -1,5 +1,0 @@
-# Adapter-scope tool declarations for the Vectis adapter.
-# Schema: ../../../specify-cli/schemas/tool.schema.json
-#
-tools:
-  - "specify:vectis@0.3.0"

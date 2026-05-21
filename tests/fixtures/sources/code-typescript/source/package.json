@@ -1,0 +1,14 @@
+{
+  "name": "legacy-monolith",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/server.ts",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0"
+  }
+}

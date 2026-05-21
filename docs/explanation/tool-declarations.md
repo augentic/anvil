@@ -179,9 +179,10 @@ tools:
 First-party adapter-scope package that must create root-level project files:
 
 ```yaml
-# adapters/vectis/tools.yaml
+# targets/vectis/adapter.yaml (tools[])
 tools:
-  - "specify:vectis@0.3.0"
+  - name: vectis
+    version: "0.3.0"
 ```
 
 Invocation:

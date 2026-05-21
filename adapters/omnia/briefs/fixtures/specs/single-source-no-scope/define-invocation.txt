@@ -1,2 +1,0 @@
-/spec:define lift-small-legacy \
-    --source legacy=./legacy

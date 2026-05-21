@@ -1,1 +1,0 @@
-../../../references/layout-inferer-contract.md

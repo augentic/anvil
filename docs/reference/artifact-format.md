@@ -252,7 +252,7 @@ Tasks without a skill tag are implemented via the adapter's default build instru
 
 The pre-define and post-define surfaces are two sibling artifacts that share the same JSON Schema:
 
-- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers) or hand-authored. Validated by `specify tool run vectis -- validate layout`, which enforces the unwired-subset rule and the structural-identity rule.
+- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers (the [`screenshots` source adapter](../../sources/screenshots/adapter.yaml) is the first-party producer; future Figma and source-code inferers reuse the same contract) or hand-authored. Validated by `specify tool run vectis -- validate layout`, which enforces the unwired-subset rule and the structural-identity rule.
 - **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify tool run vectis -- validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
 
 ### Format

@@ -38,7 +38,7 @@ remains the human-readable operator contract.
 ## Scenario Pack Shape
 
 The scenario follows the same compact shape used by
-[`adapters/contracts/tests/`](../../adapters/contracts/tests/README.md):
+[`targets/contracts/tests/`](../../targets/contracts/tests/README.md):
 
 1. **YAML frontmatter** - machine-readable routing and assertions.
 2. **Heading + `Scenario ID:` line** - visible copy of the scenario ID.

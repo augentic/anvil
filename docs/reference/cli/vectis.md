@@ -40,7 +40,7 @@ specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-fil
 specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
-`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `adapters/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
+`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by [`targets/vectis/adapter.yaml`](../../../targets/vectis/adapter.yaml) (`tools[]`); it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis target's [`build`](../../../targets/vectis/briefs/build.md) and [`merge`](../../../targets/vectis/briefs/merge.md) briefs.
 
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
 
@@ -49,4 +49,4 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 - [specify tool](tool.md) -- declared WASI tool runner surface
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
 - [Vectis Adapter](../adapters/vectis.md) -- adapter reference for cross-platform projects
-- [`adapters/vectis/tools.yaml`](../../../adapters/vectis/tools.yaml) -- Vectis adapter tool declarations
+- [`targets/vectis/adapter.yaml`](../../../targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations

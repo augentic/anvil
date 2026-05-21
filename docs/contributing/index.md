@@ -51,8 +51,6 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
 
-- `plugins/omnia/skills/crate-writer/examples/` -- generated crate patterns and update cases.
-- `plugins/omnia/skills/test-writer/examples/` -- provider-backed test patterns.
-- `plugins/vectis/skills/core-writer/references/examples/` -- Crux core examples.
-- `plugins/vectis/skills/ios-writer/references/examples/` and `plugins/vectis/skills/android-writer/references/examples/` -- shell integration examples.
-- `plugins/change/skills/execute/fixtures/` and `plugins/change/skills/plan/fixtures/` -- plan and execution transcripts for workflow behavior.
+- [`targets/omnia/briefs/build.md`](../../targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (the bodies of the retired `omnia-crate-writer` and `omnia-test-writer` skills moved into this brief in RFC-25 W2.5).
+- [`plugins/vectis/references/`](../../plugins/vectis/references/) and [`adapters/vectis/examples/`](../../adapters/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`targets/vectis/briefs/`](../../targets/vectis/briefs/).
+- [`plugins/change/skills/execute/fixtures/`](../../plugins/change/skills/execute/fixtures/) and [`plugins/change/skills/draft/fixtures/`](../../plugins/change/skills/draft/fixtures/) -- plan and execution transcripts for workflow behavior.

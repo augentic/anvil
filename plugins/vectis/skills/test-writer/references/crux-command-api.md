@@ -1,1 +1,0 @@
-../../core-writer/references/crux-command-api.md

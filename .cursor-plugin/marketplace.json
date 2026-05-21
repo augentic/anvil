@@ -16,19 +16,9 @@
       "description": "Skills to assist in the migration of TypeScript projects to Omnia Rust wasm32-wasip2 crates."
     },
     {
-      "name": "omnia",
-      "source": "omnia",
-      "description": "Skills to generate Omnia Rust wasm32-wasip2 crates."
-    },
-    {
       "name": "client",
       "source": "client",
       "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts."
-    },
-    {
-      "name": "vectis",
-      "source": "vectis",
-      "description": "Skills to generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system)."
     },
     {
       "name": "spec",
@@ -39,11 +29,6 @@
       "name": "change",
       "source": "change",
       "description": "Skills for Specify change orchestration: authors `plan.yaml` (`/change:draft`) and finalizes a completed change (`/change:finalize`); execution remains `/change:execute`. `/change:analyze` infers plan-time adapter summaries from legacy code or documentation inputs."
-    },
-    {
-      "name": "contract",
-      "source": "contract",
-      "description": "Skills to author, import, and verify API/interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future formats — from Specify artifacts."
     }
   ]
 }

@@ -6,9 +6,9 @@ This directory holds the first-party Specify **adapter manifests**. A adapter de
 
 - [`adapter.schema.json`](adapter.schema.json) — JSON Schema (draft 2020-12) that every `adapter.yaml` validates against. The post-RFC-13 manifest carries only `name`, `version`, `description`, and `pipeline { define, build, merge }`; the schema actively rejects the dropped `domain`, `extends`, and `pipeline.plan` fields. RFC-13 §3.11 moved the planning briefs the omnia and vectis manifests used to declare into the change-component planning skill (`plugins/change/skills/plan/briefs/<adapter>/`) — planning is orchestration, not adapter-owned slice work.
 - [`default/`](default/adapter.yaml) — Foundational Specify workflow and universal review codex.
-- [`omnia/`](omnia/adapter.yaml) — Omnia Rust WASM workflow.
-- [`contracts/`](contracts/adapter.yaml) — API contract definition and validation (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0).
-- [`vectis/`](vectis/adapter.yaml) — Vectis Crux cross-platform workflow (Rust core, iOS shell, Android shell, design system).
+- `omnia/` — **Retired in RFC-25 W2.5**; moved to [`targets/omnia/`](../targets/omnia/) under the source / target split.
+- `contracts/` — **Retired in RFC-25 W2.7**; moved to `targets/contracts/` under the source / target split.
+- `vectis/` — **Retired in RFC-25 W2.6**; moved to `targets/vectis/` under the source / target split.
 
 Each first-party adapter ships a directory of the shape:
 

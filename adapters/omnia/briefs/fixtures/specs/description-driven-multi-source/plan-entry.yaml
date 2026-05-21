@@ -1,8 +1,0 @@
-name: cross-source-refactor
-sources: [monolith, shared-lib]
-depends-on: []
-description: >
-  Refactor the ingest pipeline (src/ingest/, src/kafka/) from the
-  monolith and consolidate shared helpers from shared-lib into a
-  unified data-processing crate.
-status: pending

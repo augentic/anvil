@@ -24,6 +24,7 @@ export const REPO_ROOT = resolve(
   "..",
 );
 export const PROFILES_DIR = join(REPO_ROOT, "adapters");
+export const TARGETS_DIR = join(REPO_ROOT, "targets");
 export const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 
 export const RED = "\x1b[0;31m";
