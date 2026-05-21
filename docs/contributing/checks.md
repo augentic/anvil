@@ -120,7 +120,7 @@ owner: contracts
 kind: adapter
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
+entrypoint: /spec:refine
 stages: [define, build, merge]
 isolation: fresh-project
 authorship-mode: prose

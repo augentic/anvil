@@ -1,156 +1,135 @@
 # Quick Reference
 
-## The two loops
-
-### Single Slice
+## The default rhythm
 
 ```text
-/spec:init                     # one-time setup
-/spec:define "description"     # generate artifacts
-/spec:build                    # implement tasks
-/spec:merge                    # merge specs (+ composition) into baseline
+/spec:init <target>                          # one-time setup
+/spec:plan <name> source intent="..."        # author plan.yaml, exit at pending
+specify plan transition <name> reviewed      # Gate 1: operator-only stamp
+/spec:execute                                # drives refine → build → merge per slice
+/spec:finalize <name>                        # push branches, observe PRs, archive
 ```
 
-### Multi-slice change
+The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
 
 ```text
-/change:draft <name> source legacy=./path   # author plan, stop at hand-off
-# operator reviews plan.yaml (specify plan amend / status as needed)
-/change:execute loop                        # run until done
-/change:finalize <name>                     # push, observe PRs, archive
-```
-
-### Cross-repo bootstrap
-
-```text
-/spec:init hub                                     # bootstrap a platform hub
-specify registry add <project> --url ... --adapter ...
-/change:draft <name> source legacy=./path          # author the cross-repo plan
-# then proceed through /change:execute loop and /change:finalize <name> as above
+/spec:plan <name> source legacy=./vendor/monolith source docs=./design-notes
 ```
 
 ## All skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/spec:init` | One-time project setup (`hub` for a platform hub) |
-| `/spec:define` | Generate artifacts for a new slice |
-| `/spec:build` | Implement tasks |
-| `/spec:merge` | Merge completed slice into baseline |
-| `/spec:drop` | Discard a slice |
-| `/spec:extract` | Extract specs from existing code |
-| `/change:analyze` | Plan-time adapter inference (invoked by `/change:draft`) |
-| `/change:draft` | Author a multi-slice plan; stop at the operator review seam |
-| `/change:execute` | Automate the plan loop |
-| `/change:finalize` | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` |
-| `/contract:openapi` | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
-| `/contract:asyncapi` | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
-| `/contract:json-schema` | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
+| Skill                    | Purpose                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace            |
+| `/spec:plan`             | Enumerate sources, propose `slices[]`, exit at Gate 1                                          |
+| `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
+| `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
+| `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
+| `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
+| `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
+| `/spec:drop`             | Discard a slice without merging                                                                |
+| `/contract:openapi`      | Author / import / verify OpenAPI 3.1 contracts; intent dispatched internally                   |
+| `/contract:asyncapi`     | Author / import / verify AsyncAPI 3.0 contracts; intent dispatched internally                  |
+| `/contract:json-schema`  | Author / import / verify reusable JSON Schema payloads; intent dispatched internally           |
 
 ## Artifacts
 
-| Artifact | Question | Location |
-|----------|----------|----------|
-| `proposal.md` | Why? | `.specify/slices/<name>/proposal.md` |
-| `spec.md` | What? | `.specify/slices/<name>/specs/<cap>/spec.md` |
-| `contracts/**/*.yaml` | Shape? | `contracts/` (baseline) or `.specify/slices/<name>/contracts/` (delta) |
-| `composition.yaml` | Where? (Vectis) | `.specify/slices/<name>/composition.yaml` |
-| `design.md` | How? | `.specify/slices/<name>/design.md` |
-| `tasks.md` | Sequence? | `.specify/slices/<name>/tasks.md` |
+| Artifact            | Question                            | Location                                                          |
+| ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
+| `change.md`         | Why is the change happening?        | `.specify/change.md` (workspace mode: at workspace root)          |
+| `plan.yaml`         | Which slices, in what order?        | `.specify/plan.yaml`                                              |
+| `discovery.md`      | What candidates did sources surface? | `.specify/discovery.md`                                           |
+| `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
+| `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<unit>/spec.md`                     |
+| `design.md`         | How will it be implemented?         | `.specify/slices/<name>/design.md`                                |
+| `tasks.md`          | In what sequence?                   | `.specify/slices/<name>/tasks.md`                                 |
+| `evidence/<key>.yaml` | What did this source say?         | `.specify/slices/<name>/evidence/<source-key>.yaml`               |
 
 ## Lifecycle states
 
-```
-created --> defining --> defined --> building --> complete --> merged
-    \          \           \           \            \
-     `-------->  `--------->  `--------->  `--------->  `-----> dropped
+Plan lifecycle (two stored states):
+
+```text
+pending --(operator stamps Gate 1)--> reviewed
 ```
 
-`defining` and `building` are transient states indicating a phase is in-flight.
+Per-entry status:
+
+```text
+pending --(plan next)--> in-progress --(slice merge)--> done
+```
+
+Slice lifecycle:
+
+```text
+refining --> refined --> built --> merged
+                            \
+                             `--> dropped (via slice transition --reason "...")
+```
 
 ## Key CLI commands
 
 ```bash
-# Status
-specify status                            # project dashboard
-specify slice status <name>              # single-slice view
-
 # Project setup
-specify init <adapter>                 # regular single-project scaffold (positional adapter identifier or URL)
-specify init --hub                        # registry-only platform hub
-specify context generate                  # write or refresh generated AGENTS.md guidance
-specify context generate --check          # CI dry-run; exit 1 when context would change
-specify context check                     # report stale AGENTS.md/context.lock state
-
-# Slice management
-specify status                                   # render every active slice
-specify slice transition <name> <target>
+specify init <target>                                    # single-project scaffold (positional target adapter)
+specify init --workspace                                 # registry-only workspace
+specify source resolve <name>                            # validate a source adapter manifest
+specify target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specify plan status
-specify plan next
-specify plan validate                     # base shape + cycle / orphan / stale-clone / unreachable
-specify plan transition <name> <target>
-specify plan lock status
+specify plan create <name> --source <key>=<spec>
+specify plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
+specify plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
+specify plan transition <name> reviewed                  # Gate 1; operator-only
+specify plan next                                        # active in-progress, or pick next pending
+specify plan finalize <name> --clean
+
+# Slice management
+specify slice create <name> --target <target>
+specify slice transition <name> <refining|refined|built|dropped> [--reason "..."]
+specify slice validate <name>
+specify slice merge <name> [--dry-run|--check-only]
 
 # Workspace (multi-repo)
-specify workspace sync [<project>...]      # omit selectors to sync all registry projects
-specify workspace status [<project>...]    # slot path/type, target, origin, branch, HEAD, dirty, slices
-specify workspace push [<project>...]      # transport existing specify/<change-name> branch, create/update PR
+specify workspace sync [<project>...]                    # materialise slots from registry.yaml
+specify workspace prepare-branch <project> --change <name>
+specify workspace push [<project>...]                    # publish specify/<name> branch as PR
 
-# Platform registry (multi-repo)
-specify registry show
-specify registry validate
-specify registry add <name> --url <url> --adapter <schema> --description "..."
-specify registry remove <name>
-
-# Change brief and closure
-specify change draft <name>          # scaffold change.md + plan.yaml
-specify change show
-specify change finalize              # verify merged PRs, archive plan
-specify change finalize --clean      # also remove clean .specify/workspace/<peer>/ clones
-
-# Plan authoring (multi-repo)
-specify plan add <name> --project <project>
-specify plan amend <name> --project <project>
-
-# Per-slice inspection
-specify slice validate <name>
-specify slice task progress <name>
-specify slice merge preview <name>
-specify slice merge conflict-check <name>
+# Tools
+specify tool run <name> [args...]                        # run a declared WASI tool
 ```
 
 ## Adapters
 
-| Adapter | URL | Target |
-|------------|-----|--------|
-| Omnia | `https://github.com/augentic/specify/adapters/omnia` | Rust WASM |
-| Vectis | `https://github.com/augentic/specify/adapters/vectis` | Crux cross-platform |
-| Contracts | `https://github.com/augentic/specify/adapters/contracts` | API contracts |
+Target adapters live under `targets/<name>/`:
+
+| Adapter   | URL                                                       | Target                |
+| --------- | --------------------------------------------------------- | --------------------- |
+| Omnia     | `https://github.com/augentic/specify/targets/omnia`       | Rust WASM             |
+| Vectis    | `https://github.com/augentic/specify/targets/vectis`      | Crux cross-platform   |
+| Contracts | `https://github.com/augentic/specify/targets/contracts`   | API contracts         |
+
+First-party source adapters live under `sources/<name>/`: `intent`, `documentation`, `code-typescript`, `screenshots`.
 
 ## Directory structure
 
-```
+```text
 <project-root>/
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
-├── registry.yaml         # platform catalogue (optional, multi-repo)
-├── plan.yaml             # change plan (optional)
-├── change.md             # operator brief (optional)
+├── registry.yaml         # workspace catalogue (workspace mode only)
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .specify/
-    ├── project.yaml      # project config
-    ├── context.lock      # fingerprint for specify context check
-    ├── plan.lock         # advisory lock for /change:execute
-    ├── .cache/           # cached adapter manifest + briefs
-    ├── slices/           # active slices (contracts/, composition.yaml for Vectis)
-    ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
-    ├── plans/            # change-draft working dirs (discovery, proposal)
-    ├── workspace/        # registry workspace slots (multi-repo only)
-    └── archive/          # finalized slices and plans
+    ├── project.yaml      # project config (target, sources, workspace, specify-version)
+    ├── change.md         # operator brief (per active change)
+    ├── plan.yaml         # change plan
+    ├── discovery.md      # plan-time candidate inventory
+    ├── plan.lock         # advisory lock for /spec:execute and breakouts
+    ├── .cache/           # cached adapter manifests + briefs ({sources,targets}/)
+    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
+    ├── specs/            # merged baseline
+    ├── workspace/        # workspace slots (workspace mode only)
+    └── archive/          # finalized plans and merged or dropped slices
 ```
-
-The `0.2.0` v2 layout split operator-facing platform artifacts (root) from framework-managed state (`.specify/`).
 
 ## Install
 

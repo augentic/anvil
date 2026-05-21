@@ -2,7 +2,7 @@
 
 Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make checks` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
 
-This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. `/spec:extract` migrating off a legacy codebase).
+This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. the `code-typescript` source adapter consuming a legacy codebase).
 
 ## Description grammar
 
@@ -57,8 +57,8 @@ Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules
 The canonical "skills MUST NOT" list:
 
 - **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition`, `specify slice outcome set`, `specify slice journal append`, or `specify plan transition`.
-- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify change draft`; the CLI owns directory shape.
-- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge run`, `specify slice drop`, `specify plan archive`, and `specify change finalize`.
+- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
+- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan finalize`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with a stable anchor instead.
 
@@ -75,7 +75,7 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+The phase skills (`/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:execute`, `/spec:finalize`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
 

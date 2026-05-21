@@ -69,6 +69,6 @@ git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet)
 This pipeline is typically used alongside the core Specify workflow:
 
 1. Clone and wiretap the legacy service to capture fixtures.
-2. Use `/change:draft` with `source legacy=<path>` to plan the migration.
-3. Use `/change:execute` to implement each slice.
+2. Use `/spec:plan` with `source legacy=<path>` to plan the migration.
+3. Stamp Gate 1 (`specify plan transition <name> reviewed`), then run `/spec:execute` to implement each slice.
 4. Use `/rt:replay-writer` to add regression tests that verify the new implementation matches the legacy behavior.

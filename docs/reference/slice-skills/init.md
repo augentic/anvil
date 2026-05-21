@@ -38,7 +38,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 2. Runs `specify init <adapter>` (regular) or `specify init --hub` (hub); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
 3. The CLI scaffolds the directory structure, writes `project.yaml`, and generates `AGENTS.md` plus `.specify/context.lock` when root `AGENTS.md` is absent.
 4. Existing root `AGENTS.md` files are preserved byte-for-byte; init reports the skip instead of overwriting them.
-5. Detects existing source code in the project. If found, offers to create an `initial-baseline` change for `/spec:extract`.
+5. Detects existing source code in the project. If found, the operator can bind it as a `code-typescript` (or future-language) source on the first `/spec:plan` invocation.
 
 ## Lifecycle transitions
 

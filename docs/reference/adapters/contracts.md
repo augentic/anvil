@@ -41,7 +41,7 @@ After the standard delta merge succeeds, the merge brief shells out to the decla
 
 Use the `contracts` adapter when:
 
-- **Contract-first:** Defining a new API contract before implementation begins. `/change:draft` inserts these automatically when it detects an API boundary between projects.
+- **Contract-first:** Defining a new API contract before implementation begins. Operators bind a contracts-only source (or rely on the contracts target's `shape` brief) when planning the change.
 - **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the slice's `contracts/` directory.
 - **Standalone modification:** Modifying existing platform contracts independently of implementation slices.
 

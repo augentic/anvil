@@ -431,6 +431,7 @@ const IMPERATIVE_VERBS = new Set([
   "propose",
   "publish",
   "reconstruct",
+  "refine",
   "render",
   "resolve",
   "review",

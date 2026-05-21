@@ -1,0 +1,11 @@
+# Operator-curated registry. Plan #10 routes slices into these projects.
+version: 1
+projects:
+  - name: project-a
+    url: git@github.com:example/project-a.git
+    target: omnia
+    description: API service.
+  - name: project-b
+    url: git@github.com:example/project-b.git
+    target: omnia
+    description: Background worker fleet.

@@ -249,3 +249,91 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Rationale:** `/change:plan` doubled as authoring skill and orchestration umbrella, hiding the operator review pause between authoring and execution and breaking lifecycle symmetry with `/spec:define → /spec:build → /spec:merge`. Three peer skills with an explicit human seam between draft and execute restore the rhythm and make the review pause a property of the framework rather than an opt-in manual flow. The seven-step orchestration body survives, redistributed across the three skills; the umbrella mode is removed outright.
 
 **Source:** [RFC-23: Change Lifecycle](https://github.com/augentic/specify/blob/main/rfcs/rfc-23-change-lifecycle.md).
+
+## Source/target split (RFC-25 D1)
+
+**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `targets/<name>/adapter.yaml`. The plugin loader (`crates/domain/src/plugin/`) routes by axis and the cache splits as `.specify/.cache/{sources,targets}/<name>/`.
+
+**Rationale:** `/change:analyze` and `/change:survey` were two evidence sources for the same operation; `/spec:define` and `/spec:extract` repeated the pattern at slice time. Unqualified `adapter` only named outputs, leaving no symmetrical term for inputs. Qualifying by direction makes the input/output asymmetry explicit, gives third-party legacy migration a first-class home (source adapters), and lets one resolver module replace the bifurcated define/analyze surface.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Core owns synthesis (RFC-25 D2)
+
+**Decision:** Source adapters emit `Evidence` only; target adapters supply `shape` only; **core owns canonical artifacts** (`proposal.md`, `spec.md`, `design.md`, `tasks.md`). `/spec:refine` runs extraction, synthesis, validation, and lifecycle transition. Synthesis authors from `plugins/spec/references/synthesis/`; the CLI validates structure and stamps lifecycle.
+
+**Rationale:** 1.x let each adapter author its own `spec.md` and `design.md`, which blocked multi-source synthesis (no canonical document to fold two sources into) and forced every adapter to ship near-duplicate define briefs. Pulling synthesis into core means every adapter inherits multi-source fusion, requirement provenance, and tag-and-proceed disagreement handling without re-implementing them.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Multi-source slices (RFC-25 D3)
+
+**Decision:** `Slice.sources` is a list of `{ key, candidate }` bindings with cardinality ≥ 1. Each binding pairs a source key (referencing `plan.yaml.sources.<key>`) with the candidate id from `discovery.md` that contributed to the slice. The reader accepts a bare `<key>` shorthand when the candidate id equals the slice's `name`; the CLI always writes the structured form.
+
+**Rationale:** Combined evidence (code + documentation, intent + design notes, screenshots + product brief) is the common case for non-trivial work. Single-source slices become a degenerate one-binding case rather than the structural default. Carrying the candidate id on every binding preserves the back-reference into `discovery.md` so re-enumeration can replace by id without disturbing the slice row.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Provenance and disagreement tags (RFC-25 D4)
+
+**Decision:** Every requirement block in `spec.md` carries three header lines: `ID:` (stable merge key), `Sources:` (one or more source keys, highest authority first), `Status:` (closed enum `agreed` | `unknown` | `conflict` | `divergence`). Authority hierarchy is the closed enum `intent` > `documentation` > `behaviour`. Tags `[conflict]`, `[divergence]`, `[unknown]` surface inline on the requirement header; they never park the slice.
+
+**Rationale:** Multi-source synthesis routinely surfaces disagreements that cannot be auto-resolved. Tag-and-proceed keeps the slice lifecycle moving (`refining → refined → built → merged`) regardless of tag content; the operator hand-edits `spec.md` between refine and build when they want to reconcile, or amends the plan to drop a source. Parking the slice on every tag would have made multi-source slices unusable in practice.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Always plan (RFC-25 D5)
+
+**Decision:** Every change runs through `enumerate` and `plan.yaml`, including N=1. `/spec:define` retires; trivial work uses the degenerate `intent.enumerate` path — one operator-supplied intent value produces one candidate, which becomes one slice.
+
+**Rationale:** 1.x's `/spec:define` shortcut for "single trivial slice" duplicated the plan-time machinery and produced an orphan path that bypassed Gate 1. Collapsing to one rhythm — `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` — means N=1 and N=12 share every skill body, every CLI verb, and every artifact. Operator ergonomics at N=1 became the release blocker for the collapse.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Gate 1 only (RFC-25 D6)
+
+**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == reviewed`. The operator runs `specify plan transition <name> reviewed` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `reviewed` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
+
+**Rationale:** Multiple gates compound operator cost and incentivise skipping. One observable gate written by the operator at one observable moment makes the review pause unambiguous and unbypassable. Synthesis-time disagreements use tag-and-proceed; the `slices[].divergence` field carries the Gate-1 acknowledgement signal a future Gate 2 would consume, so the park can be wired in later without a schema change.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Supervised execute (RFC-25 D7)
+
+**Decision:** `/spec:execute` is the only v1 driver. It resumes from on-disk state — `plan.yaml.lifecycle`, per-entry `status`, slice `.metadata.yaml`. The skill ships with no automation flags (no `yes-plan`, `one`, `until`, `dry-run`, or `continue` variants). Build failures and merge conflicts park execute and surface the failure; the operator fixes and re-runs `/spec:execute` or invokes a breakout (`/spec:build`, `/spec:merge`).
+
+**Rationale:** Automation flags multiplied the number of resume paths the loop had to reason about and made every failure a question of "did execute stop because it finished, because a flag tripped, or because something broke?". Stripping the flags makes re-entry trivial: read on-disk state, pick up where the active entry left off. When a real automation consumer appears, the flags can be reinstated with a clear contract.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## CLI owns workflow writes (RFC-25 D8)
+
+**Decision:** The CLI is the single writer for lifecycle and deterministic workflow files: `plan.yaml`, `.metadata.yaml`, archive paths, `discovery.md`, `sources.yaml`, `targets.yaml`. Skills and adapters never hand-edit these. Skills do drive content writes (evidence bodies, synthesized artifacts, implementation code) where the contract allows; adapters retain authorship of their briefs.
+
+**Rationale:** LLM-interpreted prose rules for lifecycle transitions produced unreliable results — partial writes, inconsistent state, missing validation. A binary that returns structured JSON and exit codes gives deterministic correctness for the files everyone has to trust. Skills stay agent-driven for the parts that need judgment (synthesis, code generation, review) and shell out for the parts that need determinism.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Uniform workspace routing (RFC-25 D9)
+
+**Decision:** `/spec:execute` and the breakout verbs share the same routing: plan lock at workspace root → resolve the active slice's project → `workspace sync` of that slot → `chdir` → phase work → return. Phase skills remain unaware of multi-repo routing; the driver handles it identically whether invoked from the loop or as a breakout.
+
+**Rationale:** 1.x had separate routing paths for the loop and the manual breakouts, which meant a workspace breakout after a build failure required the operator to navigate to the right slot by hand. Sharing the routing rule means an operator can park execute, run `/spec:build` from the workspace root, and have the driver place them in the correct project slot automatically.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Hard cut at 2.0 (RFC-25 D10)
+
+**Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases. Operators upgrade via `migrate-to-2.0.sh`, which renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, the cache, and archive fields; rewrites `plan.yaml.slices[].sources` into the structured `{ key, candidate }[]` shape; moves the legacy Vectis `image-layout-inferer` body to `sources/screenshots/`; retires baseline `layout.yaml` paths and warns on existing `composition.yaml` (now a target build output); and bumps `specify-version`.
+
+**Rationale:** Compatibility shims for an in-flight pre-1.0 redesign multiply the surface area of every change without serving real consumers (there is no production install base yet). One mechanical migration script lets the rename land in one PR train without any code path having to support both shapes.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
+
+## Automated propose (RFC-25 D11)
+
+**Decision:** `/spec:plan`'s `propose` sub-step fuses `Candidate[]` from each source's `enumerate` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing candidate blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specify plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — fusion runs on candidate headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
+
+**Rationale:** Operator-driven candidate fusion at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
+
+**Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).

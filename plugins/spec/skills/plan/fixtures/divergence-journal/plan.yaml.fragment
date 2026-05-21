@@ -1,0 +1,9 @@
+  - name: identity-session-expiry
+    target: omnia
+    sources:
+      - key: identity-design-notes
+        candidate: session-expiry
+      - key: legacy-monolith
+        candidate: session-expiry
+    divergence: likely
+    status: pending

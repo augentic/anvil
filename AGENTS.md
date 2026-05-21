@@ -6,51 +6,61 @@ This is a **documentation/prompt-engineering repository**. The codebase consists
 
 ### Vocabulary
 
-Two lifecycle nouns recur throughout this codebase:
+Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verbatim:
 
-- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
+- **source adapter** — input role with two operations: `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `sources/<name>/adapter.yaml`.
+- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
+- **plugin** — shared shape for either adapter role; schema `plugin.schema.json`, loader under `crates/domain/src/plugin/`.
+- **candidate** — slice-sized unit emitted by `enumerate`; one block per candidate under `## Candidate inventory` in `discovery.md`, with stable `id` and `sources[]`.
+- **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+- **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
+- **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
+- **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
 
-Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
+Two workflow nouns recur throughout the codebase:
+
+- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
+
+Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
 
 ### Workflow overview
 
-Slash commands operators reach for, in roughly the order they appear in a project's life:
+The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
 
 - `/spec:init` — scaffold `.specify/`, run once per project.
-- `/spec:extract` — extract Specify artifacts from existing source code.
-- `/spec:define` — author a new slice (proposal, design, specs, tasks).
-- `/spec:build` — implement a slice's tasks.
-- `/spec:merge` — fold a slice's deltas into the baseline and archive it.
+- `/spec:plan` — author `change.md` and `plan.yaml`: enumerate each bound source, propose `slices[]` rows by fusing candidates across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specify plan transition <name> reviewed` command.
+- `specify plan transition <name> reviewed` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `reviewed` itself.
+- `/spec:execute` — refuses unless the plan is `reviewed`; loops `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
+- `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
+- `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
+- `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
-- `/change:draft` — author a change's `plan.yaml` via the planning brief pipeline; in multi-project hubs `sync-workspace` + `workspace.md` precede the propose step; for legacy-code changes `/change:survey` decomposes sources before propose.
-- `/change:survey` — decompose `legacy-code` sources into slice-sized candidates by driving per-language enumeration briefs and validating the result against the closed `surfaces.json` schema; invoked by `/change:draft` between sync-workspace and propose. Documentation-only changes skip this step entirely.
-- `/change:execute` — drive a change's `plan.yaml` through define → build → merge; supports `dry-run`, single-slice supervised run, and `loop` mode with self-heal and SIGINT/SIGTERM handling.
-- `/change:finalize` — push branches, observe PR state, run `specify change finalize` once every PR is `MERGED`.
+- `/spec:finalize` — push branches, observe PR state, run `specify plan finalize` once every PR is `MERGED`.
 
-For the three-layer composition (Layer 0 configuration → Layer 1 executing a change → Layer 2 planning a change, with the `specify` CLI as the substrate underneath) and the rename trail from earlier verb names, see [docs/explanation/decision-log.md](docs/explanation/decision-log.md).
+N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
 ### Skill / CLI responsibility split
 
-Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+Phase skills are agent-driven orchestrators. Every deterministic operation — manifest validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, baseline conflict detection, delta merge, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting operator intent, reading brief bodies, writing evidence and synthesized artifacts, invoking specialist skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
-The CLI surface skills depend on is documented in the [`specify` `--help`](https://github.com/augentic/specify-cli) output. The headline groups: `specify init`, `specify status`, `specify slice {…}` (per-slice verbs), `specify plan {…}` (plan CRUD + lifecycle), `specify change {draft, show, finalize}` (operator brief + canonical closure), `specify registry {add, remove, show, validate}`, `specify workspace {sync, status, push}`, `specify adapter {resolve, pipeline}`, and `specify tool run` (WASI tool dispatch — `contract`, `vectis`, …).
+The CLI surface skills depend on is documented in [`specify` `--help`](https://github.com/augentic/specify-cli). The headline groups: `specify init`, `specify source {resolve}`, `specify target {resolve}`, `specify slice {create, transition, validate, merge}`, `specify plan {create, add, amend, transition, next, finalize}`, `specify workspace {sync, push, prepare-branch}`, and `specify tool run` (WASI tool dispatch — `contract`, `vectis`, …).
 
-Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
+Never hand-edit `.metadata.yaml`, `project.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, or `targets.yaml`; never `mkdir -p .specify/...`; never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal lifecycle set and validates inputs in one place for humans, agents, and CI.
 
 ### Contract skills
 
-The contract plugin provides format-first specialist skills for API contract generation and validation. Each skill carries author / import / verify intents internally and dispatches via its own intent table:
+The contract plugin provides format-first specialist skills for API contract authoring and validation. Each carries author / import / verify intents internally and dispatches via its own intent table:
 
 - `/contract:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1).
 - `/contract:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0).
 - `/contract:json-schema` — author, import, or verify reusable payload schemas (JSON Schema).
 
-The matching CLI surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. Cross-project consumer-impact classification is exposed separately as `specify compatibility`.
+The matching CLI surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ### Plan-driven loop
 
-`/change:draft` authors the plan, `/change:execute loop` drives it, `/change:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: skip `/change:draft` and `/change:execute` and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+`/spec:plan` authors the plan and exits at Gate 1; the operator stamps `reviewed`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
 
 ### Commands
 
@@ -71,6 +81,7 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - Some skills use symlinks to share reference documents from `plugins/references/`. If a symlink target is removed, the skill's documentation may reference content that no longer resolves.
+- 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or `/change:*`. Operators upgrade via `migrate-to-2.0.sh`.
 
 ### Related coding standards
 

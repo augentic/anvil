@@ -5,6 +5,13 @@ acceptance scenarios in this repo. It exists to answer one question: for each
 `SKILL.md`, is there at least one scenario that exercises the skill's primary
 path end to end?
 
+> **2.0 status.** The matrix below was last refreshed against the 1.x skill set
+> (`/change:draft`, `/spec:define`, `/spec:extract`, …). 2.0 collapses those into
+> `/spec:plan`, `/spec:refine`, `/spec:execute`, `/spec:finalize`. The scenario
+> packs themselves still describe 1.x flows; the next audit pass will retag rows
+> to the 2.0 verbs after the new fixtures land. Treat 1.x verb names below as
+> historical labels for the underlying skill bodies they referenced.
+
 The audit was produced for cleanup-plan chunk **CL-S06** (Phase 5 — Skills
 polish) and is intended to be re-run by hand whenever a new skill or scenario
 lands. There is no automated coverage harness today; the matrix is the

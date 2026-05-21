@@ -1,129 +1,109 @@
 # The Layered Stack
 
-Specify is organised in three layers. Each layer is independently useful, and each builds on the one below it. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer. The CLI is not itself a layer; it is the medium through which every layer enforces correctness.
+Specify 2.0 is organised in three layers above the `specify` CLI substrate. Each layer is independently useful, and each builds on the one below it. The CLI is not itself a layer; it is the deterministic medium through which every layer enforces correctness.
 
 ```d2
 direction: down
 
-Layer2: "Layer 2 — Planning a change" {
-  draft: "/change:draft"
-  review: "(operator review of plan.yaml)" {shape: hexagon}
-  execute: "/change:execute"
-  finalize: "/change:finalize"
-  analyze: "/change:analyze"
-  draft -> review
-  review -> execute
+Layer2: "Layer 2 — Planning + driving a change" {
+  plan: "/spec:plan"
+  gate: "Gate 1\n(operator stamps reviewed)" {shape: hexagon}
+  execute: "/spec:execute"
+  finalize: "/spec:finalize"
+  plan -> gate
+  gate -> execute
   execute -> finalize
 }
 
-Layer1: "Layer 1 — Executing a change" {
-  define: "/spec:define"
+Layer1: "Layer 1 — Executing one slice" {
+  refine: "/spec:refine"
   build: "/spec:build"
   mergeSkill: "/spec:merge"
   drop: "/spec:drop"
-  extract: "/spec:extract"
 }
 
-Layer0: "Layer 0 — Configuration" {
+Layer0: "Layer 0 — Configuration + adapters" {
   projectYaml: "project.yaml"
-  adapterYaml: "adapter.yaml"
+  sources: "sources/<name>/adapter.yaml"
+  targets: "targets/<name>/adapter.yaml"
   schemas: "schemas/"
-  toolsYaml: "tools.yaml"
   initVerb: "specify init"
-  adapterVerb: "specify adapter"
+  resolveVerbs: "specify source/target resolve"
 }
 
 Layer2 -> Layer1
 Layer1 -> Layer0
 ```
 
-## Layer 0: Configuration
+## Layer 0: Configuration and adapters
 
-Layer 0 is the static project configuration that every higher layer reads. It declares **what** a project is — which adapter it uses, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed. Layer 0 is read by Layer 1 and Layer 2 verbs; Layer 0 itself does not run a workflow.
+Layer 0 is the static project configuration plus the adapter manifests every higher layer reads. It declares **what** a project is — which target adapter receives its slices, which source adapters supply evidence, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed.
 
 The configuration surfaces:
 
-- **`.specify/project.yaml`** — per-project manifest: `adapter:` (or `hub: true` for a registry-only platform hub), `specify_version`, declared `tools:`.
-- **`adapter.yaml`** — adapter manifest declaring the brief pipelines (`define`, `build`, `merge`) consumed by Layer 1.
-- **`schemas/`** — JSON Schema files distributed with the binary and consumed by validation.
+- **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
+- **`sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
+- **`targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
+- **`schemas/`** — JSON Schema files distributed with the binary: `plugin.schema.json`, `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
-- **`tools.yaml`** — declared WASI command components (adapter or project scoped).
 
 The CLI verbs that read or change Layer 0 state:
 
-- **`specify init`** / **`specify init --hub`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify adapter {resolve, check, pipeline}`** — inspect the active adapter manifest and its pipeline shape.
-- **`specify status`** — surfaces a summary that includes Layer 0 state.
+- **`specify init <target>`** / **`specify init --workspace`** — one-time scaffold of `.specify/`, writes `project.yaml`.
+- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The plugin loader (`crates/domain/src/plugin/`) routes by axis.
 
-Layer 0 settles before any change starts. Once `project.yaml` exists and the adapter resolves, Layer 1 and Layer 2 can run.
+Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
-## Layer 1: Executing a change
+## Layer 1: Executing one slice
 
-Layer 1 is the single-slice define-build-merge loop. It operates on **one slice** inside `.specify/slices/<name>/` and is the primary interaction surface for every Specify operator.
+Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one slice** inside `.specify/slices/<name>/` and is the breakout surface every operator reaches when execute parks or when they want to drive a slice by hand.
 
 ```text
-/spec:define  -->  /spec:build  -->  /spec:merge
+/spec:refine  -->  /spec:build  -->  /spec:merge
 ```
 
-Each skill is an agent-driven orchestrator. It elicits intent from the user, reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
+Each skill is an agent-driven orchestrator. It reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
 
 The full set of Layer 1 skills:
 
-| Skill | Role |
-|-------|------|
-| `/spec:define` | Generate all artifacts for a new slice |
-| `/spec:build` | Implement tasks from a defined slice |
-| `/spec:merge` | Merge a completed slice into the baseline |
-| `/spec:drop` | Discard a slice without merging |
-| `/spec:extract` | Produce specs and design from existing source code |
+| Skill          | Role                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| `/spec:refine` | Run `extract` per bound source, synthesize artifacts, validate, transition to `refined`    |
+| `/spec:build`  | Validate artifacts and implement tasks                                                     |
+| `/spec:merge`  | Apply spec deltas to the baseline and archive the slice; only writer of per-entry `done`   |
+| `/spec:drop`   | Discard a slice without merging                                                            |
 
-The matching CLI surface is the **`specify slice ...`** family: per-slice CRUD, validation, merge (`slice merge {preview, conflict-check, run}`), task tracking (`slice task {progress, mark}`), phase outcome (`slice outcome {set, show}`), and journal entries (`slice journal {append, show}`). Operators rarely call these directly; the skills wrap them.
+The matching CLI surface is the **`specify slice ...`** family: `slice create`, `slice transition`, `slice validate`, `slice merge`. Operators rarely call these directly; the skills wrap them.
 
-**Climb to Layer 2 when:** you have three or more related slices with dependencies, you want a tracked plan to coordinate the work, or you want the framework to drive the slice-by-slice loop automatically. Two slices with no dependencies stay at Layer 1; three or more typically benefit from a plan. See the rubric in [A Multi-Slice Change -- When you need a plan](../tutorials/single-repo-change.md#when-you-need-a-plan).
+## Layer 2: Planning and driving a change
 
-## Layer 2: Planning a change
+Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize. There is no separate "single-slice mode" — N=1 uses the same rhythm as N=12, with `intent.enumerate` producing one candidate.
 
-Layer 2 coordinates **multi-slice changes** through `plan.yaml` and (for cross-repo work) `registry.yaml`. It is the authoring, execution, and close-out counterpart of a slice-scoped program. Three peer skills carry the change lifecycle, with a deliberate operator review pause between authoring and execution:
+| Skill            | Role                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| `/spec:plan`     | Enumerate each bound source, propose `slices[]` rows in `plan.yaml`, validate; exit at `pending`    |
+| `/spec:execute`  | Drive the plan through the Layer 1 loop; refuses unless plan is `reviewed`                          |
+| `/spec:finalize` | Push branches, observe PR state, archive once every PR is `MERGED`                                  |
 
-| Skill | Role |
-|-------|------|
-| `/change:draft` | Author `plan.yaml` from inputs (legacy code, docs, or both); stop at the operator review seam |
-| `/change:execute` | Drive the plan through the Layer 1 define-build-merge loop |
-| `/change:finalize` | Push branches, observe PR state, and run `specify change finalize` once every PR is merged |
-| `/change:analyze` | Plan-time adapter inference (used internally by `/change:draft`) |
+The plan is the change's table of contents. `/spec:plan` produces it by enumerating each source, fusing candidates across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> reviewed` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `reviewed` itself.
 
-The plan is the change's table of contents. `/change:draft` produces it by analysing inputs and proposing slices, then halts so the operator can review (and, if needed, edit with `specify plan amend`). `/change:execute` consumes the reviewed plan by picking the next eligible slice, running the Layer 1 loop, and updating the plan's status. `/change:finalize` closes the change once execution is done by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
+`/spec:execute` consumes the reviewed plan by picking the next eligible slice (`specify plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-```text
-/change:draft <name> source legacy=./path
-        |
-        v
-(operator reviews plan.yaml; edits with `specify plan amend` if needed)
-        |
-        v
-/change:execute loop
-        |
-        v
-/change:finalize <name>
-```
+The matching CLI surface spans **`specify plan {create, add, amend, transition, next, finalize}`**, **`specify workspace {sync, push, prepare-branch}`** for multi-repo changes, and **`specify tool run`** for declared WASI helpers.
 
-The matching CLI surface spans **`specify plan ...`** (scaffold, populate, validate, transition, archive a plan), **`specify change ...`** (`change draft` mints `change.md` and `plan.yaml`; `change finalize` archives), **`specify registry ...`** (`registry.yaml` CRUD + validate), and **`specify workspace ...`** (materialise, inspect, push workspace clones for multi-repo changes).
+### Gate 1: the operator review seam
 
-### The operator review seam
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `reviewed`. `/spec:execute` refuses on anything other than `reviewed`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specify plan amend` before any per-slice work runs.
 
-The pause between `/change:draft` and `/change:execute` is the design, not a missing automation. `/change:draft` ends at "plan validated, hand back to operator," and `/change:execute` starts when the operator decides it does — there is no automatic transition between them. This gives operators a deliberate point to inspect `plan.yaml`, run `specify plan status` or `specify plan show`, and amend entries with `specify plan amend` before any per-slice work runs.
-
-The framework does not ship a single "do everything" command for the change layer. Teams that want one-command flow can compose the three skills in their own shell wrapper, accepting that the wrapper opts out of the review pause. The seam is internal to Layer 2; both stages still belong to the planning layer.
+The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == reviewed`) so automation can opt-in cleanly.
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/change:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside `/change:execute` or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:execute` calls `/spec:refine`, `/spec:build`, and `/spec:merge` — the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside `/spec:execute` or being driven by a human.
 
 This means you can always drop down a layer:
 
-- If `/change:draft` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next` instead of `/change:execute`.
-- If `/change:execute` fails on a slice, you can finish it manually with `/spec:build` and `/spec:merge`.
-- If `/change:finalize` halts on an unmerged PR, you can pick up by hand at the next action (merge through the forge UI, then re-run `specify change finalize`).
-- If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify plan status`.
-
-See [Drop down a layer](../how-to/drop-down-a-layer.md) for worked examples of each escape hatch.
+- If `/spec:plan` produces a plan you want to adjust, edit it with `specify plan amend` (split, merge, relabel, rebind sources, accept/reject a predicted divergence) and stamp `reviewed` when ready.
+- If `/spec:execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `/spec:execute` to pick up the next entry.
+- If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
+- If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/.metadata.yaml` directly — they are plain YAML files.

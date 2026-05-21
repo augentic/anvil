@@ -152,14 +152,13 @@ Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell
 
 | Path | Purpose |
 |------|---------|
-| `design-system/layout.yaml` | Unwired layout intent (screen regions, groups, items) -- input to `/spec:define` |
-| `design-system/spec.md` | Semantic color roles, typography, spacing rules |
-| `design-system/tokens.yaml` | Concrete token values (source of truth) |
-| `design-system/assets.yaml` | Asset manifest (images, icons, vectors) |
+| `design-system/spec.md`     | Semantic color roles, typography, spacing rules               |
+| `design-system/tokens.yaml` | Concrete token values (source of truth)                       |
+| `design-system/assets.yaml` | Asset manifest (images, icons, vectors)                       |
 
-`layout.yaml` is the pre-define UI input produced by layout inferers or hand-authored by the operator. `/spec:define` consumes it alongside requirements and emits the wired `composition.yaml`. Shell writers consume the wired composition, not `layout.yaml` directly.
+Spatial layout enters the workflow through the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml). Its `enumerate` identifies candidate screens from a bound directory; its `extract` emits structured spatial Evidence (`region` / `container` / `leaf` claims). Core synthesis folds those claims into `spec.md` / `design.md`, and the Vectis target's `build` produces a target-specific `composition.yaml` alongside implementation code. `composition.yaml` is no longer a Specify artifact in 2.0 — it is regenerated on each `/spec:execute`.
 
-Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer. For layout changes, edit `layout.yaml` and re-run `/spec:define`.
+Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer. For layout changes, re-bind the `screenshots` source on the next `/spec:plan` (or hand-author equivalent claims via a local source adapter).
 
 ## Working with Xcode
 

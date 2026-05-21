@@ -1,0 +1,12 @@
+version: 1
+name: identity-revamp
+lifecycle: reviewed
+sources:
+  intent:
+    adapter: intent
+    value: "Rotate the password hashing algorithm to argon2id."
+slices:
+  - name: password-hash-rotate
+    target: omnia
+    sources: [intent]
+    status: in-progress

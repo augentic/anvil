@@ -1,0 +1,114 @@
+# Anatomy of an Adapter
+
+Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn external material (operator intent, written documentation, legacy code, screenshots) into structured `Evidence`. **Target adapters** turn that evidence into code by guiding core synthesis and driving build / merge. The role you are authoring decides which operations you implement; the on-disk shape is the same.
+
+## Two roles, one shared shape
+
+| Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
+| -------- | ------------ | --------------------------- | ------------------------------------------------ | ------------------------ |
+| `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `sources/<name>/`        |
+| `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `targets/<name>/`        |
+
+Both ship `adapter.yaml` matching `schemas/plugin.schema.json` plus an axis-specific refinement (`schemas/source.schema.json` or `schemas/target.schema.json`). The shared shape is the **plugin** — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
+
+Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice by hand-editing `spec.md` after `/spec:refine`.
+
+## Manifest shape
+
+```yaml
+# sources/<name>/adapter.yaml
+name: code-typescript
+version: 1
+axis: source
+operations: [enumerate, extract]
+briefs:
+  enumerate: briefs/enumerate.md
+  extract:   briefs/extract.md
+```
+
+```yaml
+# targets/<name>/adapter.yaml
+name: omnia
+version: 1
+axis: target
+operations: [shape, build, merge]
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+```
+
+Shared rules: kebab-case `name` unique per axis; closed `operations[]` matching the axis; `briefs.<operation>` required for every declared operation; optional `tools[]` declaring WASI helpers that the host runs into `.specify/.cache/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+
+## Source adapter contract
+
+A source adapter participates in two places in the lifecycle.
+
+**`enumerate(Source) → Candidate[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized candidate under `## Candidate inventory` in `discovery.md`. Each block carries a stable `id` and a `sources[]` list. Re-enumerating the same source replaces blocks by `id`; enumerating a different source appends new ids. The candidate grammar:
+
+```markdown
+### user-registration
+
+- id: user-registration
+- sources: [legacy-monolith]
+- summary: Registration endpoint accepting email + password with email-format validation.
+```
+
+**`extract(Candidate, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`:
+
+```yaml
+source: legacy-monolith
+adapter: code-typescript
+authority: behaviour
+candidate: user-registration
+claims:
+  - kind: excerpt
+    claim-id: users.register.email-validation
+    path: src/users/register.ts#L12-L87
+```
+
+Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` for deterministic fusion. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
+
+### Sandboxing
+
+Source adapter operations run under the WASI Preview 2 posture: Wasm modules with directory preopens, no inherited host environment, no runtime network access, fixed working directory. The host pre-opens four runtime roots per call:
+
+| Root              | Mode       | Contents                                                                            |
+| ----------------- | ---------- | ----------------------------------------------------------------------------------- |
+| `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
+| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/sources/<adapter>/` — adapter-owned cache.                         |
+| `$SCRATCH_DIR`    | write-only | `.specify/.cache/sources/<adapter>/<slice>/` — per-slice scratch.                   |
+| `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
+
+Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
+
+## Target adapter contract
+
+Target adapters do not own `spec.md` or `design.md` synthesis. They contribute three briefs:
+
+- **`shape`** — idiom guidance consumed by core synthesis. The brief shapes how `proposal.md` / `spec.md` / `design.md` / `tasks.md` are written for slices that target this adapter. Empty `shape` is valid; the brief is read into context, not executed.
+- **`build`** — implementation drive: read `spec.md` + `design.md`, write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation.
+- **`merge`** — landing gate: validate the slice's output against the baseline, surface conflicts, drive the target's verification commands (e.g. `cargo build --target wasm32-wasip2 --release`).
+
+Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Specify artifacts and do not need a fourth capability. `Slice.target` in `plan.yaml` selects the target; v1 supports one target per project.
+
+## Resolver and cache
+
+```text
+.specify/.cache/
+├── sources/{intent,documentation,code-typescript,screenshots,...}/
+└── targets/{omnia,vectis,contracts,...}/
+```
+
+The plugin loader (`crates/domain/src/plugin/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, `sources/code-typescript/`, `sources/screenshots/`, `targets/omnia/`, `targets/vectis/`, `targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
+
+CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add` / `specify plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
+
+## Authoring checklist
+
+1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
+2. **Create the directory.** `sources/<name>/` or `targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
+3. **Declare the operations.** Closed `operations[]` matching the axis; `briefs.<operation>` for every entry.
+4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `enumerate` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
+5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into `.specify/.cache/{sources,targets}/<name>/`.
+6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make checks` runs the documentation predicates and the schema validators.

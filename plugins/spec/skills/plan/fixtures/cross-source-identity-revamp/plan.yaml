@@ -1,0 +1,26 @@
+version: 1
+name: identity-revamp
+sources:
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity
+  legacy-monolith:
+    adapter: code-typescript
+    path: ./vendor/legacy-monolith
+slices:
+  - name: identity-user-registration
+    target: omnia
+    sources:
+      - key: identity-design-notes
+        candidate: user-registration
+      - key: legacy-monolith
+        candidate: user-registration
+    status: pending
+  - name: identity-password-reset
+    target: omnia
+    sources:
+      - key: identity-design-notes
+        candidate: password-reset
+      - key: legacy-monolith
+        candidate: account-pwd-reset
+    status: pending

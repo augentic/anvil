@@ -47,7 +47,7 @@ Changes using the `contracts` adapter have a different build behavior. The build
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| Change not defined | Artifacts are incomplete | Run `/spec:define` first |
+| Slice not refined | Artifacts are incomplete | Run `/spec:refine` first |
 | Validation failure | Artifact does not conform to validation rules | Fix the artifact and retry |
 | Specialist skill failure | A delegated skill encounters an error | Check the skill's output, fix, and re-run `/spec:build` |
 | Build failure | Generated code does not compile or pass tests | The agent iterates on fixes within the build phase |
@@ -64,7 +64,7 @@ Changes using the `contracts` adapter have a different build behavior. The build
 
 ## See also
 
-- [/spec:define](define.md) -- generate artifacts before building
+- `/spec:refine` -- generate artifacts before building (covered in the operator guide; runs inside `/spec:execute`)
 - [/spec:merge](merge.md) -- next step after all tasks complete
 - [Artifact Format](../artifact-format.md) -- skill directive tag syntax
 - [Plugins](../plugins/index.md) -- specialist skills invoked during build
