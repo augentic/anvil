@@ -1,7 +1,7 @@
 # RFC-25 Review Notes
 
 > Reviewer: Andrew Goldie
-> Status: Reconciled against RFC-25 working draft — one open item (hub-path mismatch in §On-disk and tooling); all other findings resolved in the RFC body.
+> Status: Reconciled against RFC-25 working draft — all findings resolved in the RFC body.
 > Subject: [RFC-25: Workflow](rfc-25-workflow.md)
 > Resolution-marker convention: `> **Resolved:** …` blockquotes below each finding cite the section / lines in `rfc-25-workflow.md` where the change landed. `> **Open:** …` marks findings that still need an authoring pass.
 
@@ -139,12 +139,7 @@ The refine pipeline is a closed list: `proposal` → `specs` → `design` → `t
 
 Two different path notations for hub slice storage. §Hub routing says "slice artifacts live in `.specify/workspace/<project>/`" (under the hub's `.specify/`). §`.specify/` layout says "slices under `workspace/<project>/.specify/slices/`" (under the repo root). These can't both be right — one has the wrong nesting.
 
-> **Open:** `hub` → `workspace` and `workspace/<project>/` → `slots/<project>/` renames happened (implementing-agent note, line 748), but the path-shape mismatch survives the rename:
->
-> - §Workspace routing (line 183): "slice artifacts live in `.specify/slots/<project>/`" — slots nested *inside* the workspace's `.specify/`.
-> - §`.specify/` layout (line 691): "slices under `slots/<project>/.specify/slices/`" — slots at the workspace root, each carrying its own `.specify/`.
->
-> Per the implementing-agent note ("tier-2 executor checkouts only"), the second form (per-slot `.specify/`) is consistent with how a workspace slot is a separate project checkout; line 183 reads as a leftover from the pre-rename text. Needs one editing pass to pick a form and update the other reference.
+> **Resolved:** The `workspace/<project>/` → `slots/<project>/` directory rename was reverted; the path stays `.specify/workspace/<project>/` as in RFC-14. The matching verb rename `specify workspace sync` → `specify slot sync` was also dropped — the verb stays `specify workspace sync` (commands.md line 23). The conceptual term "slot" survives in prose (RFC-14 already used it that way: a slot is a project's per-checkout view inside the workspace). With the rename gone, both references converge: §Workspace routing now reads `.specify/workspace/<project>/` and §`.specify/` layout reads `.specify/workspace/<project>/.specify/slices/<name>/`. The implementing-agent note no longer carries the dropped directory/verb rename.
 
 `discovery.md` and `discovery-summary.md` appear to be the same file under two names. §Source adapter contract and §Discovery handshake reference `discovery.md` as the candidate-block container and "plan-time source of truth". §`surfaces.json` and `discovery-summary.md` says "`survey.md` becomes generic `discovery-summary.md` with `## Summary`, `## Source inventory`, and `## Candidate inventory`." If `discovery-summary.md` contains `## Candidate inventory`, it sounds like the same file as `discovery.md` — but the names differ and the relationship is never stated.
 

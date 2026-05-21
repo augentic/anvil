@@ -20,7 +20,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 | `specify slice transition` | `<name>`, `<target>` | `--reason` |
 | `specify slice validate` | `<name>` | |
 | `specify slice merge` | `<name>` | `--dry-run`, `--check-only` |
-| `specify slot sync` | `[<project>…]` | |
+| `specify workspace sync` | `[<project>…]` | |
 | `specify workspace push` | `[<project>…]` | `--dry-run` |
 | `specify workspace prepare-branch` | `<project>` | `--change`, `--source`, `--output` |
 | `specify tool run` | `<name>`, `[args…]` | arguments after `--` |
@@ -37,7 +37,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 
 - `specify plan validate` — `plan add` and `plan amend` refuse to write an invalid plan; first-use validation is the seam.
 - `specify source validate`, `specify target validate` — `source resolve` and `target resolve` validate the manifest on load.
-- `specify registry validate` — `slot sync` and `/spec:plan` refuse to operate on a malformed registry.
+- `specify registry validate` — `workspace sync` and `/spec:plan` refuse to operate on a malformed registry.
 - `specify context check` — not needed without `context generate`.
 
 **Folded into a parent verb.**
@@ -64,7 +64,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 
 **Operator-curated YAML — hand-edit, validation on first use.**
 
-`specify registry add`, `specify registry remove`. `AGENTS.md` does not forbid hand-editing `registry.yaml` (the off-limits list is `.metadata.yaml`, archive paths, and `.specify/` scaffolding). Operators edit `registry.yaml` directly; `slot sync` and `/spec:plan` validate at first use.
+`specify registry add`, `specify registry remove`. `AGENTS.md` does not forbid hand-editing `registry.yaml` (the off-limits list is `.metadata.yaml`, archive paths, and `.specify/` scaffolding). Operators edit `registry.yaml` directly; `workspace sync` and `/spec:plan` validate at first use.
 
 **Permanent surface for transient or never-existing need.**
 

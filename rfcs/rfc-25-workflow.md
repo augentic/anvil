@@ -119,9 +119,9 @@ reviewed (all done)       -                              /spec:finalize
 
 The plan lifecycle has two stored states: `pending` (default after `plan create`) and `reviewed` (operator-stamped at Gate 1). It does not move further during execution. "Currently executing" and "drained" are computed from per-entry `status`: any entry `in-progress` means execution is live; all entries `done` means the plan is drained and `/spec:finalize` is legal. `/spec:execute` exits when no `pending` or `in-progress` per-entry remains.
 
-`**/spec:plan**` runs pre-flight, scaffolds `change.md` and `plan.yaml`, runs workspace registry validation and slot sync when needed, enumerates each source, runs `propose` to fuse candidates into `slices[]` automatically (see §Synthesis contract -> Plan-time fusion), assigns workspace projects when needed, and validates the plan. It exits at `pending` and prints the literal `specify plan transition <name> reviewed` command in its closing message; the operator stamps Gate 1 explicitly. `/spec:plan` never writes `reviewed` itself.
+`**/spec:plan**` runs pre-flight, scaffolds `change.md` and `plan.yaml`, runs workspace registry validation and `workspace sync` when needed, enumerates each source, runs `propose` to fuse candidates into `slices[]` automatically (see §Synthesis contract -> Plan-time fusion), assigns workspace projects when needed, and validates the plan. It exits at `pending` and prints the literal `specify plan transition <name> reviewed` command in its closing message; the operator stamps Gate 1 explicitly. `/spec:plan` never writes `reviewed` itself.
 
-`**/spec:execute`** refuses unless the plan is `reviewed`, acquires the plan lock (workspace root in workspace mode), and loops: `specify plan next` -> workspace project resolution and slot prep when needed -> `/spec:refine` if needed -> `/spec:build` -> `/spec:merge` -> residue commit and return to workspace root when needed -> repeat until no per-entry `pending` or `in-progress` remains.
+`**/spec:execute`** refuses unless the plan is `reviewed`, acquires the plan lock (workspace root in workspace mode), and loops: `specify plan next` -> workspace project resolution and `workspace sync` of the active slot when needed -> `/spec:refine` if needed -> `/spec:build` -> `/spec:merge` -> residue commit and return to workspace root when needed -> repeat until no per-entry `pending` or `in-progress` remains.
 
 `**/spec:finalize`** requires all per-entry `status: done`, pushes branches, observes PRs until `MERGED`, then runs `specify plan finalize` to archive the plan.
 
@@ -172,15 +172,15 @@ slices:
 
 | `workspace:` | `/spec:plan` behavior                                                              |
 | ------------ | ---------------------------------------------------------------------------------- |
-| `false`      | Single root; skip sync-slot and assignment.                                        |
-| `true`       | `registry.yaml`; sync-slot before enumerate; per-candidate `--project` at propose. |
+| `false`      | Single root; skip `workspace sync` and assignment.                                 |
+| `true`       | `registry.yaml`; `workspace sync` before enumerate; per-candidate `--project` at propose. |
 
 
 **One driving mode per project in v1.** Workspace-registered projects are workspace-driven only; `/spec:plan` from a project root while a workspace plan is active is refused at plan-create.
 
 ### Workspace routing
 
-Plan artifacts live at the workspace root; slice artifacts live in `.specify/slots/<project>/`. Breakouts and `/spec:execute` share routing: plan lock at workspace root -> resolve active slice project -> sync slot -> `chdir` -> phase work -> return.
+Plan artifacts live at the workspace root; each project's slot lives at `.specify/workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. Breakouts and `/spec:execute` share routing: plan lock at workspace root -> resolve active slice project -> `workspace sync` -> `chdir` -> phase work -> return.
 
 ### Plan lock
 
@@ -365,7 +365,9 @@ This deliberately excludes `$PROJECT_DIR` from source-adapter grants: source ada
 
 All three ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, and `sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The plugin loader (`crates/domain/src/plugin/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
 
-`screenshots` houses the body of the legacy Vectis `image-layout-inferer` skill, restructured as a source adapter: `enumerate` identifies candidate screens from the bound directory and writes one block per screen under `## Candidate inventory`; `extract` emits structured spatial Evidence per candidate (the new `region` / `container` / `leaf` claim kinds). The migration script retires `plugins/vectis/skills/image-layout-inferer/` and the hand-authored `layout.yaml` Specify artifact in 2.0 — see §Migration and §Note to the implementing agent.
+`screenshots` houses the body of the legacy Vectis `image-layout-inferer` skill, restructured as a source adapter: `enumerate` identifies candidate screens from the bound directory and writes one block per screen under `## Candidate inventory`; `extract` emits structured spatial Evidence per candidate (the new `region` / `container` / `leaf` claim kinds). The migration script retires `plugins/vectis/skills/image-layout-inferer/` and the hand-authored `layout.yaml` Specify artifact in 2.0 — see §Migration and §Note to the implementing agent. The v1 `enumerate` and `extract` briefs are the current `image-layout-inferer` prompt verbatim, just resliced into the two source-adapter operations; v1 does not redesign the inference algorithm.
+
+The first-party `code-typescript` source adapter ships alongside the three above; its body is the retired `change survey` TypeScript enumerator rehomed under `sources/code-typescript/`. Authority emitted is `behaviour`; enumeration grammar stays adapter-internal (§`discovery.md` consolidation) and unchanged from its 1.x form. Other code languages remain deferred per §Repository layout.
 
 N=1 greenfield uses degenerate `intent.enumerate` via this normal resolution path.
 
@@ -688,7 +690,7 @@ workspace: false
 
 Regular project: `change.md`, `plan.yaml`, and `discovery.md` at root; `slices/<name>/` contains artifacts plus `evidence/<source-key>.yaml`.
 
-Workspace: plan and discovery artifacts at workspace root; slices under `slots/<project>/.specify/slices/`. Workspace root `slices/` is unused.
+Workspace: plan and discovery artifacts at the workspace root (in the workspace's own `.specify/`); each project's slot lives at `.specify/workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. The workspace's own `.specify/slices/` is unused.
 
 Slice directories appear lazily: `specify plan add` writes only into `plan.yaml`, and `slices/<name>/` is created by `specify slice create` at the start of `/spec:refine` (see §`/spec:refine` pipeline). At Gate 1 the slice tree is empty regardless of slice count; the on-disk shape an operator reviews is plan-only.
 
@@ -745,7 +747,6 @@ Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workfl
 This RFC renames or reshapes several names that are already deeply embedded in the Specify codebase. Treat every rename as a cross-cutting refactor, not a documentation edit: chase each old name through `crates/`, `tests/`, `schemas/`, `plugins/`, `docs/`, `AGENTS.md`, fixtures, golden files, and the sibling `augentic/specify-cli` repo before declaring a step done. The renames currently in scope include, but are not limited to:
 
 - `hub` -> `workspace` (project-yaml discriminator, CLI flags, error codes such as `init-requires-adapter-or-hub` and `hub-cannot-be-project`, doc prose, fixture names, `init_hub` test helpers).
-- `.specify/workspace/<project>/` -> `.specify/slots/<project>/`, and the corresponding `specify workspace sync` -> `specify slot sync` verb (tier-2 executor checkouts only; tier-1 source caches under `.specify/.cache/sources/` are unaffected).
 - `specify_version` -> `specify-version` in YAML surfaces only (kebab-case on disk, snake_case Rust field names stay snake_case — only `#[serde(rename = "specify-version")]` and the on-disk emit change).
 - `Adapter*` types -> `Target*` (per implementation step 2); the `plugins/adapter/` loader -> `plugins/plugin/` (per step 3).
 - `change survey` and `adapter pipeline` CLI verbs are retired (per step 8).
@@ -778,11 +779,19 @@ For each rename: update the symbol, the JSON Schema, the YAML on-disk form, ever
 | 17   | D10         | Delete `/change:*`, `/spec:define`; remove `plugins/change/`.                                                                                                             | Full matrix          |
 
 
+### Suggested PR train
+
+Not binding; sequence by what unblocks the most tests soonest.
+
+1. `augentic/specify-cli`: schemas, the `Adapter*` → `Target*` rename, the `crates/domain/src/plugin/` loader, and CLI verbs (steps 1–3, 6, 8, 13, 14). This unblocks plan/slice/source/target writes for everything downstream.
+2. `augentic/specify`: `sources/`, `targets/`, `/spec:*` skill bodies, synthesis pipeline, discovery propose, docs (steps 4, 5, 7, 9–11, 16).
+3. Cutover: `migrate-to-2.0.sh` plus deletion of `/change:*` and `/spec:define` and removal of `plugins/change/` (steps 15, 17). Lands last so step 1 has time to settle.
+
 ## Acceptance scenarios
 
 Run these against the merged skills before implementation step 17. Each row stress-tests a place the redesign can fail.
 
-**Scenario id convention.** Numeric ids (`#1`-`#12`) are independent scenarios. Letter-suffixed ids under a number (`#5`, `#5a`-`#5h`) share a theme — here, single-source and multi-source synthesis behavior. Implementation-plan acceptance columns and inline cross-references use these ids verbatim.
+**Scenario id convention.** Numeric ids (`#1`-`#12`) are independent scenarios. Letter-suffixed ids under a number (`#5`, `#5a`-`#5j`) share a theme — here, single-source and multi-source synthesis behavior. Sub-ids are non-dense: gaps in the `5x` series (`5d`, `5i`) are intentional — former rows were folded into adjacent scenarios during drafting and the ids are preserved so cross-references stay stable across revisions. Implementation-plan acceptance columns and inline cross-references use these ids verbatim.
 
 If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surprised state), revisit §Planning at every scale before pushing through step 17.
 
@@ -804,7 +813,7 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 | 5g  | D2, D8     | **Invalid Evidence schema rejection.** Adapter emits `Evidence` failing `evidence.schema.json`.                                                                                                                  | Validation fails before synthesis; structured error; slice stays in `refining`.                                                                                                                                                                                                                                                                      |
 | 5h  | D2         | **Target `shape` injection.** Synthesis consumes a non-empty `target.shape` brief.                                                                                                                               | Generated `spec.md` / `design.md` reflect target-idiom guidance; pure-intent fixture vs documentation fixture both pick up the same `shape`.                                                                                                                                                                                                         |
 | 5j  | D1, D2     | **Source-adapter sandbox path-denied.** A source adapter's `extract` (or `enumerate`) attempts a read outside its bound `$SOURCE_DIR` / `$CAPABILITY_DIR` / `$SCRATCH_DIR` grants.                               | Host runner denies the access and surfaces structured error `source-extract-path-denied` (or `source-enumerate-path-denied`); slice stays `refining`; no Evidence is written; operator can rebind via `plan amend` or drop the source. WASI preopens are the only grant; lifecycle state (`.specify/project.yaml`, `.metadata.yaml`) is unreachable. |
-| 6   | D9         | **Multi-repo assignment from a workspace.** Operator runs `/spec:plan` in a workspace.                                                                                                                           | `workspace:` discriminator; per-candidate `--project` at propose; slot sync timing.                                                                                                                                                                                                                                                                  |
+| 6   | D9         | **Multi-repo assignment from a workspace.** Operator runs `/spec:plan` in a workspace.                                                                                                                           | `workspace:` discriminator; per-candidate `--project` at propose; `workspace sync` timing.                                                                                                                                                                                                                                                           |
 | 7   | D3, D6     | **Operator amends one-slice plan into two slices at Gate 1.**                                                                                                                                                    | Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.                                                                                                                                                                                                                                                                             |
 | 8   | D7, D9     | **Step-through breakout mid-execute.** Operator starts `/spec:execute`; on the second slice they cancel, run `/spec:build` directly to investigate, then re-invoke `/spec:execute`.                              | Stop/resume contract; step-through verbs leave on-disk state consistent for `/spec:execute` to resume without flags.                                                                                                                                                                                                                                 |
 | 9   | D7         | `**/spec:execute` parks on a build failure, operator fixes, resumes.** Slice's `cargo test` fails; operator patches the crate; runs `/spec:execute`.                                                             | Build-failure stop hint; build resumes from the failed task; loop continues to merge.                                                                                                                                                                                                                                                                |
