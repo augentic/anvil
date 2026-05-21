@@ -4,8 +4,8 @@ owner: contracts
 kind: adapter
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
-stages: [define, build, merge]
+entrypoint: /spec:refine
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: prose
 assertions:
@@ -22,7 +22,7 @@ negative-expectations:
   - implementation-shapes-authored-inline
 ---
 
-# Generate From Prose Passed To `/spec:define`
+# Generate From Prose Passed To `/spec:refine`
 
 Scenario ID: `contracts-describe`
 
@@ -31,7 +31,7 @@ requirements.
 
 Pipeline note:
 
-- In the `contracts` schema, `/spec:define` creates `proposal.md`,
+- In the `contracts` schema, `/spec:refine` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; contract YAML is produced during
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts as
@@ -41,7 +41,7 @@ Pipeline note:
 ## Intent
 
 Prove that the `contracts@v1` slice loop can author HTTP and JSON Schema
-artifacts from a prose requirements block embedded directly in a `/spec:define`
+artifacts from a prose requirements block embedded directly in a `/spec:refine`
 prompt. The scenario covers the full define → build → merge path for a
 greenfield contract change with no pre-existing source document.
 
@@ -60,12 +60,12 @@ greenfield contract change with no pre-existing source document.
 ## Inputs
 
 This scenario has no source files to seed. The prose requirements live inside
-the `/spec:define` prompt itself; see **Invocation** below.
+the `/spec:refine` prompt itself; see **Invocation** below.
 
 ## Invocation
 
 ```text
-/spec:define user-adapter-api
+/spec:refine user-adapter-api
 
 Generate API contracts from prose.
 
@@ -109,7 +109,7 @@ All endpoints use application/json. ErrorResponse has code: string, message:
 string, and optional details: object.
 ```
 
-After `/spec:define` succeeds, drive `/spec:build user-adapter-api` to produce
+After `/spec:refine` succeeds, drive `/spec:build user-adapter-api` to produce
 the contract YAML, then optionally `/spec:merge user-adapter-api` to promote
 the deltas into the baseline.
 

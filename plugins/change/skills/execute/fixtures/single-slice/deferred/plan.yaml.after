@@ -1,8 +1,0 @@
-name: platform-v2
-
-changes:
-  - name: notification-preferences
-    description: >
-      Greenfield — user-facing notification channel and frequency settings.
-    status: blocked
-    status-reason: 'The description says "notification channel and frequency settings" but doesn''t specify which channels are in scope.'

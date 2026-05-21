@@ -38,7 +38,7 @@ section; record any deviation explicitly.
 ### Stage 1 — Draft
 
 ```text
-<paste the /change:draft ... prompt that was run>
+<paste the /spec:plan ... prompt that was run>
 ```
 
 ### Stage 2 — Review (operator pause)
@@ -53,7 +53,7 @@ section; record any deviation explicitly.
 ### Stage 3 — Execute
 
 ```text
-<paste the /change:execute loop command or prompt that was run>
+<paste the /spec:execute loop command or prompt that was run>
 ```
 
 ```bash
@@ -62,12 +62,12 @@ section; record any deviation explicitly.
 
 ### Stage 4 — Finalize
 
-Record each `/change:finalize` invocation in order. Three invocations are
+Record each `/spec:finalize` invocation in order. Three invocations are
 expected for the parity scenario: halts on unmerged PRs, archives, then
 re-entry reports `plan-not-found`.
 
 ```text
-<paste the first /change:finalize oauth-login invocation>
+<paste the first /spec:finalize oauth-login invocation>
 ```
 
 ```bash
@@ -75,11 +75,11 @@ re-entry reports `plan-not-found`.
 ```
 
 ```text
-<paste the second /change:finalize oauth-login invocation>
+<paste the second /spec:finalize oauth-login invocation>
 ```
 
 ```text
-<paste the third /change:finalize oauth-login re-entry>
+<paste the third /spec:finalize oauth-login re-entry>
 ```
 
 ## Plan Structure
@@ -114,7 +114,7 @@ For each expected artifact or state transition, record one of `present`,
 ## Durable End-State Snapshot
 
 Record the durable end-state outcomes the three-skill change lifecycle
-(`/change:draft → /change:execute loop → /change:finalize`) produces.
+(`/spec:plan → /spec:execute loop → /spec:finalize`) produces.
 Each row is one parity check.
 
 | Parity check | Observed | Notes |
@@ -168,10 +168,10 @@ Capture the important command output, or point to files that contain it.
 - **Plan validation (post-draft):** `<summary or path>`
 - **Operator review (`specify plan status`):** `<summary or path>`
 - **Execute loop:** `<summary or path>`
-- **First `/change:finalize` (halt on `pr-not-merged`):** `<summary or path>`
+- **First `/spec:finalize` (halt on `pr-not-merged`):** `<summary or path>`
 - **External PR merge action:** `<summary or path>`
-- **Second `/change:finalize` (archive):** `<summary or path>`
-- **Third `/change:finalize` (`plan-not-found`):** `<summary or path>`
+- **Second `/spec:finalize` (archive):** `<summary or path>`
+- **Third `/spec:finalize` (`plan-not-found`):** `<summary or path>`
 
 ## Cleanup
 

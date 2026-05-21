@@ -1,6 +1,6 @@
 # RT Plugin
 
-Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — both callers inline a guarded `git clone` snippet directly; see the *Cloning a source tree* subsection in [`plugins/change/skills/analyze/SKILL.md`](../../../plugins/change/skills/analyze/SKILL.md) (or [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md) for legacy-repo bootstrap).
+Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly (see [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)).
 
 ## Skills
 

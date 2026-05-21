@@ -123,7 +123,7 @@ Compatibility classification deliberately does **not**:
 - Walk the consumer's source code, generated bindings, or spec files. Coupling the verifier to consumer implementations would defeat the purpose of a format-level safety net.
 - Run consumer-side compilation or test suites. The verifier reports wire-shape risk; consumer-side validation is the consumer's responsibility.
 - Mutate the consumer's workspace clone. The clone is read-only from the verifier's perspective.
-- Transition plan entries, write journals, or halt `/change:execute`. RM-04 reports compatibility; RM-11 owns lifecycle gates.
+- Transition plan entries, write journals, or halt `/spec:execute`. RM-04 reports compatibility; RM-11 owns lifecycle gates.
 
 The operator decides whether to amend the producer change, file follow-up changes for consumers, or accept the breaking change as documented.
 

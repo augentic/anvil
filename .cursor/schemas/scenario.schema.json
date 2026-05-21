@@ -45,16 +45,16 @@
     "entrypoint": {
       "type": "string",
       "pattern": "^/[a-z]+:[a-z][a-z0-9-]*$",
-      "description": "Slash-command entrypoint, `/<plugin>:<skill>` (e.g. `/spec:define`)."
+      "description": "Slash-command entrypoint, `/<plugin>:<skill>` (e.g. `/spec:refine`)."
     },
     "stages": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "string",
-        "enum": ["define", "build", "merge", "drop"]
+        "enum": ["plan", "refine", "build", "merge", "drop"]
       },
-      "description": "Slice phases the scenario exercises. Must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`; the prefix rule is enforced in `scripts/checks.ts` because JSON Schema cannot express ordering without combinatorial enums."
+      "description": "Slice phases the scenario exercises. Must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element; the prefix rule is enforced in `scripts/checks.ts` because JSON Schema cannot express ordering without combinatorial enums."
     },
     "isolation": {
       "type": "string",

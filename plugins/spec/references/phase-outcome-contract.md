@@ -1,8 +1,8 @@
 # Phase outcome contract
 
-The four phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) return control to the `/change:execute` driver loop through a single three-channel contract:
+The four phase skills (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) return control to the `/spec:execute` driver loop through a single three-channel contract:
 
-1. **`PhaseOutcome`** stamped into `.specify/slices/<name>/.metadata.yaml` — the only state `/change:execute` reads on phase return.
+1. **`PhaseOutcome`** stamped into `.specify/slices/<name>/.metadata.yaml` — the only state `/spec:execute` reads on phase return.
 2. **`journal.yaml`** entries appended during the run — append-only audit log; never a signalling channel.
 3. **`plan.yaml`** mutations issued through `specify plan add` / `specify plan amend` — bounded by the allow/forbid table below.
 
@@ -12,9 +12,9 @@ This document is the parameterised contract, including the concrete success crit
 
 ## Per-phase deltas
 
-### Define
+### Refine
 
-- **`success`** — every define brief produced its `generates` artefact and there are no `[unknown]` blockers; the slice is ready for `/spec:build`.
+- **`success`** — every refine brief produced its `generates` artefact and there are no `[unknown]` blockers; the slice is ready for `/spec:build`.
 - **`failure`** — a brief halted before all artefacts were written, such as extraction fixture capture crashing or a writer brief exhausting its repair budget.
 - **`deferred`** — upstream input is missing or ambiguous, such as a source/baseline conflict, unclear scope, or a requirement that needs human judgement.
 
@@ -34,7 +34,7 @@ This document is the parameterised contract, including the concrete success crit
 
 - **`success`** — `specify slice drop` exited zero, archiving the slice with status `dropped` and the supplied reason recorded in `.metadata.yaml`. The lifecycle stamp is the success signal; no separate `outcome set` call is made.
 - **`failure`** — `specify slice drop` returned a lifecycle violation or malformed-directory error; record skill-side via `outcome set ... drop failure ...`.
-- **`deferred`** — rare; an interactive cancel or precondition needs human resolution before the drop is safe. Non-interactive runs from `/change:execute` do not reach this path.
+- **`deferred`** — rare; an interactive cancel or precondition needs human resolution before the drop is safe. Non-interactive runs from `/spec:execute` do not reach this path.
 
 ---
 
@@ -50,7 +50,7 @@ Every phase MUST record exactly one of these three outcomes before returning con
 
 ## Recording the outcome
 
-The standard form (used by `define`, `build`, and the failure / deferred paths of `merge`):
+The standard form (used by `refine`, `build`, and the failure / deferred paths of `merge`):
 
 ```bash
 specify slice outcome set <name> <phase> <outcome> --summary "..." [--context "..."]
@@ -60,19 +60,19 @@ specify slice outcome set <name> <phase> <outcome> --summary "..." [--context ".
 
 ### Merge success path is CLI-stamped
 
-`specify slice merge run` is the unique exception: on success it stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml` atomically with the `Merged` lifecycle transition, **before** the archive move. Skills MUST NOT call `outcome set` on this path — the slice directory no longer exists under `.specify/slices/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the outcome; `/change:execute` reads it via `specify slice outcome show <name>`, which falls back to the archive when the active directory is absent.
+`specify slice merge run` is the unique exception: on success it stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml` atomically with the `Merged` lifecycle transition, **before** the archive move. Skills MUST NOT call `outcome set` on this path — the slice directory no longer exists under `.specify/slices/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the outcome; `/spec:execute` reads it via `specify slice outcome show <name>`, which falls back to the archive when the active directory is absent.
 
-In a materialised RFC-14 workspace slot, the merge CLI owns only the baseline commit boundary: `.specify/specs/` and `.specify/archive/` are committed as `specify: merge <slice-name>`. Non-baseline project residue is intentionally left for `/change:execute`, which must verify the baseline paths are clean and then either commit residue as `specify: residue <slice-name>` or halt before marking the plan entry `done`.
+In a materialised RFC-14 workspace slot, the merge CLI owns only the baseline commit boundary: `.specify/specs/` and `.specify/archive/` are committed as `specify: merge <slice-name>`. Non-baseline project residue is intentionally left for `/spec:execute`, which must verify the baseline paths are clean and then either commit residue as `specify: residue <slice-name>` or halt before marking the plan entry `done`.
 
 ### Driver fallback on missing or malformed outcome
 
-If `.metadata.yaml:outcome` is missing or malformed when `/change:execute` reads it on phase return, the driver treats the phase as `deferred` and stops for triage. **Do not** skip the recording call as a "soft success" — silence is treated as deferral, not as completion.
+If `.metadata.yaml:outcome` is missing or malformed when `/spec:execute` reads it on phase return, the driver treats the phase as `deferred` and stops for triage. **Do not** skip the recording call as a "soft success" — silence is treated as deferral, not as completion.
 
 ---
 
 ## Verbatim-`summary` rule
 
-When `/change:execute` reclaims a `failure` or `deferred` outcome by invoking `/spec:drop` (self-heal on startup, or per-iteration cleanup), it copies `outcome.summary` **byte-for-byte** into the `reason` argument:
+When `/spec:execute` reclaims a `failure` or `deferred` outcome by invoking `/spec:drop` (self-heal on startup, or per-iteration cleanup), it copies `outcome.summary` **byte-for-byte** into the `reason` argument:
 
 ```bash
 /spec:drop <change> reason "<outcome.summary verbatim>"
@@ -94,15 +94,15 @@ specify slice journal append <name> <phase> <kind> --summary "..." [--context ".
 
 - **`question`** — anything that might produce a `deferred` outcome at the end of the phase: an ambiguous requirement, a missing scope hint, baseline drift surfaced by `change merge conflict-check`, a design issue uncovered mid-build. Write one entry per question so triagers see the full trail.
 - **`failure`** — a brief, specialist writer skill, or CLI invocation returned an error after retry. Write one entry per failure; the final `outcome set --summary` rolls up only the load-bearing one, but the journal preserves every attempt inside the verify-repair loop.
-- **`recovery`** — a self-heal / recovery step happened. Typically written by `/change:execute` itself; phase skills rarely need to append this kind.
+- **`recovery`** — a self-heal / recovery step happened. Typically written by `/spec:execute` itself; phase skills rarely need to append this kind.
 
-`journal.yaml` is a pure append-only audit log. `/change:execute` never reads it as a signalling channel — the `outcome` field in `.metadata.yaml` is the only state the driver consumes on phase return.
+`journal.yaml` is a pure append-only audit log. `/spec:execute` never reads it as a signalling channel — the `outcome` field in `.metadata.yaml` is the only state the driver consumes on phase return.
 
 ---
 
 ## Mutating the plan mid-run
 
-Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the slice. Both commands write `plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/change:execute` iteration.
+Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the slice. Both commands write `plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 ### Allowed
 
@@ -111,10 +111,10 @@ Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when t
 
 ### Forbidden
 
-- **Writing `status` through `amend`.** The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/change:execute`'s sole prerogative via `specify plan transition`.
+- **Writing `status` through `amend`.** The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
 - **Hand-editing `plan.yaml` or `.specify/slices/<name>/.metadata.yaml`.** Always route through the CLI so the single-writer invariant holds.
 
-`/spec:drop` does not mutate `plan.yaml` directly: it terminates the active slice, and `/change:execute` then issues `specify plan transition <name> failed` or `blocked` based on the upstream outcome.
+`/spec:drop` does not mutate `plan.yaml` directly: it terminates the active slice, and `/spec:execute` then issues `specify plan transition <name> failed` or `blocked` based on the upstream outcome.
 
 ### Allow/forbid table
 
@@ -123,5 +123,5 @@ Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when t
 | `specify plan add <new-name> ...`                        |    ✓     |    ✓    |    ✓    |   ✗    | Surfacing a neighbouring slice is a phase-time discovery.     |
 | `specify plan amend <current-name> --depends-on ...`     |    ✓     |    ✓    |    ✓    |   ✗    | Non-`status` fields only; may target the active entry.         |
 | `specify plan amend ... status=...`                      |    ✗     |    ✗    |    ✗    |   ✗    | Type-system guarantee: `PlanChangePatch` has no `status`.      |
-| `specify plan transition <name> <state>`                 |    ✗     |    ✗    |    ✗    |   ✗    | Driver-only — `/change:execute` owns plan-status transitions.    |
+| `specify plan transition <name> <state>`                 |    ✗     |    ✗    |    ✗    |   ✗    | Driver-only — `/spec:execute` owns plan-status transitions.    |
 | Hand-edit `plan.yaml` or `.metadata.yaml`                |    ✗     |    ✗    |    ✗    |   ✗    | Always route through the CLI; preserves single-writer invariant. |

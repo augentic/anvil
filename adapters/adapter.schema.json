@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/adapters/adapter.schema.json",
   "title": "Specify adapter manifest",
-  "description": "Validates the structure of a Specify adapter manifest (adapter.yaml). The manifest is the declarative surface the core loads before running the slice loop. Defined by RFC-13 §Adapter manifest and protocol; the manifest field set is closed (additionalProperties: false) so the dropped fields domain, extends, and pipeline.plan are actively rejected rather than tolerated. Planning is orchestration, not adapter-owned slice work, and lives on the `specify change` planning skill (`plugins/change/skills/plan/`); see RFC-13 §3.11 for the migration that landed this rejection.",
+  "description": "Validates the structure of a legacy Specify adapter manifest (adapter.yaml). The manifest is the declarative surface the core loads before running the slice loop. Defined by RFC-13 §Adapter manifest and protocol; the manifest field set is closed (additionalProperties: false) so the dropped fields domain, extends, and pipeline.plan are actively rejected rather than tolerated. RFC-25 source / target manifests validate against schemas/source.schema.json and schemas/target.schema.json instead; this schema covers only the pre-RFC-25 adapters that remain under adapters/.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "description", "pipeline"],
@@ -26,7 +26,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["define", "build", "merge"],
-      "description": "Ordered briefs the core renders for each fixed slice phase. The manifest contains only the three slice phases (define, build, merge); planning is platform-component territory owned by the `specify change` planning skill (`plugins/change/skills/plan/`). RFC-13 §3.11 dropped the transitional `pipeline.plan` property — `additionalProperties: false` actively rejects it now (and any other unrecognised phase).",
+      "description": "Ordered briefs the core renders for each fixed slice phase. The manifest contains only the three slice phases (define, build, merge); planning is owned by the spec plugin (post-RFC-25: `plugins/spec/skills/plan/`). RFC-13 §3.11 dropped the transitional `pipeline.plan` property — `additionalProperties: false` actively rejects it now (and any other unrecognised phase).",
       "properties": {
         "define": {
           "type": "array",

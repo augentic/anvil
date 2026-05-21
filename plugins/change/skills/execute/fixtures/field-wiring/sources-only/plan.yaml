@@ -1,9 +1,0 @@
-name: sources-only-initiative
-
-sources:
-  monolith: /path/to/legacy-codebase
-
-changes:
-  - name: user-registration
-    sources: [monolith]
-    status: pending

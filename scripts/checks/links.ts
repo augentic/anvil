@@ -21,7 +21,15 @@ export async function checkMarkdownLinks(): Promise<void> {
   // `rfcs/archive/` keeps the as-shipped prose of historical RFCs intact;
   // those documents intentionally retain paths that have since been
   // renamed or retired and are not part of the live workflow surface.
-  const SKIP_DIRS = [/node_modules/, /\.git/, /temp/, /rfcs\/archive/];
+  // The same applies to non-archived historical RFCs (everything except
+  // the current `rfc-25-*` workflow contract).
+  const SKIP_DIRS = [
+    /node_modules/,
+    /\.git/,
+    /temp/,
+    /rfcs\/archive/,
+    /rfcs\/rfc-(?!25)/,
+  ];
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
   const INLINE_CODE_RE = /`[^`]+`/g;

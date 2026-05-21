@@ -4,8 +4,8 @@ owner: contracts
 kind: adapter
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
-stages: [define, build, merge]
+entrypoint: /spec:refine
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: extract
 assertions:
@@ -29,26 +29,26 @@ negative-expectations:
 
 Scenario ID: `contracts-source`
 
-Use this test to verify that `/spec:define` can reverse-engineer Specify
+Use this test to verify that `/spec:refine` can reverse-engineer Specify
 contract artifacts from a legacy TypeScript codebase whose API surface a
-prior `/change:analyze legacy-code` run has already identified.
+prior `/spec:plan legacy-code` run has already identified.
 
 Pipeline note:
 
-- In the `contracts` schema, `/spec:define` creates `proposal.md`,
+- In the `contracts` schema, `/spec:refine` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; contract YAML is produced during
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts
   as context. Reverse-engineered interface shapes should be introduced through
   a separate `contracts@v1` change before implementation depends on them.
-- Extract-from-source changes assume `/change:analyze legacy-code` has
+- Extract-from-source changes assume `/spec:plan legacy-code` has
   already produced a `discovery.md` adapter summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
 ## Intent
 
 Prove that the `contracts@v1` slice loop can extract HTTP and JSON Schema
-artifacts from a legacy TypeScript service when a prior `/change:analyze`
+artifacts from a legacy TypeScript service when a prior `/spec:plan`
 run has constrained the scope to one adapter. The scenario covers
 analysis-bounded extraction: the contract change must stay inside the scoped
 entry points and must mark wire-level fields as `[unknown]` rather than
@@ -65,15 +65,15 @@ guessing.
   and records results in the [run summary](run-summary-template.md).
 - **Precondition:** the discovery block in **Inputs** below must already be
   present in the plan's `discovery.md`. The scenario stipulates this, it does
-  not exercise `/change:analyze`.
+  not exercise `/spec:plan`.
 
 ## Inputs
 
 ### Discovery precondition
 
-This test assumes a prior `/change:analyze legacy-code` run against
+This test assumes a prior `/spec:plan legacy-code` run against
 `vendor/orders-service/` has appended this adapter block to the plan's
-`discovery.md` (shape pinned by `plugins/change/skills/analyze/SKILL.md`):
+`discovery.md` (shape pinned by `plugins/spec/skills/plan/SKILL.md`):
 
 ````markdown
 ### orders
@@ -183,10 +183,10 @@ app.listen(3000);
 
 ## Invocation
 
-Invoke `/spec:define` in extract-from-source mode:
+Invoke `/spec:refine` in extract-from-source mode:
 
 ```text
-/spec:define orders-api-contract
+/spec:refine orders-api-contract
 
 Reverse-engineer API contracts from an existing TypeScript service.
 
@@ -215,7 +215,7 @@ additional surface as [manual review required] rather than silently
 expanding the contract change.
 ```
 
-After `/spec:define` succeeds, drive `/spec:build orders-api-contract` to
+After `/spec:refine` succeeds, drive `/spec:build orders-api-contract` to
 produce the contract YAML, then optionally `/spec:merge orders-api-contract`
 to promote the deltas into the baseline.
 

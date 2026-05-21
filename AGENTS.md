@@ -32,7 +32,7 @@ The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:exe
 - `/spec:plan` — author `change.md` and `plan.yaml`: enumerate each bound source, propose `slices[]` rows by fusing candidates across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specify plan transition <name> reviewed` command.
 - `specify plan transition <name> reviewed` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `reviewed` itself.
 - `/spec:execute` — refuses unless the plan is `reviewed`; loops `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
-- `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
+- `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 - `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
 - `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
@@ -81,7 +81,7 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - Some skills use symlinks to share reference documents from `plugins/references/`. If a symlink target is removed, the skill's documentation may reference content that no longer resolves.
-- 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or `/change:*`. Operators upgrade via `migrate-to-2.0.sh`.
+- 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace. Operators upgrade via `migrate-to-2.0.sh`.
 
 ### Related coding standards
 

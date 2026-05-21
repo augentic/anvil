@@ -35,7 +35,7 @@ Record the exact slash-command(s) actually run, in order. These should match
 the scenario's **Invocation** block verbatim; record any deviation explicitly.
 
 ```text
-<paste the /spec:define ... prompt that was run>
+<paste the /spec:refine ... prompt that was run>
 ```
 
 ```text

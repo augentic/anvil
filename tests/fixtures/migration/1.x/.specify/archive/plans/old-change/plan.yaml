@@ -1,0 +1,15 @@
+version: 1
+name: old-change
+lifecycle: drained
+sources:
+  legacy-monolith:
+    adapter: code-typescript
+    path: ./vendor/legacy-monolith
+slices:
+  - name: old-slice
+    adapter: omnia
+    project: identity-svc
+    sources:
+      - legacy-monolith
+    candidate: old-slice
+    status: done

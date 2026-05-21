@@ -1,6 +1,0 @@
-version: 1
-sources:
-  - key: legacy-api
-    path: ./legacy-api-source
-  - key: legacy-billing
-    path: ./legacy-billing-source

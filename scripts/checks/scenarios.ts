@@ -29,7 +29,7 @@ interface ScenarioFile {
   frontmatter: Record<string, unknown>;
 }
 
-const STAGES_ORDER = ["define", "build", "merge", "drop"] as const;
+const STAGES_ORDER = ["plan", "refine", "build", "merge", "drop"] as const;
 const SCENARIO_ID_BODY_RE = /^Scenario ID:\s*`?([a-z][a-z0-9-]*)`?\s*$/m;
 
 async function discoverScenarioCandidates(): Promise<string[]> {
@@ -165,10 +165,17 @@ async function discoverScenarioCandidates(): Promise<string[]> {
 }
 
 function isContiguousStagesPrefix(stages: unknown): boolean {
+  // RFC-25: stages MUST be a contiguous slice of STAGES_ORDER. Scenarios
+  // may anchor at the plan-authoring phase or at any later slice phase
+  // (e.g. an adapter-scope scenario that starts in `refine`); the rule
+  // is contiguity rather than always-starts-at-plan.
   if (!Array.isArray(stages) || stages.length === 0) return false;
+  const first = stages[0];
+  const start = STAGES_ORDER.indexOf(first as typeof STAGES_ORDER[number]);
+  if (start < 0) return false;
   for (let i = 0; i < stages.length; i++) {
-    if (i >= STAGES_ORDER.length) return false;
-    if (stages[i] !== STAGES_ORDER[i]) return false;
+    if (start + i >= STAGES_ORDER.length) return false;
+    if (stages[i] !== STAGES_ORDER[start + i]) return false;
   }
   return true;
 }
@@ -237,7 +244,7 @@ export async function validateScenarioFrontmatter(): Promise<void> {
     if (stages === undefined) continue;
     if (!isContiguousStagesPrefix(stages)) {
       fail(
-        `Scenario frontmatter: ${sc.rel} — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ${
+        `Scenario frontmatter: ${sc.rel} — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ${
           JSON.stringify(stages)
         }`,
       );

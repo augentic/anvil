@@ -3,7 +3,7 @@
 These documents are owner-local acceptance scenarios for `contracts@v1`
 interface generation. They exercise the dedicated contract slice loop:
 
-1. `/spec:define` creates `proposal.md`, `specs/**/*.md`, and `tasks.md`.
+1. `/spec:refine` creates `proposal.md`, `specs/**/*.md`, and `tasks.md`.
 2. `/spec:build` authors, imports, repairs, and verifies change-local
    `contracts/**/*.yaml` deltas.
 3. `/spec:merge` promotes those deltas into the root `contracts/` baseline.
@@ -80,8 +80,8 @@ owner: contracts                      # required
 kind: adapter                      # required: adapter | adapter-boundary
 adapter: contracts@v1              # required for adapter and adapter-boundary
 backend: manual                       # required: manual | agent | recorded | fixture
-entrypoint: /spec:define              # required: slash-command, /<plugin>:<skill>
-stages: [define, build, merge]        # required: subset of define | build | merge | drop
+entrypoint: /spec:refine              # required: slash-command, /<plugin>:<skill>
+stages: [refine, build, merge]        # required: contiguous slice of plan | refine | build | merge | drop
 isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice
 authorship-mode: prose                # optional adapter-specific hint
 assertions:                           # optional, named assertion ids
@@ -110,7 +110,7 @@ For each scenario:
 1. Open the scenario file.
 2. Create any source file described in the scenario's **Inputs** section, such
    as `docs/returns-api-design.md` or `vendor/ticket-api.openapi.yaml`.
-3. Run the scenario's `/spec:define ...` prompt from **Invocation**.
+3. Run the scenario's `/spec:refine ...` prompt from **Invocation**.
 4. Review the generated `proposal.md`, `specs/**/*.md`, and `tasks.md`.
 5. Run `/spec:build <change-name>`.
 6. Verify the **Expected Artifacts** under `contracts/http/*.yaml`,
@@ -148,7 +148,7 @@ Run all contract test scenarios in adapters/contracts/tests/ in this order:
 Do not ask for confirmation between scenarios. For each scenario:
 - Read the scenario file completely before acting.
 - Create any temporary source files the scenario requires.
-- Run the listed /spec:define prompt as a contracts@v1 change.
+- Run the listed /spec:refine prompt as a contracts@v1 change.
 - Run /spec:build for the generated change.
 - Check that the expected change-local contracts/**/*.yaml files exist.
 - Check verifier output for failures or manual-review warnings.

@@ -1,6 +1,0 @@
-{
-  "error": "surveyor-exhausted",
-  "source-key": "legacy-flaky",
-  "retry-budget": 3,
-  "retries-attempted": 3
-}

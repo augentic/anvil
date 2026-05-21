@@ -219,9 +219,9 @@ All checks passed (9 $ref pointers, 6 schemas, 4 channels, 5 operations verified
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The contracts adapter merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/change:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
+`cross-project` mode runs **after** a producer's contract change merges. The contracts adapter merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/spec:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
 
-The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/change:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the RFC-12 §Validation rules:
+The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/spec:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the RFC-12 §Validation rules:
 
 - `contract.version-is-semver` — every top-level OpenAPI 3.1 / AsyncAPI 3.0 document's `info.version` parses as SemVer (per [semver.org](https://semver.org), prerelease labels included).
 - `contract.id-format` — when `info.x-specify-id` is present, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters.

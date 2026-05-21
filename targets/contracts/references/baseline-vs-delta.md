@@ -80,7 +80,7 @@ Two consequences for authors:
 Two concurrent changes that both modify the same contract file conflict. `specify slice merge conflict-check` detects this by comparing the slice's `defined-at` timestamp against the baseline file's last-merged timestamp:
 
 - **No conflict.** Baseline file unchanged since the slice was defined → merge proceeds.
-- **Conflict.** Baseline file modified after the slice's `defined-at` → merge is blocked. Resolution: re-run the slice's define phase against the updated baseline (typically via `/spec:define` resume), recompute the delta, and re-merge.
+- **Conflict.** Baseline file modified after the slice's `defined-at` → merge is blocked. Resolution: re-run the slice's define phase against the updated baseline (typically via `/spec:refine` resume), recompute the delta, and re-merge.
 
 Conflicts are detected at file granularity, not at the property / path / channel level. Two changes that add disjoint paths to the same `user-api.yaml` will still conflict — Specify defers to the operator to merge them manually (the format authors run again with the second change rebased onto the post-first-merge baseline).
 

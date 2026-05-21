@@ -103,7 +103,7 @@
 
 ### T2. Drop the `survey/SKILL.md` line-83 RFC citation in body prose
 
-**Evidence** `plugins/change/skills/survey/SKILL.md:83` reads `See [rfcs/rfc-20-survey.md](../../../../rfcs/rfc-20-survey.md) §"Determinism Policy" for the long form.` `docs/standards/skill-authoring.md:50` (rule 3): "**No RFC citations in skill bodies.** … Mechanically enforced by `checkNoRfcCitationsInSkillBody`." The same RFC appears (correctly) in the `## Reference Documentation` table at line 130.
+**Evidence** Historical: the retired survey skill body (since removed under RFC-25 W2.x along with the rest of the `change` plugin tree) read `See [rfcs/rfc-20-survey.md](../../../../rfcs/rfc-20-survey.md) §"Determinism Policy" for the long form.` `docs/standards/skill-authoring.md:50` (rule 3): "**No RFC citations in skill bodies.** … Mechanically enforced by `checkNoRfcCitationsInSkillBody`." The same RFC appeared (correctly) in the `## Reference Documentation` table at line 130.
 
 **Action** Delete the second sentence of the `## Determinism policy` paragraph (line 83); keep the bulleted summary that follows. The reference table at line 130 already carries the link.
 

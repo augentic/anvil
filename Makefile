@@ -14,6 +14,12 @@ test:
 		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
 		tests/cross_repo.ts
 
+.PHONY: test-migration
+test-migration:
+	@$(DENO) test \
+		--allow-read --allow-write --allow-env --allow-run \
+		tests/migration_test.ts
+
 .PHONY: use-local-plugins
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

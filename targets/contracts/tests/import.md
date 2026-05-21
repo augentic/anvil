@@ -4,8 +4,8 @@ owner: contracts
 kind: adapter
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
-stages: [define, build, merge]
+entrypoint: /spec:refine
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: import
 assertions:
@@ -22,7 +22,7 @@ negative-expectations:
   - inline-schemas-not-decomposed
 ---
 
-# Import A Contract Passed To `/spec:define`
+# Import A Contract Passed To `/spec:refine`
 
 Scenario ID: `contracts-import`
 
@@ -31,7 +31,7 @@ upgraded if needed, decomposed into shared schemas, and verified.
 
 Pipeline note:
 
-- In the `contracts` schema, `/spec:define` creates `proposal.md`,
+- In the `contracts` schema, `/spec:refine` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; import normalization is produced during
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts as
@@ -108,10 +108,10 @@ components:
 
 ## Invocation
 
-Invoke `/spec:define` in import mode:
+Invoke `/spec:refine` in import mode:
 
 ```text
-/spec:define import-ticket-api-contract
+/spec:refine import-ticket-api-contract
 
 Import existing contracts.
 
@@ -127,7 +127,7 @@ if needed, decompose inline schemas into contracts/schemas, and verify the
 resulting contract artifacts.
 ```
 
-After `/spec:define` succeeds, drive `/spec:build import-ticket-api-contract`
+After `/spec:refine` succeeds, drive `/spec:build import-ticket-api-contract`
 to produce the normalised contract YAML, then optionally
 `/spec:merge import-ticket-api-contract` to promote the deltas into the
 baseline.

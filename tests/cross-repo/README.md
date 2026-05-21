@@ -4,12 +4,12 @@ These documents are manual acceptance scenarios for the cross-repo Specify
 workflow from an operator's point of view, expressed through the three-skill
 change lifecycle introduced by RFC-23 (`draft → review → execute → finalize`):
 
-1. draft a multi-slice change from a short feature brief (`/change:draft`)
+1. draft a multi-slice change from a short feature brief (`/spec:plan`)
 2. review the draft plan at the operator pause (`specify plan status`,
    optional `specify plan amend`)
 3. execute contract and implementation slices in dependency order
-   (`/change:execute loop`)
-4. drive the post-execute tail (`/change:finalize`): push prepared workspace
+   (`/spec:execute loop`)
+4. drive the post-execute tail (`/spec:finalize`): push prepared workspace
    branches, observe PR state, and archive the change after the project
    branches are merged externally
 
@@ -65,7 +65,7 @@ For each run:
 2. Create the temporary hub and project workspaces described in **Workspace**.
 3. Create the feature brief from **Inputs**.
 4. Run the prompts and commands from **Invocation** exactly as written unless
-   the scenario documents an allowed local substitution. The `/change:finalize`
+   the scenario documents an allowed local substitution. The `/spec:finalize`
    stage is invoked twice intentionally — the first invocation halts on
    `pr-not-merged`; the operator merges the named PRs externally; the second
    invocation archives the plan.
@@ -73,7 +73,7 @@ For each run:
    snapshot in the run summary.
 6. Preserve failure evidence: `plan.yaml`, `registry.yaml`, command output,
    workspace status, generated artifacts, PR or branch state, and every
-   `/change:finalize` invocation's output.
+   `/spec:finalize` invocation's output.
 7. Fill out [`run-summary-template.md`](run-summary-template.md).
 
 ## Run Summary

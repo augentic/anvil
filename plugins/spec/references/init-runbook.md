@@ -153,12 +153,12 @@ If **none** of these are found, show the **greenfield output** and stop.
 
 If at least one indicator is found, use the **AskQuestion tool**:
 
-> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
+> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This is driven by `/spec:plan` with the matching `code-*` source adapter (e.g. `code-typescript`)."
 
 Options:
 
 - **Yes, generate baseline specs** — proceed to create the slice
-- **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
+- **No, skip for now** — show the greenfield output and stop (user can run `/spec:plan` manually later with the matching `code-*` source)
 
 If the user chooses **yes**, create the slice via the CLI:
 
@@ -178,7 +178,7 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
 - **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
-- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is `/spec:extract`'s job.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
 - **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
 - **Adapter vs `--hub` is mutually exclusive.** The CLI rejects the combination with `init-requires-adapter-or-hub`; pick exactly one shape per run.

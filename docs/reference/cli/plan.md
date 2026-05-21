@@ -2,7 +2,7 @@
 
 Scaffold, populate, validate, transition, and archive change plans. The `plan` verb is the top-level home of every `plan.yaml` operation; each verb on this page is invoked as `specify plan <verb>`.
 
-> Need to scaffold `change.md` alongside `plan.yaml` in one step? See [`specify change draft`](change.md#specify-change-draft), which delegates to the same plan-scaffold helper that backs [`specify plan create`](#specify-plan-create) below.
+> Need to scaffold `change.md` alongside `plan.yaml` in one step? See [`specify plan create`](change.md#specify-change-draft), which delegates to the same plan-scaffold helper that backs [`specify plan create`](#specify-plan-create) below.
 
 ## Verb cheat-sheet
 
@@ -12,11 +12,11 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`transition`](#specify-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
-| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus the four health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry`). First triage step when `/change:execute` reports `stuck`. |
-| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/change:execute` and ad-hoc operators). |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus the four health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry`). First triage step when `/spec:execute` reports `stuck`. |
+| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
 | [`status`](#specify-plan-status) | Render plan progress in topological order with per-status counts. |
-| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify change finalize` rather than directly.) |
-| [`lock`](#specify-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/change:execute`. |
+| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify plan finalize` rather than directly.) |
+| [`lock`](#specify-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/spec:execute`. |
 
 ## Subcommands
 
@@ -28,7 +28,7 @@ Scaffold an empty plan.
 specify plan create <name> [--source <key>=<path>...]
 ```
 
-Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present. Shares its scaffold helper with [`specify change draft`](change.md#specify-change-draft), which additionally writes `change.md` in the same atomic step.
+Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present. Shares its scaffold helper with [`specify plan create`](change.md#specify-change-draft), which additionally writes `change.md` in the same atomic step.
 
 ### specify plan validate
 
@@ -46,7 +46,7 @@ Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on
 - `description-missing-multi-repo` (error) -- when the registry has multiple projects, every project must carry a `description`.
 - `adapter-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
 
-Health diagnostics layered on top — first triage step when `/change:execute` reports `stuck`:
+Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
@@ -137,13 +137,13 @@ specify plan lock release --pid <pid>
 specify plan lock status
 ```
 
-The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prevent concurrent execution. The CLI `pid` option defaults to the current process PID; `/change:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
+The lock (`.specify/plan.lock`) is a PID stamp held by `/spec:execute` to prevent concurrent execution. The CLI `pid` option defaults to the current process PID; `/spec:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
 
 ## See also
 
 - [specify change](change.md) -- the change-lifecycle verbs (`draft`, `show`, `finalize`) that scaffold `change.md` + `plan.yaml` together and trigger close-out.
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
-- [/change:draft](../change-skills/draft.md) -- skill that authors plans
-- [/change:execute](../change-skills/execute.md) -- skill that drives plan execution
-- [/change:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
+- [/spec:plan](../change-skills/draft.md) -- skill that authors plans
+- [/spec:execute](../change-skills/execute.md) -- skill that drives plan execution
+- [/spec:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
 - [Configuration Files](../configuration.md) -- plan.yaml and registry format

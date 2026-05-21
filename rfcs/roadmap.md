@@ -22,7 +22,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Keep the CLI authoritative.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
 - **Treat `registry.yaml` as a projection.** Rich catalog metadata can live in Backstage or another catalog; Specify should consume reviewable registry projections for routing, workspace sync, and execution.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; codex rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
-- **Optimize for local first, cloud later.** `/change:execute loop` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
+- **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
 - **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo linting and consumer-project review. The planned `specify check` linter and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
@@ -112,7 +112,7 @@ specify events export
 
 #### RM-15: Structured change-lifecycle status for re-entry
 
-**Goal:** Make the `/change:draft` → `/change:execute` → `/change:finalize` lifecycle's re-entry and pause points machine-readable.
+**Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
 
@@ -142,7 +142,7 @@ specify change finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
-**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/change:execute loop`.
+**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
 **Target surface:**
 
 ```bash

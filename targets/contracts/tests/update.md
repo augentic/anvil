@@ -4,8 +4,8 @@ owner: contracts
 kind: adapter-boundary
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
-stages: [define, build, merge]
+entrypoint: /spec:refine
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: prose
 assertions:
@@ -23,7 +23,7 @@ negative-expectations:
   - implementation-slice-pre-authors-interface-shapes
 ---
 
-# Generate From An Updated `design.md` Created By `/spec:define`
+# Generate From An Updated `design.md` Created By `/spec:refine`
 
 Scenario ID: `contracts-update-boundary`
 
@@ -38,7 +38,7 @@ Prove that the pipeline upholds the contract/implementation boundary: an
 implementation slice (Omnia or Vectis) cannot become the source of contract
 generation by augmenting its `design.md`. The scenario has two parts:
 
-1. The negative path — an implementation-schema `/spec:define` regeneration
+1. The negative path — an implementation-schema `/spec:refine` regeneration
    over an updated `design.md` must **not** emit contract YAML. This is the
    primary assertion and the **Negative Expectations** section is the
    load-bearing oracle.
@@ -54,7 +54,7 @@ verifies cleanly.
 
 - **Adapter under test:** `contracts@v1` (boundary).
 - **Project shape:** the negative path runs in an implementation-schema
-  project (Omnia or Vectis) where `/spec:define` produces a slice with
+  project (Omnia or Vectis) where `/spec:refine` produces a slice with
   `design.md`. The regression path runs in a project initialised with the
   `contracts@v1` schema. Operators may use one project that supports both
   schemas, or two distinct projects.
@@ -99,7 +99,7 @@ YAML from it. The scenario asserts the pipeline does not.
 Run inside an implementation-schema project. Start with a high-level change:
 
 ```text
-/spec:define loyalty-enrollment
+/spec:refine loyalty-enrollment
 
 Create a loyalty enrollment adapter. It should expose an HTTP API, but leave
 endpoint details initially high level:
@@ -109,7 +109,7 @@ endpoint details initially high level:
 ```
 
 Then apply the **Updated implementation `design.md`** block from **Inputs** to
-the slice's `design.md` and re-run `/spec:define loyalty-enrollment` (or the
+the slice's `design.md` and re-run `/spec:refine loyalty-enrollment` (or the
 implementation pipeline's regenerate equivalent). Confirm — per
 **Negative Expectations** — that this run produces no `contracts/**/*.yaml`
 output.
@@ -120,7 +120,7 @@ Now run the regression path inside a `contracts@v1` project to produce the
 correct contract artifacts:
 
 ```text
-/spec:define loyalty-enrollment-interface
+/spec:refine loyalty-enrollment-interface
 /spec:build loyalty-enrollment-interface
 /spec:merge loyalty-enrollment-interface
 ```
@@ -130,7 +130,7 @@ The regression slice is what `Expected Artifacts` describes; it is the
 
 ## Expected Artifacts
 
-These belong to the **regression path** (`/spec:define loyalty-enrollment-interface`),
+These belong to the **regression path** (`/spec:refine loyalty-enrollment-interface`),
 not the negative path. During `/spec:build`, the dedicated contract change
 should produce these change-local contract deltas. After merge, the same paths
 become root `contracts/` baseline files.
@@ -146,7 +146,7 @@ absence of contract output is itself the oracle (see **Negative Expectations**).
 ## Assertions
 
 - `implementation-schema-emits-no-contract-yaml`: after the implementation
-  slice's `/spec:define` regeneration over the updated `design.md`, no
+  slice's `/spec:refine` regeneration over the updated `design.md`, no
   `contracts/**/*.yaml` files exist in the slice working tree, and no contract
   deltas are queued for merge into the baseline.
 - `regression-path-files-exist`: every path in **Expected Artifacts** exists in
@@ -161,7 +161,7 @@ absence of contract output is itself the oracle (see **Negative Expectations**).
 These are the load-bearing oracle for this scenario.
 
 - `implementation-design-emits-contract-yaml`: a plain implementation-schema
-  `/spec:define` regeneration over the updated `loyalty-enrollment/design.md`
+  `/spec:refine` regeneration over the updated `loyalty-enrollment/design.md`
   must not derive contract YAML. The `## API Contracts` block in `design.md`
   is design-time context for the implementation slice; it is not a contract
   authoring source.

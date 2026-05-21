@@ -1,1 +1,0 @@
-/spec:define registration-hardening --source monolith=/path/to/legacy-codebase

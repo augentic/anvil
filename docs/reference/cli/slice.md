@@ -14,7 +14,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
 | [`task`](#specify-slice-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
-| [`outcome`](#specify-slice-outcome) | `outcome {set, show}` -- write or read the phase outcome that `/change:execute` consumes. |
+| [`outcome`](#specify-slice-outcome) | `outcome {set, show}` -- write or read the phase outcome that `/spec:execute` consumes. |
 | [`journal`](#specify-slice-journal) | `journal {append, show}` -- append or read `journal.yaml` entries (questions, failures, recoveries). |
 | [`touched-specs`](#specify-slice-touched-specs) | Scan or set the spec files this slice affects. |
 | [`overlap`](#specify-slice-overlap) | Find slices whose touched specs overlap. |
@@ -181,7 +181,7 @@ Used by `/spec:build` as it completes each task.
 
 ### specify slice outcome
 
-Two subcommands cover the phase outcome surface (renamed from the historical `specify change phase-outcome` / bare `specify change outcome` forms).
+Two subcommands cover the phase outcome surface (renamed from the historical `specify slice outcome set` / bare `specify change outcome` forms).
 
 #### specify slice outcome set
 
@@ -199,7 +199,7 @@ specify slice outcome set <name> <phase> <outcome> --summary "..." [--context ".
 | `--summary` | Short description of the outcome |
 | `--context` | Optional verbatim detail (stderr tail, failing test, etc.) |
 
-Used by `/change:execute` to determine plan entry transitions. For merge success, the CLI stamps the outcome automatically during `slice merge run` -- skills do not call `outcome set` on the merge success path.
+Used by `/spec:execute` to determine plan entry transitions. For merge success, the CLI stamps the outcome automatically during `slice merge run` -- skills do not call `outcome set` on the merge success path.
 
 #### specify slice outcome show
 
@@ -209,11 +209,11 @@ Read the phase outcome for a slice.
 specify slice outcome show <name> [--format json]
 ```
 
-Returns the `outcome` field from `.metadata.yaml`. Falls back to the archive when the active slice directory is absent (e.g. after a successful merge archives the slice). Used by `/change:execute` to read the result of a phase after it returns.
+Returns the `outcome` field from `.metadata.yaml`. Falls back to the archive when the active slice directory is absent (e.g. after a successful merge archives the slice). Used by `/spec:execute` to read the result of a phase after it returns.
 
 ### specify slice journal
 
-Two subcommands cover the slice journal surface (renamed from the historical `specify change journal-append`; `show` is new).
+Two subcommands cover the slice journal surface (renamed from the historical `specify slice journal append`; `show` is new).
 
 #### specify slice journal append
 
@@ -231,7 +231,7 @@ specify slice journal append <name> <phase> <kind> --summary "..." [--context ".
 | `--summary` | Short description |
 | `--context` | Optional verbatim detail |
 
-Records questions, failures, and recovery steps in `journal.yaml` for audit. The journal is append-only and never consumed as a signalling channel -- `.metadata.yaml:outcome` is the only state `/change:execute` reads.
+Records questions, failures, and recovery steps in `journal.yaml` for audit. The journal is append-only and never consumed as a signalling channel -- `.metadata.yaml:outcome` is the only state `/spec:execute` reads.
 
 #### specify slice journal show
 
@@ -245,7 +245,7 @@ Renders the journal in chronological order. Useful for triaging failed or deferr
 
 ## See also
 
-- [/spec:define](../slice-skills/define.md) -- skill that creates slices
+- [/spec:refine](../slice-skills/define.md) -- skill that creates slices
 - [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
 - [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
 - [/spec:drop](../slice-skills/drop.md) -- skill that drops slices

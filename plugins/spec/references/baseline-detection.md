@@ -15,12 +15,12 @@ If **none** of these are found, treat the project as **greenfield**: render the 
 
 If at least one indicator is found, use the **AskQuestion tool**:
 
-> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
+> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This is driven by `/spec:plan` with the matching `code-*` source adapter (e.g. `code-typescript`)."
 
 Options:
 
 - **Yes, generate baseline specs** — proceed to create the slice.
-- **No, skip for now** — render the Greenfield template and stop (the user can run `/spec:extract` manually later).
+- **No, skip for now** — render the Greenfield template and stop (the user can run `/spec:plan` manually later with the matching `code-*` source).
 
 ## Creating the baseline slice
 
@@ -32,4 +32,4 @@ specify slice create initial-baseline --format json
 
 The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Then render the Brownfield template from [init-output-templates.md](init-output-templates.md) and stop.
 
-Init does NOT run `/spec:extract` itself — baseline-extraction is delegated. The brownfield template tells the operator the next command to run.
+Init does NOT extract evidence itself — baseline extraction is delegated to `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`. The brownfield template tells the operator the next command to run.

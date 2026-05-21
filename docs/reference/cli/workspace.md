@@ -24,7 +24,7 @@ Selectors are registry project names. Unknown selectors fail before filesystem, 
 
 ## Branch preparation
 
-Before `/change:execute` mutates a remote-backed workspace slot, the executor prepares the slot on the change branch:
+Before `/spec:execute` mutates a remote-backed workspace slot, the executor prepares the slot on the change branch:
 
 1. Fetch `origin`.
 2. Resolve `origin/HEAD` as the remote default branch.
@@ -32,7 +32,7 @@ Before `/change:execute` mutates a remote-backed workspace slot, the executor pr
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare-branch` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/change:execute`, `specify workspace status`, `specify workspace push`, and `specify change finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare-branch` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace status`, `specify workspace push`, and `specify plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
@@ -75,7 +75,7 @@ Per-project output includes:
 - `.specify/project.yaml` presence;
 - active slices discovered under `.specify/slices/`.
 
-`status` is read-only. It is the first check when `sync`, `/change:execute`, or `push` reports a missing, dirty, or mismatched slot.
+`status` is read-only. It is the first check when `sync`, `/spec:execute`, or `push` reports a missing, dirty, or mismatched slot.
 
 ### specify workspace push
 
@@ -151,14 +151,14 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 Automated workspace merge has been removed. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
-specify change finalize
+specify plan finalize
 ```
 
-`specify change finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
+`specify plan finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
 
 ## See also
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
-- [/change:execute](../change-skills/execute.md) -- skill that drives workspace execution
-- [`specify change finalize`](change.md#specify-change-finalize) -- closure after PRs are operator-merged
+- [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
+- [`specify plan finalize`](change.md#specify-change-finalize) -- closure after PRs are operator-merged

@@ -22,7 +22,7 @@ Verbatim summaries `/spec:init` prints after a successful invocation. Pick the t
 
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
-2. Run `/spec:define` to create your first change
+2. Run `/spec:plan <name>` to author your first change
 ```
 
 ## Brownfield
@@ -37,9 +37,9 @@ Next steps:
 
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
-2. Run `/spec:extract . .specify/slices/initial-baseline/` to analyze the codebase
-3. After extraction, run `/spec:merge initial-baseline` to promote specs to baseline
-4. Then run `/spec:define` for future changes
+2. Run `/spec:plan initial-baseline source code-typescript=.` (or whichever `code-*` source matches the codebase) to enumerate candidates
+3. Stamp Gate 1 with `specify plan transition initial-baseline reviewed`, then run `/spec:execute` to drive `refine -> build -> merge`
+4. Run `/spec:plan <name> ...` for future changes
 ```
 
 ## Hub
@@ -55,6 +55,6 @@ Next steps:
 
 Next steps:
 1. Add registered projects with `specify registry add`
-2. Run `specify change draft <name>` to scaffold the change brief and plan together
-3. Run `/change:draft <name>` to author the plan, `/change:execute loop` to drive it, then `/change:finalize <name>` to push and archive
+2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
+3. Stamp Gate 1 with `specify plan transition <name> reviewed`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
 ```

@@ -2,7 +2,7 @@
 
 Specify is a plugin system to orchestrate spec-driven software development. This repository provides the specialist skills used to power structured proposal-to-implementation workflows.
 
-Each slice flows through a defined lifecycle — define, build, merge — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
+Each slice flows through a defined lifecycle — refine, build, merge — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
 
 ## Getting Started
 
@@ -30,19 +30,18 @@ Common adapters:
 Then work through a slice:
 
 ```text
-/spec:define "Add a new feature"
-/spec:build
-/spec:merge
+/spec:plan "Add a new feature"
+specify plan transition <name> reviewed
+/spec:execute
 ```
 
-For larger efforts, `/change:draft` authors `plan.yaml`, the operator reviews it, `/change:execute loop` drives each planned slice through the same define-build-merge loop, and `/change:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `reviewed` with `specify plan transition <name> reviewed`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with seven plugins:
 
-- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Change-level plan authoring and execution live in the `change` plugin.
-- **Change** (`change`) -- Change lifecycle (Layer 2): `/change:draft` (plan authoring), `/change:execute` (per-slice driver), and `/change:finalize` (push, PR observation, archive).
+- **Specify** (`spec`) -- End-to-end workflow: `/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`. Plan authoring, execution driving, and finalization all live in the same plugin in 2.0.
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **Contract** (`contract`) -- API contract generation, validation, and import
@@ -53,10 +52,10 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 
 ## Vocabulary cheat sheet
 
-Two lifecycle nouns appear constantly in this codebase. RFC-13 §Migration locked their meaning:
+Two lifecycle nouns appear constantly in this codebase. RFC-25 §Vocabulary locked their meaning:
 
-- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
+- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
 
 ## Installing the CLI
 

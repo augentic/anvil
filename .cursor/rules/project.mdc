@@ -36,12 +36,12 @@ specify plan transition <name> reviewed             # Gate 1: operator-only stam
 /spec:finalize <name>                               # push branches, observe PRs, archive
 ```
 
-N=1 is degenerate: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` runs the same single-slice rhythm as a 12-slice change. There is no `/spec:define` and no operator-facing N=1 shortcut.
+N=1 is degenerate: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` runs the same single-slice rhythm as a 12-slice change. There is no operator-facing N=1 shortcut.
 
 Breakouts share skill bodies with the loop and are used when execute parks or when an operator wants to inspect a slice by hand:
 
 ```bash
-/spec:refine        # re-run extract + synthesis on the active slice (replaces /spec:define)
+/spec:refine        # re-run extract + synthesis on the active slice
 /spec:build         # validate artifacts, implement tasks
 /spec:merge         # fold deltas into baseline
 /spec:drop          # abandon a slice without merging

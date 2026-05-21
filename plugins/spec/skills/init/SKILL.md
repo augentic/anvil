@@ -1,6 +1,6 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <adapter>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` or `/change:*` command; not for re-initializing an existing `.specify/`.
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <adapter>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` command; not for re-initializing an existing `.specify/`.
 argument-hint: <adapter>
 ---
 

@@ -4,8 +4,8 @@ owner: contracts
 kind: adapter
 adapter: contracts@v1
 backend: manual
-entrypoint: /spec:define
-stages: [define, build, merge]
+entrypoint: /spec:refine
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: prose
 assertions:
@@ -23,16 +23,16 @@ negative-expectations:
   - implementation-shapes-authored-inline
 ---
 
-# Generate From A Design Document Passed To `/spec:define`
+# Generate From A Design Document Passed To `/spec:refine`
 
 Scenario ID: `contracts-design`
 
-Use this test to verify that `/spec:define` can turn a named prose design
+Use this test to verify that `/spec:refine` can turn a named prose design
 document into Specify artifacts detailed enough for contract generation.
 
 Pipeline note:
 
-- In the `contracts` schema, `/spec:define` creates `proposal.md`,
+- In the `contracts` schema, `/spec:refine` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; contract YAML is produced during
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts as
@@ -43,7 +43,7 @@ Pipeline note:
 
 Prove that the `contracts@v1` slice loop can author HTTP and JSON Schema
 artifacts when the requirements live in a separate prose design document
-referenced by the `/spec:define` prompt as `Source Material:`. The scenario
+referenced by the `/spec:refine` prompt as `Source Material:`. The scenario
 exercises the source-document path of the prose authorship mode end-to-end.
 
 ## Workspace
@@ -101,10 +101,10 @@ Responses:
 
 ## Invocation
 
-Invoke `/spec:define` with the document named as source material:
+Invoke `/spec:refine` with the document named as source material:
 
 ```text
-/spec:define returns-api-contract
+/spec:refine returns-api-contract
 
 Generate API contracts from the design document at docs/returns-api-design.md.
 
@@ -119,7 +119,7 @@ The change should define the Returns HTTP API and produce JSON Schema payloads
 plus an OpenAPI 3.1 binding.
 ```
 
-After `/spec:define` succeeds, drive `/spec:build returns-api-contract` to
+After `/spec:refine` succeeds, drive `/spec:build returns-api-contract` to
 produce the contract YAML, then optionally `/spec:merge returns-api-contract`
 to promote the deltas into the baseline.
 
