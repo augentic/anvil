@@ -1,6 +1,6 @@
 DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/deno))
 
-.PHONY: check
+.PHONY: checks
 checks:
 	@$(DENO) run --allow-read scripts/checks.ts
 
