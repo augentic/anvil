@@ -1,6 +1,6 @@
 # specify CLI commands (post RFC-25)
 
-Specify 3.0 v1 target surface. Global on all rows: `--format text|json` (`SPECIFY_FORMAT`).
+Specify 2.0 v1 target surface. Global on all rows: `--format text|json` (`SPECIFY_FORMAT`).
 
 The v1 floor: the CLI is the single writer of files the skills must not hand-edit (`project.yaml`, `plan.yaml`, `.metadata.yaml`, archive paths), plus a small set of computations and side effects the agent shouldn't reimplement. Everything else — status, show, list, diagnostic helpers — is cut. Operators read YAML and Markdown files directly; skills do the same. Verbs return when a real caller asks for them.
 
@@ -68,7 +68,7 @@ The v1 floor: the CLI is the single writer of files the skills must not hand-edi
 
 **Permanent surface for transient or never-existing need.**
 
-- `specify upgrade` — migration ships as `migrate-to-3.0.sh` with the release notes.
+- `specify upgrade` — migration ships as `migrate-to-2.0.sh` with the release notes.
 - `specify plan archive` — covered by `plan finalize`.
 - `specify plan lock {acquire, release, status}` — internal to `/spec:execute` and the breakout verbs.
 - `specify tool gc` — `rm -rf .specify/.cache/` until cache pressure is a real workflow.

@@ -182,6 +182,10 @@ slices:
 
 Plan artifacts live at the workspace root; slice artifacts live in `.specify/slots/<project>/`. Breakouts and `/spec:execute` share routing: plan lock at workspace root -> resolve active slice project -> sync slot -> `chdir` -> phase work -> return.
 
+### Plan lock
+
+The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or an execute-plus-breakout pair) from racing on the same plan. It is a sidecar lockfile at `.specify/plan.lock` (in single-repo mode) or at `<workspace-root>/.specify/plan.lock` (in workspace mode), acquired with an exclusive advisory file lock (`flock(LOCK_EX | LOCK_NB)` on POSIX, `LockFileEx` on Windows) and released on process exit. The lockfile body carries the holder's pid, hostname, and acquisition timestamp for diagnostics; the lock identity is the file lock itself, not the body. Acquisition is non-blocking — a second `/spec:execute` (or a breakout) that finds the lock held exits immediately with structured error `plan-lock-busy` carrying the holder's pid; the operator either waits or, if the holder is dead, removes the stale lockfile by hand. v1 has no `specify plan lock {acquire,release,status}` verb (see [commands.md](commands.md)) — the lock is purely internal to `/spec:execute` and the breakout verbs. Stale-lock detection (pid liveness, watchdog auto-release) is deferred until a real consumer asks; an operator-removed lockfile is the v1 escape hatch.
+
 ## Concepts
 
 ### Adapter vocabulary
@@ -320,7 +324,7 @@ claims:
     path: src/users/register.ts#L12-L87
 ```
 
-Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`. New kinds require an RFC update. No raw source bodies by default.
+Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. New kinds require an RFC update. The three spatial kinds (`region`, `container`, `leaf`) are co-introduced with the first-party `screenshots` source adapter (see §Default source adapters) and carry layout-region, container-grouping, and individual-element claims respectively; their schema shape lives in `schemas/evidence.schema.json` alongside the textual kinds. No raw source bodies by default.
 
 Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` claim kinds (deterministic fusion); other kinds may carry it as well. `Evidence` validates against `schemas/evidence.schema.json`; CLI writes paths and adapters return content via briefs/tools only.
 
@@ -352,13 +356,16 @@ This deliberately excludes `$PROJECT_DIR` from source-adapter grants: source ada
 ### Default source adapters
 
 
-| Adapter         | Authority emitted | Role                                                |
-| --------------- | ----------------- | --------------------------------------------------- |
-| `intent`        | `intent`          | Operator briefs and overrides.                      |
-| `documentation` | `documentation`   | Operator-provided written product/technical intent. |
+| Adapter         | Authority emitted | Role                                                                                                                                                                                  |
+| --------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `intent`        | `intent`          | Operator briefs and overrides.                                                                                                                                                        |
+| `documentation` | `documentation`   | Operator-provided written product/technical intent.                                                                                                                                   |
+| `screenshots`   | `documentation`   | Vision-assisted spatial inference over a directory of screen images; emits `region` / `container` / `leaf` Evidence claims for downstream targets that need layout structure (Vectis). |
 
 
-Both ship as in-repo plugins under `sources/intent/` and `sources/documentation/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The plugin loader (`crates/domain/src/plugin/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing either manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
+All three ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, and `sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The plugin loader (`crates/domain/src/plugin/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
+
+`screenshots` houses the body of the legacy Vectis `image-layout-inferer` skill, restructured as a source adapter: `enumerate` identifies candidate screens from the bound directory and writes one block per screen under `## Candidate inventory`; `extract` emits structured spatial Evidence per candidate (the new `region` / `container` / `leaf` claim kinds). The migration script retires `plugins/vectis/skills/image-layout-inferer/` and the hand-authored `layout.yaml` Specify artifact in 2.0 — see §Migration and §Note to the implementing agent.
 
 N=1 greenfield uses degenerate `intent.enumerate` via this normal resolution path.
 
@@ -420,6 +427,44 @@ sources: [intent]   # sugar for [{ key: intent, candidate: <slice.name> }]
 
 `specify plan add` enforces at most one entry with `key: intent` per slice, at most one entry per `key`, and at least one source total.
 
+### Worked multi-source `plan.yaml`
+
+A complete plan covering two slices over a legacy code source plus a design-notes source — illustrating the relationship between the plan-level `sources:` map and per-slice `slices[].sources[]` bindings:
+
+```yaml
+version: 1
+name: identity-revamp
+sources:
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity
+  legacy-monolith:
+    adapter: code-typescript
+    path: ./vendor/legacy-monolith
+slices:
+  - name: identity-user-registration
+    target: omnia
+    project: identity-svc
+    sources:
+      - key: identity-design-notes
+        candidate: user-registration
+      - key: legacy-monolith
+        candidate: user-registration
+    status: pending
+  - name: identity-password-reset
+    target: omnia
+    project: identity-svc
+    sources:
+      - key: identity-design-notes
+        candidate: password-reset
+      - key: legacy-monolith
+        candidate: account-pwd-reset
+    divergence: likely
+    status: pending
+```
+
+The first slice has matching candidate ids across both sources — `propose` fused them into one row without further annotation. The second slice has differently-named candidates that `propose` judged to refer to the same unit of work (likely-divergence call-out lives in `change.md`'s `## Likely divergences` block); the slice carries `divergence: likely` so the operator's Gate-1 acknowledgement (or rejection) is recorded against the slice. Both slices route to the same workspace project (`identity-svc`); a workspace plan with slices targeting different projects would carry distinct `project:` values per slice.
+
 ## Target adapter contract
 
 Target adapters do not own `spec.md` or `design.md` synthesis. They may declare:
@@ -428,6 +473,10 @@ Target adapters do not own `spec.md` or `design.md` synthesis. They may declare:
 - `**build**` / `**merge**`: implementation and landing briefs/tools.
 
 `specify adapter pipeline {define,build,merge}` retires. RFC-24 "adapter-gated" becomes "target-gated"; `Slice.adapter` becomes `Slice.target`.
+
+### Target-specific structured outputs
+
+Target adapters MAY produce target-specific structured manifests (e.g. Vectis `composition.yaml`) as part of `build`. Such manifests are not synthesised by core, do not require a fourth target-adapter capability, and are landed by `merge` alongside implementation code. The build brief reads `spec.md` + `design.md` (which already carry any upstream spatial or structural claims that core synthesis folded in from source adapters) and writes the manifest in the same pass as the code it accompanies. This keeps the three-capability model intact and removes the apparent need for a refine-time slot for target-only artifacts: by the time `build` runs, the canonical artifacts already carry every claim the target needs to wire its structured outputs together. See §Migration for the Vectis-specific consequence (`composition.yaml` regenerates on the first 2.0 `/spec:execute`).
 
 ## Synthesis contract
 
@@ -676,10 +725,11 @@ Axis deltas: `specify source resolve`; `specify target resolve` (was `adapter re
 |-- sources/
 |   |-- intent/                       # adapter.yaml, briefs/
 |   |-- documentation/
-|   `-- code-typescript/       # adapter-internal enumeration schema (was under change/)
+|   |-- screenshots/                  # was plugins/vectis/skills/image-layout-inferer/
+|   `-- code-typescript/              # adapter-internal enumeration schema (was under change/)
 |-- targets/                          # was adapters/
 |   |-- omnia/                        # adapter.yaml, briefs/{shape,build,merge}.md
-|   |-- vectis/
+|   |-- vectis/                       # target-only after the source/target split
 |   `-- contracts/
 `-- schemas/                          # plugin, source, target, evidence, candidate
 ```
@@ -702,19 +752,20 @@ This RFC renames or reshapes several names that are already deeply embedded in t
 - `/change:*` and `/spec:define` skills are deleted (per step 17).
 - `slices[].sources` reshapes from `string[]` (source keys) to `{ key, candidate }[]`; the standalone `slices[].candidate` field is removed and its value folds into each binding (per §`Slice.sources`). The schema accepts a bare `<key>` string as shorthand for `{ key: <key>, candidate: <slice.name> }`; the CLI always writes the structured form. `plan add` / `plan amend` `--sources` and `--add-source` flags take `<key>=<candidate-id>` arguments, with bare `<key>` accepted only under the same shorthand rule.
 - Plan lifecycle collapses from `pending -> reviewed -> in-progress -> drained` to `pending -> reviewed`. Drop any code, schema enum, error discriminant, fixture, or doc reference to plan-level `in-progress` and `drained`; both are computed from per-entry `status` at read time. `specify plan transition` accepts only the plan-level target `reviewed` (per-entry `done` is unchanged); `/spec:plan` MUST NOT write `reviewed` itself — the operator runs the transition.
+- Vectis source/target split: `plugins/vectis/skills/image-layout-inferer/` moves to `sources/screenshots/` and is restructured as a source adapter (`adapter.yaml` with `axis: source`, `operations: [enumerate, extract]`, plus `briefs/{enumerate,extract}.md`). `Evidence` schema gains the `region` / `container` / `leaf` claim kinds; `schemas/evidence.schema.json` and any fixture/golden files under `tests/` and the sibling `augentic/specify-cli` repo update in the same change. Baseline `layout.yaml` paths retire as a Specify artifact — operators re-emit equivalent data via `screenshots.extract` (or a hand-rolled local source adapter); `composition.yaml` is no longer a Specify artifact and is regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`. `tokens.yaml` and `assets.yaml` are unchanged: they remain operator-curated configuration consumed by the Vectis target's `build`.
 
 For each rename: update the symbol, the JSON Schema, the YAML on-disk form, every test fixture and golden file, every error-code discriminant, every doc reference (including this RFC's siblings and the parent `AGENTS.md`), and the CLI `--help` text in the same change. Where the old name appears in archived RFCs under `rfcs/archive/`, leave it alone — archives are historical record. When in doubt, run `rg '<old-name>'` across both repos before opening the PR.
 
 
 | Step | Decisions   | Deliverable                                                                                                                                                               | Acceptance           |
 | ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| 1    | D1, D3, D6  | Schemas: `plugin`, `source`, `target`, `evidence`, `candidate`; plan `target` + `sources[]`; `reviewed` lifecycle.                                                        | #5g                  |
+| 1    | D1, D3, D6  | Land the JSON Schemas this RFC references (`schemas/plugin.schema.json`, `schemas/source.schema.json`, `schemas/target.schema.json`, `schemas/evidence.schema.json`, `schemas/discovery/candidate.schema.json`, plus the `plan.yaml` schema's `target` field and structured `slices[].sources[]` shape and `pending`/`reviewed` plan-lifecycle enum). None of these exist in the tree today; this step ships them and wires them into `specify slice validate` / `plan add` / `plan amend` first-use validation. | #5g                  |
 | 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                                                                           | #5a                  |
 | 3    | D1          | `crates/domain/src/plugin/` loader replaces `adapter/`.                                                                                                                   | #2, #4               |
 | 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                                                                         | #1, #2               |
 | 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                                                                   | #5, #5a-#5h          |
 | 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                                                                               | #1, #5a-#5c          |
-| 7    | D3, D11     | Discovery stable-id replace; `/spec:plan` `propose` sub-step (agent-driven candidate fusion, `tentative: true` annotations + `## Tentative merges` block in `change.md`). | #5e                  |
+| 7    | D3, D11     | Discovery stable-id replace; `/spec:plan` `propose` sub-step (agent-driven candidate fusion, `tentative: true` annotations + `## Tentative merges` block in `change.md`, `slices[].divergence: likely` on materially-disagreeing summary pairs + `## Likely divergences` block in `change.md` with side-by-side values). | #5e                  |
 | 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                                                                                    | #3, #4, #7           |
 | 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                                                                                     | #5h                  |
 | 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                                                                              | Documentation review |
@@ -766,7 +817,7 @@ Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenari
 
 ## Migration
 
-Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); and adds `reviewed` on first read. There is no `specify upgrade`; see [commands.md](commands.md). Dry-run against a 1.x fixture before tag.
+Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); removes `plugins/vectis/skills/image-layout-inferer/` (its body lifts into `sources/screenshots/`); retires baseline `layout.yaml` paths and warns when it finds an existing `composition.yaml` (now a build output, regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`); and adds `reviewed` on first read. There is no `specify upgrade`; see [commands.md](commands.md). Dry-run against a 1.x fixture before tag.
 
 Plugin authors: `adapter.yaml` fails on 2.0. Skill authors: use `/spec:execute`; stop conditions surface to the operator. Automation: Gate 1 is `plan.lifecycle == reviewed`; synthesis warnings come from `spec.md` or journal events.
 
