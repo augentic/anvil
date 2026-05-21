@@ -16,14 +16,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
 
 Non-interactive mode is how `/spec:execute` invokes this skill during `loop`, supervised single-slice runs, and self-heal reclaim of a `failure` / `deferred` outcome (see `/spec:execute` steps 11b, 12b, and §"Self-heal on startup" step 2). The driver supplies a `reason` string assembled from the upstream phase's outcome — see the verbatim-`summary` rule in [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md). This skill forwards that string to `specify slice drop` verbatim, without prompting.
 
-When working plan-driven (a `plan.yaml` exists), after `specify slice drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
-
-```bash
-specify plan transition <name> failed  --reason "<short rationale>"
-specify plan transition <name> blocked --reason "<short rationale>"
-```
-
-This is an advisory note — this skill does not run the command itself. `/spec:execute` will run it automatically; when driving the loop manually, the operator closes it.
+When working plan-driven (a `plan.yaml` exists), close the plan entry after `specify slice drop` succeeds with `specify plan transition <name> done` (the per-entry enum is `pending | in-progress | done` only), or first run `specify plan amend <name>` to rebind its sources before re-attempting the slice.
 
 ## Phase outcome contract
 

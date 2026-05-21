@@ -596,7 +596,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "status": "pass"
       },
       {
-        "reason": "Semantic check — requires LLM judgment",
+        "detail": "Semantic check — requires LLM judgment",
         "rule": "Uses imperative language for motivation",
         "rule-id": "proposal.uses-imperative-language",
         "status": "deferred"
@@ -619,7 +619,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "status": "pass"
       },
       {
-        "reason": "Semantic check — requires LLM judgment",
+        "detail": "Semantic check — requires LLM judgment",
         "rule": "Uses SHALL/MUST language for normative requirements",
         "rule-id": "specs.uses-normative-language",
         "status": "deferred"
@@ -688,7 +688,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
         "status": "pass"
       },
       {
-        "reason": "Semantic check — requires LLM judgment",
+        "detail": "Semantic check — requires LLM judgment",
         "rule": "Uses imperative language for motivation",
         "rule-id": "proposal.uses-imperative-language",
         "status": "deferred"
@@ -713,7 +713,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
         "status": "fail"
       },
       {
-        "reason": "Semantic check — requires LLM judgment",
+        "detail": "Semantic check — requires LLM judgment",
         "rule": "Uses SHALL/MUST language for normative requirements",
         "rule-id": "specs.uses-normative-language",
         "status": "deferred"
