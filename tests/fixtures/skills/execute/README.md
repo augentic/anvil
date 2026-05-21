@@ -1,6 +1,6 @@
 # `/spec:execute` worked-example fixtures
 
-Static fixtures pinning the four `/spec:execute` acceptance scenarios called out in [`rfc-25-plan.md`](../../../../rfcs/rfc-25-plan.md) §W3.3:
+Static fixtures pinning the four `/spec:execute` acceptance scenarios (originally §W3.3 of the now-retired `rfcs/rfc-25-plan.md`; the active workflow contract lives in [`rfc-25-workflow.md`](../../../../rfcs/rfc-25-workflow.md)):
 
 | Scenario | Fixture directory | What it pins |
 |---|---|---|
@@ -14,4 +14,4 @@ Each fixture directory contains:
 - `input/plan.yaml` — the plan as it would exist on disk when `/spec:execute` runs. Always carries `lifecycle: reviewed`; per-entry `status` mirrors the scenario's starting state.
 - `expected.md` — narrative of the active slice, the stop reason (or drained exit), and the operator's next command.
 
-The fixtures are shape-only: they pin what the skill body must produce given a known plan state. The CLI-side acceptance harness will replay them once W3.1 (`/spec:refine`), W3.4 (`/spec:build` + `/spec:merge`), and W3.5 (`/spec:finalize`) have landed their canonical envelopes — per [`rfc-25-plan.md`](../../../../rfcs/rfc-25-plan.md) §"Subagent dispatch notes", these goldens are regenerated at the end of Wave 3.
+The fixtures are shape-only: they pin what the skill body must produce given a known plan state. The CLI-side acceptance harness will replay them once `/spec:refine`, `/spec:build` + `/spec:merge`, and `/spec:finalize` have landed their canonical envelopes; these goldens are regenerated at the end of Wave 3 (see [`rfc-25-workflow.md`](../../../../rfcs/rfc-25-workflow.md) for the current workflow contract).
