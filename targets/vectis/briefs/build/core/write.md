@@ -1,0 +1,38 @@
+# Vectis build — core (write)
+
+Loaded by [../../build.md](../../build.md) Step 4. Generates or updates the Crux shared Rust core under `${PROJECT_DIR}/shared/`. Run inside its own sub-agent with a clean context window.
+
+Carries the body of the retired `vectis-core-writer` skill. The Crux 0.17 idioms and the artifact-to-code mapping live in the [`plugins/vectis/references/crux/`](../../../../../plugins/vectis/references/crux/) reference shelf.
+
+## Mode detection
+
+Inspect `${PROJECT_DIR}/shared/src/app.rs`:
+
+- Missing → **create mode**: render the scaffold with `specify tool run vectis -- scaffold core <APP_NAME> [--caps <csv>]`, then enter update mode for feature-specific code.
+- Present → **update mode**: diff the artifact-derived target against the existing implementation and apply targeted edits.
+
+Repair sub-agent (invoked by the verify-repair loop in [../test.md](../test.md)) uses `mode: repair` plus the failing error output to apply the minimum change to fix the reported errors.
+
+## Critical path
+
+1. **Read inputs.** `${SLICE_DIR}/specs/${FEATURE_NAME}/spec.md` (core body + platform sections), `${SLICE_DIR}/design.md` (Domain Model, Adapters, API Contracts, Implementation Constraints). Extract App name, Model, Events, ViewModel / Page / Route, capability set, and any HTTP / SSE / KV shapes.
+2. **Detect mode.** In create mode, render the scaffold via `specify tool run vectis -- scaffold core <APP_NAME> --caps <comma-separated-caps> [--version-file <path>]` and run an explicit `cargo check --workspace` sanity gate before any further edits.
+3. **Build an implementation inventory** of existing types and diff against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order: capabilities → views → domain → model → events → API → logic. The full mapping rules live in [`crux/artifact-to-code-mapping.md`](../../../../../plugins/vectis/references/crux/artifact-to-code-mapping.md) and [`crux/update-change-patterns.md`](../../../../../plugins/vectis/references/crux/update-change-patterns.md).
+4. **Apply structural edits** to `app.rs`: domain types → `Page` / `ViewModel` / `Route` → `Model` → `Event` / `Effect` → imports → `Cargo.toml` updates for new capabilities. Adopt screen names, ViewModel variants, per-page view structs, field names, and `Event` / `Route` variants verbatim from `design.md`.
+5. **Apply logic edits** to `update()` and `view()`: per-`Event` match arms, business rules from the spec, model-to-ViewModel mapping for new pages. Consult the Crux 0.17 surface (see [`crux/app-pattern.md`](../../../../../plugins/vectis/references/crux/app-pattern.md), [`crux/command-api.md`](../../../../../plugins/vectis/references/crux/command-api.md), [`crux/capabilities.md`](../../../../../plugins/vectis/references/crux/capabilities.md), [`crux/custom-capabilities.md`](../../../../../plugins/vectis/references/crux/custom-capabilities.md)): return `Command<Effect, Event>` from `update()`; mark `Event` enums `#[repr(C)]`; never define a `Capabilities` struct (the 0.17 API uses `Effect` directly as an enum with `#[effect(facet_typegen)]`); never call `crux_core::cli::run()` (use `crux_core::type_generation::facet::TypeRegistry` instead); generate SSE inline as a custom adapter — not a published crate.
+6. **Run `cargo check`** as a sanity gate. Full clippy / test / regression runs happen at orchestration level in [`../test.md`](../test.md).
+7. **Preserve helpers, comments, custom adapter modules, and `Cargo.lock`.** Never regenerate a file from scratch in update mode. Never hand-edit Cargo dependency versions — the scaffold tool owns version pins so `crux_core`'s bundled `uniffi_bindgen` matches the runtime `uniffi` crate. Never write tests in this sub-agent ([`../test.md`](../test.md) owns them). Never generate shell code (the per-platform write sub-briefs own them).
+
+## Hard rules
+
+Full set at [`hard-rules-core.md`](../../../../../plugins/vectis/references/hard-rules-core.md). Highlights:
+
+- Stay inside `app.rs` for domain + state-machine code; helpers live in adapter modules.
+- Generated-type conventions (`#[repr(C)]`, `#[derive(Facet)]`, kebab-case → PascalCase via uniffi rules) per [`crux/generated-type-conventions.md`](../../../../../plugins/vectis/references/crux/generated-type-conventions.md).
+- The `Effect` enum carries `#[effect(facet_typegen)]`; never reintroduce the retired `Capabilities` struct.
+
+## Worked examples
+
+- [`examples/core/01-simple-counter.md`](../../../../../plugins/vectis/references/examples/core/01-simple-counter.md) — minimal `Model` + `Event` + `update()`.
+- [`examples/core/02-http-counter.md`](../../../../../plugins/vectis/references/examples/core/02-http-counter.md) — HTTP capability + custom adapter.
+- [`examples/core/03-kv-notes.md`](../../../../../plugins/vectis/references/examples/core/03-kv-notes.md) — KV capability + multi-screen ViewModel.

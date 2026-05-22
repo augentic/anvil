@@ -62,6 +62,39 @@ The canonical "skills MUST NOT" list:
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with a stable anchor instead.
 
+## Brief authoring
+
+Adapter briefs live at `targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `sources/<name>/briefs/{enumerate,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+
+Briefs split into two roles:
+
+- **Parent briefs** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-briefs by relative-link instruction. The CLI resolves only the parent path declared in `adapter.yaml`; the agent walks links into sub-briefs.
+- **Phase sub-briefs** carry the operational body of one phase. They live under `targets/<name>/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `sources/<name>/briefs/extract/<axis>.md`.
+
+The discipline:
+
+1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, or `argument-hint`.
+2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `checkBriefSize` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
+3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `checkBriefSize`.
+4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as `checkMarkdownLinks` failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
+5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite "see worked example [examples/…]"; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
+
+The pattern that emerges:
+
+```text
+targets/<name>/briefs/
+  shape.md                  parent: synthesis idiom guidance, <=150 LOC
+  build.md                  parent: orchestrator, <=150 LOC
+  merge.md                  parent: pre-merge gate, <=150 LOC
+  build/<phase>.md          phase sub-brief, soft cap 500 / hard cap 800 LOC
+
+plugins/<name>/references/
+  <topic>.md                load-on-demand depth
+  examples/<flavour>/...    worked examples (no size cap)
+```
+
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`sources/<name>/briefs/extract/<axis>.md`).
+
 ## Envelope examples and wire contract
 
 CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. `checkNoEnvelopeExamples` flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the predicate is intentionally narrow.

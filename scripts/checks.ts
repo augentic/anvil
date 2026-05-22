@@ -43,6 +43,7 @@ import {
   checkSkillNumericCaps,
 } from "./checks/prose.ts";
 import { checkNoRfcCitationsInDocs } from "./checks/docs_quality.ts";
+import { checkBriefSize } from "./checks/brief_size.ts";
 import {
   checkRecordedTraceFreshness,
   validateScenarioFrontmatter,
@@ -61,6 +62,7 @@ await Promise.all([
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
   validateCodexRuleShape(),
+  checkBriefSize(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),

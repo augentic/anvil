@@ -16,6 +16,24 @@ authority: behaviour
 
 `$PROJECT_DIR` is unreachable; do not attempt to read project lifecycle state. Writes back into `$SOURCE_DIR` are denied. Use `$SCRATCH_DIR` for any internal staging.
 
+## Reference shelf
+
+Load on demand when the candidate's surface needs deeper analysis. The bodies are TypeScript-specific extraction depth restored from the retired `/spec:extract` skill.
+
+- [`references/business-logic.md`](../references/business-logic.md) — depth-first domain extraction by handler / module.
+- [`references/component-structure.md`](../references/component-structure.md) — language detection, entry points, module organisation, async patterns.
+- [`references/dependencies.md`](../references/dependencies.md) — external service classification (database, message broker, cache, identity provider, API, WebSocket).
+- [`references/external-api.md`](../references/external-api.md) — tracing deserialization code for HTTP/API calls; URLs, headers, request/response shapes, auth, retries, timeouts.
+- [`references/observability.md`](../references/observability.md) — metric and trace capture: names, types, emission points, labels.
+- [`references/scope-filters.md`](../references/scope-filters.md) — include / exclude / manifest filter semantics.
+- [`references/verification.md`](../references/verification.md) — final validation checklist before emitting evidence.
+- [`references/design-template.md`](../references/design-template.md) — 14-section design.md template (used by downstream synthesis).
+- [`references/language-mapping.md`](../references/language-mapping.md) — TypeScript → Rust mapping cheatsheet (idioms, error handling, async, serialization).
+- [`references/context-gaps.md`](../references/context-gaps.md) — strategies for inferring missing context when source is incomplete.
+- [`references/lessons-learned.md`](../references/lessons-learned.md) — empirical wisdom from past extraction passes.
+- [`references/semantic-search.md`](../references/semantic-search.md) — codebase search strategies for finding behaviour.
+- [`references/examples/`](../references/examples/) — worked examples: outbound HTTP, branching/caching, parallel execution.
+
 ## Output: Evidence YAML
 
 Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source-key>.yaml`; you produce the body. Top-level fields are required:
