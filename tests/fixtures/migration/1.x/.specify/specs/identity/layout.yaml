@@ -1,5 +1,0 @@
-# 1.x baseline layout artifact.
-# Retired in 2.0; equivalent data is now emitted by screenshots.extract Evidence.
-regions:
-  - id: header
-    bounds: { x: 0, y: 0, w: 1024, h: 64 }

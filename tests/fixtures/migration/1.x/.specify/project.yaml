@@ -1,9 +1,0 @@
-specify_version: 1.4.2
-adapter: omnia
-hub: false
-name: identity-svc
-domain: identity
-sources:
-  - intent
-  - documentation
-  - code-typescript

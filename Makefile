@@ -14,20 +14,8 @@ test:
 		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
 		tests/cross_repo.ts
 
-.PHONY: test-migration
-test-migration:
-	@$(DENO) test \
-		--allow-read --allow-write --allow-env --allow-run \
-		tests/migration_test.ts
-
-.PHONY: test-migration-e2e
-test-migration-e2e:
-	@$(DENO) test \
-		--allow-read --allow-write --allow-env --allow-run \
-		tests/migration_e2e.ts
-
 .PHONY: ci
-ci: checks test-migration test-migration-e2e test
+ci: checks test
 
 .PHONY: use-local-plugins
 use-local-plugins:

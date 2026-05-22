@@ -9,9 +9,7 @@ The acceptance surface has two layers:
 
 - `make checks` runs static repository checks, including scenario frontmatter validation.
 - `make test` runs the Deno acceptance harness against the fixture trees.
-- `make test-migration` runs the `migrate-to-2.0.sh` golden-diff suite.
-- `make test-migration-e2e` runs the end-to-end migration smoke test in [`tests/migration_e2e.ts`](../../tests/migration_e2e.ts), which migrates the [`1.x-with-vectis/`](../../tests/fixtures/migration/1.x-with-vectis/) fixture and asserts the deterministic-boundary harness still exits clean against the migrated tree.
-- `make ci` runs all four sequentially.
+- `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 

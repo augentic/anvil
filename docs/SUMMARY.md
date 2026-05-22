@@ -63,12 +63,6 @@
 
 ---
 
-# Migration
-
-- [Upgrading to 2.0](migration/2.0.md)
-
----
-
 # Appendices
 
 - [Glossary](appendices/glossary.md)

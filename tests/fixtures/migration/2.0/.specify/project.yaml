@@ -1,9 +1,0 @@
-name: identity-svc
-domain: identity
-sources:
-  - intent
-  - documentation
-  - code-typescript
-target: omnia
-specify-version: 2.0.0
-workspace: false

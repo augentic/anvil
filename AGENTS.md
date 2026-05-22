@@ -77,7 +77,7 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - Some skills use symlinks to share reference documents from `plugins/references/`. If a symlink target is removed, the skill's documentation may reference content that no longer resolves.
-- 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace. Operators upgrade via `migrate-to-2.0.sh`.
+- 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace.
 
 ### Related coding standards
 

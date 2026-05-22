@@ -1,9 +1,0 @@
-version: 1
-projects:
-  - name: identity-svc
-    path: ./services/identity
-    adapter: omnia
-    proposed-adapter: omnia
-  - name: storefront-web
-    path: ./apps/storefront
-    adapter: vectis

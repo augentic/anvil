@@ -1,9 +1,0 @@
-version: 1
-projects:
-  - name: identity-svc
-    path: ./services/identity
-    target: omnia
-    proposed-target: omnia
-  - name: storefront-web
-    path: ./apps/storefront
-    target: vectis

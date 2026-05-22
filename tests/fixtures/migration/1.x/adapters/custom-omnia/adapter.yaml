@@ -1,4 +1,0 @@
-# Local operator-authored target adapter override.
-# The migration script renames the parent adapters/ directory to targets/.
-name: custom-omnia
-axis: target
