@@ -252,4 +252,4 @@ REQ-001 is the agreed cross-source case (one shared statement; no winner / loser
 - [`authority.md`](authority.md) — authority hierarchy, override surfaces, and the resolution-order taxonomy the `resolution-trace.step` names mirror.
 - [`claim-fusion.md`](claim-fusion.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
 - [`tags.md`](tags.md) — tag / `Status:` coherence on the matching `spec.md` requirement block.
-- [RFC-27](../../../../rfcs/rfc-27-synthesis.md) §Reconciliation index — normative shape and rationale.
+- [RFC-27](../../../../rfcs/archive/rfc-27-synthesis.md) §Reconciliation index — normative shape and rationale.

@@ -25,8 +25,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
 1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify adapter`.
-2. **Layer 1 — Executing a change.** The single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, and the `specify slice *` verbs they wrap.
-3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, `/change:analyze`, and the `specify change *` / `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
+2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specify slice *` verbs they wrap.
+3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
@@ -324,9 +324,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Hard cut at 2.0 (RFC-25 D10)
 
-**Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases. Operators upgrade via `migrate-to-2.0.sh`, which renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, the cache, and archive fields; rewrites `plan.yaml.slices[].sources` into the structured `{ key, candidate }[]` shape; moves the legacy Vectis `image-layout-inferer` body to `adapters/sources/screenshots/`; retires baseline `layout.yaml` paths and warns on existing `composition.yaml` (now a target build output); and bumps `specify-version`.
+**Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases.
 
-**Rationale:** Compatibility shims for an in-flight pre-1.0 redesign multiply the surface area of every change without serving real consumers (there is no production install base yet). One mechanical migration script lets the rename land in one PR train without any code path having to support both shapes.
+**Rationale:** Compatibility shims for an in-flight pre-1.0 redesign multiply the surface area of every change without serving real consumers (there is no production install base yet). A single cut avoids any code path having to support both shapes.
 
 **Source:** [RFC-25: Workflow](https://github.com/augentic/specify/blob/main/rfcs/rfc-25-workflow.md).
 

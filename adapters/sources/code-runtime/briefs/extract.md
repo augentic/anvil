@@ -172,6 +172,6 @@ Same skip-root and traversal rules as `enumerate`: relative paths only under `$S
 
 ## References
 
-- [RFC-27 §`extract` output](../../../../rfcs/rfc-27-synthesis.md#extract-output)
-- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
+- [RFC-27 §`extract` output](../../../../rfcs/archive/rfc-27-synthesis.md#extract-output)
+- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/archive/rfc-27-synthesis.md#runtime-source-adapter-d1)
 - [Fixture format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md)

@@ -61,14 +61,7 @@ For each requirement written with a `[unknown]` / `[conflict]` / `[divergence]` 
 
 Author the reconciliation index at `.specify/slices/$SLICE_NAME/fusion.yaml` atomically (write to a sibling temp file, then rename); a partial write must never land on disk. There is no `specify slice fusion write` verb — the skill body is the writer and the validator in step 6 catches structural drift.
 
-One entry per `REQ-*` id in `spec.md`, in `spec.md` order. For each entry record:
-
-- `id`, `status` (mirrors the matching `Status:` line), `sources` (mirrors the matching `Sources:` line).
-- `contributing-claims` — every `(source, claim-id)` pair synthesis consulted, **not** only the winning one. Each entry carries `source`, `claim-id`, `kind`, optional `value` (single-line, multi-line bodies collapsed to the first non-empty line with a trailing `…`, capped at 16 KiB at a whitespace boundary), optional `path` (the source claim's `<path>#L<n>` anchor), and `winner` (`true` on the synthesis-selected entry; `false` on entries dropped by authority resolution; absent on `agreed` blocks).
-- `resolution` — closed enum: `single-source`, `single-value-agreement`, `authority-resolved`, `per-slice-override`, `unknown-no-evidence`, `tied-conflict`.
-- `resolution-trace` — present **only** when `resolution` is `authority-resolved` or `per-slice-override`; `step` is one of `per-slice-authority-override`, `per-evidence-authority-override`, `document-authority-ordering`.
-
-The block grammar, the truncation rule, the closed `resolution` enum, and the worked example are owned by [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md); the resolution-order taxonomy that names each `step` is owned by [`../../references/synthesis/authority.md`](../../references/synthesis/authority.md). Emit the `slice.fusion.written` journal event after the atomic rename succeeds.
+Follow the block grammar in [`fusion.md`](../../references/synthesis/fusion.md).
 
 ## Step 6 — Validate
 

@@ -12,7 +12,7 @@ The 2.0 release is a hard cut from 1.x. Two structural changes ship together.
 
 **New CLI verbs.** `specify source resolve <name>`, `specify target resolve <value>`, `specify plan transition <name> reviewed`, `specify plan amend --add-source / --remove-source / --divergence`. Retired: `specify adapter *`, `specify change *`, `specify change survey`, `specify plan doctor`.
 
-**Migration.** 2.0 is a hard cut — no compatibility aliases for 1.x manifests, verbs, brief paths, or `/change:*`. Operators upgrade via `migrate-to-2.0.sh`, which renames manifests, rewrites `plan.yaml.slices[].sources` into the `{ key, candidate }[]` structured form, moves the legacy Vectis `image-layout-inferer` body into `adapters/sources/screenshots/`, and warns when it finds an existing `composition.yaml` (now a target build output, regenerated on the first 2.0 `/spec:execute`).
+**Migration.** 2.0 is a hard cut with no in-tree upgrade script — bump the binary and reload plugins.
 
 ## Declared WASI adapter tools
 

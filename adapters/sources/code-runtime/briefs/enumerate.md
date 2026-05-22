@@ -138,5 +138,5 @@ Expected output (alphabetically by `id`, source key `runtime`):
 
 ## References
 
-- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
+- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/archive/rfc-27-synthesis.md#runtime-source-adapter-d1)
 - [Fixture format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md)
