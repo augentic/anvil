@@ -41,13 +41,8 @@ import {
   checkInvocationPositionals,
   checkOperationalVocabulary,
   checkSkillNumericCaps,
-  checkWorkspaceLanding,
 } from "./checks/prose.ts";
-import {
-  checkNoLayerNumbersInDocs,
-  checkNoLegacyAdaptersReferencePath,
-  checkNoRfcCitationsInDocs,
-} from "./checks/docs_quality.ts";
+import { checkNoRfcCitationsInDocs } from "./checks/docs_quality.ts";
 import {
   checkRecordedTraceFreshness,
   validateScenarioFrontmatter,
@@ -61,7 +56,6 @@ await Promise.all([
 await Promise.all([
   validateAdapterYaml(),
   checkFirstPartyToolDeclarations(),
-  checkWorkspaceLanding(),
   checkOperationalVocabulary(),
   checkSkillNumericCaps(),
   validateScenarioFrontmatter(),
@@ -88,9 +82,7 @@ await Promise.all([
   checkDirectives(),
   checkPluginConsistency(),
   checkDeclaredToolEquivalentInvocations(),
-  checkNoLayerNumbersInDocs(),
   checkNoRfcCitationsInDocs(),
-  checkNoLegacyAdaptersReferencePath(),
 ]);
 
 console.log();

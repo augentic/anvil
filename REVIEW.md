@@ -1,794 +1,169 @@
-# Code & Skill Review - Single Pass, Quality-Biased
-
-Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0; ignore back-compat, migrations, and deprecations.
+# Code & Skill Review — Subtraction Pass
 
 ## Summary
 
-Top three by LOC removed: **F1 delete OCI sidecar reference metadata**, **F2 delete dead `Plan::resolve_sources`**, **F3 collapse ghost `/contract:*` plugin docs**.
+Top three by LOC removed: (S1) delete the pre-1.0 migration apparatus across `scripts/`, `tests/`, and `docs/migration/` (≈980 LOC + 33 fixture files); (S2) delete the manually-rendered `rfcs/rfc-27-synthesis.html` duplicate of the same RFC's `.md` (−1414 LOC); (S3) collapse the plan-entry / lifecycle transition state machines, which currently spend 313+130 LOC modelling three legal edges with mirrored `can_transition_to`/`transition` pairs and oracle-table tests (−≈310 LOC). If every finding lands: ≈3300 LOC + a 132 KB fixture tree + 3 enforcement predicates + one trait module. Non-LOC axes moved most: types (DTO/enum collapse in plan transitions), branches (5-case oracle tables → single `matches!`), module edges (`crates/domain/src/cmd.rs` and 7 `<R: CmdRunner>` generic propagations), cargo edges (none — frozen per scope). Highest remediation risk: S3 (plan-transition collapse) — the per-entry status writer is on the hot path for `/spec:execute` and tests in `tests/plan_orchestrate.rs` pin the exact JSON envelope.
 
-If every finding lands, estimated total delta is **~−647 LOC**. Primary non-LOC axes moved: **−3 types/fields**, fewer public API edges, fewer skill decision branches, fewer stale command surfaces. The finding most likely to break in remediation is **F1**, because sidecar/tool-show tests assert `oci_reference` today.
+## Reconnaissance
 
-Reconnaissance baseline:
-
-| Command | Result |
-|---|---|
-| `tokei "/Users/andrewweston/github.com/augentic/specify" "/Users/andrewweston/github.com/augentic/specify-cli"` | **119,895** total lines; Rust **47,170** lines / **41,236** code; Markdown **40,076** lines |
-| `cargo tree --manifest-path specify-cli/Cargo.toml --duplicates` | Duplicate tree is noisy through WASI/Warg (`base64` 0.21/0.22, `bitflags`, `rustix`, `wasmparser`, `thiserror`, etc.); no direct host dependency trim found without changing dependencies |
-| `rg -c '^#\[test\]' crates/ src/ tests/` | **459** test attributes |
-| `rg --files -g '**/mod.rs'` | **3** files: `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs` |
-| `wc -l docs/standards/*.md AGENTS.md` across both repos | **955** lines |
-| Files >500 lines under `crates/` and `src/` | `change/plan/core/model.rs` 809; `spec/provenance.rs` 631; `domain/tests/finalize.rs` 947; `domain/tests/registry.rs` 922; `domain/tests/workspace.rs` 1041; `tool/src/package.rs` 504; `tool/src/validate.rs` 520 |
+- `tokei` (combined): 121 361 lines / 956 files; Rust 46 864 / 265; Markdown 39 850 / 462; TypeScript 5 267 / 30; HTML 1 414 / 1 (single file: `rfcs/rfc-27-synthesis.html`).
+- `cargo tree --duplicates` (specify-cli): duplicates are entirely transitive from `wasm-pkg-client` (`base64 0.21/0.22`, `pbjson`, `warg-*`, `oci-client`, `reqwest 0.12/0.13`) — not actionable from this workspace.
+- `rg -c '^#\[test\]'` test counts: 201 Rust files contain tests; the heaviest concentrations are `tests/plan_orchestrate.rs` (62 `#[test]`) and `crates/domain/tests/registry.rs` (50).
+- `rg --files -g '**/mod.rs'` (specify-cli): 3 hits — all `tests/common/mod.rs` shims. The codebase is otherwise on the `<module>.rs` + `<module>/` convention.
+- `wc -l docs/standards/*.md AGENTS.md` (combined): 951 total — already small.
+- Files > 500 lines under `crates/` and `src/` (specify-cli): `tests/plan_orchestrate.rs` 1958; `crates/domain/tests/workspace.rs` 1041; `crates/domain/tests/finalize.rs` 947; `crates/domain/tests/registry.rs` 922; `crates/domain/src/change/plan/core/model.rs` 702; `crates/domain/src/spec/provenance.rs` 597; `crates/tool/src/validate.rs` 520. (Specify repo: `scripts/migrate_to_2_0.ts` 592; `scripts/checks/skill_frontmatter.ts` 567; `scripts/checks/skill_body.ts` 524; `tests/migration_e2e.ts` 184.)
+- `rg 'code: ?"[a-z-]+"'` (Diag-style errors): 196 sites — `Error::Diag` is the dominant error path, and individual `code:` literals are unique enough that promoting any of them to typed variants would *add* lines, not delete.
 
 ## Structural Findings
 
-### F1 - Delete OCI Reference Metadata
-
-**Evidence.** `crates/tool/src/package.rs:58,164-218,287-314,446-503`; `src/commands/tool/dto.rs:132-136`; `crates/tool/src/cache/meta.rs:128-140`. Current grep:
-
-```text
-rg -n 'oci_reference|oci-reference|OciProtocolMetadata|RegistryMetadata|protocol_config' crates/tool/src src/commands/tool
-```
-
-returns only package fetch, sidecar validation, display, and tests. `crates/tool/src/package.rs` is **504** lines in the >500 LOC reconnaissance list.
-
-**Action.**
-
-1. Remove `PackageMetadata.oci_reference`.
-2. Delete `derive_oci_reference`, `oci_reference_from_metadata`, `OciProtocolMetadata`, and the `RegistryMetadata` / `RegistryMetadataExt` imports.
-3. Stop printing `oci:` in `src/commands/tool/dto.rs`.
-4. Remove sidecar validation for `package.oci-reference`.
-5. Delete the OCI-specific package tests and update the resolver package metadata assertion to check only name/version/registry.
-
-Before:
-
-```rust
-pub struct PackageMetadata {
-    pub name: String,
-    pub version: String,
-    pub registry: String,
-    pub oci_reference: Option<String>,
-}
-```
-
-After:
-
-```rust
-pub struct PackageMetadata {
-    pub name: String,
-    pub version: String,
-    pub registry: String,
-}
-```
-
-**Quality delta.** `−103 LOC, −1 field, −1 best-effort network branch`. This holds correctness flat while deleting a non-authoritative display-only derivation.
-
-**Net LOC.** `880 → ~777` across `package.rs`, `dto.rs`, and `cache/meta.rs`.
-
-**Done when.**
-
-```bash
-rg 'oci_reference|oci-reference|OciProtocolMetadata|RegistryMetadata' crates/tool/src src/commands/tool
-```
-
-returns no hits.
-
-**Rule?** No.
-
-**Counter-argument.** OCI display is useful provenance; loses because package name/version/registry are already recorded and the extra well-known metadata fetch is not part of cache correctness.
-
-**Depends on.** none.
-
-### F2 - Delete Dead Source Resolver
-
-**Evidence.** Current grep:
-
-```text
-rg -n 'resolve_sources|ResolvedSourceBinding' specify-cli specify/AGENTS.md
-```
-
-hits only `AGENTS.md`, re-exports in `crates/domain/src/change.rs:10` and `crates/domain/src/change/plan/core.rs:18`, doc comments, `crates/domain/src/change/plan/core/model.rs:265-313`, and its own test at `model.rs:677-726`. No production caller exists. Recon: `model.rs` is **809** lines.
-
-**Action.**
-
-1. Delete `ResolvedSourceBinding`.
-2. Delete `Plan::resolve_sources`.
-3. Delete `resolve_sources_normalises_and_rejects_unknown_keys`.
-4. Remove `ResolvedSourceBinding` re-exports from `change.rs` and `change/plan/core.rs`.
-5. Remove `Plan::resolve_sources` from the cross-repo touch-list in `specify-cli/AGENTS.md`.
-
-Before:
-
-```rust
-pub fn resolve_sources(&self, slice: &Entry) -> Result<Vec<ResolvedSourceBinding>, Error> {
-    let mut out = Vec::with_capacity(slice.sources.len());
-    // ...
-    Ok(out)
-}
-```
-
-After:
-
-```rust
-// Callers use Entry::sources directly; no resolved DTO is exported.
-```
-
-**Quality delta.** `−101 LOC, −1 type, −1 public API edge`.
-
-**Net LOC.** `model.rs 809 → ~708`.
-
-**Done when.**
-
-```bash
-rg 'resolve_sources|ResolvedSourceBinding' /Users/andrewweston/github.com/augentic/specify-cli /Users/andrewweston/github.com/augentic/specify/AGENTS.md
-```
-
-returns no hits.
-
-**Rule?** No.
-
-**Counter-argument.** Refine will need it later; loses because current refine does not call it, and pre-1.0 should not keep future API.
-
-**Depends on.** none.
-
-### F3 - Collapse Ghost Contract Plugin Docs
-
-**Evidence.** Marketplace ships only `rt`, `client`, and `spec` in `.cursor-plugin/marketplace.json:12-28`. `Glob plugins/contract/**` returns **0 files**. Current grep:
-
-```text
-rg -c 'plugins/contract|/contract:(openapi|asyncapi|json-schema)|Contract plugin|Contract Plugin' AGENTS.md docs targets/contracts
-```
-
-still finds non-archive hits in `AGENTS.md`, `docs/reference/plugins/contract.md`, `docs/reference/quick-reference.md`, `docs/reference/targets/*`, `docs/reference/slice-skills/build.md`, `docs/standards/cli-contract.md`, and `targets/contracts/references/*`.
-
-**Action.**
-
-1. Delete `docs/reference/plugins/contract.md`.
-2. Remove its `docs/SUMMARY.md` nav entry.
-3. In target and CLI docs, replace `/contract:*` skill references with the current `targets/contracts/briefs/build.md` format sub-flow language.
-4. Update `AGENTS.md` to say the contracts target adapter owns format-specific author/import/verify references under `targets/contracts/references/`.
-
-Before:
-
-```markdown
-- `/contract:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1).
-```
-
-After:
-
-```markdown
-- `contracts.build` runs the OpenAPI, AsyncAPI, and JSON Schema sub-flows from `targets/contracts/references/`.
-```
-
-**Quality delta.** `−100 LOC, −1 stale slash-command surface, fewer doc edges`.
-
-**Net LOC.** `docs/reference/plugins/contract.md 85 → 0`, plus small reference trims.
-
-**Done when.**
-
-```bash
-rg 'plugins/contract|/contract:(openapi|asyncapi|json-schema)|Contract plugin' AGENTS.md docs targets/contracts
-```
-
-has no non-archive hits.
-
-**Rule?** No.
-
-**Counter-argument.** Those commands may exist externally; loses because this repository no longer ships that plugin, and the contracts target brief now carries the behavior.
-
-**Depends on.** none.
-
-### F4 - Reduce SoW Skill Body
-
-**Evidence.** Shipped skill line counts:
-
-```text
-wc -l plugins/client/skills/sow-writer/SKILL.md plugins/client/skills/sow-writer/references/section-templates.md
-→ 155 / 269
-```
-
-`SKILL.md:29-155` replays process steps, error handling, checklist, and guardrails that point back to `section-templates.md` fifteen times.
-
-**Action.**
-
-1. Keep frontmatter, authority/defaults, references, and examples.
-2. Delete the `Critical Path` section if the compact process remains, or delete the expanded `Process` section if the critical path remains.
-3. Delete the error table, verification checklist, and repeated guardrails.
-4. Replace the expanded process with one instruction to follow `references/section-templates.md` in order.
-
-Before:
-
-```markdown
-### Step 5: Generate Services
-
-Compose Scope (with In-Scope bullets), Design Inputs table, Deliverables table...
-```
-
-After:
-
-```markdown
-Follow `references/section-templates.md` from cover page through optional PDF rendering; it is the source of truth for section order and boilerplate.
-```
-
-**Quality delta.** `−95 LOC, fewer skill branches`.
-
-**Net LOC.** `155 → ~60`.
-
-**Done when.**
-
-```bash
-wc -l plugins/client/skills/sow-writer/SKILL.md
-```
-
-is `<= 70`.
-
-**Rule?** No.
-
-**Counter-argument.** Inline detail helps the model; loses because the referenced templates are canonical and already longer than the skill.
-
-**Depends on.** none.
-
-### F5 - Trim Replay Writer Prose
-
-**Evidence.** Shipped skill line counts:
-
-```text
-wc -l plugins/rt/skills/replay-writer/SKILL.md plugins/rt/skills/replay-writer/references/fixture-format.md
-→ 131 / 115
-```
-
-Fixture format and crate layout are restated in `SKILL.md:9-75` and `SKILL.md:109-131`, while `references/fixture-format.md` and `references/crate-layout.md` already own those details.
-
-**Action.**
-
-1. Keep arguments, prerequisites, the five execution steps, and references.
-2. Delete overview examples, ASCII crate layout, fixture-format restatement, authority boilerplate, and checklist.
-3. Replace them with links to `references/fixture-format.md` and `references/crate-layout.md`.
-
-Before:
-
-```markdown
-$CRATE_DIR/
-├── src/
-├── tests/
-│   └── data/
-│       └── replay/
-```
-
-After:
-
-```markdown
-Use the generated crate layout from `references/crate-layout.md`; replay data lives under `tests/data/replay/`.
-```
-
-**Quality delta.** `−75 LOC, fewer skill branches`.
-
-**Net LOC.** `131 → ~56`.
-
-**Done when.**
-
-```bash
-wc -l plugins/rt/skills/replay-writer/SKILL.md
-```
-
-is `<= 65`.
-
-**Rule?** No.
-
-**Counter-argument.** Replay is optional and needs extra context; loses because the context is already in `references/`.
-
-**Depends on.** none.
-
-### F6 - Delete Provenance Renderer
-
-**Evidence.** Current grep:
-
-```text
-rg -n 'pub fn render\(|render\(' crates/domain/src/spec
-```
-
-returns only `crates/domain/src/spec/provenance.rs:351` and renderer-only tests at `crates/domain/src/spec/provenance/tests.rs:110,120,126`. No production caller exists. Recon: `provenance.rs` is **631** lines.
-
-**Action.**
-
-1. Delete `render`.
-2. Remove `use std::fmt::Write as _`.
-3. Delete `divergence_block_round_trips` and `single_source_block_round_trips`, or rewrite them to parse-only assertions if any non-rendering check remains valuable.
-
-Before:
-
-```rust
-pub fn render(req: &Requirement) -> String {
-    let mut out = String::new();
-    // ...
-    out
-}
-```
-
-After:
-
-```rust
-// Parser and validator remain; no canonical writer is exported.
-```
-
-**Quality delta.** `−69 LOC, −1 module edge`.
-
-**Net LOC.** `provenance.rs 631 → ~598`; `provenance/tests.rs 327 → ~291`.
-
-**Done when.**
-
-```bash
-rg 'pub fn render\(|render\(' crates/domain/src/spec
-```
-
-returns no hits.
-
-**Rule?** No.
-
-**Counter-argument.** Future synthesis might reuse it; loses because current synthesis does not.
-
-**Depends on.** none.
-
-### F7 - Put Finalize Detail In Runbook
-
-**Evidence.**
-
-```text
-wc -l plugins/spec/skills/finalize/SKILL.md plugins/spec/skills/finalize/references/runbook.md
-→ 111 / 227
-```
-
-`runbook.md:3` says procedural detail lives in the runbook, but `SKILL.md:13-80` repeats the drained check, push, PR polling, archive, and halt table.
-
-**Action.**
-
-1. Keep the orientation paragraph.
-2. Replace detailed steps 1-5 with five one-line critical-path bullets.
-3. Delete the halt table and repeated guardrails.
-4. Keep the success closing message and link to `references/runbook.md`.
-
-Before:
-
-```markdown
-### 4. PR observation loop
-
-For every pushed project, fetch PR state and poll until `MERGED`.
-```
-
-After:
-
-```markdown
-Follow `references/runbook.md` for pre-flight, drainage, push, PR observation, archive, and wrap-up.
-```
-
-**Quality delta.** `−68 LOC, fewer skill branches`.
-
-**Net LOC.** `111 → ~43`.
-
-**Done when.**
-
-```bash
-wc -l plugins/spec/skills/finalize/SKILL.md
-```
-
-is `<= 50`.
-
-**Rule?** No.
-
-**Counter-argument.** Finalization is risky; loses because the runbook is already the risk control.
-
-**Depends on.** none.
-
-## One-Touch Tidies
-
-### T1 - Drop Internal `#[non_exhaustive]`
-
-**Evidence.**
-
-```text
-rg '#\[non_exhaustive\]' crates
-```
-
-returns **12** hits across internal pre-1.0 enums/structs: slice metadata/outcome/create/lifecycle, adapter operation/core, tool error, journal, plan status/lifecycle/divergence, and root error.
-
-**Action.** Delete the attributes in place. Do not add compatibility shims or replacement comments.
-
-**Quality delta.** `−12 LOC, lower match burden`.
-
-**Net LOC.** `12 attribute lines → 0`.
-
-**Done when.**
-
-```bash
-rg '#\[non_exhaustive\]' crates
-```
-
-returns no hits.
-
-**Rule?** No.
-
-**Counter-argument.** Future-proofing public API; loses because this is a pre-1.0 workspace-internal surface.
-
-**Depends on.** none.
-
-### T2 - Delete Slice Metadata Version Default
-
-**Evidence.** Current grep:
-
-```text
-rg -n 'METADATA_VERSION|default_version\(|pub version: u32|defaults_version_when_absent|version: crate::slice::METADATA_VERSION|version: METADATA_VERSION' crates/domain/src crates/domain/tests
-```
-
-shows `METADATA_VERSION`, `default_version`, `SliceMetadata.version`, create-time plumbing, test plumbing, and one absent-version back-compat test. Comments in `crates/domain/src/slice/metadata.rs:19-21` say readers dispatch on `outcome`, not version.
-
-**Action.**
-
-1. Remove `METADATA_VERSION`.
-2. Remove `default_version`.
-3. Remove `SliceMetadata.version`.
-4. Remove version assignments in slice creation and tests.
-5. Delete `defaults_version_when_absent`.
-
-Before:
-
-```rust
-#[serde(default = "default_version")]
-pub version: u32,
-```
-
-After:
-
-```rust
-// Slice metadata readers dispatch on fields, not a schema-version integer.
-```
-
-**Quality delta.** `−24 LOC, −1 field, less call-site plumbing`.
-
-**Net LOC.** `metadata.rs 269 → ~248`.
-
-**Done when.**
-
-```bash
-rg 'METADATA_VERSION|default_version|version: crate::slice::METADATA_VERSION' crates/domain
-```
-
-returns no hits.
-
-**Rule?** No.
-
-**Counter-argument.** Schema versions help migrations; loses because this pass is explicitly pre-1.0 and migration-agnostic.
-
-**Depends on.** none.
-
-## Ranking
-
-| Rank | ID | Estimated Delta | Axes |
-|---|---:|---:|---|
-| 1 | F1 | −103 LOC | LOC, field, branch |
-| 2 | F2 | −101 LOC | LOC, type, public API edge |
-| 3 | F3 | −100 LOC | LOC, stale command surface, doc edges |
-| 4 | F4 | −95 LOC | LOC, skill branches |
-| 5 | F5 | −75 LOC | LOC, skill branches |
-| 6 | F6 | −69 LOC | LOC, module edge |
-| 7 | F7 | −68 LOC | LOC, skill branches |
-| 8 | T2 | −24 LOC | LOC, field, call-site burden |
-| 9 | T1 | −12 LOC | LOC, match burden |
-
-All findings are in-place deletions or trims. No new files, modules, traits, crates, dependencies, docs standards, enforcement, or tests are proposed.
-# Code & Skill Review — single pass, quality-biased
-
-Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0, no back-compat.
-
-## Summary
-
-Prior pass (post-mortem at bottom) already landed ~−1500 LOC in `specify-cli` (journal.yaml, ChangeBrief, validation unification, resolve collapse, etc.). **This pass finds net-new debt**, not repeats.
-
-Top three by LOC removed: **(1)** delete the RFC-20 `survey` module (~1908 LOC, zero CLI wiring); **(2)** retire `adapters/default` + pipeline integrity checks (~550 LOC in `specify`); **(3)** delete the orphaned `SliceTransitionRefined` journal variant + its fixture tests (~95 LOC). If every structural finding lands, **ΔLOC ≈ −2800** (~4% of Rust + skill/reference prose). Non-LOC axes moved: **−6 types**, **−3 enums**, **−1 clap subtree**, **−6 skill/CLI drift surfaces**, **−1 call-site mismatch** (skills vs CLI lifecycle). Most likely to break in remediation: **F4** (lifecycle rename touches merge gates, goldens, and every integration test touching `.metadata.yaml`).
-
-### Reconnaissance (current)
-
-| Command | Result |
-|---|---|
-| `tokei` (`specify-cli`) | 270 Rust files, **43,141** code lines; **65,832** total |
-| `tokei` (`specify`) | **14,658** code lines (mostly TS checks + markdown) |
-| `cargo tree --duplicates` | Transitive dupes only (`base64` 0.21/0.22, `bitflags`, `rustix`, `reqwest`) — no actionable host-edge trim without new deps |
-| `rg -c '^#\[test\]' crates/ src/ tests/` | **597** unit/integration tests |
-| `rg --files -g '**/mod.rs'` | **3** (`tests/common`, `crates/domain/tests/common`, `wasi-tools/vectis/tests/engine_support`) |
-| `wc -l docs/standards/*.md AGENTS.md` | **638** lines |
-| Files >500 lines (`crates/`, `src/`) | `workspace.rs` 1041, `finalize.rs` 947, `registry.rs` 922, `plan/core/model.rs` 809, `provenance.rs` 631, `survey_ingest.rs` 569, `tool/validate.rs` 520, `tool/package.rs` 504 |
-
----
-
-## Structural findings
-
-### F1 — Delete RFC-20 survey module
-
-**Evidence.** `rg 'survey|SurfacesDocument|validate_surfaces' specify-cli/src/` → **0 hits**. Module surface: `wc -l crates/domain/src/survey*.rs crates/domain/src/survey/**/*.rs crates/domain/tests/survey*.rs schemas/survey*.json schemas/surfaces.schema.json` → **1908**. Header still says `specify change survey` (`crates/domain/src/survey/ingest.rs:1`). RFC-25 §Hard cut retires `/change:survey`; enumeration lives in source `enumerate`.
-
-**Action.**
-1. Delete `crates/domain/src/survey/` (+ `survey.rs`), `crates/domain/tests/survey.rs`, `crates/domain/tests/survey_ingest.rs`, `crates/domain/tests/sources.rs`, `crates/domain/tests/fixtures/survey{,_ingest}/`, `schemas/survey-metadata.schema.json`, `schemas/surfaces.schema.json`.
-2. Remove `pub mod survey;` from `crates/domain/src/lib.rs`.
-3. Drop any `Cargo.toml` `[[test]]` entries pointing at deleted files.
-
-**Quality delta.** −1908 LOC, −6 types (`SurfacesDocument`, `Surface`, `SurfaceKind`, `MetadataDocument`, `IngestInputs`, `IngestOutcome`), −1 module edge, −2 schema files.
-
-**Net LOC.** 1908 → 0.
-
-**Done when.** `rg -c 'survey|SurfacesDocument' specify-cli/crates/ specify-cli/tests/ specify-cli/schemas/` → 0; `cargo make check` green.
-
-**Rule?** No.
-
-**Counter-argument.** "Keep DTOs for a future CLI verb." Loses: RFC-25 replaced survey with source adapters; re-adding means new schemas, not reviving RFC-20 shapes. *jj* deleted `debugsnapshot` when observability moved — same cut.
-
-**Depends on.** none.
-
----
-
-### F2 — Retire `adapters/default` pipeline shell
-
-**Evidence.** `PROFILES_DIR = join(REPO_ROOT, "adapters")` (`scripts/checks/_shared.ts:26`). Only legacy manifest with `pipeline:` is `adapters/default/adapter.yaml` (no `axis:`). Codex resolver already probes `targets/default/` (`tests/codex.rs:105`). `wc -l adapters/default/**/*` → **447**; `checkAdapterIntegrity` pipeline graph (`scripts/checks/adapter.ts:82–187`) → **106 LOC** that only runs when `manifest.pipeline` exists.
-
-**Action.**
-1. Create `targets/default/adapter.yaml` (RFC-25 target manifest, `operations: [shape, build, merge]` or codex-only stub) + move `adapters/default/codex/**` there.
-2. Delete `adapters/default/briefs/{define,build,merge}.md`, `adapters/default/adapter.yaml`, `adapters/default/README.md`.
-3. Delete `checkAdapterIntegrity()` and its export from `scripts/checks.ts`; retarget `validateAdapterYaml()` to walk `sources/` + `targets/` instead of `adapters/`.
-4. Update `scripts/checks/codex.ts` discovery roots from `adapters/<cap>/codex` to `targets/<cap>/codex` + `sources/<cap>/codex`.
-
-**Quality delta.** −553 LOC, −1 legacy manifest shape, −1 check predicate, −1 module edge (`PROFILES_DIR` → axis dirs).
-
-**Net LOC.** ~553 → ~40 (new `targets/default/adapter.yaml` only).
-
-**Done when.** `rg -c 'pipeline:' adapters/default/` → 0; `rg -c 'checkAdapterIntegrity' scripts/` → 0; `make checks` green.
-
-**Rule?** No.
-
-**Counter-argument.** "Init still copies sibling `default`." Loses: init cache path is already `.specify/.cache/targets/default/` per codex tests; the pipeline briefs are never loaded post-RFC-25.
-
-**Depends on.** none.
-
----
-
-### F3 — Gut stale phase-outcome contract
-
-**Evidence.** `plugins/spec/references/phase-outcome-contract.md` = **127 lines**; references deleted surfaces: `journal.yaml` (L6–7, L85–99), `specify slice journal append` (L90), `plan transition … failed|blocked` (L46–47, L117), 1.x phase table with `define` column (L121). `/spec:execute` body (`plugins/spec/skills/execute/SKILL.md`, 72 lines) uses stop-hints + lifecycle only — no `outcome set`, no self-heal. `drop/SKILL.md:17` still cites removed execute steps "11b, 12b".
-
-**Action.**
-1. Replace `phase-outcome-contract.md` with a ≤25-line stub pointing at `execute/references/stop-conditions.md` + `.specify/journal.jsonl` (RFC-25 §Observability).
-2. Delete `drop/SKILL.md:17–19` self-heal paragraph; one sentence: "non-interactive mode forwards `--reason` to `specify slice drop`."
-3. Trim `plugins/references/guardrails.md:13` (journal.yaml bullet) and `docs/reference/cli/plan.md:14,56` (failed/skipped transitions).
-
-**Quality delta.** −~110 LOC prose, −4 skill/CLI drift surfaces, −2 dead CLI verbs documented.
-
-**Net LOC.** 127 → ~25 (+ sibling trims ≈ −110 total).
-
-**Done when.** `rg -n 'journal\.yaml|slice journal append|plan transition.*(failed|blocked|skipped)' plugins/spec/` → 0; `make checks` green.
-
-**Rule?** No.
-
-**Counter-argument.** "Operators rely on the outcome table." Loses: no shipped skill invokes `specify slice outcome set`; execute parks on exit code + lifecycle, not outcome translation.
-
-**Depends on.** none (F6 optional follow-on).
-
----
-
-### F4 — Align lifecycle enum to RFC-25 wire
-
-**Evidence.** Skills command `specify slice transition … refined|built` (`plugins/spec/skills/refine/SKILL.md:70`, `build/SKILL.md:34`). CLI accepts only `defining|defined|building|complete|dropped` (`src/commands/slice/cli.rs:54–58`). `LifecycleStatus` variants (`crates/domain/src/slice/lifecycle.rs:23–35`) never emit `refined`. `SliceTransitionRefined` journal variant exists (`crates/domain/src/journal.rs:95–98`) but production never emits it (post-F4 note in prior pass post-mortem).
-
-**Action.**
-1. Rename variants: `Defining→Refining`, `Defined→Refined`, `Complete→Built`; **delete** `Building` and `build_started_at` (no skill transitions to `building`; `rg 'transition.*building' plugins/` → 0).
-2. Collapse edges to `refining→refined→built→merged` (+ `dropped` from any non-terminal).
-3. In `slice/actions/transition.rs`, emit `EventKind::SliceTransitionRefined` on `Refined` target (replacing deleted dead branch).
-4. Regenerate goldens touching `.metadata.yaml` status strings.
-
-**Quality delta.** −~60 LOC (drop `Building` + timestamp field + tests), −1 enum variant, −2 branches, −1 call-site mismatch axis (**+** burden fix dominates).
-
-**Net LOC.** ~140 → ~80 (rename churn washes; net from deletions).
-
-**Done when.** `specify slice transition demo refined` succeeds; `rg -c 'LifecycleStatus::Building' specify-cli/` → 0; `cargo make ci` green.
-
-**Rule?** No.
-
-**Counter-argument.** "Keep 1.x names for metadata compat." Loses: pre-1.0, hard-cut policy; skills already speak RFC-25. *cargo* renamed unstable flags rather than maintaining dual vocab.
-
-**Depends on.** none (unblocks deleting F5's orphan variant if wired here instead).
-
----
-
-### F5 — Delete orphan `SliceTransitionRefined` (if F4 parked)
-
-**Evidence.** `rg 'SliceTransitionRefined' specify-cli/` → 8 hits, all in `journal.rs` + `tests/journal.rs` + fixture `tests/fixtures/journal/slice-transition-refined.json`. Production emit path removed in prior F4 pass.
-
-**Action.** Delete variant from `EventKind`, self-tests at `journal.rs:268–281,369`, `tests/journal.rs:232–281`, golden fixture; trim DECISIONS.md / architecture.md one-liners.
-
-**Quality delta.** −~95 LOC, −1 enum variant, −1 golden fixture.
-
-**Net LOC.** 95 → 0.
-
-**Done when.** `rg -c 'SliceTransitionRefined|slice\.transition\.refined' specify-cli/` → 0.
-
-**Rule?** No.
-
-**Counter-argument.** "RFC-25 lists the event." Loses: an event with no emitter is schema fiction; restore via F4 or delete. *tokio* drops unused trace kinds when nothing produces them.
-
-**Depends on.** F4 **or** "none" if choosing deletion over wiring.
-
----
-
-### F6 — Delete `slice outcome set` command
-
-**Evidence.** `rg 'outcome set' plugins/spec/skills/` → **0** SKILL hits (only `phase-outcome-contract.md` + `guardrails.md`). Command surface: `src/commands/slice/outcome.rs` = **210 LOC**; `OutcomeAction::Set` + `RegistryAmendmentRequired` clap subtree (`cli.rs:125–202`). Merge still stamps outcome internally (`merge/slice.rs:204`) — that writer stays.
-
-**Action.**
-1. Delete `OutcomeAction::Set` and `outcome::set()`; keep `Show` for archive reads.
-2. Delete `OutcomeKind::RegistryAmendmentRequired` variant + clap arm (tests-only).
-3. Remove `slice outcome set` tests block in `tests/slice.rs` (~lines 352–980 footprint; `rg -c outcome tests/slice.rs` → 112 lines touch outcome).
-
-**Quality delta.** −~320 LOC, −1 enum variant, −1 clap subcommand tree, −4 call-site docs.
-
-**Net LOC.** ~320 → ~90 (show path only).
-
-**Done when.** `specify slice outcome --help` lists only `show`; `rg -c 'OutcomeAction::Set' src/` → 0; merge tests still pass.
-
-**Rule?** No.
-
-**Counter-argument.** "Execute reads outcome on return." Loses: current execute body (`execute/SKILL.md:40`) contradicts its own stop-conditions — it never shells `outcome show`. Keeping a write verb no skill calls is *cargo*'s removed `cargo test -- --exact` pattern: delete unused surface.
-
-**Depends on.** F3 (doc drift).
-
----
-
-### F7 — Drop dead `feature` terminology branch
-
-**Evidence.** `validate/run.rs:88` hardcodes `let terminology = "crate"`. `rg '"feature"' specify-cli/crates/domain/src/validate` → only `proposal.rs:18` and `primitives.rs:150` match arms — **no caller passes `"feature"`**.
-
-**Action.**
-1. Remove `terminology` field from `BriefContext` / `CrossContext` (`validate.rs:87–125`).
-2. Inline `"## Crates"` in `proposal.rs` and `primitives.rs`; delete match arms and parameter threading through `run.rs` (`run_brief_rules`, `run_cross_rules`).
-
-**Quality delta.** −~38 LOC, −2 struct fields, −2 match arms, −1 parameter at 4 call sites.
-
-**Net LOC.** ~55 → ~17.
-
-**Done when.** `rg -c 'terminology' specify-cli/crates/domain/src/validate/` → 0; `cargo nextest run -p specify-domain -- validate` green.
-
-**Rule?** No.
-
-**Counter-argument.** "Vectis uses Features headings." Loses: Vectis validation moved to target briefs per `validate/run.rs:74–78`; deterministic runner is Omnia-biased and always was.
-
-**Depends on.** none.
-
----
+### F1 — Delete pre-1.0 migration apparatus
+
+- **Evidence**:
+    - `wc -l scripts/migrate_to_2_0.ts scripts/migrate-to-2.0.sh tests/migration_test.ts tests/migration_e2e.ts docs/migration/2.0.md` → 592 + 40 + 137 + 184 + (≈40) = ≈990 lines.
+    - `find tests/fixtures/migration -type f | wc -l` → 33; `du -sh` → 132 KB.
+    - `rg -l 'migrate-to-2|migrate_to_2_0'` (specify repo): hits are exclusively (a) the migration sources themselves, (b) `AGENTS.md` advertising the script, (c) `rfcs/*` discussing the cut, (d) `docs/explanation/release-notes.md` + `docs/explanation/decision-log.md`. No production CLI / skill / target references the script.
+    - Project rule (parent `AGENTS.md`): "2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace."
+- **Action**:
+    1. `rm scripts/migrate-to-2.0.sh scripts/migrate_to_2_0.ts tests/migration_test.ts tests/migration_e2e.ts docs/migration/2.0.md`.
+    2. `rm -r tests/fixtures/migration`.
+    3. Remove the `migrate-to-2.0.sh` paragraph from `AGENTS.md` ("Operators upgrade via `migrate-to-2.0.sh`.") and any link to `docs/migration/2.0.md` from `docs/SUMMARY.md`.
+- **Quality delta**: −≈990 LOC, −33 fixture files, −1 deno entry point, −1 module edge from `make test` (acceptance harness already skips when no binary is set).
+- **Net LOC**: ≈990 → 0.
+- **Done when**: `rg -l 'migrate-to-2|migrate_to_2_0'` returns zero hits outside `rfcs/archive/`.
+- **Rule?**: no — pre-1.0 migration is a one-off concern; no policy needed.
+- **Counter-argument**: "Downstream operators may still be on 1.x" — loses to the project's own "hard cut" stance and the existing entry in `git log` if anyone needs the script back.
+- **Depends on**: none.
+
+### F2 — Delete `rfcs/rfc-27-synthesis.html`
+
+- **Evidence**:
+    - `wc -l rfcs/rfc-27-synthesis.html` → 1414 lines (`tokei` reports this as the only HTML file in the repo).
+    - `grep -l 'rfc-27-synthesis.html' -r .` returns no source-tree hits (only `.git/index`); the sibling `rfcs/rfc-27-synthesis.md` (796 lines) is the canonical artifact.
+    - Editor mod-times show the `.html` regenerated alongside the `.md` (both `May 22 14:44/14:45`), so it is being maintained manually — a recurring cost for content nothing reads.
+- **Action**: `rm rfcs/rfc-27-synthesis.html`. Inline-link from `rfcs/roadmap.md` (if any) keeps pointing at the `.md`.
+- **Quality delta**: −1414 LOC, −1 hand-styled CSS surface to keep in sync with the markdown.
+- **Net LOC**: 1414 → 0.
+- **Done when**: `tokei` reports `HTML 0 files`.
+- **Rule?**: no.
+- **Counter-argument**: "The HTML render is nicer for sharing externally" — loses because no link in the repo points at it; if needed, render on demand from the `.md`.
+- **Depends on**: none.
+
+### F3 — Collapse plan-entry / lifecycle transition state machines
+
+- **Evidence**:
+    - `wc -l crates/domain/src/change/plan/core/transitions.rs` → 313; doc-string declares: "Post-RFC-25 there are exactly two legal edges: `Pending → InProgress` … `InProgress → Done`."
+    - The file ships four mirrored functions for that two-edge table: `Status::can_transition_to`, `Status::transition`, `Plan::transition`, plus the identical `Lifecycle::can_transition_to` / `Plan::transition_lifecycle` pair (one legal edge: `Pending → Reviewed`).
+    - 191 of those lines are tests: `legal_edges_succeed`, `done_is_terminal`, `illegal_edges_rejected`, `table_matches_oracle`, `error_carries_endpoints`, `transition_in_progress_to_done`, `transition_rejects_illegal_edge`, `transition_rejects_pending_to_done_skipping_in_progress`, `transition_missing_entry`, `lifecycle_pending_to_reviewed_ok`, `lifecycle_reviewed_is_terminal`, `lifecycle_rejects_pending_to_pending`.
+    - External callers of `can_transition_to`: zero outside this file (`rg can_transition_to crates/domain/src/change`).
+- **Action**:
+    1. Delete `Status::can_transition_to` and `Status::transition`; inline the `matches!((self, target), (Pending, InProgress) | (InProgress, Done))` check directly into `Plan::transition`, returning the `plan-transition` diag in the `else` arm.
+    2. Delete `Lifecycle::can_transition_to`; inline the single-arm `matches!` into `Plan::transition_lifecycle`.
+    3. Drop the `legal_edges_succeed` / `illegal_edges_rejected` / `table_matches_oracle` / `done_is_terminal` / `error_carries_endpoints` tests — they all assert the same two cells. Keep `transition_in_progress_to_done` + one rejection test (`transition_rejects_pending_to_done_skipping_in_progress`) + the two lifecycle cases.
+    4. Same surgery for `crates/domain/src/slice/lifecycle.rs` (130 LOC, six legal edges): collapse to one `transition()` and one negative-path test. Drop `LifecycleStatus::initial()` (4 LOC); the single caller (`slice create`) can write `LifecycleStatus::Refining` literally.
+- **Quality delta**: −≈310 LOC, −4 trait-style methods, −1 cell-by-cell oracle pattern duplicated across two state machines.
+- **Net LOC**: 443 → ≈135.
+- **Done when**: `wc -l crates/domain/src/change/plan/core/transitions.rs crates/domain/src/slice/lifecycle.rs` reports both files < 90 lines and `rg can_transition_to crates/domain/src` returns zero.
+- **Rule?**: no.
+- **Counter-argument**: "Splitting predicate and action is a Rust idiom (`Path::is_dir` vs `Path::canonicalize`)" — loses because the predicate has zero external callers and the action is the only legal mutator; the split costs lines and earns nothing on the wire.
+- **Depends on**: none.
+
+### F4 — Delete `crates/domain/src/cmd.rs` `CmdRunner` trait
+
+- **Evidence**:
+    - `wc -l crates/domain/src/cmd.rs` → 35; the entire module is a 1-method trait + a single zero-sized `RealCmd` impl that delegates to `Command::output()`.
+    - `rg 'CmdRunner|RealCmd'` (specify-cli, code only): 7 production files propagate `<R: CmdRunner>` generics — `registry/forge.rs`, `registry/workspace/push.rs`, `registry/workspace/push/forge.rs`, `registry/workspace/push/remote.rs`, `change/finalize.rs`, `change/finalize/probe.rs` (plus 1 test helper). Each `pub fn` carries an extra `runner: &R` parameter and a `where R: CmdRunner` row.
+    - `docs/standards/style.md` already lists this trait as the canonical "traits-for-testability" example, which is exactly the smell the review brief targets.
+- **Action**:
+    1. Replace the trait with `pub type CmdRunner = fn(&mut Command) -> io::Result<Output>;` in the same file (or inline at the call sites and delete the file entirely).
+    2. Rewrite every `<R: CmdRunner>(runner: &R, ...)` signature to `(run: CmdRunner, ...)` and replace `runner.run(&mut cmd)` with `run(&mut cmd)`.
+    3. `RealCmd` becomes `fn real_cmd(cmd: &mut Command) -> io::Result<Output> { cmd.output() }`. Test mocks become free functions of the same shape.
+- **Quality delta**: −≈55 LOC across 8 files; −1 trait; −7 generic-parameter rows in public signatures; −1 module edge (`use crate::cmd::CmdRunner`) per consumer.
+- **Net LOC**: ≈90 → ≈35.
+- **Done when**: `rg 'CmdRunner|RealCmd' crates/domain/src` returns zero hits and `rg 'where R: ' crates/domain/src/registry crates/domain/src/change/finalize` returns zero rows.
+- **Rule?**: no — one trait-to-fn-pointer collapse does not need enforcement.
+- **Counter-argument**: "A trait gives us `dyn` injection if a runner ever needs state" — loses because no current or proposed runner carries state, and a closure-shaped `impl Fn(&mut Command) -> io::Result<Output>` is the trivial upgrade path if one ever does.
+- **Depends on**: none.
+
+### F5 — Delete `docs_quality.ts` post-migration predicates
+
+- **Evidence**:
+    - `wc -l scripts/checks/docs_quality.ts` → 178; two of the three predicates exist solely to verify "old vocabulary is gone": `checkNoLayerNumbersInDocs` (49 LOC) bans the Layer 3/4 names from a stack that already collapsed; `checkNoLegacyAdaptersReferencePath` (51 LOC) bans the pre-2.0 `docs/reference/adapters/` path.
+    - The third predicate (`checkNoRfcCitationsInDocs`, 47 LOC) is a real ongoing style rule and stays.
+    - `make checks` registers the two doomed predicates from `scripts/checks.ts` lines 91 + 93; deletion is a 3-line edit there.
+    - Pre-1.0 "hard cut" + "ignore back-compat, migrations, deprecations" from the review brief.
+- **Action**:
+    1. Delete `checkNoLayerNumbersInDocs` and `checkNoLegacyAdaptersReferencePath` from `scripts/checks/docs_quality.ts` (≈100 LOC including their constants and one private helper).
+    2. Drop the two `checkNoLayerNumbersInDocs` / `checkNoLegacyAdaptersReferencePath` calls and imports from `scripts/checks.ts`.
+- **Quality delta**: −≈100 LOC, −2 enforcement predicates, −1 docs-quality module-edge.
+- **Net LOC**: 178 → ≈78.
+- **Done when**: `wc -l scripts/checks/docs_quality.ts` reports ≈78 and `rg 'checkNoLayerNumbersInDocs|checkNoLegacyAdaptersReferencePath' scripts` returns zero hits.
+- **Rule?**: no — the deletion *is* the rule.
+- **Counter-argument**: "Predicates that find zero hits today might catch someone tomorrow" — loses because pre-1.0 has no compatibility surface to police and contributors writing "Layer 4" or `docs/reference/adapters/` get the deletion notice in code review or the broken link.
+- **Depends on**: F1 (the migration script itself was the last in-tree user of the old `docs/reference/adapters/` references).
+
+### F6 — Collapse `Counts::from_entries` BTreeMap dance
+
+- **Evidence**:
+    - `src/commands/plan/status.rs` lines 36–60: a 25-line `Counts` struct + `from_entries` that builds a `BTreeMap<Status, usize>` keyed by `Status::value_variants()`, increments through the map, sums, then indexes back out by named variant — to populate three `usize` fields and a `total`.
+    - The enum has exactly three variants; `Status::value_variants()` is otherwise only used in `crates/domain/src/change/plan/core/transitions.rs` tests (covered by F3).
+- **Action**: Replace `Counts::from_entries` with:
+
+  ```rust
+  pub fn from_entries(entries: &[Entry]) -> Self {
+      let mut c = Self { done: 0, in_progress: 0, pending: 0, total: entries.len() };
+      for e in entries {
+          match e.status {
+              Status::Done => c.done += 1,
+              Status::InProgress => c.in_progress += 1,
+              Status::Pending => c.pending += 1,
+          }
+      }
+      c
+  }
+  ```
+
+  Drop the `use std::collections::BTreeMap` and `use clap::ValueEnum` imports if nothing else in the file needs them.
+- **Quality delta**: −≈12 LOC, −1 BTreeMap allocation, −1 `expect("ALL covers status")` invariant guard, −2 module-edge imports.
+- **Net LOC**: 25 → ≈13.
+- **Done when**: `rg 'BTreeMap|value_variants' src/commands/plan/status.rs` returns zero hits.
+- **Rule?**: no.
+- **Counter-argument**: "Iterating `value_variants()` keeps the counts struct in sync if a Status arm is added" — loses because adding a Status arm post-RFC-25 is a structural change that must touch this struct's typed fields anyway (the wire shape pins `done` / `in-progress` / `pending`); the `match` makes the dependency explicit.
+- **Depends on**: none.
 
 ## One-touch tidies
 
-### T1 — Delete guardrails `journal.yaml` bullet
+1. **Delete `SliceSourceBinding` `From<&str>` / `From<String>` impls** — `crates/domain/src/change/plan/core/model.rs` lines 247–257; `rg 'SliceSourceBinding::from\(' crates/` returns zero hits, and the only `.into()` shorthand site is `amend.rs:164` (`sources: vec!["a".into()]`), which becomes `vec![SliceSourceBinding::Bare("a".into())]`. Done when `rg 'impl From<' crates/domain/src/change/plan/core/model.rs` returns zero. Δ: −12 LOC, −2 trait impls.
 
-**Evidence.** `plugins/references/guardrails.md:13` documents `specify slice journal append`; command deleted in prior pass (`rg 'slice journal' specify-cli/src/` → 0).
+2. **Delete `LifecycleStatus::initial()`** — `crates/domain/src/slice/lifecycle.rs:38–40`. One caller (`slice/actions/create.rs`); replace with the literal `LifecycleStatus::Refining`. Δ: −4 LOC, −1 helper. (Subsumed by F3 if that lands.)
 
-**Action.** Delete line 13.
+3. **Drop the `transition_table_matches_oracle` test in `slice/lifecycle.rs`** (lines 116–128) and the matching `allowed_edges` helper (lines 89–99) — 26 LOC asserting that six legal edges match six legal edges; `matches!` is already the truth table. Δ: −26 LOC, −1 oracle pattern. (Subsumed by F3 if that lands.)
 
-**Quality delta.** −1 LOC, −1 drift surface.
+4. **Inline `LifecycleStatus::is_terminal`** — `crates/domain/src/slice/lifecycle.rs:42–46`; check call sites with `rg 'is_terminal\(' crates/`; if ≤ 2, drop the helper and write `matches!(status, LifecycleStatus::Merged | LifecycleStatus::Dropped)` inline. Δ: ≈−5 LOC.
 
-**Done when.** `rg 'journal\.yaml' plugins/references/guardrails.md` → 0.
+5. **Delete the `EXIT_*` constant aliases in `src/output.rs`** if `Exit` already exposes a `pub const fn code()` (it does, lines 26–35). The `EXIT_SUCCESS = 0` style constants only appear in `AGENTS.md` as documentation, not in code — confirm with `rg 'EXIT_SUCCESS|EXIT_GENERIC_FAILURE|EXIT_VALIDATION_FAILED|EXIT_VERSION_TOO_OLD' src crates` (zero hits → tidy applies); if non-zero, drop. Δ: 0–8 LOC depending on grep result.
 
-**Depends on.** none.
+6. **Delete `ALLOWED_AUTO_MERGE_CONTEXT` / `ALLOWED_GH_MERGE_CONTEXT` / `ALLOWED_WORKSPACE_MERGE_CONTEXT` in `scripts/checks/prose.ts`** lines 150–156 — they are escape-hatch regexes that exist only because RFC-14 vocabulary used to be live. With the hard 2.0 cut, the predicate `checkWorkspaceLanding` can stop allow-listing those phrases or be deleted alongside F5. Δ: ≈−7 LOC, −3 escape regexes; verify by running `make checks` after the change.
 
----
+7. **Drop the duplicate `Result` re-export note in `crates/error/src/lib.rs`** lines 13–19 — the 6-line doc comment explains a 1-line type alias. Tighten to `/// Workspace `Result` alias bound to [`Error`].`. Δ: −5 LOC, no behaviour change. (Edge tidy; only worth it if a nearby file is already being touched.)
 
-### T2 — Fix `spec.mdc` lifecycle diagram
+8. **Delete the `#[expect(clippy::same_name_method, …)]` round-trip in `crates/domain/src/change/plan/core/io.rs:49`** and `crates/domain/src/config.rs:61` by renaming the inherent method to `read` and dropping the `AtomicYaml` trait alias for `load` — both files document the shadowing as a wart in 6+ lines of justification. Δ: −12 LOC of explanatory `expect` attributes + two trait method renames. (Borderline; only land alongside another change to the same files.)
 
-**Evidence.** `plugins/spec/rules/spec.mdc:28–37` documents `pending -> refining -> refined -> building -> built` but CLI wire is `defining|defined|building|complete` (pre-F4) — double drift.
+## Dropped findings
 
-**Action.** Either align to F4 names or, if F4 parked, replace with actual CLI states in ≤5 lines.
+- **Inline `Plan::topological_order`** — wanted to drop it as redundant with `plan validate` cycle detection, but `src/commands/plan/status.rs:126` uses it for the operator-facing ordering of entries; deletion would degrade `specify plan status` UX. Kept.
+- **Drop `Patch<T>` three-way enum (`model.rs:290–310`)** — considered replacing with `Option<Option<T>>` or a pair of `Option<T>` flags, but the enum is 6 LOC of `apply` + 4 patch sites in `EntryPatch`; either alternative costs more at call sites than the enum saves at its definition. Kept.
+- **Collapse `crates/domain/src/change/plan/core/` into a single file** — 8 sibling files for one model is a real smell (model 702, amend 375, create 312, io 282, next 385, transitions 313, validate 311, archive 128). A combined file lands at ≈2 800 LOC, which violates the in-repo file-size norm in `docs/standards/architecture.md`. The size came from genuine concern separation; the LOC budget should be earned by F3 first, then revisit. Held.
+- **Promote recurring `Diag` codes to typed `Error` variants** — `rg 'code: ?"[a-z-]+"'` shows 196 sites; only `tool-resolver` (×4) and `merge-spec-conflicts` (×3) repeat. Promoting either to a typed variant adds enum lines + `Exit::from` + `variant_str` rows for a net `+` LOC change. Kept.
+- **Delete `crates/error/src/serde_rfc3339*.rs` helpers** — only one consumer (`journal.rs`) for both modules, but the helpers are 7 lines each and removing them would force inlining `#[serde(with = …)]` glue at every Timestamp field. Net would be roughly flat. Kept.
 
-**Quality delta.** wash-LOC, −1 skill/CLI drift surface.
+## Post-mortem
 
-**Done when.** Diagram states match `LifecycleStatus` strum serialisation.
+One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress.
 
-**Depends on.** F4 (preferred).
+- **F1** — actual −1399 LOC (−971 from sources + −428 from the 33 fixture YAML/MD files) vs predicted −≈990 (≈41% over); deletion was clean (33 fixture files matched the brief exactly, no orphaned production callers); `rg -l 'migrate-to-2|migrate_to_2_0' --glob '!rfcs/archive'` returns 6 (REVIEW.md self-reference + the 4 explicitly-leave-alone archival hits in `rfcs/rfc-27-synthesis.{md,html}` and `docs/explanation/{decision-log,release-notes}.md` + the brief's own note in `REVIEW.md`) — the done-when literal ("zero outside `rfcs/archive/`") and the brief's own "leave archival prose alone" rule disagree; treated the leave-alone rule as authoritative; `make checks` red but with 28 pre-existing `rfcs/rfc-25-workflow.md`/`rfc-25-plan.md` broken-link failures unrelated to F1 (RFC-25 was archived in a prior change; back-refs not yet rewritten); Makefile collateral landed as predicted (`ci` target dropped two deps, no other targets referenced them); two additional non-archival live references the brief didn't flag (`docs/contributing/acceptance.md` advertised the removed `make test-migration*` targets and linked to deleted fixtures; `targets/vectis/schemas/README.md` had an in-prose link to the deleted migration doc) were cleaned in-scope; fixture-tree blow-up was modest (~+1.4×) vs the F8 prior's 5–7× warning because the fixtures are tiny per-file (33 files × ≈13 LOC) rather than the meatier orphaned-tests pattern the prior was calibrated on.
+- **F2** — actual −2006 LOC vs predicted −1414 (≈42% over; prediction used tokei code-line accounting while `git diff --shortstat` counts raw lines including blanks — the file was 1414 code / 2006 raw); `tokei` reports no HTML row at all (HTML 0 files; the 57 `.html` paths under `docs/book/` are gitignored mdBook build output) and `make checks` failure count unchanged at 28 (same pre-existing `rfc-25-workflow.md` / `rfc-25-plan.md` broken-link set as F1, no new `rfc-27-synthesis.html` failure introduced); `rg 'rfc-27-synthesis\.html'` returned only the F2 brief itself in `REVIEW.md` plus a self-mention inside the deleted `.html` — no in-tree linkers, no `docs/SUMMARY.md` / `rfcs/roadmap.md` references, no source-tree retargets needed; clean single-file deletion with no fixture tail, no regressions.
+- **F3** — actual −265 LOC vs predicted −≈310 (≈15% under; `git diff --shortstat` reports 339 deletions / 74 insertions across `transitions.rs`, `slice/lifecycle.rs`, and the T4 inline in `slice/actions/overlap.rs`); both files now 89/88 lines (target <90, hit on the second compaction pass — the first landed at 102/96 because pedantic clippy demands `# Errors` doc-blocks per pub fn and rustfmt pins the multi-line `format!()` once it overflows 100 chars); `rg can_transition_to crates/domain/src` returns 0; pre-edit baselines `specify-domain` 473 → 464 (−9 = 8 dropped from `transitions.rs` + 3 dropped from `slice/lifecycle.rs` + 2 added back as the merged positive/negative cases) and `plan_orchestrate` 62 → 62 (untouched as expected); `cargo make check` green and `RUSTDOCFLAGS=-D warnings cargo doc --no-deps --workspace --all-features` green — no broken intra-doc-links surfaced (audit pre-pass with `rg '\[Status::can_transition_to\]|\[Lifecycle::can_transition_to\]|\[LifecycleStatus::initial\]|\[LifecycleStatus::is_terminal\]|\[LifecycleStatus::can_transition_to\]'` returned 0 across both repos, so the prior's "F3 green on `check`, red on `ci`" trap did not fire); T2 (`LifecycleStatus::initial`) subsumed — note the brief's claimed "single caller is `slice/actions/create.rs`" is stale, that file already wrote the `LifecycleStatus::Refining` literal directly, so the only in-tree caller was `initial_is_refining` in the `lifecycle.rs` test that was dropped anyway; T3 (oracle test + `allowed_edges`) subsumed; T4 inline applied — `is_terminal` had exactly 1 external caller (`crates/domain/src/slice/actions/overlap.rs:66`), under the ≤2 threshold, so it was inlined as `matches!(status, LifecycleStatus::Merged | LifecycleStatus::Dropped)`; wire envelope byte-stable — `plan-transition` / `plan-lifecycle-transition` / `plan-entry-not-found` / `lifecycle` diag codes unchanged, the `format!()` templates `"cannot transition from {self:?} to {target:?}"` (per-entry), `"cannot transition plan lifecycle from {:?} to {target:?}"` (plan-level — the `self.lifecycle` arg was renamed to a `current` binding for line-budget reasons, but the rendered text is byte-identical), `"no slice named '{name}' in plan"`, and `"expected valid transition from {self:?}, found {target:?}"` reproduce verbatim; one deliberate test-shape change worth flagging: dropped `transition_missing_entry` from `transitions.rs` per the brief — the `plan-entry-not-found` wire shape remains exercised by `crates/domain/src/change/plan/core/amend.rs` tests (`rg plan-entry-not-found` confirms the assertion survives), so coverage of that diag code persists across the workspace; one minor structural deviation: the kept positive (`transition_in_progress_to_done`) and negative (`transition_rejects_pending_to_done_skipping_in_progress`) per-entry tests were merged into a single `transition_in_progress_to_done_and_rejects_pending_skip` test to claw back 5 lines toward the <90 target — the same wire-shape assertions (code, both endpoints in `detail`, status-not-mutated invariant) survive in the merged body; no regressions, no clippy/rustdoc warnings introduced.
+- **F4** — actual −12 LOC vs predicted −≈55 (≈78% under); fn-pointer vs impl-Fn decision: chose `pub type CmdRunner<'a> = &'a dyn Fn(&mut Command) -> io::Result<Output>` (borrowed-dyn-closure alias) because `MockCmd` carries state (a `RefCell<Vec<RecordedCall>>` recorder + a `RefCell<Box<dyn FnMut(&RecordedCall) -> io::Result<Output>>>` dispatch handler) so a stateless `fn` pointer can't transport the closure that wraps `&MockCmd`; preferred `&dyn Fn` over `impl Fn(...)` because the runner is threaded through up to four call layers (`finalize::run` → `probe::probe_one` → `is_dirty` / `pr_view_for_branch`; `push_projects` → `push_single_project` → `inspect_remote_branch` → `repo_exists` / `ensure_pull_request` → `github_pr_for_branch`) and the borrowed-dyn shape propagates as `Copy` without per-layer `+ Copy` bounds and without sprinkling `<F: Fn(...)>` generics back across the very files this finding aimed to clean; `rg 'CmdRunner|RealCmd' crates/domain/src` returns 23 (zero `RealCmd`, 23 `CmdRunner` — alias declaration + 6 `use crate::cmd::CmdRunner` imports + 13 `runner: CmdRunner<'_>` parameter-type sites + 3 doc-comment `[CmdRunner]` intra-doc-links + 1 `let runner: CmdRunner<'_> = &real_cmd;` binding); `rg 'where R: ' crates/domain/src/registry crates/domain/src/change/finalize` returns 0; `cargo make check` green (798 tests run / 798 passed / 2 skipped, fmt + clippy + nextest + doc-tests all green); `RUSTDOCFLAGS=-D warnings cargo doc --no-deps --workspace --all-features` green — no broken intra-doc-links because the kept alias preserves the `CmdRunner` identifier the `[CmdRunner]` links resolve through; `docs/standards/style.md` updated — kept the "no traits for testability alone" rule but rewrote the GOOD example from `fn pr_list(runner: &dyn CmdRunner) -> ...` (which referenced a now-removed trait) to `fn pr_list(runner: CmdRunner<'_>) -> ...` (the alias) and replaced "via `CmdRunner`" with "via the `CmdRunner` callable alias in `specify_domain::cmd`" so the standards doc still illustrates the lowest-external-surface boundary without resurrecting a dead trait — no third-party in-tree trait was needed because the rewrite re-uses `CmdRunner` itself; surprises: (a) the prior's "10–56% undershoot" envelope underestimated by 22 percentage points — `&dyn Fn(&mut Command) -> io::Result<Output>` (the alias body) and `runner: CmdRunner<'_>` are both longer than `<R: CmdRunner>(runner: &R, ...)` once formatted, so rustfmt added a wrapped-argument row in three signatures (`ensure_pull_request`, `ensure_pr_if_supported`, `probe_one`) clawing back ≈3 lines, and the test-call rewrite (`&runner` → `&|c| runner.run(c)` × 14 call sites in `tests/finalize.rs`) was net-zero per line but the test mock module (`tests/common/mod.rs`) needed an extra clippy `expect` attribute when the inherent `MockCmd::run` signature first kept `&mut Command` — fix on the second pass switched the inherent method to `&Command` (relying on `&mut Command` reborrow at the closure boundary), trimming the four-line `expect` block back to one and recovering the LOC; (b) brief's "1 test helper" caller count was accurate, but `tests/finalize.rs` itself (the integration-test binary, 947 LOC) is a *consumer* of that helper with 14 inline `&runner` call-site rewrites — counting the helper alone undercounts the rewrite surface by an order of magnitude; (c) no production binary actually calls `change::finalize::run` today (the doc-comment claiming "the CLI binary plugs in `RealCmd`" was stale — only `change::finalize::probe::probe_one`'s test path exercises the runner, with `push::push_projects` being the sole live in-binary caller via the new `&real_cmd` static `&fn`) — corrected the stale doc-comment in-scope; no behavioural regressions, `Command::output()` remains the only spawn primitive, JSON envelopes for `finalize::Outcome` and `push::PushResult` byte-stable (no shape touched).
+- **F5** — actual −229 LOC vs predicted −≈100 (≈129% over, ≈2.3× — F5-only would be −121 / ≈21% over because `git diff --numstat` reports 1/114 for `docs_quality.ts` + 1/9 for `checks.ts`; tidy #6 adds the remaining −108 LOC from dropping `checkWorkspaceLanding` whole-predicate from `prose.ts`); `scripts/checks/docs_quality.ts` now 65 lines (under the brief's ≈78 target because the three-predicate file-header comment collapsed to a single-predicate header, ~13 lines below target but within reason); `rg 'checkNoLayerNumbersInDocs|checkNoLegacyAdaptersReferencePath' scripts` returns 0; tidy #6 (`ALLOWED_*_CONTEXT` in `prose.ts`) applied: deleted the entire `checkWorkspaceLanding` predicate and all three `ALLOWED_*_CONTEXT` regex constants — analysis confirmed the predicate is purely RFC-14 vocabulary policing (its sole purpose is to allow-list "removed/retired/operator-owned" descriptions of phrases that should never appear as active commands), and ~10 current legitimate doc lines (e.g. `docs/standards/cli-contract.md:43`, `docs/reference/cli/workspace.md:151`, `plugins/spec/skills/finalize/references/runbook.md:109/113/165/217`) rely on the allow-lists to describe the removal; dropping only the constants would have made the predicate strictly stricter (not a no-op), breaking those legitimate "removed-as-of-2.0" prose lines; with the hard 2.0 cut and `specify workspace merge` absent from the CLI surface, the check is transitional vocabulary policing that has done its job and the architecture is self-policing via the absent CLI verb — also dropped `checkWorkspaceLanding` from the `scripts/checks.ts` registration block and tightened the `prose.ts` file-header comment; `make checks` failure count unchanged at 28 (same pre-existing `rfc-25-workflow.md` / `rfc-25-plan.md` broken-link set as F1/F2/F3, no new failures introduced — registered check count dropped by 3 total: 2 from F5 proper + 1 from tidy #6); the prior's "blow through by 5–7× when orphaned tests/fixtures tag along" did not fire because the deleted predicates had no fixture tree, but the brief's −100 prediction missed the −108 LOC tidy #6 explicitly flagged as conditional with F5, so the 2.3× overshoot is a scope expansion not a scope underestimate; clean deletion across all three files, no regressions.
+- **F6** — actual −0 LOC vs predicted −≈12 (100% under; `git diff --shortstat` reports 13 insertions / 13 deletions — file still 189 lines because `rustfmt.toml` pins `struct_lit_width = 20` and so the new `Self { done: 0, in_progress: 0, pending: 0, total: entries.len() }` literal reflows across 6 rows, clawing back the 2 deleted imports + the loop + sum + index-out savings; the brief's "accept the multi-line reflow" caveat applied verbatim, and the only way to recover the predicted −12 would be to relax `struct_lit_width` workspace-wide, which is out of scope); `rg 'BTreeMap|value_variants' src/commands/plan/status.rs` returns 0; `cargo make check` green (798 tests run / 798 passed / 2 skipped, fmt + clippy + nextest + doc-tests all green); `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace --all-features` green — no broken intra-doc-links to `BTreeMap` / `value_variants` (the prior's "cheap to check" turned up nothing); `Counts` wire shape unchanged — the kebab-case JSON keys `done` / `in-progress` / `pending` / `total` are unmodified (struct field order matched the brief's body verbatim and `tests/plan_orchestrate.rs::plan_status_renders_counts_and_topo` still pins the four keys + the `done=1`, `in-progress=1`, `pending=7`, `total=9` values); audit pre-pass confirmed the brief's "only consumer is `src/commands/plan/status.rs`" — `rg 'value_variants|BTreeMap<Status' crates src tests wasi-tools` returned only the two in-file lines about to be deleted, and the second `Counts::from_entries` caller in `src/commands/status.rs` reaches `Counts` through `pub use` and only field-accesses the four typed members, so the body swap is invisible to it; surprises: (a) the LOC undershoot is 100% not the prior's "10–56% unifications undershoot" envelope — root cause is `struct_lit_width = 20`, not a missed call site; (b) the prior's F7 warning about `Diag { code, detail: format!(...) }` reflow correctly did not apply, but a different rustfmt rule (struct-lit width) bit; (c) no `expect("ALL covers status")` guard had migrated elsewhere — it lived only in the deleted body and is gone; no regressions.
 
----
-
-### T3 — Delete `init-runbook` `pipeline.define` prose
-
-**Evidence.** `rg 'pipeline\.define' plugins/spec/` → `init-runbook.md:117`, `topology-flow.md:59`; init scaffolds hardcoded keys (`init/regular.rs:27`: `SCAFFOLDED_RULE_KEYS`).
-
-**Action.** Replace two sentences with "init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`."
-
-**Quality delta.** −~4 LOC, −1 doc/code drift.
-
-**Done when.** `rg 'pipeline\.define' plugins/spec/` → 0.
-
-**Depends on.** none.
-
----
-
-### T4 — Collapse `pass`/`fail`/`deferred` helpers in `validate/run.rs`
-
-**Evidence.** Three 7-line constructors (`run.rs:39–64`) differ only in `ValidationStatus`. Used at 2 call sites each.
-
-**Action.** One `fn summary(status, rule_id, rule, detail: Option<String>) -> ValidationSummary` — only if ≥2 call sites shrink (they do: lines 117–122, 220, 244).
-
-**Quality delta.** −~15 LOC, −2 functions.
-
-**Done when.** `rg -c '^fn (pass|deferred)\(' specify-cli/crates/domain/src/validate/run.rs` → 0.
-
-**Depends on.** none.
-
----
-
-### T5 — Delete `checkInstructionPreambles`
-
-**Evidence.** `scripts/checks/adapter.ts:190–213` walks `adapters/**/instructions/*.md`; `rg --files -g '**/instructions/*.md' specify/adapters` → **0 files**.
-
-**Action.** Delete function + `checks.ts` registration.
-
-**Quality delta.** −24 LOC, −1 dead predicate.
-
-**Done when.** `rg 'checkInstructionPreambles' scripts/` → 0.
-
-**Depends on.** F2.
-
----
-
-## Ranking and dependencies
-
-Prior pass findings (journal.yaml, ChangeBrief, ValidationResult, resolve collapse, ToolError trim, Pipeline.plan, DivergenceState, etc.) are **already applied** — do not re-land. This list is net-new only.
-
-| Rank | ID | ΔLOC | Axes |
-|---|---|---|---|
-| 1 | F1 | −1908 | LOC, types, module, schemas |
-| 2 | F2 | −553 | LOC, checks, module edge |
-| 3 | F6 | −320 | LOC, enum, clap |
-| 4 | F3 | −110 | LOC, drift |
-| 5 | F4/F5 | −95–155 | LOC, branches, call-site |
-| 6 | F7 | −38 | LOC, fields, arms |
-
-Structural findings rank by LOC: **F1 (1908) > F2 (553) > F6 (320) > F3 (110) > F4/F5 (95–155) > F7 (38)**. Tidies T1–T5 collapse into F2/F3/F4 where noted. No new modules, traits, or dependencies.
-
----
-
-## Post-mortem (prior pass — already applied)
-
-One line per finding from the previous review pass; retained for calibration context only.
-
-- **F1 (prior)** — Delete per-slice `journal.yaml` apparatus: actual −643 vs predicted −640; `rg -c 'journal\.yaml' crates/ src/` → 0.
-- **F2 (prior)** — Delete `ChangeBrief` parser: actual −518 vs predicted −485.
-- **F3 (prior)** — Unify `ValidationResult` with `ValidationSummary`: actual −53 vs predicted −120.
-- **F4 (prior)** — Delete dead `to_string() == "refined"` branch: actual −13 vs predicted −12; `SliceTransitionRefined` now production-unused.
-- **F5 (prior)** — Collapse source/target resolve commands: actual −45 vs predicted −50.
-- **F6 (prior)** — Collapse `Divergence` + `DivergenceState`: actual −28 vs predicted −45.
-- **F7 (prior)** — Trim `ToolError` variants: actual **+28** vs predicted −100 (sign flip; inline `Diag` rewrites cost more than helpers saved).
-- **F8 (prior)** — Drop `Pipeline.plan` + `Phase::Plan`: actual **−220** vs predicted −30 (orphaned tests/fixtures tail).
-- **T1 (prior)** — Drop stale `plan transition failed/blocked` from drop skill: actual −7 vs predicted −8.
-- **T2 (prior)** — Inline `artifact_classes` as private fn: wash-LOC.
-- **T7 (prior)** — Remove redundant `last` in `is_valid_source_key`: actual −2 vs predicted −5.
-- **T9 (prior)** — Delete `Adapter::probe_dir`: actual −1 vs predicted −10 (audit miscounted callers).
-
-### This pass
-
-- **F1 (OCI metadata)** — Delete OCI Reference Metadata: actual **−126** vs predicted −103; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
-- **F2 (source resolver)** — Delete Dead Source Resolver: actual **−104** vs predicted −101; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
-- **F3 (contract docs)** — Collapse Ghost Contract Plugin Docs: actual **−95** vs predicted −100; done-when assertion flipped cleanly; `cargo make check` green; `make checks` still fails on pre-existing RFC-25 broken links; no F3 regressions.
-- **F4 (SoW skill)** — Reduce SoW Skill Body: actual **−121** vs predicted −95; done-when assertion flipped cleanly (`wc -l` → 34); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F4 regressions.
-- **F5 (replay writer)** — Trim Replay Writer Prose: actual **−66** vs predicted −75; done-when assertion flipped cleanly (`wc -l` → 65); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F5 regressions.
-- **F6 (provenance renderer)** — Delete Provenance Renderer: actual **−71** vs predicted −69; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
-- **F7 (finalize skill)** — Put Finalize Detail In Runbook: actual **−70** vs predicted −68; done-when assertion flipped cleanly (`wc -l` → 41); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F7 regressions.
-- **T1 (`#[non_exhaustive]`)** — Drop Internal `#[non_exhaustive]`: actual **−13** vs predicted −12; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
-- **F1** — Delete RFC-20 survey module: actual **−2277** vs predicted −1908; `rg -c 'survey|SurfacesDocument' crates/ tests/ schemas/` → 0; `cargo make check` green; no regressions (extra −369 from integration tests/fixtures tail).
-- **F2** — Retire `adapters/default` pipeline shell (+ T5): actual **−173** vs predicted −553; all `rg` done-when assertions → 0; `make checks` green; no regressions (undershoot: codex moved intact, validation retargeted not deleted).
-- **F3** — Gut stale phase-outcome contract (+ T1, T3): actual **−125** vs predicted −110; all `rg` done-when assertions → 0; `make checks` green; no regressions.
-- **F4** — Align lifecycle enum to RFC-25 wire (+ T2): actual **−6** vs predicted ~−60; all done-when assertions flip cleanly; `cargo make check` + `make checks` green; `SliceTransitionRefined` wired (F5 N/A); no regressions (rename churn washed deletion wins).
-- **F5** — Delete orphan `SliceTransitionRefined`: **skipped** — F4 wired the emit path; variant no longer orphaned.
-- **F6** — Delete `slice outcome set`: actual **−686** vs predicted −320; all done-when assertions flip cleanly; `cargo make check` green; no regressions (test-block tail drove 2× overshoot).
-- **F7** — Drop dead `feature` terminology branch: actual **−43** vs predicted −38; `rg -c 'terminology' validate/` → 0; validate tests green; no regressions (already in working tree; sign did not invert unlike prior F7).
-- **T4** — Collapse `pass`/`fail`/`deferred` helpers: actual **−15** vs predicted −15; `rg` done-when → 0; `cargo make check` green; no regressions.
-- **T2 (slice metadata version)** — Delete Slice Metadata Version Default: actual **−48** vs predicted −24; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
-- **T1/T2/T3/T5** — Folded into F3/F4/F2 respectively; no separate post-mortem lines.
-
-### Calibration shape (prior pass)
-
-- **Pure deletions of dead surface** can blow through prediction by 5–7× when orphaned tests/fixtures ride along (F8).
-- **Unifications** undershoot 10–56% because helper bodies and doc-blocks absorb LOC.
-- **Enum-trim with inline `Diag` rewrites** can invert the sign when `rustfmt` reflow exceeds helper savings (F7).
-- **Audit miscounts on callers** — always cross-check bare method names, not just type-qualified forms (T9).
