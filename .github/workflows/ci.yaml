@@ -29,6 +29,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Checkout specify-cli schemas
+        uses: actions/checkout@v6
+        with:
+          repository: augentic/specify-cli
+          path: ../specify-cli
+          sparse-checkout: |
+            schemas
+          sparse-checkout-cone-mode: false
+
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
