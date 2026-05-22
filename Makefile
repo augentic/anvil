@@ -2,7 +2,7 @@ DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/d
 
 .PHONY: checks
 checks:
-	@$(DENO) run --allow-read scripts/checks.ts
+	@$(DENO) run --allow-read --allow-env scripts/checks.ts
 
 .PHONY: doc-envelopes
 doc-envelopes:

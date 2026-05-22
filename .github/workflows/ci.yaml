@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: augentic/specify-cli
-          path: ../specify-cli
+          path: specify-cli
           sparse-checkout: |
             schemas
           sparse-checkout-cone-mode: false
@@ -43,3 +43,5 @@ jobs:
 
       - name: Run checks
         run: make checks
+        env:
+          SPECIFY_CLI_DIR: specify-cli
