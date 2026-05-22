@@ -1,6 +1,6 @@
 # RFC-27: Synthesis Sharpening
 
-> Status: Draft. Additive to [RFC-25](rfc-25-workflow.md); supersedes nothing. Lifts the four sharpening recommendations in [rfc-25-synthesis.md](rfc-25-synthesis.md) into normative decisions. Compatible with [RFC-19](rfc-19-observability.md) (new journal events), [RFC-21](rfc-21-catalogue.md) (`sources.yaml`), and [RFC-24](rfc-24-omnia.md) (`shape` is unchanged).
+> Status: Implemented. Additive to [RFC-25](rfc-25-workflow.md); supersedes nothing. Lifts the four sharpening recommendations in [rfc-25-synthesis.md](rfc-25-synthesis.md) into normative decisions. Compatible with [RFC-19](rfc-19-observability.md) (new journal events), [RFC-21](rfc-21-catalogue.md) (`sources.yaml`), and [RFC-24](rfc-24-omnia.md) (`shape` is unchanged).
 
 ## Abstract
 
