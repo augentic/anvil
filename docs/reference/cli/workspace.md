@@ -161,4 +161,4 @@ specify plan finalize
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
 - [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
-- [`specify plan finalize`](change.md#specify-change-finalize) -- closure after PRs are operator-merged
+- [`specify plan finalize`](plan.md) -- closure after PRs are operator-merged

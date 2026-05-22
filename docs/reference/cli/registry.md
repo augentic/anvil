@@ -75,6 +75,6 @@ Behaviour:
 
 ## See also
 
-- [specify change](change.md) -- operator brief at `change.md`.
+- [specify plan](plan.md) -- the umbrella verbs for the operator brief at `change.md` and `plan.yaml`.
 - [specify workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
 - [Configuration Files → registry.yaml](../configuration.md#registryyaml) -- file format reference.

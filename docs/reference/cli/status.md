@@ -16,7 +16,7 @@ specify status [--format json|table]
 - **`plan`** -- progress of `plan.yaml` (per-status counts, current `in-progress` entry, blocking entries).
 - **`changes`** -- active slices under `.specify/slices/` with lifecycle state and task progress.
 
-For the focused single-slice view, use [`specify slice status <name>`](change.md). The bare `specify status` is no longer overloaded with a positional `<name>` argument -- that responsibility moved to `change status` in the CLI cleanup.
+For the focused single-slice view, use [`specify slice status <name>`](slice.md#specify-slice-status). The bare `specify status` is no longer overloaded with a positional `<name>` argument -- that responsibility moved to `specify slice status` in the CLI cleanup.
 
 ## Options
 
@@ -44,7 +44,6 @@ The top-level keys mirror the noun groups they summarise:
 
 ## See also
 
-- [specify slice status](change.md) -- detailed per-slice status
 - [specify slice status](slice.md#specify-slice-status) -- inspect a single slice
 - [specify plan status](plan.md) -- per-entry plan view
 - [specify registry show](registry.md) -- raw registry contents

@@ -245,10 +245,10 @@ Renders the journal in chronological order. Useful for triaging failed or deferr
 
 ## See also
 
-- [/spec:refine](../slice-skills/define.md) -- skill that creates slices
+- [/spec:refine](../slice-skills/index.md) -- per-slice refine breakout
 - [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
 - [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
 - [/spec:drop](../slice-skills/drop.md) -- skill that drops slices
-- [specify change](change.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
+- [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

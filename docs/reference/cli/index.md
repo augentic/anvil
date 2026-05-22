@@ -39,8 +39,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 |--------|---------|-----------|
 | [specify status](status.md) | Project dashboard -- registry summary, plan progress, active slices | Top-level convenience |
 | [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, outcome, journal | Single-slice operations |
-| [specify plan](plan.md) | Scaffold, populate, validate, and transition change plans | Multi-slice operations |
-| [specify change](change.md) | Scaffold the change pair (`change.md` + `plan.yaml`), render the brief, and finalize landed changes | Multi-slice and cross-repo closure |
+| [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify adapter](adapter.md) | Adapter resolution and brief pipeline queries | Adapter infrastructure |
 | [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |
