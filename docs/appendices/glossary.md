@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify 2.0.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `enumerate` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` matching `plugin.schema.json` plus an axis-specific refinement. See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `enumerate` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` matching `adapter.schema.json` plus an axis-specific refinement. See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -112,7 +112,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, finalize}` only.
 
 **Plugin**
-The shared shape for either adapter role. Schema `plugin.schema.json`; loader `crates/domain/src/plugin/`. Source and target adapters are both plugins; the axis decides the operations.
+The shared shape for either adapter role. Schema `adapter.schema.json`; loader `crates/domain/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
 
 **Project (plan routing)**
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.

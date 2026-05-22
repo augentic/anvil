@@ -193,7 +193,7 @@ The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **source adapter**            | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `openapi`.                                                  |
 | **target adapter**            | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.                                      |
-| **plugin**                    | Shared shape for either adapter role; schema `plugin.schema.json`, loader `crates/domain/src/plugin/`, audience tag for source + target adapter authors. |
+| **plugin**                    | Shared shape for either adapter role; schema `adapter.schema.json`, loader `crates/domain/src/adapter/`, audience tag for source + target adapter authors. |
 | **candidate**                 | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                                              |
 | **evidence**                  | Per-source result of `extract`; a structured document with `claims:`; persisted before synthesis.                                                        |
 | **provenance**                | Sources behind one requirement (`Sources:` list).                                                                                                        |
@@ -293,7 +293,7 @@ briefs:
 `-- targets/{omnia,vectis,contracts,...}/
 ```
 
-One resolver module (`crates/domain/src/plugin/`) routes by axis.
+One resolver module (`crates/domain/src/adapter/`) routes by axis.
 
 ### Wire format
 
@@ -361,7 +361,7 @@ This deliberately excludes `$PROJECT_DIR` from source-adapter grants: source ada
 | `screenshots`   | `documentation`   | Vision-assisted spatial inference over a directory of screen images; emits `region` / `container` / `leaf` Evidence claims for downstream targets that need layout structure (Vectis). |
 
 
-All three ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, and `sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The plugin loader (`crates/domain/src/plugin/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
+All three ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, and `sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The adapter loader (`crates/domain/src/adapter/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
 
 `screenshots` houses the body of the legacy Vectis `image-layout-inferer` skill, restructured as a source adapter: `enumerate` identifies candidate screens from the bound directory and writes one block per screen under `## Candidate inventory`; `extract` emits structured spatial Evidence per candidate (the new `region` / `container` / `leaf` claim kinds). The migration script retires `plugins/vectis/skills/image-layout-inferer/` and the hand-authored `layout.yaml` Specify artifact in 2.0 — see §Migration and §Note to the implementing agent. The v1 `enumerate` and `extract` briefs are the current `image-layout-inferer` prompt verbatim, just resliced into the two source-adapter operations; v1 does not redesign the inference algorithm.
 
@@ -848,9 +848,9 @@ For each rename: update the symbol, the JSON Schema, the YAML on-disk form, ever
 
 | Step | Decisions   | Deliverable                                                                                                                                                               | Acceptance           |
 | ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| 1    | D1, D3, D6  | Land the JSON Schemas this RFC references (`schemas/plugin.schema.json`, `schemas/source.schema.json`, `schemas/target.schema.json`, `schemas/evidence.schema.json`, `schemas/discovery/candidate.schema.json`, plus the `plan.yaml` schema's `target` field and structured `slices[].sources[]` shape and `pending`/`reviewed` plan-lifecycle enum). None of these exist in the tree today; this step ships them and wires them into `specify slice validate` / `plan add` / `plan amend` first-use validation. | #5g                  |
+| 1    | D1, D3, D6  | Land the JSON Schemas this RFC references (`schemas/adapter.schema.json`, `schemas/source.schema.json`, `schemas/target.schema.json`, `schemas/evidence.schema.json`, `schemas/discovery/candidate.schema.json`, plus the `plan.yaml` schema's `target` field and structured `slices[].sources[]` shape and `pending`/`reviewed` plan-lifecycle enum). None of these exist in the tree today; this step ships them and wires them into `specify slice validate` / `plan add` / `plan amend` first-use validation. | #5g                  |
 | 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                                                                           | #5a                  |
-| 3    | D1          | `crates/domain/src/plugin/` loader replaces `adapter/`.                                                                                                                   | #2, #4               |
+| 3    | D1          | `crates/domain/src/adapter/` axis-aware loader replaces the legacy 1.x adapter loader.                                                                                    | #2, #4               |
 | 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                                                                         | #1, #2               |
 | 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                                                                   | #5, #5a-#5h          |
 | 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                                                                               | #1, #5a-#5c          |
@@ -871,7 +871,7 @@ For each rename: update the symbol, the JSON Schema, the YAML on-disk form, ever
 
 Not binding; sequence by what unblocks the most tests soonest.
 
-1. `augentic/specify-cli`: schemas, the `Adapter*` → `Target*` rename, the `crates/domain/src/plugin/` loader, and CLI verbs (steps 1–3, 6, 8, 13, 14). This unblocks plan/slice/source/target writes for everything downstream.
+1. `augentic/specify-cli`: schemas, the `Adapter*` → `Target*` rename, the `crates/domain/src/adapter/` axis-aware loader, and CLI verbs (steps 1–3, 6, 8, 13, 14). This unblocks plan/slice/source/target writes for everything downstream.
 2. `augentic/specify`: `sources/`, `targets/`, `/spec:*` skill bodies, synthesis pipeline, discovery propose, docs (steps 4, 5, 7, 9–11, 16).
 3. Cutover: `migrate-to-2.0.sh` plus deletion of `/change:*` and `/spec:define` and removal of `plugins/change/` (steps 15, 17). Lands last so step 1 has time to settle.
 

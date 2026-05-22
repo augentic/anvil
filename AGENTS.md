@@ -10,7 +10,7 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 - **source adapter** — input role with two operations: `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `sources/<name>/adapter.yaml`.
 - **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
-- **plugin** — shared shape for either adapter role; schema `plugin.schema.json`, loader under `crates/domain/src/plugin/`.
+- **plugin** — historical shorthand for the shared adapter shape. The Rust loader lives at `crates/domain/src/adapter/` (single entry point `Adapter::resolve(axis, name, project_dir)`) and validates manifests against `adapter.schema.json`. The vocabulary noun "plugin" stays in operator-facing prose where source + target authors share the same audience tag.
 - **candidate** — slice-sized unit emitted by `enumerate`; one block per candidate under `## Candidate inventory` in `discovery.md`, with stable `id` and `sources[]`.
 - **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).

@@ -90,7 +90,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `.cache/`
 
-Adapter manifests and brief files. The plugin loader (`crates/domain/src/plugin/`) routes by axis: `sources/<name>/` for source adapters and `targets/<name>/` for target adapters. The cache is populated by `specify source resolve` and `specify target resolve` on first use.
+Adapter manifests and brief files. The adapter loader (`crates/domain/src/adapter/`) routes by axis: `sources/<name>/` for source adapters and `targets/<name>/` for target adapters. The cache is populated by `specify source resolve` and `specify target resolve` on first use.
 
 ### `workspace/`
 

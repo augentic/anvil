@@ -44,13 +44,13 @@ The configuration surfaces:
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **`sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
 - **`targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **`schemas/`** — JSON Schema files distributed with the binary: `plugin.schema.json`, `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, `plan.yaml` schema.
+- **`schemas/`** — JSON Schema files distributed with the binary: `adapter.schema.json`, `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
 
 - **`specify init <target>`** / **`specify init --workspace`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The plugin loader (`crates/domain/src/plugin/`) routes by axis.
+- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/domain/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 

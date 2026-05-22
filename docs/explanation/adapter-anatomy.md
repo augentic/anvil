@@ -9,7 +9,7 @@ Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn 
 | `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `sources/<name>/`        |
 | `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `targets/<name>/`        |
 
-Both ship `adapter.yaml` matching `schemas/plugin.schema.json` plus an axis-specific refinement (`schemas/source.schema.json` or `schemas/target.schema.json`). The shared shape is the **plugin** — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
+Both ship `adapter.yaml` matching `schemas/adapter.schema.json` plus an axis-specific refinement (`schemas/source.schema.json` or `schemas/target.schema.json`). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
 
 Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice by hand-editing `spec.md` after `/spec:refine`.
 
@@ -100,7 +100,7 @@ Target-specific structured outputs are produced by `build` alongside the code th
 └── targets/{omnia,vectis,contracts,...}/
 ```
 
-The plugin loader (`crates/domain/src/plugin/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, `sources/code-typescript/`, `sources/screenshots/`, `targets/omnia/`, `targets/vectis/`, `targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
+The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `sources/intent/`, `sources/documentation/`, `sources/code-typescript/`, `sources/screenshots/`, `targets/omnia/`, `targets/vectis/`, `targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add` / `specify plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
 
