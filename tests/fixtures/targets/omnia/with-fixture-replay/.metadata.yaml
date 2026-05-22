@@ -1,0 +1,19 @@
+target: omnia
+status: built
+created-at: 2026-05-22T11:02:11Z
+defined-at: 2026-05-22T12:04:55Z
+completed-at: 2026-05-22T13:18:42Z
+touched-specs:
+  - name: user-registration
+    type: new
+outcome:
+  phase: build
+  outcome: success
+  at: 2026-05-22T13:18:42Z
+  summary: "Crate, tests, and guest scaffolding written; verify-repair clean on first iteration."
+fixture-replay:
+  passed: 47
+  failed: 0
+  skipped: 0
+  ran-at: 2026-05-22T13:18:42Z
+  runner: omnia-target@1.4 (cargo nextest)

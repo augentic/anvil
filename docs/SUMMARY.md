@@ -66,6 +66,7 @@
 # Appendices
 
 - [Glossary](appendices/glossary.md)
+- [Migration: 2.0 → 2.1](migration/2.1.md)
 
 ---
 

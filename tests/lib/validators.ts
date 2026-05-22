@@ -12,7 +12,7 @@ type AjvValidator = ((data: unknown) => boolean) & {
 };
 
 const Ajv2020 = Ajv2020Module as unknown as {
-  new (opts: { allErrors?: boolean }): {
+  new (opts: { allErrors?: boolean; strict?: boolean | "log" }): {
     compile(schema: unknown): AjvValidator;
   };
 };
@@ -40,7 +40,11 @@ export async function loadValidator(file: string): Promise<AjvValidator | null> 
     cache.set(file, null as unknown as AjvValidator);
     return null;
   }
-  const ajv = new Ajv2020({ allErrors: true });
+  // `strict: false` keeps unknown `format` keywords (e.g. `date-time`) from
+  // throwing on schema compile. The harness pins shape rather than full
+  // RFC-3339 semantics; the CLI's embedded jsonschema validator owns the
+  // tight check on the production path.
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
   const validator = ajv.compile(JSON.parse(txt));
   cache.set(file, validator);
   return validator;

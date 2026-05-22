@@ -11,7 +11,7 @@ This repository provides specialist skills and references for Specify-driven dev
 
 Specify 2.0 splits adapters by direction and collapses operator vocabulary to `/spec:*`. The terms are:
 
-- **source adapter** — input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `sources/<name>/adapter.yaml`.
+- **source adapter** — input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `code-runtime` (RFC-27 §D1; captures fixture trees as `kind: example` Evidence with `fixture-digest: sha256:…` and default `authority: behaviour`). Lives at `sources/<name>/adapter.yaml`.
 - **target adapter** — output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
 - **plugin** — historical shorthand for the shared adapter shape (the Rust loader lives at `crates/domain/src/adapter/`, manifests validate against the per-axis `source.schema.json` / `target.schema.json` shipped with the CLI).
 - **candidate / evidence** — slice-sized unit from `enumerate` / per-source result of `extract`.
@@ -156,8 +156,9 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /sources/                 # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
   ├── intent/             # operator brief; degenerate N=1 entry point
   ├── documentation/      # operator-provided written intent
-  ├── code-typescript/    # legacy TypeScript enumeration + extract
-  └── screenshots/        # vision-assisted spatial inference (Vectis input)
+ ├── code-typescript/    # legacy TypeScript enumeration + extract
+ ├── code-runtime/       # captured fixture trees -> kind: example Evidence (RFC-27 §D1)
+ └── screenshots/        # vision-assisted spatial inference (Vectis input)
 /targets/                 # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
   ├── omnia/
   ├── vectis/

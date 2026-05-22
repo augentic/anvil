@@ -62,6 +62,8 @@ Phase 0 ──► Phase 1 ──► Phase 2 (6 parallel tracks) ──► Phase 
 | `schemas/plan/plan.schema.json` | Optional `slices[].authority-override`; document `divergence: likely` as CLI-written |
 | `schemas/slice/fusion.schema.json` | **New** — `version`, `slice`, `generated-at`, `generator`, `requirements[]` |
 | `schemas/adapter.schema.json` | Optional `cache: opt-out` |
+| `schemas/source.schema.json` | Mirror optional `cache: opt-out` (axis schema is `additionalProperties: false`) |
+| `schemas/target.schema.json` | Mirror optional `cache: opt-out` (axis schema is `additionalProperties: false`) |
 
 **Done when**
 
@@ -92,13 +94,14 @@ Phase 0 ──► Phase 1 ──► Phase 2 (6 parallel tracks) ──► Phase 
 | `SliceAuthorityOverride` | `crates/domain/src/change/plan/core/model.rs` |
 | `FusionIndex`, `FusionRequirement`, `FusionResolution` | `crates/domain/src/slice/fusion.rs` |
 | `CandidateAliases` | `crates/domain/src/discovery/candidate.rs` |
-| `CacheFingerprint`, `CacheIndexEntry` | `crates/domain/src/adapter/cache.rs` |
+| `CacheFingerprint`, `CacheIndexEntry`, `SourceOperation` | `crates/domain/src/adapter/cache.rs` — `SourceOperation` is the source-axis (`enumerate \| extract`) sibling to the existing target-axis `adapter::Operation` (`shape \| build \| merge`); cache index entries key against the source set |
+| `CacheMode` (Off / OptOut) on `Adapter` struct | `crates/domain/src/adapter/core.rs` — adapter manifest is `#[serde(deny_unknown_fields)]`, so the schema field needs a matching optional struct field or `cache: opt-out` deserialization will fail |
 | `EventKind::SliceExtractCacheHit`, `::SliceExtractCacheMiss` | `crates/domain/src/journal.rs` |
 | `EventKind::SliceFusionWritten`, `::SliceFixtureReplayCompleted`, `::PlanAmendAuthorityOverride` | `crates/domain/src/journal.rs` (§Observability) |
 
 **Also update**
 
-- `src/output.rs` — new error discriminants → exit code 2: `slice-authority-override-orphan-source-key`, `slice-fusion-drift`, `discovery-alias-collision`; exit code 1: `code-runtime-fixture-format-invalid`
+- `src/output.rs` — new error discriminants → exit code 2: `slice-authority-override-orphan-source-key`, `slice-fusion-drift`, `discovery-alias-collision`; exit code 1: `code-runtime-fixture-format-invalid`. Per the Diag-first policy in `DECISIONS.md` §Error variants, route these through `Error::validation_failed` / `Error::Diag` rather than minting typed `Error::*` variants until the codebase needs destructured payloads or non-default exit mapping.
 - `DECISIONS.md` — stub rows (filled in Change 5.2)
 
 **Done when**
@@ -546,6 +549,12 @@ Use this table to assign work. **Never start a row until its "Depends on" column
 | 5.1–5.4 | both | soft | DOC |
 
 **Maximum parallelism:** after **1.1** lands, dispatch up to **6 CLI subagents** (2.1–2.6) and **2 plugin subagents** (3.1, 3.5) simultaneously.
+
+**Known sequencing constraint inside CLI-A:** 2.1, 2.2, 2.3, 2.4 all touch `src/commands/plan/{cli,create,amend}.rs` and overlap; 2.3 and 2.6 both extend `src/commands/slice/validate.rs`. Run those four serially in one worktree or use isolated worktrees; 2.5 and 2.6 are non-overlapping with the plan-command set and can run in parallel with the serial round.
+
+**Pre-existing `make checks` breakage in `plg`:** 28 broken-link failures from RFC-25 archive paths in `tests/cross-repo/runs/2.0.0/*.md`, `tests/fixtures/{skills/execute,targets/vectis}/README.md`, `docs/contributing/index.md`, and `plugins/spec/skills/plan/fixtures/README.md`. Pre-existing; plg subagents should diff against a baseline rather than treating `make checks` as a clean signal.
+
+**Deferred:** `wasi-tools/fixture-index` (the WASI tool RFC-27 references for `code-runtime`) is not yet authored. 3.1's `adapter.yaml` declares `- name: fixture-index` alone; `version:` and `declared:` wiring is a follow-up after the WASI tool ships.
 
 ---
 

@@ -40,12 +40,7 @@ The agent reads the full `## Candidate inventory` in `discovery.md`, matches can
 
 1. **Write the slice row** — `specify plan add <slice> --sources <key>=<candidate-id> ...`. Pass one `--sources` argument per contributing source. In workspace plans, also pass `--project <project>` to route the slice to its slot. The CLI writes the structured `{ key, candidate }[]` shape; single-source intent slices may emit the bare `[intent]` shorthand.
 2. **Tentative annotations** — when fusion is uncertain (candidates share intent but differ in scope), annotate the contributing blocks in `discovery.md` with a `tentative: true` bullet, and add a `## Tentative merges` block to `change.md` with one paragraph of reasoning per uncertain fusion. The plan still progresses to `pending`; the operator overrides via `specify plan amend` at Gate 1.
-3. **`divergence: likely`** — when merged candidates' `summary` strings materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), the agent re-reads `plan.yaml`, appends `divergence: likely` to the just-written `slices[]` row, and writes the file back. This is the **only** writer path for `likely`: the CLI wire `plan amend --divergence` accepts only `accepted` / `rejected`. Also add a `## Likely divergences` block to `change.md` listing the contributing candidate-pair summaries side by side.
-4. **Emit the journal event** — append one JSON line per `divergence: likely` slice to `.specify/journal.jsonl` (workspace root's `.specify/` in workspace mode):
-
-```text
-{"event":"plan.propose.divergence","plan-name":"<name>","slice-name":"<slice>"}
-```
+3. **`divergence: likely`** — when merged candidates' `summary` strings materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), invoke `specify plan amend <name> <slice> --divergence likely` for each affected slice. The CLI is the single writer of `plan.yaml.slices[].divergence` (any value) and fires `plan.amend.divergence` once per invocation. Also add a `## Likely divergences` block to `change.md` listing the contributing candidate-pair summaries side by side; that operator-facing prose is still authored by the skill.
 
 Authority hierarchy does not apply at propose — without `Evidence`, fusion runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
 
@@ -61,7 +56,7 @@ Plan `<name>` is at `pending`. Run `specify plan transition <name> reviewed` to 
 
 ## Guardrails
 
-- **Single-writer for `plan.yaml`.** Every slice row lands via `specify plan add`. The only direct edit this skill performs on `plan.yaml` is appending `divergence: likely` to a just-added slice row at propose time — bounded to that single field and documented above.
+- **Single-writer for `plan.yaml`.** Every value in `plan.yaml` lands through a `specify plan create` / `plan add` / `plan amend` call; `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
 - **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specify plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
 - **Never auto-stamp `reviewed`.** The closing hint is the only place the operator sees the literal transition command; `/spec:plan` never invokes `specify plan transition`.
 - **Never invent verbs.** Validation is folded into `specify plan add` / `plan amend`; there is no `specify plan validate`. Confirm the plan parses by re-reading `plan.yaml` after every write.
@@ -72,4 +67,4 @@ Plan `<name>` is at `pending`. Run `specify plan transition <name> reviewed` to 
 | Reference | Purpose |
 |---|---|
 | [`../../references/discovery.md`](../../references/discovery.md) | Three-section form for `discovery.md`; minimal candidate block; N=1 `intent` minimal form |
-| [`fixtures/`](fixtures/) | Scenario goldens: pure-intent N=1, documentation multi-slice, cross-source propose merge, `plan.propose.divergence` journal event |
+| [`fixtures/`](fixtures/) | Scenario goldens: pure-intent N=1, documentation multi-slice, cross-source propose merge, `plan.amend.divergence` journal event |

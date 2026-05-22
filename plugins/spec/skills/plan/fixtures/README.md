@@ -7,7 +7,7 @@ Reference outputs for the acceptance scenarios `/spec:plan` exercises end-to-end
 | [`intent-fix-typo/`](intent-fix-typo/) | #1 | Pure-intent N=1: `change.md` minimal, `plan.yaml` with `sources: [intent]` shorthand, three-section `discovery.md`. |
 | [`documentation-account-revamp/`](documentation-account-revamp/) | #3 | Documentation source binding surfaces multiple candidates; one slice per candidate; clean propose without divergence. |
 | [`cross-source-identity-revamp/`](cross-source-identity-revamp/) | #5e | Two source adapters surface the same candidate id; propose merges automatically; the uncertain pair is annotated `tentative: true` and called out in `change.md`. |
-| [`divergence-journal/`](divergence-journal/) | propose-time divergence | One `plan.propose.divergence` JSON line emitted to `.specify/journal.jsonl` when propose sets `slices[].divergence: likely`. |
+| [`divergence-journal/`](divergence-journal/) | propose-time divergence | One `plan.amend.divergence` JSON line emitted to `.specify/journal.jsonl` by `specify plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`). |
 
 Closing-hint wording is identical across all scenarios:
 

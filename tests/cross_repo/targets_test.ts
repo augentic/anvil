@@ -119,3 +119,68 @@ Deno.test("targets/*/expected/shape-evidence.md: bullet items present", async ()
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// RFC-27 #26-1 — optional `fixture-replay` block on `.metadata.yaml`.
+//
+// The target-half of the release blocker: D1 carries an *optional*
+// build-time fixture-replay hook for targets that consume
+// `code-runtime` fixtures (RFC-27 §`build`-time fixture replay).
+// Targets that have not implemented the hook simply omit the
+// `fixture-replay` field; `merge` does not require it.
+//
+// The plg fixture tree under tests/fixtures/targets/omnia/ carries
+// two siblings — `with-fixture-replay/.metadata.yaml` and
+// `without-fixture-replay/.metadata.yaml` — exercising both
+// branches. This test pins the byte-stable shape of each so a
+// future schema or skill rewrite cannot regress the optional posture
+// silently.
+// ---------------------------------------------------------------------------
+
+const REQUIRED_FIXTURE_REPLAY_KEYS = ["passed", "failed", "skipped", "ran-at", "runner"];
+
+Deno.test("targets/omnia/with-fixture-replay: .metadata.yaml carries full fixture-replay block", async () => {
+  const path = "tests/fixtures/targets/omnia/with-fixture-replay/.metadata.yaml";
+  const content = await readText(path);
+  if (content === null) {
+    throw new Error(`${path}: expected metadata.yaml present per RFC-27 Change 4.1`);
+  }
+  const data = parseYaml(content) as Record<string, unknown> | null;
+  if (data === null || typeof data !== "object") {
+    throw new Error(`${path}: did not parse as a YAML mapping`);
+  }
+  const replay = data["fixture-replay"] as Record<string, unknown> | undefined;
+  if (!replay || typeof replay !== "object") {
+    throw new Error(
+      `${path}: with-fixture-replay metadata must carry a fixture-replay block`,
+    );
+  }
+  for (const key of REQUIRED_FIXTURE_REPLAY_KEYS) {
+    if (!(key in replay)) {
+      throw new Error(`${path}: fixture-replay block missing required key '${key}'`);
+    }
+  }
+  if (typeof replay.passed !== "number" || typeof replay.failed !== "number") {
+    throw new Error(`${path}: fixture-replay passed/failed must be numbers`);
+  }
+});
+
+Deno.test("targets/omnia/without-fixture-replay: .metadata.yaml omits fixture-replay (optional posture)", async () => {
+  const path = "tests/fixtures/targets/omnia/without-fixture-replay/.metadata.yaml";
+  const content = await readText(path);
+  if (content === null) {
+    throw new Error(`${path}: expected metadata.yaml present per RFC-27 Change 4.1`);
+  }
+  const data = parseYaml(content) as Record<string, unknown> | null;
+  if (data === null || typeof data !== "object") {
+    throw new Error(`${path}: did not parse as a YAML mapping`);
+  }
+  if ("fixture-replay" in data) {
+    throw new Error(
+      `${path}: without-fixture-replay metadata MUST omit the fixture-replay key entirely — its presence in this fixture would regress RFC-27 §D1 'omission is not an error'`,
+    );
+  }
+  if (data.target !== "omnia") {
+    throw new Error(`${path}: target field must be 'omnia', got: ${data.target}`);
+  }
+});

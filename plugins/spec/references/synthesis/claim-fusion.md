@@ -15,6 +15,7 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 | `excerpt`       | `behaviour`                 | Primarily `design.md` `## Technical logic` (paraphrased). When no other source contributes a requirement on the same behaviour, also drives a `spec.md` requirement with `Status: agreed`. When a `documentation` claim contradicts, becomes commentary on the resulting `[divergence]` block. | Optional `claim-id`; fall back to grouping by handler name extracted from `path`. |
 | `type`          | `behaviour`                 | `design.md` `## Domain model` — render the `signature` field verbatim as the type's canonical shape. | Optional `claim-id`; fall back to the type name from `signature`. |
 | `call`          | `behaviour`                 | `design.md` `## APIs and integrations` (external surfaces) or `## Technical logic` (internal delegation). | Optional `claim-id`; fall back to `callee`. |
+| `example`       | `behaviour`                 | `spec.md` — folds into the requirement block whose `claim-id` shares the same prefix as the example's `claim-id` (e.g. `users.register.happy-path` corroborates the `users.register` requirement); when no requirement prefix matches, drives its own `spec.md` requirement with `Status: agreed`. `design.md` `## Technical logic` references the fixture path for the operator to inspect concrete I/O. | Required `claim-id` (per the per-kind body shape owned by `sources/code-runtime/briefs/extract.md`). |
 | `region`        | `documentation` (spatial)   | `design.md` `## UI / layout` — top-level layout regions per screen.                             | None (positional; not fused).             |
 | `container`     | `documentation` (spatial)   | `design.md` `## UI / layout` — grouping within a region.                                        | None (positional; not fused).             |
 | `leaf`          | `documentation` (spatial)   | `design.md` `## UI / layout` — individual UI element.                                           | None (positional; not fused).             |
@@ -34,10 +35,18 @@ When two contributing claims share `claim-id` but their `statement:` / `criterio
 
 ### Behaviour claims as corroboration
 
-`excerpt`, `type`, and `call` claims (authority: `behaviour`) primarily drive `design.md`. They contribute to `spec.md` in two ways:
+`excerpt`, `type`, `call`, and `example` claims (authority class: `behaviour` by default) primarily drive `design.md`. They contribute to `spec.md` in two ways:
 
-- **Standalone source** — when no other source supplied a `requirement` claim on the same behavioural surface, an `excerpt` whose paraphrase reads as a single behavioural assertion becomes a `spec.md` requirement block with `Status: agreed` and `Sources: [<code-key>]`.
-- **Authority-loser** — when a `documentation` `requirement` contradicts an `excerpt`, the `documentation` claim wins per authority; the `excerpt` becomes the `Note:` line of a `[divergence]` block (see [`authority.md`](authority.md)).
+- **Standalone source** — when no other source supplied a `requirement` claim on the same behavioural surface, an `excerpt` whose paraphrase reads as a single behavioural assertion, or an `example` whose captured `input` / `output` pair reads as one, becomes a `spec.md` requirement block with `Status: agreed` and `Sources: [<code-key>]`.
+- **Authority-loser** — when a `documentation` `requirement` contradicts an `excerpt` or `example`, the `documentation` claim wins per the default ordering; the behaviour-class claim becomes the `Note:` line of a `[divergence]` block (see [`authority.md`](authority.md)). Operators flip that default per slice via per-slice `authority-override` — useful exactly when production fixtures should outrank stale docs.
+
+### `example` claims from `code-runtime`
+
+`example` claims are emitted by the `code-runtime` source adapter from captured request/response fixtures. They share the `behaviour` authority class with `excerpt` and `call` claims, and they tie-break the same way:
+
+- **Default precedence vs other behaviour-class claims.** `example`, `excerpt`, and `call` are siblings at the same authority class. Operators tie-break across them via per-slice `authority-override.<kind>` on `plan.yaml` (see [`authority.md` §Per-slice overrides](authority.md#per-slice-overrides-on-planyaml)). The synthesis playbook does not silently prefer one over another.
+- **Per-Evidence override.** A `code-runtime` Evidence document MAY emit `authority-overrides: { example: documentation }` to lift its `example` claims above the document-level `behaviour` default — rare, but useful when the captured fixtures encode an explicit contract the operator wants treated as documentation-class.
+- **Per-kind body.** `example` claims carry `claim-id`, `path` (the on-disk fixture anchor), `fixture-digest` (a `sha256:` fingerprint the cache keys against), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `sources/code-runtime/briefs/extract.md` (created in RFC-27 Change 3.1); refer to that brief rather than mirroring the fields here.
 
 ### Spatial claims fold into design
 
@@ -53,12 +62,12 @@ The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1
 
 ## Per-authority resolution (slice-time)
 
-When a fused `claim-id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s table picks the winning Status. The per-authority logic in detail:
+When a fused `claim-id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s [§Resolution order](authority.md#resolution-order) picks the winning Status. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
 
-- **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim.
-- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `claim-id`'s `statement` is a `[conflict]`. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase is a `[conflict]`.
-- **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `code-typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation.
-- **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `claim-id`'s `statement` collapses to one block with both keys in `Sources:`.
+- **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
+- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `claim-id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
+- **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `code-typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
+- **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `claim-id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
 
 ## Order and stability
 

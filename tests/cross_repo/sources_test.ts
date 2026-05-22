@@ -111,3 +111,149 @@ Deno.test("sources/screenshots: discovery.md present and non-empty", async () =>
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// RFC-27 #26-1 — `code-runtime` source adapter end-to-end fixture walk.
+//
+// The 4.1 fixture under tests/fixtures/sources/code-runtime/ is the
+// golden-file half of the release blocker for D1. This test pins the
+// deterministic shape of the fixture without re-running the
+// `enumerate` / `extract` briefs (those require an LLM and are
+// explicitly out of scope per the harness top comment). The
+// assertions cover what RFC-27 §Acceptance scenarios #26-1 demands at
+// the data-structure level:
+//
+//   1. The `code-runtime` source adapter is discoverable in `plg`.
+//   2. Every `expected/evidence.yaml` schema-validates against
+//      `schemas/evidence.schema.json` (D1: `kind: example` joins the
+//      closed enum).
+//   3. Every `example`-kind claim carries a `fixture-digest:
+//      sha256:<hex>` anchor and the source-adapter default
+//      `authority: behaviour` posture.
+//   4. The synthesised `expected/fusion.yaml` schema-validates
+//      against `schemas/slice/fusion.schema.json` (D4 audit surface
+//      for the runtime-sourced slice).
+//   5. The candidate inventory in `expected/discovery.md` carries a
+//      `### <slug>` block whose `sources:` line names `runtime`
+//      (the bound source key for `code-runtime` per the RFC §Binding
+//      example).
+// ---------------------------------------------------------------------------
+
+Deno.test("sources/code-runtime: adapter manifest is discoverable in plg tree", async () => {
+  const manifestPath = "sources/code-runtime/adapter.yaml";
+  if (!(await exists(manifestPath))) {
+    throw new Error(
+      `expected ${manifestPath} to exist; RFC-27 Change 3.1 landed the code-runtime source adapter`,
+    );
+  }
+  const manifest = await readYaml(manifestPath) as Record<string, unknown>;
+  if (manifest.name !== "code-runtime") {
+    throw new Error(`adapter name must be code-runtime, got: ${manifest.name}`);
+  }
+  if (manifest.axis !== "source") {
+    throw new Error(`adapter axis must be source, got: ${manifest.axis}`);
+  }
+  const ops = manifest.operations as string[] | undefined;
+  if (!ops || !ops.includes("enumerate") || !ops.includes("extract")) {
+    throw new Error(
+      `operations must include enumerate + extract, got: ${JSON.stringify(ops)}`,
+    );
+  }
+});
+
+Deno.test("sources/code-runtime: every Evidence document schema-validates with example claims", async () => {
+  const root = "tests/fixtures/sources/code-runtime";
+  if (!(await exists(root))) {
+    throw new Error(
+      `expected ${root}/ to exist; RFC-27 Change 4.1 landed the golden fixture tree`,
+    );
+  }
+  let seen = 0;
+  for await (
+    const entry of walk(root, {
+      includeDirs: false,
+      match: [/expected\/evidence\.yaml$/],
+    })
+  ) {
+    seen++;
+    const data = await readYaml(entry.path) as Record<string, unknown>;
+    await validateOrThrow("evidence.schema.json", data, entry.path);
+    if (data.authority !== "behaviour") {
+      throw new Error(
+        `${entry.path}: code-runtime emits authority: behaviour by default, got: ${data.authority}`,
+      );
+    }
+    if (data.adapter !== "code-runtime") {
+      throw new Error(
+        `${entry.path}: adapter field must be code-runtime, got: ${data.adapter}`,
+      );
+    }
+    const claims = data.claims as Array<Record<string, unknown>> | undefined;
+    if (!claims || claims.length === 0) {
+      throw new Error(`${entry.path}: code-runtime Evidence must carry at least one claim`);
+    }
+    let exampleClaims = 0;
+    for (const claim of claims) {
+      if (claim.kind === "example") {
+        exampleClaims++;
+        const digest = claim["fixture-digest"];
+        if (typeof digest !== "string" || !digest.startsWith("sha256:")) {
+          throw new Error(
+            `${entry.path}: example claim ${claim["claim-id"]} must carry fixture-digest: sha256:<hex>, got: ${digest}`,
+          );
+        }
+      }
+    }
+    if (exampleClaims === 0) {
+      throw new Error(
+        `${entry.path}: code-runtime Evidence must carry at least one kind: example claim`,
+      );
+    }
+  }
+  if (seen === 0) {
+    throw new Error(`no Evidence docs under ${root}/**/expected/evidence.yaml`);
+  }
+});
+
+Deno.test("sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json", async () => {
+  const root = "tests/fixtures/sources/code-runtime";
+  let seen = 0;
+  for await (
+    const entry of walk(root, {
+      includeDirs: false,
+      match: [/expected\/fusion\.yaml$/],
+    })
+  ) {
+    seen++;
+    const data = await readYaml(entry.path);
+    await validateOrThrow("slice/fusion.schema.json", data, entry.path);
+  }
+  if (seen === 0) {
+    throw new Error(`no fusion.yaml under ${root}/**/expected/fusion.yaml`);
+  }
+});
+
+Deno.test("sources/code-runtime: discovery.md names runtime as the bound source key", async () => {
+  const root = "tests/fixtures/sources/code-runtime";
+  let seen = 0;
+  for await (
+    const entry of walk(root, {
+      includeDirs: false,
+      match: [/expected\/discovery\.md$/],
+    })
+  ) {
+    seen++;
+    const md = await Deno.readTextFile(entry.path);
+    if (!/^### \S+/m.test(md)) {
+      throw new Error(`${entry.path}: must contain at least one \`### <candidate>\` block`);
+    }
+    if (!/sources:\s*\[\s*runtime\s*\]/.test(md)) {
+      throw new Error(
+        `${entry.path}: candidate block must cite the bound \`runtime\` source key (per RFC-27 §Binding example)`,
+      );
+    }
+  }
+  if (seen === 0) {
+    throw new Error(`no discovery.md under ${root}/**/expected/discovery.md`);
+  }
+});
