@@ -72,6 +72,7 @@
 # Contributing
 
 - [Overview](contributing/index.md)
+- [Documentation authoring standards](standards/doc-authoring.md)
 - [Skill authoring standards](standards/skill-authoring.md)
 - [Plugin development](contributing/plugin-development.md)
 - [CLI architecture](contributing/cli-architecture.md)

@@ -2,13 +2,12 @@
 
 ## The default rhythm
 
-```text
-/spec:init <target>                          # one-time setup
-/spec:plan <name> source intent="..."        # author plan.yaml, exit at pending
-specify plan transition <name> reviewed      # Gate 1: operator-only stamp
-/spec:execute                                # drives refine → build → merge per slice
-/spec:finalize <name>                        # push branches, observe PRs, archive
-```
+<div class="pipeline">
+
+![Default workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
+
+<p class="pipeline-caption">init → plan → Gate 1 → execute → finalize; breakouts available when execute parks.</p>
+</div>
 
 The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
 

@@ -1,0 +1,44 @@
+<svg viewBox="0 0 920 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Specify plan per-entry and slice lifecycle state machines">
+  <title>Lifecycle state machines</title>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+  <text x="20" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">PLAN LIFECYCLE</text>
+  <rect x="20" y="40" width="100" height="40" rx="8" fill="#fbeede" stroke="#b85c00"/>
+  <text x="42" y="66" font-family="ui-monospace, monospace" font-size="12" fill="#1c1c1c">pending</text>
+  <path d="M120 60 L160 60" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <text x="128" y="52" font-family="ui-monospace, monospace" font-size="9" fill="#888">Gate 1</text>
+  <rect x="160" y="40" width="100" height="40" rx="8" fill="#e6f2e8" stroke="#2f7d3e"/>
+  <text x="176" y="66" font-family="ui-monospace, monospace" font-size="12" fill="#1c1c1c">reviewed</text>
+  <text x="20" y="100" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">PER-ENTRY STATUS (plan.yaml slices[])</text>
+  <rect x="20" y="112" width="90" height="36" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="38" y="136" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">pending</text>
+  <path d="M110 130 L150 130" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <text x="114" y="122" font-family="ui-monospace, monospace" font-size="9" fill="#888">plan next</text>
+  <rect x="150" y="112" width="100" height="36" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="162" y="136" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">in-progress</text>
+  <path d="M250 130 L290 130" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <text x="254" y="122" font-family="ui-monospace, monospace" font-size="9" fill="#888">slice merge</text>
+  <rect x="290" y="112" width="70" height="36" rx="8" fill="#e6f2e8" stroke="#2f7d3e"/>
+  <text x="308" y="136" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">done</text>
+  <text x="20" y="180" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">SLICE LIFECYCLE (.metadata.yaml)</text>
+  <rect x="20" y="192" width="80" height="36" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="32" y="216" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">refining</text>
+  <path d="M100 210 L140 210" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="140" y="192" width="70" height="36" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="148" y="216" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">refined</text>
+  <path d="M210 210 L250 210" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="250" y="192" width="60" height="36" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="262" y="216" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">built</text>
+  <path d="M310 210 L350 210" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="350" y="192" width="70" height="36" rx="8" fill="#e6f2e8" stroke="#2f7d3e"/>
+  <text x="358" y="216" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">merged</text>
+  <path d="M180 228 L180 268" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <text x="188" y="252" font-family="ui-monospace, monospace" font-size="9" fill="#888">/spec:drop</text>
+  <rect x="140" y="268" width="80" height="36" rx="8" fill="#fbe6e6" stroke="#b03030"/>
+  <text x="158" y="292" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">dropped</text>
+  <text x="20" y="340" font-family="ui-monospace, monospace" font-size="11" fill="#888">All transitions enforced by specify CLI  skills never write state directly.</text>
+  <text x="20" y="360" font-family="ui-monospace, monospace" font-size="11" fill="#888">Terminal slices archive to .specify/archive/YYYY-MM-DD-&lt;name&gt;/</text>
+</svg>

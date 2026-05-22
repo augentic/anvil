@@ -14,6 +14,14 @@ test:
 		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
 		tests/cross_repo.ts
 
+.PHONY: docs docs-serve
+# Requires: mdbook, mdbook-d2, and D2 on PATH — see docs/README.md
+docs:
+	mdbook build docs
+
+docs-serve:
+	mdbook serve docs
+
 .PHONY: ci
 ci: checks test
 

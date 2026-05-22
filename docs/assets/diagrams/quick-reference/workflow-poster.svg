@@ -1,0 +1,27 @@
+<svg viewBox="0 0 920 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Specify default workflow quick reference from init through finalize">
+  <title>Default workflow poster</title>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+  <text x="20" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">DEFAULT RHYTHM</text>
+  <rect x="20" y="44" width="130" height="44" rx="8" fill="#ede9d0" stroke="#c9b766"/>
+  <text x="32" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/spec:init</text>
+  <path d="M150 66 L180 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="180" y="44" width="130" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="192" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/spec:plan</text>
+  <path d="M310 66 L340 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <polygon points="360,66 378,52 378,80" fill="#fbeede" stroke="#b85c00"/>
+  <text x="386" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#1c1c1c">Gate 1</text>
+  <path d="M460 66 L490 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="490" y="44" width="130" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="502" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/spec:execute</text>
+  <path d="M620 66 L650 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="650" y="44" width="140" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="662" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/spec:finalize</text>
+  <text x="20" y="120" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify plan transition &lt;name&gt; reviewed</text>
+  <text x="20" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#555">Inside execute: /spec:refine ’ /spec:build ’ /spec:merge per slice</text>
+  <text x="20" y="160" font-family="ui-monospace, monospace" font-size="11" fill="#555">Multi-source: /spec:plan &lt;name&gt; source legacy=./& source docs=./&</text>
+  <text x="20" y="188" font-family="ui-monospace, monospace" font-size="11" fill="#888">Breakouts: /spec:refine · /spec:build · /spec:merge · /spec:drop</text>
+</svg>

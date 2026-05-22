@@ -2,25 +2,20 @@
 
 Every Specify slice produces a set of interdependent artifacts. Together they form the contract between human intent and agent execution.
 
+<div class="callout">
+  <strong>Read order.</strong> Start with the dependency chain, then the core four artifacts table below.
+</div>
+
 ## Artifact dependency chain
 
 The define pipeline generates artifacts in dependency order. Each artifact builds on the ones before it:
 
-```d2
-direction: right
+<div class="pipeline">
 
-proposal: "proposal.md\n(why)" {shape: page}
-specs: "spec.md\n(what)" {shape: page}
-contracts: "contracts/\n(shape)" {shape: page}
-design: "design.md\n(how)" {shape: page}
-tasks: "tasks.md\n(sequence)" {shape: page}
+![Artifact dependency chain](../assets/diagrams/artifacts/dependency-chain.svg)
 
-proposal -> specs: "scopes adapters"
-specs -> contracts: "alignment check"
-contracts -> design: "shapes referenced"
-specs -> design: "behavioral input"
-design -> tasks: "what to build"
-```
+<p class="pipeline-caption">proposal → spec → contracts → design → tasks; Vectis adds composition.yaml between contracts and design.</p>
+</div>
 
 The Vectis adapter inserts a `composition.yaml` stage between contracts and design.
 

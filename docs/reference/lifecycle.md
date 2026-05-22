@@ -2,25 +2,24 @@
 
 Specify 2.0 carries three stacked lifecycles. The plan lifecycle gates execution; the per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `specify` CLI — skills never write state directly.
 
+<div class="pipeline">
+
+![Lifecycle state machines](../assets/diagrams/lifecycle/state-machines.svg)
+
+<p class="pipeline-caption">Plan pending→reviewed; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
+</div>
+
 Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md).
 
 ## Plan lifecycle
 
 Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
 
-```text
-pending --(operator: `specify plan transition <name> reviewed`)--> reviewed
-```
-
 `/spec:plan` writes `pending`. The operator stamps `reviewed` — this is **Gate 1**, the only review seam Specify 2.0 ships in v1. `/spec:plan` never writes `reviewed` itself. `/spec:execute` refuses to start unless the plan is `reviewed`.
 
 ## Per-entry lifecycle
 
 Each row under `plan.yaml.slices[]` carries its own status:
-
-```text
-pending --(`specify plan next`)--> in-progress --(`specify slice merge`)--> done
-```
 
 - `pending` is written by `specify plan add` and `specify plan amend`.
 - `in-progress` is written only by `specify plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
@@ -32,20 +31,6 @@ A plan is **drained** when no entry is `pending` or `in-progress`; `/spec:finali
 ## Slice lifecycle
 
 Each slice's `.metadata.yaml` tracks an independent lifecycle:
-
-```d2
-sliceLifecycle: {
-  shape: state_diagram
-
-  refining -> refined: "/spec:refine completes synthesis"
-  refined -> built: "/spec:build completes all tasks"
-  built -> merged: "/spec:merge succeeds"
-
-  refining -> dropped: "/spec:drop"
-  refined -> dropped: "/spec:drop"
-  built -> dropped: "/spec:drop"
-}
-```
 
 | State      | Meaning                                                                 | Next states                  |
 | ---------- | ----------------------------------------------------------------------- | ---------------------------- |

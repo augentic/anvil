@@ -2,6 +2,21 @@
 
 Specify is a plugin system that orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Specify at existing documentation, intent, or legacy code), Specify generates a plan and a set of interdependent artifacts that capture intent, requirements, design, and implementation sequencing, then specialist AI skills implement each slice from those artifacts.
 
+<div class="audience-grid">
+  <div class="audience">
+    <div class="who">New operator</div>
+    <div class="path"><a href="#the-core-idea">Core rhythm</a> → <a href="../explanation/concepts.md">Core concepts</a> → <a href="../orientation/prerequisites.md">Prerequisites</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Architect</div>
+    <div class="path"><a href="../explanation/layered-stack.md">Layered stack</a> → <a href="../explanation/adapter-anatomy.md">Adapter anatomy</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Returning user</div>
+    <div class="path"><a href="../reference/quick-reference.md">Quick reference</a> → <a href="../reference/lifecycle.md">Lifecycle</a></div>
+  </div>
+</div>
+
 ## The core idea
 
 Every change in Specify flows through one rhythm:
@@ -11,17 +26,16 @@ Every change in Specify flows through one rhythm:
 3. **Execute** -- `/spec:execute` loops per slice: refine (extract evidence + synthesize artifacts) → build → merge.
 4. **Finalize** -- `/spec:finalize` pushes branches, observes PRs, archives the plan once every PR is merged.
 
-```d2
-direction: right
-plan: "/spec:plan" {shape: rectangle}
-gate: "Gate 1\n(operator stamps reviewed)" {shape: hexagon}
-execute: "/spec:execute" {shape: rectangle}
-finalize: "/spec:finalize" {shape: rectangle}
+<div class="pipeline">
 
-plan -> gate: "exits at pending"
-gate -> execute: "reviewed"
-execute -> finalize: "all done"
-```
+![Specify change rhythm](../assets/diagrams/orientation/workflow-rhythm.svg)
+
+<p class="pipeline-caption">plan → Gate 1 (operator stamps reviewed) → execute → finalize — same rhythm at N=1 and N=12.</p>
+</div>
+
+<div class="callout">
+  <strong>Gate 1.</strong> <code>/spec:plan</code> exits at <code>pending</code>; the operator stamps <code>reviewed</code> explicitly. Nothing executes until that transition.
+</div>
 
 This rhythm is the heartbeat of Specify. It works the same way whether you are fixing a typo or migrating a 200-service platform — the only thing that changes is what sits inside the loop.
 

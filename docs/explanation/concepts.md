@@ -2,21 +2,31 @@
 
 This primer is for developers who have skimmed [What is Specify?](../orientation/index.md) and want a friendly tour of the vocabulary before running anything. After reading it you will recognise every term that appears throughout the rest of the guide.
 
+<div class="audience-grid">
+  <div class="audience">
+    <div class="who">Operator</div>
+    <div class="path"><a href="#the-plan--gate-1--execute--finalize-rhythm">Change rhythm</a> → <a href="#the-per-slice-loop">Slice loop</a> → <a href="../reference/quick-reference.md">Quick reference</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Adapter author</div>
+    <div class="path"><a href="#source-and-target-adapters">Adapters</a> → <a href="adapter-anatomy.md">Anatomy</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Spec reader</div>
+    <div class="path"><a href="#the-four-slice-artifacts">Artifacts</a> → <a href="#evidence-provenance-authority">Evidence</a></div>
+  </div>
+</div>
+
 ## The plan → Gate 1 → execute → finalize rhythm
 
 Every change in Specify 2.0 flows through one rhythm:
 
-```d2
-direction: right
-plan: "/spec:plan" {shape: rectangle}
-gate: "Gate 1" {shape: hexagon}
-execute: "/spec:execute" {shape: rectangle}
-finalize: "/spec:finalize" {shape: rectangle}
+<div class="pipeline">
 
-plan -> gate: "exits pending"
-gate -> execute: "reviewed"
-execute -> finalize: "all done"
-```
+![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
+
+<p class="pipeline-caption">/spec:plan exits pending; operator stamps Gate 1; /spec:execute drives slices; /spec:finalize closes the change.</p>
+</div>
 
 `/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps Gate 1 explicitly: `specify plan transition <name> reviewed`. `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
 
@@ -26,17 +36,12 @@ N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the o
 
 Each slice runs through three phases inside `/spec:execute`. `/spec:refine` extracts evidence per bound source and synthesizes the artifacts. `/spec:build` works through the task list and writes code. `/spec:merge` folds the slice's specs into the baseline.
 
-```d2
-direction: right
-refine: "/spec:refine" {shape: rectangle}
-build: "/spec:build" {shape: rectangle}
-merge: "/spec:merge" {shape: rectangle}
-baseline: "Baseline\n(.specify/specs/)" {shape: cylinder}
+<div class="pipeline">
 
-refine -> build: "artifacts"
-build -> merge: "complete"
-merge -> baseline: "specs merged"
-```
+![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
+
+<p class="pipeline-caption">refine → build → merge inside /spec:execute; merge folds specs into .specify/specs/ baseline.</p>
+</div>
 
 The same skills are available as breakouts when execute parks on a failure or when an operator wants to drive a slice by hand.
 
@@ -97,13 +102,9 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 
 The default rhythm:
 
-```text
-/spec:init <target>
-/spec:plan <name> source ...
-specify plan transition <name> reviewed       # Gate 1
-/spec:execute
-/spec:finalize <name>
-```
+<div class="callout">
+  <strong>Commands.</strong> <code>/spec:init &lt;target&gt;</code> → <code>/spec:plan &lt;name&gt; source …</code> → <code>specify plan transition &lt;name&gt; reviewed</code> (Gate 1) → <code>/spec:execute</code> → <code>/spec:finalize &lt;name&gt;</code>
+</div>
 
 Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) are used when execute parks or when an operator wants to drive a slice by hand.
 

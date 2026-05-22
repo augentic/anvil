@@ -2,38 +2,12 @@
 
 Specify 2.0 is organised in three layers above the `specify` CLI substrate. Each layer is independently useful, and each builds on the one below it. The CLI is not itself a layer; it is the deterministic medium through which every layer enforces correctness.
 
-```d2
-direction: down
+<div class="pipeline">
 
-Layer2: "Layer 2 — Planning + driving a change" {
-  plan: "/spec:plan"
-  gate: "Gate 1\n(operator stamps reviewed)" {shape: hexagon}
-  execute: "/spec:execute"
-  finalize: "/spec:finalize"
-  plan -> gate
-  gate -> execute
-  execute -> finalize
-}
+![Three-layer stack](../assets/diagrams/layered-stack/three-layers.svg)
 
-Layer1: "Layer 1 — Executing one slice" {
-  refine: "/spec:refine"
-  build: "/spec:build"
-  mergeSkill: "/spec:merge"
-  drop: "/spec:drop"
-}
-
-Layer0: "Layer 0 — Configuration + adapters" {
-  projectYaml: "project.yaml"
-  sources: "adapters/sources/<name>/adapter.yaml"
-  targets: "adapters/targets/<name>/adapter.yaml"
-  schemas: "schemas/"
-  initVerb: "specify init"
-  resolveVerbs: "specify source/target resolve"
-}
-
-Layer2 -> Layer1
-Layer1 -> Layer0
-```
+<p class="pipeline-caption">Layer 2 plans and drives a change; Layer 1 executes one slice; Layer 0 holds configuration and adapters.</p>
+</div>
 
 ## Layer 0: Configuration and adapters
 
@@ -58,9 +32,12 @@ Layer 0 settles before any change starts. Once `project.yaml` exists and the rel
 
 Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one slice** inside `.specify/slices/<name>/` and is the breakout surface every operator reaches when execute parks or when they want to drive a slice by hand.
 
-```text
-/spec:refine  -->  /spec:build  -->  /spec:merge
-```
+<div class="pipeline">
+
+![Layer 1 slice loop](../assets/diagrams/layered-stack/slice-loop.svg)
+
+<p class="pipeline-caption">Breakouts /spec:refine, /spec:build, /spec:merge share the same skill bodies as /spec:execute.</p>
+</div>
 
 Each skill is an agent-driven orchestrator. It reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
 

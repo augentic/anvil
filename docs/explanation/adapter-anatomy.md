@@ -2,6 +2,21 @@
 
 Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn external material (operator intent, written documentation, legacy code, screenshots) into structured `Evidence`. **Target adapters** turn that evidence into code by guiding core synthesis and driving build / merge. The role you are authoring decides which operations you implement; the on-disk shape is the same.
 
+<div class="audience-grid">
+  <div class="audience">
+    <div class="who">Source author</div>
+    <div class="path"><a href="#source-adapter-contract">enumerate + extract</a> → <a href="#sandboxing">Sandboxing</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Target author</div>
+    <div class="path"><a href="#target-adapter-contract">shape + build + merge</a></div>
+  </div>
+  <div class="audience">
+    <div class="who">Operator</div>
+    <div class="path"><a href="#authority-resolution">Authority resolution</a> → <a href="../reference/cli/adapter.md">CLI resolve</a></div>
+  </div>
+</div>
+
 ## Two roles, one shared shape
 
 | Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
@@ -94,15 +109,71 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 ## Resolver and cache
 
-```text
-.specify/.cache/
-├── adapters/sources/{intent,documentation,code-typescript,screenshots,...}/
-└── adapters/targets/{omnia,vectis,contracts,...}/
-```
+<div class="pipeline">
+
+![Source and target adapter axes](../assets/diagrams/adapter-anatomy/adapter-axes.svg)
+
+<p class="pipeline-caption">Sources enumerate/extract into evidence; core synthesis reads target shape; target build/merge lands code.</p>
+</div>
 
 The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add` / `specify plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
+
+## Authority resolution
+
+When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specify plan amend --authority-override <slice> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+
+<div class="authority-widget">
+  <h4>Resolution flow — click a scenario</h4>
+  <p style="font-size: 13px; margin: 0 0 10px;">
+    When two claims of the same kind disagree, synthesis walks four steps in order. Pick a scenario to see which step fires.
+  </p>
+  <div class="auth-controls" id="auth-ctl">
+    <button type="button" class="on" data-scenario="slice">Per-slice override set</button>
+    <button type="button" data-scenario="evidence">Only per-Evidence override set</button>
+    <button type="button" data-scenario="default">No overrides, classes differ</button>
+    <button type="button" data-scenario="tied">All same authority class</button>
+  </div>
+
+  <div class="auth-flow" id="auth-flow">
+    <div class="auth-step" data-step="1">
+      <div class="n">1</div>
+      <div class="label">
+        <strong>Per-slice <code>authority-override.&lt;kind&gt;</code></strong>
+        <div class="desc">Matches a contributing source key → that source wins.</div>
+      </div>
+      <div class="verdict">slice winner</div>
+    </div>
+    <div class="auth-step" data-step="2">
+      <div class="n">2</div>
+      <div class="label">
+        <strong>Per-Evidence <code>authority-overrides.&lt;kind&gt;</code></strong>
+        <div class="desc">Resolves a per-kind authority that breaks the tie → that class wins.</div>
+      </div>
+      <div class="verdict">class winner</div>
+    </div>
+    <div class="auth-step" data-step="3">
+      <div class="n">3</div>
+      <div class="label">
+        <strong>Default ordering</strong>
+        <div class="desc"><code>intent &gt; documentation &gt; behaviour</code> on document-level <code>authority:</code>.</div>
+      </div>
+      <div class="verdict">default winner</div>
+    </div>
+    <div class="auth-step" data-step="4">
+      <div class="n">4</div>
+      <div class="label">
+        <strong>Still tied</strong>
+        <div class="desc"><span class="pill conflict">conflict</span> Status: <code>conflict</code> + <code>[conflict]</code> inline tag.</div>
+      </div>
+      <div class="verdict">no winner</div>
+    </div>
+  </div>
+  <p style="font-size: 12px; margin: 8px 0 0; font-family: ui-monospace, monospace;">
+    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes with <code>specify slice fusion show &lt;slice&gt;</code>.
+  </p>
+</div>
 
 ## Authoring checklist
 

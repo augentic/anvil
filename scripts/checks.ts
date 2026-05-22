@@ -42,7 +42,7 @@ import {
   checkOperationalVocabulary,
   checkSkillNumericCaps,
 } from "./checks/prose.ts";
-import { checkNoRfcCitationsInDocs } from "./checks/docs_quality.ts";
+import { checkNoRfcCitationsInDocs, checkDiagramAssetsExist, checkNoTextPipelineDiagramsInExplanation } from "./checks/docs_quality.ts";
 import { checkBriefSize } from "./checks/brief_size.ts";
 import {
   checkRecordedTraceFreshness,
@@ -85,6 +85,8 @@ await Promise.all([
   checkPluginConsistency(),
   checkDeclaredToolEquivalentInvocations(),
   checkNoRfcCitationsInDocs(),
+  checkNoTextPipelineDiagramsInExplanation(),
+  checkDiagramAssetsExist(),
 ]);
 
 console.log();

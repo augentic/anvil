@@ -1,0 +1,286 @@
+/* Specify Developer Guide — mdBook theme extensions.
+   Visual system ported from the RFC-27 synthesis reference layout. */
+
+:root {
+  --spec-bg: #fafaf7;
+  --spec-panel: #ffffff;
+  --spec-panel-2: #f2f1ec;
+  --spec-ink: #1c1c1c;
+  --spec-ink-dim: #555;
+  --spec-ink-faint: #888;
+  --spec-rule: #e4e2dc;
+  --spec-rule-strong: #c9c6bc;
+  --spec-accent: #2e5a87;
+  --spec-accent-soft: #e8f0f8;
+  --spec-behaviour: #6b4dbf;
+  --spec-documentation: #2e5a87;
+  --spec-intent: #b85c00;
+  --spec-ok: #2f7d3e;
+  --spec-ok-soft: #e6f2e8;
+  --spec-warn: #b85c00;
+  --spec-warn-soft: #fbeede;
+  --spec-danger: #b03030;
+  --spec-danger-soft: #fbe6e6;
+  --spec-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --spec-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --spec-bg: #14171c;
+    --spec-panel: #1c2026;
+    --spec-panel-2: #232830;
+    --spec-ink: #e7e7e3;
+    --spec-ink-dim: #b0b3b8;
+    --spec-ink-faint: #80858d;
+    --spec-rule: #2c313a;
+    --spec-rule-strong: #3a414c;
+    --spec-accent: #6ea8d8;
+    --spec-accent-soft: #1f2a36;
+    --spec-behaviour: #a489e5;
+    --spec-documentation: #6ea8d8;
+    --spec-intent: #e8a05c;
+    --spec-ok: #67c97a;
+    --spec-ok-soft: #1c2a20;
+    --spec-warn: #e8a05c;
+    --spec-warn-soft: #2d2519;
+    --spec-danger: #e57878;
+    --spec-danger-soft: #2a1c1c;
+  }
+}
+
+.content main {
+  /* Pipeline SVG container */
+  .pipeline {
+    margin: 20px 0;
+    padding: 18px;
+    background: var(--spec-panel);
+    border: 1px solid var(--spec-rule);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+
+  .pipeline img,
+  .pipeline svg {
+    display: block;
+    width: 100%;
+    min-width: 720px;
+    height: auto;
+  }
+
+  .pipeline-caption {
+    font-size: 12px;
+    color: var(--spec-ink-faint);
+    margin-top: 8px;
+    font-family: var(--spec-mono);
+  }
+
+  /* Audience cards */
+  .audience-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+  }
+
+  .audience {
+    background: var(--spec-panel);
+    border: 1px solid var(--spec-rule);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .audience .who {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+
+  .audience .path {
+    font-family: var(--spec-mono);
+    font-size: 12px;
+    color: var(--spec-ink-dim);
+    line-height: 1.7;
+  }
+
+  .audience .path a {
+    background: var(--spec-accent-soft);
+    color: var(--spec-accent);
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .audience .path a:hover {
+    text-decoration: underline;
+  }
+
+  /* Callouts */
+  .callout {
+    background: var(--spec-accent-soft);
+    border-left: 3px solid var(--spec-accent);
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+  }
+
+  .callout strong {
+    color: var(--spec-accent);
+  }
+
+  /* Status pills inline */
+  .pill {
+    display: inline-block;
+    font-family: var(--spec-mono);
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid;
+    vertical-align: 1px;
+  }
+
+  .pill.agreed {
+    color: var(--spec-ok);
+    border-color: var(--spec-ok);
+    background: var(--spec-ok-soft);
+  }
+
+  .pill.divergence {
+    color: var(--spec-warn);
+    border-color: var(--spec-warn);
+    background: var(--spec-warn-soft);
+  }
+
+  .pill.conflict {
+    color: var(--spec-danger);
+    border-color: var(--spec-danger);
+    background: var(--spec-danger-soft);
+  }
+
+  /* Authority widget (Wave 4) */
+  .authority-widget {
+    background: var(--spec-panel);
+    border: 1px solid var(--spec-rule);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+  }
+
+  .authority-widget h4 {
+    margin-top: 0;
+  }
+
+  .auth-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .auth-step {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--spec-rule);
+    background: var(--spec-panel-2);
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .auth-step:hover {
+    border-color: var(--spec-accent);
+  }
+
+  .auth-step.active {
+    border-color: var(--spec-ok);
+    background: var(--spec-ok-soft);
+  }
+
+  .auth-step.skipped {
+    opacity: 0.4;
+  }
+
+  .auth-step .n {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--spec-panel);
+    border: 1px solid var(--spec-rule-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--spec-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--spec-ink);
+  }
+
+  .auth-step.active .n {
+    background: var(--spec-ok);
+    color: white;
+    border-color: var(--spec-ok);
+  }
+
+  .auth-step .label {
+    font-size: 14px;
+  }
+
+  .auth-step .label strong {
+    font-weight: 600;
+  }
+
+  .auth-step .label .desc {
+    color: var(--spec-ink-dim);
+    font-size: 13px;
+  }
+
+  .auth-step .verdict {
+    font-family: var(--spec-mono);
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--spec-panel);
+    color: var(--spec-ink-faint);
+    border: 1px solid var(--spec-rule);
+  }
+
+  .auth-step.active .verdict {
+    background: var(--spec-ok);
+    color: white;
+    border-color: var(--spec-ok);
+  }
+
+  .auth-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .auth-controls button {
+    font-family: var(--spec-mono);
+    font-size: 12px;
+    background: var(--spec-panel-2);
+    border: 1px solid var(--spec-rule);
+    color: var(--spec-ink);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .auth-controls button:hover {
+    border-color: var(--spec-accent);
+  }
+
+  .auth-controls button.on {
+    background: var(--spec-accent);
+    color: white;
+    border-color: var(--spec-accent);
+  }
+}

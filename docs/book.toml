@@ -6,6 +6,8 @@ src = "."
 
 [output.html]
 git-repository-url = "https://github.com/augentic/specify"
+additional-css = ["assets/theme/specify-docs.css"]
+additional-js = ["assets/theme/authority-widget.js"]
 
 [preprocessor.d2]
 layout = "elk"
