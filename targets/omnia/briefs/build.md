@@ -38,7 +38,8 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 4. (Create mode only) Load and follow [`build/guest.md`](build/guest.md) — scaffolds the WASM guest wrapper.
 5. Run the § verify-repair loop below — cross-phase, classifies failures back to the matching phase brief.
 6. Load and follow [`build/review.md`](build/review.md) — its remediation cycle may re-enter the verify-repair loop with tighter caps.
-7. Mark `tasks.md` checkboxes complete as each task lands; the slice transitions to `built` by `/spec:build` itself.
+7. Run the § fixture-replay step below if the slice has a `code-runtime` source binding. The step is optional; omission is not an error.
+8. Mark `tasks.md` checkboxes complete as each task lands; the slice transitions to `built` by `/spec:build` itself.
 
 ## § Verify-repair loop (max 3 iterations)
 
@@ -71,6 +72,33 @@ If `cargo test` fails, classify each failure:
 **Update-mode regression check.** Before iteration 1, record the baseline: `cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_NAME}-${CRATE_NAME}-baseline.txt`. After each iteration, for each test that passed before and now fails: if `spec.md` explicitly changes the asserted behaviour → expected behavioural change, re-enter test writer to align expectations; if `spec.md` does not change the asserted behaviour → true regression, route the fix through the classification table.
 
 Repeat until all four checks pass or 3 iterations exhausted. If still failing after 3 iterations: **STOP**. Do not mark the slice complete. Report the remaining failures with full error output to the operator and signal the build phase outcome accordingly.
+
+## § Fixture replay (optional)
+
+This step is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `code-runtime` binding. Targets that skip the step produce no `fixture-replay` field in `$SLICE_DIR/.metadata.yaml`, and omission is not an error.
+
+When implemented, replay the captured fixtures the `code-runtime` source adapter consumed (today: `cd $CRATE_PATH && cargo nextest run --tests` against `tests/data/replay/<handler>/<scenario>.json`; the operator's binding may point at a different root). Fixture-layout, claim shape, and the 64 KiB inline cap live in [`sources/code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md) — this brief does not re-state them.
+
+Record the outcome two ways:
+
+1. **`.metadata.yaml` block.** Write a `fixture-replay:` block to `$SLICE_DIR/.metadata.yaml`:
+
+   ```yaml
+   fixture-replay:
+     passed: <int>
+     failed: <int>
+     skipped: <int>
+     ran-at: <ISO-8601 UTC>
+     runner: <e.g. "omnia-target@1.4 (cargo nextest)">
+   ```
+
+   The block is additive; targets that have not implemented the hook omit it. Persist via the slice-outcome surface (`specify slice outcome set`) rather than hand-editing `.metadata.yaml` — the CLI is the single writer of slice metadata.
+
+2. **Journal event.** Emit `slice.fixture-replay.completed` (defined in the cli repo as `EventKind::SliceFixtureReplayCompleted`) via `specify slice journal append`, with payload `{ passed, failed, skipped, runner }`.
+
+`merge` reads the block if present and surfaces a one-line summary (`fixture-replay: <passed> passed, <failed> failed, <skipped> skipped`) in its closing message. `merge` does **not** auto-refuse on `failed > 0` in v1 — the operator decides whether to land a slice whose generated code does not pass captured fixtures, mirroring the operator-visible posture RFC-25 takes on `[conflict]` and `[divergence]` tags. Operators wanting stricter posture wire it via a custom target adapter fork (refuse from the fork's `merge.md`) or via a CI policy reading `specify slice outcome show <slice> --format json`.
+
+A failure here is **not** a build park: replay results are advisory in v1. The slice still transitions to `built`; the operator inspects the summary at merge time.
 
 ## § Stop hint contract
 

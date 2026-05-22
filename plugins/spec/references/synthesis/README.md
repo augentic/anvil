@@ -18,9 +18,10 @@ See [`substeps.md`](substeps.md) for the per-artifact contract.
 | File                                       | Owns                                                                                       |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | [`substeps.md`](substeps.md)               | Per-artifact contract for the four substeps; what each artifact MUST contain.              |
-| [`authority.md`](authority.md)             | Authority hierarchy + the agreement → `Status` decision table.                             |
+| [`authority.md`](authority.md)             | Authority hierarchy, per-Evidence per-kind overrides, per-slice overrides on `plan.yaml`, the resolution order synthesis walks, and the agreement → `Status` decision table. |
 | [`requirement-block.md`](requirement-block.md) | Canonical `spec.md` requirement-block template + worked examples per `Status` variant. |
 | [`claim-fusion.md`](claim-fusion.md)       | How to fuse per-`kind` and per-`authority` claims; where each claim kind lands.            |
+| [`fusion.md`](fusion.md)                   | Reconciliation index (`fusion.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, `resolution-trace` step names, and the `slice-fusion-drift` gate. |
 | [`tags.md`](tags.md)                       | Tag grammar (`[unknown]` / `[conflict]` / `[divergence]`) and the tag ↔ `Status` coherence rule. |
 
 ## Posture

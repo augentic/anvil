@@ -14,8 +14,9 @@ argument-hint: "[slice-name]"
 2. **Create the slice directory** — `specify slice create $SLICE_NAME --target <target>`. CLI stamps `.metadata.yaml` at `refining`; this is the first step that materialises any path under `.specify/slices/$SLICE_NAME/`.
 3. **Extract serially per binding** — invoke each source adapter's `extract` brief once per binding in declaration order; persist `Evidence` at `.specify/slices/$SLICE_NAME/evidence/<source-key>.yaml`; emit `slice.extract.completed` per binding.
 4. **Synthesise** — load the target `shape` brief and write `proposal.md → spec.md → design.md → tasks.md` per the synthesis playbook; emit one `slice.synthesis.{unknown|conflict|divergence}` event per tagged requirement.
-5. **Validate** — `specify slice validate $SLICE_NAME` runs the provenance parser and the Evidence schema validator. Do not transition if validation fails.
-6. **Transition to refined** — `specify slice transition $SLICE_NAME refined`. CLI emits `slice.transition.refined`. Print the closing hint.
+5. **Write `fusion.yaml`** — author the reconciliation index atomically at `.specify/slices/$SLICE_NAME/fusion.yaml` per [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md); one entry per `REQ-*` id in `spec.md`, every contributing `(source, claim-id)` pair, inline truncated `value`, `winner` markers, closed `resolution` enum, and `resolution-trace` on override paths.
+6. **Validate** — `specify slice validate $SLICE_NAME` runs the provenance parser, the Evidence schema validator, and the `spec.md ↔ fusion.yaml ↔ evidence` drift gate (exit 2 on `slice-fusion-drift`). Do not transition if validation fails.
+7. **Transition to refined** — `specify slice transition $SLICE_NAME refined`. CLI emits `slice.transition.refined`. Print the closing hint.
 
 ## Step 1 — Resolve target and sources
 
@@ -56,15 +57,28 @@ Load the target `shape` brief via `specify target resolve <target> --format json
 
 For each requirement written with a `[unknown]` / `[conflict]` / `[divergence]` tag, append the matching `slice.synthesis.{unknown|conflict|divergence}` event to `.specify/journal.jsonl` with payload `{ slice-name: $SLICE_NAME, requirement-id: REQ-NNN }` per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md). Tags never park the slice — proceed to step 5 regardless of tag count.
 
-## Step 5 — Validate
+## Step 5 — Write `fusion.yaml`
+
+Author the reconciliation index at `.specify/slices/$SLICE_NAME/fusion.yaml` atomically (write to a sibling temp file, then rename); a partial write must never land on disk. There is no `specify slice fusion write` verb — the skill body is the writer and the validator in step 6 catches structural drift.
+
+One entry per `REQ-*` id in `spec.md`, in `spec.md` order. For each entry record:
+
+- `id`, `status` (mirrors the matching `Status:` line), `sources` (mirrors the matching `Sources:` line).
+- `contributing-claims` — every `(source, claim-id)` pair synthesis consulted, **not** only the winning one. Each entry carries `source`, `claim-id`, `kind`, optional `value` (single-line, multi-line bodies collapsed to the first non-empty line with a trailing `…`, capped at 16 KiB at a whitespace boundary), optional `path` (the source claim's `<path>#L<n>` anchor), and `winner` (`true` on the synthesis-selected entry; `false` on entries dropped by authority resolution; absent on `agreed` blocks).
+- `resolution` — closed enum: `single-source`, `single-value-agreement`, `authority-resolved`, `per-slice-override`, `unknown-no-evidence`, `tied-conflict`.
+- `resolution-trace` — present **only** when `resolution` is `authority-resolved` or `per-slice-override`; `step` is one of `per-slice-authority-override`, `per-evidence-authority-override`, `document-authority-ordering`.
+
+The block grammar, the truncation rule, the closed `resolution` enum, and the worked example are owned by [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md); the resolution-order taxonomy that names each `step` is owned by [`../../references/synthesis/authority.md`](../../references/synthesis/authority.md). Emit the `slice.fusion.written` journal event after the atomic rename succeeds.
+
+## Step 6 — Validate
 
 ```bash
 specify slice validate "$SLICE_NAME" --format json
 ```
 
-The CLI runs the spec.md provenance parser (`ID:` / `Sources:` / `Status:` shape; closed `Status` enum; tag/Status coherence; `Sources:` keys cross-resolved against plan-level bindings) plus the Evidence schema validator. On non-zero exit, surface the structured error verbatim; do **not** transition; the slice stays `refining`. Common causes: malformed `REQ-NNN` id, `Sources:` key not in the slice's bindings, headline tag without matching `Status:`, Evidence missing `claim-id` on a `requirement` / `criterion` claim.
+The CLI runs the spec.md provenance parser (`ID:` / `Sources:` / `Status:` shape; closed `Status` enum; tag/Status coherence; `Sources:` keys cross-resolved against plan-level bindings), the Evidence schema validator, and the `fusion.yaml` drift gate. On non-zero exit, surface the structured error verbatim; do **not** transition; the slice stays `refining`. Common causes: malformed `REQ-NNN` id, `Sources:` key not in the slice's bindings, headline tag without matching `Status:`, Evidence missing `claim-id` on a `requirement` / `criterion` claim, or `slice-fusion-drift` when `fusion.yaml` is stale w.r.t. `spec.md` or `evidence/*.yaml` (re-run step 5 to regenerate).
 
-## Step 6 — Transition to refined
+## Step 7 — Transition to refined
 
 ```bash
 specify slice transition "$SLICE_NAME" refined --format json
@@ -96,7 +110,8 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 
 ## References
 
-- [`../../references/synthesis/`](../../references/synthesis/) — synthesis playbook (substeps, authority, requirement-block, claim-fusion, tags).
+- [`../../references/synthesis/`](../../references/synthesis/) — synthesis playbook (substeps, authority, requirement-block, claim-fusion, fusion, tags).
+- [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md) — reconciliation-index block grammar, truncation rule, `resolution` enum, and `resolution-trace` step names step 5 cites.
 - [`targets/<target>/briefs/shape.md`](../../../../targets/) — per-target idiom guidance synthesis folds into `design.md`.
 - [`sources/<adapter>/briefs/extract.md`](../../../../sources/) — per-source-adapter extract brief invoked in step 3.
 
