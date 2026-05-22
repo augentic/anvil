@@ -34,6 +34,7 @@ jobs:
         with:
           repository: augentic/specify-cli
           path: specify-cli
+          ref: ${{ github.head_ref || github.ref_name }}
           sparse-checkout: |
             schemas
           sparse-checkout-cone-mode: false

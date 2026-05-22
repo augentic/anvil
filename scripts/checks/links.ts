@@ -27,6 +27,7 @@ export async function checkMarkdownLinks(): Promise<void> {
     /node_modules/,
     /\.git/,
     /temp/,
+    /specify-cli/,
     /rfcs\/archive/,
     /rfcs\/rfc-(?!25)/,
   ];
