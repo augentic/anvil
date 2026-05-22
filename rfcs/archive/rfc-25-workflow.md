@@ -1,6 +1,6 @@
 # RFC-25: Workflow
 
-> Status: Draft. Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md) and [RFC-23 (archived)](archive/rfc-23-change-lifecycle.md). Ships as Specify 2.0. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership).
+> Status: Implemented. Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md) and [RFC-23 (archived)](archive/rfc-23-change-lifecycle.md). Ships as Specify 2.0. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership).
 
 ## Abstract
 
@@ -69,14 +69,14 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 ### What changes from 1.x
 
 
-| Before (1.x)                                         | After (2.0)                                                                              |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `/change:draft`, `/change:survey`, `/change:analyze` | `/spec:plan` (`source.enumerate`)                                                        |
-| `/spec:define`, `/spec:extract`                      | `/spec:refine` (`source.extract` + core synthesis)                                       |
-| `/change:execute loop`                               | `/spec:execute`                                                                          |
-| `/change:finalize`                                   | `/spec:finalize`                                                                         |
-| `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `targets/<name>/adapter.yaml`, `Slice.target`                                            |
-| `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see §CLI surface               |
+| Before (1.x)                                         | After (2.0)                                                                |
+| ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `/change:draft`, `/change:survey`, `/change:analyze` | `/spec:plan` (`source.enumerate`)                                          |
+| `/spec:define`, `/spec:extract`                      | `/spec:refine` (`source.extract` + core synthesis)                         |
+| `/change:execute loop`                               | `/spec:execute`                                                            |
+| `/change:finalize`                                   | `/spec:finalize`                                                           |
+| `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `targets/<name>/adapter.yaml`, `Slice.target`                              |
+| `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see §CLI surface |
 
 
 ### Commands
@@ -84,11 +84,11 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 Default rhythm: `/spec:plan` -> review -> `/spec:execute` -> review on stops -> `/spec:finalize`.
 
 
-| Stage      | Command                                        | Replaces                                             |
-| ---------- | ---------------------------------------------- | ---------------------------------------------------- |
-| Plan       | `/spec:plan <name> [source <key>=<path> ...]`  | `/change:draft`, `/change:survey`, `/change:analyze` |
-| Drive plan | `/spec:execute`                                | `/change:execute loop`                               |
-| Deliver    | `/spec:finalize <name>`                        | `/change:finalize`                                   |
+| Stage      | Command                                       | Replaces                                             |
+| ---------- | --------------------------------------------- | ---------------------------------------------------- |
+| Plan       | `/spec:plan <name> [source <key>=<path> ...]` | `/change:draft`, `/change:survey`, `/change:analyze` |
+| Drive plan | `/spec:execute`                               | `/change:execute loop`                               |
+| Deliver    | `/spec:finalize <name>`                       | `/change:finalize`                                   |
 
 
 
@@ -138,8 +138,8 @@ After Gate 1 without execute: `specify plan next`, then `/spec:refine`.
 ### The plan gate
 
 
-| Gate       | Position                                    | Mechanism                                  |
-| ---------- | ------------------------------------------- | ------------------------------------------ |
+| Gate       | Position                                    | Mechanism                                               |
+| ---------- | ------------------------------------------- | ------------------------------------------------------- |
 | **Gate 1** | After plan validate, before `/spec:execute` | Operator runs `specify plan transition <name> reviewed` |
 
 
@@ -168,9 +168,9 @@ slices:
 ### Single-repo vs multi-repo
 
 
-| `workspace:` | `/spec:plan` behavior                                                              |
-| ------------ | ---------------------------------------------------------------------------------- |
-| `false`      | Single root; skip `workspace sync` and assignment.                                 |
+| `workspace:` | `/spec:plan` behavior                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| `false`      | Single root; skip `workspace sync` and assignment.                                        |
 | `true`       | `registry.yaml`; `workspace sync` before enumerate; per-candidate `--project` at propose. |
 
 
@@ -189,16 +189,16 @@ The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or
 ### Adapter vocabulary
 
 
-| Term                          | Meaning                                                                                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **source adapter**            | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `openapi`.                                                  |
-| **target adapter**            | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.                                      |
+| Term                          | Meaning                                                                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **source adapter**            | Input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `openapi`.                                                    |
+| **target adapter**            | Output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Replaces unqualified `adapter`.                                        |
 | **plugin**                    | Shared shape for either adapter role; schema `adapter.schema.json`, loader `crates/domain/src/adapter/`, audience tag for source + target adapter authors. |
-| **candidate**                 | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                                              |
-| **evidence**                  | Per-source result of `extract`; a structured document with `claims:`; persisted before synthesis.                                                        |
-| **provenance**                | Sources behind one requirement (`Sources:` list).                                                                                                        |
-| **conflict** / **divergence** | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                                                     |
-| **authority**                 | Closed enum: `intent`, `documentation`, `behaviour` (highest first; see §Authority hierarchy).                                                           |
+| **candidate**                 | Slice-sized unit from `enumerate`; blocks under `## Candidate inventory` in `discovery.md`.                                                                |
+| **evidence**                  | Per-source result of `extract`; a structured document with `claims:`; persisted before synthesis.                                                          |
+| **provenance**                | Sources behind one requirement (`Sources:` list).                                                                                                          |
+| **conflict** / **divergence** | Unresolvable vs authority-resolved disagreement; `[conflict]` / `[divergence]` tags.                                                                       |
+| **authority**                 | Closed enum: `intent`, `documentation`, `behaviour` (highest first; see §Authority hierarchy).                                                             |
 
 
 `provider` is reserved for Omnia DI. `profile` is retired. Unqualified `adapter` is removed. The slice-vs-change on-disk distinction in [project.mdc](../.cursor/rules/project.mdc) survives; only slash commands collapse to `/spec:`*.
@@ -228,12 +228,12 @@ The plan lock is the file-level mutex that prevents two `/spec:execute` runs (or
 Names used in function signatures and table cells throughout this RFC. Concrete shape is the canonical example or schema noted in the right column.
 
 
-| Name        | Shape                                                                                                                                                                                                                                                                                                        | Reference                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `Source`    | Plan-level entry under `plan.yaml.sources`: source-key (kebab-case) -> adapter + path or value.                                                                                                                                                                                                              | §Planning at every scale; §`Slice.sources`.                      |
-| `Candidate` | Slice-sized unit emitted by `enumerate`; one markdown block under `## Candidate inventory` in `discovery.md` with stable `id` and `sources[]`.                                                                                                                                                               | §Discovery handshake; `schemas/discovery/candidate.schema.json`. |
-| `Evidence`  | Per-source result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                                                                                                                                                                                                           | §`extract`; `schemas/evidence.schema.json`.                      |
-| `Slice`     | One slice entry under `plan.yaml.slices[]`; carries `target`, `project`, `status`, structured `sources[]` (each entry pairs a source `key` referencing `plan.yaml.sources.<key>` with the `candidate` id from `discovery.md` that contributed to the slice; readable string shorthand `<key>` normalises to `{ key: <key>, candidate: <slice.name> }`), and optional `divergence` (closed enum: `none` (default; absent in YAML) \| `likely` (set by `propose`) \| `accepted` \| `rejected` (operator-set via `plan amend --divergence`); advisory metadata in v1 — see §Plan-time fusion). | §`Slice.sources`; §On-disk and tooling.                          |
+| Name        | Shape                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Reference                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `Source`    | Plan-level entry under `plan.yaml.sources`: source-key (kebab-case) -> adapter + path or value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | §Planning at every scale; §`Slice.sources`.                      |
+| `Candidate` | Slice-sized unit emitted by `enumerate`; one markdown block under `## Candidate inventory` in `discovery.md` with stable `id` and `sources[]`.                                                                                                                                                                                                                                                                                                                                                                                                                                           | §Discovery handshake; `schemas/discovery/candidate.schema.json`. |
+| `Evidence`  | Per-source result of `extract`; persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | §`extract`; `schemas/evidence.schema.json`.                      |
+| `Slice`     | One slice entry under `plan.yaml.slices[]`; carries `target`, `project`, `status`, structured `sources[]` (each entry pairs a source `key` referencing `plan.yaml.sources.<key>` with the `candidate` id from `discovery.md` that contributed to the slice; readable string shorthand `<key>` normalises to `{ key: <key>, candidate: <slice.name> }`), and optional `divergence` (closed enum: `none` (default; absent in YAML) | `likely` (set by `propose`) | `accepted` | `rejected` (operator-set via `plan amend --divergence`); advisory metadata in v1 — see §Plan-time fusion). | §`Slice.sources`; §On-disk and tooling.                          |
 
 
 ### Writer ownership
@@ -354,10 +354,10 @@ This deliberately excludes `$PROJECT_DIR` from source-adapter grants: source ada
 ### Default source adapters
 
 
-| Adapter         | Authority emitted | Role                                                                                                                                                                                  |
-| --------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `intent`        | `intent`          | Operator briefs and overrides.                                                                                                                                                        |
-| `documentation` | `documentation`   | Operator-provided written product/technical intent.                                                                                                                                   |
+| Adapter         | Authority emitted | Role                                                                                                                                                                                   |
+| --------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `intent`        | `intent`          | Operator briefs and overrides.                                                                                                                                                         |
+| `documentation` | `documentation`   | Operator-provided written product/technical intent.                                                                                                                                    |
 | `screenshots`   | `documentation`   | Vision-assisted spatial inference over a directory of screen images; emits `region` / `container` / `leaf` Evidence claims for downstream targets that need layout structure (Vectis). |
 
 
@@ -417,12 +417,12 @@ sources: [intent]   # sugar for [{ key: intent, candidate: <slice.name> }]
 ```
 
 
-| Archetype         | `sources`                                              | Notes                                                                              |
-| ----------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Pure greenfield   | `[intent]` (shorthand)                                 | Empty/missing list normalises to this; candidate id equals slice name.             |
-| Pure port         | One binding `{ key: <legacy>, candidate: <id> }`       | Code dictates behavior; `<id>` is the candidate id from the legacy enumerate.      |
-| Pure design       | One binding `{ key: <doc>, candidate: <id> }`          | Docs dictate behavior; `<id>` is the candidate id from the documentation enumerate. |
-| Combined evidence | Multiple bindings, one per contributing source         | Per-source candidate ids may differ; authority hierarchy resolves disagreements.   |
+| Archetype         | `sources`                                        | Notes                                                                               |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Pure greenfield   | `[intent]` (shorthand)                           | Empty/missing list normalises to this; candidate id equals slice name.              |
+| Pure port         | One binding `{ key: <legacy>, candidate: <id> }` | Code dictates behavior; `<id>` is the candidate id from the legacy enumerate.       |
+| Pure design       | One binding `{ key: <doc>, candidate: <id> }`    | Docs dictate behavior; `<id>` is the candidate id from the documentation enumerate. |
+| Combined evidence | Multiple bindings, one per contributing source   | Per-source candidate ids may differ; authority hierarchy resolves disagreements.    |
 
 
 `specify plan add` enforces at most one entry with `key: intent` per slice, at most one entry per `key`, and at least one source total.
@@ -702,26 +702,28 @@ Specify 2.0 v1 target surface. Global on all rows: `--format text|json` (`SPECIF
 
 The v1 floor: the CLI is the single writer of files the skills must not hand-edit (`project.yaml`, `plan.yaml`, `.metadata.yaml`, archive paths), plus a small set of computations and side effects the agent shouldn't reimplement. Everything else — status, show, list, diagnostic helpers — is cut. Operators read YAML and Markdown files directly; skills do the same. Verbs return when a real caller asks for them.
 
-| Command | Positionals | Flags |
-|---------|-------------|-------|
-| `specify init` | `<target>` | `--name`, `--domain` |
-| `specify init` | | `--workspace`, `--name`, `--domain` |
-| `specify source resolve` | `<name>` | `--project-dir` |
-| `specify target resolve` | `<value>` | `--project-dir` |
-| `specify plan create` | `<name>` | `--source` |
-| `specify plan add` | `<name>` | `--depends-on`, `--sources`, `--description`, `--project`, `--target`, `--context` |
-| `specify plan amend` | `<name>` | `--depends-on`, `--sources`, `--add-source`, `--remove-source`, `--description`, `--project`, `--target`, `--context`, `--divergence` |
-| `specify plan transition` | `<name>`, `<target>` | `--reason` |
-| `specify plan next` | | |
-| `specify plan finalize` | `<name>` | `--clean`, `--dry-run` |
-| `specify slice create` | `<name>` | `--target`, `--if-exists` |
-| `specify slice transition` | `<name>`, `<target>` | `--reason` |
-| `specify slice validate` | `<name>` | |
-| `specify slice merge` | `<name>` | `--dry-run`, `--check-only` |
-| `specify workspace sync` | `[<project>…]` | |
-| `specify workspace push` | `[<project>…]` | `--dry-run` |
-| `specify workspace prepare-branch` | `<project>` | `--change`, `--source`, `--output` |
-| `specify tool run` | `<name>`, `[args…]` | arguments after `--` |
+
+| Command                            | Positionals          | Flags                                                                                                                                 |
+| ---------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `specify init`                     | `<target>`           | `--name`, `--domain`                                                                                                                  |
+| `specify init`                     |                      | `--workspace`, `--name`, `--domain`                                                                                                   |
+| `specify source resolve`           | `<name>`             | `--project-dir`                                                                                                                       |
+| `specify target resolve`           | `<value>`            | `--project-dir`                                                                                                                       |
+| `specify plan create`              | `<name>`             | `--source`                                                                                                                            |
+| `specify plan add`                 | `<name>`             | `--depends-on`, `--sources`, `--description`, `--project`, `--target`, `--context`                                                    |
+| `specify plan amend`               | `<name>`             | `--depends-on`, `--sources`, `--add-source`, `--remove-source`, `--description`, `--project`, `--target`, `--context`, `--divergence` |
+| `specify plan transition`          | `<name>`, `<target>` | `--reason`                                                                                                                            |
+| `specify plan next`                |                      |                                                                                                                                       |
+| `specify plan finalize`            | `<name>`             | `--clean`, `--dry-run`                                                                                                                |
+| `specify slice create`             | `<name>`             | `--target`, `--if-exists`                                                                                                             |
+| `specify slice transition`         | `<name>`, `<target>` | `--reason`                                                                                                                            |
+| `specify slice validate`           | `<name>`             |                                                                                                                                       |
+| `specify slice merge`              | `<name>`             | `--dry-run`, `--check-only`                                                                                                           |
+| `specify workspace sync`           | `[<project>…]`       |                                                                                                                                       |
+| `specify workspace push`           | `[<project>…]`       | `--dry-run`                                                                                                                           |
+| `specify workspace prepare-branch` | `<project>`          | `--change`, `--source`, `--output`                                                                                                    |
+| `specify tool run`                 | `<name>`, `[args…]`  | arguments after `--`                                                                                                                  |
+
 
 `<target>` for `specify plan transition`: plan lifecycle `reviewed`; per-entry `done`. `pending` is written by `plan add` / `plan amend`, and `in-progress` is written only by `plan next`. `plan next` returns the active `in-progress` entry before selecting a new `pending` entry, and reports drained only when no active or pending entries remain. v1 has no per-entry `blocked`, `failed`, or `skipped` state; build failures and merge conflicts leave the active entry `in-progress`. `<target>` for `specify slice transition`: `refining`, `refined`, `built`, `dropped` (`--reason` only for `dropped`; the `merged` state is stamped by `specify slice merge`, never `slice transition`). Repeatable flags: `plan create --source`, `plan add` / `amend` `--depends-on` / `--sources` / `--add-source` / `--remove-source` / `--context`, `workspace prepare-branch` `--source` / `--output`. `plan add` / `plan amend` `--sources` and `--add-source` take `<key>=<candidate-id>` arguments — the source key references a top-level `plan.yaml.sources.<key>` binding and the candidate id references a `## Candidate inventory` block in `discovery.md`; the bare `<key>` shorthand is accepted only when the candidate id equals the slice's own `name` (typical for `intent`). `--remove-source` takes `<key>` alone (one binding per key per slice). `plan amend --add-source` / `--remove-source` only succeed while the slice's per-entry lifecycle is `pending` and the plan lifecycle is at most `reviewed`; rebinding an already-extracted slice requires `slice transition dropped` and re-add. `plan amend --divergence <accepted|rejected>` writes `slices[].divergence` and is accepted at any per-entry lifecycle state; the field is advisory metadata in v1 (no halt/park is wired against any value) and records operator acknowledgement (or rejection) of the `propose`-time `likely` prediction. `none` cannot be set explicitly — absence is none — and `likely` is reserved for the `propose` sub-step.
 
@@ -803,7 +805,7 @@ Speculation — "we might need this someday" — is not on the list.
 | `plugins/spec/skills/{build,merge,finalize}/SKILL.md`        | Build/merge breakouts; finalize from `change/finalize`. |
 | `plugins/spec/skills/init/SKILL.md`                          | Mention `/spec:plan`.                                   |
 | `plugins/spec/skills/drop/SKILL.md`                          | Unchanged.                                              |
-| `plugins/change/**`, `plugins/spec/skills/{define,extract}/` | Retired.                                                |
+| `plugins/change/`**, `plugins/spec/skills/{define,extract}/` | Retired.                                                |
 
 
 ### Repository layout (monorepo v1)
@@ -848,25 +850,25 @@ This RFC renames or reshapes several names that are already deeply embedded in t
 For each rename: update the symbol, the JSON Schema, the YAML on-disk form, every test fixture and golden file, every error-code discriminant, every doc reference (including this RFC's siblings and the parent `AGENTS.md`), and the CLI `--help` text in the same change. Where the old name appears in archived RFCs under `rfcs/archive/`, leave it alone — archives are historical record. When in doubt, run `rg '<old-name>'` across both repos before opening the PR.
 
 
-| Step | Decisions   | Deliverable                                                                                                                                                               | Acceptance           |
-| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Step | Decisions   | Deliverable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Acceptance           |
+| ---- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
 | 1    | D1, D3, D6  | Land the JSON Schemas this RFC references (`schemas/adapter.schema.json`, `schemas/source.schema.json`, `schemas/target.schema.json`, `schemas/evidence.schema.json`, `schemas/discovery/candidate.schema.json`, plus the `plan.yaml` schema's `target` field and structured `slices[].sources[]` shape and `pending`/`reviewed` plan-lifecycle enum). None of these exist in the tree today; this step ships them and wires them into `specify slice validate` / `plan add` / `plan amend` first-use validation. | #5g                  |
-| 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                                                                           | #5a                  |
-| 3    | D1          | `crates/domain/src/adapter/` axis-aware loader replaces the legacy 1.x adapter loader.                                                                                    | #2, #4               |
-| 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                                                                         | #1, #2               |
-| 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                                                                   | #5, #5a-#5h          |
-| 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                                                                               | #1, #5a-#5c          |
-| 7    | D3, D11     | Discovery stable-id replace; `/spec:plan` `propose` sub-step (agent-driven candidate fusion, `tentative: true` annotations + `## Tentative merges` block in `change.md`, `slices[].divergence: likely` on materially-disagreeing summary pairs + `## Likely divergences` block in `change.md` with side-by-side values). | #5e                  |
-| 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                                                                                    | #3, #4, #7           |
-| 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                                                                                     | #5h                  |
-| 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                                                                              | Documentation review |
-| 11   | D1          | `discovery.md` three-section form (`Summary`, `Source inventory`, `Candidate inventory`).                                                                                 | #4                   |
-| 12   | D1-D4, D9   | Adapter-axis acceptance lands before step 16.                                                                                                                             | #1-#5h, #10          |
-| 13   | D4          | RFC-19 journal events for extract and synthesis tags.                                                                                                                     | #5b-#5d              |
-| 14   | D6          | Plan lifecycle is `pending -> reviewed` (two stored states); `plan transition reviewed` is operator-only and is the sole plan-level transition target. `/spec:plan` exits at `pending` with the literal stamp command in its closing hint and never writes `reviewed` itself. | #1-#4                |
-| 15   | D7, D9      | `/spec:execute` stop/resume; load-bearing workflow collapse step.                                                                                                         | #8-#11               |
-| 16   | D5-D7       | Document default `/spec:plan` -> execute -> finalize; scenario #1 release blocker.                                                                                        | #1, #8, #9           |
-| 17   | D10         | Delete `/change:*`, `/spec:define`; remove `plugins/change/`.                                                                                                             | Full matrix          |
+| 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                                                                                                                                                                                                                                                                                                                                                                                                                   | #5a                  |
+| 3    | D1          | `crates/domain/src/adapter/` axis-aware loader replaces the legacy 1.x adapter loader.                                                                                                                                                                                                                                                                                                                                                                                                                            | #2, #4               |
+| 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | #1, #2               |
+| 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                                                                                                                                                                                                                                                                                                                                                                                                           | #5, #5a-#5h          |
+| 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                                                                                                                                                                                                                                                                                                                                                                                                                       | #1, #5a-#5c          |
+| 7    | D3, D11     | Discovery stable-id replace; `/spec:plan` `propose` sub-step (agent-driven candidate fusion, `tentative: true` annotations + `## Tentative merges` block in `change.md`, `slices[].divergence: likely` on materially-disagreeing summary pairs + `## Likely divergences` block in `change.md` with side-by-side values).                                                                                                                                                                                          | #5e                  |
+| 8    | D1, D3, D10 | CLI: `source resolve`, plan amend sources; retire `change survey`, `adapter pipeline`.                                                                                                                                                                                                                                                                                                                                                                                                                            | #3, #4, #7           |
+| 9    | D1, D2      | Target brief migration; RFC-24 prose.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | #5h                  |
+| 10   | D1-D10      | Docs: AGENTS.md, project.mdc, decision-log, adapter-anatomy.                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Documentation review |
+| 11   | D1          | `discovery.md` three-section form (`Summary`, `Source inventory`, `Candidate inventory`).                                                                                                                                                                                                                                                                                                                                                                                                                         | #4                   |
+| 12   | D1-D4, D9   | Adapter-axis acceptance lands before step 16.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | #1-#5h, #10          |
+| 13   | D4          | RFC-19 journal events for extract and synthesis tags.                                                                                                                                                                                                                                                                                                                                                                                                                                                             | #5b-#5d              |
+| 14   | D6          | Plan lifecycle is `pending -> reviewed` (two stored states); `plan transition reviewed` is operator-only and is the sole plan-level transition target. `/spec:plan` exits at `pending` with the literal stamp command in its closing hint and never writes `reviewed` itself.                                                                                                                                                                                                                                     | #1-#4                |
+| 15   | D7, D9      | `/spec:execute` stop/resume; load-bearing workflow collapse step.                                                                                                                                                                                                                                                                                                                                                                                                                                                 | #8-#11               |
+| 16   | D5-D7       | Document default `/spec:plan` -> execute -> finalize; scenario #1 release blocker.                                                                                                                                                                                                                                                                                                                                                                                                                                | #1, #8, #9           |
+| 17   | D10         | Delete `/change:*`, `/spec:define`; remove `plugins/change/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Full matrix          |
 
 
 ### Suggested PR train
@@ -890,7 +892,7 @@ If any of #1-#4 fail the ergonomics test (operator confusion, lost time, surpris
 
 | #   | Decisions  | Scenario                                                                                                                                                                                                         | What it stress-tests                                                                                                                                                                                                                                                                                                                                 |
 | --- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | D3, D5, D6 | **Pure intent, one slice.** Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.                                                                                                                           | Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specify plan transition fix-typo reviewed` command — the operator runs it, then `/spec:execute`. The skill never auto-stamps `reviewed`. |
+| 1   | D3, D5, D6 | **Pure intent, one slice.** Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.                                                                                                                           | Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specify plan transition fix-typo reviewed` command — the operator runs it, then `/spec:execute`. The skill never auto-stamps `reviewed`.  |
 | 2   | D1, D3, D4 | **Documentation, one slice.** Operator binds a single docs path.                                                                                                                                                 | `documentation.enumerate` correctness at the new entry point; `Sources: [<doc-key>]` provenance.                                                                                                                                                                                                                                                     |
 | 3   | D3, D5, D6 | **Documentation, multi-slice.** Operator binds docs that map to N candidates.                                                                                                                                    | Propose/edit/reject loop; Gate 1 amendment flow.                                                                                                                                                                                                                                                                                                     |
 | 4   | D1, D3     | **code, multi-slice.** Operator binds a legacy repo.                                                                                                                                                             | `code-typescript.enumerate`; enumerate/repair loop under `/spec:plan`; under-slicing failure mode; `Sources: [<legacy-key>]` provenance.                                                                                                                                                                                                             |
@@ -945,19 +947,17 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 
 ## Open questions
 
-
-
 ## Observability ([RFC-19](rfc-19-observability.md))
 
 
-| Event                                                   | When                                                                |
-| ------------------------------------------------------- | ------------------------------------------------------------------- |
-| `plan.transition.reviewed`                              | Gate 1 cleared                                                      |
-| `plan.propose.divergence`                               | `propose` sets `slices[].divergence: likely` on a slice             |
-| `plan.amend.divergence`                                 | Operator transitions `slices[].divergence` (payload: `from`, `to`)  |
-| `slice.transition.refined`                              | Synthesis completed                                                 |
-| `slice.extract.completed`                               | Per source key per slice                                            |
-| `slice.synthesis.conflict` / `.divergence` / `.unknown` | Tags written to `spec.md`                                           |
+| Event                                                   | When                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------ |
+| `plan.transition.reviewed`                              | Gate 1 cleared                                                     |
+| `plan.propose.divergence`                               | `propose` sets `slices[].divergence: likely` on a slice            |
+| `plan.amend.divergence`                                 | Operator transitions `slices[].divergence` (payload: `from`, `to`) |
+| `slice.transition.refined`                              | Synthesis completed                                                |
+| `slice.extract.completed`                               | Per source key per slice                                           |
+| `slice.synthesis.conflict` / `.divergence` / `.unknown` | Tags written to `spec.md`                                          |
 
 
 ## References

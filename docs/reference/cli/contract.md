@@ -76,6 +76,6 @@ During local development, project authors may override the adapter declaration w
 
 - [specify tool](tool.md) — the declared WASI tool runner surface.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
-- [Contract plugin](../plugins/contract.md) — the per-slice `/contract:openapi`, `/contract:asyncapi`, and `/contract:json-schema` skills that produce the artefacts this tool inspects.
+- [`targets/contracts/briefs/build.md`](../../../targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
 - [`targets/contracts/briefs/merge.md`](../../../targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

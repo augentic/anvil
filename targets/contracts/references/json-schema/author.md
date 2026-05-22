@@ -1,6 +1,6 @@
 # JSON Schema — Author
 
-> **When to read this.** Read this when authoring or extending standalone JSON Schema documents under `contracts/schemas/` for a Specify change — i.e. when the contracts adapter build brief during `/spec:build` selects the author intent for shared payload vocabulary, or when an operator extends the baseline for new payload types referenced (or about to be referenced) by `/contract:openapi` or `/contract:asyncapi`. Skip this file when importing external schema files (use [`importer.md`](./importer.md)) or when verifying existing artefacts (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when authoring or extending standalone JSON Schema documents under `contracts/schemas/` for a Specify change — i.e. when the contracts adapter build brief during `/spec:build` selects the author intent for shared payload vocabulary, or when an operator extends the baseline for new payload types referenced (or about to be referenced) by the `openapi` or `asyncapi` sub-flows. Skip this file when importing external schema files (use [`importer.md`](./importer.md)) or when verifying existing artefacts (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
@@ -26,7 +26,7 @@ If specs and baseline disagree on a shape (e.g. the spec asserts a `verified_at`
 
 ## Ownership note
 
-Per the cross-format ordering rule (see SKILL.md §Mixed-format ordering), this skill **owns** all decisions about JSON Schema files. `/contract:openapi` and `/contract:asyncapi` only `$ref` into `contracts/schemas/`; they never inline or restructure schema files. When an OpenAPI or AsyncAPI brief realises a payload type is missing or under-specified, it must route the schema work back here before continuing — never inline a workaround.
+Per the cross-format ordering rule in `contracts.build`, this sub-flow **owns** all decisions about JSON Schema files. The `openapi` and `asyncapi` sub-flows only `$ref` into `contracts/schemas/`; they never inline or restructure schema files. When an OpenAPI or AsyncAPI path realises a payload type is missing or under-specified, it must route the schema work back here before continuing — never inline a workaround.
 
 This skill therefore runs **before** the protocol skills in any mixed-format change. The author algorithm assumes the protocol skills will pick up `$ref` pointers later; it does not need to coordinate with them mid-run.
 

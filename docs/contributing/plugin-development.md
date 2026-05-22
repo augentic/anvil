@@ -1,6 +1,6 @@
 # Plugin Development
 
-Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
+Specify ships as a Cursor plugin marketplace containing five plugins. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
 
 ## Plugins overview
 
@@ -9,7 +9,6 @@ Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin
 | Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
 | Omnia | `plugins/omnia/` | `/omnia:` | Rust WASM crate generation and review |
 | Vectis | `plugins/vectis/` | `/vectis:` | Cross-platform Crux app generation |
-| Contract | `plugins/contract/` | `/contract:` | API contract generation and validation (OpenAPI, AsyncAPI, JSON Schema) |
 | RT | `plugins/rt/` | `/rt:` | Fixture capture and regression testing |
 | Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
 

@@ -40,7 +40,6 @@
 - [Plugins](reference/plugins/index.md)
   - [Omnia](reference/plugins/omnia.md)
   - [Vectis](reference/plugins/vectis.md)
-  - [Contract](reference/plugins/contract.md)
   - [RT](reference/plugins/rt.md)
   - [Client](reference/plugins/client.md)
 - [Target adapters](reference/targets/index.md)

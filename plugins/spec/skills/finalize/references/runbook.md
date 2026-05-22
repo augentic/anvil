@@ -1,6 +1,6 @@
 # Finalize skill runbook
 
-Operational detail for `/spec:finalize`. The SKILL.md keeps only the orientation surface (Critical Path + halts + closing message + guardrails); everything procedural lives here.
+Operational detail for `/spec:finalize`. The SKILL.md keeps only the orientation surface, critical path, closing message, and links; everything procedural lives here.
 
 ## Overview
 

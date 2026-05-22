@@ -21,7 +21,7 @@ Every author run falls into one of three patterns. The classification depends on
 |---|---|---|
 | **Contract-first** | Rich. A preceding contract change populated root `contracts/`. | Already covered by the baseline. The delta is small or empty. |
 | **Spec-first** | Empty. Single-repo, no external consumers. | New. The delta is the full contract set, derived from the slice's specs. |
-| **Contract-given** | Imported. The baseline came from an external system via `/contract:<format>` `importer.md`. | Covered. The delta is non-empty only for extensions the slice introduces. |
+| **Contract-given** | Imported. The baseline came from an external system via the matching `contracts.build` format importer. | Covered. The delta is non-empty only for extensions the slice introduces. |
 
 The author algorithms produce the same artefact regardless of pattern. The pattern label is for the alignment report and the brief's transcript, not for branching logic.
 

@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
+Specify ships as a Cursor plugin marketplace containing five plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
 
 ## Plugin model
 
@@ -23,7 +23,6 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | **Specify**  | `/spec:`    | Workflow orchestration: `init`, `plan`, `refine`, `execute`, `build`, `merge`, `finalize`, `drop`.                  | [Slice Skills](../slice-skills/index.md) |
 | **Omnia**    | `/omnia:`   | Rust WASM crate generation and review                                                                              | [Omnia](omnia.md)    |
 | **Vectis**   | `/vectis:`  | Cross-platform Crux app generation                                                                                 | [Vectis](vectis.md)  |
-| **Contract** | `/contract:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema)                                 | [Contract](contract.md) |
 | **RT**       | `/rt:`      | Migration fixtures and regression testing                                                                          | [RT](rt.md)          |
 | **Client**   | `/client:`  | Client-facing deliverables (SoW, proposals, pricing)                                                               | [Client](client.md)  |
 
@@ -33,7 +32,7 @@ The **Specify** plugin provides the workflow skeleton. **Target adapters** (unde
 
 - **Omnia target** invokes `/omnia:*` skills.
 - **Vectis target** invokes `/vectis:*` skills.
-- **Contracts target** invokes `/contract:*` skills.
+- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside `targets/contracts/briefs/build.md`.
 
 The RT and Client plugins are target-independent — RT supports legacy migration regardless of the target platform; Client supports operator-facing deliverables.
 

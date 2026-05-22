@@ -48,15 +48,11 @@ The CLI surface skills depend on is documented in [`specify` `--help`](https://g
 
 Never hand-edit `.metadata.yaml`, `project.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, or `targets.yaml`; never `mkdir -p .specify/...`; never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal lifecycle set and validates inputs in one place for humans, agents, and CI.
 
-### Contract skills
+### Contracts target adapter
 
-The contract plugin provides format-first specialist skills for API contract authoring and validation. Each carries author / import / verify intents internally and dispatches via its own intent table:
+The contracts target adapter owns API contract authoring, import, and validation. Its `build` brief runs the OpenAPI, AsyncAPI, and JSON Schema format sub-flows, each with author / import / verify references under `targets/contracts/references/`.
 
-- `/contract:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1).
-- `/contract:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0).
-- `/contract:json-schema` — author, import, or verify reusable payload schemas (JSON Schema).
-
-The matching CLI surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
+The matching CLI validation surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ### Plan-driven loop
 

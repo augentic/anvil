@@ -1,3 +1,479 @@
+# Code & Skill Review - Single Pass, Quality-Biased
+
+Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0; ignore back-compat, migrations, and deprecations.
+
+## Summary
+
+Top three by LOC removed: **F1 delete OCI sidecar reference metadata**, **F2 delete dead `Plan::resolve_sources`**, **F3 collapse ghost `/contract:*` plugin docs**.
+
+If every finding lands, estimated total delta is **~−647 LOC**. Primary non-LOC axes moved: **−3 types/fields**, fewer public API edges, fewer skill decision branches, fewer stale command surfaces. The finding most likely to break in remediation is **F1**, because sidecar/tool-show tests assert `oci_reference` today.
+
+Reconnaissance baseline:
+
+| Command | Result |
+|---|---|
+| `tokei "/Users/andrewweston/github.com/augentic/specify" "/Users/andrewweston/github.com/augentic/specify-cli"` | **119,895** total lines; Rust **47,170** lines / **41,236** code; Markdown **40,076** lines |
+| `cargo tree --manifest-path specify-cli/Cargo.toml --duplicates` | Duplicate tree is noisy through WASI/Warg (`base64` 0.21/0.22, `bitflags`, `rustix`, `wasmparser`, `thiserror`, etc.); no direct host dependency trim found without changing dependencies |
+| `rg -c '^#\[test\]' crates/ src/ tests/` | **459** test attributes |
+| `rg --files -g '**/mod.rs'` | **3** files: `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs` |
+| `wc -l docs/standards/*.md AGENTS.md` across both repos | **955** lines |
+| Files >500 lines under `crates/` and `src/` | `change/plan/core/model.rs` 809; `spec/provenance.rs` 631; `domain/tests/finalize.rs` 947; `domain/tests/registry.rs` 922; `domain/tests/workspace.rs` 1041; `tool/src/package.rs` 504; `tool/src/validate.rs` 520 |
+
+## Structural Findings
+
+### F1 - Delete OCI Reference Metadata
+
+**Evidence.** `crates/tool/src/package.rs:58,164-218,287-314,446-503`; `src/commands/tool/dto.rs:132-136`; `crates/tool/src/cache/meta.rs:128-140`. Current grep:
+
+```text
+rg -n 'oci_reference|oci-reference|OciProtocolMetadata|RegistryMetadata|protocol_config' crates/tool/src src/commands/tool
+```
+
+returns only package fetch, sidecar validation, display, and tests. `crates/tool/src/package.rs` is **504** lines in the >500 LOC reconnaissance list.
+
+**Action.**
+
+1. Remove `PackageMetadata.oci_reference`.
+2. Delete `derive_oci_reference`, `oci_reference_from_metadata`, `OciProtocolMetadata`, and the `RegistryMetadata` / `RegistryMetadataExt` imports.
+3. Stop printing `oci:` in `src/commands/tool/dto.rs`.
+4. Remove sidecar validation for `package.oci-reference`.
+5. Delete the OCI-specific package tests and update the resolver package metadata assertion to check only name/version/registry.
+
+Before:
+
+```rust
+pub struct PackageMetadata {
+    pub name: String,
+    pub version: String,
+    pub registry: String,
+    pub oci_reference: Option<String>,
+}
+```
+
+After:
+
+```rust
+pub struct PackageMetadata {
+    pub name: String,
+    pub version: String,
+    pub registry: String,
+}
+```
+
+**Quality delta.** `−103 LOC, −1 field, −1 best-effort network branch`. This holds correctness flat while deleting a non-authoritative display-only derivation.
+
+**Net LOC.** `880 → ~777` across `package.rs`, `dto.rs`, and `cache/meta.rs`.
+
+**Done when.**
+
+```bash
+rg 'oci_reference|oci-reference|OciProtocolMetadata|RegistryMetadata' crates/tool/src src/commands/tool
+```
+
+returns no hits.
+
+**Rule?** No.
+
+**Counter-argument.** OCI display is useful provenance; loses because package name/version/registry are already recorded and the extra well-known metadata fetch is not part of cache correctness.
+
+**Depends on.** none.
+
+### F2 - Delete Dead Source Resolver
+
+**Evidence.** Current grep:
+
+```text
+rg -n 'resolve_sources|ResolvedSourceBinding' specify-cli specify/AGENTS.md
+```
+
+hits only `AGENTS.md`, re-exports in `crates/domain/src/change.rs:10` and `crates/domain/src/change/plan/core.rs:18`, doc comments, `crates/domain/src/change/plan/core/model.rs:265-313`, and its own test at `model.rs:677-726`. No production caller exists. Recon: `model.rs` is **809** lines.
+
+**Action.**
+
+1. Delete `ResolvedSourceBinding`.
+2. Delete `Plan::resolve_sources`.
+3. Delete `resolve_sources_normalises_and_rejects_unknown_keys`.
+4. Remove `ResolvedSourceBinding` re-exports from `change.rs` and `change/plan/core.rs`.
+5. Remove `Plan::resolve_sources` from the cross-repo touch-list in `specify-cli/AGENTS.md`.
+
+Before:
+
+```rust
+pub fn resolve_sources(&self, slice: &Entry) -> Result<Vec<ResolvedSourceBinding>, Error> {
+    let mut out = Vec::with_capacity(slice.sources.len());
+    // ...
+    Ok(out)
+}
+```
+
+After:
+
+```rust
+// Callers use Entry::sources directly; no resolved DTO is exported.
+```
+
+**Quality delta.** `−101 LOC, −1 type, −1 public API edge`.
+
+**Net LOC.** `model.rs 809 → ~708`.
+
+**Done when.**
+
+```bash
+rg 'resolve_sources|ResolvedSourceBinding' /Users/andrewweston/github.com/augentic/specify-cli /Users/andrewweston/github.com/augentic/specify/AGENTS.md
+```
+
+returns no hits.
+
+**Rule?** No.
+
+**Counter-argument.** Refine will need it later; loses because current refine does not call it, and pre-1.0 should not keep future API.
+
+**Depends on.** none.
+
+### F3 - Collapse Ghost Contract Plugin Docs
+
+**Evidence.** Marketplace ships only `rt`, `client`, and `spec` in `.cursor-plugin/marketplace.json:12-28`. `Glob plugins/contract/**` returns **0 files**. Current grep:
+
+```text
+rg -c 'plugins/contract|/contract:(openapi|asyncapi|json-schema)|Contract plugin|Contract Plugin' AGENTS.md docs targets/contracts
+```
+
+still finds non-archive hits in `AGENTS.md`, `docs/reference/plugins/contract.md`, `docs/reference/quick-reference.md`, `docs/reference/targets/*`, `docs/reference/slice-skills/build.md`, `docs/standards/cli-contract.md`, and `targets/contracts/references/*`.
+
+**Action.**
+
+1. Delete `docs/reference/plugins/contract.md`.
+2. Remove its `docs/SUMMARY.md` nav entry.
+3. In target and CLI docs, replace `/contract:*` skill references with the current `targets/contracts/briefs/build.md` format sub-flow language.
+4. Update `AGENTS.md` to say the contracts target adapter owns format-specific author/import/verify references under `targets/contracts/references/`.
+
+Before:
+
+```markdown
+- `/contract:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1).
+```
+
+After:
+
+```markdown
+- `contracts.build` runs the OpenAPI, AsyncAPI, and JSON Schema sub-flows from `targets/contracts/references/`.
+```
+
+**Quality delta.** `−100 LOC, −1 stale slash-command surface, fewer doc edges`.
+
+**Net LOC.** `docs/reference/plugins/contract.md 85 → 0`, plus small reference trims.
+
+**Done when.**
+
+```bash
+rg 'plugins/contract|/contract:(openapi|asyncapi|json-schema)|Contract plugin' AGENTS.md docs targets/contracts
+```
+
+has no non-archive hits.
+
+**Rule?** No.
+
+**Counter-argument.** Those commands may exist externally; loses because this repository no longer ships that plugin, and the contracts target brief now carries the behavior.
+
+**Depends on.** none.
+
+### F4 - Reduce SoW Skill Body
+
+**Evidence.** Shipped skill line counts:
+
+```text
+wc -l plugins/client/skills/sow-writer/SKILL.md plugins/client/skills/sow-writer/references/section-templates.md
+→ 155 / 269
+```
+
+`SKILL.md:29-155` replays process steps, error handling, checklist, and guardrails that point back to `section-templates.md` fifteen times.
+
+**Action.**
+
+1. Keep frontmatter, authority/defaults, references, and examples.
+2. Delete the `Critical Path` section if the compact process remains, or delete the expanded `Process` section if the critical path remains.
+3. Delete the error table, verification checklist, and repeated guardrails.
+4. Replace the expanded process with one instruction to follow `references/section-templates.md` in order.
+
+Before:
+
+```markdown
+### Step 5: Generate Services
+
+Compose Scope (with In-Scope bullets), Design Inputs table, Deliverables table...
+```
+
+After:
+
+```markdown
+Follow `references/section-templates.md` from cover page through optional PDF rendering; it is the source of truth for section order and boilerplate.
+```
+
+**Quality delta.** `−95 LOC, fewer skill branches`.
+
+**Net LOC.** `155 → ~60`.
+
+**Done when.**
+
+```bash
+wc -l plugins/client/skills/sow-writer/SKILL.md
+```
+
+is `<= 70`.
+
+**Rule?** No.
+
+**Counter-argument.** Inline detail helps the model; loses because the referenced templates are canonical and already longer than the skill.
+
+**Depends on.** none.
+
+### F5 - Trim Replay Writer Prose
+
+**Evidence.** Shipped skill line counts:
+
+```text
+wc -l plugins/rt/skills/replay-writer/SKILL.md plugins/rt/skills/replay-writer/references/fixture-format.md
+→ 131 / 115
+```
+
+Fixture format and crate layout are restated in `SKILL.md:9-75` and `SKILL.md:109-131`, while `references/fixture-format.md` and `references/crate-layout.md` already own those details.
+
+**Action.**
+
+1. Keep arguments, prerequisites, the five execution steps, and references.
+2. Delete overview examples, ASCII crate layout, fixture-format restatement, authority boilerplate, and checklist.
+3. Replace them with links to `references/fixture-format.md` and `references/crate-layout.md`.
+
+Before:
+
+```markdown
+$CRATE_DIR/
+├── src/
+├── tests/
+│   └── data/
+│       └── replay/
+```
+
+After:
+
+```markdown
+Use the generated crate layout from `references/crate-layout.md`; replay data lives under `tests/data/replay/`.
+```
+
+**Quality delta.** `−75 LOC, fewer skill branches`.
+
+**Net LOC.** `131 → ~56`.
+
+**Done when.**
+
+```bash
+wc -l plugins/rt/skills/replay-writer/SKILL.md
+```
+
+is `<= 65`.
+
+**Rule?** No.
+
+**Counter-argument.** Replay is optional and needs extra context; loses because the context is already in `references/`.
+
+**Depends on.** none.
+
+### F6 - Delete Provenance Renderer
+
+**Evidence.** Current grep:
+
+```text
+rg -n 'pub fn render\(|render\(' crates/domain/src/spec
+```
+
+returns only `crates/domain/src/spec/provenance.rs:351` and renderer-only tests at `crates/domain/src/spec/provenance/tests.rs:110,120,126`. No production caller exists. Recon: `provenance.rs` is **631** lines.
+
+**Action.**
+
+1. Delete `render`.
+2. Remove `use std::fmt::Write as _`.
+3. Delete `divergence_block_round_trips` and `single_source_block_round_trips`, or rewrite them to parse-only assertions if any non-rendering check remains valuable.
+
+Before:
+
+```rust
+pub fn render(req: &Requirement) -> String {
+    let mut out = String::new();
+    // ...
+    out
+}
+```
+
+After:
+
+```rust
+// Parser and validator remain; no canonical writer is exported.
+```
+
+**Quality delta.** `−69 LOC, −1 module edge`.
+
+**Net LOC.** `provenance.rs 631 → ~598`; `provenance/tests.rs 327 → ~291`.
+
+**Done when.**
+
+```bash
+rg 'pub fn render\(|render\(' crates/domain/src/spec
+```
+
+returns no hits.
+
+**Rule?** No.
+
+**Counter-argument.** Future synthesis might reuse it; loses because current synthesis does not.
+
+**Depends on.** none.
+
+### F7 - Put Finalize Detail In Runbook
+
+**Evidence.**
+
+```text
+wc -l plugins/spec/skills/finalize/SKILL.md plugins/spec/skills/finalize/references/runbook.md
+→ 111 / 227
+```
+
+`runbook.md:3` says procedural detail lives in the runbook, but `SKILL.md:13-80` repeats the drained check, push, PR polling, archive, and halt table.
+
+**Action.**
+
+1. Keep the orientation paragraph.
+2. Replace detailed steps 1-5 with five one-line critical-path bullets.
+3. Delete the halt table and repeated guardrails.
+4. Keep the success closing message and link to `references/runbook.md`.
+
+Before:
+
+```markdown
+### 4. PR observation loop
+
+For every pushed project, fetch PR state and poll until `MERGED`.
+```
+
+After:
+
+```markdown
+Follow `references/runbook.md` for pre-flight, drainage, push, PR observation, archive, and wrap-up.
+```
+
+**Quality delta.** `−68 LOC, fewer skill branches`.
+
+**Net LOC.** `111 → ~43`.
+
+**Done when.**
+
+```bash
+wc -l plugins/spec/skills/finalize/SKILL.md
+```
+
+is `<= 50`.
+
+**Rule?** No.
+
+**Counter-argument.** Finalization is risky; loses because the runbook is already the risk control.
+
+**Depends on.** none.
+
+## One-Touch Tidies
+
+### T1 - Drop Internal `#[non_exhaustive]`
+
+**Evidence.**
+
+```text
+rg '#\[non_exhaustive\]' crates
+```
+
+returns **12** hits across internal pre-1.0 enums/structs: slice metadata/outcome/create/lifecycle, adapter operation/core, tool error, journal, plan status/lifecycle/divergence, and root error.
+
+**Action.** Delete the attributes in place. Do not add compatibility shims or replacement comments.
+
+**Quality delta.** `−12 LOC, lower match burden`.
+
+**Net LOC.** `12 attribute lines → 0`.
+
+**Done when.**
+
+```bash
+rg '#\[non_exhaustive\]' crates
+```
+
+returns no hits.
+
+**Rule?** No.
+
+**Counter-argument.** Future-proofing public API; loses because this is a pre-1.0 workspace-internal surface.
+
+**Depends on.** none.
+
+### T2 - Delete Slice Metadata Version Default
+
+**Evidence.** Current grep:
+
+```text
+rg -n 'METADATA_VERSION|default_version\(|pub version: u32|defaults_version_when_absent|version: crate::slice::METADATA_VERSION|version: METADATA_VERSION' crates/domain/src crates/domain/tests
+```
+
+shows `METADATA_VERSION`, `default_version`, `SliceMetadata.version`, create-time plumbing, test plumbing, and one absent-version back-compat test. Comments in `crates/domain/src/slice/metadata.rs:19-21` say readers dispatch on `outcome`, not version.
+
+**Action.**
+
+1. Remove `METADATA_VERSION`.
+2. Remove `default_version`.
+3. Remove `SliceMetadata.version`.
+4. Remove version assignments in slice creation and tests.
+5. Delete `defaults_version_when_absent`.
+
+Before:
+
+```rust
+#[serde(default = "default_version")]
+pub version: u32,
+```
+
+After:
+
+```rust
+// Slice metadata readers dispatch on fields, not a schema-version integer.
+```
+
+**Quality delta.** `−24 LOC, −1 field, less call-site plumbing`.
+
+**Net LOC.** `metadata.rs 269 → ~248`.
+
+**Done when.**
+
+```bash
+rg 'METADATA_VERSION|default_version|version: crate::slice::METADATA_VERSION' crates/domain
+```
+
+returns no hits.
+
+**Rule?** No.
+
+**Counter-argument.** Schema versions help migrations; loses because this pass is explicitly pre-1.0 and migration-agnostic.
+
+**Depends on.** none.
+
+## Ranking
+
+| Rank | ID | Estimated Delta | Axes |
+|---|---:|---:|---|
+| 1 | F1 | −103 LOC | LOC, field, branch |
+| 2 | F2 | −101 LOC | LOC, type, public API edge |
+| 3 | F3 | −100 LOC | LOC, stale command surface, doc edges |
+| 4 | F4 | −95 LOC | LOC, skill branches |
+| 5 | F5 | −75 LOC | LOC, skill branches |
+| 6 | F6 | −69 LOC | LOC, module edge |
+| 7 | F7 | −68 LOC | LOC, skill branches |
+| 8 | T2 | −24 LOC | LOC, field, call-site burden |
+| 9 | T1 | −12 LOC | LOC, match burden |
+
+All findings are in-place deletions or trims. No new files, modules, traits, crates, dependencies, docs standards, enforcement, or tests are proposed.
 # Code & Skill Review — single pass, quality-biased
 
 Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0, no back-compat.
@@ -291,6 +767,14 @@ One line per finding from the previous review pass; retained for calibration con
 
 ### This pass
 
+- **F1 (OCI metadata)** — Delete OCI Reference Metadata: actual **−126** vs predicted −103; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
+- **F2 (source resolver)** — Delete Dead Source Resolver: actual **−104** vs predicted −101; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
+- **F3 (contract docs)** — Collapse Ghost Contract Plugin Docs: actual **−95** vs predicted −100; done-when assertion flipped cleanly; `cargo make check` green; `make checks` still fails on pre-existing RFC-25 broken links; no F3 regressions.
+- **F4 (SoW skill)** — Reduce SoW Skill Body: actual **−121** vs predicted −95; done-when assertion flipped cleanly (`wc -l` → 34); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F4 regressions.
+- **F5 (replay writer)** — Trim Replay Writer Prose: actual **−66** vs predicted −75; done-when assertion flipped cleanly (`wc -l` → 65); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F5 regressions.
+- **F6 (provenance renderer)** — Delete Provenance Renderer: actual **−71** vs predicted −69; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
+- **F7 (finalize skill)** — Put Finalize Detail In Runbook: actual **−70** vs predicted −68; done-when assertion flipped cleanly (`wc -l` → 41); `cargo make check` green; `make checks` still fails on pre-existing RFC-25/RFC-25-plan broken links; no F7 regressions.
+- **T1 (`#[non_exhaustive]`)** — Drop Internal `#[non_exhaustive]`: actual **−13** vs predicted −12; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
 - **F1** — Delete RFC-20 survey module: actual **−2277** vs predicted −1908; `rg -c 'survey|SurfacesDocument' crates/ tests/ schemas/` → 0; `cargo make check` green; no regressions (extra −369 from integration tests/fixtures tail).
 - **F2** — Retire `adapters/default` pipeline shell (+ T5): actual **−173** vs predicted −553; all `rg` done-when assertions → 0; `make checks` green; no regressions (undershoot: codex moved intact, validation retargeted not deleted).
 - **F3** — Gut stale phase-outcome contract (+ T1, T3): actual **−125** vs predicted −110; all `rg` done-when assertions → 0; `make checks` green; no regressions.
@@ -299,6 +783,7 @@ One line per finding from the previous review pass; retained for calibration con
 - **F6** — Delete `slice outcome set`: actual **−686** vs predicted −320; all done-when assertions flip cleanly; `cargo make check` green; no regressions (test-block tail drove 2× overshoot).
 - **F7** — Drop dead `feature` terminology branch: actual **−43** vs predicted −38; `rg -c 'terminology' validate/` → 0; validate tests green; no regressions (already in working tree; sign did not invert unlike prior F7).
 - **T4** — Collapse `pass`/`fail`/`deferred` helpers: actual **−15** vs predicted −15; `rg` done-when → 0; `cargo make check` green; no regressions.
+- **T2 (slice metadata version)** — Delete Slice Metadata Version Default: actual **−48** vs predicted −24; done-when assertion flipped cleanly; `cargo make check` green; no regressions.
 - **T1/T2/T3/T5** — Folded into F3/F4/F2 respectively; no separate post-mortem lines.
 
 ### Calibration shape (prior pass)

@@ -36,8 +36,8 @@ Walk `$CONTRACTS_DIR/` for `.yaml`, `.yml`, and `.json` files. For each file, re
 | `swagger: "2.0"` | Swagger 2.0 | OpenAPI 3.1 |
 | `openapi: "3.0.x"` | OpenAPI 3.0.x | OpenAPI 3.1 |
 | `openapi: "3.1.x"` | OpenAPI 3.1.x | No version conversion |
-| `asyncapi:` (any version) | **Out of scope.** Route to `/contract:asyncapi` importer. |
-| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/contract:json-schema` importer. |
+| `asyncapi:` (any version) | **Out of scope.** Route to the `asyncapi` importer sub-flow. |
+| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to the `json-schema` importer sub-flow. |
 | None of the above | Unrecognised. Skip and flag for manual review. |
 
 A file with both `openapi:` and `$schema:` keys is an OpenAPI document (`openapi:` wins). Detection keys are case-sensitive — do not normalise casing before classification.
@@ -412,7 +412,7 @@ Report semantics:
 
 | Scenario | Handling |
 |---|---|
-| Mixed input formats (Swagger 2.0 + OpenAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/contract:json-schema`. |
+| Mixed input formats (Swagger 2.0 + OpenAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to the `json-schema` importer sub-flow. |
 | OpenAPI file `$ref`s a sibling file in `$CONTRACTS_DIR/` | Process the referenced file first; rewrite the `$ref` to the post-decomposition path. |
 | Swagger 2.0 file with external `$ref` (URL or absolute path) | Cannot auto-resolve. Flag in the report; never silently drop. |
 | Name collision during decomposition (two distinct schemas, same derived filename) | Disambiguate by prefixing with the source API domain (`user-api-error.yaml` vs `billing-api-error.yaml`). |

@@ -1,6 +1,6 @@
 # Import / Upgrade Policy
 
-Cross-format framework for normalising externally-supplied contracts onto Specify conventions. Each format skill (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) implements its own importer; this reference captures the rules they share — format detection, upgrade targets, lossless-vs-lossy decisions, and when to refuse and ask the operator.
+Cross-format framework for normalising externally-supplied contracts onto Specify conventions. Each contracts build format sub-flow (`openapi`, `asyncapi`, `json-schema`) implements its own importer; this reference captures the rules they share — format detection, upgrade targets, lossless-vs-lossy decisions, and when to refuse and ask the operator.
 
 ## The four legs of every importer
 
@@ -21,13 +21,13 @@ Detection runs against the top-level YAML/JSON keys of each input file. The firs
 
 | Priority | Signal | Classification | Owner |
 |---|---|---|---|
-| 1 | `swagger:` (any value) | Swagger 2.0 | `/contract:openapi` |
-| 2 | `openapi: "3.0.x"` | OpenAPI 3.0.x | `/contract:openapi` |
-| 3 | `openapi: "3.1.x"` | OpenAPI 3.1.x | `/contract:openapi` |
-| 4 | `asyncapi: "2.x"` | AsyncAPI 2.x | `/contract:asyncapi` |
-| 5 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | `/contract:asyncapi` |
-| 6 | `$schema:` (no protocol key) | Standalone JSON Schema | `/contract:json-schema` |
-| 7 | `$id:` / `properties:` / `definitions:` / `$defs:` (no protocol key, no `$schema:`) | Probable JSON Schema (draft unknown) | `/contract:json-schema` |
+| 1 | `swagger:` (any value) | Swagger 2.0 | `openapi` sub-flow |
+| 2 | `openapi: "3.0.x"` | OpenAPI 3.0.x | `openapi` sub-flow |
+| 3 | `openapi: "3.1.x"` | OpenAPI 3.1.x | `openapi` sub-flow |
+| 4 | `asyncapi: "2.x"` | AsyncAPI 2.x | `asyncapi` sub-flow |
+| 5 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | `asyncapi` sub-flow |
+| 6 | `$schema:` (no protocol key) | Standalone JSON Schema | `json-schema` sub-flow |
+| 7 | `$id:` / `properties:` / `definitions:` / `$defs:` (no protocol key, no `$schema:`) | Probable JSON Schema (draft unknown) | `json-schema` sub-flow |
 | 8 | None of the above | Unrecognised | Skip; flag for manual review |
 
 Detection rules for every importer:
@@ -113,4 +113,4 @@ Every format-specific importer follows these principles:
 - [`artifact-structure`](artifact-structure.md) — directory layout for the post-import baseline shape.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — `$id` stability and baseline-immutability rules that the importer obeys.
 - [`report-shape`](report-shape.md) — import report structure, including the "Manual Review Required" section.
-- Format-specific importers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/importer.md`.
+- Format-specific importers — `targets/contracts/references/{openapi,asyncapi,json-schema}/importer.md`.

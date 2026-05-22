@@ -164,10 +164,10 @@ Operation names must be unique across all AsyncAPI files in the contract tree.
 
 ## Schema reuse and `$ref` discipline
 
-Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/contract:json-schema`). The author of an AsyncAPI file does **not** create or edit schema files — it only references them.
+Shared payload schemas live in `contracts/schemas/` and are owned by the `json-schema` sub-flow. The author of an AsyncAPI file does **not** create or edit schema files — it only references them.
 
 - **Always `$ref`** message payloads to `../schemas/<type>.yaml`. The `$ref` lives on the message's `payload` field inside `components/messages`.
-- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (the contracts adapter build brief calls the json-schema skill first per the cross-format ordering rule).
+- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to the `json-schema` sub-flow (the contracts adapter build brief runs `json-schema` first per the cross-format ordering rule).
 - **`$ref` resolution scope.** All payload `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this slice's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Headers stay inline.** Message headers describe the envelope (correlation IDs, partition keys, trace context) and are typically a small map of primitive types. Inline them as a `headers` object on the message — do not extract them to `../schemas/`. The body is the payload; the envelope is not.
 - **Internal `$ref`s for channel→message and operation→channel** stay on the `#/components/messages/...` and `#/channels/...` form — those are document-internal pointers, not cross-file schema references.
@@ -301,6 +301,6 @@ Before declaring the author run complete:
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
-- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the AsyncAPI document (owned by `/contract:json-schema`).
+- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the AsyncAPI document (owned by the `json-schema` sub-flow).
 - [`importer.md`](./importer.md) — sibling for normalising external AsyncAPI documents.
 - [`verifier.md`](./verifier.md) — sibling for validating the authored output.

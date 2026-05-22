@@ -1,10 +1,10 @@
-# RFC-26: Synthesis Sharpening
+# RFC-27: Synthesis Sharpening
 
 > Status: Draft. Additive to [RFC-25](rfc-25-workflow.md); supersedes nothing. Lifts the four sharpening recommendations in [rfc-25-synthesis.md](rfc-25-synthesis.md) into normative decisions. Compatible with [RFC-19](rfc-19-observability.md) (new journal events), [RFC-21](rfc-21-catalogue.md) (`sources.yaml`), and [RFC-24](rfc-24-omnia.md) (`shape` is unchanged).
 
 ## Abstract
 
-RFC-25 put the slice boundary on disk before any LLM writes a `spec.md`, which is the right operator-trust seam for code-generation accuracy on multi-source migrations. RFC-26 keeps that spine and sharpens the four places the synthesis review identified as load-bearing weak points without redesigning either fusion layer:
+RFC-25 put the slice boundary on disk before any LLM writes a `spec.md`, which is the right operator-trust seam for code-generation accuracy on multi-source migrations. RFC-27 keeps that spine and sharpens the four places the synthesis review identified as load-bearing weak points without redesigning either fusion layer:
 
 1. **A first-class runtime source adapter.** Promote `plugins/rt/`'s wiretap-and-replay pattern into a `sources/code-runtime/` source adapter. Captured fixtures become `Evidence` with a new `kind: example` claim and default authority `behaviour`. Targets MAY consume the same fixtures during `build` and record results in `.metadata.yaml`; v1 keeps the replay hook optional and operator-visible, with no automatic `merge` refusal.
 2. **Authority widens beyond the closed 3-class enum.** Authority becomes a property of `(Evidence document, claim kind)` rather than a property of the Evidence document alone, with per-slice operator overrides in `plan.yaml`. The current `intent > documentation > behaviour` ordering stays as the default per kind; per-slice overrides land at Gate 1, not after synthesis.
@@ -680,7 +680,7 @@ Scenarios #26-1 and #26-2 are the release blockers: D1 is the largest substantiv
 
 ## Migration
 
-RFC-26 is **strictly additive**. There is no `migrate-to-2.1.sh`. Concrete consequences:
+RFC-27 is **strictly additive**. There is no `migrate-to-2.1.sh`. Concrete consequences:
 
 **For operators.**
 - Existing `plan.yaml`, `evidence/*.yaml`, `discovery.md`, and slice directories validate without change.
@@ -724,11 +724,11 @@ Adding new authority classes would force a schema change and disturb every consu
 
 ### A5 — `--auto-review` only for single-slice pure-intent plans (rejected)
 
-[rfc-25-synthesis.md](rfc-25-synthesis.md) §4 recommended narrowing `--auto-review` to single-slice pure-intent plans. RFC-26 broadens the flag to any plan shape after weighing the alternative: the operator's review is the act of typing the create command, and that act is the same whether the plan has one slice or ten. Forcing a second CLI invocation on hand-authored multi-slice plans buys no review value — the operator already named every binding on the same line — and pushes the most-experienced operators toward muscle-memorising the transition command anyway, eroding rather than reinforcing the Gate-1 trust seam. The flag is opt-in; operators who want agent-led `propose` review continue to use the two-call path and see byte-identical final state.
+[rfc-25-synthesis.md](rfc-25-synthesis.md) §4 recommended narrowing `--auto-review` to single-slice pure-intent plans. RFC-27 broadens the flag to any plan shape after weighing the alternative: the operator's review is the act of typing the create command, and that act is the same whether the plan has one slice or ten. Forcing a second CLI invocation on hand-authored multi-slice plans buys no review value — the operator already named every binding on the same line — and pushes the most-experienced operators toward muscle-memorising the transition command anyway, eroding rather than reinforcing the Gate-1 trust seam. The flag is opt-in; operators who want agent-led `propose` review continue to use the two-call path and see byte-identical final state.
 
 ### A6 — Fixture replay as a required `build` step with auto-`merge`-refusal (rejected)
 
-An earlier draft of D1 made the fixture-replay hook a hard `build` step and refused `merge` on `failed > 0`. RFC-26 keeps the hook target-optional and operator-visible after weighing two costs of the strict posture: (1) every target adapter would need to implement the hook before v1 lands, blocking the release on Vectis and contracts work that has no `code-runtime` consumer; and (2) auto-refusal at `merge` makes synthesis-tag posture inconsistent — RFC-25 explicitly leaves `[conflict]` and `[divergence]` as review signals rather than gates, and bolting an automatic gate onto fixture failure breaks that invariant. The optional posture matches RFC-24 §`surfaces[]` (target-specific structured outputs are recorded for operator review, not gated on). A future RFC may promote auto-refusal into core if v1 telemetry shows operators consistently want it.
+An earlier draft of D1 made the fixture-replay hook a hard `build` step and refused `merge` on `failed > 0`. RFC-27 keeps the hook target-optional and operator-visible after weighing two costs of the strict posture: (1) every target adapter would need to implement the hook before v1 lands, blocking the release on Vectis and contracts work that has no `code-runtime` consumer; and (2) auto-refusal at `merge` makes synthesis-tag posture inconsistent — RFC-25 explicitly leaves `[conflict]` and `[divergence]` as review signals rather than gates, and bolting an automatic gate onto fixture failure breaks that invariant. The optional posture matches RFC-24 §`surfaces[]` (target-specific structured outputs are recorded for operator review, not gated on). A future RFC may promote auto-refusal into core if v1 telemetry shows operators consistently want it.
 
 ### A7 — Per-Evidence `priority:` number instead of `authority-overrides` map (rejected)
 
@@ -736,7 +736,7 @@ A numeric priority field would generalise authority resolution but loses the clo
 
 ### A8 — `fusion.yaml` as references-only (rejected)
 
-An earlier draft of D4 kept `fusion.yaml` at `(source, claim-id)` references and required operators to open every contributing `evidence/*.yaml` to read the dropped values during a `[divergence]` review. RFC-26 carries inline `value` payloads on every `contributing-claim` after weighing the trade-off: synthesis surprises are rare but high-cost when they happen, and the dominant audit pattern is "what did each source actually say?" — a question that requires opening N evidence files in the references-only design and zero in the inline design. The inline payload adds bounded size to `fusion.yaml` (single-line `value` strings, 16 KiB cap with truncation indicator), preserves byte-stable diffs, and keeps the index a single-file audit surface. The full per-kind body (e.g. `example` claim `input` / `output` blocks) stays in the source evidence file, linked by `path` — `fusion.yaml` is still an index, not a re-encoding.
+An earlier draft of D4 kept `fusion.yaml` at `(source, claim-id)` references and required operators to open every contributing `evidence/*.yaml` to read the dropped values during a `[divergence]` review. RFC-27 carries inline `value` payloads on every `contributing-claim` after weighing the trade-off: synthesis surprises are rare but high-cost when they happen, and the dominant audit pattern is "what did each source actually say?" — a question that requires opening N evidence files in the references-only design and zero in the inline design. The inline payload adds bounded size to `fusion.yaml` (single-line `value` strings, 16 KiB cap with truncation indicator), preserves byte-stable diffs, and keeps the index a single-file audit surface. The full per-kind body (e.g. `example` claim `input` / `output` blocks) stays in the source evidence file, linked by `path` — `fusion.yaml` is still an index, not a re-encoding.
 
 ## Non-goals
 

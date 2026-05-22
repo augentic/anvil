@@ -37,7 +37,7 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 
 ### Contract-only changes
 
-Changes using the `contracts` adapter have a different build behavior. The build brief delegates to the format-appropriate `/contract:*` skill -- `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas -- rather than code-generation skills. It runs author or importer intent to produce change-local contract artifacts, then verifier intent for structural validation. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
+Changes using the `contracts` adapter have a different build behavior. The build brief dispatches to the format-appropriate sub-flow in `targets/contracts/briefs/build.md`: `openapi` for HTTP / resource APIs, `asyncapi` for evented / pub-sub / streaming, and `json-schema` for shared payload schemas. It runs author or importer intent to produce change-local contract artifacts, then verifier intent for structural validation. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same sub-flow's producing intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
 
 ## Lifecycle transitions
 

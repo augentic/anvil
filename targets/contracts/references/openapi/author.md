@@ -139,10 +139,10 @@ The full structural rules — path conventions, method semantics, response code 
 
 ## Schema reuse and `$ref` discipline
 
-Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/contract:json-schema`). The author of an OpenAPI file does **not** create or edit schema files — it only references them.
+Shared payload schemas live in `contracts/schemas/` and are owned by the `json-schema` sub-flow. The author of an OpenAPI file does **not** create or edit schema files — it only references them.
 
 - **Always `$ref`** request bodies, response bodies, and reusable parameter schemas to `../schemas/<type>.yaml`.
-- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (or, in the same `/spec:build` invocation, the contracts adapter build brief calls the json-schema skill first per the cross-format ordering rule).
+- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to the `json-schema` sub-flow (or, in the same `/spec:build` invocation, rely on the contracts adapter build brief's fixed `json-schema`-first ordering).
 - **`$ref` resolution scope.** All `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this slice's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Inline `$defs`** for one-shot sub-objects used only inside one parent payload are acceptable in the schema files themselves, but not in the OpenAPI document. Keep the OpenAPI side a flat list of `$ref` pointers.
 - **`components/schemas` is forbidden** for domain types. The `components` block may host `parameters`, `headers`, or `securitySchemes` (see Auth below).
@@ -286,7 +286,7 @@ After producing the report, run [`verifier.md`](./verifier.md) in `single` mode 
 | Spec asserts a status code with no response shape | Use `$ref: "../schemas/error-response.yaml"` (or the spec-named error schema) and add a one-sentence `description` derived from the spec's wording. |
 | Two specs claim the same `(path, method)` with different shapes | Surface the conflict as a warning; do not write a delta until the specs are reconciled. |
 | Baseline operation uses `components/schemas` (legacy from a manual import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
-| Spec describes pagination | Use the standard `limit` / `offset` query params from [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) §Pagination unless the spec requires cursor-based — in which case define a pagination wrapper schema via `/contract:json-schema`. |
+| Spec describes pagination | Use the standard `limit` / `offset` query params from [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) §Pagination unless the spec requires cursor-based — in which case define a pagination wrapper schema via the `json-schema` sub-flow. |
 
 ## Verification checklist
 
@@ -305,6 +305,6 @@ Before declaring the author run complete:
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract that the §Baseline-delta computation rules above operationalise for OpenAPI.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
-- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the OpenAPI document (owned by `/contract:json-schema`).
+- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the OpenAPI document (owned by the `json-schema` sub-flow).
 - [`importer.md`](./importer.md) — sibling for normalising external OpenAPI documents.
 - [`verifier.md`](./verifier.md) — sibling for validating the authored output.

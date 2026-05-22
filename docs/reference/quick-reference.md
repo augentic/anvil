@@ -28,9 +28,6 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
 | `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
 | `/spec:drop`             | Discard a slice without merging                                                                |
-| `/contract:openapi`      | Author / import / verify OpenAPI 3.1 contracts; intent dispatched internally                   |
-| `/contract:asyncapi`     | Author / import / verify AsyncAPI 3.0 contracts; intent dispatched internally                  |
-| `/contract:json-schema`  | Author / import / verify reusable JSON Schema payloads; intent dispatched internally           |
 
 ## Artifacts
 

@@ -102,7 +102,7 @@ When the slice's specs describe no API interactions and no Source Material lists
 
 ## Format sub-flows
 
-The three sub-flows below carry the same author / import / verify intent dispatch — each lifts the body of the corresponding `/contract:*` skill verbatim. Pick the sub-flow that matches the slice's format; load only the sibling intent files (`references/<format>/{author,importer,verifier}.md`) the selected sub-flow needs.
+The three sub-flows below carry the same author / import / verify intent dispatch. Pick the sub-flow that matches the slice's format; load only the sibling intent files (`references/<format>/{author,importer,verifier}.md`) the selected sub-flow needs.
 
 ### openapi sub-flow
 

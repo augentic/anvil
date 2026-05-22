@@ -1,6 +1,6 @@
 # Report Shape
 
-Output formats for the format-skill verifiers (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) and — by convention — the matching alignment / import reports produced by the author and importer paths.
+Output formats for the contracts build format verifiers (`openapi`, `asyncapi`, `json-schema`) and — by convention — the matching alignment / import reports produced by the author and importer paths.
 
 The verifier runs in two modes, but RM-04 compatibility reporting is a CLI surface rather than a format-skill report (see also [`cross-project-compatibility`](cross-project-compatibility.md)):
 
@@ -199,4 +199,4 @@ The author / importer paths always run the verifier afterwards. If the verifier 
 - [`cross-project-compatibility`](cross-project-compatibility.md) — RM-04 classification policy and `change-kind` vocabulary.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — alignment report structure for the author paths.
 - [`import-upgrade-policy`](import-upgrade-policy.md) — import report's "Manual Review Required" section.
-- Format-specific verifiers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/verifier.md`.
+- Format-specific verifiers — `targets/contracts/references/{openapi,asyncapi,json-schema}/verifier.md`.

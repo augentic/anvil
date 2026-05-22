@@ -35,9 +35,9 @@ Walk `$CONTRACTS_DIR/` for `.yaml`, `.yml`, and `.json` files. For each file, re
 |---|---|---|
 | `asyncapi: "2.x.x"` | AsyncAPI 2.x | AsyncAPI 3.0 |
 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | No version conversion |
-| `openapi:` (any version) | **Out of scope.** Route to `/contract:openapi` importer. |
-| `swagger: "2.0"` | **Out of scope.** Route to `/contract:openapi` importer. |
-| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/contract:json-schema` importer. |
+| `openapi:` (any version) | **Out of scope.** Route to the `openapi` importer sub-flow. |
+| `swagger: "2.0"` | **Out of scope.** Route to the `openapi` importer sub-flow. |
+| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to the `json-schema` importer sub-flow. |
 | None of the above | Unrecognised. Skip and flag for manual review. |
 
 The detection signal is the top-level `asyncapi:` key. AsyncAPI minor versions in the 2.x range (2.0.0 through 2.6.0) all upgrade through the same conversion rules; detection only needs to distinguish 2.x from 3.0.
@@ -344,7 +344,7 @@ Report semantics:
 
 | Scenario | Handling |
 |---|---|
-| Mixed input formats (AsyncAPI 2.x + AsyncAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/contract:json-schema`. |
+| Mixed input formats (AsyncAPI 2.x + AsyncAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to the `json-schema` importer sub-flow. |
 | AsyncAPI file `$ref`s a sibling file in `$CONTRACTS_DIR/` | Process the referenced file first; rewrite the `$ref` to the post-decomposition path. |
 | AsyncAPI 2.x file with both `publish` and `subscribe` on the same channel | Generate two separate operations in 3.0 — one with `action: send`, one with `action: receive`. Carry both `operationId` values forward. |
 | AsyncAPI 2.x channel key uses unusual separators (e.g. `user.registered.v2`) | Convert to camelCase key (`userRegisteredV2`); dot-notation address (`user.registered.v2`); flag the version segment in the report — channel addresses should not encode versions per the conventions reference. |
