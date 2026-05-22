@@ -11,8 +11,8 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
-| [`transition`](#specify-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
-| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus the four health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry`). First triage step when `/spec:execute` reports `stuck`. |
+| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> reviewed`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
 | [`status`](#specify-plan-status) | Render plan progress in topological order with per-status counts. |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify plan finalize` rather than directly.) |
@@ -53,9 +53,8 @@ Health diagnostics layered on top — first triage step when `/spec:execute` rep
 | `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specify plan amend <name> --depends-on …` to break the cycle, then re-run validate. |
 | `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
 | `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `missing-sync-stamp` (no stamp file and no readable git remote). | `specify workspace sync` to refresh the clone. |
-| `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Payload lists the immediate blocking predecessors and their statuses. | `specify plan transition <pred> pending` (after fixing the underlying issue) or `specify plan transition <entry> skipped --reason …` to drop the leaf. |
 
-JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone` / `unreachable-entry`). Base validate findings carry no `data` field; the four health diagnostics always do.
+JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone`). Base validate findings carry no `data` field; the three health diagnostics always do.
 
 Exit code: `0` when no error-severity finding fires (warnings are non-fatal); `2` when any error-severity finding fires.
 
@@ -101,19 +100,18 @@ specify plan amend <name> [--project <name>] [--description "<text>"] [--depends
 
 ### specify plan transition
 
-Move a plan entry through the status state machine.
+Stamp Gate 1 or close a merged plan entry.
 
 ```bash
 specify plan transition <name> <target> [--reason "<text>"]
 ```
 
-| Target | Legal from |
-|--------|-----------|
-| `in-progress` | `pending` |
-| `done` | `in-progress` |
-| `failed` | `in-progress` |
-| `blocked` | `in-progress` |
-| `skipped` | `pending` |
+| Target | Applies to | Meaning |
+|--------|------------|---------|
+| `reviewed` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
+| `done` | `<entry-name>` (a `slices[]` row) | Close the entry after `/spec:merge` folded the slice. |
+
+Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 At most one entry may be `in-progress` at a time.
 

@@ -8,7 +8,7 @@ The Vectis adapter manifest, briefs, and skill bodies have moved to [`targets/ve
 - [`codex/`](codex/) — Vectis-specific review rules consumed by the Vectis reviewer passes inside [`targets/vectis/briefs/build.md`](../../targets/vectis/briefs/build.md) and [`targets/vectis/briefs/merge.md`](../../targets/vectis/briefs/merge.md).
 - [`examples/`](examples/) — reference compositions kept for documentation.
 
-These files will move under `targets/vectis/` (or be promoted to a top-level `schemas/vectis/` location) in W5.2; the present directory is the cleanest place to host them until that chunk lands without breaking the published `$id` URLs.
+These files will move under `targets/vectis/` (or be promoted to a top-level `schemas/vectis/` location) per [rfc-25-plan.md](../../rfcs/rfc-25-plan.md) §Outstanding work item 4; the present directory is the cleanest place to host them until that follow-up lands without breaking the published `$id` URLs.
 
 ## Where the workflow lives now
 

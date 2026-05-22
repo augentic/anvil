@@ -9,9 +9,8 @@ Per-skill guardrails — rules that only make sense for one skill ("never auto-p
 The CLI is the **only** writer for change and slice lifecycle state. Skills route every write through a CLI verb; they never edit the underlying files by hand.
 
 - **Never hand-edit `plan.yaml`.** Append entries through `specify plan add`; transition entries through `specify plan transition`; close out the plan through `specify plan finalize`. The single-writer contract lives in [`plan` skill body](../spec/skills/plan/SKILL.md).
-- **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; phase outcomes go through `specify slice outcome set`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
-- **Never hand-edit `.specify/slices/<name>/journal.yaml`.** Use `specify slice journal append` (or the driver-owned equivalents called out in the [`execute` skill body](../spec/skills/execute/SKILL.md)).
-- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specify slice merge`, `specify slice drop`, and `specify plan finalize`.
+- **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specify slice transition`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
+- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan finalize`.
 - **Never hand-roll `AGENTS.md` during init.** `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
 
 ## Baseline immutability for contract authoring

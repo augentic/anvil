@@ -1,6 +1,6 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers rule markdown under adapters/<cap>/codex/** plus
-//     the optional repo-root codex/** overlay,
+//   - discovers rule markdown under targets/<cap>/codex/** and
+//     sources/<cap>/codex/** plus the optional repo-root codex/** overlay,
 //   - validates frontmatter against codex-rule.schema.json,
 //   - enforces a `## Rule` body heading and adapter-namespace
 //     ownership (e.g. `omnia` may only emit `OMNIA-*`, `RUST-*`, `SEC-*`
@@ -8,7 +8,7 @@
 
 import {
   Ajv2020,
-  PROFILES_DIR,
+  SOURCES_DIR,
   TARGETS_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
@@ -34,10 +34,12 @@ const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
   vectis: new Set(["VECTIS"]),
 };
 
+const CODEX_DISCOVERY_ROOTS = [SOURCES_DIR, TARGETS_DIR];
+
 async function discoverCodexRuleFiles(): Promise<string[]> {
   const paths: string[] = [];
 
-  for (const root of [PROFILES_DIR, TARGETS_DIR]) {
+  for (const root of CODEX_DISCOVERY_ROOTS) {
     try {
       const stat = await Deno.stat(root);
       if (!stat.isDirectory) continue;
@@ -80,7 +82,7 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
 }
 
 function adapterOwnerForCodexPath(path: string): string | null {
-  for (const root of [PROFILES_DIR, TARGETS_DIR]) {
+  for (const root of CODEX_DISCOVERY_ROOTS) {
     const rel = relative(root, path);
     if (rel.startsWith("..") || rel.startsWith("/")) continue;
     const parts = rel.split("/");

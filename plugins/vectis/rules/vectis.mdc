@@ -22,7 +22,7 @@ This plugin contributes the Vectis adapter manifest and its briefs to the RFC-25
 └── references/                      # Crux idiom prose, design-system docs, layout-inferer contract
 ```
 
-The adapter manifest, the three briefs (`shape`, `build`, `merge`), and the WASI tool declaration live under [`targets/vectis/`](../../../targets/vectis/). The shared schemas (`composition.schema.json`, `tokens.schema.json`, `assets.schema.json`) and the Vectis codex stay under [`adapters/vectis/`](../../../adapters/vectis/) until W5.2 relocates them.
+The adapter manifest, the three briefs (`shape`, `build`, `merge`), and the WASI tool declaration live under [`targets/vectis/`](../../../targets/vectis/). The shared schemas (`composition.schema.json`, `tokens.schema.json`, `assets.schema.json`) and the Vectis codex stay under [`adapters/vectis/`](../../../adapters/vectis/) until the follow-up tracked in [rfc-25-plan.md](../../../rfcs/rfc-25-plan.md) §Outstanding work item 4 relocates them.
 
 The eight earlier Vectis writer / reviewer / template-updater skills (`core-writer`, `core-reviewer`, `test-writer`, `ios-writer`, `ios-reviewer`, `android-writer`, `android-reviewer`, `template-updater`) were retired in RFC-25 W2.6; their bodies live inline in [`targets/vectis/briefs/build.md`](../../../targets/vectis/briefs/build.md) (writers and reviewers) and [`targets/vectis/briefs/merge.md`](../../../targets/vectis/briefs/merge.md) (post-merge host cap-matrix re-verification). The `vectis:image-layout-inferer` skill body was lifted into the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml) per RFC-25 W2.4.
 

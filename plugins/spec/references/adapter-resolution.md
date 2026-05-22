@@ -23,7 +23,7 @@ Regular `specify init <adapter>` is the boundary that fetches or copies adapters
 
 Codex rules are resolved by convention from `codex/**/*.md` under each active source. The CLI loads sources in deterministic order: foundational `default` adapter first, project adapter second, future shared catalogs third, and repo-root `codex/` overlay last. Duplicate rule ids across those sources fail with validation semantics.
 
-First-party `default` rules are distributed as a normal adapter at `adapters/default`. When `specify init <adapter>` copies a adapter from a tree that also contains sibling `default`, it also copies that sibling into `.specify/.cache/default/`. Later `specify codex *` commands resolve `default` from cache first, just like project adapters.
+First-party `default` rules are distributed as a normal target adapter at `targets/default`. When `specify init <adapter>` copies a target from a tree that also contains sibling `default`, it also copies that sibling into `.specify/.cache/targets/default/`. Later `specify codex *` commands resolve `default` from cache first, just like project targets.
 
 ## Cache notes
 

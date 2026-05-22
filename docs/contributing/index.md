@@ -41,6 +41,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 ## What to read next
 
+- [RFC-25 implementation plan](../../rfcs/rfc-25-plan.md) -- wave decomposition (`Wn.k` chunks), progress snapshot, and outstanding 2.0 cutover work; normative workflow contract in [rfc-25-workflow.md](../../rfcs/rfc-25-workflow.md)
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of a Adapter](adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing

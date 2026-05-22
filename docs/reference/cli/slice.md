@@ -10,7 +10,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 |------|-------------|
 | [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
 | [`status`](#specify-slice-status) | Detailed status for one slice (lifecycle state, artifacts, tasks, timestamps). The multi-slice dashboard lives at [`specify status`](status.md). |
-| [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`created` -> `defining` -> `defined` -> `building` -> `complete` -> `merged`/`dropped`). |
+| [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
 | [`task`](#specify-slice-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
@@ -59,7 +59,7 @@ specify slice transition <name> <target>
 | Argument | Description |
 |----------|-------------|
 | `name` | Slice name |
-| `target` | Target state: `defining`, `defined`, `building`, `complete`, `dropped`. The transient states (`defining`, `building`) are typically set by skills, not operators. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
+| `target` | Target state: `refining`, `refined`, `built`, `dropped`. Skills stamp `refined` and `built` after `/spec:refine` and `/spec:build`. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
 
 Enforces legal transitions. Records timestamps in `.metadata.yaml`.
 
@@ -151,7 +151,7 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
-**Preconditions.** Slice must be in `complete` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
+**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
 
 ### specify slice task
 

@@ -1,6 +1,6 @@
 # `/spec:execute` worked-example fixtures
 
-Static fixtures pinning the four `/spec:execute` acceptance scenarios (originally §W3.3 of the now-retired `rfcs/rfc-25-plan.md`; the active workflow contract lives in [`rfc-25-workflow.md`](../../../../rfcs/rfc-25-workflow.md)):
+Static fixtures pinning the four `/spec:execute` acceptance scenarios (§W3.3 of [`rfcs/rfc-25-plan.md`](../../../../rfcs/rfc-25-plan.md); the normative workflow contract lives in [`rfc-25-workflow.md`](../../../../rfcs/rfc-25-workflow.md)):
 
 | Scenario | Fixture directory | What it pins |
 |---|---|---|

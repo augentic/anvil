@@ -828,6 +828,8 @@ Deferred: other code languages; contract source adapters; per-adapter repo split
 
 ## Implementation plan
 
+Subagent-sized decomposition, wave ids (`Wn.k`), parallelism notes, and a live progress snapshot live in the companion [rfc-25-plan.md](rfc-25-plan.md).
+
 Phase 1 (steps 1-13) lands the adapter model. Phase 2 (steps 14-17) lands workflow collapse in the same 2.0 release.
 
 ### Note to the implementing agent
@@ -970,4 +972,5 @@ Full rationale: [decision-log.md](../docs/explanation/decision-log.md) when this
 - [specify-cli/AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) - exit codes.
 - [project.mdc](../.cursor/rules/project.mdc) - artifact authority; synthesis hierarchy in §Synthesis contract.
 - [AGENTS.md](../AGENTS.md) - plan-driven loop vocabulary.
+- [rfc-25-plan.md](rfc-25-plan.md) - wave decomposition, progress snapshot, outstanding 2.0 cutover work.
 

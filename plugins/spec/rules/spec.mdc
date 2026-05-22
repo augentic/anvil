@@ -25,18 +25,18 @@ Each directory contains `adapter.yaml` plus operation briefs under `briefs/`.
 Slices track lifecycle in `.metadata.yaml`. The fixed loop is `refine -> build -> merge`, with `drop` as the rollback path:
 
 ```text
-pending -> refining -> refined -> building -> built -> merged
-                \          \          \
-                 `-------> `-------> `-------> dropped
+refining -> refined -> built -> merged
+    \          \         \
+     `--------> `-------> `-------> dropped
 ```
 
-- **pending**: Slice row exists in `plan.yaml`; not yet started
-- **refining**: `extract` is running per source and synthesis is in progress
+- **refining**: Slice directory created; `/spec:refine` extract + synthesis in flight
 - **refined**: Proposal, spec, design, and tasks are validated
-- **building**: Tasks are being implemented (artifacts validated on entry)
 - **built**: All tasks done, ready to merge
 - **merged**: Delta specs merged into baseline, slice archived
 - **dropped**: Slice archived without merging into baseline
+
+Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadata.yaml`.
 
 ## Workflow
 

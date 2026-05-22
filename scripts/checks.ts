@@ -13,11 +13,7 @@ import {
   checkMarkdownLinks,
   checkReferences,
 } from "./checks/links.ts";
-import {
-  checkAdapterIntegrity,
-  checkInstructionPreambles,
-  validateAdapterYaml,
-} from "./checks/adapter.ts";
+import { validateAdapterYaml } from "./checks/adapter.ts";
 import {
   checkDeclaredToolEquivalentInvocations,
   checkFirstPartyToolDeclarations,
@@ -63,9 +59,7 @@ await Promise.all([
 ]);
 await Promise.all([
   validateAdapterYaml(),
-  checkAdapterIntegrity(),
   checkFirstPartyToolDeclarations(),
-  checkInstructionPreambles(),
   checkWorkspaceLanding(),
   checkOperationalVocabulary(),
   checkSkillNumericCaps(),
