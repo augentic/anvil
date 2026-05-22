@@ -66,7 +66,7 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts adapter ships `adapters/contracts/tools.yaml`, a sidecar declaration next to `adapter.yaml`. That sidecar declares the exact `specify:contract@0.3.0` package request; the CLI derives the tool name and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
+The contracts target adapter declares the WASI tool inline in [`targets/contracts/adapter.yaml`](../../../targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
 Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 

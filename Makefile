@@ -20,6 +20,15 @@ test-migration:
 		--allow-read --allow-write --allow-env --allow-run \
 		tests/migration_test.ts
 
+.PHONY: test-migration-e2e
+test-migration-e2e:
+	@$(DENO) test \
+		--allow-read --allow-write --allow-env --allow-run \
+		tests/migration_e2e.ts
+
+.PHONY: ci
+ci: checks test-migration test-migration-e2e test
+
 .PHONY: use-local-plugins
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

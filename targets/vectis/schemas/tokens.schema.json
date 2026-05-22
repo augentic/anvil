@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify/schemas/vectis/tokens.schema.json",
+  "$id": "https://github.com/augentic/specify/targets/vectis/schemas/tokens.schema.json",
   "title": "Specify Tokens Artifact",
   "description": "Schema for tokens.yaml — design tokens consumed by shell writers.",
   "type": "object",

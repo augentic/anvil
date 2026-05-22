@@ -27,14 +27,14 @@ tests/fixtures/targets/omnia/
             └── handlers.rs
 ```
 
-## How W3.1 / W3.4 consume this
+## How the harness consumes this
 
-- **W3.1 (`/spec:refine`)** — point a synthesis golden test at `input/`. The harness must verify that the synthesised artifacts include each section listed in `expected/shape-evidence.md` (provider trait dependencies, error mapping table, validation placement table, etc.). Both the pure-intent variant and a documentation variant of the same slice must produce these sections — the `shape` brief is what makes them appear.
-- **W3.4 (`/spec:build`)** — point a build golden test at `input/` and assert that the produced crate matches `expected/crate/` modulo formatter passes. `cargo check` on the expected crate skeleton must pass (after dropping it into a workspace with `omnia-sdk` available).
+- **`/spec:refine` synthesis** — `tests/cross_repo/targets_test.ts` parses `input/spec.md` with the W1.3 provenance parser (closed `Status:` enum + `Sources:` line + `ID:` block) and structurally validates that `expected/shape-evidence.md` is non-empty and bullet-headed.
+- **`/spec:build` regeneration** — the harness asserts `expected/crate/Cargo.toml` declares `[package]` and that `expected/crate/src/lib.rs` is present alongside it. End-to-end byte-replay of the synthesised crate would require an LLM in the loop and is deferred to a follow-up RFC (see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md)).
 
 ## Status
 
-This fixture documents the contract; it is **not yet executable end-to-end** because W3.1 (the synthesis library) and W3.4 (`/spec:build` skill body) have not landed. Once they ship, the harness referenced above can run the fixture through both verbs and capture goldens.
+The deterministic boundary the harness covers — provenance shape on `spec.md`, expected-crate structural shape, and the shape-evidence checklist — runs green on every `make test`. Byte-exact synthesis-replay against the LLM-driven skill bodies is intentionally out of scope and tracked separately.
 
 ## See also
 

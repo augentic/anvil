@@ -45,6 +45,7 @@ import {
 } from "./checks/prose.ts";
 import {
   checkNoLayerNumbersInDocs,
+  checkNoLegacyAdaptersReferencePath,
   checkNoRfcCitationsInDocs,
 } from "./checks/docs_quality.ts";
 import {
@@ -89,6 +90,7 @@ await Promise.all([
   checkDeclaredToolEquivalentInvocations(),
   checkNoLayerNumbersInDocs(),
   checkNoRfcCitationsInDocs(),
+  checkNoLegacyAdaptersReferencePath(),
 ]);
 
 console.log();

@@ -1,7 +1,7 @@
 # Omnia Adapter
 
 - **Identifier:** `omnia` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/adapters/omnia`
+- **URL:** `https://github.com/augentic/specify/targets/omnia`
 - **Purpose:** Rust WASM development (greenfield or migration)
 - **Target:** Rust WASM (Omnia SDK)
 
@@ -59,7 +59,7 @@ The Omnia adapter's briefs and skills carry domain context about:
 After `/spec:init omnia`, `project.yaml` carries:
 
 ```yaml
-adapter: https://github.com/augentic/specify/adapters/omnia
+target: https://github.com/augentic/specify/targets/omnia
 rules:
   - "Project-specific constraints go here"
 ```

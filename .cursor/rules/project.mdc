@@ -13,7 +13,7 @@ Specify 2.0 splits adapters by direction and collapses operator vocabulary to `/
 
 - **source adapter** — input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `sources/<name>/adapter.yaml`.
 - **target adapter** — output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
-- **plugin** — historical shorthand for the shared adapter shape (the Rust loader lives at `crates/domain/src/adapter/`, manifests validate against `adapter.schema.json`).
+- **plugin** — historical shorthand for the shared adapter shape (the Rust loader lives at `crates/domain/src/adapter/`, manifests validate against the per-axis `source.schema.json` / `target.schema.json` shipped with the CLI).
 - **candidate / evidence** — slice-sized unit from `enumerate` / per-source result of `extract`.
 - **provenance** — `Sources:` list on a requirement block; **authority** — closed enum `intent` > `documentation` > `behaviour`; **conflict / divergence** — `[conflict]` / `[divergence]` tags on a requirement header.
 

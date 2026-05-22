@@ -23,7 +23,7 @@ tests/fixtures/targets/vectis/task-list/
 
 ## Status
 
-This fixture is **not yet executable end-to-end** because W3.1 (synthesis library) and W3.4 (`/spec:build` skill body) have not landed. `input/evidence/screens.yaml` is a hand-authored stand-in for what `sources/screenshots/extract` would emit; W5.3 should replace it with the live extractor output from the sibling source-side fixture once both chunks are in.
+The acceptance harness (`make test`) parses `input/spec.md` for provenance shape, structurally validates `expected/composition.yaml`, and verifies `expected/shape-evidence.md` is well-formed. `input/evidence/screens.yaml` remains a hand-authored stand-in for what `sources/screenshots/extract` would emit; replacing it with live extractor output is a follow-up bound to the source ↔ target chain end-to-end story.
 
 ## See also
 

@@ -1,7 +1,7 @@
 # Vectis Adapter
 
 - **Identifier:** `vectis` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/adapters/vectis`
+- **URL:** `https://github.com/augentic/specify/targets/vectis`
 - **Purpose:** Cross-platform Crux application development
 - **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
 
@@ -88,7 +88,7 @@ The Vectis adapter's briefs and skills carry domain context about:
 After `/spec:init vectis`, `project.yaml` carries:
 
 ```yaml
-adapter: https://github.com/augentic/specify/adapters/vectis
+target: https://github.com/augentic/specify/targets/vectis
 rules:
   - "Project-specific constraints go here"
 ```

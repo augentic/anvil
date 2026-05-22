@@ -15,6 +15,7 @@ The Vectis adapter manifest and its `shape` / `build` / `merge` briefs moved to 
 ## References
 
 - [Vectis target adapter manifest](../../targets/vectis/adapter.yaml)
-- [Vectis codex rules](../../adapters/vectis/codex/)
+- [Vectis codex rules](../../targets/vectis/codex/)
+- [Vectis shared schemas](../../targets/vectis/schemas/)
 - [Crux patterns and design-system docs](references/)
 - [Layout-inferer contract](references/layout-inferer-contract.md)

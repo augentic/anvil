@@ -1,0 +1,8 @@
+# 1.x Vectis assets artifact with a stale `$schema` URL pointing at the
+# retired `adapters/vectis/` location.
+$schema: https://github.com/augentic/specify/adapters/vectis/assets.schema.json
+raster: []
+vector:
+  - id: cart-icon
+    source: assets/cart.svg
+symbol: []

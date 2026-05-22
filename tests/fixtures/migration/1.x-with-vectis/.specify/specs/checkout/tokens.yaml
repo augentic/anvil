@@ -1,0 +1,8 @@
+# 1.x Vectis tokens artifact with a stale `$schema` URL pointing at the
+# retired `schemas/vectis/` location.
+$schema: https://github.com/augentic/specify/schemas/vectis/tokens.schema.json
+colors:
+  primary: "#1a73e8"
+  background: "#ffffff"
+spacing:
+  unit: 8

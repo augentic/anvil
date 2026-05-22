@@ -9,7 +9,7 @@ Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn 
 | `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `sources/<name>/`        |
 | `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `targets/<name>/`        |
 
-Both ship `adapter.yaml` matching `schemas/adapter.schema.json` plus an axis-specific refinement (`schemas/source.schema.json` or `schemas/target.schema.json`). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
+Both ship `adapter.yaml` validated by an axis-specific schema (`schemas/source.schema.json` or `schemas/target.schema.json` distributed with the CLI). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
 
 Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice by hand-editing `spec.md` after `/spec:refine`.
 

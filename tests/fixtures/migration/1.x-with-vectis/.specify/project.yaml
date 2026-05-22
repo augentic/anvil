@@ -1,0 +1,9 @@
+specify_version: 1.4.2
+adapter: vectis
+hub: false
+name: checkout-shell
+domain: checkout
+sources:
+  - intent
+  - documentation
+  - screenshots

@@ -49,4 +49,4 @@ When resolution fails — bad frontmatter, duplicate ids, missing required headi
 ## See also
 
 - [specify adapter](adapter.md) -- adapter resolution and cache behavior.
-- [Adapters](../adapters/index.md) -- adapter-owned codex directories and manifest boundaries.
+- [Target adapters](../targets/index.md) -- adapter-owned codex directories and manifest boundaries.

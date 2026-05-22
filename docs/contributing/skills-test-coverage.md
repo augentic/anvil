@@ -5,17 +5,22 @@ acceptance scenarios in this repo. It exists to answer one question: for each
 `SKILL.md`, is there at least one scenario that exercises the skill's primary
 path end to end?
 
-> **2.0 status.** The matrix below was last refreshed against the 1.x skill set
-> (retired 1.x verbs in the `change:` slash-namespace plus the per-slice `define` / `extract` skills). 2.0 collapses those into
-> `/spec:plan`, `/spec:refine`, `/spec:execute`, `/spec:finalize`. The scenario
-> packs themselves still describe 1.x flows; the next audit pass will retag rows
-> to the 2.0 verbs after the new fixtures land. Treat 1.x verb names below as
-> historical labels for the underlying skill bodies they referenced.
+> **2.0 status.** The matrix below tracks 2.0 verbs (`/spec:plan`,
+> `/spec:refine`, `/spec:execute`, `/spec:build`, `/spec:merge`, `/spec:drop`,
+> `/spec:finalize`) and the deterministic-boundary harness that ships with
+> them. The retired 1.x verbs (`change-*`, `specify-define`, `specify-extract`,
+> `change-analyze`) appear as historical rows because the cross-repo and plan
+> scenario packs they exercised still drive the same skill bodies under the
+> renamed verbs. Per-fixture replay coverage is tracked alongside the manual
+> scenarios.
 
-The audit was produced for cleanup-plan chunk **CL-S06** (Phase 5 — Skills
-polish) and is intended to be re-run by hand whenever a new skill or scenario
-lands. There is no automated coverage harness today; the matrix is the
-contract.
+The audit is hand-curated and is intended to be re-run whenever a new skill
+or scenario lands. The deterministic-boundary fixtures under
+[`tests/fixtures/{sources,targets,skills}/`](../../tests/fixtures/) drive
+[`tests/cross_repo.ts`](../../tests/cross_repo.ts) on every `make test`; the
+manual scenarios under [`tests/cross-repo/`](../../tests/cross-repo/) and
+[`tests/plan/`](../../tests/plan/) cover the LLM-driven body bytes that the
+harness intentionally does not pin.
 
 ## Inputs
 
@@ -28,10 +33,10 @@ contract.
 - **Cross-repo scenarios:** [`tests/cross-repo/`](../../tests/cross-repo/) --
   one end-to-end manual scenario that drives `plan` → `execute` → `push` →
   `finalize` across a hub plus two routed projects.
-- **Adapter-local scenarios:**
-  [`adapters/contracts/tests/`](../../targets/contracts/tests/) --
-  five scenarios covering the contracts adapter's own `define → build →
-  merge` slice loop (the only adapter-local pack in the repo today).
+- **Target-local scenarios:**
+  [`targets/contracts/tests/`](../../targets/contracts/tests/) --
+  five scenarios covering the contracts target's own `refine → build →
+  merge` slice loop (the only target-local pack in the repo today).
 
 > **Scenario fixtures (`tests/scenarios/*.json`).** The cleanup-plan brief
 > mentions `tests/scenarios/*.json` fixtures, but no such directory or file
@@ -51,8 +56,8 @@ contract.
 - **Plan trace(s)** -- markdown scenarios under `tests/plan/` or
   `tests/cross-repo/` that exercise this skill (directly or as a documented
   sub-step of a larger flow).
-- **Scenario fixture(s)** -- adapter-local scenarios under
-  `adapters/<cap>/tests/` that exercise this skill.
+- **Scenario fixture(s)** -- target-local scenarios under
+  `targets/<name>/tests/` that exercise this skill.
 - **Status:**
   - ✓ -- at least one scenario *directly* asserts an artifact, state
     transition, or behavior produced by this skill's primary path.
@@ -64,8 +69,8 @@ contract.
 
 | Skill | Primary trigger / argument-hint | Plan trace(s) | Scenario fixture(s) | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `change-execute` (retired in 2.0; logic lifted into `/spec:execute`) | `/spec:execute` (no argument-hint; loop semantics documented in body) | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) (`execute-loop-all-done`) | -- | ✓ | Cross-repo scenario explicitly asserts the loop terminates because the plan is complete. |
-| `change-draft` (retired in 2.0; logic lifted into `/spec:plan`) | `<change-name>` | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers local-only plans; contract-routing covers cross-repo plan authoring; cross-repo/scenario.md drives the full draft → execute → finalize path. |
+| [`specify-execute`](../../plugins/spec/skills/execute/SKILL.md) | `/spec:execute` (no argument-hint; loop semantics documented in body) | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) (`execute-loop-all-done`) | [`tests/fixtures/skills/execute/*/`](../../tests/fixtures/skills/execute/) | ✓ | Cross-repo scenario asserts the loop terminates; fixture-shape harness covers `input/plan.yaml` + `expected.md` for breakout, build-failure, and workspace cases. |
+| [`specify-plan`](../../plugins/spec/skills/plan/SKILL.md) | `<change-name>` | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers local-only plans; contract-routing covers cross-repo plan authoring; cross-repo/scenario.md drives the full plan → execute → finalize path. |
 | [`client-sow-writer`](../../plugins/client/skills/sow-writer/SKILL.md) | `<slice-dir>` | -- | -- | gap | No scenario produces a SoW from a completed slice. |
 | [`contract-asyncapi`](../../targets/contracts/briefs/build.md#asyncapi-sub-flow) | `[slice-dir]` (AsyncAPI authoring) | -- | -- | gap | All five contract scenarios author HTTP/JSON-Schema artifacts; none produce an AsyncAPI document. |
 | [`contract-json-schema`](../../targets/contracts/briefs/build.md#json-schema-sub-flow) | `[slice-dir]` (standalone JSON Schema) | -- | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md) | ✓ | Every contracts scenario asserts `contracts/schemas/*.yaml` artifacts and runs `contract-validator-clean`. |
@@ -73,25 +78,26 @@ contract.
 | `omnia` target — `build` brief ([`targets/omnia/briefs/build.md`](../../targets/omnia/briefs/build.md)) | crate / test / guest writers + code reviewer, run by `/spec:build` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | partial | Cross-repo's backend slice routes to an `omnia@v1` project so the build brief is reached during `/spec:execute`, but no assertion targets the produced crate, tests, guest, or review output (only `execute-loop-all-done`). The bodies of the retired `omnia-{crate,test,guest}-writer` and `omnia-code-reviewer` skills live inside this brief; gap coverage from previous releases (no scenario reviews / asserts generated artifacts) is preserved by this row. |
 | [`rt-replay-writer`](../../plugins/rt/skills/replay-writer/SKILL.md) | `<crate-name>` | -- | -- | gap | No scenario captures legacy fixtures or generates regression tests under `tests/data/replay/`. |
 | [`rt-wiretapper`](../../plugins/rt/skills/wiretapper/SKILL.md) | `<legacy-dir>` | -- | -- | gap | No scenario instruments a legacy TypeScript repo. |
-| `change-analyze` (retired in 2.0; plan-time source enumeration inlined into `/spec:plan`) | n/a — inlined | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md) | -- | partial | Plan scenarios assert `discovery.md` exists; per-source enumeration is now a sub-step of `/spec:plan` and is not invocable as a standalone slash command in 2.0. |
-| [`specify-build`](../../plugins/spec/skills/build/SKILL.md) | `[slice-name]` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md) | partial | All scenarios with `stages: [define, build, merge]` reach build, but none target build-only resumption (`/spec:build <slice-name>` after a partial run). |
-| `specify-define` (retired in 2.0; logic lifted into `/spec:refine`) | n/a — inlined | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md) | ✓ | Every contracts scenario uses `entrypoint: /spec:refine`; cross-repo drives refine inside its `/spec:execute` loop. |
+| `change-analyze` (retired in 2.0; plan-time source enumeration inlined into `/spec:plan`) | n/a — inlined into `/spec:plan` | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md) | -- | partial | Plan scenarios assert `discovery.md` exists; per-source enumeration is a sub-step of `/spec:plan` and is not invocable as a standalone slash command in 2.0. |
+| [`specify-build`](../../plugins/spec/skills/build/SKILL.md) | `[slice-name]` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md), [`tests/fixtures/skills/build/`](../../tests/fixtures/skills/build/) | partial | All scenarios with `stages: [refine, build, merge]` reach build; the harness covers `success`, `breakout-from-execute`, and `failure-replay` fixture shapes. No scenario targets build-only resumption against a live LLM body. |
+| [`specify-refine`](../../plugins/spec/skills/refine/SKILL.md) | n/a — orchestrates `extract` per source | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md), [`tests/fixtures/skills/refine/`](../../tests/fixtures/skills/refine/) | ✓ | Every contracts scenario uses `entrypoint: /spec:refine`; cross-repo drives refine inside its `/spec:execute` loop; the harness schema-validates Evidence inputs and parses synthesised `expected/spec.md` for closed `Status:` enum across `single-source-intent`, `combined-docs-and-legacy`, `conflict`, `divergence`, and `unknown` cases. |
 | [`specify-drop`](../../plugins/spec/skills/drop/SKILL.md) | `[slice-name]` | -- | -- | gap | No scenario exercises drop semantics (slice discarded without merging deltas to baseline). |
-| `specify-extract` (retired in 2.0; logic lifted into per-source `extract` briefs invoked by `/spec:refine`) | `<source-path> <slice-dir>` | -- | [`source.md`](../../targets/contracts/tests/source.md) | ✓ | The `contracts-source` scenario uses `authorship-mode: extract` and asserts artifacts derived from source code; coverage is scoped to the contracts adapter only. |
-| [`specify-init`](../../plugins/spec/skills/init/SKILL.md) | `<adapter>` (with `--hub` flag) | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers `specify init <adapter>`; contract-routing and cross-repo cover both `--hub` and adapter-bound init. |
-| [`specify-merge`](../../plugins/spec/skills/merge/SKILL.md) | `[slice-name]` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md) | partial | Reached through `stages: [define, build, merge]`; no scenario targets merge in isolation or asserts the archive transition that `/spec:merge` performs. |
+| `specify-extract` (retired in 2.0; logic lifted into per-source `extract` briefs invoked by `/spec:refine`) | `<source-path> <slice-dir>` (now a sub-step of `/spec:refine`) | -- | [`source.md`](../../targets/contracts/tests/source.md), [`tests/fixtures/sources/{intent,documentation,code-typescript,screenshots}/`](../../tests/fixtures/sources/) | ✓ | The `contracts-source` scenario asserts artifacts derived from source code; the deterministic-boundary harness schema-validates every Evidence golden against `evidence.schema.json`. |
+| [`specify-init`](../../plugins/spec/skills/init/SKILL.md) | `<target>` (with `--workspace` flag) | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers `specify init <target>`; contract-routing and cross-repo cover both `--workspace` and target-bound init. |
+| [`specify-merge`](../../plugins/spec/skills/merge/SKILL.md) | `[slice-name]` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`describe.md`](../../targets/contracts/tests/describe.md), [`design.md`](../../targets/contracts/tests/design.md), [`update.md`](../../targets/contracts/tests/update.md), [`import.md`](../../targets/contracts/tests/import.md), [`source.md`](../../targets/contracts/tests/source.md), [`tests/fixtures/skills/merge/`](../../tests/fixtures/skills/merge/) | partial | Reached through `stages: [refine, build, merge]`; the harness covers `success` and `conflict-replay` fixture shapes. No scenario targets merge in isolation against a live LLM body. |
+| [`specify-finalize`](../../plugins/spec/skills/finalize/SKILL.md) | `<change-name>` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | [`tests/fixtures/skills/finalize/`](../../tests/fixtures/skills/finalize/) | ✓ | Cross-repo scenario drives finalize end-to-end; fixture-shape harness covers single-repo and multi-project-workspace transcripts. |
 | `vectis` target — `build` brief ([`targets/vectis/briefs/build.md`](../../targets/vectis/briefs/build.md)) | core / test / iOS / Android writers + reviewers + template-updater, run by `/spec:build` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | partial | Cross-repo's mobile slice routes to a `vectis@v1` project so the build brief is reached during `/spec:execute`, but no assertion targets the produced Crux core, iOS / Android shells, generated tests, reviewer output, or template-drift recovery. The bodies of the retired `vectis-{core,test,ios,android}-writer`, `vectis-{core,ios,android}-reviewer`, and `vectis-template-updater` skills live inside this brief; gap coverage from previous releases (no scenario reviews / asserts generated artifacts, no template-drift scenario) is preserved by this row. |
 | `vectis` target — `merge` brief ([`targets/vectis/briefs/merge.md`](../../targets/vectis/briefs/merge.md)) | host cap-matrix re-verification (`cargo` / `make build` / `gradlew`), run by `/spec:merge` | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | partial | Reached as part of the mobile slice's `stages: [define, build, merge]` chain; no scenario asserts the post-merge host-cap-matrix re-verification or the deferred-merge failure-mode handling. |
 
-**Totals (17 skills + 3 target-adapter rows)**
+**Totals (17 skill rows + 3 target-adapter rows)**
 
 | Status | Count | Skills |
 | --- | --- | --- |
-| ✓ | 7 | `change-execute`, `change-draft`, `contract-json-schema`, `contract-openapi`, `specify-define`, `specify-extract`, `specify-init`. |
+| ✓ | 8 | `specify-execute`, `specify-plan`, `contract-json-schema`, `contract-openapi`, `specify-refine`, `specify-extract`, `specify-init`, `specify-finalize`. |
 | partial | 6 | `change-analyze`, `omnia` target build brief, `specify-build`, `specify-merge`, `vectis` target build brief, `vectis` target merge brief. |
 | gap | 5 | `client-sow-writer`, `contract-asyncapi`, `rt-replay-writer`, `rt-wiretapper`, `specify-drop`. |
 
-The four retired Omnia skills (`omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, `omnia-code-reviewer`) collapsed into a single target-adapter `build` brief (RFC-25 W2.5); they are tracked as one row above. The eight retired Vectis skills (`vectis-{core,test,ios,android}-writer`, `vectis-{core,ios,android}-reviewer`, `vectis-template-updater`) collapsed into the target-adapter `build` brief (RFC-25 W2.6); their Vectis-specific post-merge checks moved to the `merge` brief. The retired `vectis-image-layout-inferer` skill body moved to the [`screenshots` source adapter](../../sources/screenshots/adapter.yaml) per RFC-25 §Default source adapters; its source-adapter coverage will be tracked once W3.1's synthesis harness exercises the spatial Evidence kinds end-to-end.
+The four retired Omnia skills (`omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, `omnia-code-reviewer`) collapsed into a single target-adapter `build` brief; they are tracked as one row above. The eight retired Vectis skills (`vectis-{core,test,ios,android}-writer`, `vectis-{core,ios,android}-reviewer`, `vectis-template-updater`) collapsed into the target-adapter `build` brief; their Vectis-specific post-merge checks moved to the `merge` brief. The retired `vectis-image-layout-inferer` skill body moved to the [`screenshots` source adapter](../../sources/screenshots/adapter.yaml); its source-adapter coverage is exercised by the `tests/fixtures/sources/screenshots/` deterministic-boundary harness.
 
 ## Gaps
 

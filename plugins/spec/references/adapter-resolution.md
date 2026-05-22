@@ -15,7 +15,7 @@ Resolution mode is chosen from the shape of the `adapter` value in `.specify/pro
 | Bare name           | `adapter: omnia`                              | Cache `.specify/.cache/omnia/`, then project-local `schemas/omnia/`. |
 | URL (default ref)   | `adapter: https://github.com/.../omnia`       | Cache `.specify/.cache/omnia/`.                                  |
 | URL with pinned ref | `adapter: https://github.com/.../omnia@v1`    | Cache `.specify/.cache/omnia/`.                                  |
-| File URI            | `adapter: file:///path/to/adapters/omnia` | Cache `.specify/.cache/omnia/`.                                  |
+| File URI            | `target: file:///path/to/targets/omnia` | Cache `.specify/.cache/omnia/`.                                  |
 
 Regular `specify init <adapter>` is the boundary that fetches or copies adapters into `.specify/.cache/`. After init, project-aware commands resolve the stored `adapter` value from that cache and do not reach the network.
 

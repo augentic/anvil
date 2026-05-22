@@ -1,0 +1,184 @@
+// End-to-end migration smoke test.
+//
+// Copies tests/fixtures/migration/1.x-with-vectis/ into a temp dir, runs
+// scripts/migrate-to-2.0.sh against it, and asserts the post-migration
+// tree:
+//
+//   - is a valid 2.0 project (project.yaml shape, specify-version stamp);
+//   - has every Vectis composition.yaml / tokens.yaml / assets.yaml
+//     `$id` / `$schema` URL rewritten from `adapters/vectis/` (or
+//     `schemas/vectis/`) to `targets/vectis/schemas/<name>.schema.json`;
+//   - emits a composition.yaml warning so the operator knows to delete
+//     the artifact after the first 2.0 `/spec:execute`;
+//   - keeps the deterministic-boundary cross-repo harness clean (the
+//     harness only validates this repo's own fixture trees, but a
+//     post-migration smoke run guards against migration script changes
+//     accidentally breaking the harness's own preconditions).
+//
+// Run via:
+//   deno test --allow-read --allow-write --allow-run --allow-env \
+//     tests/migration_e2e.ts
+//
+// Or (preferred): `make test-migration-e2e` / `make ci`.
+
+import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
+import { copy } from "jsr:@std/fs@1/copy";
+import { parse as parseYaml } from "jsr:@std/yaml@1";
+import { join, resolve } from "jsr:@std/path@1";
+
+const REPO_ROOT = resolve(new URL("..", import.meta.url).pathname);
+const FIXTURE = join(
+  REPO_ROOT,
+  "tests/fixtures/migration/1.x-with-vectis",
+);
+const SCRIPT = join(REPO_ROOT, "scripts/migrate-to-2.0.sh");
+
+interface RunResult {
+  stdout: string;
+  stderr: string;
+  code: number;
+}
+
+async function runMigration(projectRoot: string): Promise<RunResult> {
+  const cmd = new Deno.Command("bash", {
+    args: [SCRIPT, projectRoot],
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const { stdout, stderr, code } = await cmd.output();
+  return {
+    stdout: new TextDecoder().decode(stdout),
+    stderr: new TextDecoder().decode(stderr),
+    code,
+  };
+}
+
+Deno.test("migrate-to-2.0 e2e: 1.x-with-vectis tree migrates cleanly", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "specify-migration-e2e-" });
+  try {
+    await copy(FIXTURE, tmp, { overwrite: true });
+    const result = await runMigration(tmp);
+    assertEquals(result.code, 0, `stderr:\n${result.stderr}`);
+
+    // project.yaml reshape.
+    const projectPath = join(tmp, ".specify", "project.yaml");
+    const projectYaml = await Deno.readTextFile(projectPath);
+    const project = parseYaml(projectYaml) as Record<string, unknown>;
+    assertEquals(project["specify-version"], "2.0.0");
+    assertEquals(project["target"], "vectis");
+    assertEquals(
+      "specify_version" in project,
+      false,
+      "specify_version should be renamed",
+    );
+    assertEquals("adapter" in project, false, "adapter should be renamed");
+
+    // Strip leading `# ...` comment lines before checking that no live
+    // YAML key still references the retired path; otherwise the
+    // human-readable narrative comments in the fixture (which mention
+    // the old path on purpose) would trip the assertion.
+    const stripComments = (s: string): string =>
+      s.split("\n")
+        .filter((l) => !/^\s*#/.test(l))
+        .join("\n");
+
+    // composition.yaml URL rewrite + warn.
+    const compPath = join(
+      tmp,
+      ".specify",
+      "specs",
+      "checkout",
+      "composition.yaml",
+    );
+    const composition = await Deno.readTextFile(compPath);
+    assertStringIncludes(
+      composition,
+      "https://github.com/augentic/specify/targets/vectis/schemas/composition.schema.json",
+    );
+    const compositionLive = stripComments(composition);
+    if (compositionLive.includes("adapters/vectis/")) {
+      throw new Error(
+        `composition.yaml still references the retired adapters/vectis/ path:\n${composition}`,
+      );
+    }
+
+    // tokens.yaml URL rewrite (originally schemas/vectis/...).
+    const tokensPath = join(tmp, ".specify", "specs", "checkout", "tokens.yaml");
+    const tokens = await Deno.readTextFile(tokensPath);
+    assertStringIncludes(
+      tokens,
+      "https://github.com/augentic/specify/targets/vectis/schemas/tokens.schema.json",
+    );
+    const tokensLive = stripComments(tokens);
+    if (
+      tokensLive.includes("schemas/vectis/") ||
+      tokensLive.includes("adapters/vectis/")
+    ) {
+      throw new Error(`tokens.yaml URL not rewritten:\n${tokens}`);
+    }
+
+    // assets.yaml URL rewrite.
+    const assetsPath = join(tmp, ".specify", "specs", "checkout", "assets.yaml");
+    const assets = await Deno.readTextFile(assetsPath);
+    assertStringIncludes(
+      assets,
+      "https://github.com/augentic/specify/targets/vectis/schemas/assets.schema.json",
+    );
+    const assetsLive = stripComments(assets);
+    if (assetsLive.includes("adapters/vectis/")) {
+      throw new Error(`assets.yaml URL not rewritten:\n${assets}`);
+    }
+
+    // Operator-facing warning lands on stdout (composition.yaml is now a
+    // build output regenerated by targets/vectis/build).
+    assertStringIncludes(
+      result.stdout,
+      "regenerated by targets/vectis/build",
+    );
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("migrate-to-2.0 e2e: re-run on migrated tree is a no-op", async () => {
+  const tmp = await Deno.makeTempDir({ prefix: "specify-migration-e2e-idem-" });
+  try {
+    await copy(FIXTURE, tmp, { overwrite: true });
+    const first = await runMigration(tmp);
+    assertEquals(first.code, 0, `stderr:\n${first.stderr}`);
+
+    const second = await runMigration(tmp);
+    assertEquals(second.code, 0, `stderr:\n${second.stderr}`);
+    assertStringIncludes(second.stdout, "already on specify");
+  } finally {
+    await Deno.remove(tmp, { recursive: true });
+  }
+});
+
+Deno.test("migrate-to-2.0 e2e: cross-repo harness stays clean post-migration", async () => {
+  // The deterministic-boundary harness validates this repo's own fixture
+  // trees rather than an arbitrary migrated project, so the assertion
+  // here is the same shape `make test` would make: running the harness
+  // exits zero. This guards against migration-script changes accidentally
+  // breaking the harness's own preconditions (e.g. removing a schema the
+  // harness consumes).
+  const cmd = new Deno.Command(Deno.execPath(), {
+    args: [
+      "test",
+      "--allow-read",
+      "--allow-write",
+      "--allow-run",
+      "--allow-env",
+      "tests/cross_repo.ts",
+    ],
+    cwd: REPO_ROOT,
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const { code, stderr } = await cmd.output();
+  assertEquals(
+    code,
+    0,
+    `cross_repo harness failed:\n${new TextDecoder().decode(stderr)}`,
+  );
+});

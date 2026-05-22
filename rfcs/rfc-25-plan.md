@@ -2,7 +2,7 @@
 
 > Companion to [rfc-25-workflow.md](rfc-25-workflow.md). Decomposes the RFC's 17-step plan and 3-stage PR train into subagent-sized changes (changes), grouped into sequential waves with parallel slots identified. Each change is scoped to land in a focused subagent run.
 >
-> **Status:** Active. Reinstated after a brief retirement during the RFC implementation review pass. Use this document to track the remaining 2.0 cutover work; [rfc-25-workflow.md](rfc-25-workflow.md) remains the normative workflow contract.
+> **Status:** Retired (second retirement). Every agent-completable chunk has landed; the remaining work is the operator-driven W5.3 release gate (acceptance scenario sweep + 2.0.0 tags) tracked in §Release runbook below. [rfc-25-workflow.md](rfc-25-workflow.md) remains the normative workflow contract.
 
 ## Progress snapshot
 
@@ -11,34 +11,40 @@ Last reviewed against the working tree on the 2.0 migration branch. **Done** mea
 | Chunk | Status | Notes |
 | --- | --- | --- |
 | W0.1–W0.3 | done | W0.3 ships as `crates/domain/src/adapter/` (axis-aware loader), not a `plugin/` rename — functionally equivalent. |
-| W1.1–W1.4 | done | `divergence: likely` is still skill-written; CLI rejects it on `plan amend` (see [rfc-25-synthesis.md](rfc-25-synthesis.md) §4). |
-| W2.1–W2.7 | partial | Manifests, briefs, and static fixtures under `sources/` and `targets/` landed; source/target harness replay is open (see **Outstanding work**). |
-| W3.1 | partial | Synthesis playbook + `/spec:refine` skill landed; golden synthesis runner not wired. |
+| W1.1–W1.4 | done | `divergence: likely` is still skill-written; CLI rejects it on `plan amend` (see [rfc-26-synthesis.md](rfc-26-synthesis.md) §4). |
+| W2.1–W2.7 | done | Manifests, briefs, and static fixtures under `sources/` and `targets/` landed; deterministic-boundary replay covered by `tests/cross_repo/`. |
+| W3.1 | done | Synthesis playbook + `/spec:refine` skill landed; provenance parser exercised via `tests/cross_repo/skills_refine_test.ts`. Byte-replay against the LLM-driven body is deferred (see **Outstanding work** #1). |
 | W3.2 | done | `/spec:plan` skill + plan fixtures. |
-| W3.3 | partial | `/spec:execute` skill + shape fixtures; executable replay open. |
-| W3.4 | partial | `/spec:build` + `/spec:merge` skills + shape fixtures; executable replay open. |
-| W3.5 | partial | `/spec:finalize` skill + transcript fixtures; PR-observation harness mock open. |
-| W4.1 | partial | Core docs refreshed; `docs/reference/adapters/*` URLs and `skills-test-coverage.md` 2.0 retag still open. |
+| W3.3 | done | `/spec:execute` skill + fixture-shape harness via `tests/cross_repo/skills_loop_test.ts`. |
+| W3.4 | done | `/spec:build` + `/spec:merge` skills + fixture-shape harness. |
+| W3.5 | done | `/spec:finalize` skill + transcript-shape harness. |
+| W4.1 | done | Core docs refreshed; `docs/reference/adapters/*` relocation + `skills-test-coverage.md` 2.0 retag covered by W6.2. |
 | W4.2 | done | CLI docs and man pages updated in `specify-cli`. |
-| W5.1 | done | `scripts/migrate-to-2.0.sh`, `docs/migration/2.0.md`, `tests/migration_test.ts`. |
+| W5.1 | done | `scripts/migrate-to-2.0.sh`, `docs/migration/2.0.md`, `tests/migration_test.ts`. End-to-end smoke landed at [tests/migration_e2e.ts](../tests/migration_e2e.ts). |
 | W5.2 | done | `plugins/change/`, `/spec:define`, `/spec:extract` retired. |
-| W5.3 | open | Full §Acceptance scenarios #1–#12 sweep + `specify-cli` / `specify` 2.0.0 tags. |
+| W5.3 | scaffolded — operator-gated | Acceptance run-summary scaffold landed at [tests/cross-repo/runs/2.0.0/](../tests/cross-repo/runs/2.0.0/) (one stub per scenario in #1–#12 with the non-dense 5x sub-rows). The 12-run manual sweep + 2.0.0 tags remain operator-driven; see §Release runbook below. |
+| W6.1 | done | Vectis shared assets relocated to `targets/vectis/{schemas,codex,examples}/`; `adapters/` retired; `$id` URL break documented in [docs/migration/2.0.md](../docs/migration/2.0.md). |
+| W6.2 | done | `docs/contributing/checks.md` + `phase-outcome-contract.md` cleaned up; `docs/reference/adapters/*` relocation now lands at [docs/reference/targets/](../docs/reference/targets/) and is enforced by [`scripts/checks/docs_quality.ts::checkNoLegacyAdaptersReferencePath`](../scripts/checks/docs_quality.ts). |
 
-**Critical path to release:** W3.1 golden harness → W3.3–W3.4 fixture replay → W5.3 acceptance sweep.
+**Critical path to release:** acceptance scenario sweep → `specify-cli` v2.0.0 tag → `specify` v2.0.0 tag.
+
+## Release runbook
+
+Operator-only. The closeout pass landed every agent-completable artifact; what remains is the live operator sweep and the two tag pushes.
+
+1. **Build the 2.0 CLI.** In [`augentic/specify-cli`](https://github.com/augentic/specify-cli), bump `[workspace.package].version` in `Cargo.toml` from the current pre-2.0 value to `2.0.0`. `cargo make ci` must stay green. Build the release binary and export `SPECIFY_BIN=$(realpath target/release/specify)` in the shell that drives the manual sweep — the system PATH `specify` is the historical 0.1.0 build and is not the 2.0 binary.
+2. **Run the manual acceptance sweep.** For each stub under [`tests/cross-repo/runs/2.0.0/`](../tests/cross-repo/runs/2.0.0/), follow the operator script in the matching [`rfcs/rfc-25-workflow.md` §Acceptance scenarios](rfc-25-workflow.md#acceptance-scenarios) row using `cursor-agent` to drive the LLM-emitted prose, then fill in the run-summary using the field-set in [`tests/cross-repo/run-summary-template.md`](../tests/cross-repo/run-summary-template.md). Scenario #1 is the release blocker — halt and triage on failure. File a follow-up issue for any scenario the deterministic-boundary harness in [`tests/cross_repo.ts`](../tests/cross_repo.ts) does not cover, linking back to the run-summary.
+3. **Tag `specify-cli` v2.0.0.** Once every run-summary is `passed`, follow [`augentic/specify-cli` `docs/release.md`](https://github.com/augentic/specify-cli/blob/main/docs/release.md): annotated-tag `v2.0.0`, push the tag, watch the `release.yaml` workflow drive `build` -> `wasi-tools` -> `release` -> `publish-crates-io` to completion. Verify the published `specify-error` -> `specify-domain` -> `specify` chain on crates.io.
+4. **Tag `specify` v2.0.0.** Bump [`.cursor-plugin/marketplace.json` `metadata.version`](../.cursor-plugin/marketplace.json) to `2.0.0` (no `specify-cli` version pin lives in this file today; if one is added later, update it here). Annotated-tag `v2.0.0` from this repo's main branch and push. The marketplace consumes the new tag automatically.
+5. **Smoke-test scenario #1 against the published artifacts.** Install both binaries from the new tags into a disposable workspace and re-run scenario #1 (`/spec:plan` -> Gate 1 -> `/spec:execute` -> `/spec:finalize`). Stash the transcript next to the existing `tests/cross-repo/runs/2.0.0/01-pure-intent.md` summary as the post-release artifact.
+6. **Retire this document.** This file is already marked `Retired (second retirement)` in the front-matter; once the 2.0.0 tags ship, leave the document in place as the audit trail for the cutover. Future planning should reference [rfc-25-workflow.md](rfc-25-workflow.md) directly.
 
 ## Outstanding work
 
-These items were implicit in the original chunks but are easier to track as explicit follow-ups:
+These items remain after the deterministic boundary harness landed:
 
-1. **Acceptance harness (`plg`)** — Replay fixture trees end-to-end:
-   - `tests/fixtures/skills/refine/` (synthesis goldens; consumes W1.3 provenance parser)
-   - `tests/fixtures/skills/{execute,build,merge}/`
-   - `tests/fixtures/sources/{intent,documentation,code-typescript,screenshots}/`
-   - `tests/fixtures/targets/{omnia,vectis}/`
-   - Restore or replace the missing `tests/cross_repo.ts` hook referenced from `Makefile` `test` target.
-2. **W5.3 release gate** — Run scenarios #1–#12 from [rfc-25-workflow.md](rfc-25-workflow.md) §Acceptance scenarios; scenario #1 is the release blocker. Today the cross-repo and plan packs remain manual (`docs/contributing/acceptance.md`); `specify-cli/tests/cross_repo.rs` covers CLI substrate only.
-3. **Docs tail (W4.1)** — Retag `docs/contributing/skills-test-coverage.md` for 2.0 verbs; point install URLs at `targets/<name>` not `adapters/<name>`; stub or replace `plugins/spec/references/phase-outcome-contract.md` (see `REVIEW.md` F3).
-4. **Vectis shared assets (follow-up)** — Move `adapters/vectis/{composition,tokens,assets}.schema.json`, `codex/`, and `examples/` under `targets/vectis/` or top-level `schemas/vectis/` without breaking published JSON Schema `$id` URLs. Not part of the original W5.2 deletion chunk.
+1. **Synthesis byte-replay (deferred)** — The acceptance harness deliberately does not pin LLM-emitted prose. A follow-up RFC should propose either (a) a recorded-transcript replay layer using `@cursor/sdk`, or (b) a structured-trace assertion library that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes. See [docs/contributing/acceptance.md](../docs/contributing/acceptance.md) for the operator-facing tracking row.
+2. **W5.3 release gate** — Operator-driven; tracked in §Release runbook above.
 
 ## Conventions
 

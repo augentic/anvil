@@ -23,7 +23,6 @@ export const REPO_ROOT = resolve(
   "..",
   "..",
 );
-export const PROFILES_DIR = join(REPO_ROOT, "adapters");
 export const SOURCES_DIR = join(REPO_ROOT, "sources");
 export const TARGETS_DIR = join(REPO_ROOT, "targets");
 

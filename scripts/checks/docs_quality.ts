@@ -8,9 +8,15 @@
 //     in tutorials, how-tos, references, or explanations. Linking the
 //     archived RFC file via a markdown link target is still allowed so
 //     long as the visible prose does not name the RFC.
+//   - The 2.0 source/target split moved every target reference page out
+//     of `docs/reference/adapters/` into `docs/reference/targets/`. Any
+//     surviving link target that still points at the old path is a
+//     stale citation; the predicate scans the entire repo (not just
+//     `docs/`) so the migration script and contributor guides catch the
+//     break too.
 //
-// Both predicates scan `docs/**/*.md` and tolerate the docs tree being
-// absent so partial checkouts still finish cleanly.
+// All three predicates tolerate the docs tree being absent so partial
+// checkouts still finish cleanly.
 
 import {
   fail,
@@ -114,6 +120,58 @@ export async function checkNoRfcCitationsInDocs(): Promise<void> {
             lines[i].trim()
           } -- move RFC context to docs/explanation/decision-log.md or strip`,
         );
+      }
+    }
+  }
+}
+
+export async function checkNoLegacyAdaptersReferencePath(): Promise<void> {
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "sources"),
+    join(REPO_ROOT, "targets"),
+    join(REPO_ROOT, "scripts"),
+  ];
+  // The plan tracker (rfc-25-plan.md) is allowed to mention the old
+  // path because it is precisely the artifact that records the move.
+  const ALLOWED_PREFIXES = [
+    "rfcs/rfc-25-plan.md",
+    "scripts/checks/docs_quality.ts",
+  ];
+  const PATTERN = /docs\/reference\/adapters\//;
+
+  for (const root of SCAN_ROOTS) {
+    try {
+      await Deno.stat(root);
+    } catch {
+      continue;
+    }
+    for await (
+      const entry of walk(root, {
+        exts: [".md", ".ts", ".sh", ".yaml", ".yml", ".toml", ".mdc"],
+        includeDirs: false,
+      })
+    ) {
+      if (await underSymlink(entry.path)) continue;
+      const rel = relative(REPO_ROOT, entry.path);
+      if (ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+
+      let content: string;
+      try {
+        content = await Deno.readTextFile(entry.path);
+      } catch {
+        continue;
+      }
+      const lines = content.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        if (PATTERN.test(lines[i])) {
+          fail(
+            `Stale docs/reference/adapters/ reference at ${rel}:${i + 1} -- ${
+              lines[i].trim()
+            } -- the 2.0 source/target split relocated those pages to docs/reference/targets/`,
+          );
+        }
       }
     }
   }

@@ -83,10 +83,10 @@ Branch:
 If `$PROFILE` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia adapter identifier unless project context clearly indicates another adapter:
 
 ```text
-https://github.com/augentic/specify/adapters/omnia
+https://github.com/augentic/specify/targets/omnia
 ```
 
-For local development in this repository, a local adapter directory such as `./adapters/omnia` is also valid. If multiple adapters are plausible, use the **AskQuestion tool** to let the user select which one.
+For local development in this repository, a local target directory such as `./targets/omnia` is also valid. If multiple targets are plausible, use the **AskQuestion tool** to let the user select which one.
 
 Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specify init <adapter>`.
 

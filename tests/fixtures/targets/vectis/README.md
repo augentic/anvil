@@ -12,15 +12,15 @@ The Vectis target's `shape` brief carries idiom guidance — Crux app structure 
 
 These fixtures pin the *output* shape: what synthesised `spec.md` / `design.md` / `tasks.md` look like once the `shape` brief has been consumed, plus the `composition.yaml` that `build` reconstructs from them.
 
-## How W3.1 / W3.4 / W5.3 consume these
+## How the harness consumes these
 
-- **W3.1 (`/spec:refine`)** — point a synthesis golden test at each fixture's `input/`. The harness verifies that synthesised `spec.md` / `design.md` include every section listed in `expected/shape-evidence.md` (named screen requirements, ViewModel variants, per-page view structs, capability matrix, etc.). The `shape` brief is what makes those sections appear regardless of whether the upstream source is `intent`, `documentation`, or `screenshots`.
-- **W3.4 (`/spec:build`)** — point a build golden test at each fixture's `input/` and assert the regenerated `composition.yaml` matches `expected/composition.yaml` modulo formatter passes. `specify tool run vectis -- validate composition` against the expected file must exit clean.
-- **W5.3 (acceptance sweep)** — chain `tests/fixtures/sources/screenshots/task-list-two-screen/` (W2.4) → `/spec:refine` (W3.1) → `/spec:build` (W3.4) → `expected/composition.yaml` here. The chain exercises the source/target split end-to-end against scenario #5h.
+- **`/spec:refine` synthesis** — `tests/cross_repo/targets_test.ts` parses each fixture's `input/spec.md` with the W1.3 provenance parser, asserts every requirement carries `ID:` / `Sources:` / a closed `Status:` value, and structurally checks `expected/shape-evidence.md` for bullet content.
+- **`/spec:build` regeneration** — the harness parses each `expected/composition.yaml`, asserts it is a YAML mapping with top-level `version` and `screens` keys, and (when `SPECIFY_BIN` is on PATH) the targets-side test can be extended to call `specify tool run vectis -- validate composition` against the expected file.
+- **End-to-end source ↔ target chain** — the source-side fixture under [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) is intentionally shape-aligned with each fixture's `input/evidence/screens.yaml` so a future executable harness can chain the two without reshaping.
 
 ## Status
 
-These fixtures document the contract; they are **not yet executable end-to-end** because W3.1 (the synthesis library) and W3.4 (`/spec:build` skill body) have not landed. The `input/evidence/screens.yaml` in each fixture is a hand-authored stand-in for what `sources/screenshots/extract` would emit; W5.3 should replace it with the live extractor output once both chunks are in.
+The deterministic boundary the harness covers runs green on every `make test`. Byte-exact synthesis-replay against the LLM-driven `/spec:refine` and `/spec:build` skill bodies is out of scope and tracked separately.
 
 ## See also
 

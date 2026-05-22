@@ -44,7 +44,7 @@ The configuration surfaces:
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **`sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
 - **`targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **`schemas/`** — JSON Schema files distributed with the binary: `adapter.schema.json`, `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, `plan.yaml` schema.
+- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, and the `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:

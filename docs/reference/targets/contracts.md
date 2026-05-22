@@ -1,7 +1,7 @@
 # Contracts Adapter
 
 - **Identifier:** `contracts` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/adapters/contracts`
+- **URL:** `https://github.com/augentic/specify/targets/contracts`
 - **Purpose:** Dedicated API contract changes -- defining or importing machine-readable interface shapes
 - **Target:** Contract artifacts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) at root `contracts/`
 

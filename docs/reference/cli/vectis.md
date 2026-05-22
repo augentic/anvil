@@ -14,10 +14,10 @@ specify tool run vectis -- validate <mode> [path]
 
 | Mode | Validates |
 |------|-----------|
-| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../adapters/vectis/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
+| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../targets/vectis/schemas/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
 | `composition` | `composition.yaml` (wired or unwired), including schema shape, structural identity, and cross-artifact reference resolution against sibling `tokens.yaml` / `assets.yaml`. Auto-invokes `tokens` and `assets` modes when those siblings exist. |
-| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../adapters/vectis/tokens.schema.json). |
-| `assets` | `assets.yaml` against [`assets.schema.json`](../../../adapters/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
+| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../targets/vectis/schemas/tokens.schema.json). |
+| `assets` | `assets.yaml` against [`assets.schema.json`](../../../targets/vectis/schemas/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
 | `all` | Runs all four modes against the active slice and baseline. |
 
 The optional `[path]` argument names the file to validate. When omitted, each mode resolves its default from the Vectis artifact cascade: slice-local files first, then project-level design-system files or the merged composition baseline. An explicit `[path]` always wins.
@@ -48,5 +48,5 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 
 - [specify tool](tool.md) -- declared WASI tool runner surface
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
-- [Vectis Adapter](../adapters/vectis.md) -- adapter reference for cross-platform projects
+- [Vectis Target](../targets/vectis.md) -- target reference for cross-platform projects
 - [`targets/vectis/adapter.yaml`](../../../targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations

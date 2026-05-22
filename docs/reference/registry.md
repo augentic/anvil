@@ -98,6 +98,6 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 
 ## See also
 
-- [Target Adapters](adapters/index.md) — target adapter manifest protocol.
+- [Target Adapters](targets/index.md) — target adapter manifest protocol.
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — the source/target split.
 - [`specify registry`](cli/registry.md) and [`specify workspace`](cli/workspace.md) — current CLI command reference.
