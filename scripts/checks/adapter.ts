@@ -1,6 +1,6 @@
 // RFC-25 adapter manifest validation:
-//   - every sources/<name>/adapter.yaml validates against source.schema.json,
-//   - every targets/<name>/adapter.yaml validates against target.schema.json.
+//   - every adapters/sources/<name>/adapter.yaml validates against source.schema.json,
+//   - every adapters/targets/<name>/adapter.yaml validates against target.schema.json.
 
 import {
   Ajv2020,

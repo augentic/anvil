@@ -24,7 +24,7 @@ This plugin migrates existing TypeScript services to production-grade Rust WASM 
     └── replay-writer/     # Add regression tests from captured fixtures
 ```
 
-Note: Source code analysis lives in the `code-typescript` source adapter at [`sources/code-typescript/`](../../../sources/code-typescript/) — its `enumerate.md` brief drives plan-time candidate discovery, and its `extract.md` brief drives slice-time evidence capture during `/spec:refine`. Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly; see [`plugins/rt/skills/wiretapper/SKILL.md`](../skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
+Note: Source code analysis lives in the `code-typescript` source adapter at [`adapters/sources/code-typescript/`](../../../adapters/sources/code-typescript/) — its `enumerate.md` brief drives plan-time candidate discovery, and its `extract.md` brief drives slice-time evidence capture during `/spec:refine`. Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly; see [`plugins/rt/skills/wiretapper/SKILL.md`](../skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
 
 Each skill has its own SKILL.md with full details. After the legacy repo is cloned (via the inlined snippet), **wiretapper** runs in parallel with the `code-typescript` source's `enumerate` (which discovers candidate slices) — wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`. The RT plugin provides the fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
 
@@ -73,7 +73,7 @@ The `code-typescript` source adapter's `extract` operation produces platform-agn
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [`code-typescript` source adapter](../../../sources/code-typescript/) — plan-time discovery (`enumerate`) and slice-time evidence capture (`extract`)
+- [`code-typescript` source adapter](../../../adapters/sources/code-typescript/) — plan-time discovery (`enumerate`) and slice-time evidence capture (`extract`)
 - [Wiretapper SKILL.md](../skills/wiretapper/SKILL.md) - Fixture capture from legacy services (also hosts the inlined clone snippet for legacy-repo bootstrap)
 - [Replay Writer SKILL.md](../skills/replay-writer/SKILL.md) - Add tests from captured fixtures
 - [Specify Artifact Specification](../../references/specify.md) - Artifact format details

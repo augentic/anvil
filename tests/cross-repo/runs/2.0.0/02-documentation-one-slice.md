@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/rfc-25-workflow.md#acceptance-scenarios), row #2.
+[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #2.
 
 > Operator binds a single docs path.
 

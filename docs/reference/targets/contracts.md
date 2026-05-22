@@ -1,7 +1,7 @@
 # Contracts Adapter
 
 - **Identifier:** `contracts` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/targets/contracts`
+- **URL:** `https://github.com/augentic/specify/adapters/targets/contracts`
 - **Purpose:** Dedicated API contract changes -- defining or importing machine-readable interface shapes
 - **Target:** Contract artifacts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) at root `contracts/`
 
@@ -23,7 +23,7 @@ There is no `design` stage. Contract changes define interface shapes, not implem
 |-------|---------------|
 | `build.md` | `openapi`, `asyncapi`, and `json-schema` format sub-flows (author, importer, and verifier intents) |
 
-The build brief dispatches to the relevant format sub-flow from [`targets/contracts/briefs/build.md`](../../../targets/contracts/briefs/build.md): `openapi` for HTTP / resource APIs, `asyncapi` for evented / pub-sub / streaming, and `json-schema` for shared payload schemas. It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
+The build brief dispatches to the relevant format sub-flow from [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md): `openapi` for HTTP / resource APIs, `asyncapi` for evented / pub-sub / streaming, and `json-schema` for shared payload schemas. It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
 
 A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent (author or importer) makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
 
@@ -35,7 +35,7 @@ A verify-repair loop runs up to 2 iterations: if the verifier reports failures, 
 
 Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify slice merge run` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
 
-After the standard delta merge succeeds, the merge brief shells out to the declared [`contract` WASI tool](../cli/contract.md) with `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. The tool enforces the contract validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness) and is the contracts adapter's adoption gate. The merge brief maps the tool's exit code to the three-branch merge outcome (`success` / `failure` / `deferred`); see [`targets/contracts/briefs/merge.md`](../../../targets/contracts/briefs/merge.md) for the full wiring.
+After the standard delta merge succeeds, the merge brief shells out to the declared [`contract` WASI tool](../cli/contract.md) with `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. The tool enforces the contract validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness) and is the contracts adapter's adoption gate. The merge brief maps the tool's exit code to the three-branch merge outcome (`success` / `failure` / `deferred`); see [`adapters/targets/contracts/briefs/merge.md`](../../../adapters/targets/contracts/briefs/merge.md) for the full wiring.
 
 ## When to use
 
@@ -68,7 +68,7 @@ The Contracts adapter's briefs and skills carry domain context about:
 - OpenAPI 3.1 structure for HTTP endpoint bindings.
 - AsyncAPI 3.0 structure for messaging bindings.
 - Artifact structure and naming conventions for root `contracts/`.
-- Codex rules under [`targets/contracts/codex/`](../../../targets/contracts/codex/) for stable `IFACE-*` reviewer guidance on compatibility, versioning, and consumer-impact classification.
+- Codex rules under [`adapters/targets/contracts/codex/`](../../../adapters/targets/contracts/codex/) for stable `IFACE-*` reviewer guidance on compatibility, versioning, and consumer-impact classification.
 
 ## Adapter framework
 

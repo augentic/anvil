@@ -26,7 +26,7 @@ A regular project must declare a adapter; a hub must declare `--hub` and never c
 
 Resolve before invoking the CLI:
 
-- **`$PROFILE`** *(regular only — skip in workspace mode)* — if supplied as an argument, use it directly. Otherwise prefer the canonical Omnia target identifier (`https://github.com/augentic/specify/targets/omnia`) unless project context indicates another target. A local target directory (`./targets/omnia`) is also valid. If multiple candidates are plausible, use the **AskQuestion tool**. Do not pre-populate `.specify/.cache/`; the CLI owns target fetch/copy.
+- **`$PROFILE`** *(regular only — skip in workspace mode)* — if supplied as an argument, use it directly. Otherwise prefer the canonical Omnia target identifier (`https://github.com/augentic/specify/adapters/targets/omnia`) unless project context indicates another target. A local target directory (`./adapters/targets/omnia`) is also valid. If multiple candidates are plausible, use the **AskQuestion tool**. Do not pre-populate `.specify/.cache/`; the CLI owns target fetch/copy.
 - **`$PROJECT_NAME`** — defaults to the project directory basename; confirm via the **AskQuestion tool**. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
 - **`$DOMAIN`** *(optional)* — project description. Empty is fine — the CLI omits the field.
 

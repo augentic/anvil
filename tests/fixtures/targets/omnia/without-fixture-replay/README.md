@@ -1,6 +1,6 @@
 # `omnia` target — `without-fixture-replay` fixture
 
-Worked example for the omission-is-not-an-error posture on the [`omnia` target adapter's `build` brief](../../../../../targets/omnia/briefs/build.md) fixture-replay hook (RFC-27 §D1, target half). The `.metadata.yaml` in this directory is what a build emits when the slice has no `code-runtime` source binding (or when a target adapter fork has not implemented the hook).
+Worked example for the omission-is-not-an-error posture on the [`omnia` target adapter's `build` brief](../../../../../adapters/targets/omnia/briefs/build.md) fixture-replay hook (RFC-27 §D1, target half). The `.metadata.yaml` in this directory is what a build emits when the slice has no `code-runtime` source binding (or when a target adapter fork has not implemented the hook).
 
 ## What this fixture demonstrates
 

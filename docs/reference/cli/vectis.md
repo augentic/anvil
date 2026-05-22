@@ -14,10 +14,10 @@ specify tool run vectis -- validate <mode> [path]
 
 | Mode | Validates |
 |------|-----------|
-| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../targets/vectis/schemas/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
+| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../adapters/targets/vectis/schemas/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
 | `composition` | `composition.yaml` (wired or unwired), including schema shape, structural identity, and cross-artifact reference resolution against sibling `tokens.yaml` / `assets.yaml`. Auto-invokes `tokens` and `assets` modes when those siblings exist. |
-| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../targets/vectis/schemas/tokens.schema.json). |
-| `assets` | `assets.yaml` against [`assets.schema.json`](../../../targets/vectis/schemas/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
+| `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../adapters/targets/vectis/schemas/tokens.schema.json). |
+| `assets` | `assets.yaml` against [`assets.schema.json`](../../../adapters/targets/vectis/schemas/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |
 | `all` | Runs all four modes against the active slice and baseline. |
 
 The optional `[path]` argument names the file to validate. When omitted, each mode resolves its default from the Vectis artifact cascade: slice-local files first, then project-level design-system files or the merged composition baseline. An explicit `[path]` always wins.
@@ -40,7 +40,7 @@ specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-fil
 specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
-`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by [`targets/vectis/adapter.yaml`](../../../targets/vectis/adapter.yaml) (`tools[]`); it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis target's [`build`](../../../targets/vectis/briefs/build.md) and [`merge`](../../../targets/vectis/briefs/merge.md) briefs.
+`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by [`adapters/targets/vectis/adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml) (`tools[]`); it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis target's [`build`](../../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../../adapters/targets/vectis/briefs/merge.md) briefs.
 
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
 
@@ -49,4 +49,4 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 - [specify tool](tool.md) -- declared WASI tool runner surface
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
 - [Vectis Target](../targets/vectis.md) -- target reference for cross-platform projects
-- [`targets/vectis/adapter.yaml`](../../../targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations
+- [`adapters/targets/vectis/adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations

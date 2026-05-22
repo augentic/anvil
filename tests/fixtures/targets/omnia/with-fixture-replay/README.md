@@ -1,6 +1,6 @@
 # `omnia` target — `with-fixture-replay` fixture
 
-Worked example for the **optional** fixture-replay hook on the [`omnia` target adapter's `build` brief](../../../../../targets/omnia/briefs/build.md) (RFC-27 §D1, target half). The `.metadata.yaml` in this directory carries a top-level `fixture-replay:` block alongside the standard slice metadata.
+Worked example for the **optional** fixture-replay hook on the [`omnia` target adapter's `build` brief](../../../../../adapters/targets/omnia/briefs/build.md) (RFC-27 §D1, target half). The `.metadata.yaml` in this directory carries a top-level `fixture-replay:` block alongside the standard slice metadata.
 
 ## What this fixture demonstrates
 

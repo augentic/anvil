@@ -13,7 +13,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `<target>` | Required for regular projects | Target identifier or URL, e.g. `omnia` (bare name), `https://github.com/augentic/specify/targets/omnia` (URL), or `file:///…` (local URI). Supports an `@ref` suffix for version pinning. Mutually exclusive with `--workspace`. |
+| `<target>` | Required for regular projects | Target identifier or URL, e.g. `omnia` (bare name), `https://github.com/augentic/specify/adapters/targets/omnia` (URL), or `file:///…` (local URI). Supports an `@ref` suffix for version pinning. Mutually exclusive with `--workspace`. |
 | `--hub` | -- | Scaffold a registry-only platform hub instead of a regular project. No adapter identifier is needed. |
 
 ## When to use
@@ -59,10 +59,10 @@ None -- init creates the project scaffold, not a slice.
 /spec:init omnia
 
 # Initialise with the Omnia target (URL form)
-/spec:init https://github.com/augentic/specify/targets/omnia
+/spec:init https://github.com/augentic/specify/adapters/targets/omnia
 
 # Initialise with a pinned Vectis target version
-/spec:init https://github.com/augentic/specify/targets/vectis@v1
+/spec:init https://github.com/augentic/specify/adapters/targets/vectis@v1
 
 # Bootstrap a registry-only platform hub
 /spec:init hub

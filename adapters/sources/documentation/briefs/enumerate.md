@@ -61,7 +61,7 @@ Expected output (alphabetically by `id`):
 - summary: Account service that lets a registered user request a password reset link by email.
 ```
 
-A full input/output fixture for this example lives at [`tests/fixtures/sources/documentation/`](../../../tests/fixtures/sources/documentation/) in the repo.
+A full input/output fixture for this example lives at [`tests/fixtures/sources/documentation/`](../../../../tests/fixtures/sources/documentation/) in the repo.
 
 ## Determinism
 

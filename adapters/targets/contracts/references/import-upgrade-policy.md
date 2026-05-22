@@ -113,4 +113,4 @@ Every format-specific importer follows these principles:
 - [`artifact-structure`](artifact-structure.md) — directory layout for the post-import baseline shape.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — `$id` stability and baseline-immutability rules that the importer obeys.
 - [`report-shape`](report-shape.md) — import report structure, including the "Manual Review Required" section.
-- Format-specific importers — `targets/contracts/references/{openapi,asyncapi,json-schema}/importer.md`.
+- Format-specific importers — `adapters/targets/contracts/references/{openapi,asyncapi,json-schema}/importer.md`.

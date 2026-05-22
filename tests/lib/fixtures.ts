@@ -63,8 +63,8 @@ export async function walkTargetFixtures(): Promise<TargetFixture[]> {
   for (const name of await listDirs(root)) {
     const targetDir = join(root, name);
     // Two layouts:
-    //   targets/<name>/{input,expected}/        — single case
-    //   targets/<name>/<case>/{input,expected}/ — multi case
+    //   adapters/targets/<name>/{input,expected}/        — single case
+    //   adapters/targets/<name>/<case>/{input,expected}/ — multi case
     if (await exists(join(targetDir, "input"))) {
       out.push({ name, caseName: null, dir: targetDir });
       continue;

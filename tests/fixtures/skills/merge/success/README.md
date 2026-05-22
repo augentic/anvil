@@ -10,7 +10,7 @@ The skill body MUST:
 
 1. Resolve the slice via `specify plan next` (or validate the supplied `[slice-name]` arg matches it).
 2. Acquire the plan lock when invoked standalone (`SPECIFY_PLAN_LOCK_HELD` unset).
-3. Read and execute `targets/omnia/briefs/merge.md`'s pre-merge gate.
+3. Read and execute `adapters/targets/omnia/briefs/merge.md`'s pre-merge gate.
 4. Run the AskQuestion confirmation when interactive (skip when `SPECIFY_PLAN_LOCK_HELD=1`).
 5. Run `specify slice merge password-hash-rotate --format json` exactly once. The CLI atomically:
    - applies the delta merge against `.specify/specs/`,

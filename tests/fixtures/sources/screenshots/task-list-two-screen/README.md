@@ -1,6 +1,6 @@
 # `screenshots` source adapter fixture — `task-list-two-screen`
 
-Worked example for the [`screenshots` source adapter](../../../../../sources/screenshots/adapter.yaml). Exercises both operations of the contract: `enumerate` emits one candidate per screen under `## Candidate inventory` in `discovery.md`; `extract` returns one Evidence YAML per candidate with `documentation` authority and the `region` / `container` / `leaf` claim kinds co-introduced for spatial Evidence.
+Worked example for the [`screenshots` source adapter](../../../../../adapters/sources/screenshots/adapter.yaml). Exercises both operations of the contract: `enumerate` emits one candidate per screen under `## Candidate inventory` in `discovery.md`; `extract` returns one Evidence YAML per candidate with `documentation` authority and the `region` / `container` / `leaf` claim kinds co-introduced for spatial Evidence.
 
 This fixture preserves the regression input from the retired `vectis-image-layout-inferer` skill. The `input/` directory holds the synthetic screen image; the `design-system/` directory holds the sibling token and asset manifests downstream `targets/vectis/build` consumes when fusing the Evidence back into `composition.yaml`.
 

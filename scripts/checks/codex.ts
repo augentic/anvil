@@ -1,6 +1,6 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers rule markdown under targets/<cap>/codex/** and
-//     sources/<cap>/codex/** plus the optional repo-root codex/** overlay,
+//   - discovers rule markdown under adapters/targets/<cap>/codex/** and
+//     adapters/sources/<cap>/codex/** plus the optional repo-root codex/** overlay,
 //   - validates frontmatter against codex-rule.schema.json,
 //   - enforces a `## Rule` body heading and adapter-namespace
 //     ownership (e.g. `omnia` may only emit `OMNIA-*`, `RUST-*`, `SEC-*`

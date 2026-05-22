@@ -65,4 +65,4 @@ With `--format json`, the command emits the standard Specify CLI envelope:
 }
 ```
 
-See [Cross-Project Compatibility](../../../targets/contracts/references/cross-project-compatibility.md) for the `change-kind` vocabulary and classification policy.
+See [Cross-Project Compatibility](../../../adapters/targets/contracts/references/cross-project-compatibility.md) for the `change-kind` vocabulary and classification policy.

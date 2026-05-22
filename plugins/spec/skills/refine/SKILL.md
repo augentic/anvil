@@ -48,7 +48,7 @@ If any `extract` returns a non-zero status or the host runner surfaces `source-e
 
 ## Step 4 — Synthesise the four artifacts
 
-Load the target `shape` brief via `specify target resolve <target> --format json` and read the `shape` brief from `targets/<target>/briefs/shape.md`. Load every persisted Evidence YAML. Then write the four artifacts in fixed substep order, following the synthesis playbook:
+Load the target `shape` brief via `specify target resolve <target> --format json` and read the `shape` brief from `adapters/targets/<target>/briefs/shape.md`. Load every persisted Evidence YAML. Then write the four artifacts in fixed substep order, following the synthesis playbook:
 
 1. `proposal.md` — motivation, scope, non-goals. See [`../../references/synthesis/substeps.md`](../../references/synthesis/substeps.md).
 2. `spec.md` — fused requirements with `ID:` / `Sources:` / `Status:` per [`../../references/synthesis/requirement-block.md`](../../references/synthesis/requirement-block.md). Apply [`../../references/synthesis/authority.md`](../../references/synthesis/authority.md) per fused `claim-id` group and [`../../references/synthesis/claim-fusion.md`](../../references/synthesis/claim-fusion.md) per claim kind.
@@ -112,8 +112,8 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 
 - [`../../references/synthesis/`](../../references/synthesis/) — synthesis playbook (substeps, authority, requirement-block, claim-fusion, fusion, tags).
 - [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md) — reconciliation-index block grammar, truncation rule, `resolution` enum, and `resolution-trace` step names step 5 cites.
-- [`targets/<target>/briefs/shape.md`](../../../../targets/) — per-target idiom guidance synthesis folds into `design.md`.
-- [`sources/<adapter>/briefs/extract.md`](../../../../sources/) — per-source-adapter extract brief invoked in step 3.
+- [`adapters/targets/<target>/briefs/shape.md`](../../../../adapters/targets/) — per-target idiom guidance synthesis folds into `design.md`.
+- [`adapters/sources/<adapter>/briefs/extract.md`](../../../../adapters/sources/) — per-source-adapter extract brief invoked in step 3.
 
 ## Guardrails
 

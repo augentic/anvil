@@ -19,7 +19,7 @@ sources:
     path: ./fixtures/replay
 ```
 
-The bound `path:` becomes `$SOURCE_DIR`. The fixture layout is the one the RT wiretapper writes — see [fixture-format reference](../../../plugins/rt/skills/replay-writer/references/fixture-format.md) for the per-file TestDef shape (`setup`, `input`, `params`, `http_requests`, `output`).
+The bound `path:` becomes `$SOURCE_DIR`. The fixture layout is the one the RT wiretapper writes — see [fixture-format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md) for the per-file TestDef shape (`setup`, `input`, `params`, `http_requests`, `output`).
 
 ## Inputs
 
@@ -172,6 +172,6 @@ Same skip-root and traversal rules as `enumerate`: relative paths only under `$S
 
 ## References
 
-- [RFC-27 §`extract` output](../../../rfcs/rfc-27-synthesis.md#extract-output)
-- [RFC-27 §Runtime source adapter (D1)](../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
-- [Fixture format reference](../../../plugins/rt/skills/replay-writer/references/fixture-format.md)
+- [RFC-27 §`extract` output](../../../../rfcs/rfc-27-synthesis.md#extract-output)
+- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
+- [Fixture format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md)

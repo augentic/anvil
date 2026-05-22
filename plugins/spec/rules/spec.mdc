@@ -15,8 +15,8 @@ This plugin provides the core Specify 2.0 workflow skills: initialize a project,
 
 Adapters split into two roles in 2.0:
 
-- **Source adapters** (`sources/<name>/`) supply input — `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`.
-- **Target adapters** (`targets/<name>/`) consume artifacts — `shape`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
+- **Source adapters** (`adapters/sources/<name>/`) supply input — `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`.
+- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `shape`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
 
 Each directory contains `adapter.yaml` plus operation briefs under `briefs/`.
 

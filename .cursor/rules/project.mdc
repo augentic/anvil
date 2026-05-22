@@ -11,8 +11,8 @@ This repository provides specialist skills and references for Specify-driven dev
 
 Specify 2.0 splits adapters by direction and collapses operator vocabulary to `/spec:*`. The terms are:
 
-- **source adapter** — input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `code-runtime` (RFC-27 §D1; captures fixture trees as `kind: example` Evidence with `fixture-digest: sha256:…` and default `authority: behaviour`). Lives at `sources/<name>/adapter.yaml`.
-- **target adapter** — output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
+- **source adapter** — input role: `enumerate` + `extract`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `code-runtime` (RFC-27 §D1; captures fixture trees as `kind: example` Evidence with `fixture-digest: sha256:…` and default `authority: behaviour`). Lives at `adapters/sources/<name>/adapter.yaml`.
+- **target adapter** — output role: `shape` + `build` + `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
 - **plugin** — historical shorthand for the shared adapter shape (the Rust loader lives at `crates/domain/src/adapter/`, manifests validate against the per-axis `source.schema.json` / `target.schema.json` shipped with the CLI).
 - **candidate / evidence** — slice-sized unit from `enumerate` / per-source result of `extract`.
 - **provenance** — `Sources:` list on a requirement block; **authority** — closed enum `intent` > `documentation` > `behaviour`; **conflict / divergence** — `[conflict]` / `[divergence]` tags on a requirement header.
@@ -96,7 +96,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Omnia Plugin (`plugins/omnia/`)
 
-References-only after the source/target split. The omnia target adapter at [`targets/omnia/`](../../targets/omnia/) owns `shape`, `build`, and `merge` briefs; the plugin retains specialist skill bodies for crate generation and review:
+References-only after the source/target split. The omnia target adapter at [`adapters/targets/omnia/`](../../adapters/targets/omnia/) owns `shape`, `build`, and `merge` briefs; the plugin retains specialist skill bodies for crate generation and review:
 
 - `crate-writer` - generate or update Rust crates from Specify artifacts
 - `test-writer` - generate or update test suites from Specify artifacts and crate code
@@ -112,7 +112,7 @@ Cloning a remote source tree is no longer a dedicated skill — `/rt:wiretapper`
 
 ### Vectis Plugin (`plugins/vectis/`)
 
-References-only after the source/target split (legacy `image-layout-inferer` skill was rehomed under [`sources/screenshots/`](../../sources/screenshots/)). The vectis target adapter at [`targets/vectis/`](../../targets/vectis/) owns `shape`, `build`, and `merge` briefs; the plugin retains specialist skill bodies for shell generation and review:
+References-only after the source/target split (legacy `image-layout-inferer` skill was rehomed under [`adapters/sources/screenshots/`](../../adapters/sources/screenshots/)). The vectis target adapter at [`adapters/targets/vectis/`](../../adapters/targets/vectis/) owns `shape`, `build`, and `merge` briefs; the plugin retains specialist skill bodies for shell generation and review:
 
 - `core-writer` - generate or update Rust Crux shared crates
 - `test-writer` - generate or update test suites with spec-to-test traceability
@@ -131,7 +131,7 @@ Format-first specialist skills; each carries author / import / verify intents in
 - `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
 - `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
 
-The persisted artifact surface is the `contracts/` baseline directory; the contracts target adapter at [`targets/contracts/`](../../targets/contracts/) owns merge-time validation. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
+The persisted artifact surface is the `contracts/` baseline directory; the contracts target adapter at [`adapters/targets/contracts/`](../../adapters/targets/contracts/) owns merge-time validation. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ### Client Plugin (`plugins/client/`)
 
@@ -153,16 +153,18 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── contract/           # Contract authoring/import/verify skills
   ├── rt/                 # RT migration plugin (wiretap + replay)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/sources/                 # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
-  ├── intent/             # operator brief; degenerate N=1 entry point
-  ├── documentation/      # operator-provided written intent
- ├── code-typescript/    # legacy TypeScript enumeration + extract
- ├── code-runtime/       # captured fixture trees -> kind: example Evidence (RFC-27 §D1)
- └── screenshots/        # vision-assisted spatial inference (Vectis input)
-/targets/                 # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
-  ├── omnia/
-  ├── vectis/
-  └── contracts/
+/adapters/
+  ├── sources/            # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
+  │   ├── intent/             # operator brief; degenerate N=1 entry point
+  │   ├── documentation/      # operator-provided written intent
+  │   ├── code-typescript/    # legacy TypeScript enumeration + extract
+  │   ├── code-runtime/       # captured fixture trees -> kind: example Evidence (RFC-27 §D1)
+  │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
+  └── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
+      ├── default/
+      ├── omnia/
+      ├── vectis/
+      └── contracts/
 /schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
 /scripts/                 # Validation and plugin management
 ```

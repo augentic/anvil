@@ -25,10 +25,10 @@ contracts/                                  # Baseline API contracts
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
 ├── .cache/                                 # Cached adapter manifests + briefs
-│   ├── sources/<name>/                     # Source adapter cache
+│   ├── adapters/sources/<name>/                     # Source adapter cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{enumerate,extract}.md
-│   └── targets/<name>/                     # Target adapter cache
+│   └── adapters/targets/<name>/                     # Target adapter cache
 │       ├── adapter.yaml
 │       └── briefs/{shape,build,merge}.md
 │
@@ -90,7 +90,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `.cache/`
 
-Adapter manifests and brief files. The adapter loader (`crates/domain/src/adapter/`) routes by axis: `sources/<name>/` for source adapters and `targets/<name>/` for target adapters. The cache is populated by `specify source resolve` and `specify target resolve` on first use.
+Adapter manifests and brief files. The adapter loader (`crates/domain/src/adapter/`) routes by axis: `adapters/sources/<name>/` for source adapters and `adapters/targets/<name>/` for target adapters. The cache is populated by `specify source resolve` and `specify target resolve` on first use.
 
 ### `workspace/`
 

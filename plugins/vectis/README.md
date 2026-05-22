@@ -1,24 +1,24 @@
 # Vectis reference material
 
-Reference documentation for the Vectis target adapter at [`targets/vectis/`](../../targets/vectis/). In Specify 2.0 (RFC-25) Vectis is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
+Reference documentation for the Vectis target adapter at [`adapters/targets/vectis/`](../../adapters/targets/vectis/). In Specify 2.0 (RFC-25) Vectis is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
-The orchestration of the retired `vectis-core-writer`, `vectis-test-writer`, `vectis-ios-writer`, `vectis-android-writer`, `vectis-core-reviewer`, `vectis-ios-reviewer`, `vectis-android-reviewer`, and `vectis-template-updater` skills now lives in [`targets/vectis/briefs/build.md`](../../targets/vectis/briefs/build.md) and eight phase sub-briefs under [`targets/vectis/briefs/build/`](../../targets/vectis/briefs/build/). The depth (Crux idioms, SwiftUI patterns, Compose patterns, hard rules, review check libraries, token templates, design-system integration) and worked examples live in this folder.
+The orchestration of the retired `vectis-core-writer`, `vectis-test-writer`, `vectis-ios-writer`, `vectis-android-writer`, `vectis-core-reviewer`, `vectis-ios-reviewer`, `vectis-android-reviewer`, and `vectis-template-updater` skills now lives in [`adapters/targets/vectis/briefs/build.md`](../../adapters/targets/vectis/briefs/build.md) and eight phase sub-briefs under [`adapters/targets/vectis/briefs/build/`](../../adapters/targets/vectis/briefs/build/). The depth (Crux idioms, SwiftUI patterns, Compose patterns, hard rules, review check libraries, token templates, design-system integration) and worked examples live in this folder.
 
 ## Briefs
 
 | Brief | Purpose |
 |-------|---------|
-| [`shape.md`](../../targets/vectis/briefs/shape.md) | Idiom guidance for core synthesis. |
-| [`build.md`](../../targets/vectis/briefs/build.md) | Orchestrator: phase order, sub-agent contract, verify-serial / review-parallel rule, consolidation, template-drift signal, phase outcome. |
-| [`build/composition.md`](../../targets/vectis/briefs/build/composition.md) | Regenerate `composition.yaml` from `spec.md` + `design.md`; run the deterministic validator gate. |
-| [`build/core/write.md`](../../targets/vectis/briefs/build/core/write.md) | Generate / update the Crux shared core. |
-| [`build/core/review.md`](../../targets/vectis/briefs/build/core/review.md) | Agent-team review of the Rust `shared` crate. |
-| [`build/test.md`](../../targets/vectis/briefs/build/test.md) | Generate / update Crux tests; run the core verify-repair loop. |
-| [`build/ios/write.md`](../../targets/vectis/briefs/build/ios/write.md) | Generate / update the SwiftUI iOS shell + verify. |
-| [`build/ios/review.md`](../../targets/vectis/briefs/build/ios/review.md) | Agent-team review of the iOS shell. |
-| [`build/android/write.md`](../../targets/vectis/briefs/build/android/write.md) | Generate / update the Compose Android shell + verify. |
-| [`build/android/review.md`](../../targets/vectis/briefs/build/android/review.md) | Agent-team review of the Android shell. |
-| [`merge.md`](../../targets/vectis/briefs/merge.md) | Pre-merge gate run by `/spec:merge`. |
+| [`shape.md`](../../adapters/targets/vectis/briefs/shape.md) | Idiom guidance for core synthesis. |
+| [`build.md`](../../adapters/targets/vectis/briefs/build.md) | Orchestrator: phase order, sub-agent contract, verify-serial / review-parallel rule, consolidation, template-drift signal, phase outcome. |
+| [`build/composition.md`](../../adapters/targets/vectis/briefs/build/composition.md) | Regenerate `composition.yaml` from `spec.md` + `design.md`; run the deterministic validator gate. |
+| [`build/core/write.md`](../../adapters/targets/vectis/briefs/build/core/write.md) | Generate / update the Crux shared core. |
+| [`build/core/review.md`](../../adapters/targets/vectis/briefs/build/core/review.md) | Agent-team review of the Rust `shared` crate. |
+| [`build/test.md`](../../adapters/targets/vectis/briefs/build/test.md) | Generate / update Crux tests; run the core verify-repair loop. |
+| [`build/ios/write.md`](../../adapters/targets/vectis/briefs/build/ios/write.md) | Generate / update the SwiftUI iOS shell + verify. |
+| [`build/ios/review.md`](../../adapters/targets/vectis/briefs/build/ios/review.md) | Agent-team review of the iOS shell. |
+| [`build/android/write.md`](../../adapters/targets/vectis/briefs/build/android/write.md) | Generate / update the Compose Android shell + verify. |
+| [`build/android/review.md`](../../adapters/targets/vectis/briefs/build/android/review.md) | Agent-team review of the Android shell. |
+| [`merge.md`](../../adapters/targets/vectis/briefs/merge.md) | Pre-merge gate run by `/spec:merge`. |
 
 ## References
 
@@ -66,7 +66,7 @@ The orchestration of the retired `vectis-core-writer`, `vectis-test-writer`, `ve
 
 ### Layout inferer contract (legacy)
 
-- [`layout-inferer-contract.md`](references/layout-inferer-contract.md) — historic contract preserved for the [`sources/screenshots/`](../../sources/screenshots/) adapter.
+- [`layout-inferer-contract.md`](references/layout-inferer-contract.md) — historic contract preserved for the [`adapters/sources/screenshots/`](../../adapters/sources/screenshots/) adapter.
 
 ### Worked examples
 

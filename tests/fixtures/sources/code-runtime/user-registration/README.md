@@ -1,6 +1,6 @@
 # `code-runtime` source adapter fixture — `user-registration`
 
-Worked example for the [`code-runtime`](../../../../../sources/code-runtime/) source adapter (RFC-27 §D1). Exercises both operations of the source contract: `enumerate` emits one candidate per `tests/data/replay/<handler>/` directory under `## Candidate inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
+Worked example for the [`code-runtime`](../../../../../adapters/sources/code-runtime/) source adapter (RFC-27 §D1). Exercises both operations of the source contract: `enumerate` emits one candidate per `tests/data/replay/<handler>/` directory under `## Candidate inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
 
 ## Layout
 

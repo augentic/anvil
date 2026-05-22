@@ -1,7 +1,7 @@
 # Omnia Adapter
 
 - **Identifier:** `omnia` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/targets/omnia`
+- **URL:** `https://github.com/augentic/specify/adapters/targets/omnia`
 - **Purpose:** Rust WASM development (greenfield or migration)
 - **Target:** Rust WASM (Omnia SDK)
 
@@ -18,7 +18,7 @@
 
 When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `code-typescript`) and fuses claims into `spec.md` requirements with `Sources:` provenance lines.
 
-The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`targets/contracts/briefs/build.md`](../../../targets/contracts/briefs/build.md).
+The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
 ### Build phase
 
@@ -59,7 +59,7 @@ The Omnia adapter's briefs and skills carry domain context about:
 After `/spec:init omnia`, `project.yaml` carries:
 
 ```yaml
-target: https://github.com/augentic/specify/targets/omnia
+target: https://github.com/augentic/specify/adapters/targets/omnia
 rules:
   - "Project-specific constraints go here"
 ```

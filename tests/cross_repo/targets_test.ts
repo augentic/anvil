@@ -32,7 +32,7 @@ Deno.test("targets fixtures: tree present", async () => {
   }
 });
 
-Deno.test("targets/*/input/spec.md: every requirement provenance block parses", async () => {
+Deno.test("adapters/targets/*/input/spec.md: every requirement provenance block parses", async () => {
   const fixtures = await walkTargetFixtures();
   let parsedTotal = 0;
   for (const fx of fixtures) {
@@ -55,7 +55,7 @@ Deno.test("targets/*/input/spec.md: every requirement provenance block parses", 
   }
 });
 
-Deno.test("targets/vectis/*/expected/composition.yaml: well-formed with screens", async () => {
+Deno.test("adapters/targets/vectis/*/expected/composition.yaml: well-formed with screens", async () => {
   const fixtures = await walkTargetFixtures();
   let seen = 0;
   for (const fx of fixtures) {
@@ -82,7 +82,7 @@ Deno.test("targets/vectis/*/expected/composition.yaml: well-formed with screens"
   }
 });
 
-Deno.test("targets/omnia/expected/crate: Cargo.toml + src/lib.rs present", async () => {
+Deno.test("adapters/targets/omnia/expected/crate: Cargo.toml + src/lib.rs present", async () => {
   const fixtures = await walkTargetFixtures();
   let seen = 0;
   for (const fx of fixtures) {
@@ -107,7 +107,7 @@ Deno.test("targets/omnia/expected/crate: Cargo.toml + src/lib.rs present", async
   }
 });
 
-Deno.test("targets/*/expected/shape-evidence.md: bullet items present", async () => {
+Deno.test("adapters/targets/*/expected/shape-evidence.md: bullet items present", async () => {
   const fixtures = await walkTargetFixtures();
   for (const fx of fixtures) {
     const shape = join(fx.dir, "expected", "shape-evidence.md");
@@ -139,7 +139,7 @@ Deno.test("targets/*/expected/shape-evidence.md: bullet items present", async ()
 
 const REQUIRED_FIXTURE_REPLAY_KEYS = ["passed", "failed", "skipped", "ran-at", "runner"];
 
-Deno.test("targets/omnia/with-fixture-replay: .metadata.yaml carries full fixture-replay block", async () => {
+Deno.test("adapters/targets/omnia/with-fixture-replay: .metadata.yaml carries full fixture-replay block", async () => {
   const path = "tests/fixtures/targets/omnia/with-fixture-replay/.metadata.yaml";
   const content = await readText(path);
   if (content === null) {
@@ -165,7 +165,7 @@ Deno.test("targets/omnia/with-fixture-replay: .metadata.yaml carries full fixtur
   }
 });
 
-Deno.test("targets/omnia/without-fixture-replay: .metadata.yaml omits fixture-replay (optional posture)", async () => {
+Deno.test("adapters/targets/omnia/without-fixture-replay: .metadata.yaml omits fixture-replay (optional posture)", async () => {
   const path = "tests/fixtures/targets/omnia/without-fixture-replay/.metadata.yaml";
   const content = await readText(path);
   if (content === null) {

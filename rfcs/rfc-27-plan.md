@@ -241,7 +241,7 @@ Phase 1 ──►         ├── 2.3 Authority override (D3) ─────�
 
 - `crates/domain/src/adapter/cache.rs` — fingerprint computation (5 inputs, order-stable)
 - Extract code path (locate via `rg "extract"` in `src/commands/` and domain adapter modules) — cache hit/miss lookup + write
-- `.specify/.cache/sources/<adapter>/index.jsonl` append-only writer
+- `.specify/.cache/adapters/sources/<adapter>/index.jsonl` append-only writer
 - `src/commands/source/` — `--explain <adapter>` reads index log
 - `crates/domain/src/journal.rs` — `slice.extract.cache-hit` / `.cache-miss` with `reason` enum
 - Honor `cache: opt-out` on `adapter.yaml` → always miss, `reason: adapter-opt-out`
@@ -295,7 +295,7 @@ Phase 0 ──► 3.1 code-runtime adapter (D1) ──► 3.4 RT/Omnia replay ho
          └── 3.5 authority.md amend (D2,D3) ──── depends on 2.3 ( prose only; can start early )
 ```
 
-### Change 3.1 — `sources/code-runtime/` adapter (D1)
+### Change 3.1 — `adapters/sources/code-runtime/` adapter (D1)
 
 | | |
 | --- | --- |
@@ -306,9 +306,9 @@ Phase 0 ──► 3.1 code-runtime adapter (D1) ──► 3.4 RT/Omnia replay ho
 
 **Files**
 
-- `sources/code-runtime/adapter.yaml`
-- `sources/code-runtime/briefs/enumerate.md` — one candidate per handler entry point
-- `sources/code-runtime/briefs/extract.md` — `kind: example` claims; 64 KiB inline cap; `fixture-digest: sha256:…`
+- `adapters/sources/code-runtime/adapter.yaml`
+- `adapters/sources/code-runtime/briefs/enumerate.md` — one candidate per handler entry point
+- `adapters/sources/code-runtime/briefs/extract.md` — `kind: example` claims; 64 KiB inline cap; `fixture-digest: sha256:…`
 - Reference: `plugins/rt/skills/replay-writer/references/fixture-format.md`
 
 **Done when**
@@ -377,7 +377,7 @@ Phase 0 ──► 3.1 code-runtime adapter (D1) ──► 3.4 RT/Omnia replay ho
 **Files**
 
 - `plugins/rt/skills/replay-writer/SKILL.md` — thin wrapper pointing at code-runtime extract + Omnia build hook
-- `targets/omnia/briefs/build.md` — optional fixture-replay step; write `fixture-replay:` block to `.metadata.yaml`
+- `adapters/targets/omnia/briefs/build.md` — optional fixture-replay step; write `fixture-replay:` block to `.metadata.yaml`
 - `plugins/spec/skills/merge/SKILL.md` (if exists) or merge CLI hint — surface one-line replay summary when block present
 - CLI side (may spill to **2.x** follow-up): `merge` closing message reads `fixture-replay` from metadata
 

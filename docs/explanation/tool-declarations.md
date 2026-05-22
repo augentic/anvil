@@ -12,7 +12,7 @@ Project authors declare project-local tools in `.specify/project.yaml`:
 
 ```yaml
 name: payments-service
-target: https://github.com/augentic/specify/targets/contracts
+target: https://github.com/augentic/specify/adapters/targets/contracts
 
 tools:
   - name: contract
@@ -34,13 +34,13 @@ Use project scope when a repo needs a local override, a development build, a pri
 Target adapter authors declare tools inline in `adapter.yaml`'s `tools:` array:
 
 ```text
-targets/contracts/
+adapters/targets/contracts/
 ├── adapter.yaml      # carries `tools:` per target.schema.json
 └── briefs/
 ```
 
 ```yaml
-# targets/contracts/adapter.yaml (excerpt)
+# adapters/targets/contracts/adapter.yaml (excerpt)
 tools:
   - name: contract
     version: 0.3.0
@@ -148,7 +148,7 @@ Project-scope override of a adapter tool:
 ```yaml
 # .specify/project.yaml
 name: payments-service
-target: https://github.com/augentic/specify/targets/contracts
+target: https://github.com/augentic/specify/adapters/targets/contracts
 tools:
   - name: contract
     version: 1.0.1-dev
@@ -162,7 +162,7 @@ tools:
 Adapter-scope tool with a bundled read-only template directory:
 
 ```yaml
-# targets/example/adapter.yaml (excerpt)
+# adapters/targets/example/adapter.yaml (excerpt)
 tools:
   - name: example-generate
     version: 1.2.0
@@ -179,7 +179,7 @@ tools:
 First-party adapter-scope package that must create root-level project files:
 
 ```yaml
-# targets/vectis/adapter.yaml (tools[])
+# adapters/targets/vectis/adapter.yaml (tools[])
 tools:
   - name: vectis
     version: "0.3.0"

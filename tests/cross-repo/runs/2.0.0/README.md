@@ -1,6 +1,6 @@
 # 2.0.0 acceptance run-summaries
 
-Manual operator runs of the [`rfcs/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/rfc-25-workflow.md#acceptance-scenarios), captured one file per scenario id and held here for the audit trail required by the 2.0.0 release gate.
+Manual operator runs of the [`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), captured one file per scenario id and held here for the audit trail required by the 2.0.0 release gate.
 
 ## How to run
 

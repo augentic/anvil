@@ -6,8 +6,8 @@
 //
 // The harness deliberately does NOT pin LLM-emitted prose. Skill bodies are
 // agent-driven markdown (`plugins/spec/skills/<name>/SKILL.md`,
-// `sources/<name>/briefs/{enumerate,extract}.md`,
-// `targets/<name>/briefs/{shape,build,merge}.md`); byte-exact synthesis
+// `adapters/sources/<name>/briefs/{enumerate,extract}.md`,
+// `adapters/targets/<name>/briefs/{shape,build,merge}.md`); byte-exact synthesis
 // replay belongs in a separate (deferred) RFC. What this harness does cover:
 //
 //   - source fixtures   — schema-validate emitted Evidence + structural

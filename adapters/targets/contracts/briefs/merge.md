@@ -2,7 +2,7 @@
 
 Landing brief for slices that target the `contracts` adapter. The standard delta-spec merge, baseline coherence validation, lifecycle transition, and archive move are delegated to the `specify` CLI (`specify slice merge`). The contracts target adds **one target-specific gate** on top of that flow: a post-merge baseline check via the declared `contract` WASI tool. Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
 
-Follow the [`/spec:merge` skill](../../../plugins/spec/skills/merge/SKILL.md) for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The post-merge tool gate below is the contracts-specific delta on top of that flow.
+Follow the [`/spec:merge` skill](../../../../plugins/spec/skills/merge/SKILL.md) for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The post-merge tool gate below is the contracts-specific delta on top of that flow.
 
 ## Target-specific adoption gate
 
@@ -54,13 +54,13 @@ Pin updates that the operator can publish map to `success` (the merge brief retu
 
 The contracts target merge brief is the slice loop's first target-owned baseline gate. The brief decides go/no-go and signals it through `specify slice outcome set` plus `specify slice journal append`. The core proceeds with archival on `success` and halts on `failure` / `deferred`, surfacing the journal entries to the operator. Target diagnostics round-trip as opaque journal entries — the core does not parse them.
 
-The shared phase contract (outcome values, journal kinds, the verbatim-`summary` rule, plan-mutation rules) is authored once at [`plugins/spec/references/phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches below are the merge-phase deltas; the brief MUST pick exactly one before returning control.
+The shared phase contract (outcome values, journal kinds, the verbatim-`summary` rule, plan-mutation rules) is authored once at [`plugins/spec/references/phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches below are the merge-phase deltas; the brief MUST pick exactly one before returning control.
 
 ### success — merge applied, validator clean, slice archived
 
 `specify slice merge` exited zero AND `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` exited `0`. The CLI atomically stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml`, transitions the lifecycle to `merged`, and moves the slice directory into `.specify/archive/YYYY-MM-DD-<slice>/`.
 
-The brief MUST NOT call `specify slice outcome set` on this path — the slice directory no longer exists under `.specify/slices/<slice>/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the success outcome; downstream readers fall back to the archive when the active directory is absent. See [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Merge success path is CLI-stamped".
+The brief MUST NOT call `specify slice outcome set` on this path — the slice directory no longer exists under `.specify/slices/<slice>/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the success outcome; downstream readers fall back to the archive when the active directory is absent. See [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md) §"Merge success path is CLI-stamped".
 
 `/spec:execute` translates `success` into a plan-entry transition to `done` and proceeds to the next entry.
 
@@ -131,4 +131,4 @@ specify slice outcome set <slice> merge deferred \
 
 ### Summary writing rules
 
-The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/spec:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr, validator JSON, or log tail through `--context` instead — that field is not forwarded to `--reason`.
+The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/spec:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr, validator JSON, or log tail through `--context` instead — that field is not forwarded to `--reason`.

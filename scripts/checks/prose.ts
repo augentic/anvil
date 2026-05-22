@@ -131,8 +131,8 @@ export async function checkInvocationPositionals(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "docs"),
     join(REPO_ROOT, "plugins"),
-    join(REPO_ROOT, "sources"),
-    join(REPO_ROOT, "targets"),
+    join(REPO_ROOT, "adapters", "sources"),
+    join(REPO_ROOT, "adapters", "targets"),
   ];
   const SCAN_FILES = [
     join(REPO_ROOT, "README.md"),

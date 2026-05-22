@@ -41,7 +41,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 ## What to read next
 
-- [RFC-25 implementation plan](../../rfcs/rfc-25-plan.md) -- wave decomposition (`Wn.k` chunks), progress snapshot, and outstanding 2.0 cutover work; normative workflow contract in [rfc-25-workflow.md](../../rfcs/rfc-25-workflow.md)
+- [RFC-27 implementation plan](../../rfcs/rfc-27-plan.md) -- active synthesis and cache work; normative 2.0 workflow contract in [rfc-25-workflow.md](../../rfcs/archive/rfc-25-workflow.md)
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of a Adapter](adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
@@ -52,6 +52,6 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
 
-- [`targets/omnia/briefs/build.md`](../../targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (the bodies of the retired `omnia-crate-writer` and `omnia-test-writer` skills moved into this brief in RFC-25 W2.5).
-- [`plugins/vectis/references/`](../../plugins/vectis/references/) and [`targets/vectis/examples/`](../../targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`targets/vectis/briefs/`](../../targets/vectis/briefs/).
+- [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (the bodies of the retired `omnia-crate-writer` and `omnia-test-writer` skills moved into this brief in RFC-25 W2.5).
+- [`plugins/vectis/references/`](../../plugins/vectis/references/) and [`adapters/targets/vectis/examples/`](../../adapters/targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/).
 - [`tests/plan/`](../../tests/plan/) and [`tests/cross-repo/`](../../tests/cross-repo/) -- plan-time and end-to-end scenario packs covering `/spec:plan`, `/spec:execute`, and `/spec:finalize`.

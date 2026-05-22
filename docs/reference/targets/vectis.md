@@ -1,7 +1,7 @@
 # Vectis Adapter
 
 - **Identifier:** `vectis` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/targets/vectis`
+- **URL:** `https://github.com/augentic/specify/adapters/targets/vectis`
 - **Purpose:** Cross-platform Crux application development
 - **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
 
@@ -17,7 +17,7 @@
 | `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 
-The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`targets/contracts/briefs/build.md`](../../../targets/contracts/briefs/build.md).
+The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
 The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact.
 
@@ -88,7 +88,7 @@ The Vectis adapter's briefs and skills carry domain context about:
 After `/spec:init vectis`, `project.yaml` carries:
 
 ```yaml
-target: https://github.com/augentic/specify/targets/vectis
+target: https://github.com/augentic/specify/adapters/targets/vectis
 rules:
   - "Project-specific constraints go here"
 ```

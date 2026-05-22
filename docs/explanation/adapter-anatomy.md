@@ -6,8 +6,8 @@ Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn 
 
 | Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
 | -------- | ------------ | --------------------------- | ------------------------------------------------ | ------------------------ |
-| `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `sources/<name>/`        |
-| `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `targets/<name>/`        |
+| `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `adapters/sources/<name>/`        |
+| `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `adapters/targets/<name>/`        |
 
 Both ship `adapter.yaml` validated by an axis-specific schema (`schemas/source.schema.json` or `schemas/target.schema.json` distributed with the CLI). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
 
@@ -16,7 +16,7 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 ## Manifest shape
 
 ```yaml
-# sources/<name>/adapter.yaml
+# adapters/sources/<name>/adapter.yaml
 name: code-typescript
 version: 1
 axis: source
@@ -27,7 +27,7 @@ briefs:
 ```
 
 ```yaml
-# targets/<name>/adapter.yaml
+# adapters/targets/<name>/adapter.yaml
 name: omnia
 version: 1
 axis: target
@@ -38,7 +38,7 @@ briefs:
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; closed `operations[]` matching the axis; `briefs.<operation>` required for every declared operation; optional `tools[]` declaring WASI helpers that the host runs into `.specify/.cache/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; closed `operations[]` matching the axis; `briefs.<operation>` required for every declared operation; optional `tools[]` declaring WASI helpers that the host runs into `.specify/.cache/adapters/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
@@ -76,8 +76,8 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | Root              | Mode       | Contents                                                                            |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
-| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/sources/<adapter>/` — adapter-owned cache.                         |
-| `$SCRATCH_DIR`    | write-only | `.specify/.cache/sources/<adapter>/<slice>/` — per-slice scratch.                   |
+| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/adapters/sources/<adapter>/` — adapter-owned cache.                         |
+| `$SCRATCH_DIR`    | write-only | `.specify/.cache/adapters/sources/<adapter>/<slice>/` — per-slice scratch.                   |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
 Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
@@ -96,19 +96,19 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 ```text
 .specify/.cache/
-├── sources/{intent,documentation,code-typescript,screenshots,...}/
-└── targets/{omnia,vectis,contracts,...}/
+├── adapters/sources/{intent,documentation,code-typescript,screenshots,...}/
+└── adapters/targets/{omnia,vectis,contracts,...}/
 ```
 
-The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `sources/intent/`, `sources/documentation/`, `sources/code-typescript/`, `sources/screenshots/`, `targets/omnia/`, `targets/vectis/`, `targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
+The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add` / `specify plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
 
 ## Authoring checklist
 
 1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
-2. **Create the directory.** `sources/<name>/` or `targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
+2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
 3. **Declare the operations.** Closed `operations[]` matching the axis; `briefs.<operation>` for every entry.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `enumerate` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
-5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into `.specify/.cache/{sources,targets}/<name>/`.
+5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into `.specify/.cache/adapters/{sources,targets}/<name>/`.
 6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make checks` runs the documentation predicates and the schema validators.

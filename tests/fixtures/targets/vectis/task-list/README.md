@@ -28,5 +28,5 @@ The acceptance harness (`make test`) parses `input/spec.md` for provenance shape
 ## See also
 
 - [`tests/fixtures/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
-- [`targets/vectis/briefs/shape.md`](../../../../../targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/spec.md` + `input/design.md`.
-- [`targets/vectis/briefs/build.md`](../../../../../targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.
+- [`adapters/targets/vectis/briefs/shape.md`](../../../../../adapters/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/spec.md` + `input/design.md`.
+- [`adapters/targets/vectis/briefs/build.md`](../../../../../adapters/targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.

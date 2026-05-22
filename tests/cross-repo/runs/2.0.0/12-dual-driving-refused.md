@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/rfc-25-workflow.md#acceptance-scenarios), row #12.
+[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #12.
 
 > Project registered in a workspace; operator runs `/spec:plan` from the project root with a workspace-driven plan active.
 

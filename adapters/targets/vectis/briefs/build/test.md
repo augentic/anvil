@@ -2,7 +2,7 @@
 
 Loaded by [../build.md](../build.md) Step 5 (write tests) and Step 6 (verify-repair the shared core). Both phases run in their own sub-agents with clean context windows.
 
-Carries the body of the retired `vectis-test-writer` skill plus the cross-cutting Rust verify-repair loop. The spec-to-test mapping rules live in [`test-spec-mapping.md`](../../../../plugins/vectis/references/test-spec-mapping.md) and the operational runbook lives in [`test-runbook.md`](../../../../plugins/vectis/references/test-runbook.md).
+Carries the body of the retired `vectis-test-writer` skill plus the cross-cutting Rust verify-repair loop. The spec-to-test mapping rules live in [`test-spec-mapping.md`](../../../../../plugins/vectis/references/test-spec-mapping.md) and the operational runbook lives in [`test-runbook.md`](../../../../../plugins/vectis/references/test-runbook.md).
 
 ## Step 5 — Crux tests (test-writer body)
 
@@ -14,11 +14,11 @@ Run after [core/write.md](core/write.md) in the same slice. Detect mode from the
 
 ### Inline writer steps
 
-1. **Read inputs.** `${SPEC_PATH}`, `${DESIGN_PATH}`, `${APP_RS}`. Use spec-to-test mapping rules: one synchronous `#[test]` per scenario, named after the scenario, with a `/// Spec: <feature> > REQ-XXX > Scenario: <scenario>` traceability comment. Full mapping rules: [`test-spec-mapping.md`](../../../../plugins/vectis/references/test-spec-mapping.md).
+1. **Read inputs.** `${SPEC_PATH}`, `${DESIGN_PATH}`, `${APP_RS}`. Use spec-to-test mapping rules: one synchronous `#[test]` per scenario, named after the scenario, with a `/// Spec: <feature> > REQ-XXX > Scenario: <scenario>` traceability comment. Full mapping rules: [`test-spec-mapping.md`](../../../../../plugins/vectis/references/test-spec-mapping.md).
 2. **Map scenarios deterministically.** Each `#### Scenario:` block produces exactly one test function. The `**WHEN**` clause becomes the test setup (model state, dispatched events). The `**THEN**` clause becomes assertions over `Command` effects and `view()` output. Stable `REQ-XXX` ID + scenario title is the drift-detection key.
 3. **Write tests inside `#[cfg(test)] mod tests`** in `app.rs` (Crux convention — not a separate `tests/` directory). Preserve existing helpers, factory functions, and test style.
 4. **Coverage requirements.** Every scenario; every shell-facing `Event` variant; every page transition (Loading → Main, Error → retry); every validation rule; every adapter's happy and error path; factory helpers for repeated setup.
-5. **Crux test API.** Synchronous only — never `#[tokio::test]` or any async runtime. Call `update()` directly; inspect `Command` effects; resolve effects with simulated responses (`expect_one_effect()`, `expect_http()`, `resolve()`); assert on model and view-model state (`expect_one_event()`). Patterns: [`crux/testing-patterns.md`](../../../../plugins/vectis/references/crux/testing-patterns.md).
+5. **Crux test API.** Synchronous only — never `#[tokio::test]` or any async runtime. Call `update()` directly; inspect `Command` effects; resolve effects with simulated responses (`expect_one_effect()`, `expect_http()`, `resolve()`); assert on model and view-model state (`expect_one_event()`). Patterns: [`crux/testing-patterns.md`](../../../../../plugins/vectis/references/crux/testing-patterns.md).
 6. **Do not run `cargo test` in create or update mode** — orchestration owns it. In repair mode, run `cargo test` to get fresh errors and verify the fix before returning. Preserve test names, `/// Spec:` traceability comments, and assertion intent — only adjust the syntax used to express them.
 
 ## Step 6 — Core verify-repair loop (max 3 iterations)

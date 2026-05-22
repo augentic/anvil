@@ -198,7 +198,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## One `specify` binary; adapter-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`targets/vectis/adapter.yaml`](../../targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../targets/vectis/briefs/build.md) and [`merge`](../../targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
 
 **Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model from RFC-15 keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
@@ -252,7 +252,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Source/target split (RFC-25 D1)
 
-**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the cache splits as `.specify/.cache/{sources,targets}/<name>/`.
+**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `adapters/sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `adapters/targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the cache splits as `.specify/.cache/adapters/{sources,targets}/<name>/`.
 
 **Rationale:** `/change:analyze` and `/change:survey` were two evidence sources for the same operation; `/spec:define` and `/spec:extract` repeated the pattern at slice time. Unqualified `adapter` only named outputs, leaving no symmetrical term for inputs. Qualifying by direction makes the input/output asymmetry explicit, gives third-party legacy migration a first-class home (source adapters), and lets one resolver module replace the bifurcated define/analyze surface.
 
@@ -324,7 +324,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Hard cut at 2.0 (RFC-25 D10)
 
-**Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases. Operators upgrade via `migrate-to-2.0.sh`, which renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, the cache, and archive fields; rewrites `plan.yaml.slices[].sources` into the structured `{ key, candidate }[]` shape; moves the legacy Vectis `image-layout-inferer` body to `sources/screenshots/`; retires baseline `layout.yaml` paths and warns on existing `composition.yaml` (now a target build output); and bumps `specify-version`.
+**Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases. Operators upgrade via `migrate-to-2.0.sh`, which renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, the cache, and archive fields; rewrites `plan.yaml.slices[].sources` into the structured `{ key, candidate }[]` shape; moves the legacy Vectis `image-layout-inferer` body to `adapters/sources/screenshots/`; retires baseline `layout.yaml` paths and warns on existing `composition.yaml` (now a target build output); and bumps `specify-version`.
 
 **Rationale:** Compatibility shims for an in-flight pre-1.0 redesign multiply the surface area of every change without serving real consumers (there is no production install base yet). One mechanical migration script lets the rename land in one PR train without any code path having to support both shapes.
 

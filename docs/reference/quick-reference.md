@@ -98,15 +98,15 @@ specify tool run <name> [args...]                        # run a declared WASI t
 
 ## Adapters
 
-Target adapters live under `targets/<name>/`:
+Target adapters live under `adapters/targets/<name>/`:
 
 | Adapter   | URL                                                       | Target                |
 | --------- | --------------------------------------------------------- | --------------------- |
-| Omnia     | `https://github.com/augentic/specify/targets/omnia`       | Rust WASM             |
-| Vectis    | `https://github.com/augentic/specify/targets/vectis`      | Crux cross-platform   |
-| Contracts | `https://github.com/augentic/specify/targets/contracts`   | API contracts         |
+| Omnia     | `https://github.com/augentic/specify/adapters/targets/omnia`       | Rust WASM             |
+| Vectis    | `https://github.com/augentic/specify/adapters/targets/vectis`      | Crux cross-platform   |
+| Contracts | `https://github.com/augentic/specify/adapters/targets/contracts`   | API contracts         |
 
-First-party source adapters live under `sources/<name>/`: `intent`, `documentation`, `code-typescript`, `screenshots`.
+First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `code-typescript`, `screenshots`.
 
 ## Directory structure
 

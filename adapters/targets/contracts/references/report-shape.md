@@ -199,4 +199,4 @@ The author / importer paths always run the verifier afterwards. If the verifier 
 - [`cross-project-compatibility`](cross-project-compatibility.md) — RM-04 classification policy and `change-kind` vocabulary.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — alignment report structure for the author paths.
 - [`import-upgrade-policy`](import-upgrade-policy.md) — import report's "Manual Review Required" section.
-- Format-specific verifiers — `targets/contracts/references/{openapi,asyncapi,json-schema}/verifier.md`.
+- Format-specific verifiers — `adapters/targets/contracts/references/{openapi,asyncapi,json-schema}/verifier.md`.

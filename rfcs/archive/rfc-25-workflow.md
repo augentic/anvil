@@ -51,7 +51,7 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 
 | ID                                      | Decision                                                                                                                    | Implementation consequence                                                                                                                                                   |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **D1 Source/target split**              | Replace unqualified adapters with source adapters (`enumerate`, `extract`) and target adapters (`shape`, `build`, `merge`). | `sources/<name>/adapter.yaml`, `targets/<name>/adapter.yaml`, axis-aware resolver and cache.                                                                                 |
+| **D1 Source/target split**              | Replace unqualified adapters with source adapters (`enumerate`, `extract`) and target adapters (`shape`, `build`, `merge`). | `adapters/sources/<name>/adapter.yaml`, `adapters/targets/<name>/adapter.yaml`, axis-aware resolver and cache.                                                                                 |
 | **D2 Core synthesis**                   | Source adapters emit evidence only; target adapters supply `shape` only; core owns canonical artifacts.                     | `/spec:refine` runs extraction, synthesis, validation, and lifecycle transition.                                                                                             |
 | **D3 Multi-source slices**              | `Slice.sources` is a list with cardinality >= 1.                                                                            | Combined evidence is first-class; pure intent/port/design are degenerate one-source cases.                                                                                   |
 | **D4 Provenance and disagreement tags** | Requirements carry `ID:`, `Sources:`, and `Status:`.                                                                        | Core emits `agreed`, `unknown`, `conflict`, or `divergence`; tags never park the slice.                                                                                      |
@@ -75,7 +75,7 @@ This RFC unifies two significant changes to Specify in a single release. The cha
 | `/spec:define`, `/spec:extract`                      | `/spec:refine` (`source.extract` + core synthesis)                         |
 | `/change:execute loop`                               | `/spec:execute`                                                            |
 | `/change:finalize`                                   | `/spec:finalize`                                                           |
-| `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `targets/<name>/adapter.yaml`, `Slice.target`                              |
+| `adapters/<name>/adapter.yaml`, `Slice.adapter`      | `adapters/targets/<name>/adapter.yaml`, `Slice.target`                              |
 | `specify adapter` *, `specify change`*               | `specify source *`, `specify target *`, `specify plan *`; see §CLI surface |
 
 
@@ -256,14 +256,14 @@ Adapters retain ownership of the briefs they ship. Skills and adapters retain wr
 
 ### Adapter implementation shape
 
-Source: `sources/<name>/adapter.yaml`. Target: `targets/<name>/adapter.yaml`.
+Source: `adapters/sources/<name>/adapter.yaml`. Target: `adapters/targets/<name>/adapter.yaml`.
 
-Shared rules: kebab-case `name` unique per axis; `axis: source | target`; closed `operations[]` (`enumerate`/`extract` for sources, `shape`/`build`/`merge` for targets); `briefs.<operation>` required; optional `tools[]` per RFC-15 into `.specify/.cache/{sources,targets}/<name>/`.
+Shared rules: kebab-case `name` unique per axis; `axis: source | target`; closed `operations[]` (`enumerate`/`extract` for sources, `shape`/`build`/`merge` for targets); `briefs.<operation>` required; optional `tools[]` per RFC-15 into `.specify/.cache/adapters/{sources,targets}/<name>/`.
 
 `detect[]` auto-detection from paths is deferred; operators bind explicitly (`source legacy=./repo`).
 
 ```yaml
-# sources/<name>/adapter.yaml
+# adapters/sources/<name>/adapter.yaml
 name: code-typescript
 version: 1
 axis: source
@@ -274,7 +274,7 @@ briefs:
 ```
 
 ```yaml
-# targets/<name>/adapter.yaml
+# adapters/targets/<name>/adapter.yaml
 name: omnia
 version: 1
 axis: target
@@ -289,8 +289,8 @@ briefs:
 
 ```text
 .specify/.cache/
-|-- sources/{intent,documentation,code-typescript,...}/
-`-- targets/{omnia,vectis,contracts,...}/
+|-- adapters/sources/{intent,documentation,code-typescript,...}/
+`-- adapters/targets/{omnia,vectis,contracts,...}/
 ```
 
 One resolver module (`crates/domain/src/adapter/`) routes by axis.
@@ -340,8 +340,8 @@ Per-operation filesystem grant for source adapters:
 | Root              | Mode       | Contents                                                                            |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
-| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/sources/<adapter>/` — adapter-owned cache, per RFC-15.             |
-| `$SCRATCH_DIR`    | write-only | `.specify/.cache/sources/<adapter>/<slice>/` — per-slice scratch for the run.       |
+| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/adapters/sources/<adapter>/` — adapter-owned cache, per RFC-15.             |
+| `$SCRATCH_DIR`    | write-only | `.specify/.cache/adapters/sources/<adapter>/<slice>/` — per-slice scratch for the run.       |
 | `$PROJECT_DIR`    | none       | Source-adapter tools do not get the project root; lifecycle state stays off-limits. |
 
 
@@ -361,11 +361,11 @@ This deliberately excludes `$PROJECT_DIR` from source-adapter grants: source ada
 | `screenshots`   | `documentation`   | Vision-assisted spatial inference over a directory of screen images; emits `region` / `container` / `leaf` Evidence claims for downstream targets that need layout structure (Vectis). |
 
 
-All three ship as in-repo plugins under `sources/intent/`, `sources/documentation/`, and `sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The adapter loader (`crates/domain/src/adapter/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
+All three ship as in-repo plugins under `adapters/sources/intent/`, `adapters/sources/documentation/`, and `adapters/sources/screenshots/` with the same `adapter.yaml` + `briefs/` shape as every other source adapter. The adapter loader (`crates/domain/src/adapter/`) MUST resolve them through the same code path as a third-party source adapter; there is no `if name == "intent" { ... }` branch in core and no built-in fallback when the manifests are missing. Renaming or removing a manifest takes the corresponding adapter out of the resolver's set, identical behaviour to a third-party adapter.
 
 `screenshots` houses the body of the legacy Vectis `image-layout-inferer` skill, restructured as a source adapter: `enumerate` identifies candidate screens from the bound directory and writes one block per screen under `## Candidate inventory`; `extract` emits structured spatial Evidence per candidate (the new `region` / `container` / `leaf` claim kinds). The migration script retires `plugins/vectis/skills/image-layout-inferer/` and the hand-authored `layout.yaml` Specify artifact in 2.0 — see §Migration and §Note to the implementing agent. The v1 `enumerate` and `extract` briefs are the current `image-layout-inferer` prompt verbatim, just resliced into the two source-adapter operations; v1 does not redesign the inference algorithm.
 
-The first-party `code-typescript` source adapter ships alongside the three above; its body is the retired `change survey` TypeScript enumerator rehomed under `sources/code-typescript/`. Authority emitted is `behaviour`; enumeration grammar stays adapter-internal (§`discovery.md` consolidation) and unchanged from its 1.x form. Other code languages remain deferred per §Repository layout.
+The first-party `code-typescript` source adapter ships alongside the three above; its body is the retired `change survey` TypeScript enumerator rehomed under `adapters/sources/code-typescript/`. Authority emitted is `behaviour`; enumeration grammar stays adapter-internal (§`discovery.md` consolidation) and unchanged from its 1.x form. Other code languages remain deferred per §Repository layout.
 
 N=1 greenfield uses degenerate `intent.enumerate` via this normal resolution path.
 
@@ -814,12 +814,12 @@ Speculation — "we might need this someday" — is not on the list.
 /
 |-- plugins/
 |   `-- spec/skills/{init,plan,refine,execute,build,merge,finalize,drop}/
-|-- sources/
+|-- adapters/sources/
 |   |-- intent/                       # adapter.yaml, briefs/
 |   |-- documentation/
 |   |-- screenshots/                  # was plugins/vectis/skills/image-layout-inferer/
 |   `-- code-typescript/              # adapter-internal enumeration schema (was under change/)
-|-- targets/                          # was adapters/
+|-- adapters/targets/                          # was adapters/
 |   |-- omnia/                        # adapter.yaml, briefs/{shape,build,merge}.md
 |   |-- vectis/                       # target-only after the source/target split
 |   `-- contracts/
@@ -845,7 +845,7 @@ This RFC renames or reshapes several names that are already deeply embedded in t
 - `/change:*` and `/spec:define` skills are deleted (per step 17).
 - `slices[].sources` reshapes from `string[]` (source keys) to `{ key, candidate }[]`; the standalone `slices[].candidate` field is removed and its value folds into each binding (per §`Slice.sources`). The schema accepts a bare `<key>` string as shorthand for `{ key: <key>, candidate: <slice.name> }`; the CLI always writes the structured form. `plan add` / `plan amend` `--sources` and `--add-source` flags take `<key>=<candidate-id>` arguments, with bare `<key>` accepted only under the same shorthand rule.
 - Plan lifecycle collapses from `pending -> reviewed -> in-progress -> drained` to `pending -> reviewed`. Drop any code, schema enum, error discriminant, fixture, or doc reference to plan-level `in-progress` and `drained`; both are computed from per-entry `status` at read time. `specify plan transition` accepts only the plan-level target `reviewed` (per-entry `done` is unchanged); `/spec:plan` MUST NOT write `reviewed` itself — the operator runs the transition.
-- Vectis source/target split: `plugins/vectis/skills/image-layout-inferer/` moves to `sources/screenshots/` and is restructured as a source adapter (`adapter.yaml` with `axis: source`, `operations: [enumerate, extract]`, plus `briefs/{enumerate,extract}.md`). `Evidence` schema gains the `region` / `container` / `leaf` claim kinds; `schemas/evidence.schema.json` and any fixture/golden files under `tests/` and the sibling `augentic/specify-cli` repo update in the same change. Baseline `layout.yaml` paths retire as a Specify artifact — operators re-emit equivalent data via `screenshots.extract` (or a hand-rolled local source adapter); `composition.yaml` is no longer a Specify artifact and is regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`. `tokens.yaml` and `assets.yaml` are unchanged: they remain operator-curated configuration consumed by the Vectis target's `build`.
+- Vectis source/target split: `plugins/vectis/skills/image-layout-inferer/` moves to `adapters/sources/screenshots/` and is restructured as a source adapter (`adapter.yaml` with `axis: source`, `operations: [enumerate, extract]`, plus `briefs/{enumerate,extract}.md`). `Evidence` schema gains the `region` / `container` / `leaf` claim kinds; `schemas/evidence.schema.json` and any fixture/golden files under `tests/` and the sibling `augentic/specify-cli` repo update in the same change. Baseline `layout.yaml` paths retire as a Specify artifact — operators re-emit equivalent data via `screenshots.extract` (or a hand-rolled local source adapter); `composition.yaml` is no longer a Specify artifact and is regenerated by `adapters/targets/vectis/build` on the first 2.0 `/spec:execute`. `tokens.yaml` and `assets.yaml` are unchanged: they remain operator-curated configuration consumed by the Vectis target's `build`.
 
 For each rename: update the symbol, the JSON Schema, the YAML on-disk form, every test fixture and golden file, every error-code discriminant, every doc reference (including this RFC's siblings and the parent `AGENTS.md`), and the CLI `--help` text in the same change. Where the old name appears in archived RFCs under `rfcs/archive/`, leave it alone — archives are historical record. When in doubt, run `rg '<old-name>'` across both repos before opening the PR.
 
@@ -855,7 +855,7 @@ For each rename: update the symbol, the JSON Schema, the YAML on-disk form, ever
 | 1    | D1, D3, D6  | Land the JSON Schemas this RFC references (`schemas/adapter.schema.json`, `schemas/source.schema.json`, `schemas/target.schema.json`, `schemas/evidence.schema.json`, `schemas/discovery/candidate.schema.json`, plus the `plan.yaml` schema's `target` field and structured `slices[].sources[]` shape and `pending`/`reviewed` plan-lifecycle enum). None of these exist in the tree today; this step ships them and wires them into `specify slice validate` / `plan add` / `plan amend` first-use validation. | #5g                  |
 | 2    | D1, D3      | Domain rename `Adapter*` -> `Target*`; `Plan::resolve_sources`.                                                                                                                                                                                                                                                                                                                                                                                                                                                   | #5a                  |
 | 3    | D1          | `crates/domain/src/adapter/` axis-aware loader replaces the legacy 1.x adapter loader.                                                                                                                                                                                                                                                                                                                                                                                                                            | #2, #4               |
-| 4    | D1, D5      | Ship `sources/intent/`, `sources/documentation/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | #1, #2               |
+| 4    | D1, D5      | Ship `adapters/sources/intent/`, `adapters/sources/documentation/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | #1, #2               |
 | 5    | D2, D4      | Core synthesis + `/spec:refine` pipeline; migrate define briefs -> synthesis + `shape`.                                                                                                                                                                                                                                                                                                                                                                                                                           | #5, #5a-#5h          |
 | 6    | D4          | `spec.md` provenance parser (`ID:`, `Sources:`, `Status:`).                                                                                                                                                                                                                                                                                                                                                                                                                                                       | #1, #5a-#5c          |
 | 7    | D3, D11     | Discovery stable-id replace; `/spec:plan` `propose` sub-step (agent-driven candidate fusion, `tentative: true` annotations + `## Tentative merges` block in `change.md`, `slices[].divergence: likely` on materially-disagreeing summary pairs + `## Likely divergences` block in `change.md` with side-by-side values).                                                                                                                                                                                          | #5e                  |
@@ -876,7 +876,7 @@ For each rename: update the symbol, the JSON Schema, the YAML on-disk form, ever
 Not binding; sequence by what unblocks the most tests soonest.
 
 1. `augentic/specify-cli`: schemas, the `Adapter*` → `Target*` rename, the `crates/domain/src/adapter/` axis-aware loader, and CLI verbs (steps 1–3, 6, 8, 13, 14). This unblocks plan/slice/source/target writes for everything downstream.
-2. `augentic/specify`: `sources/`, `targets/`, `/spec:*` skill bodies, synthesis pipeline, discovery propose, docs (steps 4, 5, 7, 9–11, 16).
+2. `augentic/specify`: `adapters/sources/`, `adapters/targets/`, `/spec:*` skill bodies, synthesis pipeline, discovery propose, docs (steps 4, 5, 7, 9–11, 16).
 3. Cutover: `migrate-to-2.0.sh` plus deletion of `/change:*` and `/spec:define` and removal of `plugins/change/` (steps 15, 17). Lands last so step 1 has time to settle.
 
 ## Acceptance scenarios
@@ -918,7 +918,7 @@ Adapter-axis scenarios #1-#5h and #10 land by step 12. Workflow-collapse scenari
 
 ## Migration
 
-Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); removes `plugins/vectis/skills/image-layout-inferer/` (its body lifts into `sources/screenshots/`); retires baseline `layout.yaml` paths and warns when it finds an existing `composition.yaml` (now a build output, regenerated by `targets/vectis/build` on the first 2.0 `/spec:execute`); and adds `reviewed` on first read. There is no `specify upgrade`; see §CLI surface. Dry-run against a 1.x fixture before tag.
+Specify 2.0 is a hard cut from 1.x with no interim release. `migrate-to-2.0.sh` renames `project.yaml`, `registry.yaml`, `plan.yaml`, `sources.yaml`, cache, and archive fields; moves skills; bumps `specify-version`; rewrites `plan.yaml.slices[].sources` from any 1.x form into the v2 structured `{ key, candidate }[]` shape (lifting any standalone `slices[].candidate` value into each binding); removes `plugins/vectis/skills/image-layout-inferer/` (its body lifts into `adapters/sources/screenshots/`); retires baseline `layout.yaml` paths and warns when it finds an existing `composition.yaml` (now a build output, regenerated by `adapters/targets/vectis/build` on the first 2.0 `/spec:execute`); and adds `reviewed` on first read. There is no `specify upgrade`; see §CLI surface. Dry-run against a 1.x fixture before tag.
 
 Plugin authors: `adapter.yaml` fails on 2.0. Skill authors: use `/spec:execute`; stop conditions surface to the operator. Automation: Gate 1 is `plan.lifecycle == reviewed`; synthesis warnings come from `spec.md` or journal events.
 

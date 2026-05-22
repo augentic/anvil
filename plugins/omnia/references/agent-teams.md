@@ -176,7 +176,7 @@ The lead approves plans that satisfy all of:
 1. **Root cause**: Addresses the underlying cause, not just the symptom
 2. **Minimal scope**: Changes the fewest files and lines necessary
 3. **Low regression risk**: Antagonist assessment shows low chance of breaking other tests
-4. **Pattern compliance**: Fix follows established patterns in the Omnia target build brief's verify-repair section (see [`targets/omnia/briefs/build.md`](../../../targets/omnia/briefs/build.md) § Verify-repair loop)
+4. **Pattern compliance**: Fix follows established patterns in the Omnia target build brief's verify-repair section (see [`adapters/targets/omnia/briefs/build.md`](../../../adapters/targets/omnia/briefs/build.md) § Verify-repair loop)
 5. **No test modification** (unless artifacts are demonstrably wrong): Fixes the implementation, not the tests
 
 ### Cross-Iteration Memory

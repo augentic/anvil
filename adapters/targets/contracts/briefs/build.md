@@ -1,6 +1,6 @@
 # contracts.build
 
-Orchestrates `/spec:build` for slices targeting the `contracts` adapter. Authors and validates machine-readable contract artifacts under the slice-local `contracts/` directory. Dispatches to three per-format sub-briefs (`build/json-schema.md`, `build/openapi.md`, `build/asyncapi.md`); each carries an internal author / import / verify intent table that fans out to references under `targets/contracts/references/<format>/`.
+Orchestrates `/spec:build` for slices targeting the `contracts` adapter. Authors and validates machine-readable contract artifacts under the slice-local `contracts/` directory. Dispatches to three per-format sub-briefs (`build/json-schema.md`, `build/openapi.md`, `build/asyncapi.md`); each carries an internal author / import / verify intent table that fans out to references under `adapters/targets/contracts/references/<format>/`.
 
 ## Scope
 

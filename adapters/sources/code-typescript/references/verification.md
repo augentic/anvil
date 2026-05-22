@@ -1,6 +1,6 @@
 # Verification, error handling, and recovery
 
-Before completing, verify all items from the [Specify Artifact Validation Checklist](../../../plugins/references/specify.md#validation-checklists) are satisfied, plus the skill-specific checklist below.
+Before completing, verify all items from the [Specify Artifact Validation Checklist](../../../../plugins/references/specify.md#validation-checklists) are satisfied, plus the skill-specific checklist below.
 
 ## Skill-specific verification checklist
 

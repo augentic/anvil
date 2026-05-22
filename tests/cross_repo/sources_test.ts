@@ -47,7 +47,7 @@ Deno.test("sources fixtures: tree present", async () => {
   }
 });
 
-Deno.test("sources/intent: extract Evidence schema-validates", async () => {
+Deno.test("adapters/sources/intent: extract Evidence schema-validates", async () => {
   const path = join(
     "tests/fixtures/sources/intent",
     "expected-extract.yaml",
@@ -56,7 +56,7 @@ Deno.test("sources/intent: extract Evidence schema-validates", async () => {
   await validateOrThrow("evidence.schema.json", data, path);
 });
 
-Deno.test("sources/intent: enumerate synthesises a candidate block", async () => {
+Deno.test("adapters/sources/intent: enumerate synthesises a candidate block", async () => {
   const md = await Deno.readTextFile(
     "tests/fixtures/sources/intent/expected-enumerate.md",
   );
@@ -67,7 +67,7 @@ Deno.test("sources/intent: enumerate synthesises a candidate block", async () =>
   }
 });
 
-Deno.test("sources/documentation: every Evidence document schema-validates", async () => {
+Deno.test("adapters/sources/documentation: every Evidence document schema-validates", async () => {
   const dir = "tests/fixtures/sources/documentation/expected/evidence";
   let seen = 0;
   for await (const path of walkYaml(dir)) {
@@ -78,7 +78,7 @@ Deno.test("sources/documentation: every Evidence document schema-validates", asy
   if (seen === 0) throw new Error(`no Evidence docs under ${dir}`);
 });
 
-Deno.test("sources/code-typescript: Evidence schema-validates and discovery is non-empty", async () => {
+Deno.test("adapters/sources/code-typescript: Evidence schema-validates and discovery is non-empty", async () => {
   const evidenceDir =
     "tests/fixtures/sources/code-typescript/expected/evidence";
   let seen = 0;
@@ -96,7 +96,7 @@ Deno.test("sources/code-typescript: Evidence schema-validates and discovery is n
   }
 });
 
-Deno.test("sources/screenshots: discovery.md present and non-empty", async () => {
+Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", async () => {
   // Screenshots fixtures emit a single discovery.md per slice; per-source
   // Evidence is co-emitted by the screenshots adapter at extract-time.
   for await (
@@ -139,8 +139,8 @@ Deno.test("sources/screenshots: discovery.md present and non-empty", async () =>
 //      example).
 // ---------------------------------------------------------------------------
 
-Deno.test("sources/code-runtime: adapter manifest is discoverable in plg tree", async () => {
-  const manifestPath = "sources/code-runtime/adapter.yaml";
+Deno.test("adapters/sources/code-runtime: adapter manifest is discoverable in plg tree", async () => {
+  const manifestPath = "adapters/sources/code-runtime/adapter.yaml";
   if (!(await exists(manifestPath))) {
     throw new Error(
       `expected ${manifestPath} to exist; RFC-27 Change 3.1 landed the code-runtime source adapter`,
@@ -161,7 +161,7 @@ Deno.test("sources/code-runtime: adapter manifest is discoverable in plg tree", 
   }
 });
 
-Deno.test("sources/code-runtime: every Evidence document schema-validates with example claims", async () => {
+Deno.test("adapters/sources/code-runtime: every Evidence document schema-validates with example claims", async () => {
   const root = "tests/fixtures/sources/code-runtime";
   if (!(await exists(root))) {
     throw new Error(
@@ -215,7 +215,7 @@ Deno.test("sources/code-runtime: every Evidence document schema-validates with e
   }
 });
 
-Deno.test("sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json", async () => {
+Deno.test("adapters/sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json", async () => {
   const root = "tests/fixtures/sources/code-runtime";
   let seen = 0;
   for await (
@@ -233,7 +233,7 @@ Deno.test("sources/code-runtime: every fusion.yaml schema-validates against slic
   }
 });
 
-Deno.test("sources/code-runtime: discovery.md names runtime as the bound source key", async () => {
+Deno.test("adapters/sources/code-runtime: discovery.md names runtime as the bound source key", async () => {
   const root = "tests/fixtures/sources/code-runtime";
   let seen = 0;
   for await (

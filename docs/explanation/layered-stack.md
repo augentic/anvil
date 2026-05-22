@@ -24,8 +24,8 @@ Layer1: "Layer 1 — Executing one slice" {
 
 Layer0: "Layer 0 — Configuration + adapters" {
   projectYaml: "project.yaml"
-  sources: "sources/<name>/adapter.yaml"
-  targets: "targets/<name>/adapter.yaml"
+  sources: "adapters/sources/<name>/adapter.yaml"
+  targets: "adapters/targets/<name>/adapter.yaml"
   schemas: "schemas/"
   initVerb: "specify init"
   resolveVerbs: "specify source/target resolve"
@@ -42,8 +42,8 @@ Layer 0 is the static project configuration plus the adapter manifests every hig
 The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
-- **`sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
-- **`targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
+- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
+- **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
 - **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, and the `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 

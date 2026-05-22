@@ -6,28 +6,28 @@ Tests are spec-driven, not code-driven — generate the side-effect assertion im
 
 ## Authority hierarchy
 
-`spec.md` scenarios drive happy-path, error-path, and validation coverage. `design.md` "Business logic" and "Provider trait dependencies" drive side-effect assertions (publishes, state writes, cache updates, transactions, rollback). The mapping is canonical and lives in [`spec-to-test-mapping.md`](../../../../plugins/omnia/references/spec-to-test-mapping.md).
+`spec.md` scenarios drive happy-path, error-path, and validation coverage. `design.md` "Business logic" and "Provider trait dependencies" drive side-effect assertions (publishes, state writes, cache updates, transactions, rollback). The mapping is canonical and lives in [`spec-to-test-mapping.md`](../../../../../plugins/omnia/references/spec-to-test-mapping.md).
 
 Manual tests in the existing suite are **flagged as drift, never silently deleted**. The drift report lists missing tests (in spec, not in suite), extra tests (in suite, not in spec), and assertion-drift cases (test present but assertions stale).
 
 ## Test generation process
 
-1. **Load artifacts and references** — `spec.md`, `design.md`, [`providers/`](../../../../plugins/omnia/references/providers/) for the trait-specific MockProvider patterns, [`mock-provider.md`](../../../../plugins/omnia/references/mock-provider.md) for Static + Replay variants, and the slice's `tests/data/` fixtures if any.
+1. **Load artifacts and references** — `spec.md`, `design.md`, [`providers/`](../../../../../plugins/omnia/references/providers/) for the trait-specific MockProvider patterns, [`mock-provider.md`](../../../../../plugins/omnia/references/mock-provider.md) for Static + Replay variants, and the slice's `tests/data/` fixtures if any.
 2. **Inventory crate and tests** — enumerate handlers, provider trait bounds, request / response types, existing `tests/*.rs`, existing fixtures.
-3. **Map specs to tests** — one deterministic test function per scenario, named `test_<crate>_<scenario_snake_case>`. Trace each test to the stable `REQ-XXX` ID in `spec.md` via a doc comment. Mapping rules: [`spec-to-test-mapping.md`](../../../../plugins/omnia/references/spec-to-test-mapping.md).
+3. **Map specs to tests** — one deterministic test function per scenario, named `test_<crate>_<scenario_snake_case>`. Trace each test to the stable `REQ-XXX` ID in `spec.md` via a doc comment. Mapping rules: [`spec-to-test-mapping.md`](../../../../../plugins/omnia/references/spec-to-test-mapping.md).
 4. **Assert side effects** — enumerate every provider interaction in `design.md` and emit assertions: `assert_eq!(provider.publish_calls(), &[…])`, `assert_eq!(provider.state_writes(…), …)`, cache-aside hit/miss order, transaction commit vs rollback.
-5. **Generate `MockProvider`** — implement only the provider traits the handler under test consumes. Static / replay variants per [`mock-provider.md`](../../../../plugins/omnia/references/mock-provider.md) and the per-trait deep dives under [`providers/`](../../../../plugins/omnia/references/providers/).
+5. **Generate `MockProvider`** — implement only the provider traits the handler under test consumes. Static / replay variants per [`mock-provider.md`](../../../../../plugins/omnia/references/mock-provider.md) and the per-trait deep dives under [`providers/`](../../../../../plugins/omnia/references/providers/).
 6. **Load JSON fixtures** — `include_str!("data/<fixture>.json")` from `tests/data/`. Preserve any existing fixture style.
 7. **Report drift** — emit drift notes inline (a leading `// DRIFT: ...` comment on tests that needed regeneration) but never delete operator-authored tests.
 
 ## Worked examples
 
-- [`examples/tests/testing.md`](../../../../plugins/omnia/references/examples/tests/testing.md) — core test patterns: layout, MockProvider, test structures, fixtures.
-- [`examples/tests/testing-http.md`](../../../../plugins/omnia/references/examples/tests/testing-http.md) — simple HTTP handler testing with Config-only MockProvider.
-- [`examples/tests/testing-statestore.md`](../../../../plugins/omnia/references/examples/tests/testing-statestore.md) — multi-trait MockProvider with StateStore and cache-aside.
-- [`examples/tests/testing-publisher.md`](../../../../plugins/omnia/references/examples/tests/testing-publisher.md) — publish, event capture, request-reply, topic checks.
-- [`examples/tests/testing-blobstore.md`](../../../../plugins/omnia/references/examples/tests/testing-blobstore.md) — Blobstore-backed handlers.
-- [`examples/tests/testing-documentstore.md`](../../../../plugins/omnia/references/examples/tests/testing-documentstore.md) — DocumentStore-backed handlers.
+- [`examples/tests/testing.md`](../../../../../plugins/omnia/references/examples/tests/testing.md) — core test patterns: layout, MockProvider, test structures, fixtures.
+- [`examples/tests/testing-http.md`](../../../../../plugins/omnia/references/examples/tests/testing-http.md) — simple HTTP handler testing with Config-only MockProvider.
+- [`examples/tests/testing-statestore.md`](../../../../../plugins/omnia/references/examples/tests/testing-statestore.md) — multi-trait MockProvider with StateStore and cache-aside.
+- [`examples/tests/testing-publisher.md`](../../../../../plugins/omnia/references/examples/tests/testing-publisher.md) — publish, event capture, request-reply, topic checks.
+- [`examples/tests/testing-blobstore.md`](../../../../../plugins/omnia/references/examples/tests/testing-blobstore.md) — Blobstore-backed handlers.
+- [`examples/tests/testing-documentstore.md`](../../../../../plugins/omnia/references/examples/tests/testing-documentstore.md) — DocumentStore-backed handlers.
 
 ## Output and quality checklist
 

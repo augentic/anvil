@@ -64,12 +64,12 @@ The canonical "skills MUST NOT" list:
 
 ## Brief authoring
 
-Adapter briefs live at `targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `sources/<name>/briefs/{enumerate,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+Adapter briefs live at `adapters/targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/briefs/{enumerate,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
 
 Briefs split into two roles:
 
 - **Parent briefs** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-briefs by relative-link instruction. The CLI resolves only the parent path declared in `adapter.yaml`; the agent walks links into sub-briefs.
-- **Phase sub-briefs** carry the operational body of one phase. They live under `targets/<name>/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `sources/<name>/briefs/extract/<axis>.md`.
+- **Phase sub-briefs** carry the operational body of one phase. They live under `adapters/targets/<name>/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/briefs/extract/<axis>.md`.
 
 The discipline:
 
@@ -82,7 +82,7 @@ The discipline:
 The pattern that emerges:
 
 ```text
-targets/<name>/briefs/
+adapters/targets/<name>/briefs/
   shape.md                  parent: synthesis idiom guidance, <=150 LOC
   build.md                  parent: orchestrator, <=150 LOC
   merge.md                  parent: pre-merge gate, <=150 LOC
@@ -93,7 +93,7 @@ plugins/<name>/references/
   examples/<flavour>/...    worked examples (no size cap)
 ```
 
-A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`sources/<name>/briefs/extract/<axis>.md`).
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/briefs/extract/<axis>.md`).
 
 ## Envelope examples and wire contract
 

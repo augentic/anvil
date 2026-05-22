@@ -16,16 +16,16 @@ Read the [Developer Guide](docs/index.md) in this order:
 Initialize a project in Cursor Agent chat with a adapter:
 
 ```text
-/spec:init https://github.com/augentic/specify/targets/omnia
+/spec:init https://github.com/augentic/specify/adapters/targets/omnia
 ```
 
 Common targets:
 
 | Target | URL | Use case |
 | ---------- | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/targets/omnia` | [Omnia](https://omnia.host) Rust WASM services |
-| `vectis` | `https://github.com/augentic/specify/targets/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | `https://github.com/augentic/specify/targets/contracts` | API/interface contract work |
+| `omnia` | `https://github.com/augentic/specify/adapters/targets/omnia` | [Omnia](https://omnia.host) Rust WASM services |
+| `vectis` | `https://github.com/augentic/specify/adapters/targets/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work |
 
 Then work through a slice:
 

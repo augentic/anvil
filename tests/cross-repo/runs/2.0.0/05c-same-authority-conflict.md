@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/rfc-25-workflow.md#acceptance-scenarios), row #5c.
+[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #5c.
 
 > Combined-evidence slice where two `documentation` sources disagree on the same claim.
 

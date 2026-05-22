@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/rfc-25-workflow.md#acceptance-scenarios), row #9.
+[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #9.
 
 > Slice's `cargo test` fails; operator patches the crate; runs `/spec:execute`.
 

@@ -14,7 +14,7 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Topology ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
 | `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
-| `.specify/.cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `sources/` and `targets/` subdirectories). |
+| `.specify/.cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `adapters/sources/` and `adapters/targets/` subdirectories). |
 
 `.specify/workspace/` and `.specify/.cache/` are framework-managed scratch and must never be checked in. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
 

@@ -20,25 +20,25 @@ The replay-writer skill is the operator's named entry point for replay-aware tar
        path: ./fixtures/replay
    ```
 
-   See [`sources/code-runtime/briefs/extract.md`](../../../../sources/code-runtime/briefs/extract.md) for the claim shape, the required fields (`claim-id`, `path`, `fixture-digest`, `statement`), the 64 KiB inline cap, and the determinism rules. The fixture-tree layout itself stays under [`references/fixture-format.md`](references/fixture-format.md) — `code-runtime`'s extract brief links to that same file rather than re-stating the format.
+   See [`adapters/sources/code-runtime/briefs/extract.md`](../../../../adapters/sources/code-runtime/briefs/extract.md) for the claim shape, the required fields (`claim-id`, `path`, `fixture-digest`, `statement`), the 64 KiB inline cap, and the determinism rules. The fixture-tree layout itself stays under [`references/fixture-format.md`](references/fixture-format.md) — `code-runtime`'s extract brief links to that same file rather than re-stating the format.
 
 2. **Build-time fixture replay (optional).** Generated crates run their replay tests against the same fixture tree during the Omnia target's `build` phase. The hook is **OPTIONAL in v1**: targets that omit it produce no `fixture-replay` field, and omission is not an error.
 
-   See [`targets/omnia/briefs/build.md`](../../../../targets/omnia/briefs/build.md) § Fixture replay for the optional step, the `.metadata.yaml` write contract (`passed` / `failed` / `skipped` / `ran-at` / `runner`), and the `slice.fixture-replay.completed` journal event payload.
+   See [`adapters/targets/omnia/briefs/build.md`](../../../../adapters/targets/omnia/briefs/build.md) § Fixture replay for the optional step, the `.metadata.yaml` write contract (`passed` / `failed` / `skipped` / `ran-at` / `runner`), and the `slice.fixture-replay.completed` journal event payload.
 
 3. **`merge` is advisory, not gating.** When the optional hook runs, `merge` surfaces a one-line summary in its closing message (e.g. `fixture-replay: 47 passed, 0 failed, 2 skipped`) but does **not** auto-refuse on `failed > 0`. The operator decides whether to land. Stricter posture wires through a custom target adapter fork (refuse from the fork's own `merge.md`) or through a CI policy reading `specify slice outcome show <slice> --format json`.
 
 ## What this skill no longer does
 
 - **Author tests against `tests/data/replay/`.** That directory is a source-adapter input now. The Omnia target's `build/test.md` sub-brief is the authority on per-crate test generation; the test-writer skill body remains the authority on test depth (MockProvider construction, spec-to-test mapping).
-- **Run `cargo test` directly.** The verify-repair loop lives in [`targets/omnia/briefs/build.md`](../../../../targets/omnia/briefs/build.md) and re-enters phase sub-briefs on failure.
+- **Run `cargo test` directly.** The verify-repair loop lives in [`adapters/targets/omnia/briefs/build.md`](../../../../adapters/targets/omnia/briefs/build.md) and re-enters phase sub-briefs on failure.
 - **Hold the slice lifecycle.** Transitions are owned by `specify slice transition`, `specify slice outcome set`, and `specify slice merge`.
 
 ## References
 
-- [`sources/code-runtime/briefs/enumerate.md`](../../../../sources/code-runtime/briefs/enumerate.md) — handler-grain candidate enumeration.
-- [`sources/code-runtime/briefs/extract.md`](../../../../sources/code-runtime/briefs/extract.md) — `kind: example` claim emission; absorbs the body of this skill's old `extract` half.
-- [`targets/omnia/briefs/build.md`](../../../../targets/omnia/briefs/build.md) — build orchestrator that hosts the optional fixture-replay step and the `.metadata.yaml` write contract.
+- [`adapters/sources/code-runtime/briefs/enumerate.md`](../../../../adapters/sources/code-runtime/briefs/enumerate.md) — handler-grain candidate enumeration.
+- [`adapters/sources/code-runtime/briefs/extract.md`](../../../../adapters/sources/code-runtime/briefs/extract.md) — `kind: example` claim emission; absorbs the body of this skill's old `extract` half.
+- [`adapters/targets/omnia/briefs/build.md`](../../../../adapters/targets/omnia/briefs/build.md) — build orchestrator that hosts the optional fixture-replay step and the `.metadata.yaml` write contract.
 - [Fixture format](references/fixture-format.md) — replay-fixture file shape (TestDef, `setup`, `samples/`, `INSTRUCTIONS.md`); cited by `code-runtime`'s extract brief.
 - [Crate layout](references/crate-layout.md) — generated-crate paths the replay tests run against.
 - Sibling skill: [wiretapper](../wiretapper/SKILL.md) — TypeScript instrumentation that produces the fixture tree this skill points at. Unaffected by the source/target split; source-side instrumentation stays an RT plugin concern.

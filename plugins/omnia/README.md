@@ -1,20 +1,20 @@
 # Omnia reference material
 
-Reference documentation for the Omnia target adapter at [`targets/omnia/`](../../targets/omnia/). In Specify 2.0 (RFC-25) Omnia is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
+Reference documentation for the Omnia target adapter at [`adapters/targets/omnia/`](../../adapters/targets/omnia/). In Specify 2.0 (RFC-25) Omnia is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
-The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`targets/omnia/briefs/build.md`](../../targets/omnia/briefs/build.md) and four phase sub-briefs under [`targets/omnia/briefs/build/`](../../targets/omnia/briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, codex rules) and worked examples live in this folder.
+The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) and four phase sub-briefs under [`adapters/targets/omnia/briefs/build/`](../../adapters/targets/omnia/briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, codex rules) and worked examples live in this folder.
 
 ## Briefs
 
 | Brief | Purpose |
 |-------|---------|
-| [`shape.md`](../../targets/omnia/briefs/shape.md) | Idiom guidance (provider DI, WASM guardrails, error variants, validation placement) consumed by core synthesis. |
-| [`build.md`](../../targets/omnia/briefs/build.md) | Orchestrator: bindings, mode detection, phase order, verify-repair loop, stop-hint contract. |
-| [`build/crate.md`](../../targets/omnia/briefs/build/crate.md) | Phase 2: generate or update the Rust crate. |
-| [`build/test.md`](../../targets/omnia/briefs/build/test.md) | Phase 3: generate or update the test suite. |
-| [`build/guest.md`](../../targets/omnia/briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
-| [`build/review.md`](../../targets/omnia/briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
-| [`merge.md`](../../targets/omnia/briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
+| [`shape.md`](../../adapters/targets/omnia/briefs/shape.md) | Idiom guidance (provider DI, WASM guardrails, error variants, validation placement) consumed by core synthesis. |
+| [`build.md`](../../adapters/targets/omnia/briefs/build.md) | Orchestrator: bindings, mode detection, phase order, verify-repair loop, stop-hint contract. |
+| [`build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md) | Phase 2: generate or update the Rust crate. |
+| [`build/test.md`](../../adapters/targets/omnia/briefs/build/test.md) | Phase 3: generate or update the test suite. |
+| [`build/guest.md`](../../adapters/targets/omnia/briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
+| [`build/review.md`](../../adapters/targets/omnia/briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
+| [`merge.md`](../../adapters/targets/omnia/briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
 
 ## References
 

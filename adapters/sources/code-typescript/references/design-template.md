@@ -1,6 +1,6 @@
 # Writing artifacts (Step 7)
 
-Step 7 writes the spec and design.md artifacts to `$SLICE_DIR` using the format specified in [specify.md](../../../plugins/references/specify.md). The artifact format follows the `augentic` schema from [augentic/lifecycle](https://github.com/augentic/lifecycle).
+Step 7 writes the spec and design.md artifacts to `$SLICE_DIR` using the format specified in [specify.md](../../../../plugins/references/specify.md). The artifact format follows the `augentic` schema from [augentic/lifecycle](https://github.com/augentic/lifecycle).
 
 ## THINK: synthesize before writing
 
@@ -43,7 +43,7 @@ Create `$SLICE_DIR/` and `$SPECS_DIR/` directories.
 
 ## 7b — Write design.md
 
-Write `$DESIGN_PATH` with the following sections (see [specify.md](../../../plugins/references/specify.md) Design Document Format for the full template):
+Write `$DESIGN_PATH` with the following sections (see [specify.md](../../../../plugins/references/specify.md) Design Document Format for the full template):
 
 1. **Context** — source component path, target runtime, purpose, source files analyzed
 2. **Domain Model** — full nested type definitions with wire-format annotations; entities with attributes, relationships, and business rules. Include separate tables for field-level renames, aliases, unconditional skips, and conditional skips. Include deduplication table for shared response types.
@@ -86,7 +86,7 @@ Write a single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` using 
 3. `## Error Conditions` — shared error type, description, HTTP status, and trigger conditions when the source exposes them
 4. `## Metrics` — metric name, type (counter/gauge/histogram), emission point, and labels when explicit in the source
 
-See [specify.md](../../../plugins/references/specify.md) Spec File Format and Deriving Specs from Source Code for the complete template.
+See [specify.md](../../../../plugins/references/specify.md) Spec File Format and Deriving Specs from Source Code for the complete template.
 
 Note: Steps are numbered 1–7. Ensure all steps are completed before writing the artifacts.
 

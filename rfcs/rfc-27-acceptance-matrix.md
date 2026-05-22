@@ -15,12 +15,12 @@
 
 **Covering tests (new in 4.2; plg Deno harness):**
 
-- `sources/code-runtime: adapter manifest is discoverable in plg tree` — `tests/cross_repo/sources_test.ts`
-- `sources/code-runtime: every Evidence document schema-validates with example claims` — `tests/cross_repo/sources_test.ts`
-- `sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json` — `tests/cross_repo/sources_test.ts`
-- `sources/code-runtime: discovery.md names runtime as the bound source key` — `tests/cross_repo/sources_test.ts`
-- `targets/omnia/with-fixture-replay: .metadata.yaml carries full fixture-replay block` — `tests/cross_repo/targets_test.ts`
-- `targets/omnia/without-fixture-replay: .metadata.yaml omits fixture-replay (optional posture)` — `tests/cross_repo/targets_test.ts`
+- `adapters/sources/code-runtime: adapter manifest is discoverable in plg tree` — `tests/cross_repo/sources_test.ts`
+- `adapters/sources/code-runtime: every Evidence document schema-validates with example claims` — `tests/cross_repo/sources_test.ts`
+- `adapters/sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json` — `tests/cross_repo/sources_test.ts`
+- `adapters/sources/code-runtime: discovery.md names runtime as the bound source key` — `tests/cross_repo/sources_test.ts`
+- `adapters/targets/omnia/with-fixture-replay: .metadata.yaml carries full fixture-replay block` — `tests/cross_repo/targets_test.ts`
+- `adapters/targets/omnia/without-fixture-replay: .metadata.yaml omits fixture-replay (optional posture)` — `tests/cross_repo/targets_test.ts`
 
 **Gap:** No end-to-end execution of `enumerate` / `extract` (their briefs require an LLM and are excluded by the cross-repo harness top comment in `tests/cross_repo.ts`). The harness pins the deterministic surface — adapter discoverability, schema validity of the captured Evidence + fusion + discovery goldens, optionality of the target-side `fixture-replay` block — which is what the release gate can audit byte-stably. Skill-driven brief execution remains a separate (deferred) RFC.
 

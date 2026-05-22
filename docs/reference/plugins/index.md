@@ -28,11 +28,11 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 
 ## How plugins compose with target adapters
 
-The **Specify** plugin provides the workflow skeleton. **Target adapters** (under `targets/<name>/`) own `shape`, `build`, and `merge` briefs — the build brief is what determines which specialist plugin skills are invoked during the `/spec:build` phase:
+The **Specify** plugin provides the workflow skeleton. **Target adapters** (under `adapters/targets/<name>/`) own `shape`, `build`, and `merge` briefs — the build brief is what determines which specialist plugin skills are invoked during the `/spec:build` phase:
 
 - **Omnia target** invokes `/omnia:*` skills.
 - **Vectis target** invokes `/vectis:*` skills.
-- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside `targets/contracts/briefs/build.md`.
+- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside `adapters/targets/contracts/briefs/build.md`.
 
 The RT and Client plugins are target-independent — RT supports legacy migration regardless of the target platform; Client supports operator-facing deliverables.
 

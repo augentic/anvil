@@ -1,1 +1,1 @@
-targets/omnia/briefs/shape.md
+adapters/targets/omnia/briefs/shape.md

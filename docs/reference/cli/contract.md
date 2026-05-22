@@ -66,7 +66,7 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts target adapter declares the WASI tool inline in [`targets/contracts/adapter.yaml`](../../../targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
+The contracts target adapter declares the WASI tool inline in [`adapters/targets/contracts/adapter.yaml`](../../../adapters/targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
 Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 
@@ -76,6 +76,6 @@ During local development, project authors may override the adapter declaration w
 
 - [specify tool](tool.md) — the declared WASI tool runner surface.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
-- [`targets/contracts/briefs/build.md`](../../../targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
+- [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
-- [`targets/contracts/briefs/merge.md`](../../../targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.
+- [`adapters/targets/contracts/briefs/merge.md`](../../../adapters/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

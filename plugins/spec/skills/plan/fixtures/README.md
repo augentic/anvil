@@ -1,6 +1,6 @@
 # `/spec:plan` scenario goldens
 
-Reference outputs for the acceptance scenarios `/spec:plan` exercises end-to-end (per [rfc-25-workflow.md §Acceptance scenarios](../../../../../rfcs/rfc-25-workflow.md)). Each subdirectory pins the artifacts a clean `/spec:plan` run produces against the documented inputs; the harness re-runs the skill and diffs against these files.
+Reference outputs for the acceptance scenarios `/spec:plan` exercises end-to-end (per [rfc-25-workflow.md §Acceptance scenarios](../../../../../rfcs/archive/rfc-25-workflow.md)). Each subdirectory pins the artifacts a clean `/spec:plan` run produces against the documented inputs; the harness re-runs the skill and diffs against these files.
 
 | Fixture | Scenario | What it pins |
 |---|---|---|

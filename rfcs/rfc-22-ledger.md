@@ -194,7 +194,7 @@ Net adds:
 Net schema changes:
 
 - New: `specify-cli/schemas/migration-log/schema.json`.
-- Additive: `status` field on `sources[]` in `specify-cli/schemas/sources/sources.schema.json`.
+- Additive: `status` field on `sources[]` in `specify-cli/schemas/sources.schema.json`.
 - Additive: `mapping` field on `planSlice` in `specify-cli/schemas/plan/plan.schema.json`.
 
 No verb is renamed, retired, or repurposed. No existing schema field is changed in shape or required-ness.
@@ -210,10 +210,10 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 
 ## Implementation Plan
 
-1. **Schemas.** Land `migration-log/schema.json`, the additive `status` field on `sources/sources.schema.json`, and the additive `mapping` field on `plan/plan.schema.json`. Update each schema's README. Add JSON Schema fixtures.
+1. **Schemas.** Land `migration-log/schema.json`, the additive `status` field on `adapters/sources/sources.schema.json`, and the additive `mapping` field on `plan/plan.schema.json`. Update each schema's README. Add JSON Schema fixtures.
 2. **Domain types.** Add `MigrationLog`, `MigrationEntry`, `MigrationOverride` types in `specify-domain` (`crates/domain/src/migration_log/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` / `append()` helpers, byte-stable sort.
 3. **Ledger writers.** Hook `specify plan transition <slice> done` and `specify change finalize` to derive ledger entries. Atomic file-write through the existing `AtomicYaml` trait. Land integration tests under `tests/migration_log.rs`.
-4. **`status` on `sources[]`.** Wire `specify change finalize` to update statuses. Add `specify sources status` verb (`src/commands/sources/status.rs`) with the operator-override override-block writer.
+4. **`status` on `sources[]`.** Wire `specify change finalize` to update statuses. Add `specify sources status` verb (`src/commands/adapters/sources/status.rs`) with the operator-override override-block writer.
 5. **`specify migration-log show`.** Read-only verb; small handler with `--source-key`, `--target-project`, `--change` filters and JSON envelope.
 6. **`mapping` field plumbing.** Extend `Plan::validate` with the four advisory cross-checks. Extend `specify plan amend` to accept `--mapping` and `--clear-mapping`. Update propose brief to pre-fill `mapping` from survey recommendations.
 7. **Routing-hint precedence.** Update `assignment.md` (the brief from RFC-20) to insert the ledger lookup as hint #2. Surface `previously migrated to <project> via <change>` in the assignment-table rationale.

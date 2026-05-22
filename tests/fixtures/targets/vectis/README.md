@@ -24,7 +24,7 @@ The deterministic boundary the harness covers runs green on every `make test`. B
 
 ## See also
 
-- [`targets/vectis/briefs/shape.md`](../../../../targets/vectis/briefs/shape.md) — the idiom guidance each fixture's `input/` reflects.
-- [`targets/vectis/briefs/build.md`](../../../../targets/vectis/briefs/build.md) — the orchestration each fixture's `expected/composition.yaml` reflects.
+- [`adapters/targets/vectis/briefs/shape.md`](../../../../adapters/targets/vectis/briefs/shape.md) — the idiom guidance each fixture's `input/` reflects.
+- [`adapters/targets/vectis/briefs/build.md`](../../../../adapters/targets/vectis/briefs/build.md) — the orchestration each fixture's `expected/composition.yaml` reflects.
 - [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) — the matching source-side fixture (W2.4) whose `expected/evidence/` feeds these fixtures' `input/evidence/`.
-- [`rfcs/rfc-25-workflow.md`](../../../../rfcs/rfc-25-workflow.md) §Acceptance scenarios #5h.
+- [`rfcs/archive/rfc-25-workflow.md`](../../../../rfcs/archive/rfc-25-workflow.md) §Acceptance scenarios #5h.

@@ -28,7 +28,7 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `sources/<name>/briefs/{enumerate,extract}.md` or `targets/<name>/briefs/{shape,build,merge}.md`.
+A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/briefs/{enumerate,extract}.md` or `adapters/targets/<name>/briefs/{shape,build,merge}.md`.
 
 **Breakout verb**
 `/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `/spec:execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Shares the same skill body as the in-loop call.
@@ -91,7 +91,7 @@ The operator-stamped lifecycle transition `plan.lifecycle: pending → reviewed`
 ## I
 
 **Intent**
-The operator-supplied free-form description that backs N=1 work and overrides higher-authority sources. Declared as a source adapter (`sources/intent/`). Authority class: `intent`.
+The operator-supplied free-form description that backs N=1 work and overrides higher-authority sources. Declared as a source adapter (`adapters/sources/intent/`). Authority class: `intent`.
 
 ## L
 
@@ -146,7 +146,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `enumerate` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `sources/<name>/adapter.yaml`.
+Input adapter role. Operations: `enumerate` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `adapters/sources/<name>/adapter.yaml`.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
@@ -157,7 +157,7 @@ A behavioral specification at `specs/<unit>/spec.md`. Contains requirements with
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
+Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

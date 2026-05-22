@@ -1,6 +1,6 @@
 # Target Adapters
 
-> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) live at [`targets/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/targets). The source-side counterparts live at [`sources/<name>/`](https://github.com/augentic/specify/tree/main/sources).
+> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) live at [`adapters/targets/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/targets). The source-side counterparts live at [`adapters/sources/<name>/`](https://github.com/augentic/specify/tree/main/adapters/sources).
 
 ## What is a target adapter?
 
@@ -14,7 +14,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis — that is **core
 
 ## Manifest shape
 
-Every target adapter ships a single `adapter.yaml` at `targets/<name>/`:
+Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/target.schema.json
@@ -31,14 +31,14 @@ briefs:
 
 | Field         | Required | Meaning |
 | ------------- | -------- | ------- |
-| `name`        | yes      | Kebab-case target identifier. Must match the directory name under `targets/`. |
+| `name`        | yes      | Kebab-case target identifier. Must match the directory name under `adapters/targets/`. |
 | `version`     | yes      | Integer ≥ 1. Increments when the adapter ships breaking pipeline or contract changes. |
 | `axis`        | yes      | Must be `target`. |
 | `description` | yes      | Single-sentence summary of the target's outcome domain. |
 | `operations`  | yes      | Closed list with exactly the three values `[shape, build, merge]`. |
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |
 
-Optional `tools[]` declares WASI helpers that the host runner caches under `.specify/.cache/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
+Optional `tools[]` declares WASI helpers that the host runner caches under `.specify/.cache/adapters/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 
@@ -58,7 +58,7 @@ The dependency graph is one-way; `specify-core` never depends on the plugin load
 specify (binary)
    └─ specify-domain
         ├─ specify-tool
-        └─ plugin loader (sources/ + targets/)
+        └─ plugin loader (adapters/sources/ + adapters/targets/)
               └─ specify-error
 ```
 

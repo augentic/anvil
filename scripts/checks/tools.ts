@@ -45,7 +45,7 @@ const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
 // the canonical `specify:<name>@<version>` package request for comparison
 // against the expected first-party list.
 //
-// First-party tools are declared inline in `targets/<name>/adapter.yaml` under
+// First-party tools are declared inline in `adapters/targets/<name>/adapter.yaml` under
 // `tools[]` ({ name, version } objects validated by `target.schema.json`). The
 // 1.x `adapters/<name>/tools.yaml` sidecar shape was retired with RFC-25.
 async function resolveAdapterDeclarations(

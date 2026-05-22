@@ -5,13 +5,13 @@
 //   - Parent briefs orchestrate. They declare bindings, mode dispatch,
 //     phase order, and cross-phase loops, then load phase sub-briefs by
 //     relative-link instruction. Files:
-//       targets/<name>/briefs/{shape,build,merge}.md
-//       sources/<name>/briefs/{enumerate,extract}.md
+//       adapters/targets/<name>/briefs/{shape,build,merge}.md
+//       adapters/sources/<name>/briefs/{enumerate,extract}.md
 //     Hard cap: 150 non-blank lines.
 //
 //   - Phase sub-briefs carry the operational body for one phase. Files:
-//       targets/<name>/briefs/build/**/*.md
-//       sources/<name>/briefs/extract/**/*.md
+//       adapters/targets/<name>/briefs/build/**/*.md
+//       adapters/sources/<name>/briefs/extract/**/*.md
 //     Soft cap (warning, non-fatal): 500 non-blank lines.
 //     Hard cap (failure): 800 non-blank lines.
 //

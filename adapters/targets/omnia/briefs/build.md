@@ -54,7 +54,7 @@ cd $CRATE_PATH && cargo test
 
 If `cargo fmt --check` fails, run `cargo fmt` once. Formatting is mechanical; one pass suffices.
 
-If `cargo check` or `cargo clippy` fails, re-enter [`build/crate.md`](build/crate.md) with the error output as context. Apply minimum-change repair discipline (see [`repair-patterns.md`](../../../plugins/omnia/references/repair-patterns.md)).
+If `cargo check` or `cargo clippy` fails, re-enter [`build/crate.md`](build/crate.md) with the error output as context. Apply minimum-change repair discipline (see [`repair-patterns.md`](../../../../plugins/omnia/references/repair-patterns.md)).
 
 If `cargo test` fails, classify each failure:
 
@@ -67,7 +67,7 @@ If `cargo test` fails, classify each failure:
 | MockProvider missing a trait impl the handler now requires | Test issue | Update MockProvider |
 | Unresolved import or missing crate in `Cargo.toml` | Workspace issue | Fix `Cargo.toml` paths or workspace member list directly |
 
-**Repair discipline.** Minimum change only — fix the reported error and nothing else. Scope the diff to files and functions named in the error output. Group failures by classification and re-enter each phase brief once with all same-class errors. Full repair recipes: [`repair-patterns.md`](../../../plugins/omnia/references/repair-patterns.md).
+**Repair discipline.** Minimum change only — fix the reported error and nothing else. Scope the diff to files and functions named in the error output. Group failures by classification and re-enter each phase brief once with all same-class errors. Full repair recipes: [`repair-patterns.md`](../../../../plugins/omnia/references/repair-patterns.md).
 
 **Update-mode regression check.** Before iteration 1, record the baseline: `cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_NAME}-${CRATE_NAME}-baseline.txt`. After each iteration, for each test that passed before and now fails: if `spec.md` explicitly changes the asserted behaviour → expected behavioural change, re-enter test writer to align expectations; if `spec.md` does not change the asserted behaviour → true regression, route the fix through the classification table.
 
@@ -116,13 +116,13 @@ Render the hint as the final visible output of the run. Do not call `specify sli
 
 - [`shape.md`](shape.md), [`merge.md`](merge.md) — sibling briefs.
 - [`build/crate.md`](build/crate.md), [`build/test.md`](build/test.md), [`build/guest.md`](build/guest.md), [`build/review.md`](build/review.md) — phase sub-briefs.
-- [`hard-rules.md`](../../../plugins/omnia/references/hard-rules.md) — full authority hierarchy and hard-rules set.
-- [`guardrails.md`](../../../plugins/omnia/references/guardrails.md), [`wasm-constraints.md`](../../../plugins/omnia/references/wasm-constraints.md) — forbidden crates / APIs, statelessness, serde / DST idioms.
-- [`capabilities.md`](../../../plugins/omnia/references/capabilities.md), [`capability-mapping.md`](../../../plugins/omnia/references/capability-mapping.md) — provider traits and artifact-to-trait mapping.
-- [`sdk-api.md`](../../../plugins/omnia/references/sdk-api.md), [`cargo-toml.md`](../../../plugins/omnia/references/cargo-toml.md), [`error-handling.md`](../../../plugins/omnia/references/error-handling.md), [`configuration.md`](../../../plugins/omnia/references/configuration.md) — SDK / workspace / error / guest-config templates.
-- [`cross-cutting-matrices.md`](../../../plugins/omnia/references/cross-cutting-matrices.md), [`update-patterns.md`](../../../plugins/omnia/references/update-patterns.md), [`change-classification.md`](../../../plugins/omnia/references/change-classification.md), [`repair-patterns.md`](../../../plugins/omnia/references/repair-patterns.md), [`todo-markers.md`](../../../plugins/omnia/references/todo-markers.md), [`checklists.md`](../../../plugins/omnia/references/checklists.md), [`output-documents.md`](../../../plugins/omnia/references/output-documents.md) — analysis tables, strategy patterns, recipes.
-- [`mock-provider.md`](../../../plugins/omnia/references/mock-provider.md), [`spec-to-test-mapping.md`](../../../plugins/omnia/references/spec-to-test-mapping.md) — test depth.
-- [`handlers.md`](../../../plugins/omnia/references/handlers.md), [`guest-patterns.md`](../../../plugins/omnia/references/guest-patterns.md), [`guest-wiring.md`](../../../plugins/omnia/references/guest-wiring.md), [`runtime.md`](../../../plugins/omnia/references/runtime.md), [`project-layout.md`](../../../plugins/omnia/references/project-layout.md) — guest depth.
-- [`review-categories.md`](../../../plugins/omnia/references/review-categories.md), [`review-team-protocol.md`](../../../plugins/omnia/references/review-team-protocol.md), [`review-auto-fix.md`](../../../plugins/omnia/references/review-auto-fix.md), [`review-output-template.md`](../../../plugins/omnia/references/review-output-template.md), [`agent-teams.md`](../../../plugins/omnia/references/agent-teams.md), [`codex/`](../../../plugins/omnia/references/codex/) — review depth.
-- [`providers/`](../../../plugins/omnia/references/providers/) — per-trait deep dives.
-- [`examples/`](../../../plugins/omnia/references/examples/) — worked examples for crate writing (single/multi-handler, per-capability, per-update-category) and test writing (per-provider).
+- [`hard-rules.md`](../../../../plugins/omnia/references/hard-rules.md) — full authority hierarchy and hard-rules set.
+- [`guardrails.md`](../../../../plugins/omnia/references/guardrails.md), [`wasm-constraints.md`](../../../../plugins/omnia/references/wasm-constraints.md) — forbidden crates / APIs, statelessness, serde / DST idioms.
+- [`capabilities.md`](../../../../plugins/omnia/references/capabilities.md), [`capability-mapping.md`](../../../../plugins/omnia/references/capability-mapping.md) — provider traits and artifact-to-trait mapping.
+- [`sdk-api.md`](../../../../plugins/omnia/references/sdk-api.md), [`cargo-toml.md`](../../../../plugins/omnia/references/cargo-toml.md), [`error-handling.md`](../../../../plugins/omnia/references/error-handling.md), [`configuration.md`](../../../../plugins/omnia/references/configuration.md) — SDK / workspace / error / guest-config templates.
+- [`cross-cutting-matrices.md`](../../../../plugins/omnia/references/cross-cutting-matrices.md), [`update-patterns.md`](../../../../plugins/omnia/references/update-patterns.md), [`change-classification.md`](../../../../plugins/omnia/references/change-classification.md), [`repair-patterns.md`](../../../../plugins/omnia/references/repair-patterns.md), [`todo-markers.md`](../../../../plugins/omnia/references/todo-markers.md), [`checklists.md`](../../../../plugins/omnia/references/checklists.md), [`output-documents.md`](../../../../plugins/omnia/references/output-documents.md) — analysis tables, strategy patterns, recipes.
+- [`mock-provider.md`](../../../../plugins/omnia/references/mock-provider.md), [`spec-to-test-mapping.md`](../../../../plugins/omnia/references/spec-to-test-mapping.md) — test depth.
+- [`handlers.md`](../../../../plugins/omnia/references/handlers.md), [`guest-patterns.md`](../../../../plugins/omnia/references/guest-patterns.md), [`guest-wiring.md`](../../../../plugins/omnia/references/guest-wiring.md), [`runtime.md`](../../../../plugins/omnia/references/runtime.md), [`project-layout.md`](../../../../plugins/omnia/references/project-layout.md) — guest depth.
+- [`review-categories.md`](../../../../plugins/omnia/references/review-categories.md), [`review-team-protocol.md`](../../../../plugins/omnia/references/review-team-protocol.md), [`review-auto-fix.md`](../../../../plugins/omnia/references/review-auto-fix.md), [`review-output-template.md`](../../../../plugins/omnia/references/review-output-template.md), [`agent-teams.md`](../../../../plugins/omnia/references/agent-teams.md), [`codex/`](../../../../plugins/omnia/references/codex/) — review depth.
+- [`providers/`](../../../../plugins/omnia/references/providers/) — per-trait deep dives.
+- [`examples/`](../../../../plugins/omnia/references/examples/) — worked examples for crate writing (single/multi-handler, per-capability, per-update-category) and test writing (per-provider).

@@ -1,6 +1,6 @@
 # `documentation` source adapter fixture
 
-Worked example for the `documentation` source adapter at [`sources/documentation/`](../../../../sources/documentation/). Exercises both operations of the W2.2 contract: `enumerate` emits one candidate per top-level concept under `## Candidate inventory` in `discovery.md`; `extract` returns one Evidence YAML per candidate with `documentation` authority and the `requirement` / `criterion` / `decision` / `section` claim kinds.
+Worked example for the `documentation` source adapter at [`adapters/sources/documentation/`](../../../../adapters/sources/documentation/). Exercises both operations of the W2.2 contract: `enumerate` emits one candidate per top-level concept under `## Candidate inventory` in `discovery.md`; `extract` returns one Evidence YAML per candidate with `documentation` authority and the `requirement` / `criterion` / `decision` / `section` claim kinds.
 
 ## Layout
 

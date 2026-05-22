@@ -22,7 +22,7 @@ $WORKSPACE_ROOT = repo root (carries the Cargo workspace `Cargo.toml` and the gu
 1. Confirm the slice lifecycle is `built` (`specify slice transition` from the build phase). If not, defer — see § Outcome signalling.
 2. Confirm every checkbox in `$SLICE_DIR/tasks.md` is complete; otherwise defer.
 3. Run the § Omnia pre-merge gate (cargo + clippy + test + wasm32 build).
-4. Run `specify slice merge` per the [`spec-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body — preview, conflict-check, AskQuestion confirmation, run.
+4. Run `specify slice merge` per the [`spec-merge`](../../../../plugins/spec/skills/merge/SKILL.md) skill body — preview, conflict-check, AskQuestion confirmation, run.
 5. On `specify slice merge` exit zero the CLI atomically stamps the merge outcome, transitions the slice to `merged`, and moves it into `.specify/archive/`. `/spec:merge` returns control.
 
 ## § Omnia pre-merge gate
@@ -60,15 +60,15 @@ The build phase's verify-repair loop already enforces a passing test suite. Re-r
 cargo build --target wasm32-wasip2 --release --workspace
 ```
 
-The wasm32-wasip2 build is the definitive deployment-target check. A native `cargo check` will accept code that uses forbidden std APIs or non-WASM-compatible crates; only the wasm32 build proves the slice compiles for the real target. A failure here is a guardrail violation that the build phase missed; re-enter `/spec:build` with the wasm32 error output. Reference [`plugins/omnia/references/guardrails.md`](../../../plugins/omnia/references/guardrails.md) for the forbidden crate / API table.
+The wasm32-wasip2 build is the definitive deployment-target check. A native `cargo check` will accept code that uses forbidden std APIs or non-WASM-compatible crates; only the wasm32 build proves the slice compiles for the real target. A failure here is a guardrail violation that the build phase missed; re-enter `/spec:build` with the wasm32 error output. Reference [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) for the forbidden crate / API table.
 
 ## § Delegation to `specify slice merge`
 
-After the pre-merge gate passes, follow the [`spec-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body for the driver-side flow: slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The skill orchestrates `specify slice merge preview`, `specify slice merge conflict-check`, `specify slice merge run`, and `specify slice validate`. Omnia adds no adapter-specific adoption mechanics — the standard delta merge promotes every artefact under `specs/` and there are no extra format validators or generated outputs to refresh at merge time.
+After the pre-merge gate passes, follow the [`spec-merge`](../../../../plugins/spec/skills/merge/SKILL.md) skill body for the driver-side flow: slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The skill orchestrates `specify slice merge preview`, `specify slice merge conflict-check`, `specify slice merge run`, and `specify slice validate`. Omnia adds no adapter-specific adoption mechanics — the standard delta merge promotes every artefact under `specs/` and there are no extra format validators or generated outputs to refresh at merge time.
 
 ## § Outcome signalling
 
-Phase outcomes follow the shared phase contract in [`plugins/spec/references/phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches:
+Phase outcomes follow the shared phase contract in [`plugins/spec/references/phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md). The three terminal branches:
 
 ### success — merge applied, slice archived
 
@@ -120,7 +120,7 @@ The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/spec:
 
 ## References
 
-- [`plugins/omnia/references/guardrails.md`](../../../plugins/omnia/references/guardrails.md) — Forbidden crates / std APIs the wasm32 build proves are absent.
-- [`plugins/omnia/references/runtime.md`](../../../plugins/omnia/references/runtime.md) — Identity OAuth env vars + `omnia::runtime!` host enumeration the workspace check exercises.
-- [`plugins/spec/skills/merge/SKILL.md`](../../../plugins/spec/skills/merge/SKILL.md) — Driver-side merge flow this brief delegates to.
-- [`plugins/spec/references/phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) — Outcome / journal / verbatim-summary rules.
+- [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) — Forbidden crates / std APIs the wasm32 build proves are absent.
+- [`plugins/omnia/references/runtime.md`](../../../../plugins/omnia/references/runtime.md) — Identity OAuth env vars + `omnia::runtime!` host enumeration the workspace check exercises.
+- [`plugins/spec/skills/merge/SKILL.md`](../../../../plugins/spec/skills/merge/SKILL.md) — Driver-side merge flow this brief delegates to.
+- [`plugins/spec/references/phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md) — Outcome / journal / verbatim-summary rules.

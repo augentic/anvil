@@ -100,8 +100,8 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // Optional root.
   }
 
-  // Discovery roots 4 & 5: targets/<target>/tests/<scenario>.md
-  // and targets/<target>/tests/<scenario>/scenario.md.
+  // Discovery roots 4 & 5: adapters/targets/<target>/tests/<scenario>.md
+  // and adapters/targets/<target>/tests/<scenario>/scenario.md.
   try {
     const stat = await Deno.stat(TARGETS_DIR);
     if (stat.isDirectory) {

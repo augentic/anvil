@@ -15,7 +15,7 @@ Resolution mode is chosen from the shape of the `adapter` value in `.specify/pro
 | Bare name           | `adapter: omnia`                              | Cache `.specify/.cache/omnia/`, then project-local `schemas/omnia/`. |
 | URL (default ref)   | `adapter: https://github.com/.../omnia`       | Cache `.specify/.cache/omnia/`.                                  |
 | URL with pinned ref | `adapter: https://github.com/.../omnia@v1`    | Cache `.specify/.cache/omnia/`.                                  |
-| File URI            | `target: file:///path/to/targets/omnia` | Cache `.specify/.cache/omnia/`.                                  |
+| File URI            | `target: file:///path/to/adapters/targets/omnia` | Cache `.specify/.cache/omnia/`.                                  |
 
 Regular `specify init <adapter>` is the boundary that fetches or copies adapters into `.specify/.cache/`. After init, project-aware commands resolve the stored `adapter` value from that cache and do not reach the network.
 
@@ -23,7 +23,7 @@ Regular `specify init <adapter>` is the boundary that fetches or copies adapters
 
 Codex rules are resolved by convention from `codex/**/*.md` under each active source. The CLI loads sources in deterministic order: foundational `default` adapter first, project adapter second, future shared catalogs third, and repo-root `codex/` overlay last. Duplicate rule ids across those sources fail with validation semantics.
 
-First-party `default` rules are distributed as a normal target adapter at `targets/default`. When `specify init <adapter>` copies a target from a tree that also contains sibling `default`, it also copies that sibling into `.specify/.cache/targets/default/`. Later `specify codex *` commands resolve `default` from cache first, just like project targets.
+First-party `default` rules are distributed as a normal target adapter at `adapters/targets/default`. When `specify init <adapter>` copies a target from a tree that also contains sibling `default`, it also copies that sibling into `.specify/.cache/adapters/targets/default/`. Later `specify codex *` commands resolve `default` from cache first, just like project targets.
 
 ## Cache notes
 

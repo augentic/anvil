@@ -75,7 +75,7 @@ The Vectis scaffold tool (`specify tool run vectis -- scaffold ...`) is render-o
 
 ## § Phase outcome contract
 
-> See [Phase outcome contract](../../../plugins/spec/references/phase-outcome-contract.md).
+> See [Phase outcome contract](../../../../plugins/spec/references/phase-outcome-contract.md).
 
 The `build` phase concludes with exactly one of `success` / `failure` / `deferred`:
 

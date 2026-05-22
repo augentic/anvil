@@ -29,7 +29,7 @@ $SPECIFY_PLAN_LOCK_HELD = "1" when invoked from /spec:execute (parent already ho
 2. **Acquire the plan lock when invoked standalone.** When `$SPECIFY_PLAN_LOCK_HELD = 1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, run `specify workspace sync $PROJECT` and `chdir` into `.specify/workspace/$PROJECT/` before continuing. Single-repo mode is a no-op.
 4. **Refuse on slice lifecycle.** Read `$SLICE_DIR/.metadata.yaml`. Proceed only when `status: refined`. Pre-`refined` (e.g. `refining`) → halt with hint pointing at `/spec:refine`. Post-`refined` (`built`, `merged`, `dropped`) → halt with "no rebuild needed" / "already merged".
-5. **Load the target build brief.** Run `specify target resolve $TARGET --format json` and read `targets/$TARGET/briefs/build.md` from the resolved path. The brief carries the orchestration (omnia: crate / test / guest / review; vectis: core / iOS / Android / `composition.yaml` regen; contracts: format-dispatched author-import-verify). Follow it linearly; do not invoke retired writer or reviewer skills directly.
+5. **Load the target build brief.** Run `specify target resolve $TARGET --format json` and read `adapters/targets/$TARGET/briefs/build.md` from the resolved path. The brief carries the orchestration (omnia: crate / test / guest / review; vectis: core / iOS / Android / `composition.yaml` regen; contracts: format-dispatched author-import-verify). Follow it linearly; do not invoke retired writer or reviewer skills directly.
 6. **Stop on failure.** A non-zero exit anywhere in the brief's verify-repair loop or post-build gate emits a structured stop hint (see § Stop hint contract). The slice stays at `refined`; do not transition forward. The plan lock releases on process exit.
 7. **Transition on success.** Run `specify slice transition $SLICE built --format json`. The CLI stamps `.metadata.yaml`. Return control to the caller; `/spec:execute` (when present) advances to merge, otherwise the operator runs `/spec:merge $SLICE`.
 
@@ -61,4 +61,4 @@ This body shares the plan lock with `/spec:execute`. Detection is the env var `S
 
 - [plan-lock.md](../../references/plan-lock.md) — env-var detection and the `flock` snippet shared with `/spec:execute` and `/spec:merge`.
 - [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
-- `targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts).
+- `adapters/targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts).

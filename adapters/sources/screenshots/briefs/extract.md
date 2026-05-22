@@ -2,7 +2,7 @@
 
 For one `Candidate`, run the vision-assisted spatial pipeline against the image(s) bound to that screen under `$SOURCE_DIR` and return a single `Evidence` document carrying `region` / `container` / `leaf` claims. The CLI persists the result at `.specify/slices/<slice>/evidence/<source-key>.yaml`; this brief returns the YAML body only.
 
-The pipeline body lives in [`extract/pipeline.md`](extract/pipeline.md) and preserves the inference algorithm of the retired `vectis-image-layout-inferer` skill verbatim — triage → chrome cropping → regions → containers → leaves → conservative component detection. Only the *output* shape changed (flat claims instead of a hierarchical `layout.yaml`). Downstream synthesis (core) folds the claims back into the canonical artifacts; `targets/vectis/build` regenerates `composition.yaml` from the synthesised `spec.md` / `design.md`.
+The pipeline body lives in [`extract/pipeline.md`](extract/pipeline.md) and preserves the inference algorithm of the retired `vectis-image-layout-inferer` skill verbatim — triage → chrome cropping → regions → containers → leaves → conservative component detection. Only the *output* shape changed (flat claims instead of a hierarchical `layout.yaml`). Downstream synthesis (core) folds the claims back into the canonical artifacts; `adapters/targets/vectis/build` regenerates `composition.yaml` from the synthesised `spec.md` / `design.md`.
 
 ## Inputs
 

@@ -30,7 +30,7 @@ No markdown file may reference a stale checklist count from an earlier version o
 
 ### 3. Adapter manifest YAML validation
 
-Every `sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by `scripts/checks/adapter.ts` through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by `scripts/checks/adapter.ts` through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -82,7 +82,7 @@ Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 ### 12. Instruction file preambles
 
-Files matching `targets/**/instructions/<name>.md` must contain an output location preamble:
+Files matching `adapters/targets/**/instructions/<name>.md` must contain an output location preamble:
 
 ```markdown
 > **Output location**: `.specify/slices/...`
@@ -97,11 +97,11 @@ Acceptance scenario files are validated against `.cursor/schemas/scenario.schema
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
 3. `tests/plan/<scenario>.md` — shared plan-generation scenarios.
-4. `targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-5. `targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+4. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+5. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 6. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local target pack is the contracts test suite under [`targets/contracts/tests/`](../../targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -143,11 +143,11 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: Scenario frontmatter: targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-FAIL: Scenario frontmatter: targets/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
-FAIL: Scenario frontmatter: targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-FAIL: Scenario frontmatter: targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: targets/contracts/tests/_probe.md, targets/contracts/tests/describe.md
+FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
+FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
 ```
 
 Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
@@ -161,7 +161,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 16. First-party codex rule shape
 
-First-party codex rule files are validated under `sources/*/codex/**/*.md` and `targets/*/codex/**/*.md`. The optional repo-root `codex/**/*.md` overlay is also included when present.
+First-party codex rule files are validated under `adapters/sources/*/codex/**/*.md` and `adapters/targets/*/codex/**/*.md`. The optional repo-root `codex/**/*.md` overlay is also included when present.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke the `specify` CLI validator. It validates:
@@ -178,11 +178,11 @@ invoke the `specify` CLI validator. It validates:
 **Example failure messages:**
 
 ```text
-FAIL: Codex rule frontmatter: targets/default/codex/example.md — / missing required property 'trigger'
-FAIL: Codex rule frontmatter: targets/default/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-FAIL: Codex rule body: targets/default/codex/example.md — missing required '## Rule' heading
-FAIL: Codex namespace ownership: targets/default/codex/example.md — adapter 'default' may only use UNI-* ids, got 'SEC-001'
-FAIL: Codex rule duplicate id 'UNI-001' across files: targets/default/codex/a.md, targets/default/codex/b.md
+FAIL: Codex rule frontmatter: adapters/targets/default/codex/example.md — / missing required property 'trigger'
+FAIL: Codex rule frontmatter: adapters/targets/default/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+FAIL: Codex rule body: adapters/targets/default/codex/example.md — missing required '## Rule' heading
+FAIL: Codex namespace ownership: adapters/targets/default/codex/example.md — adapter 'default' may only use UNI-* ids, got 'SEC-001'
+FAIL: Codex rule duplicate id 'UNI-001' across files: adapters/targets/default/codex/a.md, adapters/targets/default/codex/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`

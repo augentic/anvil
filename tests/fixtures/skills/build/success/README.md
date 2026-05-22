@@ -10,6 +10,6 @@ The skill body MUST:
 
 1. Resolve the slice via `specify plan next` (or validate the supplied `[slice-name]` arg matches it).
 2. Acquire the plan lock when invoked standalone (`SPECIFY_PLAN_LOCK_HELD` unset).
-3. Read and execute `targets/omnia/briefs/build.md` linearly.
+3. Read and execute `adapters/targets/omnia/briefs/build.md` linearly.
 4. Run `specify slice transition password-hash-rotate built --format json` exactly once on success.
 5. Return control to the caller without writing `plan.yaml` (the per-entry `done` is `/spec:merge`'s job).

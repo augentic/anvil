@@ -19,7 +19,7 @@ sources:
     path: ./fixtures/replay
 ```
 
-The bound `path:` becomes `$SOURCE_DIR` at invocation time. The expected layout matches the format the RT wiretapper writes — see [fixture-format reference](../../../plugins/rt/skills/replay-writer/references/fixture-format.md):
+The bound `path:` becomes `$SOURCE_DIR` at invocation time. The expected layout matches the format the RT wiretapper writes — see [fixture-format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md):
 
 ```text
 $SOURCE_DIR/
@@ -138,5 +138,5 @@ Expected output (alphabetically by `id`, source key `runtime`):
 
 ## References
 
-- [RFC-27 §Runtime source adapter (D1)](../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
-- [Fixture format reference](../../../plugins/rt/skills/replay-writer/references/fixture-format.md)
+- [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/rfc-27-synthesis.md#runtime-source-adapter-d1)
+- [Fixture format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md)

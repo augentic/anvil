@@ -113,7 +113,7 @@ Review Android shell code using an agent team (structural, quality, integration 
 
 ### Screenshots source adapter
 
-Spatial inference over screenshots lives on the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml), not the Vectis plugin. The two operations of the source adapter — [`enumerate`](../../../sources/screenshots/briefs/enumerate.md) and [`extract`](../../../sources/screenshots/briefs/extract.md) — replace the retired `vectis-image-layout-inferer` skill; the inference algorithm is unchanged. `/spec:plan` runs `enumerate` to identify candidate screens; `/spec:refine` runs `extract` to emit `region` / `container` / `leaf` Evidence claims with `documentation` authority. Downstream `targets/vectis/build` consumes those claims when regenerating `composition.yaml` from the synthesised `spec.md` / `design.md`.
+Spatial inference over screenshots lives on the [`screenshots` source adapter](../../../adapters/sources/screenshots/adapter.yaml), not the Vectis plugin. The two operations of the source adapter — [`enumerate`](../../../adapters/sources/screenshots/briefs/enumerate.md) and [`extract`](../../../adapters/sources/screenshots/briefs/extract.md) — replace the retired `vectis-image-layout-inferer` skill; the inference algorithm is unchanged. `/spec:plan` runs `enumerate` to identify candidate screens; `/spec:refine` runs `extract` to emit `region` / `container` / `leaf` Evidence claims with `documentation` authority. Downstream `adapters/targets/vectis/build` consumes those claims when regenerating `composition.yaml` from the synthesised `spec.md` / `design.md`.
 
 ### /vectis:template-updater
 
@@ -156,7 +156,7 @@ Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell
 | `design-system/tokens.yaml` | Concrete token values (source of truth)                       |
 | `design-system/assets.yaml` | Asset manifest (images, icons, vectors)                       |
 
-Spatial layout enters the workflow through the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml). Its `enumerate` identifies candidate screens from a bound directory; its `extract` emits structured spatial Evidence (`region` / `container` / `leaf` claims). Core synthesis folds those claims into `spec.md` / `design.md`, and the Vectis target's `build` produces a target-specific `composition.yaml` alongside implementation code. `composition.yaml` is no longer a Specify artifact in 2.0 — it is regenerated on each `/spec:execute`.
+Spatial layout enters the workflow through the [`screenshots` source adapter](../../../adapters/sources/screenshots/adapter.yaml). Its `enumerate` identifies candidate screens from a bound directory; its `extract` emits structured spatial Evidence (`region` / `container` / `leaf` claims). Core synthesis folds those claims into `spec.md` / `design.md`, and the Vectis target's `build` produces a target-specific `composition.yaml` alongside implementation code. `composition.yaml` is no longer a Specify artifact in 2.0 — it is regenerated on each `/spec:execute`.
 
 Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer. For layout changes, re-bind the `screenshots` source on the next `/spec:plan` (or hand-author equivalent claims via a local source adapter).
 

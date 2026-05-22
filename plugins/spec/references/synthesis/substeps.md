@@ -30,7 +30,7 @@ Acceptance scenarios, when needed, live under a `## Scenarios` H2 *after* all re
 
 ## 3. `design.md`
 
-Technical implementation guidance. Folds in the target `shape` brief (`targets/<target>/briefs/shape.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
+Technical implementation guidance. Folds in the target `shape` brief (`adapters/targets/<target>/briefs/shape.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
 
 1. `## Domain model` — types, IDs, newtypes. Drawn from `type` claims on code Evidence and from `requirement` claim subjects on documentation Evidence; shaped by the target's `shape` (Omnia provider DI, Vectis Crux idioms, contracts format choice).
 2. `## APIs and integrations` — external surfaces (HTTP routes, message topics, WebSocket exports, contract endpoints). Drawn from `excerpt` and `call` claims and from `requirement` claims that name an external surface.
