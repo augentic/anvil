@@ -183,4 +183,4 @@ make docs-serve  # live reload at http://localhost:3000
 
 Requires the pinned versions of `mdbook`, `mdbook-d2`, `mdbook-linkcheck`, `mdbook-pagetoc`, `mdbook-template`, and `D2` — bootstrap with [`scripts/docs-prereqs.sh`](../../scripts/docs-prereqs.sh) and see [`docs/README.md`](../README.md) for the version table.
 
-Run `make docs` before opening a documentation PR so [`book/`](../book/) stays in sync with CI deploy output.
+Run `make docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.
