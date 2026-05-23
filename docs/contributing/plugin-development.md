@@ -9,7 +9,7 @@ Specify ships as a Cursor plugin marketplace. Each plugin provides skills and op
 | Plugin | Directory | Prefix | Purpose |
 |--------|-----------|--------|---------|
 | Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
-| RT | `plugins/rt/` | `/rt:` | Fixture capture and regression testing |
+| RT | `plugins/rt/` | `/rt:` | Runtime capture and regression testing |
 | Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
 Each plugin directory follows the same structure:

@@ -63,14 +63,14 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop)
   ├── contract/           # Contract authoring/import/verify skills
-  ├── rt/                 # RT migration plugin (wiretap / fixture capture)
+  ├── rt/                 # RT migration plugin (wiretap / runtime capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/
   ├── sources/            # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
   │   ├── code-typescript/    # legacy TypeScript enumeration + extract
-  │   ├── runtime-fixtures/       # captured fixture trees -> kind: example Evidence (RFC-27 §D1)
+  │   ├── captures/       # runtime capture trees -> kind: example Evidence (RFC-27 §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
   ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
   │   ├── omnia/

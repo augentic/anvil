@@ -1,15 +1,15 @@
-# Fixture → Evidence extraction mapping
+# Capture → Evidence extraction mapping
 
-Maps runtime fixture JSON fields to `kind: example` claim fields emitted by the `runtime-fixtures` extract brief. Full procedure and caps live in [`../briefs/extract.md`](../briefs/extract.md).
+Maps runtime capture JSON fields to `kind: example` claim fields emitted by the `captures` extract brief. Full procedure and caps live in [`../briefs/extract.md`](../briefs/extract.md).
 
 ## Field mapping
 
-| Fixture source | Evidence claim field | Rule |
+| Capture source | Evidence claim field | Rule |
 |---|---|---|
 | File path under `$SOURCE_DIR` | `path` | Relative path; no `#L` anchors — the whole file is the citation |
 | Raw file bytes | `fixture-digest` | `sha256:` prefix over exact bytes (no re-serialisation) |
 | `<handler>/<stem>.json` | `claim-id` | `<candidate-id>.<stem>` kebab-case (mechanical derivation) |
-| `input` + inferred HTTP surface | `input.method`, `input.route`, `input.body` | Quote observed shapes verbatim from fixture |
+| `input` + inferred HTTP surface | `input.method`, `input.route`, `input.body` | Quote observed shapes verbatim from capture |
 | `params` | fold into `input` or omit | Include when they affect observed behaviour |
 | `http_requests` | `input` outbound context or omit | Structural summary only when relevant to the scenario |
 | `output.success` / `output.failure` | `output.status`, `output.body` | HTTP status or channel equivalent |
@@ -19,7 +19,7 @@ Maps runtime fixture JSON fields to `kind: example` claim fields emitted by the 
 
 ## Minimal example
 
-Fixture `tests/data/replay/user-registration/happy.json`:
+Capture `tests/data/replays/user-registration/happy.json`:
 
 ```json
 {
@@ -36,7 +36,7 @@ Extracted claim (candidate `user-registration`, source key `runtime`):
 ```yaml
   - kind: example
     claim-id: user-registration.happy
-    path: tests/data/replay/user-registration/happy.json
+    path: tests/data/replays/user-registration/happy.json
     fixture-digest: sha256:7a2b...
     statement: "POST /users with a fresh email returns 201 and publishes `user.created` with the new user-id."
     input:
@@ -53,5 +53,5 @@ Extracted claim (candidate `user-registration`, source key `runtime`):
 
 ## See also
 
-- [`fixture-format.md`](fixture-format.md) — on-disk wire format
+- [`capture-format.md`](capture-format.md) — on-disk wire format
 - [`../briefs/extract.md`](../briefs/extract.md) — 64 KiB cap, determinism, anti-patterns

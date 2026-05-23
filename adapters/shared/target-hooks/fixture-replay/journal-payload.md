@@ -1,6 +1,6 @@
 # Fixture-replay payload shapes
 
-Closed wire shapes for the build-time fixture-replay hook. Recording rules and merge posture live in [`hook-contract.md`](hook-contract.md).
+Closed wire shapes for the build-time `fixture-replay` hook. Recording rules and merge posture live in [`hook-contract.md`](hook-contract.md).
 
 ## Journal event (v1 recorder)
 

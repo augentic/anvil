@@ -124,8 +124,8 @@ Deno.test("adapters/targets/*/expected/shape-evidence.md: bullet items present",
 // RFC-27 #26-1 — optional `fixture-replay` block on `.metadata.yaml`.
 //
 // The target-half of the release blocker: D1 carries an *optional*
-// build-time fixture-replay hook for targets that consume fixtures
-// from `runtime-fixtures` (RFC-27 §`build`-time fixture replay).
+// build-time fixture-replay hook for targets that consume runtime
+// captures (RFC-27 §`build`-time fixture replay).
 // Targets that have not implemented the hook simply omit the
 // `fixture-replay` field; `merge` does not require it.
 //

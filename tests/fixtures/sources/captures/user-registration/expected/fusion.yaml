@@ -11,7 +11,7 @@ requirements:
         claim-id: user-registration.happy
         kind: example
         value: "POST /users with a fresh email returns 201 and publishes `user.created` with the new user-id."
-        path: tests/data/replay/user-registration/happy.json
+        path: tests/data/replays/user-registration/happy.json
     resolution: single-source
   - id: REQ-002
     status: agreed
@@ -21,5 +21,5 @@ requirements:
         claim-id: user-registration.error
         kind: example
         value: "POST /users with a password shorter than 12 characters returns 400 with `{ code: weak-password }`; no message published."
-        path: tests/data/replay/user-registration/error.json
+        path: tests/data/replays/user-registration/error.json
     resolution: single-source

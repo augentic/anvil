@@ -1,6 +1,6 @@
-# Replay fixture test harness
+# Replay test harness
 
-Omnia target test generation consumes runtime fixtures copied or symlinked into `$CRATE_PATH/tests/data/replay/`. The wire format authority lives at [`adapters/sources/runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md) — this document covers **test-harness** semantics only.
+Omnia target test generation consumes runtime captures copied or symlinked into `$CRATE_PATH/tests/data/replays/`. The wire format authority lives at [`adapters/sources/captures/references/capture-format.md`](../../../sources/captures/references/capture-format.md) — this document covers **test-harness** semantics only.
 
 ## Setup block
 
@@ -26,20 +26,20 @@ The optional `setup` block configures the MockProvider before the handler runs. 
 - **state_store** — alias for `seed_cache`.
 - **table_store** — alias for `data` when the handler uses `TableStore`.
 
-All `setup` fields are optional. Fixtures without `setup` use default provider construction from `INSTRUCTIONS.md` or the crate's existing test patterns.
+All `setup` fields are optional. Captures without `setup` use default provider construction from `INSTRUCTIONS.md` or the crate's existing test patterns.
 
 ### `@samples/` file references
 
-Values prefixed with `@samples/` resolve relative to `tests/data/replay/`. Example: `"@samples/fleet-data.json"` → `tests/data/replay/samples/fleet-data.json`. Keeps fixtures small by referencing shared bulk data.
+Values prefixed with `@samples/` resolve relative to `tests/data/replays/`. Example: `"@samples/fleet-data.json"` → `tests/data/replays/samples/fleet-data.json`. Keeps captures small by referencing shared bulk data.
 
 ## INSTRUCTIONS.md
 
-Optional per-handler `INSTRUCTIONS.md` under `tests/data/replay/<handler>/` provides freeform guidance for test generation. Use when the standard TestDef format is insufficient or domain-specific context is needed.
+Optional per-handler `INSTRUCTIONS.md` under `tests/data/replays/<handler>/` provides freeform guidance for test generation. Use when the standard TestDef format is insufficient or domain-specific context is needed.
 
 ### When to use
 
 - Handler uses provider traits beyond `HttpRequest` (`TableStore`, `StateStore`) and MockProvider needs specific construction.
-- Sample data must load from `samples/` and be shared across fixtures.
+- Sample data must load from `samples/` and be shared across captures.
 - Assertions require domain-specific logic (timestamp normalisation, partial matching).
 - MockProvider has multiple construction modes (cache-hit vs cache-miss paths).
 
@@ -64,7 +64,7 @@ unless a fixture's `setup.data` overrides it.
 
 ## Config Overrides
 
-Fixtures may include `setup.config` to override config values. Merge these
+Captures may include `setup.config` to override config values. Merge these
 into the provider using `MockProvider::with_config(raw_vehicles, config)`.
 
 ## Assertions
@@ -73,14 +73,14 @@ The handler returns `Vec<VehicleInfo>` directly (no side-effect publishing).
 Compare the response body against `output.success` by JSON equality.
 ```
 
-`INSTRUCTIONS.md` is **not** behavioural Evidence — the `runtime-fixtures` extract brief may read it for surface-naming context only.
+`INSTRUCTIONS.md` is **not** behavioural Evidence — the `captures` extract brief may read it for surface-naming context only.
 
 ## TestDef → MockProvider mapping
 
-When generating tests from scenario fixtures:
+When generating tests from scenario captures:
 
 1. If `INSTRUCTIONS.md` exists, read it first.
-2. If the fixture has a `setup` block, configure MockProvider before invoking the handler (`setup.data`, `setup.seed_cache`, `setup.config`; resolve `@samples/` paths).
+2. If the capture has a `setup` block, configure MockProvider before invoking the handler (`setup.data`, `setup.seed_cache`, `setup.config`; resolve `@samples/` paths).
 3. Deserialize `input` and invoke the handler.
 4. Assert on `output.success` / `output.failure` and any side effects recorded in the fixture.
 5. Apply `params` (e.g. `delay`) for time-sensitive handlers via `shift_time` — see [`examples/replay/tests.md`](examples/replay/tests.md).

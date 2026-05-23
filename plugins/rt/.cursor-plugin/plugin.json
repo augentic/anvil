@@ -1,7 +1,7 @@
 {
   "name": "rt",
   "displayName": "RT Migration",
-  "description": "Fixture capture for TypeScript migration workflows.",
+  "description": "Runtime capture for TypeScript migration workflows.",
   "version": "0.26.0",
   "author": {
     "name": "Augentic",

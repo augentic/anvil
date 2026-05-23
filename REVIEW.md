@@ -268,7 +268,7 @@ After:
 
 ### F6 — Fix replay-writer retired lifecycle verb
 
-**Status:** **Closed** — `plugins/rt/skills/replay-writer/` retired; replay work moved to `runtime-fixtures` source adapter and Omnia `build/replay.md`. Omnia `build/replay.md` documents journal-only recording (no `specify slice outcome set`).
+**Status:** **Closed** — `plugins/rt/skills/replay-writer/` retired; replay work moved to `captures` source adapter and Omnia `build/replay.md`. Omnia `build/replay.md` documents journal-only recording (no `specify slice outcome set`).
 
 **Evidence (historical):** `plugins/rt/skills/replay-writer/SKILL.md:35` listed `specify slice outcome set` as a lifecycle owner. RFC-25 retired that verb (`plugins/spec/references/phase-outcome-contract.md:3`).
 
@@ -475,7 +475,7 @@ Deliberately **not** flagged:
 
 - **RFC-27 §D8 extraction cache I/O** (`adapter/cache/io.rs:99-328`) — `lookup` / `write` / `append_index` have no production callers yet but are tested end-to-end and wired for imminent emit sites; deleting would re-implement D8 later. Same rationale as the prior pass.
 - **`change/finalize` domain module (~605 LOC)** — no CLI verb yet (`tests/cross_repo.rs` marks W3.5 future); deleting is strategic scope, not a safe subtraction.
-- **`ExampleClaim` / `AuthorityClass` scaffolds** — zero external callers but RFC-27 evidence/authority shapes; YAGNI deletion risks re-adding typed claim surfaces when `runtime-fixtures` extract lands.
+- **`ExampleClaim` / `AuthorityClass` scaffolds** — zero external callers but RFC-27 evidence/authority shapes; YAGNI deletion risks re-adding typed claim surfaces when `captures` extract lands.
 - **Journal `EventKind` variants without CLI emitters** (`SliceExtractCompleted`, `SliceFusionWritten`, …) — refine/merge/replay-writer skills instruct agents to append matching NDJSON; the enum is the deserialization contract even when the CLI does not construct them.
 - **Dependency deduplication** — transitive duplicates under `wasmtime` / `wasm-pkg-client`; workspace has no upgrade authority inside this pass and `Cargo.toml` is frozen.
 - **New xtask predicates** for skill wire-contract drift — ruled out by master "Do NOT propose."

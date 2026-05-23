@@ -45,7 +45,7 @@ Multiple contributors; bodies match after whitespace normalisation; `status: agr
       claim-id: users.register.email-validation
       kind: example
       value: "Registering with a fresh email returns 201 and publishes user.created."
-      path: tests/data/replay/users-register/happy.json
+      path: tests/data/replays/users-register/happy.json
   resolution: single-value-agreement
 ```
 
@@ -89,7 +89,7 @@ A per-slice `authority-override.<kind>` on `plan.yaml.slices[]` picked the winne
       claim-id: password-reset.expiry
       kind: example
       value: "Captured handler issues links that expire after 24 hours."
-      path: tests/data/replay/password-reset/expiry.json
+      path: tests/data/replays/password-reset/expiry.json
       winner: true
     - source: identity-design-notes
       claim-id: password-reset.expiry
@@ -205,7 +205,7 @@ requirements:
         claim-id: users.password-reset.request
         kind: example
         value: "POST /password-reset returns 202 and queues an email."
-        path: tests/data/replay/password-reset/happy.json
+        path: tests/data/replays/password-reset/happy.json
     resolution: single-value-agreement
   - id: REQ-007
     status: divergence
@@ -215,7 +215,7 @@ requirements:
         claim-id: password-reset.expiry
         kind: example
         value: "Captured handler issues links that expire after 24 hours."
-        path: tests/data/replay/password-reset/expiry.json
+        path: tests/data/replays/password-reset/expiry.json
         winner: true
       - source: identity-design-notes
         claim-id: password-reset.expiry

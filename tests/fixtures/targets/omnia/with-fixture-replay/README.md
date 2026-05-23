@@ -4,7 +4,7 @@ Worked example for the **optional** fixture-replay hook on the [`omnia` target a
 
 ## What this fixture demonstrates
 
-A slice whose `plan.yaml.sources[]` carries a `runtime-fixtures` binding routes through the Omnia build replay phase. When the target implements the hook it replays the captured fixtures (`cd $CRATE_PATH && cargo nextest run --tests` against `tests/data/replay/<handler>/<scenario>.json`) and persists the outcome two ways: a `fixture-replay:` block on `.metadata.yaml` (this fixture) plus a `slice.fixture-replay.completed` journal event.
+A slice whose `plan.yaml.sources[]` carries a `captures` binding routes through the Omnia build replay phase. When the target implements the hook it replays the captured scenarios (`cd $CRATE_PATH && cargo nextest run --tests` against `tests/data/replays/<handler>/<scenario>.json`) and persists the outcome two ways: a `fixture-replay:` block on `.metadata.yaml` (this fixture) plus a `slice.fixture-replay.completed` journal event.
 
 The block shape is documented in [`fixture-replay/journal-payload.md`](../../../../../adapters/shared/target-hooks/fixture-replay/journal-payload.md):
 

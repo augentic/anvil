@@ -45,7 +45,7 @@ Specify ships as a Cursor plugin marketplace with seven plugins:
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **Contract** (`contract`) -- API contract generation, validation, and import
-- **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
+- **RT** (`rt`) -- Repository cloning, runtime capture, and regression testing for migration
 - **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.

@@ -1,6 +1,6 @@
-# Omnia build — fixture replay
+# Omnia build — capture replay
 
-Loaded by [../build.md](../build.md) phase 7 when the slice's `plan.yaml.sources[]` list carries a `runtime-fixtures` binding.
+Loaded by [../build.md](../build.md) phase 7 when the slice's `plan.yaml.sources[]` list carries a `captures` binding.
 
 ## Shared contract
 
@@ -11,13 +11,13 @@ Read [`../../../../shared/target-hooks/fixture-replay/hook-contract.md`](../../.
 In addition to the shared contract:
 
 - Phases 2–6 complete: crate, tests, guest (create mode), verify-repair loop, and code review have run.
-- Replay fixtures are present under `$CRATE_PATH/tests/data/replay/` — copied or symlinked during [test writer](test.md) when a `runtime-fixtures` binding exists.
+- Replay data is present under `$CRATE_PATH/tests/data/replays/` — copied or symlinked during [test writer](test.md) when a `captures` binding exists.
 
-Fixture wire format: [`runtime-fixtures/references/fixture-format.md`](../../../../sources/runtime-fixtures/references/fixture-format.md). Claim shape and 64 KiB inline cap: [`runtime-fixtures/briefs/extract.md`](../../../../sources/runtime-fixtures/briefs/extract.md).
+Capture wire format: [`captures/references/capture-format.md`](../../../../sources/captures/references/capture-format.md). Claim shape and 64 KiB inline cap: [`captures/briefs/extract.md`](../../../../sources/captures/briefs/extract.md).
 
 ## Omnia execution
 
-1. **Confirm fixture tree.** List `$CRATE_PATH/tests/data/replay/<handler>/*.json`. Every scenario file the `runtime-fixtures` adapter extracted should have a corresponding integration test from phase 3; if gaps exist, re-enter [test.md](test.md) before replay.
+1. **Confirm replay tree.** List `$CRATE_PATH/tests/data/replays/<handler>/*.json`. Every scenario file the `captures` adapter extracted should have a corresponding integration test from phase 3; if gaps exist, re-enter [test.md](test.md) before replay.
 
 2. **Run the replay suite.**
 
@@ -25,7 +25,7 @@ Fixture wire format: [`runtime-fixtures/references/fixture-format.md`](../../../
    cd $CRATE_PATH && cargo nextest run --tests
    ```
 
-   Fall back to `cargo test` when nextest is unavailable. The operator's `runtime-fixtures` binding may point at a different root than the crate copy — replay always runs against `$CRATE_PATH/tests/data/replay/`.
+   Fall back to `cargo test` when nextest is unavailable. The operator's `captures` binding may point at a different root than the crate copy — replay always runs against `$CRATE_PATH/tests/data/replays/`.
 
 3. **Classify results** per the shared contract (advisory in v1).
 

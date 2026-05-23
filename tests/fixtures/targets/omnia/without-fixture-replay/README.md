@@ -1,12 +1,12 @@
 # `omnia` target — `without-fixture-replay` fixture
 
-Worked example for the omission-is-not-an-error posture on the shared fixture-replay hook ([`fixture-replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/fixture-replay/hook-contract.md), RFC-27 §D1). The `.metadata.yaml` in this directory is what a build emits when the slice has no `runtime-fixtures` source binding (or when a target adapter fork has not implemented the hook).
+Worked example for the omission-is-not-an-error posture on the shared fixture-replay hook ([`fixture-replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/fixture-replay/hook-contract.md), RFC-27 §D1). The `.metadata.yaml` in this directory is what a build emits when the slice has no `captures` source binding (or when a target adapter fork has not implemented the hook).
 
 ## What this fixture demonstrates
 
-The fixture-replay step is **optional in v1**. A slice without a `runtime-fixtures` source binding (or a target that does not run the hook) produces no `fixture-replay:` block. `/spec:merge` does not refuse on absence — the closing message simply omits the one-line replay summary.
+The fixture-replay step is **optional in v1**. A slice without a `captures` source binding (or a target that does not run the hook) produces no `fixture-replay:` block. `/spec:merge` does not refuse on absence — the closing message simply omits the one-line replay summary.
 
-The shared contract states this verbatim: targets that skip the step produce no `fixture-replay` surface; omission is not an error. Vectis is the canonical example of a target adapter that ignores the hook (it has no captured-fixture surface to replay against).
+The shared contract states this verbatim: targets that skip the step produce no `fixture-replay` surface; omission is not an error. Vectis is the canonical example of a target adapter that ignores the hook (it has no runtime-capture surface to replay against).
 
 ## Diff posture against `../with-fixture-replay/`
 

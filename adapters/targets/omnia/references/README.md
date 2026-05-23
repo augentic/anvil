@@ -14,7 +14,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 | [`build/test.md`](../briefs/build/test.md) | Phase 3: generate or update the test suite. |
 | [`build/guest.md`](../briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
 | [`build/review.md`](../briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
-| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `runtime-fixtures` source is bound. Delegates hook contract to [`../../../shared/target-hooks/fixture-replay/`](../../../shared/target-hooks/fixture-replay/). |
+| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime capture replay when a `captures` source is bound. Delegates hook contract to [`../../../shared/target-hooks/fixture-replay/`](../../../shared/target-hooks/fixture-replay/). |
 | [`merge.md`](../briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
 
 ## References
@@ -48,8 +48,8 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 
 - [`mock-provider.md`](mock-provider.md) — Static and Replay MockProvider patterns per provider trait.
 - [`spec-to-test-mapping.md`](spec-to-test-mapping.md) — how spec scenarios map to test functions; `REQ-XXX` traceability.
-- [`replay-fixtures.md`](replay-fixtures.md) — `setup` block, `INSTRUCTIONS.md`, TestDef → MockProvider mapping for runtime fixtures.
-- [`replay-crate-layout.md`](replay-crate-layout.md) — generated-crate paths and fixture loading for replay tests.
+- [`replay-fixtures.md`](replay-fixtures.md) — `setup` block, `INSTRUCTIONS.md`, TestDef → MockProvider mapping for runtime captures.
+- [`replay-crate-layout.md`](replay-crate-layout.md) — generated-crate paths and capture loading for replay tests.
 
 ### Guest writer depth
 
@@ -74,4 +74,4 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 
 - [`examples/crates/`](examples/crates/) — single-handler, multi-handler, anti-patterns; per-capability walkthroughs under `capabilities/`; per-update-category walkthroughs under `updates/`.
 - [`examples/tests/`](examples/tests/) — per-provider testing patterns (HTTP, StateStore, Publisher, Blobstore, DocumentStore).
-- [`examples/replay/`](examples/replay/) — runtime fixture replay (handler, tests, fixtures worked examples for migration).
+- [`examples/replay/`](examples/replay/) — runtime capture replay (worked handler, test, and capture examples for migration).

@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
-name: runtime-fixtures
+name: captures
 version: 1
 axis: source
 briefs:
@@ -9,11 +9,11 @@ tools:
   - name: fixture-index
     version: 0.1.0
 description: >-
-  Runtime-fixture source adapter. Walks a read-only fixture tree under
+  Runtime capture source adapter. Walks a read-only capture tree under
   `$SOURCE_DIR` (the directory layout the RT wiretapper writes —
-  `tests/data/replay/<handler>/<scenario>.json` plus optional `samples/`),
+  `tests/data/replays/<handler>/<scenario>.json` plus optional `samples/`),
   enumerates one candidate per observed handler entry point (HTTP route,
   message handler, scheduled job, WebSocket handler), and extracts behavioural
   Evidence as `kind: example` claims carrying `fixture-digest: sha256:<hex>`
-  anchors. Authority emitted is `behaviour`; fixture bodies above 64 KiB
+  anchors. Authority emitted is `behaviour`; capture bodies above 64 KiB
   inline are carried by digest + path only.
