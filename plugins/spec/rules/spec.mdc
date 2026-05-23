@@ -64,11 +64,11 @@ Breakouts share skill bodies with the loop and are reached when `/spec:execute` 
 ### Project not initialized
 
 - Run `/spec:init <target>` in the project root to create `.specify/` and write `project.yaml`
-- Verify with `specify status`
+- Verify `.specify/project.yaml` exists
 
 ### Slice not found
 
-- Run `specify status` to see active slices
+- Inspect `.specify/slices/` to see active slices
 - Check the slice name matches (kebab-case)
 
 ### Artifacts incomplete

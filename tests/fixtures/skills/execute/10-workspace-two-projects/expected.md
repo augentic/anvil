@@ -19,7 +19,7 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
      1. Save CWD = workspace root.
      2. Resolve `project-a` through `registry.yaml`.
      3. `.specify/workspace/project-a/` is missing → `specify workspace sync project-a` materialises the slot.
-     4. `specify workspace prepare-branch project-a --change platform-rollout` creates `specify/platform-rollout` from `origin/HEAD`.
+     4. `specify workspace prepare project-a --change platform-rollout` creates `specify/platform-rollout` from `origin/HEAD`.
      5. `chdir` into `.specify/workspace/project-a/`; emit `Routing: api-platform-v2-upgrade → project-a (.specify/workspace/project-a/)`.
    - Phase sequence: `/spec:refine` → `/spec:build` → `/spec:merge`.
    - `specify slice merge run` commits `.specify/specs/` + `.specify/archive/` as `specify: merge api-platform-v2-upgrade`.

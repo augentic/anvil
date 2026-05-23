@@ -30,7 +30,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 | Adapter cache | `.specify/.cache/<adapter>/` | Cached adapter manifest and brief files (regular only) |
 | Directory structure | `.specify/{slices,specs,archive}/` | Empty scaffold (regular only) |
 | Agent context | `AGENTS.md` | Generated repository guidance when root `AGENTS.md` is absent |
-| Context lock | `.specify/context.lock` | Fingerprint sidecar for `specify context check` |
+| Context lock | `.specify/context.lock` | Fingerprint sidecar for init-time `AGENTS.md` generation |
 
 ## Behavior
 

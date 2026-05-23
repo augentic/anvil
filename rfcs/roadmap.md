@@ -61,7 +61,7 @@ specify review --slice <name>
 specify review --format json
 ```
 
-**First task:** Define the structured finding shape before reviewer code lands. The schema consumes `specify codex export --format json` as the resolved rule-catalog input, owns finding-specific fields, and should not redefine codex rule storage.
+**First task:** Define the structured finding shape before reviewer code lands. The schema consumes a project-resolved rule catalogue owned by the future review surface, owns finding-specific fields, and should not redefine codex rule storage.
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
@@ -93,7 +93,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Initial tools:** `specify_status`, `specify_registry_show`, `specify_workspace_status`, `specify_change_plan_status`, `specify_change_plan_next`, `specify_change_plan_doctor`, `specify_slice_validate`, `specify_slice_outcome_show`.
+**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
 #### RM-14: Local structured workflow events
@@ -103,7 +103,6 @@ specify registry diff <source>
 **Target surface:**
 
 ```bash
-specify status --format json
 specify events tail
 specify events export
 ```
@@ -120,7 +119,7 @@ specify events export
 
 **Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
 **Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
-**Codex follow-up:** May surface first-party codex shape validation by delegating to the codex parser/resolver, while leaving project-resolved review behavior under `specify codex` and future `specify review`.
+**Codex follow-up:** May surface first-party codex shape validation by delegating to the codex parser/resolver, while leaving project-resolved review behavior under future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize

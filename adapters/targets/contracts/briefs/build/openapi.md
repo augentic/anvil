@@ -11,7 +11,7 @@ This sub-flow is OpenAPI-only. Shared payload schemas under `contracts/schemas/`
 3. **Dispatch to the sibling.** Open and follow [`../../references/openapi/author.md`](../../references/openapi/author.md), [`../../references/openapi/importer.md`](../../references/openapi/importer.md), or [`../../references/openapi/verifier.md`](../../references/openapi/verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$SLICE_DIR/contracts/http/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-sub-flow territory) — never inline them.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling against the slice directory to check `$ref` resolution, schema metadata completeness, and binding coverage.
-6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode). Cross-project consumer impact is reported by `specify compatibility`.
+6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode). Cross-project consumer impact is deferred until a real consumer workflow exists.
 7. **Stay within change-local `contracts/http/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/messages/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Artifact layout

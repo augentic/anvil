@@ -11,7 +11,7 @@ This sub-flow is AsyncAPI-only. Shared payload schemas under `contracts/schemas/
 3. **Dispatch to the sibling.** Open and follow [`../../references/asyncapi/author.md`](../../references/asyncapi/author.md), [`../../references/asyncapi/importer.md`](../../references/asyncapi/importer.md), or [`../../references/asyncapi/verifier.md`](../../references/asyncapi/verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/messages/`.** Author and importer paths produce or normalise AsyncAPI 3.0 YAML files under `$SLICE_DIR/contracts/messages/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-sub-flow territory) — never inline them.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling against the slice directory to check `$ref` resolution, message metadata completeness, and binding coverage.
-6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode). Cross-project consumer impact is reported by `specify compatibility`.
+6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode). Cross-project consumer impact is deferred until a real consumer workflow exists.
 7. **Stay within change-local `contracts/messages/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/http/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Artifact layout

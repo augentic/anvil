@@ -1,26 +1,24 @@
 # specify workspace
 
-Materialise, inspect, and publish registry-backed workspace slots for multi-repo changes.
+Materialise, prepare, and publish registry-backed workspace slots for multi-repo changes.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
 | [`sync`](#specify-workspace-sync) | Create or refresh workspace slots. With no selectors, syncs every registry project; with selectors, materialises only those slots. |
-| [`status`](#specify-workspace-status) | Inspect selected slots, including slot kind, configured target, actual origin, branch, HEAD, dirty state, change-branch match, project config, and active slices. |
 | [`push`](#specify-workspace-push) | Publish an existing exact `specify/<change-name>` branch to its remote and create or update a PR. |
 
 ## Selectors
 
-`sync`, `status`, and `push` accept optional project selectors:
+`sync` and `push` accept optional project selectors:
 
 ```bash
 specify workspace sync [<project>...]
-specify workspace status [<project>...]
 specify workspace push [<project>...]
 ```
 
-Selectors are registry project names. Unknown selectors fail before filesystem, Git, or forge side effects. When selectors are omitted, `sync` and `status` operate on every project declared in `registry.yaml`; `push` classifies every registry project and only performs transport work for branches that need publication.
+Selectors are registry project names. Unknown selectors fail before filesystem, Git, or forge side effects. When selectors are omitted, `sync` operates on every project declared in `registry.yaml`; `push` classifies every registry project and only performs transport work for branches that need publication.
 
 ## Branch preparation
 
@@ -32,7 +30,7 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare-branch` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace status`, `specify workspace push`, and `specify plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `specify plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
@@ -53,29 +51,6 @@ For each selected registry project:
 A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
 
 Selected sync materialises selected slots only. Unselected registry projects are not cloned, fetched, symlinked, or contract-refreshed. Running without selectors syncs all registry projects. Non-zero exit if any selected project fails, with a per-project status summary.
-
-### specify workspace status
-
-Report the materialisation state of selected registry workspace slots.
-
-```bash
-specify workspace status [<project>...]
-```
-
-Per-project output includes:
-
-- `slot path` under `.specify/workspace/<project>/`;
-- slot type: `git-clone`, `symlink`, `missing`, or `other`;
-- configured target kind and configured target from `registry.yaml`;
-- actual symlink target or actual Git `origin`, when present;
-- current branch;
-- `HEAD` SHA;
-- dirty flag from `git status --porcelain`;
-- exact change-branch match against `specify/<change-name>` when `plan.yaml` is present;
-- `.specify/project.yaml` presence;
-- active slices discovered under `.specify/slices/`.
-
-`status` is read-only. It is the first check when `sync`, `/spec:execute`, or `push` reports a missing, dirty, or mismatched slot.
 
 ### specify workspace push
 

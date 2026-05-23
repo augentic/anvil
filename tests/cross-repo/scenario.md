@@ -65,7 +65,7 @@ feature brief
   -> /spec:plan <name>
   -> contract slice
   -> routed backend and mobile implementation slices
-  -> (operator review pause: specify plan status)
+  -> (operator review pause: inspect plan.yaml)
   -> /spec:execute loop
   -> /spec:finalize <name>      (halts on unmerged PRs)
   -> operator merges PRs externally
@@ -225,7 +225,7 @@ without modifying it:
 
 ```bash
 specify plan validate
-specify plan status
+inspect plan.yaml
 ```
 
 The review step is a no-op for parity with the retired umbrella: the operator
@@ -249,8 +249,8 @@ remove those prompts.
 When the loop exits, inspect status:
 
 ```bash
-specify plan status
-specify workspace status
+inspect plan.yaml
+inspect .specify/workspace/<project> with git status
 ```
 
 Every plan entry should be `done`. The execute loop exits because the plan is
@@ -355,7 +355,7 @@ The run should leave these artifacts or states for inspection:
 - `draft-stops-at-handoff`: `/spec:plan` exits at the hand-off summary
   without invoking `/spec:execute`, pushing branches, or finalizing the
   change.
-- `review-step-no-op`: `specify plan status` between draft and execute reports
+- `review-step-no-op`: `inspect plan.yaml` between draft and execute reports
   the plan as authored; the operator does not run `specify plan amend` for the
   parity scenario.
 - `execute-loop-all-done`: `/spec:execute loop` exits because the plan is
@@ -406,8 +406,8 @@ failure needs investigation. Preserve these items on failure:
 - `docs/oauth-login.md`
 - `registry.yaml`
 - `plan.yaml`, or the archived plan path if finalize succeeded
-- `specify plan status` output (review step and post-execute)
-- `specify workspace status` output
+- `inspect plan.yaml` output (review step and post-execute)
+- `inspect .specify/workspace/<project> with git status` output
 - first `/spec:finalize` output (push table + `pr-not-merged` halt)
 - second `/spec:finalize` output (push idempotent + PR observation +
   finalize wrap-up summary)

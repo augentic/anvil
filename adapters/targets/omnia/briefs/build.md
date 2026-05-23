@@ -96,7 +96,7 @@ Record the outcome two ways:
 
 2. **Journal event.** Emit `slice.fixture-replay.completed` (defined in the cli repo as `EventKind::SliceFixtureReplayCompleted`) via `specify slice journal append`, with payload `{ passed, failed, skipped, runner }`.
 
-`merge` reads the block if present and surfaces a one-line summary (`fixture-replay: <passed> passed, <failed> failed, <skipped> skipped`) in its closing message. `merge` does **not** auto-refuse on `failed > 0` in v1 — the operator decides whether to land a slice whose generated code does not pass captured fixtures, mirroring the operator-visible posture RFC-25 takes on `[conflict]` and `[divergence]` tags. Operators wanting stricter posture wire it via a custom target adapter fork (refuse from the fork's `merge.md`) or via a CI policy reading `specify slice outcome show <slice> --format json`.
+`merge` reads the block if present and surfaces a one-line summary (`fixture-replay: <passed> passed, <failed> failed, <skipped> skipped`) in its closing message. `merge` does **not** auto-refuse on `failed > 0` in v1 — the operator decides whether to land a slice whose generated code does not pass captured fixtures, mirroring the operator-visible posture RFC-25 takes on `[conflict]` and `[divergence]` tags. Operators wanting stricter posture wire it via a custom target adapter fork (refuse from the fork's `merge.md`) or via a CI policy reading `.specify/slices/<slice>/.metadata.yaml` directly.
 
 A failure here is **not** a build park: replay results are advisory in v1. The slice still transitions to `built`; the operator inspects the summary at merge time.
 

@@ -201,7 +201,7 @@ JSON envelope:
 
 Rules:
 
-- **Read-only.** Like `specify registry show` and `specify migration-log show`, it never writes to `plan.yaml`.
+- **Read-only.** Like other read-only inspection surfaces, it never writes to `plan.yaml`.
 - **Fallback when `surfaces` is absent.** If a slice has no `surfaces[]` field but a current `surveys.json` exists for the change, the verb falls back to deriving the digest from that file. If neither is available the crate row prints `(surfaces unknown)`; this is not an error.
 - **Cross-RFC composition.** When [RFC-22's ledger](rfc-22-ledger.md#-specifymigration-logyaml--the-cumulative-ledger) is present, finalised crates from prior changes are listed below the in-flight ones under a `# Previously migrated` heading. This makes `compose` the single answer to "what does this Omnia service look like, today, and after this change lands?".
 
@@ -237,7 +237,7 @@ This RFC is **strictly additive**. Pre-existing plans, surveys, registries, arch
 
 **For adapter authors.** Only the `omnia` adapter's propose brief changes — to populate `crate` and `surfaces`. Vectis, contracts, and any third-party adapter are unaffected. The new validator findings are guarded by the `omnia` adapter check, so non-Omnia projects see no behavioural change.
 
-**For skill authors consuming planning artifacts.** The plan-validate JSON envelope gains five new finding codes within the existing `EXIT_VALIDATION_FAILED=2` exit. `specify plan compose --format json` is a new readable surface with a stable JSON envelope; treat it like `specify registry show` and `specify plan status`. `omnia-crate-writer` consumes the new `crate` field via `specify plan show` rather than relying on argument convention.
+**For skill authors consuming planning artifacts.** The plan-validate JSON envelope gains five new finding codes within the existing `EXIT_VALIDATION_FAILED=2` exit. `specify plan compose --format json` is a new readable surface with a stable JSON envelope; treat it like a read-only inspection surface. `omnia-crate-writer` consumes the new `crate` field via direct plan inspection rather than relying on argument convention.
 
 There is **no breaking change** to: existing `plan.yaml` files (both new fields are optional), existing `registry.yaml` files (untouched), existing surveys (`surfaces.json` schema unchanged), existing exit codes (new discriminants within `EXIT_VALIDATION_FAILED=2`), or any non-Omnia adapter brief.
 

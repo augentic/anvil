@@ -128,7 +128,7 @@ Readability and maintainability issues.
 
 ## Universal checks (`UNI-` prefix)
 
-After all three specialists report, the lead applies the default codex rules `UNI-001` through `UNI-021` from `plugins/omnia/references/codex/` with Omnia/WASM-specific detection. If `specify codex export --format json` is available in the reviewed project, use the resolved export; otherwise read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all three specialists report, the lead applies the default codex rules `UNI-001` through `UNI-021` from `plugins/omnia/references/codex/` with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

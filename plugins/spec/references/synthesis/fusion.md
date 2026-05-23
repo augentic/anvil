@@ -144,7 +144,7 @@ Multiple contributors disagree at the same authority class after every override 
 
 - Multi-line claim bodies collapse to the **first non-empty line** with a trailing `…` indicator.
 - Over-cap bodies truncate at a **whitespace boundary** and append `…`. The cap is **16 KiB** per `value`, enforced by the writer.
-- The trailing `…` is the single-character Unicode horizontal ellipsis (`U+2026`), not three ASCII dots. The CLI text renderer (`specify slice fusion show <slice>`) re-truncates to a terminal-friendly column count for display only; the on-disk value keeps the full single-line / 16 KiB-capped form.
+- The trailing `…` is the single-character Unicode horizontal ellipsis (`U+2026`), not three ASCII dots. The on-disk value keeps the full single-line / 16 KiB-capped form.
 
 ## `winner`
 
@@ -169,7 +169,7 @@ The closed set matches the resolution-order taxonomy in [`authority.md` §Resolu
 
 ## Audit posture
 
-`fusion.yaml` is consumed by `specify slice fusion show <slice>` (text rendering with truncated `value` columns) and `specify slice fusion show <slice> --format json` (verbatim re-serialisation). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same posture RFC-22's `mapping` field and RFC-24's `surfaces[]` follow.
+`fusion.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same posture RFC-22's `mapping` field and RFC-24's `surfaces[]` follow.
 
 Operator hand-edits to `fusion.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specify plan amend`.
 

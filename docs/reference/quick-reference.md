@@ -87,7 +87,7 @@ specify slice merge <name> [--dry-run|--check-only]
 
 # Workspace (multi-repo)
 specify workspace sync [<project>...]                    # materialise slots from registry.yaml
-specify workspace prepare-branch <project> --change <name>
+specify workspace prepare <project> --change <name>
 specify workspace push [<project>...]                    # publish specify/<name> branch as PR
 
 # Tools
@@ -118,7 +118,7 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
     ├── discovery.md      # plan-time candidate inventory
-    ├── plan.lock         # advisory lock for /spec:execute and breakouts
+    ├── plan.lock         # advisory file lock for /spec:execute and breakouts
     ├── .cache/           # cached adapter manifests + briefs ({sources,targets}/)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline

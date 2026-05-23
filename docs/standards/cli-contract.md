@@ -19,7 +19,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Project
 
 - `specify init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specify init` invoked with neither (or both) errors with `init-requires-adapter-or-hub`.
-- `specify status` — project dashboard summarising registry, active change, and active slices (single-slice view lives at `specify slice status <name>`).
+- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `fusion.yaml`, `discovery.md`) rather than formatted dashboard commands.
 
 ### Slice (per-slice lifecycle)
 
@@ -70,7 +70,7 @@ The contracts target adapter's `build` brief carries author / import / verify in
 
 The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party adapter owning its own validation behaviour; the contracts adapter merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is exposed separately as `specify compatibility check` (with `--change <name>` to echo the change name and `--report-only` for read-only audits), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk unless `--report-only` is passed.
+Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ## JSON envelope
 

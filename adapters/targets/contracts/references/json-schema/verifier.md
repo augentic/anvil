@@ -15,7 +15,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specify tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
-`--mode` is an internal flag of the format-specific verifier. Cross-project consumer-impact analysis lives in the `specify compatibility` CLI surface; this verifier owns deterministic single-slice and merged-baseline checks.
+`--mode` is an internal flag of the format-specific verifier. Cross-project consumer-impact analysis is deferred until a real consumer workflow exists; this verifier owns deterministic single-slice and merged-baseline checks.
 
 Note: `specify tool run contract` walks **top-level OpenAPI 3.1 / AsyncAPI 3.0 documents only** (root key `openapi:` or `asyncapi:`). Standalone JSON Schema files under `contracts/schemas/` are payload vocabulary, not top-level contracts, and are skipped by the validator filter (RFC-12 §"Top-level contracts"). The `cross-project` invocation is therefore identical across all three format verifiers — the tool handles format selection internally.
 
@@ -288,7 +288,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 The contracts adapter owns merge gating through the declared `contract` WASI tool: a deterministic, adapter-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` (with optional `--change <name>` and `--report-only` flags).
+Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate.
 
 ## Edge cases
 

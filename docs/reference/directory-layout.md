@@ -21,7 +21,7 @@ contracts/                                  # Baseline API contracts
 ├── change.md                               # Operator brief for the active change
 ├── plan.yaml                               # Change plan (lifecycle + slices[])
 ├── discovery.md                            # Plan-time candidate inventory
-├── context.lock                            # Fingerprint sidecar for `specify context check`
+├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
 ├── .cache/                                 # Cached adapter manifests + briefs

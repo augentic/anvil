@@ -66,14 +66,14 @@ If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte an
 For a **regular** init, tell the user:
 
 - "Specify initialized. Config written to `.specify/project.yaml`."
-- "Generated starter context at `AGENTS.md`; refresh it later with `specify context generate`."
+- "Generated starter context at `AGENTS.md`; inspect the file directly for later review."
 - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
 - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<adapter>/adapter.yaml`."
 
 For a **hub** init, tell the user:
 
 - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `adapter:`)."
-- "Generated hub context at `AGENTS.md`; refresh it later with `specify context generate`."
+- "Generated hub context at `AGENTS.md`; inspect the file directly for later review."
 - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
 
 Do NOT print "Next steps" yet — [baseline-detection.md](baseline-detection.md) determines which output to show.

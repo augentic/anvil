@@ -178,7 +178,7 @@ After planning, validate and inspect the plan:
 
 ```bash
 specify plan validate
-specify plan status
+inspect plan.yaml
 specify registry validate
 ```
 
@@ -227,5 +227,5 @@ Use disposable directories and remove them when the run is complete unless a fai
 - `plan.yaml`
 - `.specify/plans/oauth-login-plan/`
 - `specify plan validate` output
-- `specify plan status` output
+- `inspect plan.yaml` output
 - `specify registry validate` output

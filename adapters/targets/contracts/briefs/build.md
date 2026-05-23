@@ -93,4 +93,4 @@ When the slice's specs describe no API interactions and no Source Material lists
 - [`references/baseline-vs-delta.md`](../references/baseline-vs-delta.md) — cross-format minimal-delta rules and merge semantics.
 - [`references/import-upgrade-policy.md`](../references/import-upgrade-policy.md) — shared framework for the importer siblings.
 - [`references/report-shape.md`](../references/report-shape.md) — single-mode markdown, baseline validator JSON, and compatibility report JSON formats.
-- [`references/cross-project-compatibility.md`](../references/cross-project-compatibility.md) — compatibility classifications and `change-kind` vocabulary used by `specify compatibility`.
+- [`references/cross-project-compatibility.md`](../references/cross-project-compatibility.md) — archived vocabulary for future consumer-impact reporting; today use the contract WASI verifier reports.

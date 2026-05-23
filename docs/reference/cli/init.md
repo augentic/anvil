@@ -55,6 +55,6 @@ When `--format json` is provided, returns:
 
 - [Platform repo topologies](../../explanation/platform-repo.md) -- when to choose hub vs platform-as-project
 - [Configuration Files](../configuration.md) -- project.yaml and metadata format
-- [`specify context`](context.md) -- regenerate or check `AGENTS.md` context
+- `AGENTS.md` context is generated during `specify init`; later inspection is direct file review.
 - [Prerequisites](../../orientation/prerequisites.md) -- setup before first init
 - [`specify registry`](registry.md) -- manage the hub's registry catalogue

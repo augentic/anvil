@@ -26,7 +26,7 @@ The replay-writer skill is the operator's named entry point for replay-aware tar
 
    See [`adapters/targets/omnia/briefs/build.md`](../../../../adapters/targets/omnia/briefs/build.md) § Fixture replay for the optional step, the `.metadata.yaml` write contract (`passed` / `failed` / `skipped` / `ran-at` / `runner`), and the `slice.fixture-replay.completed` journal event payload.
 
-3. **`merge` is advisory, not gating.** When the optional hook runs, `merge` surfaces a one-line summary in its closing message (e.g. `fixture-replay: 47 passed, 0 failed, 2 skipped`) but does **not** auto-refuse on `failed > 0`. The operator decides whether to land. Stricter posture wires through a custom target adapter fork (refuse from the fork's own `merge.md`) or through a CI policy reading `specify slice outcome show <slice> --format json`.
+3. **`merge` is advisory, not gating.** When the optional hook runs, `merge` surfaces a one-line summary in its closing message (e.g. `fixture-replay: 47 passed, 0 failed, 2 skipped`) but does **not** auto-refuse on `failed > 0`. The operator decides whether to land. Stricter posture wires through a custom target adapter fork (refuse from the fork's own `merge.md`) or through a CI policy reading `.specify/slices/<slice>/.metadata.yaml` directly.
 
 ## What this skill no longer does
 

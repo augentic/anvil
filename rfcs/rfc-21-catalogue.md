@@ -95,7 +95,7 @@ Behaviour:
 
 - **`add`** — appends an entry. Fails on duplicate `key`. Validates kebab-case, URL shape, and `target_projects` references against `registry.yaml` when present (warning, not error, since target projects may be added later).
 - **`remove`** — removes an entry. Fails if any *active* (non-archived) plan slice still references the key in its `sources[]` list. Also removes the matching cache entry under `.specify/.cache/adapters/sources/<key>/`.
-- **`show` / `list`** — JSON-emitting reads, same envelope shape as `specify registry show`.
+- **`show` / `list`** — JSON-emitting reads, same envelope shape as other read-only inspection surfaces.
 - **`validate`** — schema validation, duplicate-key detection, URL-shape checks, and (when `registry.yaml` exists) `target_projects` cross-reference warnings.
 - **`sync`** — materialises tier-1 clones into the shared cache (see *Tier-1 caching* below). With no positional, syncs every entry; with one or more positionals, syncs only those keys.
 
@@ -209,7 +209,7 @@ For adapter authors:
 
 For skill authors:
 
-- `specify sources show --format json` is a new readable surface with a stable JSON envelope. Treat it like `specify registry show`.
+- `specify sources show --format json` is a new readable surface with a stable JSON envelope. Treat it like a read-only inspection surface.
 
 There is **no breaking change** to: existing `plan.yaml` files, existing `registry.yaml` files, existing `/change:analyze` invocations, existing exit codes (new discriminants live within `EXIT_VALIDATION_FAILED=2` and `EXIT_GENERIC_FAILURE=1`), or existing archive layouts (the `.snapshot.yaml` file is additive inside the archive directory).
 

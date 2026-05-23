@@ -6,7 +6,7 @@
 
 > Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the workspace root.
 
-**Stress-tests:** Per-slice project routing; slot materialisation; `prepare-branch`; `chdir` + residue commit; plan-lock semantics at the workspace root while phase work runs in slots.
+**Stress-tests:** Per-slice project routing; slot materialisation; `workspace prepare`; `chdir` + residue commit; plan-lock semantics at the workspace root while phase work runs in slots.
 
 ## Run-summary
 

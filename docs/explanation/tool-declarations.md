@@ -188,7 +188,6 @@ tools:
 Invocation:
 
 ```bash
-specify tool list
 specify tool fetch contract
 specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 ```

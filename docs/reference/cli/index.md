@@ -37,16 +37,12 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [specify status](status.md) | Project dashboard -- registry summary, plan progress, active slices | Top-level convenience |
-| [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, outcome, journal | Single-slice operations |
+| [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify adapter](adapter.md) | Adapter resolution and brief pipeline queries | Adapter infrastructure |
-| [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |
-| [specify compatibility](compatibility.md) | Classify producer contract deltas against consumer workspace views | Cross-project contract reporting |
-| [specify context](context.md) | Generate and check refreshable `AGENTS.md` guidance | Agent context |
 | [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
-| [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
+| [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify tool run` | Adapter-owned validation + render-only scaffolding |
 

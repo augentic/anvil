@@ -106,7 +106,7 @@ A merge prerequisite is unclear and `specify slice merge` was never invoked. Typ
 
 - The user declined the AskQuestion confirmation around the merge preview.
 - The merge preview reported baseline drift (a sibling slice mutated the baseline after this slice was refined) that needs operator arbitration.
-- `specify slice status` reports a lifecycle other than `built` (e.g. `building`, `refining`) and the user declined to proceed.
+- `.specify/slices/<slice>/.metadata.yaml` reports a lifecycle other than `built` (e.g. `building`, `refining`) and the user declined to proceed.
 - `specify slice validate` surfaced unmet `merge`-phase needs that the brief cannot resolve unattended.
 
 Plus contracts-specific triggers around the consumer-project pin update step:

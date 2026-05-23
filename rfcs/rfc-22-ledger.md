@@ -238,7 +238,7 @@ For adapter authors:
 
 For skill authors:
 
-- `specify migration-log show --format json` is a new readable surface with a stable JSON envelope. Treat it like `specify registry show` and `specify plan status`.
+- `specify migration-log show --format json` is a new readable surface with a stable JSON envelope. Treat it like a read-only inspection surface.
 
 There is **no breaking change** to: existing `plan.yaml` files (the `mapping` field is optional), existing `sources.yaml` files (the `status` field is optional with a sensible default), existing `registry.yaml` files (untouched), existing exit codes (new discriminants live within `EXIT_VALIDATION_FAILED=2` and `EXIT_GENERIC_FAILURE=1`), or existing archive layouts (the ledger lives outside the archive directory).
 

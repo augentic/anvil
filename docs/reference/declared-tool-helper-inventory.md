@@ -22,7 +22,7 @@ These active callers are expected to use declared tools and should be kept in sy
 
 The following command families are intentionally outside this scope. They are not first-party helper binaries with declared-tool equivalents.
 
-- Core Specify lifecycle and orchestration: `specify slice *`, `specify plan *`, `specify source resolve`, `specify target resolve`, `specify registry *`, `specify workspace *`, `specify codex *`, `specify context *`, and `specify init`.
+- Core Specify lifecycle and orchestration: `specify slice *`, `specify plan *`, `specify source resolve`, `specify target resolve`, `specify registry *`, `specify workspace *`, and `specify init`.
 - Forge and transport commands: `git`, `gh`, SSH, PR/MR merge queues, and future forge adapters.
 - Language and platform toolchains: `cargo`, `rustup`, `swift`, `swiftformat`, `make`, `xcodebuild`, `gradle`, `./gradlew`, Java/Android SDK tools, `npm`, and `npx`.
 - Repository maintenance scripts: `deno run scripts/checks.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.

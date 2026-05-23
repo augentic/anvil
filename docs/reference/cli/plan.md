@@ -12,9 +12,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> reviewed`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
-| [`status`](#specify-plan-status) | Render plan progress in topological order with per-status counts. |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify plan finalize` rather than directly.) |
-| [`lock`](#specify-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/spec:execute`. |
 
 ## Subcommands
 
@@ -68,16 +66,6 @@ Returns the first `pending` entry whose `depends-on` entries are all `done`. Ret
 
 With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
 
-### specify plan status
-
-Render plan progress.
-
-```bash
-specify plan status [--format json|table]
-```
-
-Shows entries in topological order with per-status counts, the active `in-progress` entry (if any), and any `status-reason` annotations.
-
 ### specify plan add
 
 Append a new entry to the plan.
@@ -122,18 +110,6 @@ specify plan archive
 ```
 
 Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
-
-### specify plan lock
-
-Manage the advisory plan lock.
-
-```bash
-specify plan lock acquire --pid <pid>
-specify plan lock release --pid <pid>
-specify plan lock status
-```
-
-The lock (`.specify/plan.lock`) is a PID stamp held by `/spec:execute` to prevent concurrent execution. The CLI `pid` option defaults to the current process PID; `/spec:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
 
 ## See also
 

@@ -11,7 +11,7 @@ The CLI is the **only** writer for change and slice lifecycle state. Skills rout
 - **Never hand-edit `plan.yaml`.** Append entries through `specify plan add`; transition entries through `specify plan transition`; close out the plan through `specify plan finalize`. The single-writer contract lives in [`plan` skill body](../spec/skills/plan/SKILL.md).
 - **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specify slice transition`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
 - **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan finalize`.
-- **Never hand-roll `AGENTS.md` during init.** `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
+- **Never hand-roll `AGENTS.md` during init.** `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` as the generation fingerprint.
 
 ## Baseline immutability for contract authoring
 

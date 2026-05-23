@@ -44,7 +44,7 @@ section; record any deviation explicitly.
 ### Stage 2 — Review (operator pause)
 
 ```bash
-<paste the specify plan validate / specify plan status commands actually run>
+<paste the specify plan validate / inspect plan.yaml commands actually run>
 ```
 
 - **Operator action taken:** `<accepted-as-authored | edited-via-amend | aborted>`
@@ -57,7 +57,7 @@ section; record any deviation explicitly.
 ```
 
 ```bash
-<paste any post-execute specify plan status / specify workspace status commands>
+<paste any post-execute inspect plan.yaml / inspect .specify/workspace/<project> with git status commands>
 ```
 
 ### Stage 4 — Finalize
@@ -166,7 +166,7 @@ Confirm the forbidden condition did not occur. Record `held`, `violated`, or
 Capture the important command output, or point to files that contain it.
 
 - **Plan validation (post-draft):** `<summary or path>`
-- **Operator review (`specify plan status`):** `<summary or path>`
+- **Operator review (`inspect plan.yaml`):** `<summary or path>`
 - **Execute loop:** `<summary or path>`
 - **First `/spec:finalize` (halt on `pr-not-merged`):** `<summary or path>`
 - **External PR merge action:** `<summary or path>`

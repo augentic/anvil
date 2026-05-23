@@ -18,16 +18,6 @@ Arguments after `--` are forwarded verbatim to the WASI component. The tool name
 
 Successful guest stdout and stderr are not wrapped by Specify. Command-world tools own their own diagnostics, so a validator can keep emitting the JSON or text shape its callers already understand. Resolver, permission, and runtime errors still use the standard Specify error envelope when `--format json` is selected.
 
-### specify tool list
-
-List the merged tool declarations for the current project.
-
-```bash
-specify tool list [--format json]
-```
-
-The list includes project-scope tools from `.specify/project.yaml` and adapter-scope tools from the resolved adapter's `tools.yaml` sidecar. When both sites declare the same name, the project-scope declaration wins and a `tool-name-collision` warning is emitted.
-
 ### specify tool fetch
 
 Populate the cache for one tool, or every declared tool when the name is omitted.
@@ -37,16 +27,6 @@ specify tool fetch [<name>] [--format json]
 ```
 
 `fetch` performs source resolution and digest verification, then stores the component bytes in the global tool cache. It does not instantiate or run the component.
-
-### specify tool show
-
-Show one declared tool's metadata, permissions, digest pin, and cache state.
-
-```bash
-specify tool show <name> [--format json]
-```
-
-`show` reports the live declaration plus cache metadata when the tool has already been fetched. The cache metadata includes the `fetched-at` timestamp from `meta.yaml` and, for package-backed tools, package and OCI metadata.
 
 ### specify tool gc
 
@@ -79,27 +59,7 @@ Structured responses use the standard CLI envelope:
 }
 ```
 
-`list` returns:
-
-```json
-{
-  "envelope-version": 6,
-  "tools": [
-    {
-      "name": "contract",
-      "version": "0.3.0",
-      "source": "specify:contract@0.3.0",
-      "scope": "adapter",
-      "scope-detail": "contracts",
-      "cache-status": "hit",
-      "cached-path": "/Users/alex/.cache/specify/tools/adapter--contracts/contract/0.3.0/module.wasm"
-    }
-  ],
-  "warnings": []
-}
-```
-
-`fetch` uses the same row shape and adds `fetched: true|false`. `show` returns a single `tool` row with `permissions`, optional `sha256`, `fetched-at`, and optional `package` / `oci` blocks. `gc` returns `removed`, `all`, and `warnings`.
+`fetch` returns fetched/cache rows with `fetched: true|false`. `gc` returns `removed`, `all`, and `warnings`. For inspection, read `.specify/project.yaml`, adapter `tools.yaml`, and the tool cache sidecar directly.
 
 Validation failures include rule results so callers can branch on rule ids such as `tool.lifecycle-state-write-denied`:
 

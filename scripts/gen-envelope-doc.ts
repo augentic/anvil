@@ -57,7 +57,6 @@ const E2E_STEM_TO_GROUP: Record<string, { command: string; variant: string }> =
       command: "specify slice merge run",
       variant: "two-spec",
     },
-    "slice-outcome": { command: "specify slice outcome show", variant: "" },
     "task-mark": { command: "specify slice task mark", variant: "" },
     "task-progress": { command: "specify slice task progress", variant: "" },
     "validate-good": { command: "specify slice validate", variant: "clean" },

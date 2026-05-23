@@ -11,7 +11,7 @@ For every iteration of the loop where `entry.project` is non-null:
 1. **Save CWD.** The initiating directory is the workspace root; `specify plan next`, `specify plan transition`, and the plan lock all live there. Restore to it at the end of the iteration.
 2. **Resolve `entry.project` through `registry.yaml`.** Same selector preflight as every `specify workspace *` verb. Unknown names halt before any filesystem, Git, or phase side-effect.
 3. **Materialise the slot if missing.** Run `specify workspace sync <project>` only for the active project — do not broad-sync. Re-check the slot's `.specify/project.yaml` exists before continuing.
-4. **Prepare the branch.** Run `specify workspace prepare-branch <project> --change <change-name>` (the helper resolves `origin/HEAD`, creates or reuses `specify/<change-name>`, and classifies dirty work against the active slice boundary).
+4. **Prepare the branch.** Run `specify workspace prepare <project> --change <change-name>` (the helper resolves `origin/HEAD`, creates or reuses `specify/<change-name>`, and classifies dirty work against the active slice boundary).
 5. **`chdir` into the slot.** Remember the returned `slot_path`; phase work runs from there. Emit `Routing: <slice> → <project> (<slot_path>)`.
 6. **Run the phase sequence.** `/spec:refine` → `/spec:build` → `/spec:merge` operate against the slot's `.specify/slices/<name>/` tree.
 7. **Residue commit on merge success.** `specify slice merge run` commits only `.specify/specs/` and `.specify/archive/` as `specify: merge <slice>`. Stage every other dirty path under the slot and commit as `specify: residue <slice>`. Halt with `baseline-residue-after-merge` if either baseline tree is dirty after merge success; halt with `residue-commit-failed` if `git commit` returns non-zero.
@@ -19,7 +19,7 @@ For every iteration of the loop where `entry.project` is non-null:
 
 ## Branch-preparation failures
 
-`specify workspace prepare-branch` failures are pre-phase failures: never run a phase skill against an unprepared slot, never call `/spec:drop`, never transition the plan entry. Halt with the helper's diagnostic key (`origin-head-unresolved`, `dirty-unrelated-tracked`, `dirty-branch-mismatch`, `workspace-slot-missing`, `origin-mismatch`, `branch-pattern-mismatch`, `git-operation-failed`) and release the lock. The entry stays `pending` (fresh run) or `in-progress` (re-entry); the operator triages.
+`specify workspace prepare` failures are pre-phase failures: never run a phase skill against an unprepared slot, never call `/spec:drop`, never transition the plan entry. Halt with the helper's diagnostic key (`origin-head-unresolved`, `dirty-unrelated-tracked`, `dirty-branch-mismatch`, `workspace-slot-missing`, `origin-mismatch`, `branch-pattern-mismatch`, `git-operation-failed`) and release the lock. The entry stays `pending` (fresh run) or `in-progress` (re-entry); the operator triages.
 
 ## Breakout routing
 

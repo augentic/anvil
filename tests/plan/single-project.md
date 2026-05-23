@@ -122,7 +122,7 @@ After planning, validate and inspect the plan:
 
 ```bash
 specify plan validate
-specify plan status
+inspect plan.yaml
 ```
 
 Do not run `/spec:execute`. This scenario ends after plan validation and inspection.
@@ -163,4 +163,4 @@ Use a disposable directory and remove it when the run is complete unless a failu
 - `plan.yaml`
 - `.specify/plans/inventory-adjustments/`
 - `specify plan validate` output
-- `specify plan status` output
+- `inspect plan.yaml` output

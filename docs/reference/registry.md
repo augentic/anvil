@@ -65,7 +65,7 @@ The registry crate owns the materialiser and workspace verbs:
 | Verb                                                | Purpose |
 | --------------------------------------------------- | ------- |
 | `specify workspace sync [<project>...]`              | Materialise selected workspace slots. With no selectors, materialises every registry project; with selectors, materialises only those slots. Unknown selectors fail before filesystem or Git side effects. |
-| `specify workspace prepare-branch <project>`         | Prepare the selected slot on `specify/<change-name>` from `origin/HEAD` before mutation. |
+| `specify workspace prepare <project>`         | Prepare the selected slot on `specify/<change-name>` from `origin/HEAD` before mutation. |
 | `specify workspace push [<project>...]`              | Transport-only publication for selected slots already on `specify/<change-name>`. Creates or updates PRs; never creates local branches, commits files, pushes default branches, or merges PRs. |
 
 Selection is resolved once, before side effects. A human-invoked `workspace sync` with no selectors refreshes every registered project. `/spec:execute` uses selected sync behavior to materialise only the next plan entry's target slot before execution.

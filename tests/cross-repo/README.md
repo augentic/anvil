@@ -5,7 +5,7 @@ workflow from an operator's point of view, expressed through the three-skill
 change lifecycle introduced by RFC-23 (`draft → review → execute → finalize`):
 
 1. draft a multi-slice change from a short feature brief (`/spec:plan`)
-2. review the draft plan at the operator pause (`specify plan status`,
+2. review the draft plan at the operator pause (`inspect plan.yaml`,
    optional `specify plan amend`)
 3. execute contract and implementation slices in dependency order
    (`/spec:execute loop`)

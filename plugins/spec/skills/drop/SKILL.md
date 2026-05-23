@@ -22,7 +22,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
 
 1. **Select the slice**
 
-   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active slices from the dashboard:
+   If a name is provided, use it. Otherwise inspect `.specify/slices/*/.metadata.yaml` directly to enumerate active slices:
 
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.
@@ -33,7 +33,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
 
 2. **Check lifecycle status**
 
-   Run `specify slice status <name> --format json` and inspect `status`:
+   Read `.specify/slices/<name>/.metadata.yaml` and inspect `status`:
 
    - `complete`: warn that the slice appears ready to merge normally — `/spec:merge` may be the intended action.
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).

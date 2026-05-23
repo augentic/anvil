@@ -204,7 +204,7 @@ let line = serde_json::to_string(entry).expect("CacheIndexEntry serialises as JS
 
 ### T3 — Pattern-Match Context Bytes
 
-**Evidence:** `src/commands/context/check.rs:81-93` early-returns when `AGENTS.md` is missing, then uses `agents.as_deref().expect("agents bytes present (early return above)")`. This is reachable from `specify context check`.
+**Evidence:** Retired with the public context-check surface; init-time context generation no longer uses this read path.
 
 **Action:** Replace the second `expect` with a `let Some(agents) = agents.as_deref() else { ...same context-not-generated return... };` pattern and reuse the existing no-generated body.
 
