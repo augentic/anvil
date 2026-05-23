@@ -55,7 +55,7 @@ The build phase's verify-repair loop already enforces a passing test suite. Re-r
 cargo build --target wasm32-wasip2 --release --workspace
 ```
 
-The wasm32-wasip2 build is the definitive deployment-target check. A native `cargo check` will accept code that uses forbidden std APIs or non-WASM-compatible crates; only the wasm32 build proves the slice compiles for the real target. A failure here is a guardrail violation that the build phase missed; re-enter `/spec:build` with the wasm32 error output. Reference [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) for the forbidden crate / API table.
+The wasm32-wasip2 build is the definitive deployment-target check. A native `cargo check` will accept code that uses forbidden std APIs or non-WASM-compatible crates; only the wasm32 build proves the slice compiles for the real target. A failure here is a guardrail violation that the build phase missed; re-enter `/spec:build` with the wasm32 error output. Reference [`../references/guardrails.md`](../references/guardrails.md) for the forbidden crate / API table.
 
 ## § Delegation to `specify slice merge`
 
@@ -115,7 +115,7 @@ The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/spec:
 
 ## References
 
-- [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) — Forbidden crates / std APIs the wasm32 build proves are absent.
-- [`plugins/omnia/references/runtime.md`](../../../../plugins/omnia/references/runtime.md) — Identity OAuth env vars + `omnia::runtime!` host enumeration the workspace check exercises.
+- [`../references/guardrails.md`](../references/guardrails.md) — Forbidden crates / std APIs the wasm32 build proves are absent.
+- [`../references/runtime.md`](../references/runtime.md) — Identity OAuth env vars + `omnia::runtime!` host enumeration the workspace check exercises.
 - [`plugins/spec/skills/merge/SKILL.md`](../../../../plugins/spec/skills/merge/SKILL.md) — Driver-side merge flow this brief delegates to.
 - [`plugins/spec/references/phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md) — Outcome / journal / verbatim-summary rules.

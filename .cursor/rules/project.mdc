@@ -62,8 +62,6 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop)
-  ├── omnia/              # Omnia specialist skills + references
-  ├── vectis/             # Vectis specialist skills + references
   ├── contract/           # Contract authoring/import/verify skills
   ├── rt/                 # RT migration plugin (wiretap + replay)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
@@ -115,7 +113,7 @@ cargo clippy -- -D warnings
 
 ### WASM And Omnia SDK Constraints
 
-See [guardrails.md](../../plugins/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
+See [guardrails.md](../../adapters/targets/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
 
 ## File Locations
 
@@ -158,6 +156,6 @@ Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](
 
 - Review `plugins/references/specify.md`
 - Review the relevant `SKILL.md`
-- Review `plugins/omnia/references/`
-- Review `plugins/vectis/references/`
+- Review `adapters/targets/omnia/references/`
+- Review `adapters/targets/vectis/references/`
 - Open an issue for bugs or enhancement requests

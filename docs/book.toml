@@ -41,7 +41,7 @@ exclude = [
   # intentional repo-root links that resolve at deploy time only.
   '\.\./\.\./tests/fixtures',
   '\.\./\.\./scripts/checks',
-  '\.\./\.\./plugins/vectis/references/layout-inferer-contract\.md',
+  '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
   '\.\./\.\./plugins/spec/references/synthesis/authority\.md',
 ]
 

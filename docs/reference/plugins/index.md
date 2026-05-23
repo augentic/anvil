@@ -1,12 +1,12 @@
 # Plugins
 
-Specify ships as a Cursor plugin marketplace containing five plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
+Specify ships as a Cursor plugin marketplace. Each plugin provides specialist skills and reference documentation for a specific domain.
 
 ## Plugin model
 
 Plugins are installed from the Cursor marketplace (Settings > Plugins > search for "Augentic"). Each plugin bundles:
 
-- **Skills** — agent-driven orchestrators invoked with a slash-command prefix (e.g. `/omnia:crate-writer`).
+- **Skills** — agent-driven orchestrators invoked with a slash-command prefix (e.g. `/spec:plan`).
 - **Rules** — `.mdc` files that provide context to the agent.
 - **References** — markdown documents that skills read for domain knowledge.
 
@@ -21,18 +21,18 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | Plugin       | Prefix      | Purpose                                                                                                            | Reference            |
 | ------------ | ----------- | ------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | **Specify**  | `/spec:`    | Workflow orchestration: `init`, `plan`, `refine`, `execute`, `build`, `merge`, `finalize`, `drop`.                  | [Slice Skills](../slice-skills/index.md) |
-| **Omnia**    | `/omnia:`   | Rust WASM crate generation and review                                                                              | [Omnia](omnia.md)    |
-| **Vectis**   | `/vectis:`  | Cross-platform Crux app generation                                                                                 | [Vectis](vectis.md)  |
 | **RT**       | `/rt:`      | Migration fixtures and regression testing                                                                          | [RT](rt.md)          |
 | **Client**   | `/client:`  | Client-facing deliverables (SoW, proposals, pricing)                                                               | [Client](client.md)  |
 
+The Omnia and Vectis target adapters are not Cursor plugins — they live under [`adapters/targets/`](../targets/index.md) and contribute their `shape`, `build`, and `merge` briefs to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
+
 ## How plugins compose with target adapters
 
-The **Specify** plugin provides the workflow skeleton. **Target adapters** (under `adapters/targets/<name>/`) own `shape`, `build`, and `merge` briefs — the build brief is what determines which specialist plugin skills are invoked during the `/spec:build` phase:
+The **Specify** plugin provides the workflow skeleton. **Target adapters** (under `adapters/targets/<name>/`) own `shape`, `build`, and `merge` briefs — the build brief drives implementation work directly:
 
-- **Omnia target** invokes `/omnia:*` skills.
-- **Vectis target** invokes `/vectis:*` skills.
-- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside `adapters/targets/contracts/briefs/build.md`.
+- **Omnia target** drives crate, test, guest, and review phases inline from [`adapters/targets/omnia/briefs/build.md`](../../../adapters/targets/omnia/briefs/build.md).
+- **Vectis target** drives composition, core, iOS, and Android phases inline from [`adapters/targets/vectis/briefs/build.md`](../../../adapters/targets/vectis/briefs/build.md).
+- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
 The RT and Client plugins are target-independent — RT supports legacy migration regardless of the target platform; Client supports operator-facing deliverables.
 
@@ -41,8 +41,8 @@ The RT and Client plugins are target-independent — RT supports legacy migratio
 ```text
 /spec:plan     →  enumerates each bound source, proposes slices[]
 /spec:refine   →  extracts evidence per source, synthesizes proposal/spec/design/tasks via core
-/spec:build    →  delegates tasks to specialist plugin skills via target build brief
+/spec:build    →  drives the target adapter's build brief (Omnia, Vectis, Contracts, ...)
 /spec:merge    →  applies deltas to baseline (target-agnostic)
 ```
 
-Specialist skills read the artifacts produced by `/spec:refine` and generate code. The artifacts are the interface between core synthesis and the specialist plugins.
+Target-adapter briefs read the artifacts produced by `/spec:refine` and generate code. The artifacts are the interface between core synthesis and the target adapter.

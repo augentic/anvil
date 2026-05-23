@@ -9,7 +9,7 @@ When the synthesising agent assembles a slice for an Omnia target it MUST:
 1. Read this brief first, ahead of any source-supplied `Evidence`.
 2. Lift the deep references listed at the bottom into the synthesis context (they are normative, not optional).
 3. Author `proposal.md`, `spec.md`, `design.md`, and `tasks.md` so the artifacts match the §Required artifact shapes below, regardless of which sources contributed evidence.
-4. Carry tag-and-proceed posture on uncertainty: `[unknown]`, `[conflict]`, `[divergence]` are review signals (see [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) for the per-trait coverage matrix the spec lists each handler against). The brief never asks synthesis to halt.
+4. Carry tag-and-proceed posture on uncertainty: `[unknown]`, `[conflict]`, `[divergence]` are review signals (see [`../references/guardrails.md`](../references/guardrails.md) for the per-trait coverage matrix the spec lists each handler against). The brief never asks synthesis to halt.
 
 ## Idiom: provider-based dependency injection
 
@@ -17,14 +17,14 @@ Omnia crates are stateless WASM components. All host-side I/O — config, HTTP, 
 
 When synthesising `design.md` for an Omnia slice:
 
-- The **Domain model** section MUST enumerate which Omnia provider traits each handler depends on, by name. The closed set is: `Config`, `HttpRequest`, `Publish`, `StateStore`, `Identity`, `TableStore`, `Broadcast`, `Blobstore`, `DocumentStore`. See [`plugins/omnia/references/capabilities.md`](../../../../plugins/omnia/references/capabilities.md) for trait method signatures and adapter triggers.
+- The **Domain model** section MUST enumerate which Omnia provider traits each handler depends on, by name. The closed set is: `Config`, `HttpRequest`, `Publish`, `StateStore`, `Identity`, `TableStore`, `Broadcast`, `Blobstore`, `DocumentStore`. See [`../references/capabilities.md`](../references/capabilities.md) for trait method signatures and adapter triggers.
 - The **APIs / Integrations** section MUST list every external surface (HTTP route, message topic publish, message topic subscribe, WebSocket export, scheduled job) as a discrete handler.
-- The **Configuration** section MUST enumerate every `Config::get` key the handler reads, and reflect it in `.env.example` shape per [`plugins/omnia/references/runtime.md`](../../../../plugins/omnia/references/runtime.md).
-- The **Technical logic** section MUST describe handler delegation explicitly: a request struct implementing `Handler<P>` that delegates to a standalone `async fn handle(owner, request, provider) -> Result<Reply<…>>`. Never use `type Input = MyRequest` (bypasses deserialization) and never call `Utc::now()` in `from_input()`. See [`plugins/omnia/references/guest-patterns.md`](../../../../plugins/omnia/references/guest-patterns.md).
+- The **Configuration** section MUST enumerate every `Config::get` key the handler reads, and reflect it in `.env.example` shape per [`../references/runtime.md`](../references/runtime.md).
+- The **Technical logic** section MUST describe handler delegation explicitly: a request struct implementing `Handler<P>` that delegates to a standalone `async fn handle(owner, request, provider) -> Result<Reply<…>>`. Never use `type Input = MyRequest` (bypasses deserialization) and never call `Utc::now()` in `from_input()`. See [`../references/guest-patterns.md`](../references/guest-patterns.md).
 
 ## Idiom: WASM-Preview-2 guardrails
 
-All generated code targets `wasm32-wasip2`. The forbidden surface is normative — synthesised `spec.md` and `design.md` MUST NOT prescribe any APIs from the table below. Forbidden crates include `reqwest`, `tokio` (as runtime; dev-deps OK), `redis`, `sqlx`, `diesel`, `mongodb`, `hyper`, `dotenv` / `dotenvy`, `rand`, `uuid`, `std::process`, `lazy_static`. Forbidden std APIs include `std::env::var`, `std::fs::*`, `std::net::*`, `std::process::*`, `std::thread::spawn`. The replacements (provider traits, `Config::get`, `StateStore`, `Blobstore`, `DocumentStore`, `HttpRequest::fetch`) live in [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md).
+All generated code targets `wasm32-wasip2`. The forbidden surface is normative — synthesised `spec.md` and `design.md` MUST NOT prescribe any APIs from the table below. Forbidden crates include `reqwest`, `tokio` (as runtime; dev-deps OK), `redis`, `sqlx`, `diesel`, `mongodb`, `hyper`, `dotenv` / `dotenvy`, `rand`, `uuid`, `std::process`, `lazy_static`. Forbidden std APIs include `std::env::var`, `std::fs::*`, `std::net::*`, `std::process::*`, `std::thread::spawn`. The replacements (provider traits, `Config::get`, `StateStore`, `Blobstore`, `DocumentStore`, `HttpRequest::fetch`) live in [`../references/guardrails.md`](../references/guardrails.md).
 
 Statelessness: WASM components are fully stateless. Synthesised design MUST NOT prescribe `static mut`, `OnceCell::new`, or any mutable global. `std::sync::LazyLock` is allowed only for immutable compile-time lookup tables.
 
@@ -74,7 +74,7 @@ Synthesis writes the following headings, in order:
 2. **Provider trait dependencies** — exhaustive list per handler, drawn from the §Idiom: provider-based DI rules above.
 3. **Handler delegation** — for each handler: request struct, `Handler<P>` impl, `from_input` parsing, `handle()` orchestration, response type (`IntoBody` for HTTP, `()` for messaging).
 4. **External surfaces** — HTTP routes (Axum 0.8 `{param}` brace syntax), topic publish identifiers, topic subscribe identifiers, WebSocket export channels, scheduled jobs.
-5. **Configuration** — `Config::get` keys, defaults, identity OAuth keys when `Identity` is consumed (`IDENTITY_CLIENT_ID`, `IDENTITY_CLIENT_SECRET`, `IDENTITY_TOKEN_URL` — see [`plugins/omnia/references/runtime.md`](../../../../plugins/omnia/references/runtime.md)).
+5. **Configuration** — `Config::get` keys, defaults, identity OAuth keys when `Identity` is consumed (`IDENTITY_CLIENT_ID`, `IDENTITY_CLIENT_SECRET`, `IDENTITY_TOKEN_URL` — see [`../references/runtime.md`](../references/runtime.md)).
 6. **Error mapping** — domain-error enum, `From<DomainError> for omnia_sdk::Error`, per-variant code/description rules.
 7. **Validation placement** — table of checks with the edge-vs-core column populated per §Idiom: validation placement.
 8. **Observability** — handler-level metric names and tracing spans.
@@ -92,10 +92,10 @@ The build brief carries the detailed orchestration; tasks.md should follow that 
 
 ## References
 
-- [`plugins/omnia/references/guardrails.md`](../../../../plugins/omnia/references/guardrails.md) — Forbidden crates / std APIs, statelessness rules, serde idioms, timestamp semantics.
-- [`plugins/omnia/references/capabilities.md`](../../../../plugins/omnia/references/capabilities.md) — Provider trait signatures and adapter triggers.
-- [`plugins/omnia/references/runtime.md`](../../../../plugins/omnia/references/runtime.md) — `omnia::runtime!` macro, WASI host options, `.env.example` shape, identity env-var contract.
-- [`plugins/omnia/references/guest-patterns.md`](../../../../plugins/omnia/references/guest-patterns.md) — HTTP / Messaging / WebSocket guest export patterns.
-- [`plugins/omnia/references/guest-wiring.md`](../../../../plugins/omnia/references/guest-wiring.md) — Crate → guest injection contract.
-- [`plugins/omnia/references/providers/`](../../../../plugins/omnia/references/providers/) — Per-provider deep dives (blobstore, broadcast, config, document-store, http-request, identity, publish, state-store).
-- [`plugins/omnia/references/codex/`](../../../../plugins/omnia/references/codex/) — Stable codex rules (classified errors, provider-only host access, host-managed secrets, WASM runtime constraints).
+- [`../references/guardrails.md`](../references/guardrails.md) — Forbidden crates / std APIs, statelessness rules, serde idioms, timestamp semantics.
+- [`../references/capabilities.md`](../references/capabilities.md) — Provider trait signatures and adapter triggers.
+- [`../references/runtime.md`](../references/runtime.md) — `omnia::runtime!` macro, WASI host options, `.env.example` shape, identity env-var contract.
+- [`../references/guest-patterns.md`](../references/guest-patterns.md) — HTTP / Messaging / WebSocket guest export patterns.
+- [`../references/guest-wiring.md`](../references/guest-wiring.md) — Crate → guest injection contract.
+- [`../references/providers/`](../references/providers/) — Per-provider deep dives (blobstore, broadcast, config, document-store, http-request, identity, publish, state-store).
+- [`../references/codex/`](../references/codex/) — Stable codex rules (classified errors, provider-only host access, host-managed secrets, WASM runtime constraints).

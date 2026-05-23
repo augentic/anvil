@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) Steps 9 + 10 when `android` is in `proposal.md` `## Platforms`. The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
 
-Carries the body of the retired `vectis-android-writer` skill. Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`plugins/vectis/references/android/`](../../../../../../plugins/vectis/references/android/).
+Carries the body of the retired `vectis-android-writer` skill. Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`../../../references/android/`](../../../references/android/).
 
 ## Mode detection
 
@@ -18,14 +18,14 @@ Spawn the writer sub-agent with `mode: create|update` and `skip_verification: tr
 1. **Read inputs.** `app.rs`, the regenerated `composition.yaml`, sibling `tokens.yaml` / `assets.yaml` when present, the `## Android Shell Requirements` section of `spec.md`, and the `## Android Shell Details` section of `design.md`. Extract App name, ViewModel / Effect / Event / Route variants, and the capability set.
 2. **Build an inventory** of existing Kotlin code: effect handlers, ViewModel cases, screen composables, event dispatches, adapter clients (Ktor for HTTP / SSE, SharedPreferences for KV), DI modules (Koin when multiple non-Render effects are used).
 3. **Diff Rust core types vs Kotlin inventory** by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
-4. **Apply changes.** Expand or strip CAP blocks in `Core.kt`, `AndroidManifest.xml`, and Gradle build files. Add or remove screen composables for each ViewModel variant under `Android/app/src/main/java/com/vectis/<app>/ui/screens/`. Update the root `when` over the `ViewModel` enum. Dispatch new `Event`s through `Core.update(...)`. Emit one named composable per `component: <slug>` directive in `composition.yaml` (PascalCased), with props inferred from variation across instances. Patterns: [`android/shell-pattern.md`](../../../../../../plugins/vectis/references/android/shell-pattern.md), [`android/view-patterns.md`](../../../../../../plugins/vectis/references/android/view-patterns.md).
-5. **Refresh generated UI surfaces.** Regenerate shell-local theme code under `Android/app/src/main/java/com/vectis/<app>/ui/theme/` (Material 3 fallback when `tokens.yaml` is absent — full templates: [`android/token-templates.md`](../../../../../../plugins/vectis/references/android/token-templates.md)), and drawable resources under `Android/app/src/main/res/drawable*/` (one entry per `assets.yaml` declaration; Material icons resolve at the call site without copy). Design-system integration depth: [`android/design-system-integration.md`](../../../../../../plugins/vectis/references/android/design-system-integration.md).
+4. **Apply changes.** Expand or strip CAP blocks in `Core.kt`, `AndroidManifest.xml`, and Gradle build files. Add or remove screen composables for each ViewModel variant under `Android/app/src/main/java/com/vectis/<app>/ui/screens/`. Update the root `when` over the `ViewModel` enum. Dispatch new `Event`s through `Core.update(...)`. Emit one named composable per `component: <slug>` directive in `composition.yaml` (PascalCased), with props inferred from variation across instances. Patterns: [`android/shell-pattern.md`](../../../references/android/shell-pattern.md), [`android/view-patterns.md`](../../../references/android/view-patterns.md).
+5. **Refresh generated UI surfaces.** Regenerate shell-local theme code under `Android/app/src/main/java/com/vectis/<app>/ui/theme/` (Material 3 fallback when `tokens.yaml` is absent — full templates: [`android/token-templates.md`](../../../references/android/token-templates.md)), and drawable resources under `Android/app/src/main/res/drawable*/` (one entry per `assets.yaml` declaration; Material icons resolve at the call site without copy). Design-system integration depth: [`android/design-system-integration.md`](../../../references/android/design-system-integration.md).
 6. **Update build configuration** (`libs.versions.toml`, `build.gradle.kts`, manifest permissions, `network_security_config.xml`) to match the changed capability set. Remove any legacy `:vectis-design` Gradle module references — there is no shared Compose module in 2.0; the writer emits shell-local theme + drawable code exclusively. Replace any stale `import com.vectis.design.*` with `import com.vectis.<app>.ui.theme.*`.
 7. **UniFFI bridging contract.** The `Application` class MUST set `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded — without this the app fails with `UnsatisfiedLinkError` on launch. Imports for generated FFI types follow `import com.vectis.<app>.*` (not `com.vectis.design.*`). Rethrow `CancellationException` from coroutines — never swallow it.
 
 ## Hard rules
 
-Full set at [`hard-rules-android.md`](../../../../../../plugins/vectis/references/hard-rules-android.md). Highlights:
+Full set at [`hard-rules-android.md`](../../../references/hard-rules-android.md). Highlights:
 
 - Java 21 only — Java 25+ environments hit `IllegalArgumentException` in AGP; pin `org.gradle.java.home` in `gradle.properties`.
 - Always include `@Preview` blocks for new composables.
@@ -73,5 +73,5 @@ If a step fails, fix the issue and re-run. Repeat until all three checks pass or
 
 ## Worked examples
 
-- [`examples/android/01-simple-counter.md`](../../../../../../plugins/vectis/references/examples/android/01-simple-counter.md) — minimal Core.kt + Application.kt + root composable.
-- [`examples/android/02-http-counter.md`](../../../../../../plugins/vectis/references/examples/android/02-http-counter.md) — Ktor HTTP capability, coroutine scope, suspending effect handlers.
+- [`examples/android/01-simple-counter.md`](../../../references/examples/android/01-simple-counter.md) — minimal Core.kt + Application.kt + root composable.
+- [`examples/android/02-http-counter.md`](../../../references/examples/android/02-http-counter.md) — Ktor HTTP capability, coroutine scope, suspending effect handlers.

@@ -550,5 +550,5 @@ This example demonstrates:
 ## Next Steps
 
 - For Publish examples, see [testing-publisher.md](testing-publisher.md)
-- For time-sensitive components, see [replay-writer](../../../../rt/skills/replay-writer/SKILL.md)
-- For migration guidance, see [replay-writer](../../../../rt/skills/replay-writer/SKILL.md)
+- For time-sensitive components, see [replay-writer](../../../../../../plugins/rt/skills/replay-writer/SKILL.md)
+- For migration guidance, see [replay-writer](../../../../../../plugins/rt/skills/replay-writer/SKILL.md)

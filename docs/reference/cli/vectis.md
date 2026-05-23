@@ -47,6 +47,5 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 ## See also
 
 - [specify tool](tool.md) -- declared WASI tool runner surface
-- [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
-- [Vectis Target](../targets/vectis.md) -- target reference for cross-platform projects
+- [Vectis Target](../targets/vectis.md) -- target adapter reference for cross-platform Crux projects
 - [`adapters/targets/vectis/adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations

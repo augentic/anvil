@@ -53,5 +53,5 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
 
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (the bodies of the retired `omnia-crate-writer` and `omnia-test-writer` skills moved into this brief in RFC-25 W2.5).
-- [`plugins/vectis/references/`](../../plugins/vectis/references/) and [`adapters/targets/vectis/examples/`](../../adapters/targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/).
+- [`adapters/targets/vectis/references/`](../../adapters/targets/vectis/references/) and [`adapters/targets/vectis/examples/`](../../adapters/targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/).
 - [`tests/plan/`](../../tests/plan/) and [`tests/cross-repo/`](../../tests/cross-repo/) -- plan-time and end-to-end scenario packs covering `/spec:plan`, `/spec:execute`, and `/spec:finalize`.

@@ -305,7 +305,7 @@ async fn run_all_echo_fixtures() {
 
 - For StateStore examples, see [testing-statestore.md](testing-statestore.md)
 - For Publish examples, see [testing-publisher.md](testing-publisher.md)
-- For time-sensitive components, see [replay-writer](../../../../rt/skills/replay-writer/SKILL.md)
+- For time-sensitive components, see [replay-writer](../../../../../../plugins/rt/skills/replay-writer/SKILL.md)
 
 ## Summary
 

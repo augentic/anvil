@@ -4,9 +4,9 @@
 
 ## Abstract
 
-Train a specialized Small Language Model (SLM) to generate Omnia Rust crates from Specify artifacts, with Vectis following once the Omnia path is proven. The goal is not to replace the Specify workflow. It is to make the model behind `/omnia:crate-writer` cheaper, faster, more reproducible, and easier to operate at scale.
+Train a specialized Small Language Model (SLM) to generate Omnia Rust crates from Specify artifacts, with Vectis following once the Omnia path is proven. The goal is not to replace the Specify workflow. It is to make the model behind the Omnia `build/crate.md` brief cheaper, faster, more reproducible, and easier to operate at scale.
 
-The proposed shape is conservative: keep the existing skills, references, artifacts, and verify-repair loop as the authority; add an SLM backend behind `crate-writer` dispatch; score every generated crate with deterministic checks; and fall back to the frontier model when the SLM fails or sees an unsupported slice shape.
+The proposed shape is conservative: keep the existing briefs, references, artifacts, and verify-repair loop as the authority; add an SLM backend behind the Omnia crate-build phase; score every generated crate with deterministic checks; and fall back to the frontier model when the SLM fails or sees an unsupported slice shape.
 
 ## Motivation
 
@@ -14,7 +14,7 @@ Most fine-tuning proposals struggle because the task, input shape, and reward si
 
 - **Structured inputs:** `spec.md`, `design.md`, and `tasks.md` already provide predictable, reviewable inputs.
 - **Bounded output:** Omnia crate generation targets Rust plus a narrow SDK surface: handlers, provider traits, error macros, WASM constraints, and standard crate layout.
-- **Existing teacher:** The current frontier-model `crate-writer` skill can generate training examples and repair failed outputs.
+- **Existing teacher:** The current frontier-model Omnia `build/crate.md` brief can generate training examples and repair failed outputs.
 - **Machine-checkable scoring:** `cargo check`, `cargo clippy -- -D warnings`, `cargo test`, MockProvider replay, traceability matrices, guardrail checks, and file-layout checks can all feed an automated scorer.
 - **Natural fallback:** The current frontier model remains available when the SLM fails the scorer or exceeds its supported slice shape.
 
@@ -56,7 +56,7 @@ Use three sources, in this order of trust:
 
 1. **Real merged slices:** `(spec.md, design.md, tasks.md) -> crate files` from downstream Omnia projects.
 2. **Extract-derived pairs:** specs and designs reconstructed by `/spec:extract`, paired with the accepted target crate.
-3. **Synthetic pairs:** frontier-model outputs generated through the existing `crate-writer` prompt, kept only when they pass the scorer.
+3. **Synthetic pairs:** frontier-model outputs generated through the existing Omnia `build/crate.md` brief, kept only when they pass the scorer.
 
 Initial corpus targets:
 
@@ -85,13 +85,13 @@ Start with a strong code-oriented base model, likely Qwen3 Coder 7B Instruct or 
 
 The preferred framework strategy is one shared base model with separate LoRA adapters: one for Omnia first, then one for Vectis once the scorer and training loop are stable. A single adapter with a framework tag is cheaper but risks cross-pollinating Omnia and Vectis conventions.
 
-The SLM should not memorize the whole reference corpus. Keep `crate-writer/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
+The SLM should not memorize the whole reference corpus. Keep `adapters/targets/omnia/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
 
 ### Training Pipeline
 
 The first training loop has four stages:
 
-1. **Optional continual pretraining:** Run a short pass over Omnia SDK Rust, merged crate outputs, `crate-writer` references and examples, and existing Specify artifacts. This is for vocabulary and idiom familiarity, not behavior.
+1. **Optional continual pretraining:** Run a short pass over Omnia SDK Rust, merged crate outputs, Omnia adapter references and examples, and existing Specify artifacts. This is for vocabulary and idiom familiarity, not behavior.
 2. **Supervised fine-tuning:** Run QLoRA on real, extract-derived, and filtered synthetic examples.
 3. **Preference optimization:** Once SFT produces plausible crates, use reject-sampled DPO. Pair high-scoring and low-scoring outputs from the same prompt.
 4. **Quantized deployment:** Quantize the resulting adapter or merged model and re-run the held-out scorer on the deployed artifact.
@@ -100,11 +100,11 @@ Reasonable first hyperparameters are QLoRA rank 32-64, alpha at roughly twice ra
 
 ### Training Example Shape
 
-The SFT examples should mirror the current `crate-writer` invocation:
+The SFT examples should mirror the current Omnia `build/crate.md` invocation:
 
 ```text
 SYSTEM:
-  Distilled crate-writer rules, authority hierarchy, handler pattern,
+  Distilled Omnia crate-build rules, authority hierarchy, handler pattern,
   error handling, and guardrails.
 
 USER:
@@ -120,11 +120,11 @@ ASSISTANT:
   <Cargo.toml and source files in deterministic path order>
 ```
 
-The assistant output starts with the implementation plan because the existing Omnia skill already requires derived adapters, the three matrices, and traceability checks before handoff. Keeping that structure in the training target makes the generated crate easier to score and repair.
+The assistant output starts with the implementation plan because the existing Omnia brief already requires derived adapters, the three matrices, and traceability checks before handoff. Keeping that structure in the training target makes the generated crate easier to score and repair.
 
 ### Workflow Integration
 
-`/spec:build` continues to invoke `/omnia:crate-writer`. The only new behavior is dispatch: `crate-writer` chooses either the frontier model or the SLM backend. The existing repair loop remains unchanged:
+`/spec:build` continues to drive the Omnia `build/crate.md` brief. The only new behavior is dispatch: the brief chooses either the frontier model or the SLM backend. The existing repair loop remains unchanged:
 
 ```text
 generate -> score -> repair -> score -> fallback if still failing
@@ -171,13 +171,13 @@ Approve a short discovery and prototype effort around Omnia crate generation:
 
 1. Add `score-crate` as the shared evaluation gate.
 2. Build the first training corpus from existing Omnia slices.
-3. Run one QLoRA prototype and compare it against the current frontier-model `crate-writer` on a held-out set.
+3. Run one QLoRA prototype and compare it against the current frontier-model Omnia crate-build phase on a held-out set.
 
-If the prototype does not clear the scoring threshold, stop there. If it does, graduate the SLM backend behind the existing `crate-writer` dispatch and continue with Vectis as a second adapter.
+If the prototype does not clear the scoring threshold, stop there. If it does, graduate the SLM backend behind the existing Omnia crate-build phase and continue with Vectis as a second adapter.
 
 ## References
 
 - [RM-03: Codex rule format](roadmap.md#rm-03-codex-rule-format)
 - [RFC-10: Skills](archive/rfc-10-skills.md)
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
-- `plugins/omnia/skills/crate-writer/SKILL.md`
+- [`adapters/targets/omnia/briefs/build/crate.md`](../adapters/targets/omnia/briefs/build/crate.md)

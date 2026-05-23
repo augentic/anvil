@@ -23,11 +23,20 @@ The `composition` brief produces a YAML artifact (not markdown) that describes t
 
 ### Build phase
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `build.md` | `/vectis:core-writer`, `/vectis:test-writer`, `/vectis:core-reviewer`, `/vectis:ios-writer`, `/vectis:ios-reviewer`, `/vectis:android-writer`, `/vectis:android-reviewer` |
+The build brief drives implementation work directly through phase sub-briefs — there are no separate slash-command skills. The build orchestrator is [`adapters/targets/vectis/briefs/build.md`](../../../adapters/targets/vectis/briefs/build.md); the per-phase sub-briefs live under [`adapters/targets/vectis/briefs/build/`](../../../adapters/targets/vectis/briefs/build/):
 
-Build order: core first, shells second. Each skill reads the single feature spec and extracts the sections relevant to it. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
+| Sub-brief | Purpose |
+|-----------|---------|
+| [`build/composition.md`](../../../adapters/targets/vectis/briefs/build/composition.md) | Regenerate `composition.yaml` from `spec.md` + `design.md` and run the deterministic validator gate. |
+| [`build/core/write.md`](../../../adapters/targets/vectis/briefs/build/core/write.md) | Generate / update the Crux shared core. |
+| [`build/core/review.md`](../../../adapters/targets/vectis/briefs/build/core/review.md) | Agent-team review of the Rust `shared` crate. |
+| [`build/test.md`](../../../adapters/targets/vectis/briefs/build/test.md) | Generate / update Crux tests; run the core verify-repair loop. |
+| [`build/ios/write.md`](../../../adapters/targets/vectis/briefs/build/ios/write.md) | Generate / update the SwiftUI iOS shell + verify. |
+| [`build/ios/review.md`](../../../adapters/targets/vectis/briefs/build/ios/review.md) | Agent-team review of the iOS shell. |
+| [`build/android/write.md`](../../../adapters/targets/vectis/briefs/build/android/write.md) | Generate / update the Compose Android shell + verify. |
+| [`build/android/review.md`](../../../adapters/targets/vectis/briefs/build/android/review.md) | Agent-team review of the Android shell. |
+
+Build order: core first, shells second. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
 
 ### Merge phase
 
@@ -35,22 +44,11 @@ Build order: core first, shells second. Each skill reads the single feature spec
 |-------|---------------|
 | `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus adapter-owned post-merge validation through `specify tool run vectis -- validate composition`) |
 
-The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; writer, reviewer, and template-updater skills own those platform workflow steps.
+The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; the merge brief at [`adapters/targets/vectis/briefs/merge.md`](../../../adapters/targets/vectis/briefs/merge.md) owns those platform workflow steps.
 
-## Specialist skills
+## Reference material
 
-| Skill | Purpose |
-|-------|---------|
-| `/vectis:core-writer` | Generate or update Rust Crux shared crate |
-| `/vectis:test-writer` | Generate tests with spec-to-test traceability |
-| `/vectis:core-reviewer` | Agent team review of Crux core |
-| `/vectis:ios-writer` | Generate or update SwiftUI iOS shell |
-| `/vectis:ios-reviewer` | Agent team review of iOS shell |
-| `/vectis:android-writer` | Generate or update Kotlin/Compose Android shell |
-| `/vectis:android-reviewer` | Agent team review of Android shell |
-| `/vectis:template-updater` | Fix CLI templates when upstream versions change |
-
-See [Vectis Plugin](../plugins/vectis.md) for full skill documentation.
+The Crux core, iOS shell, Android shell, design-system, review check libraries, and the legacy layout-inferer contract live under [`adapters/targets/vectis/references/`](../../../adapters/targets/vectis/references/) — see the [`README`](../../../adapters/targets/vectis/references/README.md) for the full index.
 
 ## Feature-centric specs
 
@@ -66,16 +64,16 @@ All requirement IDs share one flat `REQ-###` namespace. Platform sections contin
 
 The proposal declares which platforms a slice targets:
 
-| Platform | Skill | Description |
-|----------|-------|-------------|
-| `core` | `vectis:core-writer` | Rust Crux shared crate (always required) |
-| `ios` | `vectis:ios-writer` | SwiftUI iOS shell |
-| `android` | `vectis:android-writer` | Kotlin/Jetpack Compose Android shell |
+| Platform | Build sub-brief | Description |
+|----------|-----------------|-------------|
+| `core` | `build/core/write.md` | Rust Crux shared crate (always required) |
+| `ios` | `build/ios/write.md` | SwiftUI iOS shell |
+| `android` | `build/android/write.md` | Kotlin/Jetpack Compose Android shell |
 | `web` | -- | Web shell (future) |
 
 ## Domain context
 
-The Vectis adapter's briefs and skills carry domain context about:
+The Vectis adapter's briefs and references carry domain context about:
 
 - Crux application architecture (Model, Event, ViewModel, Effect, `update()`, `view()`).
 - Crux adapters (Render, HTTP, Key-Value, Time, Platform).

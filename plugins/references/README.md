@@ -13,7 +13,8 @@ This directory contains shared reference documentation used by multiple plugins.
 
 Plugin-specific references are located within each plugin's directory:
 
-- `plugins/omnia/references/`: Omnia SDK patterns, WASM constraints, and provider documentation.
+- `adapters/targets/omnia/references/`: Omnia SDK patterns, WASM constraints, and provider documentation.
+- `adapters/targets/vectis/references/`: Crux core idioms, iOS / Android shell patterns, design-system docs, and the layout-inferer contract.
 - `plugins/spec/references/`: Artifact templates and instructions for define/build/merge.
 
 Skills link to these references using relative paths and symlinks.

@@ -44,4 +44,4 @@ Violations of any rule below fail generation or update.
 
 ---
 
-Return to [build/crate.md](../../../adapters/targets/omnia/briefs/build/crate.md) for the critical path, mode-dispatch table, and artifact mapping.
+Return to [build/crate.md](../briefs/build/crate.md) for the critical path, mode-dispatch table, and artifact mapping.

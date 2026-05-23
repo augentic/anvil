@@ -64,7 +64,7 @@ This section records the first-pass decisions for the UI input workflow. The nor
 
 ### A. Layout inferers — shared contract
 
-The first implementation establishes a shared contract documented in `plugins/vectis/references/layout-inferer-contract.md`, then proves it with `vectis-image-layout-inferer`. Future Figma and code inferers should reuse the same contract unless testing shows the contract needs revision. The common job is to produce or refine `layout.yaml`: a schema-valid, unwired layout input that `/spec:define` can later wire to specs and Crux types as `composition.yaml`.
+The first implementation establishes a shared contract documented in `adapters/targets/vectis/references/layout-inferer-contract.md`, then proves it with `vectis-image-layout-inferer`. Future Figma and code inferers should reuse the same contract unless testing shows the contract needs revision. The common job is to produce or refine `layout.yaml`: a schema-valid, unwired layout input that `/spec:define` can later wire to specs and Crux types as `composition.yaml`.
 
 Common arguments for the image-fronted first pass are intentionally minimal, and are expected to become the starting point for future inferers rather than a final commitment for them:
 
@@ -561,7 +561,7 @@ Future candidate skill surface, subject to later RFC review:
 - `vectis-tokens-inferer` (`/vectis:tokens-inferer`)
 - `vectis-assets-inferer` (`/vectis:assets-inferer`)
 
-The first-pass layout contract lives at `plugins/vectis/references/layout-inferer-contract.md` and is exercised by `vectis-image-layout-inferer`. If Figma and source-code inference are accepted later, they should be separate sibling skills rather than one `--source` dispatcher, because each source has different prerequisites, fixtures, troubleshooting, and examples. Keeping them separate also matches the diagram's producer boxes and improves skill discovery.
+The first-pass layout contract lives at `adapters/targets/vectis/references/layout-inferer-contract.md` and is exercised by `vectis-image-layout-inferer`. If Figma and source-code inference are accepted later, they should be separate sibling skills rather than one `--source` dispatcher, because each source has different prerequisites, fixtures, troubleshooting, and examples. Keeping them separate also matches the diagram's producer boxes and improves skill discovery.
 
 `vectis-image-layout-inferer` emits the `component: <slug>` directive (§G) conservatively: only when the operator confirms a candidate, or when the inferer observes structurally identical groups in ≥2 screens of the same run. Otherwise it flattens and reports candidates as `# candidate component: <slug>` comments. The terminal summary lists candidate components alongside screens added/refined, so the signal is visible in PR review even when no directive is emitted. Future Figma and code inferers should follow the same conservative rule unless their RFC changes it.
 
@@ -591,7 +591,7 @@ The v1 work breaks into three independently-mergeable chunks. They are listed in
    - No skill, brief, or shell-writer edits in this chunk.
 
 2. **Layout pipeline.** Activate the new validation modes against the existing brief surface:
-   - Author `plugins/vectis/references/layout-inferer-contract.md` from §A + §G + the §H validation-mode prose.
+   - Author `adapters/targets/vectis/references/layout-inferer-contract.md` from §A + §G + the §H validation-mode prose.
    - Add the `vectis-image-layout-inferer` skill (§C, §J).
    - Wire the existing [`schemas/vectis/briefs/composition.md`](../../adapters/vectis/briefs/composition.md) brief to consume `layout.yaml` (resolved via `artifacts.layout.paths`) and to call `specify vectis validate layout` before consuming. The composition brief becomes the v1 reader of the `artifacts:` block.
    - Land the `component: <slug>` directive end-to-end: schema is already patched in chunk 1, the image inferer emits it conservatively (§J), and the build-time CLI checks light up automatically.
@@ -672,7 +672,7 @@ Compatibility policy:
 Resolved in this RFC:
 
 1. The UI specification workflow is established around `layout.yaml`, `tokens.yaml`, `assets.yaml`, `/spec:define`, `/spec:build`, and `/spec:merge` (§A, §H, §I, §L).
-2. The first-pass layout producer is `vectis-image-layout-inferer`, backed by the shared contract at `plugins/vectis/references/layout-inferer-contract.md` and deterministic CLI validation (§A, §C, §J).
+2. The first-pass layout producer is `vectis-image-layout-inferer`, backed by the shared contract at `adapters/targets/vectis/references/layout-inferer-contract.md` and deterministic CLI validation (§A, §C, §J).
 3. Image inference uses a staged vision-assisted pipeline and ships fixtures under `fixtures/<name>/{input.png, expected.layout.yaml}`; it does not infer tokens from pixels or crop production assets from screenshots, and the runtime prerequisite check is positive (must successfully read at least one input image) rather than capability-flag-based (§C).
 4. Figma and source-code layout inferers are future intent only. The goals are captured here, but their implementation details are illustrative and must be reviewed in future RFCs (§B, §D).
 5. `assets.yaml` is a v1 artifact with raster, vector, and symbol entries; shell writers copy assets into their own platform catalogs (§E, §I). The `sources` map is `ios`/`android` only in v1; `web` is added when the React+TypeScript shell lands (Appendix B note).

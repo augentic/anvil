@@ -22,32 +22,30 @@ The specs and design briefs read baseline contracts at `contracts/` as read-only
 
 ### Build phase
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `build.md` | `/omnia:guest-writer`, `/omnia:crate-writer`, `/omnia:test-writer`, `/omnia:code-reviewer` |
+The build brief drives implementation work directly through phase sub-briefs — there are no separate slash-command skills. The build orchestrator is [`adapters/targets/omnia/briefs/build.md`](../../../adapters/targets/omnia/briefs/build.md); the per-phase sub-briefs live under [`adapters/targets/omnia/briefs/build/`](../../../adapters/targets/omnia/briefs/build/):
 
-The build brief reads `tasks.md` and delegates to specialist skills based on skill directive tags. The typical build order is: guest wiring, crate implementation, test generation, code review.
+| Sub-brief | Purpose |
+|-----------|---------|
+| [`build/crate.md`](../../../adapters/targets/omnia/briefs/build/crate.md) | Generate or update the Rust crate (provider DI, handler delegation, error variants). |
+| [`build/test.md`](../../../adapters/targets/omnia/briefs/build/test.md) | Generate or update the test suite (MockProvider patterns, scenario-to-test mapping). |
+| [`build/guest.md`](../../../adapters/targets/omnia/briefs/build/guest.md) | Scaffold the WASM guest wrapper (HTTP, messaging, WebSocket; create mode only). |
+| [`build/review.md`](../../../adapters/targets/omnia/briefs/build/review.md) | Agent-team code review (security, correctness, quality, antagonist) and remediation. |
+
+The build brief reads `tasks.md` and walks the phases in order. The typical build order is: crate implementation, test generation, guest wiring (create mode), code review.
 
 ### Merge phase
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (drives git operations directly) |
+| `merge.md` | -- (drives git operations directly; runs `cargo check`, `cargo clippy`, `cargo test`, and `wasm32-wasip2` build via [`adapters/targets/omnia/briefs/merge.md`](../../../adapters/targets/omnia/briefs/merge.md)) |
 
-## Specialist skills
+## Reference material
 
-| Skill | Purpose |
-|-------|---------|
-| `/omnia:crate-writer` | Generate or update Rust crates with provider-based DI |
-| `/omnia:test-writer` | Generate test suites with MockProvider pattern |
-| `/omnia:guest-writer` | Generate WASM guest wrapper (HTTP, messaging, WebSocket) |
-| `/omnia:code-reviewer` | Agent team review (structural, logic, quality + antagonist) |
-
-See [Omnia Plugin](../plugins/omnia.md) for full skill documentation.
+Hard rules, capability/provider documentation, SDK templates, mock-provider patterns, review categories, and worked examples live under [`adapters/targets/omnia/references/`](../../../adapters/targets/omnia/references/) — see the [`README`](../../../adapters/targets/omnia/references/README.md) for the full index.
 
 ## Domain context
 
-The Omnia adapter's briefs and skills carry domain context about:
+The Omnia adapter's briefs and references carry domain context about:
 
 - Omnia SDK patterns (provider traits, side-effect abstractions).
 - WASM constraints (no filesystem, no threading).

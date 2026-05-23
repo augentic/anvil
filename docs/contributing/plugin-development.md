@@ -1,14 +1,14 @@
 # Plugin Development
 
-Specify ships as a Cursor plugin marketplace containing five plugins. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
+Specify ships as a Cursor plugin marketplace. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
+
+> Domain-specific code generation lives in **target adapters** (`adapters/targets/<name>/`), not plugins. Omnia and Vectis are target adapters — see [`adapters/targets/omnia/`](../../adapters/targets/omnia/) and [`adapters/targets/vectis/`](../../adapters/targets/vectis/) — and their `shape` / `build` / `merge` briefs drive code generation directly without slash-command skills.
 
 ## Plugins overview
 
 | Plugin | Directory | Prefix | Purpose |
 |--------|-----------|--------|---------|
 | Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
-| Omnia | `plugins/omnia/` | `/omnia:` | Rust WASM crate generation and review |
-| Vectis | `plugins/vectis/` | `/vectis:` | Cross-platform Crux app generation |
 | RT | `plugins/rt/` | `/rt:` | Fixture capture and regression testing |
 | Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
@@ -100,7 +100,7 @@ Files in `plugins/references/` are shared across plugins:
 | `specify.md` | Master reference: artifact format, lifecycle states, naming conventions, delta-merge rules, hard constraints |
 | `agent-teams.md` | Multi-agent review pattern (structural, logic, quality specialists + antagonist) |
 
-Skills reference these files via symlinks. For example, a skill at `plugins/omnia/skills/crate-writer/` might symlink `references/specify.md` to `../../../references/specify.md`. This keeps relative paths in the skill body short while sharing a single source of truth.
+Skills reference these files via symlinks. For example, a skill at `plugins/spec/skills/refine/` might symlink `references/specify.md` to `../../../references/specify.md`. This keeps relative paths in the skill body short while sharing a single source of truth.
 
 The `checks.ts` script validates that all symlinks under `plugins/` resolve to valid targets.
 

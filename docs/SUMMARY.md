@@ -34,8 +34,6 @@
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [Vectis WASI tools](reference/cli/vectis.md)
 - [Plugins](reference/plugins/index.md)
-  - [Omnia](reference/plugins/omnia.md)
-  - [Vectis](reference/plugins/vectis.md)
   - [RT](reference/plugins/rt.md)
   - [Client](reference/plugins/client.md)
 - [Target adapters](reference/targets/index.md)
