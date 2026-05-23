@@ -45,7 +45,7 @@ Inside the lock, after routing, sequence the three phase skills against the acti
 | Build | [`../build/SKILL.md`](../build/SKILL.md) | slice lifecycle is `refined`. |
 | Merge | [`../merge/SKILL.md`](../merge/SKILL.md) | slice lifecycle is `built` (merge is the sole writer of per-entry `done`). |
 
-When the slice is already past a phase on re-entry (e.g. `refined` after a build-failure stop), skip that phase silently and dispatch to the next one. The phase skills are idempotent by lifecycle and do not write per-entry status themselves; merge alone transitions the plan entry to `done` via `specify plan transition <name> done`.
+When the slice is already past a phase on re-entry (e.g. `refined` after a build-failure stop), skip that phase silently and dispatch to the next one. The phase skills are idempotent by lifecycle and do not write per-entry status themselves; merge alone transitions the plan entry to `done` via `specify slice merge`.
 
 ## Stop conditions
 

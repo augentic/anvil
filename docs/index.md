@@ -1,6 +1,12 @@
-# Specify Developer Guide
-
+{{#template templates/hero-open.md eyebrow=Specify Developer Guide title=From prompts to durable specs}}
 Specify 2.0 turns ad-hoc AI prompting into a repeatable, auditable workflow. Every change you make through Specify produces durable artifacts -- a plan, a per-slice proposal, behavioral specs, a technical design, and a task list -- that accumulate as your project's living specification.
+
+{{#template templates/meta-row-open.md}}
+{{#template templates/meta-chip.md label=Version value=2.0}}
+{{#template templates/meta-chip.md label=Status value=Released}}
+{{#template templates/meta-chip.md label=Workflow value=plan → reviewed → execute → finalize}}
+{{#template templates/meta-row-close.md}}
+{{#template templates/hero-close.md}}
 
 ## What you get
 
@@ -34,8 +40,21 @@ Specify 2.0 splits adapters by direction. **Source adapters** (`intent`, `docume
 
 ## Start here
 
-- **New to Specify?** Read [What is Specify?](orientation/index.md), install the [Prerequisites](orientation/prerequisites.md), then skim the [Quick reference card](reference/quick-reference.md).
-- **Returning from 1.x?** [Release notes](explanation/release-notes.md) catalogues the 2.0 cut.
+{{#template templates/audience-grid-open.md}}
+
+{{#template templates/audience-open.md who=New to Specify}}
+Read [What is Specify?](orientation/index.md), install the [Prerequisites](orientation/prerequisites.md), then skim the [Quick reference card](reference/quick-reference.md).
+{{#template templates/audience-close.md}}
+
+{{#template templates/audience-open.md who=Returning from 1.x}}
+[Release notes](explanation/release-notes.md) catalogues the 2.0 cut.
+{{#template templates/audience-close.md}}
+
+{{#template templates/audience-open.md who=Authoring skills or adapters}}
+Jump to [Contributing](contributing/index.md) and [Skill authoring standards](standards/skill-authoring.md).
+{{#template templates/audience-close.md}}
+
+{{#template templates/audience-grid-close.md}}
 
 ## Guide structure
 

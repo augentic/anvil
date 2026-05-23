@@ -117,14 +117,12 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 }
 ```
 
-### `specify change draft`
+### `specify plan create`
 
 Source fixture: `tests/fixtures/plan/init-success.json`
 
 The merged scaffold writes `change.md` and `plan.yaml` together; the
-envelope carries one ref per file. The retired `specify plan
-create` envelope (which only carried the `plan` ref) has been replaced
-by this shape.
+envelope carries one ref per file.
 
 ```json
 {

@@ -14,13 +14,18 @@ test:
 		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
 		tests/cross_repo.ts
 
-.PHONY: docs docs-serve
-# Requires: mdbook, mdbook-d2, and D2 on PATH — see docs/README.md
+.PHONY: docs docs-serve docs-prereqs
+# Requires: pinned mdbook + mdbook-d2 + mdbook-linkcheck + mdbook-pagetoc +
+# mdbook-template + D2 on PATH. Bootstrap with `make docs-prereqs`; see
+# docs/README.md for the version table.
 docs:
 	mdbook build docs
 
 docs-serve:
 	mdbook serve docs
+
+docs-prereqs:
+	@bash ./scripts/docs-prereqs.sh
 
 .PHONY: ci
 ci: checks test

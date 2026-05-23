@@ -2,12 +2,11 @@
 
 ## The default rhythm
 
-<div class="pipeline">
+{{#template ../templates/pipeline-open.md}}
 
 ![Default workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-<p class="pipeline-caption">init → plan → Gate 1 → execute → finalize; breakouts available when execute parks.</p>
-</div>
+{{#template ../templates/pipeline-close.md caption=init → plan → Gate 1 → execute → finalize; breakouts available when execute parks.}}
 
 The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
 

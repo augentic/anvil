@@ -70,6 +70,8 @@ Note: legacy-monolith observed 24-hour expiry; the documentation authority overr
 
 ## Journal-event hand-off
 
+Each line appended to `.specify/journal.jsonl` must be one JSON object, newline-terminated, with kebab-case keys only — no snake_case field names. Wire shape is adjacency-tagged `{ timestamp, event, payload }` (see the worked line in [`../../skills/plan/fixtures/divergence-journal/journal.jsonl`](../../skills/plan/fixtures/divergence-journal/journal.jsonl)).
+
 For each requirement block written with a `[unknown]` / `[conflict]` / `[divergence]` tag, the `/spec:refine` skill body emits one journal event after the block is written:
 
 | Tag             | Event id                       | Payload                                  |

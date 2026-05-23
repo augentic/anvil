@@ -42,7 +42,7 @@ Walk `sources[]` in declaration order (serial, no parallelism). For each `{ key,
 1. Resolve the source adapter via `specify source resolve <adapter> --format json`, where `<adapter>` is `plan.yaml.sources.<key>.adapter`.
 2. Read the adapter's `extract` brief from the response. Invoke the brief with `<source-key>`, `<candidate-id>`, and the bound `path` / `value` from `plan.yaml.sources.<key>`. Source adapters run under the WASI preopen contract (read-only `SOURCE_DIR`, read-only `CAPABILITY_DIR`, write-only `SCRATCH_DIR`); the CLI host runner enforces the sandbox.
 3. Persist the returned Evidence YAML at `.specify/slices/$SLICE_NAME/evidence/<source-key>.yaml`. The CLI validates against `evidence.schema.json` on read in the next step; emitting invalid YAML stays in `refining`.
-4. Emit `slice.extract.completed` with payload `{ slice-name: $SLICE_NAME, source-key: <key> }` by appending to `.specify/journal.jsonl`.
+4. Emit `slice.extract.completed` with payload `{ slice-name: $SLICE_NAME, source-key: <key> }` by appending one NDJSON line per event to `.specify/journal.jsonl` using the adjacency-tagged `{ timestamp, event, payload }` shape; field names are kebab-case per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md) §Journal-event hand-off and the worked line in [`../plan/fixtures/divergence-journal/journal.jsonl`](../plan/fixtures/divergence-journal/journal.jsonl).
 
 If any `extract` returns a non-zero status or the host runner surfaces `source-extract-path-denied` (or `source-extract-failed`), stop the loop: no synthesis runs, the slice stays `refining`, and the closing hint names the failing source. Operator amends the plan (`specify plan amend $SLICE_NAME --remove-source <key>` to drop, or `--add-source <key>=<candidate-id>` to rebind) and re-runs `/spec:refine $SLICE_NAME`.
 
@@ -55,13 +55,13 @@ Load the target `shape` brief via `specify target resolve <target> --format json
 3. `design.md` — fold the target `shape` brief plus design-side claims (`decision` / `section` / `excerpt` / `type` / `call`); include a `## UI / layout` H2 when spatial claims contribute.
 4. `tasks.md` — flat `- [ ] …` checkbox list following the target's task skeleton.
 
-For each requirement written with a `[unknown]` / `[conflict]` / `[divergence]` tag, append the matching `slice.synthesis.{unknown|conflict|divergence}` event to `.specify/journal.jsonl` with payload `{ slice-name: $SLICE_NAME, requirement-id: REQ-NNN }` per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md). Tags never park the slice — proceed to step 5 regardless of tag count.
+For each requirement written with a `[unknown]` / `[conflict]` / `[divergence]` tag, append one NDJSON line per event to `.specify/journal.jsonl` using the adjacency-tagged `{ timestamp, event, payload }` shape with the matching `slice.synthesis.{unknown|conflict|divergence}` event id and payload `{ slice-name: $SLICE_NAME, requirement-id: REQ-NNN }` per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md) §Journal-event hand-off and the worked line in [`../plan/fixtures/divergence-journal/journal.jsonl`](../plan/fixtures/divergence-journal/journal.jsonl). Tags never park the slice — proceed to step 5 regardless of tag count.
 
 ## Step 5 — Write `fusion.yaml`
 
 Author the reconciliation index at `.specify/slices/$SLICE_NAME/fusion.yaml` atomically (write to a sibling temp file, then rename); a partial write must never land on disk. There is no `specify slice fusion write` verb — the skill body is the writer and the validator in step 6 catches structural drift.
 
-Follow the block grammar in [`fusion.md`](../../references/synthesis/fusion.md).
+Follow the block grammar in [`fusion.md`](../../references/synthesis/fusion.md). After the atomic rename succeeds, emit `slice.fusion.written` with payload `{ slice-name: $SLICE_NAME, generator: specify@<version>, requirement-count: <N> }` where `<N>` is the number of `requirements[]` entries, by appending to `.specify/journal.jsonl`.
 
 ## Step 6 — Validate
 

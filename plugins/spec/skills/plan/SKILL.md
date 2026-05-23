@@ -18,7 +18,8 @@ N=1 is degenerate, not special. A single intent binding produces one candidate, 
 4. **Enumerate each source** — for every binding under `plan.yaml.sources.<key>`, run `specify source resolve <adapter>` to locate the adapter root and the `briefs/enumerate.md` path, then execute the brief; the CLI exposes the bound `path` as the read-only `SOURCE_DIR` WASI preopen (bindings carrying `value:` get no `SOURCE_DIR` preopen). Append each emitted candidate block under `## Candidate inventory` in `discovery.md`. Re-running `/spec:plan` replaces same-source ids; new sources append fresh ids.
 5. **Write `discovery.md`** — the three-section form: `## Summary` (one-line counts), `## Source inventory` (one row per bound source), `## Candidate inventory` (one block per candidate). N=1 leaves `Summary` and `Source inventory` minimal. Template: [`../../references/discovery.md`](../../references/discovery.md).
 6. **Propose** — fuse candidates into `slices[]` rows (see *Propose sub-step* below).
-7. **Exit at `pending`** — print the closing hint exactly (see *Closing hint* below). Do not call `specify plan transition`.
+7. **Validate (Gate 1 optional)** — `specify plan validate --format json` before printing the closing hint when multi-slice or workspace plans need doctor output. Surface Error-level findings verbatim; Warnings are advisory.
+8. **Exit at `pending`** — print the closing hint exactly (see *Closing hint* below). Do not call `specify plan transition`.
 
 ## Source binding grammar
 
@@ -59,7 +60,7 @@ Plan `<name>` is at `pending`. Run `specify plan transition <name> reviewed` to 
 - **Single-writer for `plan.yaml`.** Every value in `plan.yaml` lands through a `specify plan create` / `plan add` / `plan amend` call; `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
 - **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specify plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
 - **Never auto-stamp `reviewed`.** The closing hint is the only place the operator sees the literal transition command; `/spec:plan` never invokes `specify plan transition`.
-- **Never invent verbs.** Validation is folded into `specify plan add` / `plan amend`; there is no `specify plan validate`. Confirm the plan parses by re-reading `plan.yaml` after every write.
+- **Never invent verbs.** Creation/amend paths fold schema validation into `specify plan add` / `plan amend`; validation after writes may call `specify plan validate` for structural/health diagnostics. Confirm the plan parses by re-reading `plan.yaml` after every write.
 - **Never bypass the sandbox.** Source adapter `enumerate` briefs run with the bound `path` mounted read-only as the `SOURCE_DIR` preopen; the CLI denies access outside the granted preopens as `source-enumerate-path-denied`.
 
 ## References

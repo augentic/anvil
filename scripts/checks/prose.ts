@@ -44,6 +44,7 @@ export async function checkOperationalVocabulary(): Promise<void> {
     [/\bspecify validate\b/, "use `specify slice validate`"],
     [/\bspecify merge\b/, "use `specify slice merge run`"],
     [/\bspecify change plan\b/, "use `specify plan`"],
+    [/\bspecify change draft\b/, "use `/spec:plan` or `specify plan create`"],
     [/\b[Ii]nitiative\b/, "use `change` for the umbrella and `slice` for entries"],
   ];
 
