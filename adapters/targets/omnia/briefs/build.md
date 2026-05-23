@@ -1,8 +1,3 @@
----
-id: build
-description: Orchestrate Omnia crate / test / guest generation and code review for the active slice. Loads phase sub-briefs in fixed order; cross-phase verify-repair and remediation loops live at this layer.
----
-
 # Omnia target — build brief
 
 > `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to four phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `spec.md` + `design.md` before this brief runs.

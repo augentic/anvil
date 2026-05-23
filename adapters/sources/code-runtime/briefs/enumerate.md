@@ -1,9 +1,3 @@
----
-id: enumerate
-description: Walk the read-only fixture tree at $SOURCE_DIR and emit one `## Candidate inventory` block per observed handler entry point (HTTP route, message handler, scheduled job, WebSocket handler).
-authority: behaviour
----
-
 # Runtime fixture enumeration
 
 `/spec:plan` invokes this brief once per binding under `plan.yaml.sources.<key>` whose adapter is `code-runtime`. Your job: walk the read-only fixture tree at `$SOURCE_DIR`, identify one handler-grain candidate per `tests/data/replay/<handler>/` directory the wiretapper captured, and return one candidate block per handler. The CLI appends your blocks under `## Candidate inventory` in `discovery.md`; you never write `discovery.md` directly.

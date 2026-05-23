@@ -1,8 +1,3 @@
----
-id: build
-description: Drive Vectis code generation for an active slice — regenerate `composition.yaml`, write the Crux shared core, write each in-scope shell, run host verification, and review. Loads phase sub-briefs in fixed order; per-platform verify and review live in those sub-briefs.
----
-
 # Vectis target — build brief
 
 `/spec:build` reads this brief when the active in-progress slice declares `target: vectis`. The brief drives the host workflow that produces a buildable cross-platform application (Crux shared core + per-platform shells) from the slice's already-synthesised `spec.md` and `design.md`. It owns three responsibilities the legacy skill-per-step layout did not pin down in one place:

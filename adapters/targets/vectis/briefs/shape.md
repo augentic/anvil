@@ -1,8 +1,3 @@
----
-id: shape
-description: Idiom guidance core synthesis folds into Vectis-target `spec.md` and `design.md`.
----
-
 # Vectis target — `shape`
 
 Core synthesis reads this brief alongside `Evidence[]` and the slice's `proposal.md` when it writes `spec.md` and `design.md` for a `target: vectis` slice. The brief is **input to synthesis**, not a runtime step: it does not consume Evidence on its own, does not write artifacts, and does not transition lifecycle state. It tells the synthesiser how Vectis idioms organise canonical artifact content so the resulting `spec.md` and `design.md` can be implemented directly by the `build` brief.

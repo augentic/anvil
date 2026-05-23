@@ -1,9 +1,3 @@
----
-id: enumerate
-description: Identify slice-sized candidates in a TypeScript / JavaScript source tree bound at $SOURCE_DIR and emit one `## Candidate inventory` block per candidate.
-authority: behaviour
----
-
 # TypeScript / JavaScript source enumeration
 
 `/spec:plan` invokes this brief once per binding under `plan.yaml.sources.<key>` whose adapter is `code-typescript`. Your job: walk the read-only source tree at `$SOURCE_DIR`, identify slice-sized units of work using the framework grammar below, and return one candidate block per unit. The CLI appends your blocks under `## Candidate inventory` in `discovery.md`; you never write `discovery.md` directly.

@@ -1,8 +1,3 @@
----
-id: shape
-description: Omnia target idiom guidance consumed by core synthesis. Surfaces the provider-based DI shape, WASM-Preview-2 guardrails, error-variant conventions, and validation-placement rules so synthesised `spec.md` and `design.md` reflect Omnia idioms regardless of source.
----
-
 # Omnia target — shape brief
 
 > This brief produces **prose guidance only**. Core synthesis (the `/spec:refine` pipeline) consumes the guidance below when authoring `proposal.md`, `spec.md`, and `design.md` for a slice whose `Slice.target == omnia`. The brief does **not** read sources or write artifacts — it carries idioms the synthesiser folds into the canonical artifacts. The same guidance applies whether the slice's evidence is pure intent, documentation, code, or any combination; per acceptance scenario #5h, both fixtures pick up identical `shape`.

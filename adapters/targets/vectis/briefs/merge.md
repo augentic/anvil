@@ -1,8 +1,3 @@
----
-id: merge
-description: Land the Vectis slice — fold spec / design / tasks deltas plus the build-output `composition.yaml` into the baseline, re-validate, and re-run the host cap matrix against the merged tree.
----
-
 # Vectis target — `merge`
 
 `/spec:merge` reads this brief when the slice it is merging declares `target: vectis`. The core merge work — deterministic spec-delta promotion, baseline coherence validation, lifecycle transition, and archive move — runs through `specify slice merge` per the shared `/spec:merge` skill. This brief adds the Vectis-specific adoption gates that run before the CLI invocation (preview confirmation), alongside it (the broader landing surface), and after it (host cap-matrix re-verification).

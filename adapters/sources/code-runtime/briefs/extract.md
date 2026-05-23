@@ -1,9 +1,3 @@
----
-id: extract
-description: Extract behavioural Evidence (`kind: example` claims) for one candidate from the captured-fixture tree bound at $SOURCE_DIR.
-authority: behaviour
----
-
 # Runtime fixture extract
 
 `/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-runtime`. Your job: for a single `(source-key, candidate-id)` pair, locate the matching `tests/data/replay/<handler>/` directory under `$SOURCE_DIR`, read every scenario fixture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.

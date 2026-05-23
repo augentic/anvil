@@ -1,9 +1,3 @@
----
-id: extract
-description: Extract behavioural Evidence (`excerpt` / `type` / `call` claims) for one candidate from the TypeScript source tree bound at $SOURCE_DIR.
-authority: behaviour
----
-
 # TypeScript / JavaScript source extract
 
 `/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-typescript`. Your job: for a single `(source-key, candidate-id)` pair, locate the matching TypeScript module(s) under `$SOURCE_DIR`, read the surrounding code, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.

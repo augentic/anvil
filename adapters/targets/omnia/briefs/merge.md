@@ -1,8 +1,3 @@
----
-id: merge
-description: Gate the Omnia slice's landing with target-specific post-checks. Core (`specify slice merge`) owns the deterministic delta merge, lifecycle transition, and archive move. This brief covers the Omnia-specific verifications `/spec:merge` MUST run before invoking the CLI, plus the `cargo build --target wasm32-wasip2 --release` gate that proves the generated workspace still compiles for the deployment target.
----
-
 # Omnia target — merge brief
 
 > `/spec:merge` loads this brief when the active `in-progress` plan entry has `target: omnia`. The brief gates entry into `specify slice merge`; the CLI owns delta-merge, baseline coherence, the lifecycle transition to `merged`, and the archive move. The Omnia target adds no adapter-specific adoption mechanics on top of that flow — every artefact under `specs/` is promoted by the standard delta merge, and there are no extra format validators or generated outputs to refresh at merge time. This brief instead enforces the Omnia-specific *pre-merge* gate: the generated crate compiles, its tests pass, and the WASM target builds.
