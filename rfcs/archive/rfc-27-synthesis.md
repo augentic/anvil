@@ -561,7 +561,7 @@ Exit-code mapping (per `specify-cli/src/output.rs`):
 | `slice-authority-override-orphan-source-key` | 2 | `EXIT_VALIDATION_FAILED` |
 | `slice-fusion-drift` | 2 | `EXIT_VALIDATION_FAILED` (covers both spec.md ↔ fusion.yaml requirement-id drift and contributing-claim → evidence drift) |
 | `discovery-alias-collision` | 2 | `EXIT_VALIDATION_FAILED` |
-| `runtime-fixtures-fixture-format-invalid` | 1 | `EXIT_GENERIC_FAILURE` (adapter-level I/O error) |
+| `runtime-fixtures-format-invalid` | 1 | `EXIT_GENERIC_FAILURE` (adapter-level I/O error) |
 
 ### Writer ownership additions
 
