@@ -13,7 +13,7 @@ sources:
     path: ./captures/replays
 ```
 
-The bound `path:` becomes `$SOURCE_DIR` at invocation time. The expected layout matches the format the RT wiretapper writes — see [capture-format reference](../references/capture-format.md):
+The bound `path:` becomes `$SOURCE_DIR` at invocation time. The expected layout matches the format `/capture:wiretapper` writes — see [capture-format reference](../references/capture-format.md):
 
 ```text
 $SOURCE_DIR/

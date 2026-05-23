@@ -10,7 +10,7 @@ tools:
     version: 0.1.0
 description: >-
   Runtime capture source adapter. Walks a read-only capture tree under
-  `$SOURCE_DIR` (the directory layout the RT wiretapper writes —
+  `$SOURCE_DIR` (the directory layout `/capture:wiretapper` writes —
   `tests/data/replays/<handler>/<scenario>.json` plus optional `samples/`),
   enumerates one candidate per observed handler entry point (HTTP route,
   message handler, scheduled job, WebSocket handler), and extracts behavioural

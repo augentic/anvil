@@ -13,7 +13,7 @@ sources:
     path: ./captures/replays
 ```
 
-The bound `path:` becomes `$SOURCE_DIR`. The capture layout is the one the RT wiretapper writes — see [capture-format reference](../references/capture-format.md) for the per-file TestDef shape (`input`, `params`, `http_requests`, `output`; `setup` is test-harness-only).
+The bound `path:` becomes `$SOURCE_DIR`. The capture layout is the one `/capture:wiretapper` writes — see [capture-format reference](../references/capture-format.md) for the per-file TestDef shape (`input`, `params`, `http_requests`, `output`; `setup` is test-harness-only).
 
 ## Reference shelf
 

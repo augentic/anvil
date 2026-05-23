@@ -1,8 +1,8 @@
 {
-  "name": "rt",
-  "displayName": "RT Migration",
-  "description": "Runtime capture for TypeScript migration workflows.",
-  "version": "0.26.0",
+  "name": "capture",
+  "displayName": "Runtime Capture",
+  "description": "Fixture capture for TypeScript migration workflows.",
+  "version": "0.27.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
@@ -13,7 +13,8 @@
   "keywords": [
     "rust",
     "typescript",
-    "rt"
+    "capture",
+    "wiretap"
   ],
   "settings": {}
 }

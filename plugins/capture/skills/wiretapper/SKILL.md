@@ -1,5 +1,5 @@
 ---
-name: rt-wiretapper
+name: capture-wiretapper
 description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as replay-ready JSON; detect patterns, generate adapters, wire entrypoint, verify compile. Use when a legacy TypeScript service must be wiretapped for replay-ready captures before migration; not for consuming captures in the Specify workflow (bind `captures` at plan time and run Omnia `build/replay.md`) or for non-TypeScript sources.
 argument-hint: <legacy-dir> [app-name]
 ---
@@ -18,7 +18,7 @@ If `<legacy-dir>` is missing or not a directory, fail with: `"Error: legacy-dir 
 
 ### Step 0: Bootstrap the legacy tree (if remote)
 
-`/rt:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first into a fresh temporary directory and pass the resulting local path as `$LEGACY_DIR`:
+`/capture:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first into a fresh temporary directory and pass the resulting local path as `$LEGACY_DIR`:
 
 ```bash
 git clone "$url" "$dest"

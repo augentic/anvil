@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify 2.0 workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Vectis, Contract, Client) build on.
+This plugin provides the core Specify 2.0 workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Capture, Client) and target adapters (Omnia, Vectis, Contracts) build on.
 
 **Purpose**: Drive the `plan -> execute` loop (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 

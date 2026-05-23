@@ -1,6 +1,6 @@
 # Runtime capture wire format
 
-The `captures` source adapter consumes a read-only capture tree under `$SOURCE_DIR`. The RT wiretapper writes this layout; operators with a non-conforming tree adapt the directory or write a thin wrapper adapter — v1 does not invent a new format.
+The `captures` source adapter consumes a read-only capture tree under `$SOURCE_DIR`. `/capture:wiretapper` writes this layout; operators with a non-conforming tree adapt the directory or write a thin wrapper adapter — v1 does not invent a new format.
 
 ## Directory layout
 

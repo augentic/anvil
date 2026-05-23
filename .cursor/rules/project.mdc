@@ -63,7 +63,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop)
   ├── contract/           # Contract authoring/import/verify skills
-  ├── rt/                 # RT migration plugin (wiretap / runtime capture)
+  ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/
   ├── sources/            # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md

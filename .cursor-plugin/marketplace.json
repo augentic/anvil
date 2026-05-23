@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.26.0",
+    "version": "0.27.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
     {
-      "name": "rt",
-      "source": "rt",
-      "description": "Skills to assist in the migration of TypeScript projects to Omnia Rust wasm32-wasip2 crates."
+      "name": "capture",
+      "source": "capture",
+      "description": "Skills to capture runtime fixtures from legacy TypeScript services for Specify migration workflows."
     },
     {
       "name": "client",

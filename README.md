@@ -39,14 +39,13 @@ specify plan transition <name> reviewed
 
 ## Plugins
 
-Specify ships as a Cursor plugin marketplace with seven plugins:
+Specify ships as a Cursor plugin marketplace with three plugins:
 
 - **Specify** (`spec`) -- End-to-end workflow: `/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`. Plan authoring, execution driving, and finalization all live in the same plugin in 2.0.
-- **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
-- **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
-- **Contract** (`contract`) -- API contract generation, validation, and import
-- **RT** (`rt`) -- Repository cloning, runtime capture, and regression testing for migration
+- **Capture** (`capture`) -- Runtime capture for migration workflows
 - **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
+
+Domain-specific code generation lives in target adapters (`omnia`, `vectis`, `contracts`), not Cursor plugins.
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 

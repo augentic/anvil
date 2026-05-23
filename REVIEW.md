@@ -268,9 +268,9 @@ After:
 
 ### F6 — Fix replay-writer retired lifecycle verb
 
-**Status:** **Closed** — `plugins/rt/skills/replay-writer/` retired; replay work moved to `captures` source adapter and Omnia `build/replay.md`. Omnia `build/replay.md` documents journal-only recording (no `specify slice outcome set`).
+**Status:** **Closed** — the replay-writer skill is retired; replay work moved to `captures` source adapter and Omnia `build/replay.md`. Omnia `build/replay.md` documents journal-only recording (no `specify slice outcome set`).
 
-**Evidence (historical):** `plugins/rt/skills/replay-writer/SKILL.md:35` listed `specify slice outcome set` as a lifecycle owner. RFC-25 retired that verb (`plugins/spec/references/phase-outcome-contract.md:3`).
+**Evidence (historical):** the retired replay-writer skill listed `specify slice outcome set` as a lifecycle owner. RFC-25 retired that verb (`plugins/spec/references/phase-outcome-contract.md:3`).
 
 **Depends on:** none.
 
