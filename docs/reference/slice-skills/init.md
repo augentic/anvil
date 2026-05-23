@@ -13,7 +13,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `<target>` | Required for regular projects | Target identifier or URL, e.g. `omnia` (bare name), `https://github.com/augentic/specify/adapters/targets/omnia` (URL), or `file:///…` (local URI). Supports an `@ref` suffix for version pinning. Mutually exclusive with `--workspace`. |
+| `<target>` | Required for regular projects | Target identifier or URL, e.g. `omnia` (bare name), `https://github.com/augentic/specify/adapters/targets/omnia` (URL), or `file:///…` (local URI). Supports an `@ref` suffix for version pinning. Mutually exclusive with `--hub`. |
 | `--hub` | -- | Scaffold a registry-only platform hub instead of a regular project. No adapter identifier is needed. |
 
 ## When to use
@@ -27,7 +27,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 | Artifact | Location | Content |
 |----------|----------|---------|
 | Project config | `.specify/project.yaml` | Adapter identifier, domain description, project rules (regular); just `hub: true` (hub) |
-| Adapter cache | `.specify/.cache/<adapter>/` | Cached adapter manifest and brief files (regular only) |
+| Adapter cache | `.specify/.cache/manifests/targets/<adapter>/` | Cached target adapter manifest and brief files (regular only) |
 | Directory structure | `.specify/{slices,specs,archive}/` | Empty scaffold (regular only) |
 | Agent context | `AGENTS.md` | Generated repository guidance when root `AGENTS.md` is absent |
 | Context lock | `.specify/context.lock` | Fingerprint sidecar for init-time `AGENTS.md` generation |
@@ -49,7 +49,7 @@ None -- init creates the project scaffold, not a slice.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Adapter resolution failure | Invalid identifier or URL, network error, or missing `@ref` | Check identifier / URL and connectivity |
-| `init-requires-adapter-or-hub` | `specify init` invoked with neither a adapter positional nor `--hub`, or with both | Pass exactly one of the two |
+| Clap parse error (exit 2) | `specify init` invoked with neither a adapter positional nor `--hub`, or with both | Pass exactly one of the two |
 | `.specify/` already exists | Re-running init on an initialised project | Confirm reconfiguration or delete `.specify/` |
 
 ## Examples

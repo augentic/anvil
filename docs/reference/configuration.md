@@ -16,7 +16,7 @@ Specify 2.0 uses several YAML and Markdown files for configuration. All are mana
 **Created by:** `/spec:init` (via `specify init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the workspace shape (`specify init --workspace`).
+Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the hub shape (`specify init --hub`).
 
 ### Regular project shape
 
@@ -41,7 +41,7 @@ domain: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `domain`          | No                     | Free-form domain description available to briefs. |
 
-### Workspace shape
+### Hub shape
 
 ```yaml
 name: shop-platform
@@ -49,14 +49,14 @@ workspace: true
 specify-version: "2.0.0"
 ```
 
-A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and `workspace/` slots but is never itself a code project.
+A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and `workspace/` slots but is never itself a code project.
 
 | Field             | Required | Description |
 | ----------------- | -------- | ----------- |
-| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the workspace sentinel. |
-| `target`          | --       | **Omitted.** A workspace has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
+| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the hub sentinel. |
+| `target`          | --       | **Omitted.** A hub has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
 
-**When to use the workspace shape:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
+**When to use the registry-only platform hub:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
 
 ## plan.yaml
 

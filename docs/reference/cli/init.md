@@ -16,7 +16,7 @@ Two modes, picked by the presence of `--hub`:
 - **Regular** (positional `<adapter>`): scaffolds a single-project workspace. Creates `.specify/{slices,specs,archive,.cache}/`, resolves the adapter identifier into `.specify/.cache/`, writes `.specify/project.yaml` with `adapter:` set and a `rules:` entry per `pipeline.define` brief, records the running binary's version as `specify-version`, and generates root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent.
 - **Hub** (with `--hub`): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { hub: true, … }` (the `adapter:` field is omitted — its absence is what disables adapter resolution), creates an empty `registry.yaml { version: 1, projects: [] }` at the repo root, and generates hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent. No adapter identifier is needed, no cache is needed, and phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. `change.md` and `plan.yaml` are operator artifacts minted later by `/spec:plan` (via `specify plan create`) (which scaffolds both files together). Refuses to run when `.specify/` already exists.
 
-The two modes are mutually exclusive: `specify init` with neither a adapter positional nor `--hub` errors with `init-requires-adapter-or-hub`; passing both errors with the same diagnostic.
+The two modes are mutually exclusive: `specify init` with neither a adapter positional nor `--hub`, or with both, exits `2` with clap's standard parse-error diagnostic.
 
 In both modes the command upserts `.specify/.cache/` and `.specify/workspace/` into the project `.gitignore`.
 

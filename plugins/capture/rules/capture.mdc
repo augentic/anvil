@@ -3,77 +3,10 @@ description: Runtime capture plugin context -- TypeScript to Rust WASM migration
 alwaysApply: true
 ---
 
-# Runtime Capture Plugin - TypeScript to Rust WASM Migration
+# Runtime Capture Pointers
 
-## Overview
-
-This plugin migrates existing TypeScript services to production-grade Rust WASM components targeting the Omnia SDK and wasmtime runtime.
-
-**Purpose**: Automate large-scale migrations from TypeScript to Rust WASM with high fidelity and reproducibility.
-
-## Plugin Architecture
-
-```
-/plugins/capture/
-├── .cursor-plugin/
-│   └── plugin.json      # Plugin manifest
-├── rules/
-│   └── capture.mdc       # This file
-└── skills/
-    └── wiretapper/        # Add wiretap to legacy repo for runtime capture
-```
-
-Note: Source code analysis lives in the `code-typescript` source adapter at [`adapters/sources/code-typescript/`](../../../adapters/sources/code-typescript/) — its `enumerate.md` brief drives plan-time candidate discovery, and its `extract.md` brief drives slice-time evidence capture during `/spec:refine`. Runtime capture consumption lives in the [`captures` source adapter](../../../adapters/sources/captures/); replay test generation and build-time verification live in the [Omnia target build briefs](../../../adapters/targets/omnia/briefs/build.md). Repository cloning is no longer a dedicated skill — `/capture:wiretapper` inlines a guarded `git clone` snippet directly; see [`plugins/capture/skills/wiretapper/SKILL.md`](../skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
-
-After the legacy repo is cloned (via the inlined snippet), **wiretapper** runs in parallel with the `code-typescript` source's `enumerate` — wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`. The runtime capture plugin provides runtime capture only; code generation and replay verification run through the Omnia target adapter's `build` briefs during `/spec:execute`.
-
-## TypeScript-Specific Patterns
-
-### What the Analysis Layer Captures (Specify artifacts)
-
-- **Async/await patterns**: Documented as concurrent execution patterns
-- **Type definitions**: TypeScript interfaces → domain model types
-- **REST API handlers**: Express routes → API contracts and business logic blocks
-- **Environment variables**: process.env.X → configuration dependencies
-- **HTTP requests**: axios/fetch → outbound HTTP external service dependencies
-- **Message publishing**: Kafka/RabbitMQ → message publishing adapters
-- **Data access**: Azure Table Storage, Redis, SQL, blob storage, document databases → external service dependencies with type classification
-
-The `code-typescript` source adapter's `extract` operation produces platform-agnostic evidence consumed by `/spec:refine` synthesis (specs + design.md). The Omnia target adapter's `build` brief maps artifact adapters to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
-
-### Known Challenges
-
-- **Dynamic typing**: TypeScript's `any` → [unknown] tag in artifacts
-- **Complex OOP**: Deep inheritance hierarchies need flattening
-- **Decorators**: Must manually map to Rust patterns
-- **Metaprogramming**: Reflection/proxies can't be directly translated
-- **DOM APIs**: Browser-specific code must be redesigned for WASM
-
-## Troubleshooting
-
-### TypeScript Analysis Fails
-
-- Is source valid TypeScript? (run `tsc --noEmit`)
-- Are dependencies installed? (`npm install`)
-- Is tsconfig.json present?
-
-### Artifacts Missing Business Logic
-
-- Are functions exported? (the `code-typescript` source's `extract` brief skips internal functions)
-- Is logic in accessible files? (check module imports)
-- Are there dynamically loaded modules?
-
-### TypeScript Libraries with No Rust Equivalent
-
-- Find Rust crate equivalents (crates.io)
-- Implement functionality using Omnia SDK providers
-- Document in Migration.md as manual work
-
-## Related Documentation
-
-- See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [`code-typescript` source adapter](../../../adapters/sources/code-typescript/) — plan-time discovery (`enumerate`) and slice-time evidence capture (`extract`)
-- [Wiretapper SKILL.md](../skills/wiretapper/SKILL.md) — runtime capture from legacy services (also hosts the inlined clone snippet for legacy-repo bootstrap)
-- [`captures` source adapter](../../../adapters/sources/captures/) — runtime capture Evidence extraction
-- [Omnia target build briefs](../../../adapters/targets/omnia/briefs/build.md) — crate generation, replay tests, replay
-- [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
+- The capture plugin only runs `/capture:wiretapper`; the skill body owns operational steps.
+- Static TypeScript extraction lives in the `adapters/sources/code-typescript` source adapter.
+- Runtime capture consumption lives in the `adapters/sources/captures` source adapter.
+- Replay test generation and verification live in the Omnia target adapter `build` briefs.
+- Use this rule as routing context only; load the relevant skill or adapter brief for policy.

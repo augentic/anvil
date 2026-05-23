@@ -18,7 +18,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace            |
+| `/spec:init`             | One-time project setup; run `specify init --hub` for a registry-only platform hub               |
 | `/spec:plan`             | Enumerate sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
 | `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
@@ -67,7 +67,7 @@ refining --> refined --> built --> merged
 ```bash
 # Project setup
 specify init <target>                                    # single-project scaffold (positional target adapter)
-specify init --workspace                                 # registry-only workspace
+specify init --hub                                       # registry-only platform hub
 specify source resolve <name>                            # validate a source adapter manifest
 specify target resolve <value>                           # validate a target adapter (name, path, or URL)
 

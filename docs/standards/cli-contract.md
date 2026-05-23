@@ -18,7 +18,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Project
 
-- `specify init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specify init` invoked with neither (or both) errors with `init-requires-adapter-or-hub`.
+- `specify init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specify init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
 - Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `fusion.yaml`, `discovery.md`) rather than formatted dashboard commands.
 
 ### Slice (per-slice lifecycle)
@@ -80,7 +80,6 @@ The canonical envelope shapes — including the success / error variants and per
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `init-requires-adapter-or-hub` — `specify init` invoked with neither or both of `<adapter>` / `--hub`.
 - `registry-amendment-required` — `/spec:execute` phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
 - `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.

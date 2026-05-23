@@ -166,7 +166,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Adapter vs `--hub` is mutually exclusive at init
 
-**Decision:** `specify init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) with the stable `init-requires-adapter-or-hub` diagnostic.
+**Decision:** `specify init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
