@@ -345,6 +345,7 @@ crates/domain/src/discovery/candidate.rs:302:            aliases: CandidateAlias
 - T3 — actual ΔLOC 0 vs predicted 0; done-when grep flipped cleanly; no regression (`make checks` + `cargo make check` green).
 - T4 — actual ΔLOC -6 vs predicted −5; done-when grep flipped with caveat: REVIEW missed 2 callers in `document.rs` test module — swapped to `default()` in same dispatch; no regression (`cargo make check` green).
 - F2 follow-up — `cargo make ci` (rustdoc `-D warnings`) caught 5 broken intra-doc links the trim invalidated (`crate::adapter::CacheIndexEntry`, `crate::adapter::CacheFingerprint` ×2, `[adapter_axis_dir]`, `[ADAPTERS_DIR]`); fixed by repointing to `crate::adapter::cache::*` paths and dropping links to private items; +0 LOC; `cargo make ci` now green end-to-end.
+- F1/F2 DECISIONS.md tidy — pruned stale references in `specify-cli/DECISIONS.md`: dropped 3 journal-event table rows for the deleted variants (`plan.transition.archived`, `slice.build.failed`, `slice.merge.conflicted`), removed the prose mention of the archived event in the plan-lifecycle section, and repointed the surviving `CacheFingerprint` link to `crate::adapter::cache::CacheFingerprint`; ΔLOC −5; `cargo make ci` green.
 
 ## Notes
 
