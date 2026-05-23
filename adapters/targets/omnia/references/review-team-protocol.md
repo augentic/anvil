@@ -158,7 +158,7 @@ The three specialists analyze the crate concurrently. Each reads all `.rs` files
 
 ## Step 3: Universal Checks (Lead)
 
-After all specialists report, the lead applies every `UNI-*` rule from [`adapters/targets/codex/`](../../codex/) with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](review-categories.md#universal-checks-uni--prefix). Prefix the lead's findings with report-local `UNI-` occurrence IDs, set `rule_id` to the matching stable codex ID, and tag spec-change indicators for the synthesis report.
+After all specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](review-categories.md#universal-checks-uni--prefix). Prefix the lead's findings with report-local `UNI-` occurrence IDs, set `rule_id` to the matching stable codex ID, and tag spec-change indicators for the synthesis report.
 
 ## Step 4: Adversarial Challenge
 

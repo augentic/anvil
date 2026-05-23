@@ -38,12 +38,12 @@ fixture-replay:
 
 Worked examples:
 
-- With block: [`tests/fixtures/targets/omnia/with-fixture-replay/`](../../../tests/fixtures/targets/omnia/with-fixture-replay/)
-- Without block (omission-is-not-an-error): [`tests/fixtures/targets/omnia/without-fixture-replay/`](../../../tests/fixtures/targets/omnia/without-fixture-replay/)
+- With block: [`tests/fixtures/targets/omnia/with-fixture-replay/`](../../../../tests/fixtures/targets/omnia/with-fixture-replay/)
+- Without block (omission-is-not-an-error): [`tests/fixtures/targets/omnia/without-fixture-replay/`](../../../../tests/fixtures/targets/omnia/without-fixture-replay/)
 
 The block is additive; it must not reshape other `.metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
 
 ## See also
 
 - [`hook-contract.md`](hook-contract.md) — when to emit, advisory posture, merge rules
-- [`../omnia/briefs/build/replay.md`](../omnia/briefs/build/replay.md) — Omnia runner that produces these payloads
+- [`../../../targets/omnia/briefs/build/replay.md`](../../../targets/omnia/briefs/build/replay.md) — Omnia runner that produces these payloads

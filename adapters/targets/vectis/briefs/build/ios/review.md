@@ -11,7 +11,7 @@ Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific te
    - **Structural** — IOS-001..019: ViewModel / screen correspondence, effect handlers, token usage, ScrollView hazards, recurring-group component candidates. Full library: [`review/ios-checks.md`](../../../references/review/ios-checks.md).
    - **Quality** — SWF-001..010: concurrency, force unwraps, a11y labels, state management, previews, swiftformat. Full library: [`review/swift-quality-checks.md`](../../../references/review/swift-quality-checks.md).
    - **Integration** — only on the first full-scope iteration. Token / asset / composition cross-artifact checks per [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md) § Integration.
-3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/targets/codex/`](../../../../codex/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
+3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../../shared/codex/universal/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
 4. **Adversarial challenge.** Forward all findings to the antagonist per [`agent-teams.md`](../../../references/agent-teams.md).
 5. **Synthesis.** Lead authors the iteration report per [`review/iteration-report.md`](../../../references/review/iteration-report.md).
 6. **Mechanical auto-fixes (when safe).** Accessibility labels, design-token swaps, missing `#Preview`, Inject boilerplate. Revert the batch if `swiftformat` or the build regresses.

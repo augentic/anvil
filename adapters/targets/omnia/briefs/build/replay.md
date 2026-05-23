@@ -4,7 +4,7 @@ Loaded by [../build.md](../build.md) phase 7 when the slice's `plan.yaml.sources
 
 ## Shared contract
 
-Read [`../../../fixture-replay/hook-contract.md`](../../../fixture-replay/hook-contract.md) first — skip rules, generic preconditions, advisory posture, journal recording, merge summary, and the ban on hand-editing `.metadata.yaml`. Payload shapes: [`../../../fixture-replay/journal-payload.md`](../../../fixture-replay/journal-payload.md).
+Read [`../../../../shared/target-hooks/fixture-replay/hook-contract.md`](../../../../shared/target-hooks/fixture-replay/hook-contract.md) first — skip rules, generic preconditions, advisory posture, journal recording, merge summary, and the ban on hand-editing `.metadata.yaml`. Payload shapes: [`../../../../shared/target-hooks/fixture-replay/journal-payload.md`](../../../../shared/target-hooks/fixture-replay/journal-payload.md).
 
 ## Omnia preconditions
 
@@ -29,11 +29,11 @@ Fixture wire format: [`code-runtime/references/fixture-format.md`](../../../../s
 
 3. **Classify results** per the shared contract (advisory in v1).
 
-4. **Record the journal event** per [`journal-payload.md`](../../../fixture-replay/journal-payload.md) with `runner: omnia-target@1 (cargo nextest)` (adjust version suffix to match the resolved Omnia target adapter version when known).
+4. **Record the journal event** per [`journal-payload.md`](../../../../shared/target-hooks/fixture-replay/journal-payload.md) with `runner: omnia-target@1 (cargo nextest)` (adjust version suffix to match the resolved Omnia target adapter version when known).
 
 ## References
 
-- [`../../../fixture-replay/README.md`](../../../fixture-replay/README.md) — shared hook index and target adoption table
+- [`../../../../shared/target-hooks/fixture-replay/README.md`](../../../../shared/target-hooks/fixture-replay/README.md) — shared hook index and target adoption table
 - [`../../references/replay-crate-layout.md`](../../references/replay-crate-layout.md) — crate paths and fixture loading
 - [`../../references/replay-fixtures.md`](../../references/replay-fixtures.md) — `setup` block and MockProvider mapping
 - [`../../references/examples/replay/`](../../references/examples/replay/) — worked migration examples

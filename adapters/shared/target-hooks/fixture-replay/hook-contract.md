@@ -14,7 +14,7 @@ Before invoking the target-specific runner:
 2. **Evidence or fixtures available** — the slice's Evidence includes `kind: example` claims from the `code-runtime` extract pass, or the bound fixture tree remains readable at the plan-level source path.
 3. **Replay tests exist** — the target's test-generation phase has produced tests that exercise the captured scenarios (each implementing target documents where those tests live).
 
-Fixture wire format: [`code-runtime/references/fixture-format.md`](../../sources/code-runtime/references/fixture-format.md). Claim shape and 64 KiB inline cap: [`code-runtime/briefs/extract.md`](../../sources/code-runtime/briefs/extract.md).
+Fixture wire format: [`code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md). Claim shape and 64 KiB inline cap: [`code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md).
 
 ## Advisory posture
 
@@ -36,7 +36,7 @@ The implementing target's runner sub-brief supplies the `runner` string (e.g. `o
 
 ### Do not hand-edit `.metadata.yaml`
 
-Agents must not write slice metadata by hand. RFC-25 retired `specify slice outcome set` — see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md).
+Agents must not write slice metadata by hand. RFC-25 retired `specify slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
 
 A future CLI surface may persist a `fixture-replay:` block to `$SLICE_DIR/.metadata.yaml` (RFC-27 §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
@@ -59,4 +59,4 @@ Capture the block before archival if present — `specify slice merge` moves the
 
 - [`README.md`](README.md) — target adoption table
 - [`journal-payload.md`](journal-payload.md) — closed payload shapes
-- [`../omnia/briefs/build/replay.md`](../omnia/briefs/build/replay.md) — Omnia runner (reference implementation)
+- [`../../../targets/omnia/briefs/build/replay.md`](../../../targets/omnia/briefs/build/replay.md) — Omnia runner (reference implementation)

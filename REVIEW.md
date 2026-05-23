@@ -454,7 +454,20 @@ At `plugins/spec/skills/build/SKILL.md:47` and `plugins/spec/skills/merge/SKILL.
 ## Post-mortem
 
 - **F1:** actual ΔLOC **−1** vs predicted **−2** (`merge/SKILL.md` 63→62); done-when flipped cleanly (0 retired flags, all three subcommands present); `make checks` passed; no regressions.
+- **F2:** actual ΔLOC **−166** vs predicted **−121** (extra doc/imports removed with function); done-when flipped cleanly (`rg` 0 hits); `cargo make check` passed; no regressions (3 `TargetRef` sub-tests removed with module — behavior still covered elsewhere).
+- **F3:** actual ΔLOC **−62** vs predicted **−60** (`refine/SKILL.md` 119→57); done-when flipped cleanly (0 step headers, 57≤65 lines); `make checks` passed; no regressions — operator detail folded into Critical Path bullets, no synthesis file edits needed.
+- **F4:** actual ΔLOC **0** vs predicted **0** (word swaps only, 18 lines touched); done-when flipped cleanly (`plan finalize` 0, `plan archive` 14); `make checks` passed; no regressions — archive path corrected to `.yaml` suffix.
+- **F5:** actual ΔLOC **−26** vs predicted **−25** (`finalize.rs` 305→279; REVIEW baseline line count was stale); done-when flipped cleanly (`rg` 0 hits); `cargo make check` passed; no regressions.
+- **F6:** actual ΔLOC **0** vs predicted **−1** (intra-line edit, no line removed); done-when flipped cleanly (`outcome set` 0 hits); `make checks` passed; no regressions.
+- **F7:** actual ΔLOC **−3** vs predicted **+4** (`composition.rs` 253→250; `# Panics` removal offset the `map_err` block); done-when flipped cleanly (0 production unwrap/expect); `cargo make check` passed; no regressions.
+- **T1:** actual ΔLOC **−14** vs predicted **−12** (`cache.rs`); done-when flipped cleanly (`sha256_file` 0 hits); `cargo make check` passed; no regressions.
 - **T2:** actual ΔLOC **−31** vs predicted **−14** (wrapper + unused imports + test rewrites); done-when flipped cleanly (only stdlib `file.sync_all()` remain); `cargo make check` passed after intra-doc link fix; no regressions.
+- **T3:** actual ΔLOC **−1** vs predicted **−1** (`change.rs`); done-when flipped cleanly (`change::summarise` 0 hits); `cargo make check` passed; no regressions.
+- **T4:** actual ΔLOC **−2** vs predicted **−6** (plan-lock tail already absent at pass start in one skill; both skills now 0 hits); done-when flipped cleanly; `make checks` passed; no regressions.
+- **T5:** actual ΔLOC **−5** vs predicted **−5** (deleted contradictory peer-routing block); done-when flipped cleanly (`Plan drained` 0 hits); `make checks` passed; no regressions.
+- **T6:** actual ΔLOC **−2** vs predicted **−2** (lifecycle parenthetical corrected); done-when flipped cleanly; `make checks` passed; no regressions.
+- **T7:** actual ΔLOC **−2** vs predicted **−15** (87→85; non-interactive dedup largely pre-trimmed; removed duplicate IMPORTANT confirm in step 1); done-when partially met (`reason` repetition 0 hits; line drop −2 not −10 — baseline already lean); `make checks` passed; no regressions.
+- **T8:** actual ΔLOC **0** vs predicted **−1** (moved `cross_rules`/`rules_for` import into test module); done-when flipped cleanly; `cargo make check` passed; no regressions.
 
 ## Notes
 

@@ -2,7 +2,7 @@
 
 Read this at step 2c of the review-fix cycle, after the specialists complete and before the antagonist runs.
 
-The lead applies every `UNI-*` rule from [`adapters/targets/codex/`](../../../codex/). Several universal checks overlap with categories already covered by the specialists; skip those:
+The lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../shared/codex/universal/). Several universal checks overlap with categories already covered by the specialists; skip those:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

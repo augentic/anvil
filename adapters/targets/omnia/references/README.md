@@ -14,7 +14,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 | [`build/test.md`](../briefs/build/test.md) | Phase 3: generate or update the test suite. |
 | [`build/guest.md`](../briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
 | [`build/review.md`](../briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
-| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `code-runtime` source is bound. Delegates hook contract to [`../../fixture-replay/`](../../fixture-replay/). |
+| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `code-runtime` source is bound. Delegates hook contract to [`../../../shared/target-hooks/fixture-replay/`](../../../shared/target-hooks/fixture-replay/). |
 | [`merge.md`](../briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
 
 ## References
@@ -68,7 +68,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 - [`review-output-template.md`](review-output-template.md) — `REVIEW.md` template and finding-ID conventions.
 - [`agent-teams.md`](agent-teams.md) — shared multi-agent review pattern (specialists + antagonist + lead synthesis).
 - [`../codex/`](../codex/) — Omnia-specific codex rules (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`).
-- [`../../codex/`](../../codex/) — shared `UNI-*` codex rules.
+- [`../../../shared/codex/universal/`](../../../shared/codex/universal/) — shared `UNI-*` codex rules.
 
 ### Worked examples
 

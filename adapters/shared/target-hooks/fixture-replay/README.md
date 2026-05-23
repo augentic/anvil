@@ -1,13 +1,13 @@
 # Shared fixture-replay hook contract
 
-Cross-target, build-time fixture-replay rules at the root of `adapters/targets/` — read by any target adapter that opts into the RFC-27 §D1 hook during `/spec:build`. This directory is a **convention folder** resolved outside `adapter.yaml` (same posture as [`../codex/`](../codex/)); it is not a target adapter and does not add a fourth operation.
+Cross-target, build-time fixture-replay rules under `adapters/shared/` — read by any target adapter that opts into the RFC-27 §D1 hook during `/spec:build`. This directory is shared support material resolved outside `adapter.yaml`; it is not a target adapter and does not add a fourth operation.
 
 ## Relationship to `code-runtime`
 
 The **wire format** for captured fixtures lives on the source axis:
 
-- [`adapters/sources/code-runtime/references/fixture-format.md`](../../sources/code-runtime/references/fixture-format.md) — directory layout and behavioural JSON fields
-- [`adapters/sources/code-runtime/briefs/extract.md`](../../sources/code-runtime/briefs/extract.md) — `kind: example` claim emission
+- [`adapters/sources/code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md) — directory layout and behavioural JSON fields
+- [`adapters/sources/code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md) — `kind: example` claim emission
 
 This directory owns the **target-side hook contract**: when to run, how to record results, merge posture, and advisory v1 semantics. Test-harness depth (MockProvider, Crux effects, contract tool invocation) stays under each target adapter's `references/` and `briefs/build/replay.md`.
 
@@ -15,7 +15,7 @@ This directory owns the **target-side hook contract**: when to run, how to recor
 
 | Target | Hook status | Entry point |
 |---|---|---|
-| **Omnia** | Implemented | [`../omnia/briefs/build/replay.md`](../omnia/briefs/build/replay.md) |
+| **Omnia** | Implemented | [`../../../targets/omnia/briefs/build/replay.md`](../../../targets/omnia/briefs/build/replay.md) |
 | **Vectis** | Not implemented (v1) | — |
 | **Contracts** | Not implemented (v1) | — |
 | **default** | Not implemented | — |
@@ -30,5 +30,5 @@ Targets that skip the hook produce no `fixture-replay` field and emit no journal
 
 ## See also
 
-- [`../codex/`](../codex/) — sibling shared convention for review rules (`UNI-*`)
-- [Target adapters reference](../../../docs/reference/targets/index.md)
+- [`../../codex/universal/`](../../codex/universal/) — sibling shared review rules (`UNI-*`)
+- [Target adapters reference](../../../../docs/reference/targets/index.md)

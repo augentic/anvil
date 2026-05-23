@@ -1,13 +1,14 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers shared rule markdown under adapters/targets/codex/**
+//   - discovers shared rule markdown under adapters/shared/codex/universal/**
 //     (UNI-* ids), plus per-adapter overlays at
 //     adapters/targets/<cap>/codex/** and adapters/sources/<cap>/codex/**,
 //   - validates frontmatter against codex-rule.schema.json,
 //   - enforces a `## Rule` body heading and per-owner namespace ownership
-//     (`universal` owns shared `UNI-*` at targets/codex/; `omnia` may only
-//     emit `OMNIA-*`, `RUST-*`, `SEC-*` rule ids; etc.).
+//     (`universal` owns shared `UNI-*`; `omnia` may only emit `OMNIA-*`,
+//     `RUST-*`, `SEC-*` rule ids; etc.).
 
 import {
+  ADAPTERS_SHARED_DIR,
   Ajv2020,
   SOURCES_DIR,
   TARGETS_DIR,
@@ -28,15 +29,16 @@ interface CodexFile {
 }
 
 const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
-const SHARED_TARGETS_CODEX_OWNER = "universal";
+const SHARED_CODEX_OWNER = "universal";
 const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
-  [SHARED_TARGETS_CODEX_OWNER]: new Set(["UNI"]),
+  [SHARED_CODEX_OWNER]: new Set(["UNI"]),
   omnia: new Set(["OMNIA", "RUST", "SEC"]),
   contracts: new Set(["IFACE"]),
   vectis: new Set(["VECTIS"]),
 };
 
 const CODEX_DISCOVERY_ROOTS = [SOURCES_DIR, TARGETS_DIR];
+const SHARED_CODEX_DIR = join(ADAPTERS_SHARED_DIR, "codex", SHARED_CODEX_OWNER);
 
 // `README.md` (any case) is reserved for human-oriented index pages that
 // describe a codex directory; it is not a rule and must not be validated
@@ -71,12 +73,11 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
     }
   }
 
-  const sharedCodexDir = join(TARGETS_DIR, "codex");
   try {
-    const stat = await Deno.stat(sharedCodexDir);
+    const stat = await Deno.stat(SHARED_CODEX_DIR);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(sharedCodexDir, {
+        const entry of walk(SHARED_CODEX_DIR, {
           exts: [".md"],
           includeDirs: false,
         })
@@ -87,7 +88,7 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
       }
     }
   } catch {
-    // Shared targets codex is optional.
+    // Shared codex is optional.
   }
 
   return Array.from(new Set(paths)).sort();
@@ -100,10 +101,9 @@ function namespaceOwnerForCodexPath(path: string): string | null {
     const parts = rel.split("/");
     if (parts.length >= 3 && parts[1] === "codex") return parts[0];
   }
-  const sharedCodexDir = join(TARGETS_DIR, "codex");
-  const sharedRel = relative(sharedCodexDir, path);
+  const sharedRel = relative(SHARED_CODEX_DIR, path);
   if (!sharedRel.startsWith("..") && !sharedRel.startsWith("/")) {
-    return SHARED_TARGETS_CODEX_OWNER;
+    return SHARED_CODEX_OWNER;
   }
   return null;
 }

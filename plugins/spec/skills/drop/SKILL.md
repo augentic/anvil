@@ -27,8 +27,6 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.
 
-   **IMPORTANT**: Always confirm the slice name before dropping it. (non-interactive: skip — see above)
-
 2. **Check lifecycle status**
 
    Read `.specify/slices/<name>/.metadata.yaml` and inspect `status`:
