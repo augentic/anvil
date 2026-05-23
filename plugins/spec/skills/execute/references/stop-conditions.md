@@ -6,7 +6,7 @@ The structured hints below are the exact strings the skill body prints on stderr
 
 ## 1. Build non-zero exit
 
-`/spec:build` returned non-zero (compiler error, failing test, exhausted repair budget). The slice lifecycle stays at whatever `/spec:build` last wrote (typically `built` if a partial pass landed, `refined` if the first task failed). The plan entry stays `in-progress`.
+`/spec:build` returned non-zero (compiler error, failing test, exhausted repair budget). The slice stays `refined`; the plan entry stays `in-progress`.
 
 ```text
 stop: build-failed

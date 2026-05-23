@@ -26,12 +26,6 @@ On success, the skill emits the canonical closing line so peer skills can route 
 Change <name> finalized. Plan archived at <.specify>/archive/plans/<name>-<YYYYMMDD>.yaml.
 ```
 
-This is also the literal hand-off target `/spec:execute` prints when it exits because the plan is drained:
-
-```text
-Plan drained: every entry is `done`. Run `/spec:finalize <name>` to push branches, observe PRs, and archive the plan.
-```
-
 ## Reference Documentation
 
 | Reference | Purpose |

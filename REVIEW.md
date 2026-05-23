@@ -454,7 +454,7 @@ At `plugins/spec/skills/build/SKILL.md:47` and `plugins/spec/skills/merge/SKILL.
 ## Post-mortem
 
 - **F1:** actual ΔLOC **−1** vs predicted **−2** (`merge/SKILL.md` 63→62); done-when flipped cleanly (0 retired flags, all three subcommands present); `make checks` passed; no regressions.
-- **T1:** actual ΔLOC **−14** vs predicted **−12** (`cache.rs`); done-when flipped cleanly (`sha256_file` 0 hits); `cargo make check` passed; no regressions.
+- **T2:** actual ΔLOC **−31** vs predicted **−14** (wrapper + unused imports + test rewrites); done-when flipped cleanly (only stdlib `file.sync_all()` remain); `cargo make check` passed after intra-doc link fix; no regressions.
 
 ## Notes
 

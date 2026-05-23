@@ -4,6 +4,8 @@ Shared, target-agnostic review rules at the root of `adapters/targets/` — read
 
 This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/codex/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`); source adapters may grow overlays under `adapters/sources/<name>/codex/` on the same shape. Namespace ownership is enforced by [`scripts/checks/codex.ts`](../../../scripts/checks/codex.ts).
 
+Sibling convention directory: [`../fixture-replay/`](../fixture-replay/) — shared build-time fixture-replay hook contract for targets that opt in.
+
 ## Rule inventory
 
 Rules are grouped by severity (highest first). `UNI-*` ids are stable citation keys — they are not renumbered when severity or grouping changes.

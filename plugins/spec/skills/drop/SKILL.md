@@ -27,9 +27,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.
 
-   **IMPORTANT**: Always confirm the slice name before dropping it.
-
-   If `reason` was supplied (non-interactive mode — see above), the slice name must be the positional argument; skip the prompting fallback and the confirmation.
+   **IMPORTANT**: Always confirm the slice name before dropping it. (non-interactive: skip — see above)
 
 2. **Check lifecycle status**
 
@@ -39,7 +37,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
    - Any other status: explain that dropping will discard the working slice without promoting its specs.
 
-   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm the user wants to drop the slice. In non-interactive mode skip the prompt and proceed (the CLI still enforces the terminal-status check in step 4 — a `merged` / `dropped` slice surfaces `Error::Lifecycle` there).
+   Use the **AskQuestion tool** to confirm the user wants to drop the slice. (non-interactive: skip — see above; the CLI still enforces the terminal-status check in step 4.)
 
 3. **Summarize what will happen**
 
@@ -54,12 +52,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    - Existing baseline specs remain unchanged
    ```
 
-   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm:
-
-   - **Proceed**: drop the slice
-   - **Cancel**: keep the slice as-is
-
-   In non-interactive mode skip this confirmation too; the preview may still be printed as an informational line but the skill does not wait for input.
+   Use the **AskQuestion tool** to confirm: **Proceed** drops the slice, **Cancel** keeps it as-is. (non-interactive: skip — see above; the preview may still be printed as an informational line.)
 
 4. **Drop and archive**
 
@@ -88,7 +81,6 @@ The baseline remains unchanged.
 
 ## Guardrails
 
-- Always confirm the slice before dropping it.
 - Do not merge or rewrite any files under `.specify/specs/`.
 - Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.

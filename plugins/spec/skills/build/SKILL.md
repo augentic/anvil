@@ -44,8 +44,6 @@ A build failure surfaces a stop hint as the body's final output — a single str
 
 Render the hint as the final visible output of the run. Do not call `specify slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly. Do not write to `plan.yaml`; the per-entry status stays `in-progress`, which is the v1 wire signal that execution is parked rather than drained.
 
-Plan-lock acquisition follows [plan-lock.md](../../references/plan-lock.md); env var `SPECIFY_PLAN_LOCK_HELD=1` suppresses re-acquire.
-
 ## Guardrails
 
 - **Refuse only on slice lifecycle, never on synthesis tags.** `[unknown]` / `[conflict]` / `[divergence]` in `spec.md` are review signals; the build proceeds against whatever spec is on disk.

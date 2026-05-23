@@ -14,7 +14,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 | [`build/test.md`](../briefs/build/test.md) | Phase 3: generate or update the test suite. |
 | [`build/guest.md`](../briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
 | [`build/review.md`](../briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
-| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `code-runtime` source is bound. |
+| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `code-runtime` source is bound. Delegates hook contract to [`../../fixture-replay/`](../../fixture-replay/). |
 | [`merge.md`](../briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
 
 ## References
