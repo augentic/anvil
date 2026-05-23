@@ -26,7 +26,7 @@ $CRATE_DIR/
 └── Architecture.md      # Component design (if generated)
 ```
 
-When the slice has a `code-runtime` source binding, copy or symlink the bound fixture tree into `$CRATE_DIR/tests/data/replay/` preserving the handler/scenario layout from [`code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md).
+When the slice has a `runtime-fixtures` source binding, copy or symlink the bound fixture tree into `$CRATE_DIR/tests/data/replay/` preserving the handler/scenario layout from [`runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md).
 
 ## Key paths
 

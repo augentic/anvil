@@ -1,6 +1,6 @@
 # Replay fixture test harness
 
-Omnia target test generation consumes runtime fixtures copied or symlinked into `$CRATE_PATH/tests/data/replay/`. The wire format authority lives at [`adapters/sources/code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md) — this document covers **test-harness** semantics only.
+Omnia target test generation consumes runtime fixtures copied or symlinked into `$CRATE_PATH/tests/data/replay/`. The wire format authority lives at [`adapters/sources/runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md) — this document covers **test-harness** semantics only.
 
 ## Setup block
 
@@ -73,7 +73,7 @@ The handler returns `Vec<VehicleInfo>` directly (no side-effect publishing).
 Compare the response body against `output.success` by JSON equality.
 ```
 
-`INSTRUCTIONS.md` is **not** behavioural Evidence — the `code-runtime` extract brief may read it for surface-naming context only.
+`INSTRUCTIONS.md` is **not** behavioural Evidence — the `runtime-fixtures` extract brief may read it for surface-naming context only.
 
 ## TestDef → MockProvider mapping
 

@@ -22,9 +22,9 @@ Manual tests in the existing suite are **flagged as drift, never silently delete
 
 ## Runtime fixture replay
 
-When the slice's `plan.yaml.sources[]` includes a `code-runtime` binding:
+When the slice's `plan.yaml.sources[]` includes a `runtime-fixtures` binding:
 
-1. **Copy or symlink** the bound fixture tree into `$CRATE_PATH/tests/data/replay/` preserving handler/scenario layout per [`code-runtime/references/fixture-format.md`](../../../../sources/code-runtime/references/fixture-format.md).
+1. **Copy or symlink** the bound fixture tree into `$CRATE_PATH/tests/data/replay/` preserving handler/scenario layout per [`runtime-fixtures/references/fixture-format.md`](../../../../sources/runtime-fixtures/references/fixture-format.md).
 2. **Generate one integration test per scenario** — for each `kind: example` claim in `evidence/<runtime-key>.yaml` (or each `<handler>/<scenario>.json` under the bound tree), add or extend tests that load the fixture, apply `setup` per [`replay-fixtures.md`](../../references/replay-fixtures.md), invoke the handler, and assert on `output`. Layout: [`replay-crate-layout.md`](../../references/replay-crate-layout.md).
 3. **Trace to Evidence** — doc-comment each replay test with the contributing `claim-id` and `REQ-XXX` where synthesis linked the example claim to a requirement.
 4. **Worked examples** — [`examples/replay/`](../../references/examples/replay/) (handler, tests, fixtures for migration scenarios including time-sensitive `shift_time` patterns).

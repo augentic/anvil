@@ -4,7 +4,7 @@ Top-level `authority:` on every `Evidence` document is a closed enum. Highest wi
 
 1. **`intent`** — operator override at slice time. Emitted by the `intent` source adapter.
 2. **`documentation`** — operator-provided written product / technical intent (internal docs, RFCs, product notes). Emitted by the `documentation` and `screenshots` source adapters. Distinct from the synthesised `design.md` artifact and from the refine substep named `design`.
-3. **`behaviour`** — what legacy code actually does. Emitted by code source adapters (`code-typescript`, `code-runtime`, future code adapters).
+3. **`behaviour`** — what legacy code actually does. Emitted by behaviour sources such as `code-typescript`, `runtime-fixtures`, and future code or observation adapters.
 
 Authority is a property of the **Evidence document** by default. Two narrow override surfaces sharpen that default without widening the closed enum (see [§Authority overrides](#authority-overrides) below): a per-kind override on each Evidence document, and a per-slice override on `plan.yaml`. Both are opt-in; an Evidence file without `authority-overrides` and a slice without `authority-override` behave exactly as the document-level rule above.
 

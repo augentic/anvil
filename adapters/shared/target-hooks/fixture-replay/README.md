@@ -2,12 +2,12 @@
 
 Cross-target, build-time fixture-replay rules under `adapters/shared/` — read by any target adapter that opts into the RFC-27 §D1 hook during `/spec:build`. This directory is shared support material resolved outside `adapter.yaml`; it is not a target adapter and does not add a fourth operation.
 
-## Relationship to `code-runtime`
+## Relationship to `runtime-fixtures`
 
 The **wire format** for captured fixtures lives on the source axis:
 
-- [`adapters/sources/code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md) — directory layout and behavioural JSON fields
-- [`adapters/sources/code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md) — `kind: example` claim emission
+- [`adapters/sources/runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md) — directory layout and behavioural JSON fields
+- [`adapters/sources/runtime-fixtures/briefs/extract.md`](../../../sources/runtime-fixtures/briefs/extract.md) — `kind: example` claim emission
 
 This directory owns the **target-side hook contract**: when to run, how to record results, merge posture, and advisory v1 semantics. Test-harness depth (MockProvider, Crux effects, contract tool invocation) stays under each target adapter's `references/` and `briefs/build/replay.md`.
 

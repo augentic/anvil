@@ -1,6 +1,6 @@
 # Runtime fixture enumeration
 
-`/spec:plan` invokes this brief once per binding under `plan.yaml.sources.<key>` whose adapter is `code-runtime`. Your job: walk the read-only fixture tree at `$SOURCE_DIR`, identify one handler-grain candidate per `tests/data/replay/<handler>/` directory the wiretapper captured, and return one candidate block per handler. The CLI appends your blocks under `## Candidate inventory` in `discovery.md`; you never write `discovery.md` directly.
+`/spec:plan` invokes this brief once per binding under `plan.yaml.sources.<key>` whose adapter is `runtime-fixtures`. Your job: walk the read-only fixture tree at `$SOURCE_DIR`, identify one handler-grain candidate per `tests/data/replay/<handler>/` directory the wiretapper captured, and return one candidate block per handler. The CLI appends your blocks under `## Candidate inventory` in `discovery.md`; you never write `discovery.md` directly.
 
 ## Binding
 
@@ -9,7 +9,7 @@ Operators bind a captured-fixture directory under `plan.yaml.sources.<key>`:
 ```yaml
 sources:
   runtime:
-    adapter: code-runtime
+    adapter: runtime-fixtures
     path: ./fixtures/replay
 ```
 

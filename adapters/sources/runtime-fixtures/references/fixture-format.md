@@ -1,6 +1,6 @@
 # Runtime fixture wire format
 
-The `code-runtime` source adapter consumes a read-only fixture tree under `$SOURCE_DIR`. The RT wiretapper writes this layout; operators with a non-conforming tree adapt the directory or write a thin wrapper adapter — v1 does not invent a new format.
+The `runtime-fixtures` source adapter consumes a read-only fixture tree under `$SOURCE_DIR`. The RT wiretapper writes this layout; operators with a non-conforming tree adapt the directory or write a thin wrapper adapter — v1 does not invent a new format.
 
 ## Directory layout
 

@@ -33,7 +33,7 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 4. (Create mode only) Load and follow [`build/guest.md`](build/guest.md) — scaffolds the WASM guest wrapper.
 5. Run the § verify-repair loop below — cross-phase, classifies failures back to the matching phase brief.
 6. Load and follow [`build/review.md`](build/review.md) — its remediation cycle may re-enter the verify-repair loop with tighter caps.
-7. When the slice has a `code-runtime` source binding, load and follow [`build/replay.md`](build/replay.md) — optional runtime fixture replay. Omission when unbound is not an error.
+7. When the slice has a `runtime-fixtures` source binding, load and follow [`build/replay.md`](build/replay.md) — optional runtime fixture replay. Omission when unbound is not an error.
 8. Mark `tasks.md` checkboxes complete as each task lands; the slice transitions to `built` by `/spec:build` itself.
 
 ## § Verify-repair loop (max 3 iterations)
@@ -84,7 +84,7 @@ Render the hint as the final visible output of the run. Do not call `specify sli
 
 - [`shape.md`](shape.md), [`merge.md`](merge.md) — sibling briefs.
 - [`build/crate.md`](build/crate.md), [`build/test.md`](build/test.md), [`build/guest.md`](build/guest.md), [`build/review.md`](build/review.md), [`build/replay.md`](build/replay.md) — phase sub-briefs.
-- [`../../../sources/code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md) — runtime fixture wire format (when `code-runtime` is bound).
+- [`../../../sources/runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md) — runtime fixture wire format (when `runtime-fixtures` is bound).
 - [`hard-rules.md`](../references/hard-rules.md) — full authority hierarchy and hard-rules set.
 - [`guardrails.md`](../references/guardrails.md), [`wasm-constraints.md`](../references/wasm-constraints.md) — forbidden crates / APIs, statelessness, serde / DST idioms.
 - [`capabilities.md`](../references/capabilities.md), [`capability-mapping.md`](../references/capability-mapping.md) — provider traits and artifact-to-trait mapping.

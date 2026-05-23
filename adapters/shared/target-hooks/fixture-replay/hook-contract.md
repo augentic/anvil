@@ -4,17 +4,17 @@ Target-agnostic rules for the optional build-time fixture-replay hook (RFC-27 §
 
 ## When to run
 
-The hook is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `code-runtime` binding. Targets that skip the step produce no `fixture-replay` surface and emit no replay journal event; **omission is not an error**.
+The hook is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `runtime-fixtures` binding. Targets that skip the step produce no `fixture-replay` surface and emit no replay journal event; **omission is not an error**.
 
 ## Preconditions
 
 Before invoking the target-specific runner:
 
 1. **Prior build phases complete** — code generation, tests, and any target-local verify/review steps that must precede replay have finished.
-2. **Evidence or fixtures available** — the slice's Evidence includes `kind: example` claims from the `code-runtime` extract pass, or the bound fixture tree remains readable at the plan-level source path.
+2. **Evidence or fixtures available** — the slice's Evidence includes `kind: example` claims from the `runtime-fixtures` extract pass, or the bound fixture tree remains readable at the plan-level source path.
 3. **Replay tests exist** — the target's test-generation phase has produced tests that exercise the captured scenarios (each implementing target documents where those tests live).
 
-Fixture wire format: [`code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md). Claim shape and 64 KiB inline cap: [`code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md).
+Fixture wire format: [`runtime-fixtures/references/fixture-format.md`](../../../sources/runtime-fixtures/references/fixture-format.md). Claim shape and 64 KiB inline cap: [`runtime-fixtures/briefs/extract.md`](../../../sources/runtime-fixtures/briefs/extract.md).
 
 ## Advisory posture
 

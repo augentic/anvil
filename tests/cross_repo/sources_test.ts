@@ -113,9 +113,9 @@ Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", as
 });
 
 // ---------------------------------------------------------------------------
-// RFC-27 #26-1 — `code-runtime` source adapter end-to-end fixture walk.
+// RFC-27 #26-1 — `runtime-fixtures` source adapter end-to-end fixture walk.
 //
-// The 4.1 fixture under tests/fixtures/sources/code-runtime/ is the
+// The 4.1 fixture under tests/fixtures/sources/runtime-fixtures/ is the
 // golden-file half of the release blocker for D1. This test pins the
 // deterministic shape of the fixture without re-running the
 // `enumerate` / `extract` briefs (those require an LLM and are
@@ -123,7 +123,7 @@ Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", as
 // assertions cover what RFC-27 §Acceptance scenarios #26-1 demands at
 // the data-structure level:
 //
-//   1. The `code-runtime` source adapter is discoverable in `plg`.
+//   1. The `runtime-fixtures` source adapter is discoverable in `plg`.
 //   2. Every `expected/evidence.yaml` schema-validates against
 //      `schemas/evidence.schema.json` (D1: `kind: example` joins the
 //      closed enum).
@@ -135,20 +135,20 @@ Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", as
 //      for the runtime-sourced slice).
 //   5. The candidate inventory in `expected/discovery.md` carries a
 //      `### <slug>` block whose `sources:` line names `runtime`
-//      (the bound source key for `code-runtime` per the RFC §Binding
+//      (the bound source key for `runtime-fixtures` per the RFC §Binding
 //      example).
 // ---------------------------------------------------------------------------
 
-Deno.test("adapters/sources/code-runtime: adapter manifest is discoverable in plg tree", async () => {
-  const manifestPath = "adapters/sources/code-runtime/adapter.yaml";
+Deno.test("adapters/sources/runtime-fixtures: adapter manifest is discoverable in plg tree", async () => {
+  const manifestPath = "adapters/sources/runtime-fixtures/adapter.yaml";
   if (!(await exists(manifestPath))) {
     throw new Error(
-      `expected ${manifestPath} to exist; RFC-27 Change 3.1 landed the code-runtime source adapter`,
+      `expected ${manifestPath} to exist; RFC-27 Change 3.1 landed the runtime-fixtures source adapter`,
     );
   }
   const manifest = await readYaml(manifestPath) as Record<string, unknown>;
-  if (manifest.name !== "code-runtime") {
-    throw new Error(`adapter name must be code-runtime, got: ${manifest.name}`);
+  if (manifest.name !== "runtime-fixtures") {
+    throw new Error(`adapter name must be runtime-fixtures, got: ${manifest.name}`);
   }
   if (manifest.axis !== "source") {
     throw new Error(`adapter axis must be source, got: ${manifest.axis}`);
@@ -161,8 +161,8 @@ Deno.test("adapters/sources/code-runtime: adapter manifest is discoverable in pl
   }
 });
 
-Deno.test("adapters/sources/code-runtime: every Evidence document schema-validates with example claims", async () => {
-  const root = "tests/fixtures/sources/code-runtime";
+Deno.test("adapters/sources/runtime-fixtures: every Evidence document schema-validates with example claims", async () => {
+  const root = "tests/fixtures/sources/runtime-fixtures";
   if (!(await exists(root))) {
     throw new Error(
       `expected ${root}/ to exist; RFC-27 Change 4.1 landed the golden fixture tree`,
@@ -180,17 +180,17 @@ Deno.test("adapters/sources/code-runtime: every Evidence document schema-validat
     await validateOrThrow("evidence.schema.json", data, entry.path);
     if (data.authority !== "behaviour") {
       throw new Error(
-        `${entry.path}: code-runtime emits authority: behaviour by default, got: ${data.authority}`,
+        `${entry.path}: runtime-fixtures emits authority: behaviour by default, got: ${data.authority}`,
       );
     }
-    if (data.adapter !== "code-runtime") {
+    if (data.adapter !== "runtime-fixtures") {
       throw new Error(
-        `${entry.path}: adapter field must be code-runtime, got: ${data.adapter}`,
+        `${entry.path}: adapter field must be runtime-fixtures, got: ${data.adapter}`,
       );
     }
     const claims = data.claims as Array<Record<string, unknown>> | undefined;
     if (!claims || claims.length === 0) {
-      throw new Error(`${entry.path}: code-runtime Evidence must carry at least one claim`);
+      throw new Error(`${entry.path}: runtime-fixtures Evidence must carry at least one claim`);
     }
     let exampleClaims = 0;
     for (const claim of claims) {
@@ -206,7 +206,7 @@ Deno.test("adapters/sources/code-runtime: every Evidence document schema-validat
     }
     if (exampleClaims === 0) {
       throw new Error(
-        `${entry.path}: code-runtime Evidence must carry at least one kind: example claim`,
+        `${entry.path}: runtime-fixtures Evidence must carry at least one kind: example claim`,
       );
     }
   }
@@ -215,8 +215,8 @@ Deno.test("adapters/sources/code-runtime: every Evidence document schema-validat
   }
 });
 
-Deno.test("adapters/sources/code-runtime: every fusion.yaml schema-validates against slice/fusion.schema.json", async () => {
-  const root = "tests/fixtures/sources/code-runtime";
+Deno.test("adapters/sources/runtime-fixtures: every fusion.yaml schema-validates against slice/fusion.schema.json", async () => {
+  const root = "tests/fixtures/sources/runtime-fixtures";
   let seen = 0;
   for await (
     const entry of walk(root, {
@@ -233,8 +233,8 @@ Deno.test("adapters/sources/code-runtime: every fusion.yaml schema-validates aga
   }
 });
 
-Deno.test("adapters/sources/code-runtime: discovery.md names runtime as the bound source key", async () => {
-  const root = "tests/fixtures/sources/code-runtime";
+Deno.test("adapters/sources/runtime-fixtures: discovery.md names runtime as the bound source key", async () => {
+  const root = "tests/fixtures/sources/runtime-fixtures";
   let seen = 0;
   for await (
     const entry of walk(root, {

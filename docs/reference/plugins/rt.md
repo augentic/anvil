@@ -1,6 +1,6 @@
 # RT Plugin
 
-Fixture capture for migrations. The RT plugin instruments legacy TypeScript services so operators can bind captured runtime fixtures to the [`code-runtime` source adapter](../../../adapters/sources/code-runtime/) at plan time. Replay test generation and build-time verification run through the [Omnia target `build` briefs](../../../adapters/targets/omnia/briefs/build.md) during `/spec:execute` — not through a separate RT skill.
+Fixture capture for migrations. The RT plugin instruments legacy TypeScript services so operators can bind captured runtime fixtures to the [`runtime-fixtures` source adapter](../../../adapters/sources/runtime-fixtures/) at plan time. Replay test generation and build-time verification run through the [Omnia target `build` briefs](../../../adapters/targets/omnia/briefs/build.md) during `/spec:execute` — not through a separate RT skill.
 
 Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly (see [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)).
 
@@ -31,14 +31,14 @@ Capture request/response and side-effect data from a legacy TypeScript service.
 3. Wires the wiretap into the application entry point.
 4. Verifies the modified project compiles.
 
-Captured output must conform to [`code-runtime/references/fixture-format.md`](../../../adapters/sources/code-runtime/references/fixture-format.md) when converted to the `tests/data/replay/` tree for source binding.
+Captured output must conform to [`runtime-fixtures/references/fixture-format.md`](../../../adapters/sources/runtime-fixtures/references/fixture-format.md) when converted to the `tests/data/replay/` tree for source binding.
 
 ## Migration workflow
 
 ```text
 git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet in wiretapper)
 /rt:wiretapper             --> instrument and capture fixtures
-/spec:plan                 --> bind sources including code-runtime: runtime=./fixtures/replay
+/spec:plan                 --> bind sources including runtime-fixtures: runtime=./fixtures/replay
 specify plan transition <name> reviewed
 /spec:execute              --> refine extracts Evidence; Omnia build/test.md generates replay tests;
                              build/replay.md runs fixture replay (optional, advisory in v1)
@@ -47,7 +47,7 @@ specify plan transition <name> reviewed
 Typical bindings alongside wiretap capture:
 
 1. `code-typescript` — legacy code path for static analysis Evidence.
-2. `code-runtime` — captured fixture tree for behavioural `kind: example` Evidence.
+2. `runtime-fixtures` — captured fixture tree for behavioural `kind: example` Evidence.
 3. Omnia target — generated crate + replay tests verified during `/spec:build`.
 
-See [`plugins/rt/README.md`](../../../plugins/rt/README.md) and [`adapters/sources/code-runtime/briefs/enumerate.md`](../../../adapters/sources/code-runtime/briefs/enumerate.md) for binding details.
+See [`plugins/rt/README.md`](../../../plugins/rt/README.md) and [`adapters/sources/runtime-fixtures/briefs/enumerate.md`](../../../adapters/sources/runtime-fixtures/briefs/enumerate.md) for binding details.

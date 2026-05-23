@@ -1,5 +1,5 @@
 source: runtime
-adapter: code-runtime
+adapter: runtime-fixtures
 authority: behaviour
 candidate: user-registration
 claims:

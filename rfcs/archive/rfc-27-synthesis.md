@@ -6,7 +6,7 @@
 
 RFC-25 put the slice boundary on disk before any LLM writes a `spec.md`, which is the right operator-trust seam for code-generation accuracy on multi-source migrations. RFC-27 keeps that spine and sharpens the four places the synthesis review identified as load-bearing weak points without redesigning either fusion layer:
 
-1. **A first-class runtime source adapter.** Promote `plugins/rt/`'s wiretap-and-replay pattern into a `adapters/sources/code-runtime/` source adapter. Captured fixtures become `Evidence` with a new `kind: example` claim and default authority `behaviour`. Targets MAY consume the same fixtures during `build` and record results in `.metadata.yaml`; v1 keeps the replay hook optional and operator-visible, with no automatic `merge` refusal.
+1. **A first-class runtime source adapter.** Promote `plugins/rt/`'s wiretap-and-replay pattern into a `adapters/sources/runtime-fixtures/` source adapter. Captured fixtures become `Evidence` with a new `kind: example` claim and default authority `behaviour`. Targets MAY consume the same fixtures during `build` and record results in `.metadata.yaml`; v1 keeps the replay hook optional and operator-visible, with no automatic `merge` refusal.
 2. **Authority widens beyond the closed 3-class enum.** Authority becomes a property of `(Evidence document, claim kind)` rather than a property of the Evidence document alone, with per-slice operator overrides in `plan.yaml`. The current `intent > documentation > behaviour` ordering stays as the default per kind; per-slice overrides land at Gate 1, not after synthesis.
 3. **A thin reconciliation index.** Each `/spec:refine` writes `.specify/slices/<slice>/fusion.yaml` listing every `REQ-*` id in `spec.md` and the contributing `(source-key, claim-id)` pairs plus the authority outcome. One inspectable artifact per slice; no graph database.
 4. **Smaller-but-load-bearing fixes.** Move `divergence: likely` writes entirely into the CLI; add an `aliases: []` field on candidate blocks; add a `specify plan create --auto-review` flag that stamps `lifecycle: reviewed` atomically with create on any plan shape; define cache fingerprints explicitly and journal them on every `extract`.
@@ -17,7 +17,7 @@ All four are strictly additive against RFC-25. Existing plans, slices, evidence 
 source adapters --enumerate--> discovery.md (Candidate{aliases?}) --propose--> plan.yaml (slices[].divergence?, --auto-review at create)
                                                                                   |
                                                                                   v
-        +-- code-runtime --extract--> evidence/code-runtime.yaml (kind: example, authority: behaviour)
+        +-- runtime-fixtures --extract--> evidence/runtime-fixtures.yaml (kind: example, authority: behaviour)
         +-- documentation -extract--> evidence/<doc-key>.yaml
         +-- code-typescript -------> evidence/<legacy-key>.yaml
                                                                                   |
@@ -28,7 +28,7 @@ source adapters --enumerate--> discovery.md (Candidate{aliases?}) --propose--> p
                                               fusion.yaml (REQ -> contributing claims + values + outcome)
                                                                                   |
                                                                                   v
-                                              adapters/targets/<name>/build (MAY run generated code against code-runtime fixtures; results recorded in .metadata.yaml; merge is operator-visible, not auto-refusing)
+                                              adapters/targets/<name>/build (MAY run generated code against fixtures from runtime-fixtures; results recorded in .metadata.yaml; merge is operator-visible, not auto-refusing)
 ```
 
 ## How to read this RFC
@@ -56,7 +56,7 @@ None of these requires redesigning either fusion layer. All four are strictly ad
 
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
-| **D1 Runtime source adapter** | Ship `adapters/sources/code-runtime/` as a first-party source adapter that consumes the RT plugin's captured fixtures. Build-time fixture replay is an optional target hook in v1. | New `kind: example` claim in `evidence.schema.json`; RT skills rehome behind the adapter surface; targets MAY add a fixture-replay step to `build` and record results into `.metadata.yaml`. `merge` does not auto-refuse on replay failure in v1. |
+| **D1 Runtime source adapter** | Ship `adapters/sources/runtime-fixtures/` as a first-party source adapter that consumes the RT plugin's captured fixtures. Build-time fixture replay is an optional target hook in v1. | New `kind: example` claim in `evidence.schema.json`; RT skills rehome behind the adapter surface; targets MAY add a fixture-replay step to `build` and record results into `.metadata.yaml`. `merge` does not auto-refuse on replay failure in v1. |
 | **D2 Per-kind authority** | Authority becomes a property of `(Evidence document, claim kind)`. Default ordering stays `intent > documentation > behaviour` per kind. | `evidence.schema.json` gains an optional `authority-overrides: { <claim-kind>: <authority> }` map; synthesis fusion table consults the per-kind value when resolving disagreement. |
 | **D3 Per-slice authority override** | `plan.yaml.slices[]` carries an optional `authority-override: { <claim-kind>: <source-key> }` map honoured by synthesis. | Schema additive; `specify plan amend --authority-override <slice> <claim-kind>=<source-key>` lands the value; `specify slice validate` rejects orphan source keys. |
 | **D4 Reconciliation index** | `/spec:refine` writes `.specify/slices/<slice>/fusion.yaml`. | New `schemas/slice/fusion.schema.json`; one entry per `REQ-*` id in `spec.md`; `specify slice fusion show <slice>` reads it. |
@@ -93,15 +93,15 @@ And one new inspection verb:
 specify discovery show --aliases   # D6
 ```
 
-The default rhythm is unchanged at every other touchpoint. `code-runtime` is a normal source adapter the operator binds explicitly; nothing turns on without the binding.
+The default rhythm is unchanged at every other touchpoint. `runtime-fixtures` is a normal source adapter the operator binds explicitly; nothing turns on without the binding.
 
 ## Runtime source adapter (D1)
 
 ### Adapter shape
 
 ```yaml
-# adapters/sources/code-runtime/adapter.yaml
-name: code-runtime
+# adapters/sources/runtime-fixtures/adapter.yaml
+name: runtime-fixtures
 version: 1
 axis: source
 operations: [enumerate, extract]
@@ -113,7 +113,7 @@ tools:
     declared: wasi-tools/fixture-index
 ```
 
-The adapter is loaded by `crates/domain/src/adapter/` through the same `Adapter::resolve(Axis::Source, "code-runtime", project_dir)` code path as `code-typescript` and `documentation` (RFC-25 §Default source adapters). No core branch.
+The adapter is loaded by `crates/domain/src/adapter/` through the same `Adapter::resolve(Axis::Source, "runtime-fixtures", project_dir)` code path as `code-typescript` and `documentation` (RFC-25 §Default source adapters). No core branch.
 
 ### Binding
 
@@ -123,7 +123,7 @@ Operators bind a captured-fixture directory the same way they bind a legacy code
 # plan.yaml fragment
 sources:
   runtime:
-    adapter: code-runtime
+    adapter: runtime-fixtures
     path: ./fixtures/replay
 ```
 
@@ -141,7 +141,7 @@ One candidate per observed entry point (HTTP route, message handler, scheduled j
 - summary: POST /users observed in 47 fixtures; one publishes user.created.
 ```
 
-When `code-runtime` is bound alongside `code-typescript` and a documentation source, the per-source candidate ids will not necessarily match across sources. The new `aliases: []` field (D6) covers that case explicitly. Pre-existing candidate-id heuristics (kebab-case noun phrase, RFC-25 §Discovery handshake) continue to apply.
+When `runtime-fixtures` is bound alongside `code-typescript` and a documentation source, the per-source candidate ids will not necessarily match across sources. The new `aliases: []` field (D6) covers that case explicitly. Pre-existing candidate-id heuristics (kebab-case noun phrase, RFC-25 §Discovery handshake) continue to apply.
 
 ### `extract` output
 
@@ -150,7 +150,7 @@ A new `kind: example` claim joins the `claim-kind` enum:
 ```yaml
 # .specify/slices/identity-user-registration/evidence/runtime.yaml
 source: runtime
-adapter: code-runtime
+adapter: runtime-fixtures
 authority: behaviour
 candidate: user-registration
 claims:
@@ -182,7 +182,7 @@ The adapter MUST NOT emit fixture bodies larger than 64 KiB inline; over-budget 
 
 ### Default authority and Sources lines
 
-`authority: behaviour` is the document-level default for every `code-runtime` Evidence file. The per-kind override map (D2) is rarely needed for this adapter — runtime fixtures are behaviour by definition. The synthesis fusion table (§Synthesis updates) gives `example` claims the same default precedence as `excerpt` and `call` claims from `code-typescript`: `behaviour`-class, beaten by `documentation` and `intent` for `requirement`-kind disagreements unless a per-slice override (D3) flips the ordering for the slice.
+`authority: behaviour` is the document-level default for every `runtime-fixtures` Evidence file. The per-kind override map (D2) is rarely needed for this adapter — runtime fixtures are behaviour by definition. The synthesis fusion table (§Synthesis updates) gives `example` claims the same default precedence as `excerpt` and `call` claims from `code-typescript`: `behaviour`-class, beaten by `documentation` and `intent` for `requirement`-kind disagreements unless a per-slice override (D3) flips the ordering for the slice.
 
 `spec.md` requirements cite the `runtime` source key in `Sources:` the same way any other source key is cited:
 
@@ -200,7 +200,7 @@ The order rule from RFC-25 §Authority hierarchy ("highest authority first") is 
 
 ### `build`-time fixture replay
 
-`adapters/targets/<name>/build` MAY consume the same fixtures the `code-runtime` adapter extracted from. When a target's `build` brief implements the hook, it MUST record results in the slice's `.metadata.yaml` under a `fixture-replay` block:
+`adapters/targets/<name>/build` MAY consume the same fixtures the `runtime-fixtures` adapter extracted from. When a target's `build` brief implements the hook, it MUST record results in the slice's `.metadata.yaml` under a `fixture-replay` block:
 
 ```yaml
 # .specify/slices/<slice>/.metadata.yaml fragment
@@ -217,7 +217,7 @@ Rules:
 - The block is *additive* to `.metadata.yaml`; targets that have not implemented the hook omit the field entirely. Omission is not an error.
 - `merge` reads the field if present and surfaces a one-line summary in its closing message (`fixture-replay: 47 passed, 0 failed`) so the operator notices replay failures before they push. `merge` does **not** auto-refuse on `failed > 0` in v1 — the operator decides whether to land a slice whose generated code does not pass captured fixtures, the same way RFC-25 leaves `[conflict]` and `[divergence]` tags as review signals rather than gates.
 - Operators who want stricter posture can wire `merge` refusal into their target adapter (a custom Omnia fork can refuse on `failed > 0` from its own brief) or into their CI gate (`specify slice outcome show <slice> --format json` exposes the block). A future RFC may promote auto-refusal into core if real consumers ask; v1 stays advisory to match the rest of the synthesis-tag posture.
-- The fixture-runner shape depends on the target (Omnia generated crates run replay tests through `cargo nextest`; contracts targets run through `specify tool run contract`; Vectis targets do not consume `code-runtime` fixtures). Each target chooses whether and how to invoke the hook.
+- The fixture-runner shape depends on the target (Omnia generated crates run replay tests through `cargo nextest`; contracts targets run through `specify tool run contract`; Vectis targets do not consume fixtures from `runtime-fixtures`). Each target chooses whether and how to invoke the hook.
 
 The fixture-runner is not new code. Today's [`plugins/rt/skills/replay-writer/`](../plugins/rt/skills/replay-writer/SKILL.md) already wires this up for Omnia targets; D1 reuses the same skill body, invoked from `adapters/targets/omnia/briefs/build.md` instead of as a sibling plugin step. The RT plugin's two skills become thin wrappers over the source adapter's `enumerate` / `extract` once D1 lands; the wiretapper retains its TypeScript-instrumentation role since instrumentation is not a Specify-spine concern.
 
@@ -561,7 +561,7 @@ Exit-code mapping (per `specify-cli/src/output.rs`):
 | `slice-authority-override-orphan-source-key` | 2 | `EXIT_VALIDATION_FAILED` |
 | `slice-fusion-drift` | 2 | `EXIT_VALIDATION_FAILED` (covers both spec.md ↔ fusion.yaml requirement-id drift and contributing-claim → evidence drift) |
 | `discovery-alias-collision` | 2 | `EXIT_VALIDATION_FAILED` |
-| `code-runtime-fixture-format-invalid` | 1 | `EXIT_GENERIC_FAILURE` (adapter-level I/O error) |
+| `runtime-fixtures-fixture-format-invalid` | 1 | `EXIT_GENERIC_FAILURE` (adapter-level I/O error) |
 
 ### Writer ownership additions
 
@@ -590,7 +590,7 @@ The synthesis playbook docs under [`plugins/spec/references/synthesis/`](../plug
 ```text
 /
 |-- adapters/sources/
-|   |-- code-runtime/                # new (D1)
+|   |-- runtime-fixtures/                # new (D1)
 |   |   |-- adapter.yaml
 |   |   `-- briefs/{enumerate,extract}.md
 |   `-- (intent, documentation, code-typescript, screenshots — unchanged)
@@ -605,7 +605,7 @@ The synthesis playbook docs under [`plugins/spec/references/synthesis/`](../plug
 `-- schemas/                         # (in specify-cli) additive deltas above
 ```
 
-No file deletions. The RT plugin retains its `wiretapper` skill (TypeScript instrumentation is not a Specify-spine concern); `replay-writer` collapses into the `code-runtime` source adapter's `extract` brief plus the target adapter's build-time fixture-replay hook.
+No file deletions. The RT plugin retains its `wiretapper` skill (TypeScript instrumentation is not a Specify-spine concern); `replay-writer` collapses into the `runtime-fixtures` source adapter's `extract` brief plus the target adapter's build-time fixture-replay hook.
 
 ## Implementation plan
 
@@ -637,7 +637,7 @@ Wave D (plg)            Docs, AGENTS.md, decision-log, migration note   parallel
 
 | Chunk | Repo | Files | Acceptance |
 | --- | --- | --- | --- |
-| B.1 | plg | `adapters/sources/code-runtime/{adapter.yaml,briefs/enumerate.md,briefs/extract.md}`. | #26-1 |
+| B.1 | plg | `adapters/sources/runtime-fixtures/{adapter.yaml,briefs/enumerate.md,briefs/extract.md}`. | #26-1 |
 | B.2 | plg | `plugins/spec/skills/plan/SKILL.md` step 3 rewrite (D5); `plugins/spec/skills/refine/SKILL.md` adds the fusion-write step (D4). | #26-4, #26-5 |
 | B.3 | plg | `plugins/spec/references/synthesis/fusion.md` (new) + amend `authority.md`. | #26-3, #26-4 |
 | B.4 | plg | `plugins/rt/skills/replay-writer/SKILL.md` rewritten as a target-side fixture-runner brief consumed by `adapters/targets/omnia/briefs/build.md`. | #26-1 |
@@ -646,7 +646,7 @@ Wave D (plg)            Docs, AGENTS.md, decision-log, migration note   parallel
 
 | Chunk | Repo | Files | Acceptance |
 | --- | --- | --- | --- |
-| C.1 | plg | `tests/fixtures/sources/code-runtime/` golden tree (one slice's fixtures, expected Evidence). | #26-1 |
+| C.1 | plg | `tests/fixtures/sources/runtime-fixtures/` golden tree (one slice's fixtures, expected Evidence). | #26-1 |
 | C.2 | cli | Cross-repo acceptance tests for #26-1 … #26-8. | All |
 | C.3 | plg | `adapters/targets/omnia/briefs/build.md` amendment that opts into the (optional) fixture-replay hook for Omnia; matching fixture under `tests/fixtures/targets/omnia/` that exercises a target which omits the hook (`fixture-replay` field absent) and one that implements it. | #26-1 |
 
@@ -654,7 +654,7 @@ Wave D (plg)            Docs, AGENTS.md, decision-log, migration note   parallel
 
 | Chunk | Repo | Files |
 | --- | --- | --- |
-| D.1 | plg | `AGENTS.md` adds two paragraphs on the new vocabulary (`code-runtime`, `fusion.yaml`, per-slice `authority-override`). |
+| D.1 | plg | `AGENTS.md` adds two paragraphs on the new vocabulary (`runtime-fixtures`, `fusion.yaml`, per-slice `authority-override`). |
 | D.2 | plg | `.cursor/rules/project.mdc` adds rows to the source-adapter list. |
 | D.3 | plg | `docs/migration/2.1.md` documents the additive shape and the (no-op) upgrade path. |
 | D.4 | cli | `DECISIONS.md` adds rows for: per-kind authority on Evidence, per-slice authority on `plan.yaml`, `fusion.yaml` as audit-only artifact, cache fingerprint inputs. |
@@ -685,16 +685,16 @@ RFC-27 is **strictly additive**. There is no `migrate-to-2.1.sh`. Concrete conse
 **For operators.**
 - Existing `plan.yaml`, `evidence/*.yaml`, `discovery.md`, and slice directories validate without change.
 - Existing `/spec:plan` → `reviewed` → `/spec:execute` → `/spec:finalize` rhythm is unchanged.
-- New verbs and flags are opt-in. An operator who never runs `--auto-review`, never adds a per-slice `authority-override`, never binds a `code-runtime` source, and never opens `fusion.yaml` sees no behavioural change.
+- New verbs and flags are opt-in. An operator who never runs `--auto-review`, never adds a per-slice `authority-override`, never binds a `runtime-fixtures` source, and never opens `fusion.yaml` sees no behavioural change.
 
 **For source adapter authors.**
-- `code-runtime` ships as a new first-party adapter; existing adapter manifests are unaffected.
+- `runtime-fixtures` ships as a new first-party adapter; existing adapter manifests are unaffected.
 - The optional `authority-overrides` map on Evidence files is new and unused by existing adapters; emitting it is opt-in.
 - The optional `aliases[]` field on candidate blocks is new and unused by existing adapters; emitting it is opt-in. `propose` may populate it on uncertain merges.
 - The optional `cache: opt-out` flag on `adapter.yaml` is opt-in; the default behaviour for every existing adapter is fingerprint-on and cache-on.
 
 **For target adapter authors.**
-- The build-time fixture-replay hook is **optional in v1**. Targets that never want to consume `code-runtime` fixtures (Vectis today) need do nothing; targets that do (Omnia, contracts) add a fixture-runner step to their `build` brief and emit `fixture-replay: { passed, failed, skipped, ran-at, runner }` into `.metadata.yaml`. Targets that have not implemented the hook simply omit the field; `merge` does not require it.
+- The build-time fixture-replay hook is **optional in v1**. Targets that never want to consume fixtures from `runtime-fixtures` (Vectis today) need do nothing; targets that do (Omnia, contracts) add a fixture-runner step to their `build` brief and emit `fixture-replay: { passed, failed, skipped, ran-at, runner }` into `.metadata.yaml`. Targets that have not implemented the hook simply omit the field; `merge` does not require it.
 - `merge` is advisory on replay results in v1 — it surfaces the summary in its closing message but does not auto-refuse on `failed > 0`. Targets or operators who want strict gating wire it themselves (custom target adapter or CI policy reading `specify slice outcome show <slice> --format json`).
 - `shape` is unchanged.
 
@@ -728,7 +728,7 @@ Adding new authority classes would force a schema change and disturb every consu
 
 ### A6 — Fixture replay as a required `build` step with auto-`merge`-refusal (rejected)
 
-An earlier draft of D1 made the fixture-replay hook a hard `build` step and refused `merge` on `failed > 0`. RFC-27 keeps the hook target-optional and operator-visible after weighing two costs of the strict posture: (1) every target adapter would need to implement the hook before v1 lands, blocking the release on Vectis and contracts work that has no `code-runtime` consumer; and (2) auto-refusal at `merge` makes synthesis-tag posture inconsistent — RFC-25 explicitly leaves `[conflict]` and `[divergence]` as review signals rather than gates, and bolting an automatic gate onto fixture failure breaks that invariant. The optional posture matches RFC-24 §`surfaces[]` (target-specific structured outputs are recorded for operator review, not gated on). A future RFC may promote auto-refusal into core if v1 telemetry shows operators consistently want it.
+An earlier draft of D1 made the fixture-replay hook a hard `build` step and refused `merge` on `failed > 0`. RFC-27 keeps the hook target-optional and operator-visible after weighing two costs of the strict posture: (1) every target adapter would need to implement the hook before v1 lands, blocking the release on Vectis and contracts work that has no `runtime-fixtures` consumer; and (2) auto-refusal at `merge` makes synthesis-tag posture inconsistent — RFC-25 explicitly leaves `[conflict]` and `[divergence]` as review signals rather than gates, and bolting an automatic gate onto fixture failure breaks that invariant. The optional posture matches RFC-24 §`surfaces[]` (target-specific structured outputs are recorded for operator review, not gated on). A future RFC may promote auto-refusal into core if v1 telemetry shows operators consistently want it.
 
 ### A7 — Per-Evidence `priority:` number instead of `authority-overrides` map (rejected)
 
@@ -754,7 +754,7 @@ An earlier draft of D4 kept `fusion.yaml` at `(source, claim-id)` references and
 ## Open questions
 
 1. **Should per-slice `authority-override` accept a wildcard kind** (`authority-override: { "*": runtime }`)? Current preference: no — the per-kind ergonomic benefit comes from operators thinking about which kinds matter; a wildcard would re-collapse the surface.
-2. **Should `code-runtime` enumerate emit a `kind: example-set` candidate** (one block per handler) or a `kind: example` block per individual fixture? Current preference: per-handler (matches the slice grain operators reason about); the per-fixture detail lives in `extract`-time claims.
+2. **Should `runtime-fixtures` enumerate emit a `kind: example-set` candidate** (one block per handler) or a `kind: example` block per individual fixture? Current preference: per-handler (matches the slice grain operators reason about); the per-fixture detail lives in `extract`-time claims.
 3. **Should the fixture-replay hook eventually become a separate `validate` capability on target adapters** rather than living inside `build`? Current preference: keep it inside `build` for v1 (three capabilities — `shape`, `build`, `merge` — is the simplest model that works; a `validate` capability would compete with the existing `specify slice validate` verb). Revisit if telemetry shows targets routinely want to run replay independently of the build step.
 4. **Should `cache: opt-out` adapters emit a warning** on every cache-bypassed run? Current preference: no — opt-out is a deliberate choice and the journal `reason: adapter-opt-out` carries the audit trail without operator-visible noise.
 5. **Should the per-slice `authority-override` resolution trace appear in `spec.md`** (as commentary on `[divergence]` blocks), or live only in `fusion.yaml`? Current preference: `fusion.yaml` only — `spec.md` stays operator-facing behavioural prose; the audit trace stays in the index.
@@ -781,12 +781,12 @@ The existing `plan.propose.divergence`, `plan.amend.divergence`, `plan.transitio
 - [rfc-25-synthesis.md](rfc-25-synthesis.md) — review note this RFC lifts into normative decisions.
 - [rfc-25-plan.md](rfc-25-plan.md) — wave-decomposition format mirrored here.
 - [RFC-19](rfc-19-observability.md) — journal events. New events listed in §Observability.
-- [RFC-21](rfc-21-catalogue.md) — `sources.yaml`; unaffected by D1 since `code-runtime` is a normal source.
+- [RFC-21](rfc-21-catalogue.md) — `sources.yaml`; unaffected by D1 since `runtime-fixtures` is a normal source.
 - [RFC-22](rfc-22-ledger.md) — audit-only-field precedent (`mapping`) followed by `fusion.yaml`.
 - [RFC-24](rfc-24-omnia.md) — `shape` capability unchanged; `surfaces[]` precedent for additive plan fields.
 - [`plugins/spec/references/synthesis/authority.md`](../plugins/spec/references/synthesis/authority.md) — current authority hierarchy; amended by D2.
-- [`plugins/rt/skills/replay-writer/SKILL.md`](../plugins/rt/skills/replay-writer/SKILL.md) — body lifts into `code-runtime` and the target-side fixture-runner hook (D1).
-- [`plugins/rt/skills/replay-writer/references/fixture-format.md`](../plugins/rt/skills/replay-writer/references/fixture-format.md) — fixture layout `code-runtime` consumes (D1).
+- [`plugins/rt/skills/replay-writer/SKILL.md`](../plugins/rt/skills/replay-writer/SKILL.md) — body lifts into `runtime-fixtures` and the target-side fixture-runner hook (D1).
+- [`plugins/rt/skills/replay-writer/references/fixture-format.md`](../plugins/rt/skills/replay-writer/references/fixture-format.md) — fixture layout `runtime-fixtures` consumes (D1).
 - [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) — extended by D1, D2.
 - [`schemas/discovery/candidate.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/candidate.schema.json) — extended by D6.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — extended by D3, D5.

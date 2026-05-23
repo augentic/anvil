@@ -1,6 +1,6 @@
 # Runtime fixture extract
 
-`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-runtime`. Your job: for a single `(source-key, candidate-id)` pair, locate the matching `tests/data/replay/<handler>/` directory under `$SOURCE_DIR`, read every scenario fixture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `runtime-fixtures`. Your job: for a single `(source-key, candidate-id)` pair, locate the matching `tests/data/replay/<handler>/` directory under `$SOURCE_DIR`, read every scenario fixture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 
 ## Binding
 
@@ -9,7 +9,7 @@ The plan-level binding looks the same as `enumerate`'s:
 ```yaml
 sources:
   runtime:
-    adapter: code-runtime
+    adapter: runtime-fixtures
     path: ./fixtures/replay
 ```
 
@@ -41,7 +41,7 @@ Return one Evidence document matching `schemas/evidence.schema.json`. The CLI at
 
 ```yaml
 source: <source-key>
-adapter: code-runtime
+adapter: runtime-fixtures
 authority: behaviour
 candidate: <candidate-id>
 claims:
@@ -62,7 +62,7 @@ claims:
           payload-shape: { ... }
 ```
 
-`adapter` is the literal `code-runtime`. `authority` is the literal `behaviour` for every Evidence document this adapter emits; per-kind overrides via `authority-overrides:` are rarely needed (runtime fixtures are behaviour by definition). `claim-id`, `path`, `fixture-digest`, and `statement` are required on every `kind: example` claim; `input`, `output`, and any other observed shape are open per-kind body fields documented below.
+`adapter` is the literal `runtime-fixtures`. `authority` is the literal `behaviour` for every Evidence document this adapter emits; per-kind overrides via `authority-overrides:` are rarely needed (runtime fixtures are behaviour by definition). `claim-id`, `path`, `fixture-digest`, and `statement` are required on every `kind: example` claim; `input`, `output`, and any other observed shape are open per-kind body fields documented below.
 
 ## Claim fields
 
@@ -102,7 +102,7 @@ Resulting Evidence YAML:
 
 ```yaml
 source: runtime
-adapter: code-runtime
+adapter: runtime-fixtures
 authority: behaviour
 candidate: user-registration
 claims:

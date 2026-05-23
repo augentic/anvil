@@ -1,6 +1,6 @@
 # Fixture → Evidence extraction mapping
 
-Maps runtime fixture JSON fields to `kind: example` claim fields emitted by the `code-runtime` extract brief. Full procedure and caps live in [`../briefs/extract.md`](../briefs/extract.md).
+Maps runtime fixture JSON fields to `kind: example` claim fields emitted by the `runtime-fixtures` extract brief. Full procedure and caps live in [`../briefs/extract.md`](../briefs/extract.md).
 
 ## Field mapping
 
