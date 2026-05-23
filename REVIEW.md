@@ -334,6 +334,18 @@ crates/domain/src/discovery/candidate.rs:302:            aliases: CandidateAlias
 
 **Depends on:** none.
 
+## Post-mortem
+
+<!-- One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress. -->
+- F1 — actual ΔLOC -36 vs predicted −30; done-when grep flipped cleanly; no regression (`cargo make check` green).
+- F2 — actual ΔLOC -6 vs predicted −10; done-when grep flipped with caveat: kept `CacheMode` (internal `crate::adapter::CacheMode` import in `adapter/cache/io.rs:34` REVIEW missed) and `TargetOperation` re-export untouched (its existing `pub use operation::TargetOperation;` line lives outside both trimmed blocks and has many external callers); no regression (`cargo make check` green).
+- F3 — actual ΔLOC -22 vs predicted −15; done-when grep flipped cleanly; no regression (`cargo make check` green).
+- T1 — actual ΔLOC -13 vs predicted −10; done-when grep flipped cleanly; no regression (`cargo make check` green).
+- T2 — actual ΔLOC -6 vs predicted −5; done-when grep flipped cleanly; no regression (`cargo make check` green).
+- T3 — actual ΔLOC 0 vs predicted 0; done-when grep flipped cleanly; no regression (`make checks` + `cargo make check` green).
+- T4 — actual ΔLOC -6 vs predicted −5; done-when grep flipped with caveat: REVIEW missed 2 callers in `document.rs` test module — swapped to `default()` in same dispatch; no regression (`cargo make check` green).
+- F2 follow-up — `cargo make ci` (rustdoc `-D warnings`) caught 5 broken intra-doc links the trim invalidated (`crate::adapter::CacheIndexEntry`, `crate::adapter::CacheFingerprint` ×2, `[adapter_axis_dir]`, `[ADAPTERS_DIR]`); fixed by repointing to `crate::adapter::cache::*` paths and dropping links to private items; +0 LOC; `cargo make ci` now green end-to-end.
+
 ## Notes
 
 I deliberately did **not** flag the entire RFC-27 §D8 cache lookup / write surface (`crates/domain/src/adapter/cache/io.rs:173-323`) even though `rg 'SliceExtractCacheHit|SliceExtractCacheMiss'` shows zero emit sites and the matching `lookup` / `write` / `append_index` helpers have no production callers either. F2 trims the dead re-exports in the same direction without disturbing the on-disk RFC contract or the round-trip tests; the actual lookup/write functions are tested end-to-end inside the `adapter/cache/io.rs` test module and are wired up to land emit sites in the next change. The smaller F2 finding takes the subtraction win without re-implementing D8 later.

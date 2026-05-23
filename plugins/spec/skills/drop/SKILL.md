@@ -35,7 +35,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
 
    Read `.specify/slices/<name>/.metadata.yaml` and inspect `status`:
 
-   - `complete`: warn that the slice appears ready to merge normally — `/spec:merge` may be the intended action.
+   - `built`: warn that the slice is ready for `/spec:merge`.
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
    - Any other status: explain that dropping will discard the working slice without promoting its specs.
 
@@ -90,6 +90,6 @@ The baseline remains unchanged.
 
 - Always confirm the slice before dropping it.
 - Do not merge or rewrite any files under `.specify/specs/`.
-- Warn if the slice is already `complete`, since `/spec:merge` may be the intended action.
+- Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
 - `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
