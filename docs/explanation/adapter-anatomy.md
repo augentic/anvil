@@ -35,7 +35,6 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 name: code-typescript
 version: 1
 axis: source
-operations: [enumerate, extract]
 briefs:
   enumerate: briefs/enumerate.md
   extract:   briefs/extract.md
@@ -46,14 +45,13 @@ briefs:
 name: omnia
 version: 1
 axis: target
-operations: [shape, build, merge]
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; closed `operations[]` matching the axis; `briefs.<operation>` required for every declared operation; optional `tools[]` declaring WASI helpers that the host runs into `.specify/.cache/adapters/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `enumerate` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
@@ -91,8 +89,8 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | Root              | Mode       | Contents                                                                            |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
-| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/adapters/sources/<adapter>/` — adapter-owned cache.                         |
-| `$SCRATCH_DIR`    | write-only | `.specify/.cache/adapters/sources/<adapter>/<slice>/` — per-slice scratch.                   |
+| `$CAPABILITY_DIR` | read-only  | `.specify/.cache/manifests/sources/<adapter>/` — adapter manifest cache (mirrored `adapter.yaml` + briefs). |
+| `$SCRATCH_DIR`    | write-only | `.specify/.cache/extractions/<adapter>/<slice>/` — per-slice scratch under the per-source extraction tree. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
 Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
@@ -179,7 +177,16 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
 
 1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
 2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
-3. **Declare the operations.** Closed `operations[]` matching the axis; `briefs.<operation>` for every entry.
+3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `enumerate` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
-5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into `.specify/.cache/adapters/{sources,targets}/<name>/`.
+5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`.
 6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make checks` runs the documentation predicates and the schema validators.
+
+## Adapter manifests vs Cursor plugin manifests
+
+Cursor and `specify` are different runtimes. The repo's adapter directories happen to double as Cursor plugin roots, but the two manifest systems are independent — they share no fields, no loader, and no discovery path.
+
+- **`.cursor-plugin/plugin.json`** is read by Cursor itself to register IDE surface area: skills, rules, and slash commands. It is invisible to the `specify` CLI.
+- **`adapter.yaml`** is read by the `specify` CLI through `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` (the post-Task-E typed entry points). Cursor never consults it.
+
+Neither manifest references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — `adapter.yaml` is the only manifest the CLI consumes; `plugin.json` is Cursor's, not Specify's.

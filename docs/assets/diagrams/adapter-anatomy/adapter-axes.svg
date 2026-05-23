@@ -9,15 +9,15 @@
   <text x="480" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">TARGET ADAPTERS (output)</text>
   <rect x="40" y="44" width="380" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
   <text x="52" y="68" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">enumerate</text>
-  <text x="52" y="86" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:plan í discovery.md candidates</text>
+  <text x="52" y="86" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:plan ù discovery.md candidates</text>
   <path d="M230 100 L230 120" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="40" y="120" width="380" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
   <text x="52" y="144" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">extract</text>
-  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:refine í evidence/*.yaml</text>
+  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:refine ù evidence/*.yaml</text>
   <path d="M420 148 L460 148" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="460" y="100" width="400" height="72" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="472" y="124" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">core synthesis</text>
-  <text x="472" y="142" font-family="ui-monospace, monospace" font-size="11" fill="#555">proposal ∑ spec ∑ design ∑ tasks</text>
+  <text x="472" y="142" font-family="ui-monospace, monospace" font-size="11" fill="#555">proposal ù spec ù design ù tasks</text>
   <text x="472" y="158" font-family="ui-monospace, monospace" font-size="11" fill="#555">reads target shape brief</text>
   <path d="M660 172 L660 192" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="480" y="192" width="120" height="48" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
@@ -28,6 +28,6 @@
   <text x="752" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">merge</text>
   <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">adapters/sources/&lt;name&gt;/adapter.yaml</text>
   <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">adapters/targets/&lt;name&gt;/adapter.yaml</text>
-  <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/.cache/adapters/sources/&</text>
-  <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/.cache/adapters/targets/&</text>
+  <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/.cache/manifests/sources/&</text>
+  <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/.cache/manifests/targets/&</text>
 </svg>

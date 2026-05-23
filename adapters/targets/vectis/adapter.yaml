@@ -3,7 +3,6 @@ name: vectis
 version: 1
 axis: target
 description: Vectis target adapter — Crux shared core (Rust), SwiftUI iOS shell, and Kotlin/Jetpack Compose Android shell. `shape` carries the Crux idiom guidance core synthesis folds into `spec.md` and `design.md`; `build` regenerates the per-slice `composition.yaml` alongside the implementation code; `merge` lands both and re-runs the host cap matrix against the merged baseline. `tokens.yaml` and `assets.yaml` remain operator-curated build inputs.
-operations: [shape, build, merge]
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md

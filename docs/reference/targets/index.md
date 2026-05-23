@@ -38,7 +38,7 @@ briefs:
 | `operations`  | yes      | Closed list with exactly the three values `[shape, build, merge]`. |
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |
 
-Optional `tools[]` declares WASI helpers that the host runner caches under `.specify/.cache/adapters/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
+Optional `tools[]` declares WASI helpers that the host runner caches under the per-axis manifest cache at `.specify/.cache/manifests/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 

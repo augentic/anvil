@@ -72,7 +72,7 @@ specify source resolve <name>                            # validate a source ada
 specify target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specify plan create <name> --source <key>=<spec>
+specify plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
 specify plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
 specify plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
 specify plan transition <name> reviewed                  # Gate 1; operator-only

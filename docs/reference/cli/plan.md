@@ -21,10 +21,10 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 Scaffold an empty plan.
 
 ```bash
-specify plan create <name> [--source <key>=<path>...]
+specify plan create <name> [--source <key>=<adapter>:<path>...] [--source <key>=<adapter>:value:<literal>...]
 ```
 
-Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present.
+Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Each optional `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present.
 
 ### specify plan validate
 

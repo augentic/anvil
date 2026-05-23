@@ -252,7 +252,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Source/target split (RFC-25 D1)
 
-**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `adapters/sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `adapters/targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the cache splits as `.specify/.cache/adapters/{sources,targets}/<name>/`.
+**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `adapters/sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `adapters/targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the manifest cache splits as `.specify/.cache/manifests/{sources,targets}/<name>/` (the RFC-27 §D8 per-source extraction cache lives in a disjoint sibling tree at `.specify/.cache/extractions/<adapter>/`).
 
 **Rationale:** `/change:analyze` and `/change:survey` were two evidence sources for the same operation; `/spec:define` and `/spec:extract` repeated the pattern at slice time. Unqualified `adapter` only named outputs, leaving no symmetrical term for inputs. Qualifying by direction makes the input/output asymmetry explicit, gives third-party legacy migration a first-class home (source adapters), and lets one resolver module replace the bifurcated define/analyze surface.
 

@@ -2,12 +2,12 @@
 name: code-runtime
 version: 1
 axis: source
-operations: [enumerate, extract]
 briefs:
   enumerate: briefs/enumerate.md
   extract: briefs/extract.md
 tools:
   - name: fixture-index
+    version: 0.1.0
 description: >-
   Runtime-fixture source adapter. Walks a read-only fixture tree under
   `$SOURCE_DIR` (the directory layout the RT wiretapper writes —

@@ -2,7 +2,6 @@
 name: intent
 version: 1
 axis: source
-operations: [enumerate, extract]
 description: >-
   Operator-supplied free-form intent. Degenerate N=1 source — one candidate per
   slice, one `kind: intent` claim per Evidence — that backs every plan including

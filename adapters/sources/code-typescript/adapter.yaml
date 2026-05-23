@@ -2,7 +2,6 @@
 name: code-typescript
 version: 1
 axis: source
-operations: [enumerate, extract]
 briefs:
   enumerate: briefs/enumerate.md
   extract: briefs/extract.md

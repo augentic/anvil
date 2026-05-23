@@ -13,7 +13,7 @@ N=1 is degenerate, not special. A single intent binding produces one candidate, 
 ## Critical Path
 
 1. **Pre-flight** — validate `<name>` as kebab-case (the CLI rejects malformed names). Read `.specify/project.yaml`. When `workspace: true`, rely on `specify plan create` to refuse if a workspace plan is already active from a project root; surface the structured error verbatim.
-2. **Scaffold** — `specify plan create <name> --source <key>=<value> ...` (repeatable per bound source). The CLI writes `change.md` and `plan.yaml` atomically. When the operator passes no `source` tokens, elicit a one-line intent and scaffold with `--source intent="<elicited intent>"`.
+2. **Scaffold** — `specify plan create <name> --source <key>=<adapter>:<binding> ...` (repeatable per bound source). The CLI writes `change.md` and `plan.yaml` atomically. When the operator passes no `source` tokens, elicit a one-line intent and scaffold with `--source intent=intent:value:<elicited intent>`.
 3. **Workspace sync** (workspace plans only) — `specify workspace sync` before enumerate. The CLI validates `registry.yaml` first; a malformed registry is a hard failure.
 4. **Enumerate each source** — for every binding under `plan.yaml.sources.<key>`, run `specify source resolve <adapter>` to locate the adapter root and the `briefs/enumerate.md` path, then execute the brief; the CLI exposes the bound `path` as the read-only `SOURCE_DIR` WASI preopen (bindings carrying `value:` get no `SOURCE_DIR` preopen). Append each emitted candidate block under `## Candidate inventory` in `discovery.md`. Re-running `/spec:plan` replaces same-source ids; new sources append fresh ids.
 5. **Write `discovery.md`** — the three-section form: `## Summary` (one-line counts), `## Source inventory` (one row per bound source), `## Candidate inventory` (one block per candidate). N=1 leaves `Summary` and `Source inventory` minimal. Template: [`../../references/discovery.md`](../../references/discovery.md).
@@ -23,17 +23,18 @@ N=1 is degenerate, not special. A single intent binding produces one candidate, 
 
 ## Source binding grammar
 
-The operator appends zero or more `source <key>=<value>` positionals after the change name:
+The operator appends zero or more `source <key>=<adapter>:<binding>` positionals after the change name:
 
 ```text
-/spec:plan <name> source <key>=<value> [source <key>=<value> ...]
+/spec:plan <name> source <key>=<adapter>:<path> [source <key>=<adapter>:value:<literal> ...]
 ```
 
 - `<key>` is a kebab-case identifier used as the slot in `plan.yaml.sources.<key>`.
-- `<value>` is a path (e.g. `./design-notes/identity`), a kebab-style adapter binding (e.g. `legacy=./vendor/legacy-monolith`), or a literal string for `intent` (e.g. `"fix typo in user.rs"`).
-- When the operator passes no `source` tokens, elicit a one-line intent in step 2 and scaffold with `--source intent="<elicited intent>"`. The scaffolded slice carries `sources: [intent]` (shorthand for `{ key: intent, candidate: <slice.name> }`).
+- `<adapter>` is the kebab-case name of the bound source adapter (e.g. `intent`, `documentation`, `code-typescript`, `screenshots`).
+- `<binding>` is either a path (e.g. `documentation:./design-notes/identity`, `code-typescript:./vendor/legacy-monolith`) or the literal form `value:<literal>` (e.g. `intent:value:fix typo in user.rs`). Exactly one of `path` or `value` is required per binding.
+- When the operator passes no `source` tokens, elicit a one-line intent in step 2 and scaffold with `--source intent=intent:value:<elicited intent>`. The scaffolded slice carries `sources: [intent]` (shorthand for `{ key: intent, candidate: <slice.name> }`).
 
-The skill forwards every binding to `specify plan create --source <key>=<value>`; the CLI canonicalises it into `plan.yaml.sources.<key>`.
+The skill forwards every binding to `specify plan create --source <key>=<adapter>:<binding>`; the CLI canonicalises it into the structured `plan.yaml.sources.<key>: { adapter, path? | value? }` shape.
 
 ## Propose sub-step
 

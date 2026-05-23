@@ -1,6 +1,6 @@
 #  RFC-12: Refine RFC-8
 
-> Status: Landed · Parent: [RFC-8](rfc-8-api-contracts.md) · Depends: [RFC-9](rfc-9-platform.md), [RFC-10](rfc-10-skills.md)
+> Status: Implemented · Parent: [RFC-8](rfc-8-api-contracts.md) · Depends: [RFC-9](rfc-9-platform.md), [RFC-10](rfc-10-skills.md)
 >
 > **v2 layout note**: the `contracts/` artifact tree this RFC refines moved from `.specify/contracts/` to the repo root in the v2 layout (specify-cli `0.2.0`). The bare-`contracts/` shorthand below now resolves to `<project_root>/contracts/` rather than `<project_root>/.specify/contracts/`; nothing else in this RFC changed (the `contracts@v1` schema id, the validator rules, the registry roles, the SemVer requirement, and the optional `info.x-specify-id` are all unchanged).
 

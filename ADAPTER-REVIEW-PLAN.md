@@ -365,3 +365,51 @@ cd specify    && make test         # cross-repo Deno acceptance (needs SPECIFY_B
 ```
 
 The cross-repo test in particular validates that schema edits (Wave 1) and skill-body demo updates (Task B's downstream edits) stay coherent.
+
+---
+
+## Completion notes (implementation-time learnings)
+
+All ten tasks landed. `cargo make ci` (specify-cli) and `make checks` (specify) are both green. Notes captured during execution for future readers:
+
+### Task A — Operations field
+
+- Removing `operations[]` and deriving from `briefs.keys()` (`BTreeMap`) shifted the `specify {source,target} resolve` JSON envelope's `operations: [...]` array to kebab-alphabetical order (Task E later pinned this invariant with manual `Ord`/`PartialOrd` impls on `{Source,Target}Operation`). Documented in `DECISIONS.md` §"Operations typed at parse boundary".
+
+### Task B — Plan source bindings
+
+- Chosen CLI grammar: `--source <key>=<adapter>:<path>` for path bindings; `--source <key>=<adapter>:value:<literal>` for literal bindings. The first `:` after `=` separates adapter from payload, so URLs containing `:` (e.g. `git@github.com:org/foo.git`) round-trip cleanly. A literal beginning with `value:` requires the value form.
+
+### Task E — Operation typing
+
+- Chose option A (split structs: `SourceAdapter` / `TargetAdapter`) over a generic `Adapter<Op>`. Almost every call site invokes the resolver with a static `Axis` literal; the runtime-axis dispatcher (`commands::resolve_adapter`) is the lone exception and reads cleanly as `match axis`.
+- Added two shared private helpers in `crates/domain/src/adapter/core.rs` — `locate_axis` and `load_validated` — used as natural insertion points by Tasks G (cross-axis collision probe) and H (manifest-vs-extraction cache split).
+
+### Task G — Cross-axis uniqueness
+
+- Plan said "reuse `Error::Validation`"; the right neighbour template was `Error::validation_failed(rule_id, rule, detail)` from `crates/domain/src/change/plan/core/validate/` — every other diagnostic in `adapter/core.rs` uses `Error::Diag`.
+- Init-time probe is one-sided (`check_axis_unique_for_name(Axis::Target, name, project_dir)`): at scaffold time the target side has not yet been written, so a symmetric probe would never fire.
+- Discriminant: `adapter-name-axis-collision`.
+
+### Task H — Cache split
+
+- Two new public constants exported from `specify_domain::adapter`: `MANIFESTS_CACHE_DIR = "manifests"`, `EXTRACTIONS_CACHE_DIR = "extractions"`.
+- The probe heuristic in `locate_axis` changed from `cache.join("adapter.yaml").is_file()` to `cache.is_dir()` (the manifest cache root is now dedicated).
+- Discovered follow-up: `rfcs/rfc-21-catalogue.md` (still active, unimplemented) reuses the old `.specify/.cache/adapters/sources/<key>/` path for a third concept — durable tier-1 clones of legacy source repos. When RFC-21 is implemented, that cache must move to a non-overlapping root (e.g. `.specify/.cache/source-clones/<key>/`) or RFC-21 itself must be rewritten against the new layout. Tracked here, not addressed in this plan.
+
+### Task D — Target suffix
+
+- Chose option (b): `TargetRef { name: String, version: u32 }` newtype with `Display`/`FromStr`/serde via the kebab string. Wire-byte-identical to the prior `String` form but every reader gets typed `(name, version)` access without re-parsing.
+- Discriminants: `plan-target-version-mismatch` (validator) and `plan-target-malformed` (CLI `--target` flag only — the schema regex makes it unreachable from on-disk YAML).
+- `SliceMetadata::target` (slice `.metadata.yaml`) still accepts bare `omnia` strings — natural follow-up if symmetry across the two surfaces is desired.
+
+### Tasks I and J — Docs sweep
+
+- Task J added the misc one-paragraph entries (`Exit::ArgumentError → 2` table row, `Status::Done` absorbing, archive-as-fs-op, source-key plan-scoping, operations parse boundary) and the new §"Adapter manifests vs Cursor plugin manifests" in `docs/explanation/adapter-anatomy.md`.
+- Task I found `schemas/README.md` and `docs/explanation/adapter-anatomy.md` already conformant — earlier task work had picked up the doc rot incrementally.
+
+### Recommended follow-ups (out of scope for this plan)
+
+1. **RFC-21 path collision.** When RFC-21 lands, rewrite its tier-1-clone cache path to avoid `.specify/.cache/adapters/...` (now reserved-by-removal under the Task H split).
+2. **`SliceMetadata::target` symmetry.** Mirror the Task D `TargetRef`/`@vN` policy in slice metadata if desired.
+3. **`IndexMap` for `briefs`?** If preserving YAML author insertion order in the `specify {source,target} resolve` envelope's `operations` array matters more than the kebab-alphabetical invariant Task E pinned, switch `briefs` to `IndexMap`. Not currently broken — the invariant is consistent — but worth a one-line decision should the question come up.
