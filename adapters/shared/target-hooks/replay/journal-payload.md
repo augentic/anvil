@@ -1,6 +1,6 @@
-# Fixture-replay payload shapes
+# Replay payload shapes
 
-Closed wire shapes for the build-time `fixture-replay` hook. Recording rules and merge posture live in [`hook-contract.md`](hook-contract.md).
+Closed wire shapes for the build-time `replay` hook. Recording rules and merge posture live in [`hook-contract.md`](hook-contract.md).
 
 ## Journal event (v1 recorder)
 
@@ -8,14 +8,14 @@ Emit via `specify slice journal append`:
 
 | Field | Value |
 |---|---|
-| Event kind | `slice.fixture-replay.completed` |
-| Rust enum | `EventKind::SliceFixtureReplayCompleted` |
+| Event kind | `slice.replay.completed` |
+| Rust enum | `EventKind::SliceReplayCompleted` |
 | Payload keys | `passed`, `failed`, `skipped`, `runner` |
 
 Example NDJSON line (illustrative):
 
 ```json
-{"event":"slice.fixture-replay.completed","passed":47,"failed":0,"skipped":2,"runner":"omnia-target@1 (cargo nextest)"}
+{"event":"slice.replay.completed","passed":47,"failed":0,"skipped":2,"runner":"omnia-target@1 (cargo nextest)"}
 ```
 
 - **`passed`** / **`failed`** / **`skipped`** — non-negative integers from the target runner's test classification.
@@ -28,7 +28,7 @@ Taxonomy reference: [specify-cli `DECISIONS.md` — journal events](https://gith
 RFC-27 §D1 defines an additive block targets MAY write to `$SLICE_DIR/.metadata.yaml` once a CLI-owned surface lands. **Agents must not hand-edit this block in v1** — journal-only recording until then.
 
 ```yaml
-fixture-replay:
+replay:
   passed: <int>
   failed: <int>
   skipped: <int>
@@ -38,8 +38,8 @@ fixture-replay:
 
 Worked examples:
 
-- With block: [`tests/fixtures/targets/omnia/with-fixture-replay/`](../../../../tests/fixtures/targets/omnia/with-fixture-replay/)
-- Without block (omission-is-not-an-error): [`tests/fixtures/targets/omnia/without-fixture-replay/`](../../../../tests/fixtures/targets/omnia/without-fixture-replay/)
+- With block: [`tests/fixtures/targets/omnia/with-replay/`](../../../../tests/fixtures/targets/omnia/with-replay/)
+- Without block (omission-is-not-an-error): [`tests/fixtures/targets/omnia/without-replay/`](../../../../tests/fixtures/targets/omnia/without-replay/)
 
 The block is additive; it must not reshape other `.metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
 

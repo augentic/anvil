@@ -78,7 +78,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   │   └── contracts/
   └── shared/               # Shared adapter support material, not adapters
       ├── codex/universal/  # Shared UNI-* review rules read by per-target review briefs
-      └── target-hooks/fixture-replay/
+      └── target-hooks/replay/
 /schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
 /scripts/                 # Validation and plugin management
 ```

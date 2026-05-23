@@ -1,4 +1,4 @@
-// Execute / build / merge / finalize skill-fixture replay. These fixtures
+// Execute / build / merge / finalize skill-replay. These fixtures
 // are walkthroughs (`expected-trace.md`, `expected-stop-hint.md`,
 // `expected.md`, `transcript.md`) describing the visible side effects of
 // each skill body. Byte-replay against an LLM-driven skill body is out of

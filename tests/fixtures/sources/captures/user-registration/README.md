@@ -26,7 +26,7 @@ expected/
 
 The `expected/evidence.yaml` document validates against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) (RFC-27 §D1 widened `claimKind` with `example` and requires `claim-id` on every `kind: example` claim). The `expected/fusion.yaml` document validates against [`schemas/slice/fusion.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/slice/fusion.schema.json) (RFC-27 §D4 reconciliation index). The candidate block in `expected/discovery.md` follows the grammar in [`schemas/discovery/candidate.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/candidate.schema.json).
 
-`fixture-digest` values are real `sha256` over the on-disk capture bytes. Re-running `shasum -a 256 inputs/tests/data/replays/user-registration/*.json` MUST reproduce the digests written into `expected/evidence.yaml`.
+`replay-digest` values are real `sha256` over the on-disk capture bytes. Re-running `shasum -a 256 inputs/tests/data/replays/user-registration/*.json` MUST reproduce the digests written into `expected/evidence.yaml`.
 
 ## What the fusion.yaml sample demonstrates
 

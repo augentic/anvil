@@ -71,7 +71,7 @@ A target adapter ships a manifest plus the briefs that implement domain behaviou
 Shared material used by multiple adapters lives outside the adapter roots under `adapters/shared/`:
 
 - **`codex/universal/`** — shared review rules (`UNI-*`) at [`adapters/shared/codex/universal/`](../../../adapters/shared/codex/universal/); per-target overlays stay at `adapters/targets/<name>/codex/`.
-- **`target-hooks/fixture-replay/`** — shared build-time fixture-replay hook contract at [`adapters/shared/target-hooks/fixture-replay/`](../../../adapters/shared/target-hooks/fixture-replay/); per-target runners stay at `adapters/targets/<name>/briefs/build/replay.md` when implemented.
+- **`target-hooks/replay/`** — shared build-time replay hook contract at [`adapters/shared/target-hooks/replay/`](../../../adapters/shared/target-hooks/replay/); per-target runners stay at `adapters/targets/<name>/briefs/build/replay.md` when implemented.
 
 ## Validation
 

@@ -41,7 +41,7 @@ git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet in wir
 /spec:plan                 --> bind sources including captures: runtime=./captures/replays
 specify plan transition <name> reviewed
 /spec:execute              --> refine extracts Evidence; Omnia build/test.md generates replay tests;
-                             build/replay.md runs fixture replay (optional, advisory in v1)
+                             build/replay.md runs replay (optional, advisory in v1)
 ```
 
 Typical bindings alongside wiretap capture:

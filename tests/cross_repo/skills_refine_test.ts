@@ -1,4 +1,4 @@
-// Refine-skill fixture replay. For each tests/fixtures/skills/refine/<case>/:
+// Refine-skill replay. For each tests/fixtures/skills/refine/<case>/:
 //   - schema-validate every Evidence document under `inputs/evidence/` against
 //     `evidence.schema.json`.
 //   - parse `expected/spec.md` with the W1.3 provenance parser; assert every

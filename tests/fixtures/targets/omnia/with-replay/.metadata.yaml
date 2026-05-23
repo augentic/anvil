@@ -11,7 +11,7 @@ outcome:
   outcome: success
   at: 2026-05-22T13:18:42Z
   summary: "Crate, tests, and guest scaffolding written; verify-repair clean on first iteration."
-fixture-replay:
+replay:
   passed: 47
   failed: 0
   skipped: 0

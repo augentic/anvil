@@ -1,6 +1,6 @@
-# Shared fixture-replay hook contract
+# Shared replay hook contract
 
-Cross-target, build-time `fixture-replay` rules under `adapters/shared/` — read by any target adapter that opts into the RFC-27 §D1 hook during `/spec:build`. This directory is shared support material resolved outside `adapter.yaml`; it is not a target adapter and does not add a fourth operation.
+Cross-target, build-time `replay` rules under `adapters/shared/` — read by any target adapter that opts into the RFC-27 §D1 hook during `/spec:build`. This directory is shared support material resolved outside `adapter.yaml`; it is not a target adapter and does not add a fourth operation.
 
 ## Relationship to `captures`
 
@@ -20,7 +20,7 @@ This directory owns the **target-side hook contract**: when to run, how to recor
 | **Contracts** | Not implemented (v1) | — |
 | **default** | Not implemented | — |
 
-Targets that skip the hook produce no `fixture-replay` field and emit no journal event; omission is not an error.
+Targets that skip the hook produce no `replay` field and emit no journal event; omission is not an error.
 
 ## How to consume
 

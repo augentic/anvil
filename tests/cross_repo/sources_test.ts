@@ -1,4 +1,4 @@
-// Source-fixture replay. For every fixture under tests/fixtures/sources/<name>/
+// Source-replay. For every fixture under tests/fixtures/sources/<name>/
 // the harness:
 //   - parses every `expected{,/evidence}/*.yaml` Evidence document, schema-
 //     validates it against `evidence.schema.json`, and asserts the closed
@@ -127,7 +127,7 @@ Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", as
 //   2. Every `expected/evidence.yaml` schema-validates against
 //      `schemas/evidence.schema.json` (D1: `kind: example` joins the
 //      closed enum).
-//   3. Every `example`-kind claim carries a `fixture-digest:
+//   3. Every `example`-kind claim carries a `replay-digest:
 //      sha256:<hex>` anchor and the source-adapter default
 //      `authority: behaviour` posture.
 //   4. The synthesised `expected/fusion.yaml` schema-validates
@@ -196,10 +196,10 @@ Deno.test("adapters/sources/captures: every Evidence document schema-validates w
     for (const claim of claims) {
       if (claim.kind === "example") {
         exampleClaims++;
-        const digest = claim["fixture-digest"];
+        const digest = claim["replay-digest"];
         if (typeof digest !== "string" || !digest.startsWith("sha256:")) {
           throw new Error(
-            `${entry.path}: example claim ${claim["claim-id"]} must carry fixture-digest: sha256:<hex>, got: ${digest}`,
+            `${entry.path}: example claim ${claim["claim-id"]} must carry replay-digest: sha256:<hex>, got: ${digest}`,
           );
         }
       }

@@ -6,7 +6,7 @@ briefs:
   enumerate: briefs/enumerate.md
   extract: briefs/extract.md
 tools:
-  - name: fixture-index
+  - name: replay-index
     version: 0.1.0
 description: >-
   Runtime capture source adapter. Walks a read-only capture tree under
@@ -14,6 +14,6 @@ description: >-
   `tests/data/replays/<handler>/<scenario>.json` plus optional `samples/`),
   enumerates one candidate per observed handler entry point (HTTP route,
   message handler, scheduled job, WebSocket handler), and extracts behavioural
-  Evidence as `kind: example` claims carrying `fixture-digest: sha256:<hex>`
+  Evidence as `kind: example` claims carrying `replay-digest: sha256:<hex>`
   anchors. Authority emitted is `behaviour`; capture bodies above 64 KiB
   inline are carried by digest + path only.

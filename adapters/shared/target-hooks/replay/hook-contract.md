@@ -1,10 +1,10 @@
-# Fixture-replay hook contract
+# Replay hook contract
 
-Target-agnostic rules for the optional build-time `fixture-replay` hook (RFC-27 §D1). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
+Target-agnostic rules for the optional build-time `replay` hook (RFC-27 §D1). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
 
 ## When to run
 
-The hook is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `captures` binding. Targets that skip the step produce no `fixture-replay` surface and emit no replay journal event; **omission is not an error**.
+The hook is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `captures` binding. Targets that skip the step produce no `replay` surface and emit no replay journal event; **omission is not an error**.
 
 ## Preconditions
 
@@ -30,7 +30,7 @@ This matches RFC-25 posture on `[conflict]` and `[divergence]` tags — review s
 
 ### v1 recorder: journal event
 
-Emit `slice.fixture-replay.completed` (`EventKind::SliceFixtureReplayCompleted` in the CLI repo) via `specify slice journal append`. Payload shape: [`journal-payload.md`](journal-payload.md).
+Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo) via `specify slice journal append`. Payload shape: [`journal-payload.md`](journal-payload.md).
 
 The implementing target's runner sub-brief supplies the `runner` string (e.g. `omnia-target@1 (cargo nextest)`).
 
@@ -38,14 +38,14 @@ The implementing target's runner sub-brief supplies the `runner` string (e.g. `o
 
 Agents must not write slice metadata by hand. RFC-25 retired `specify slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
 
-A future CLI surface may persist a `fixture-replay:` block to `$SLICE_DIR/.metadata.yaml` (RFC-27 §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
+A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (RFC-27 §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
 ## Merge posture
 
-When a `fixture-replay:` block is present on `.metadata.yaml` (future CLI or operator tooling), `/spec:merge` surfaces a one-line summary in its closing message:
+When a `replay:` block is present on `.metadata.yaml` (future CLI or operator tooling), `/spec:merge` surfaces a one-line summary in its closing message:
 
 ```text
-fixture-replay: <passed> passed, <failed> failed, <skipped> skipped
+replay: <passed> passed, <failed> failed, <skipped> skipped
 ```
 
 Rules:

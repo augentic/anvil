@@ -75,5 +75,5 @@ The `code-typescript` source adapter's `extract` operation produces platform-agn
 - [`code-typescript` source adapter](../../../adapters/sources/code-typescript/) — plan-time discovery (`enumerate`) and slice-time evidence capture (`extract`)
 - [Wiretapper SKILL.md](../skills/wiretapper/SKILL.md) — runtime capture from legacy services (also hosts the inlined clone snippet for legacy-repo bootstrap)
 - [`captures` source adapter](../../../adapters/sources/captures/) — runtime capture Evidence extraction
-- [Omnia target build briefs](../../../adapters/targets/omnia/briefs/build.md) — crate generation, replay tests, fixture replay
+- [Omnia target build briefs](../../../adapters/targets/omnia/briefs/build.md) — crate generation, replay tests, replay
 - [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks

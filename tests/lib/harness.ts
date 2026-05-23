@@ -25,7 +25,7 @@ export async function skipUnlessSpecifyBin(): Promise<SkipDecision> {
 }
 
 // Wrap a test body so the test always passes (printing a skip note) when
-// `SPECIFY_BIN` is missing. Phase 3 fixture-replay tests use this wrapper
+// `SPECIFY_BIN` is missing. Phase 3 replay tests use this wrapper
 // for any case that shells out to the CLI, so a fresh clone without a
 // built binary still completes the harness with a useful skip message
 // rather than failing.
