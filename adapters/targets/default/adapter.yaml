@@ -1,9 +1,0 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/target.schema.json
-name: default
-version: 1
-axis: target
-description: Foundational Specify target adapter. Carries universal review codex rules that apply independently of a project's implementation domain; briefs are intentionally minimal because domain-specific behavior lives in project targets such as omnia, contracts, and vectis.
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
