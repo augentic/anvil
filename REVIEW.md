@@ -268,36 +268,9 @@ After:
 
 ### F6 — Fix replay-writer retired lifecycle verb
 
-**Evidence:** `plugins/rt/skills/replay-writer/SKILL.md:35` lists `specify slice outcome set` as a lifecycle owner. RFC-25 retired that verb (`plugins/spec/references/phase-outcome-contract.md:3`). `rg 'outcome set' specify-cli/src` → **0 matches**.
+**Status:** **Closed** — `plugins/rt/skills/replay-writer/` retired; replay work moved to `code-runtime` source adapter and Omnia `build/replay.md`. Omnia `build/replay.md` documents journal-only recording (no `specify slice outcome set`).
 
-Current-state grep:
-
-```text
-plugins/rt/skills/replay-writer/SKILL.md:35:- **Hold the slice lifecycle.** Transitions are owned by `specify slice transition`, `specify slice outcome set`, and `specify slice merge`.
-```
-
-**Action:**
-1. Delete `specify slice outcome set`, from the bullet — retain `specify slice transition` and `specify slice merge`.
-
-Before:
-
-```text
-… `specify slice transition`, `specify slice outcome set`, and `specify slice merge`.
-```
-
-After:
-
-```text
-… `specify slice transition` and `specify slice merge`.
-```
-
-**Quality delta:** `−1 LOC, −1 retired CLI verb, −1 wire-contract mismatch`.
-
-**Done when:** `rg 'outcome set' plugins/rt/skills/replay-writer/SKILL.md` returns **0** and `make checks` passes.
-
-**Rule?** no.
-
-**Counter-argument:** Operators may still say "outcome set" colloquially. It loses because the on-disk lifecycle is closed (`refining | refined | built | merged | dropped`) and the verb does not exist in the binary.
+**Evidence (historical):** `plugins/rt/skills/replay-writer/SKILL.md:35` listed `specify slice outcome set` as a lifecycle owner. RFC-25 retired that verb (`plugins/spec/references/phase-outcome-contract.md:3`).
 
 **Depends on:** none.
 
@@ -481,7 +454,7 @@ At `plugins/spec/skills/build/SKILL.md:47` and `plugins/spec/skills/merge/SKILL.
 ## Post-mortem
 
 - **F1:** actual ΔLOC **−1** vs predicted **−2** (`merge/SKILL.md` 63→62); done-when flipped cleanly (0 retired flags, all three subcommands present); `make checks` passed; no regressions.
-- **F4:** actual ΔLOC **0** vs predicted **0** (word swaps only, 18 lines touched); done-when flipped cleanly (`plan finalize` 0, `plan archive` 14); `make checks` passed; no regressions — archive path corrected to `.yaml` suffix.
+- **T1:** actual ΔLOC **−14** vs predicted **−12** (`cache.rs`); done-when flipped cleanly (`sha256_file` 0 hits); `cargo make check` passed; no regressions.
 
 ## Notes
 

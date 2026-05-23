@@ -1,6 +1,6 @@
 # Omnia target — build brief
 
-> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to four phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `spec.md` + `design.md` before this brief runs.
+> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to five phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `spec.md` + `design.md` before this brief runs.
 
 ## Inputs and bindings
 
@@ -33,7 +33,7 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 4. (Create mode only) Load and follow [`build/guest.md`](build/guest.md) — scaffolds the WASM guest wrapper.
 5. Run the § verify-repair loop below — cross-phase, classifies failures back to the matching phase brief.
 6. Load and follow [`build/review.md`](build/review.md) — its remediation cycle may re-enter the verify-repair loop with tighter caps.
-7. Run the § fixture-replay step below if the slice has a `code-runtime` source binding. The step is optional; omission is not an error.
+7. When the slice has a `code-runtime` source binding, load and follow [`build/replay.md`](build/replay.md) — optional runtime fixture replay. Omission when unbound is not an error.
 8. Mark `tasks.md` checkboxes complete as each task lands; the slice transitions to `built` by `/spec:build` itself.
 
 ## § Verify-repair loop (max 3 iterations)
@@ -68,33 +68,6 @@ If `cargo test` fails, classify each failure:
 
 Repeat until all four checks pass or 3 iterations exhausted. If still failing after 3 iterations: **STOP**. Do not mark the slice complete. Report the remaining failures with full error output to the operator and signal the build phase outcome accordingly.
 
-## § Fixture replay (optional)
-
-This step is **OPTIONAL in v1**. Run it only when the slice's `plan.yaml.sources[]` list carries a `code-runtime` binding. Targets that skip the step produce no `fixture-replay` field in `$SLICE_DIR/.metadata.yaml`, and omission is not an error.
-
-When implemented, replay the captured fixtures the `code-runtime` source adapter consumed (today: `cd $CRATE_PATH && cargo nextest run --tests` against `tests/data/replay/<handler>/<scenario>.json`; the operator's binding may point at a different root). Fixture-layout, claim shape, and the 64 KiB inline cap live in [`sources/code-runtime/briefs/extract.md`](../../../sources/code-runtime/briefs/extract.md) — this brief does not re-state them.
-
-Record the outcome two ways:
-
-1. **`.metadata.yaml` block.** Write a `fixture-replay:` block to `$SLICE_DIR/.metadata.yaml`:
-
-   ```yaml
-   fixture-replay:
-     passed: <int>
-     failed: <int>
-     skipped: <int>
-     ran-at: <ISO-8601 UTC>
-     runner: <e.g. "omnia-target@1.4 (cargo nextest)">
-   ```
-
-   The block is additive; targets that have not implemented the hook omit it. Persist via the slice-outcome surface (`specify slice outcome set`) rather than hand-editing `.metadata.yaml` — the CLI is the single writer of slice metadata.
-
-2. **Journal event.** Emit `slice.fixture-replay.completed` (defined in the cli repo as `EventKind::SliceFixtureReplayCompleted`) via `specify slice journal append`, with payload `{ passed, failed, skipped, runner }`.
-
-`merge` reads the block if present and surfaces a one-line summary (`fixture-replay: <passed> passed, <failed> failed, <skipped> skipped`) in its closing message. `merge` does **not** auto-refuse on `failed > 0` in v1 — the operator decides whether to land a slice whose generated code does not pass captured fixtures, mirroring the operator-visible posture RFC-25 takes on `[conflict]` and `[divergence]` tags. Operators wanting stricter posture wire it via a custom target adapter fork (refuse from the fork's `merge.md`) or via a CI policy reading `.specify/slices/<slice>/.metadata.yaml` directly.
-
-A failure here is **not** a build park: replay results are advisory in v1. The slice still transitions to `built`; the operator inspects the summary at merge time.
-
 ## § Stop hint contract
 
 A build failure surfaces a stop hint as the body's final output — a single structured message the parent skill or the parent loop can act on without re-deriving context:
@@ -110,13 +83,14 @@ Render the hint as the final visible output of the run. Do not call `specify sli
 ## References
 
 - [`shape.md`](shape.md), [`merge.md`](merge.md) — sibling briefs.
-- [`build/crate.md`](build/crate.md), [`build/test.md`](build/test.md), [`build/guest.md`](build/guest.md), [`build/review.md`](build/review.md) — phase sub-briefs.
+- [`build/crate.md`](build/crate.md), [`build/test.md`](build/test.md), [`build/guest.md`](build/guest.md), [`build/review.md`](build/review.md), [`build/replay.md`](build/replay.md) — phase sub-briefs.
+- [`../../../sources/code-runtime/references/fixture-format.md`](../../../sources/code-runtime/references/fixture-format.md) — runtime fixture wire format (when `code-runtime` is bound).
 - [`hard-rules.md`](../references/hard-rules.md) — full authority hierarchy and hard-rules set.
 - [`guardrails.md`](../references/guardrails.md), [`wasm-constraints.md`](../references/wasm-constraints.md) — forbidden crates / APIs, statelessness, serde / DST idioms.
 - [`capabilities.md`](../references/capabilities.md), [`capability-mapping.md`](../references/capability-mapping.md) — provider traits and artifact-to-trait mapping.
 - [`sdk-api.md`](../references/sdk-api.md), [`cargo-toml.md`](../references/cargo-toml.md), [`error-handling.md`](../references/error-handling.md), [`configuration.md`](../references/configuration.md) — SDK / workspace / error / guest-config templates.
 - [`cross-cutting-matrices.md`](../references/cross-cutting-matrices.md), [`update-patterns.md`](../references/update-patterns.md), [`change-classification.md`](../references/change-classification.md), [`repair-patterns.md`](../references/repair-patterns.md), [`todo-markers.md`](../references/todo-markers.md), [`checklists.md`](../references/checklists.md), [`output-documents.md`](../references/output-documents.md) — analysis tables, strategy patterns, recipes.
-- [`mock-provider.md`](../references/mock-provider.md), [`spec-to-test-mapping.md`](../references/spec-to-test-mapping.md) — test depth.
+- [`mock-provider.md`](../references/mock-provider.md), [`spec-to-test-mapping.md`](../references/spec-to-test-mapping.md), [`replay-fixtures.md`](../references/replay-fixtures.md), [`replay-crate-layout.md`](../references/replay-crate-layout.md) — test depth.
 - [`handlers.md`](../references/handlers.md), [`guest-patterns.md`](../references/guest-patterns.md), [`guest-wiring.md`](../references/guest-wiring.md), [`runtime.md`](../references/runtime.md), [`project-layout.md`](../references/project-layout.md) — guest depth.
 - [`review-categories.md`](../references/review-categories.md), [`review-team-protocol.md`](../references/review-team-protocol.md), [`review-auto-fix.md`](../references/review-auto-fix.md), [`review-output-template.md`](../references/review-output-template.md), [`agent-teams.md`](../references/agent-teams.md), [`../codex/`](../codex/) (Omnia overlay), [`../../codex/`](../../codex/) (shared `UNI-*`) — review depth.
 - [`providers/`](../references/providers/) — per-trait deep dives.

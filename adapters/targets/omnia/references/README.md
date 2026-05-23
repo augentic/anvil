@@ -2,7 +2,7 @@
 
 Reference documentation for the Omnia target adapter at [`adapters/targets/omnia/`](..). In Specify 2.0 (RFC-25) Omnia is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
-The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`../briefs/build.md`](../briefs/build.md) and four phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, codex rules) and worked examples live in this folder.
+The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`../briefs/build.md`](../briefs/build.md) and five phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, codex rules) and worked examples live in this folder.
 
 ## Briefs
 
@@ -14,6 +14,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 | [`build/test.md`](../briefs/build/test.md) | Phase 3: generate or update the test suite. |
 | [`build/guest.md`](../briefs/build/guest.md) | Phase 4 (create mode only): scaffold the WASM guest wrapper. |
 | [`build/review.md`](../briefs/build/review.md) | Phase 6: agent-team code review and remediation cycle. |
+| [`build/replay.md`](../briefs/build/replay.md) | Phase 7 (optional): runtime fixture replay when a `code-runtime` source is bound. |
 | [`merge.md`](../briefs/merge.md) | Pre-merge gate (cargo + clippy + test + wasm32 build) run by `/spec:merge`. |
 
 ## References
@@ -47,6 +48,8 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 
 - [`mock-provider.md`](mock-provider.md) — Static and Replay MockProvider patterns per provider trait.
 - [`spec-to-test-mapping.md`](spec-to-test-mapping.md) — how spec scenarios map to test functions; `REQ-XXX` traceability.
+- [`replay-fixtures.md`](replay-fixtures.md) — `setup` block, `INSTRUCTIONS.md`, TestDef → MockProvider mapping for runtime fixtures.
+- [`replay-crate-layout.md`](replay-crate-layout.md) — generated-crate paths and fixture loading for replay tests.
 
 ### Guest writer depth
 
@@ -71,3 +74,4 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 
 - [`examples/crates/`](examples/crates/) — single-handler, multi-handler, anti-patterns; per-capability walkthroughs under `capabilities/`; per-update-category walkthroughs under `updates/`.
 - [`examples/tests/`](examples/tests/) — per-provider testing patterns (HTTP, StateStore, Publisher, Blobstore, DocumentStore).
+- [`examples/replay/`](examples/replay/) — runtime fixture replay (handler, tests, fixtures worked examples for migration).

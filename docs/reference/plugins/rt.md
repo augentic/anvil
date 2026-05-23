@@ -1,6 +1,8 @@
 # RT Plugin
 
-Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly (see [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)).
+Fixture capture for migrations. The RT plugin instruments legacy TypeScript services so operators can bind captured runtime fixtures to the [`code-runtime` source adapter](../../../adapters/sources/code-runtime/) at plan time. Replay test generation and build-time verification run through the [Omnia target `build` briefs](../../../adapters/targets/omnia/briefs/build.md) during `/spec:execute` — not through a separate RT skill.
+
+Repository cloning is no longer a dedicated skill — `/rt:wiretapper` inlines a guarded `git clone` snippet directly (see [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)).
 
 ## Skills
 
@@ -15,8 +17,8 @@ Capture request/response and side-effect data from a legacy TypeScript service.
 ```
 
 **Inputs:**
-- `legacy-dir` -- Path to the legacy TypeScript project.
-- `--app-name` -- Name for the captured fixture file.
+- `legacy-dir` — Path to the legacy TypeScript project.
+- `--app-name` — Name for the captured fixture file.
 
 **Outputs:**
 - `src/wiretap/` directory with core capture logic and per-pattern adapters.
@@ -24,51 +26,28 @@ Capture request/response and side-effect data from a legacy TypeScript service.
 - At runtime: `<app>.wiretap.json` containing captured request/response pairs and side effects.
 
 **Behavior:**
-1. Detects patterns in the legacy code (HTTP handlers, message consumers, WebSocket, etc. -- patterns A through H).
+1. Detects patterns in the legacy code (HTTP handlers, message consumers, WebSocket, etc. — patterns A through H).
 2. Generates wiretap adapters for each detected pattern.
 3. Wires the wiretap into the application entry point.
 4. Verifies the modified project compiles.
 
-The captured fixtures serve as input to the replay-writer skill.
-
-### /rt:replay-writer
-
-Add regression tests from captured JSON fixtures.
-
-**Synopsis:**
-
-```text
-/rt:replay-writer <crate-name> [project-dir <path>]
-```
-
-**Inputs:**
-- `crate-name` -- The Omnia crate to test.
-- `--project-dir` -- Project directory (defaults to current directory).
-- Reads fixtures from `tests/data/replay/`.
-
-**Outputs:**
-- New or updated test files that replay captured fixtures against the new implementation.
-- Passing `cargo test` suite.
-
-**Behavior:**
-1. Inspects the crate and its existing tests.
-2. Reads fixture files from `tests/data/replay/`.
-3. Generates test cases that replay each captured request and assert the response matches.
-4. Runs `cargo test` and iterates on failures.
+Captured output must conform to [`code-runtime/references/fixture-format.md`](../../../adapters/sources/code-runtime/references/fixture-format.md) when converted to the `tests/data/replay/` tree for source binding.
 
 ## Migration workflow
 
-The two RT skills form a pipeline (preceded by an inlined `git clone` step when the legacy source is remote — see the snippet in [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)):
-
 ```text
-git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet)
-/rt:wiretapper             --> instrument it and capture fixtures
-/rt:replay-writer          --> write regression tests from fixtures
+git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet in wiretapper)
+/rt:wiretapper             --> instrument and capture fixtures
+/spec:plan                 --> bind sources including code-runtime: runtime=./fixtures/replay
+specify plan transition <name> reviewed
+/spec:execute              --> refine extracts Evidence; Omnia build/test.md generates replay tests;
+                             build/replay.md runs fixture replay (optional, advisory in v1)
 ```
 
-This pipeline is typically used alongside the core Specify workflow:
+Typical bindings alongside wiretap capture:
 
-1. Clone and wiretap the legacy service to capture fixtures.
-2. Use `/spec:plan` with `source legacy=<path>` to plan the migration.
-3. Stamp Gate 1 (`specify plan transition <name> reviewed`), then run `/spec:execute` to implement each slice.
-4. Use `/rt:replay-writer` to add regression tests that verify the new implementation matches the legacy behavior.
+1. `code-typescript` — legacy code path for static analysis Evidence.
+2. `code-runtime` — captured fixture tree for behavioural `kind: example` Evidence.
+3. Omnia target — generated crate + replay tests verified during `/spec:build`.
+
+See [`plugins/rt/README.md`](../../../plugins/rt/README.md) and [`adapters/sources/code-runtime/briefs/enumerate.md`](../../../adapters/sources/code-runtime/briefs/enumerate.md) for binding details.

@@ -13,7 +13,14 @@ sources:
     path: ./fixtures/replay
 ```
 
-The bound `path:` becomes `$SOURCE_DIR`. The fixture layout is the one the RT wiretapper writes — see [fixture-format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md) for the per-file TestDef shape (`setup`, `input`, `params`, `http_requests`, `output`).
+The bound `path:` becomes `$SOURCE_DIR`. The fixture layout is the one the RT wiretapper writes — see [fixture-format reference](../references/fixture-format.md) for the per-file TestDef shape (`input`, `params`, `http_requests`, `output`; `setup` is test-harness-only).
+
+## Reference shelf
+
+Load on demand when extracting complex handler surfaces.
+
+- [`../references/fixture-format.md`](../references/fixture-format.md) — on-disk wire format and behavioural vs non-evidence fields.
+- [`../references/extraction-mapping.md`](../references/extraction-mapping.md) — fixture JSON → Evidence claim field mapping.
 
 ## Inputs
 
@@ -151,7 +158,7 @@ Same skip-root and traversal rules as `enumerate`: relative paths only under `$S
 - **Inlining over-budget bodies.** Respect the 64 KiB inline cap. Over-budget claims fall back to `fixture-digest` + `path`; downstream replay reads the bytes from disk.
 - **Representative-scenario shortcuts.** Every captured scenario contributes one claim. Collapsing 47 scenarios into 3 "representative" examples loses the divergence signal that makes runtime authority useful.
 - **Speculative claims.** Do not infer behaviour the fixtures do not exhibit. If no fixture demonstrates duplicate-email handling, emit no claim for it — synthesis tags unknowns; you do not.
-- **`INSTRUCTIONS.md` as evidence.** The per-handler `INSTRUCTIONS.md` is operator hint material for the replay-writer skill, not behavioural evidence. Read it for surface-naming context if needed; do not turn its prose into claims.
+- **`INSTRUCTIONS.md` as evidence.** The per-handler `INSTRUCTIONS.md` is operator hint material for Omnia test generation ([`build/test.md`](../../../targets/omnia/briefs/build/test.md)); not behavioural evidence. Read it for surface-naming context if needed; do not turn its prose into claims.
 - **Whole-file dumps in `statement`.** The `path:` + `fixture-digest:` pair is the citation; `statement:` is a single-line summary. The body fields (`input` / `output`) carry observed structure; raw JSON paste in `statement:` is wrong.
 - **Cross-source synthesis.** Do not fuse this candidate's claims with another source's Evidence — that is core synthesis's job in `/spec:refine`. Emit Evidence purely from `$SOURCE_DIR`.
 
@@ -168,4 +175,5 @@ Same skip-root and traversal rules as `enumerate`: relative paths only under `$S
 
 - [RFC-27 §`extract` output](../../../../rfcs/archive/rfc-27-synthesis.md#extract-output)
 - [RFC-27 §Runtime source adapter (D1)](../../../../rfcs/archive/rfc-27-synthesis.md#runtime-source-adapter-d1)
-- [Fixture format reference](../../../../plugins/rt/skills/replay-writer/references/fixture-format.md)
+- [Fixture format reference](../references/fixture-format.md)
+- [Extraction mapping reference](../references/extraction-mapping.md)

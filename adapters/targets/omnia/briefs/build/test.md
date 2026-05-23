@@ -20,6 +20,17 @@ Manual tests in the existing suite are **flagged as drift, never silently delete
 6. **Load JSON fixtures** — `include_str!("data/<fixture>.json")` from `tests/data/`. Preserve any existing fixture style.
 7. **Report drift** — emit drift notes inline (a leading `// DRIFT: ...` comment on tests that needed regeneration) but never delete operator-authored tests.
 
+## Runtime fixture replay
+
+When the slice's `plan.yaml.sources[]` includes a `code-runtime` binding:
+
+1. **Copy or symlink** the bound fixture tree into `$CRATE_PATH/tests/data/replay/` preserving handler/scenario layout per [`code-runtime/references/fixture-format.md`](../../../../sources/code-runtime/references/fixture-format.md).
+2. **Generate one integration test per scenario** — for each `kind: example` claim in `evidence/<runtime-key>.yaml` (or each `<handler>/<scenario>.json` under the bound tree), add or extend tests that load the fixture, apply `setup` per [`replay-fixtures.md`](../../references/replay-fixtures.md), invoke the handler, and assert on `output`. Layout: [`replay-crate-layout.md`](../../references/replay-crate-layout.md).
+3. **Trace to Evidence** — doc-comment each replay test with the contributing `claim-id` and `REQ-XXX` where synthesis linked the example claim to a requirement.
+4. **Worked examples** — [`examples/replay/`](../../references/examples/replay/) (handler, tests, fixtures for migration scenarios including time-sensitive `shift_time` patterns).
+
+Fixture wire format authority stays at the source adapter — do not duplicate the schema here. Execution of the replay suite belongs to [replay.md](replay.md) (phase 7).
+
 ## Worked examples
 
 - [`examples/tests/testing.md`](../../references/examples/tests/testing.md) — core test patterns: layout, MockProvider, test structures, fixtures.
@@ -28,6 +39,7 @@ Manual tests in the existing suite are **flagged as drift, never silently delete
 - [`examples/tests/testing-publisher.md`](../../references/examples/tests/testing-publisher.md) — publish, event capture, request-reply, topic checks.
 - [`examples/tests/testing-blobstore.md`](../../references/examples/tests/testing-blobstore.md) — Blobstore-backed handlers.
 - [`examples/tests/testing-documentstore.md`](../../references/examples/tests/testing-documentstore.md) — DocumentStore-backed handlers.
+- [`examples/replay/`](../../references/examples/replay/) — runtime fixture replay for migration (time-sensitive handlers, directory-scanning replay runner).
 
 ## Output and quality checklist
 

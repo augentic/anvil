@@ -1,6 +1,6 @@
 ---
 name: rt-wiretapper
-description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as fixture JSON; detect patterns, generate adapters, wire entrypoint, verify compile. Use when a legacy TypeScript service must be wiretapped for replay-ready fixtures before migration; not for replaying captured fixtures (that is `replay-writer`) or for non-TypeScript sources.
+description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as fixture JSON; detect patterns, generate adapters, wire entrypoint, verify compile. Use when a legacy TypeScript service must be wiretapped for replay-ready fixtures before migration; not for consuming fixtures in the Specify workflow (bind `code-runtime` at plan time and run Omnia `build/replay.md`) or for non-TypeScript sources.
 argument-hint: <legacy-dir> [app-name]
 ---
 
@@ -67,6 +67,7 @@ Optionally add `$LEGACY_DIR/src/wiretap/README.md` documenting that wiretap is e
 
 - **[references/design.md](references/design.md)** — Detection table, file structure, and constraints. The authoritative source for generated code structure.
 - **[references/adapters/](references/adapters/)** — Full TypeScript code for each adapter; generate code that matches these references exactly.
+- **[Fixture output format](../../../../adapters/sources/code-runtime/references/fixture-format.md)** — directory layout wiretap output must satisfy for `code-runtime` source binding (`tests/data/replay/<handler>/<scenario>.json`).
 
 ## Error Handling
 
