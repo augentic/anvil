@@ -1,7 +1,7 @@
 # Specify docs partials
 
 This directory holds the mdbook-template partials used by chapters to compose
-the visual system in [`../example.html`](../example.html). Each `.md` file is
+the visual system. Each `.md` file is
 a snippet of CommonMark + raw HTML that gets substituted in-place when a
 chapter writes:
 

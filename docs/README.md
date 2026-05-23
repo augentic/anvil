@@ -1,6 +1,6 @@
 # Specify Developer Guide -- Local Development
 
-This directory contains the [mdbook](https://rust-lang.github.io/mdBook/) source for the Specify Developer Guide. The visual system mirrors [`example.html`](example.html); see [`standards/doc-authoring.md`](standards/doc-authoring.md) for component-class and partial reference.
+This directory contains the [mdbook](https://rust-lang.github.io/mdBook/) source for the Specify Developer Guide. See [`standards/doc-authoring.md`](standards/doc-authoring.md) for the component-class and partial reference.
 
 ## Prerequisites
 

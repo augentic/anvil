@@ -725,8 +725,8 @@ html:not(.sidebar-resizing) .sidebar {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Specify Developer Guide overrides — extends mdbook's chrome to align with
- * docs/example.html. See docs/assets/theme/specify-docs.css for component
+ * Specify Developer Guide overrides — extends mdbook's chrome with the
+ * project palette. See docs/assets/theme/specify-docs.css for component
  * styling; this file owns chrome geometry + palette wiring only.
  *
  * NOTE: Anything below this banner is project-owned. mdbook upgrades that
@@ -734,7 +734,7 @@ html:not(.sidebar-resizing) .sidebar {
  * ──────────────────────────────────────────────────────────────────────── */
 
 :root {
-    /* Match example.html's 1280px outer max-width minus the 300px sidebar. */
+    /* 1280px outer max-width minus the 300px sidebar. */
     --content-max-width: 980px;
     --sidebar-target-width: 280px;
     --menu-bar-height: 56px;
@@ -769,8 +769,8 @@ html:not(.sidebar-resizing) .sidebar {
     white-space: nowrap;
 }
 
-/* The example.html mock has a thin, sticky breadcrumb bar with backdrop
- * blur. mdbook's menu-bar is already sticky; tune the rest. */
+/* Thin, sticky breadcrumb bar with backdrop blur.
+ * mdbook's menu-bar is already sticky; tune the rest. */
 #menu-bar.menu-bar.sticky {
     backdrop-filter: saturate(140%) blur(8px);
 }

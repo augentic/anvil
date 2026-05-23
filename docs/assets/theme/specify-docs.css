@@ -1,18 +1,18 @@
 /* Specify Developer Guide — mdBook theme extensions.
-   Visual system ported from docs/example.html. */
+   Cross-cutting visual system for the rendered guide. */
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Palette — driven by mdbook's theme-picker classes on <html>.
  *
  * mdbook ships five themes: light, rust, navy, coal, ayu. We use the
  * existing buckets:
- *   light  → light  palette  (example.html "light" body)
+ *   light  → light  palette
  *   rust   → light  palette  (warm light bookish theme, same as light here)
  *   navy   → dark   palette  (deep blue chrome)
  *   coal   → dark   palette  (graphite chrome)
  *   ayu    → dark   palette  (warm dark)
  *
- * We re-export the example.html `--*` variables as `--spec-*` so the rest of
+ * Each bucket exports a `--spec-*` variable set so the rest of
  * the stylesheet stays palette-agnostic.
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -105,7 +105,7 @@ html.ayu {
 }
 
 /* The first paragraph inside .hero (or any element explicitly tagged .lede)
- * gets the example.html lede typography; subsequent paragraphs stay normal. */
+ * gets the lede typography; subsequent paragraphs stay normal. */
 .content main .hero > p:first-of-type,
 .content main .hero .lede {
   font-size: 17px;
@@ -260,7 +260,7 @@ html.ayu {
   text-decoration: underline;
 }
 
-/* Decision cards (D1..D8 ports the example.html palette) --------------- */
+/* Decision cards (D1..D8 palette) --------------- */
 .content main .decisions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -698,7 +698,7 @@ html.ayu {
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Chrome restyle — mdbook's existing menu-bar is repurposed to host the
- * example.html breadcrumb (crumb + title-mini) and a status-pill slot.
+ * project breadcrumb (crumb + title-mini) and a status-pill slot.
  * ──────────────────────────────────────────────────────────────────────── */
 
 #menu-bar.menu-bar {
@@ -752,7 +752,7 @@ html.ayu {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * mdbook-pagetoc restyle — example.html's nav.toc lives on the right rail
+ * mdbook-pagetoc restyle — the per-page nav.toc lives on the right rail
  * with active-section scrollspy. mdbook-pagetoc creates a `.sidetoc` >
  * `.pagetoc` structure inside `#content > main`; we restyle it to match.
  * The upstream pagetoc.css hides the rail under 1440px viewports, which

@@ -1,6 +1,6 @@
 # Documentation authoring standards
 
-House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system mirrors [`docs/example.html`](../example.html) — keep that file in sync when you add a new component class.
+House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
 
 ## Visual system
 
@@ -129,7 +129,7 @@ This document is \{{#template templates/status-pill.md label=Draft}}.
 
 Light / dark mode is driven by mdbook's theme picker (the paintbrush icon in the menu bar). The relevant CSS variable buckets live at the top of [`specify-docs.css`](../assets/theme/specify-docs.css):
 
-- `html.light`, `html.rust` → light palette (matches the light body of [`example.html`](../example.html))
+- `html.light`, `html.rust` → light palette
 - `html.coal`, `html.navy`, `html.ayu` → dark palette
 
 OS-level `prefers-color-scheme` is **no longer consulted directly** — `book.toml` sets `default-theme = "light"` and `preferred-dark-theme = "navy"`, then mdbook handles user toggling and persistence. If you add a new colour, declare it in every bucket so all five themes stay readable.
