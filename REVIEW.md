@@ -1,242 +1,159 @@
 # Code & Skill Review - specify + specify-cli
 
-Top three findings by tier: **F1 Fix init wire drift** (verified wire-contract defect), **F2 Delete package-client trait wrapper** (subtraction plus one operator-path panic removal), **F3 Delete `VersionMode::Preserve`** (dead/test-only init branch).
-Total ΔLOC if all land: **approximately -200 LOC**.
-Primary non-LOC axes moved: fewer traits/types, fewer branch guards, lower panic surface, lower prompt/call-site burden, fewer duplicate documentation sources.
-Top verified defects closed: **2 qualified** (`--hub`/init error documentation drift, `FIRST_PARTY_REGISTRY.parse().expect(...)` on the tool-fetch path). Defect-only net ΔLOC: **0**.
-Most likely to break in remediation: **F2** - it touches the resolver test injection path and package fetch runtime boundary.
+Top three findings by tier: **F1 Rename stale `init-requires-target-or-workspace` kebab** (verified wire-contract defect), **F2 Delete `InitPolicy::CreateMissing` and `default_for_load`** (subtraction plus one operator-path panic removal), **F3 Inline plan/create dedup helpers** (subtraction plus a -1 branch-cluster collapse).
+Total ΔLOC if all land: **approximately -85 LOC**.
+Primary non-LOC axes moved: fewer enum variants, fewer trait methods, lower panic surface, fewer hand-rolled helpers, fewer match-arm branches.
+Top verified defects closed: **1 qualified** (`Error::Diag.code == "init-requires-target-or-workspace"` emitted by `specify-cli` contradicts `specify-cli/docs/init.md:5,49` which documents the kebab as `init-requires-adapter-or-hub`). Defect-only net ΔLOC: **0**.
+Most likely to break in remediation: **F2** - it touches the `AtomicYaml` trait surface and the registry-add write path; the helper's atomic-write semantics must be preserved when the one `CreateMissing` caller is inlined.
 
 ## Reconnaissance
 
 - `tokei`:
-  - `specify`: **648 files**, **87,383 total lines**; Markdown **515 files / 49,801 lines**.
-  - `specify-cli`: **446 files**, **64,833 total lines**; Rust **245 files / 47,731 lines**.
-- `cargo tree --duplicates` (`specify-cli`): non-empty. First visible duplicate families included `base64 v0.21.7` / `v0.22.1`, `reqwest v0.12.28` / `v0.13.3`, `thiserror v1.0.69` / `v2.0.18`, and `strum v0.27.2` / `v0.28.0`; dominated by `wasmtime` / `wasm-pkg-client` transitives. `Cargo.toml` is frozen for this pass.
+  - `specify`: **647 files**, **87,087 total lines**; Markdown **514 files / 49,526 lines**.
+  - `specify-cli`: **446 files**, **64,723 total lines**; Rust **245 files / 47,642 lines**.
+- `cargo tree --duplicates` (`specify-cli`): non-empty. `base64 v0.21.7 / v0.22.1`, `reqwest v0.12.28 / v0.13.3`, `bitflags v2.11.1` against `rustix v0.38.44 / v1.1.4`, plus the wider `wasmtime` / `wasm-pkg-client` transitive families. `Cargo.toml` is frozen for this pass.
 - `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): **512** test functions.
-- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files - `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs`.
+- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files - all under `tests/` trees (`tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs`).
 - `wc -l docs/standards/*.md AGENTS.md`:
-  - `specify`: **556 total**.
-  - `specify-cli`: **638 total**.
+  - `specify`: **555 total**.
+  - `specify-cli`: **638 total** (DECISIONS.md adds **624** on top).
 - Files >500 lines under `crates/` and `src/` (`specify-cli`):
-  - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**, `crates/domain/src/change/plan/core/validate/tests.rs` **594**.
-  - Source: `src/commands/plan/create.rs` **966**, `crates/domain/src/discovery/document.rs` **891**, `crates/domain/src/slice/fusion.rs` **839**, `crates/domain/src/adapter/core.rs` **709**, `crates/domain/src/change/plan/core/model.rs` **629**, `crates/domain/src/spec/provenance.rs` **607**, `crates/domain/src/journal.rs` **595**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**.
+  - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**.
+  - Source: `src/commands/plan/create.rs` **956**, `crates/domain/src/discovery/document.rs` **891**, `crates/domain/src/slice/fusion.rs` **839**, `crates/domain/src/adapter/core.rs` **709**, `crates/domain/src/change/plan/core/model.rs` **629**, `crates/domain/src/spec/provenance.rs` **607**, `crates/domain/src/journal.rs` **595**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**.
 - `make checks` (`specify`): **passed** - `All checks passed.` Total failures: **0**; first five predicate ids: **none**.
-- `cargo make check` (`specify-cli`): **passed** - `Build Done in 172.19 seconds.` First error: **none**.
-- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **701** matching lines.
+- `cargo make check` (`specify-cli`): **passed** - `Build Done in 164.24 seconds.` First error: **none**.
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **695** matching lines (filename-`*tests*.rs` files included; production-path count is materially smaller).
 - `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **48** matching lines.
 
 ## Structural Findings
 
-### F1 - Fix init wire drift
+### F1 - Rename stale `init-requires-*` kebab to match docs
 
-**Evidence:** `specify-cli/DECISIONS.md:120-123` pins `specify init` to the `<adapter>` xor `--hub` contract and says the historical `init-requires-adapter-or-hub` envelope is gone from the CLI surface. The shipped clap surface matches that: `specify-cli/src/cli.rs:50-70` documents `--hub`, `conflicts_with = "hub"`, and `required_unless_present = "hub"`.
-
-Current-state grep:
+**Evidence:** `specify-cli/docs/init.md:5` says "missing both surfaces as `init-requires-adapter-or-hub`" and `:49` reinforces "refuses the ambiguous shape at the entry point with the `init-requires-adapter-or-hub` discriminant." The CLI binary emits a different kebab from five production-path sites:
 
 ```text
-docs/reference/quick-reference.md:21:run `specify init --workspace`
-docs/reference/quick-reference.md:70:specify init --workspace
-docs/reference/slice-skills/init.md:30:.specify/.cache/<adapter>/
-docs/reference/slice-skills/init.md:52:init-requires-adapter-or-hub
-docs/explanation/layered-stack.md:26:specify init --workspace
-plugins/spec/rules/spec.mdc:44:specify init --workspace
-docs/reference/configuration.md:19:workspace shape (`specify init --workspace`)
-docs/reference/configuration.md:59:workspace shape
-plugins/spec/skills/init/SKILL.md:23:init-requires-adapter-or-hub
+crates/domain/src/init.rs:171:                    code: "init-requires-target-or-workspace",
+crates/domain/src/init.rs:200:                    code: "init-requires-target-or-workspace",
+crates/error/src/error.rs:140:                "init-requires-target-or-workspace" => Some(
+crates/domain/src/init/regular.rs:35:        code: "init-requires-target-or-workspace",
+crates/domain/src/init/hub.rs:51:            code: "init-requires-target-or-workspace",
 ```
 
+The leftover `workspace` token predates the Specify 2.0 hub/adapter rename and is the same wire-contract drift the previous review closed in the skill repo (`plugins/spec/skills/init/SKILL.md`, `docs/reference/slice-skills/init.md`).
+
 **Action:**
-1. Replace `specify init --workspace` with `specify init --hub` in `docs/reference/quick-reference.md`, `docs/explanation/layered-stack.md`, `docs/reference/configuration.md`, and `plugins/spec/rules/spec.mdc`.
-2. Rename "workspace shape" prose in `docs/reference/configuration.md` to "hub shape" / "registry-only platform hub".
-3. Replace `init-requires-adapter-or-hub` in `plugins/spec/skills/init/SKILL.md` and `docs/reference/slice-skills/init.md` with the clap parse-error contract: neither/both exits `2`.
-4. Correct the adapter cache path in `docs/reference/slice-skills/init.md` from `.specify/.cache/<adapter>/` to `.specify/.cache/manifests/targets/<adapter>/`.
+1. Replace `init-requires-target-or-workspace` with `init-requires-adapter-or-hub` in `crates/domain/src/init/regular.rs:35`, `crates/domain/src/init/hub.rs:51`, and the hint-match arm in `crates/error/src/error.rs:140`.
+2. Update the two test assertions in `crates/domain/src/init.rs:171` and `:200` to match.
+3. Rephrase the docstring in `crates/domain/src/init.rs:86` and the test comment in `tests/init.rs:127` to use the new spelling.
+4. Adjust the historical note in `DECISIONS.md:266` to call out that 2.0 settled on the documented spelling.
 
-**Quality delta:** `0 LOC, -1 wire-contract defect cluster, -9 stale init-contract hits, -1 wrong cache-path claim`.
+**Quality delta:** `0 LOC, -1 wire-contract defect, -5 stale kebab emit sites`.
 
-**Net LOC:** affected docs/skill/rule lines **9 stale lines -> 9 corrected lines**.
+**Net LOC:** affected files **0 net change** (five string literals rename in place; test/doc strings round-trip).
 
-**Done when:** `rg -n 'specify init --workspace|mutually exclusive with `--workspace`|init-requires-adapter-or-hub|\.specify/\.cache/<adapter>|workspace shape' docs/reference/slice-skills/init.md docs/reference/configuration.md docs/reference/quick-reference.md docs/explanation/layered-stack.md docs/contributing/skills-test-coverage.md plugins/spec/skills/init/SKILL.md plugins/spec/rules/spec.mdc` returns **0**, and `make checks` still prints `All checks passed.`
+**Architectural impact:** Defect-only finding. The kebab is the wire contract; emitting a token that contradicts `docs/init.md` breaks any operator or CI that filters JSON envelopes by `error: "init-requires-adapter-or-hub"`.
 
-**Rule?** no - this is an active vocabulary transition, and the prompt explicitly forbids new predicates in this pass.
+**Done when:** `rg -nF 'init-requires-target-or-workspace' crates/ src/ tests/` returns **0**, `rg -nF 'init-requires-adapter-or-hub' crates/ src/ tests/ docs/` returns **≥ 6**, and `cargo make check` passes.
 
-**Counter-argument:** "Workspace" is still the operator concept for `.specify/workspace/` clones. It loses because `init --workspace` is not a shipped CLI flag; the setup topology is `--hub`, and the workspace noun belongs later under `specify workspace *`.
+**Rule?** no - one-time vocabulary alignment, no recurring pattern to police.
+
+**Counter-argument:** The kebab is unreachable from the shipped clap surface (clap intercepts the empty / both-set cases) so the drift is academic. It loses because `docs/init.md` advertises this kebab to operators and downstream tooling, and the domain-level `init()` function is a public library entry point exercised directly by tests; the surfaced kebab must match the documented contract.
 
 **Depends on:** none.
 
-### F2 - Delete package-client trait wrapper
+### F2 - Delete `InitPolicy::CreateMissing` and `default_for_load`
 
-**Evidence:** `crates/tool/src/package.rs:87-124` declares `PackageClient`, `WasmPkgClient`, and the only production impl. `crates/tool/src/resolver.rs:224-238` then declares `ClosurePackageClient` solely so tests can pass a closure through the trait. The same file also has a verified operator-path panic surface at `crates/tool/src/package.rs:151-154`:
-
-```text
-FIRST_PARTY_REGISTRY.parse().expect("FIRST_PARTY_REGISTRY parses as a Registry")
-```
-
-Current-state grep:
+**Evidence:** Exactly one production caller passes `InitPolicy::CreateMissing` (`src/commands/registry/add.rs:40`); every other call site already uses `RequireExisting`. The optional trait method exists solely to feed that single caller, and its `None` arm is a live operator-path panic:
 
 ```text
-crates/tool/src/package.rs:87:pub trait PackageClient
-crates/tool/src/package.rs:105:pub struct WasmPkgClient
-crates/tool/src/package.rs:117:impl PackageClient for WasmPkgClient
-crates/tool/src/package.rs:153:FIRST_PARTY_REGISTRY.parse().expect(...)
-crates/tool/src/resolver.rs:226:struct ClosurePackageClient<F>(F)
+src/commands/registry/add.rs:40:        with_state::<Registry, _, _>(ctx.layout(), InitPolicy::CreateMissing, move |registry| {
+crates/domain/src/config/atomic.rs:29:    fn default_for_load() -> Option<Self> {
+crates/domain/src/config/atomic.rs:55:pub enum InitPolicy {
+crates/domain/src/config/atomic.rs:100:        (None, InitPolicy::CreateMissing) => S::default_for_load().expect(
+crates/domain/src/config/atomic.rs:121:    fn default_for_load() -> Option<Self> {  // Registry
+crates/domain/src/config/atomic.rs:149:    fn default_for_load() -> Option<Self> {  // ProjectConfig, returns None
+crates/domain/src/change/plan/core/io.rs:24:    fn default_for_load() -> Option<Self> {  // Plan, returns None
 ```
+
+`InitPolicy::RequireExisting` is the only branch actually exercised by the seven non-Registry call sites under `src/commands/plan/*.rs`, `src/commands/slice/merge.rs`, and `src/commands/registry/remove.rs`.
 
 **Action:**
-1. Replace `PackageClient` / `WasmPkgClient` with a package-fetch free function in `crates/tool/src/package.rs` that takes `project_dir`, `request`, and `dest_hint`, builds the current-thread runtime, and calls the existing async fetch.
-2. Change `resolver::resolve_with` / `stage_and_install` / `acquire_source_bytes` to accept an `impl Fn(&PackageRequest, &Path) -> Result<AcquiredBytes, ToolError>` instead of `&impl PackageClient`.
-3. Delete `ClosurePackageClient` and pass the existing test closure directly.
-4. Add a small `first_party_registry(package)` helper and use it both where `unwrap_or_else` currently panics and where `load_config` already maps the parse error. This closes the panic while also deleting the duplicate parse/error construction.
+1. Inline `Registry::load_or_default` semantics in `src/commands/registry/add.rs`: `let mut registry = Registry::load(&ctx.project_dir)?.unwrap_or_else(|| Registry { version: 1, projects: Vec::new() }); … yaml_write(&Registry::path(&ctx.project_dir), &registry)?;`. Keep the existing validate-shape gates inside the mutation block.
+2. Delete `InitPolicy` outright. Change `with_state`'s signature to `fn with_state<S, B, F>(layout, missing_kind: &'static str, f: F)` and drop the match-on-policy in favour of a single `S::load(layout)?.ok_or_else(|| Error::ArtifactNotFound { kind: missing_kind, path })?`. Update the six remaining call sites from `InitPolicy::RequireExisting("plan.yaml")` to `"plan.yaml"`.
+3. Delete `AtomicYaml::default_for_load` (trait default + Registry / ProjectConfig / Plan impls).
+4. Delete the `with_state_creates_default_when_absent` test and adjust `with_state_propagates_closure_error_and_skips_write` to seed `registry.yaml` first (or drop it; the closure-error path is already covered by integration tests).
 
-**Quality delta:** `~-36 LOC, -1 trait, -1 struct, -1 test wrapper type, -1 operator-path panic surface, -3 trait-bound call sites`.
+**Quality delta:** `~-50 LOC, -1 enum, -1 enum variant, -1 trait method, -1 production-path expect() panic, -2 match arms`.
 
-**Net LOC:** `crates/tool/src/package.rs` + `crates/tool/src/resolver.rs` **781 -> ~745**.
+**Net LOC:** `crates/domain/src/config/atomic.rs` + `crates/domain/src/change/plan/core/io.rs` + `src/commands/registry/add.rs` **~447 → ~395**.
 
-**Architectural impact:** The resolver stops pretending there is a pluggable package-client hierarchy; it keeps one production fetch function and one test closure, which is the smaller cargo/ripgrep-style shape until a second real implementation exists.
+**Architectural impact:** `AtomicYaml` becomes a pure shape contract (`path` + `load`); creation policy stops being an interface concern and moves to the one caller that needs it. Cargo's `git2::Config` follows the same shape — load existing or fail, with creation explicit at the call site.
 
-**Done when:** `rg 'trait PackageClient|struct WasmPkgClient|ClosurePackageClient|FIRST_PARTY_REGISTRY\.parse\(\)\.expect' crates/tool/src` returns **0**, and `cargo make check` passes.
+**Done when:** `rg -nF 'InitPolicy|default_for_load' crates/ src/` returns **0**, `rg -nF '\.expect\("AtomicYaml::load' crates/` returns **0**, and `cargo make check` passes.
 
-**Rule?** no - one trait family, not a repeated repo pattern.
+**Rule?** no - one trait family, not a repo-wide pattern.
 
-**Counter-argument:** The trait names the test seam explicitly. It loses because there is one production implementation and one closure adapter; the wrapper exists only to satisfy abstraction ceremony.
+**Counter-argument:** The `CreateMissing` policy keeps `registry add` symmetric with the other mutation helpers. It loses because that symmetry costs an Option-typed trait method, a two-variant policy enum, an operator-path panic guard, and a dedicated unit test, all to factor out five lines of struct-literal construction in one handler.
 
 **Depends on:** none.
 
-### F3 - Delete `VersionMode::Preserve`
+### F3 - Inline plan/create dedup helpers and flatten the unknown-slice walk
 
-**Evidence:** `crates/domain/src/init.rs:36-55` carries `InitOptions.version_mode` and the `VersionMode` enum. `src/commands/init.rs:26-33`, `crates/domain/src/init/regular.rs:67`, and `crates/domain/src/init/hub.rs:84` always pass `VersionMode::WriteCurrent` on production paths. `VersionMode::Preserve` appears only in the test at `crates/domain/src/init/regular.rs:280-303`.
-
-Current-state grep:
+**Evidence:** `src/commands/plan/create.rs:268-309` carries two single-call-site helpers that wrap `Iterator::collect` and a three-loop walk that re-tests the same membership predicate:
 
 ```text
-crates/domain/src/init.rs:37:pub version_mode: VersionMode
-crates/domain/src/init.rs:49:pub enum VersionMode
-crates/domain/src/init.rs:55:Preserve
-crates/domain/src/init.rs:120:pub(crate) fn resolve_version(project_dir: &Path, mode: VersionMode)
-crates/domain/src/init/regular.rs:297:version_mode: VersionMode::Preserve
-src/commands/init.rs:31:version_mode: VersionMode::WriteCurrent
+src/commands/plan/create.rs:268:fn dedup_sets(sets: &[(String, ClaimKind, String)]) -> BTreeMap<(String, ClaimKind), String> {
+src/commands/plan/create.rs:278:fn dedup_clears(clears: &[(String, ClaimKind)]) -> BTreeSet<(String, ClaimKind)> {
+src/commands/plan/create.rs:289:fn refuse_unknown_slices(
+src/commands/plan/create.rs:293:    let known: BTreeSet<&str> = plan.entries.iter().map(|e| e.name.as_str()).collect();
+src/commands/plan/create.rs:294:    for (slice, _) in set_map.keys() { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
+src/commands/plan/create.rs:299:    for (slice, _) in clear_set       { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
+src/commands/plan/create.rs:304:    for slice in clear_all_set         { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
 ```
 
-**Action:**
-1. Delete `VersionMode` and `InitOptions.version_mode`.
-2. Change `resolve_version(project_dir, mode)` to `resolve_version()` returning `env!("CARGO_PKG_VERSION").to_string()`, or inline the two call sites if smaller.
-3. Remove `version_mode: VersionMode::WriteCurrent` fields from init call sites and test helpers.
-4. Delete `preserve_mode_keeps_existing_pinned_version`.
-
-**Quality delta:** `~-43 LOC, -1 enum, -1 struct field, -1 branch, -1 YAML read on an unreachable mode, -4 caller fields`.
-
-**Net LOC:** `crates/domain/src/init.rs` + `crates/domain/src/init/regular.rs` + `crates/domain/src/init/hub.rs` + `src/commands/init.rs` **1052 -> ~1009**.
-
-**Architectural impact:** Init has one shipped version policy pre-1.0: write the current binary floor. The preserve mode is not exposed by clap, so keeping it only makes tests exercise a product surface operators cannot use.
-
-**Done when:** `rg 'VersionMode|version_mode|Preserve|WriteCurrent' crates/domain/src/init.rs crates/domain/src/init/regular.rs crates/domain/src/init/hub.rs src/commands/init.rs` returns **0**, and `cargo make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** Re-init preserving a hand-edited version floor is polite. It loses because pre-1.0 explicitly ignores compatibility/migration posture, and the current CLI cannot request the preserve branch anyway.
-
-**Depends on:** none.
-
-### F4 - Cut capture rule to pointers
-
-**Evidence:** `plugins/capture/rules/capture.mdc` is **79 lines** and `alwaysApply: true`. It still says the capture plugin "migrates existing TypeScript services to production-grade Rust WASM components" and "Automate[s] large-scale migrations from TypeScript to Rust WASM" (`:10-12`), while `plugins/capture/README.md:3` says capture consumption lives in the `captures` source adapter and replay verification lives in Omnia build briefs. The rule then repeats generic TypeScript migration advice already owned by `code-typescript` / target briefs.
-
-Current-state grep:
-
-```text
-79 plugins/capture/rules/capture.mdc
-10:This plugin migrates existing TypeScript services to production-grade Rust WASM components...
-12:**Purpose**: Automate large-scale migrations from TypeScript to Rust WASM...
-44:### Known Challenges
-66:### TypeScript Libraries with No Rust Equivalent
-```
+Each of `dedup_sets` / `dedup_clears` has exactly one caller (`mutate_authority_overrides` at `:427-429`), and both bodies are one `iter().cloned().[map(…)].collect()`.
 
 **Action:**
-1. Keep the frontmatter.
-2. Replace the body with a short pointer set: the capture plugin only runs `/capture:wiretapper`; static extraction is `adapters/sources/code-typescript`; runtime capture consumption is `adapters/sources/captures`; replay is in Omnia `build` briefs; the skill body owns operational steps.
-3. Delete the architecture diagram, generic TypeScript analysis list, troubleshooting list, and "Rust equivalent" advice.
+1. Inline the two helpers at `mutate_authority_overrides` (`:427`-`:429`): `let set_map: BTreeMap<_, _> = sets.iter().cloned().map(|(s, k, v)| ((s, k), v)).collect(); let clear_set: BTreeSet<_> = clears.iter().cloned().collect();`. Delete `dedup_sets` and `dedup_clears`.
+2. Replace the three near-identical loops in `refuse_unknown_slices` with one chained iterator: `let unknown = set_map.keys().map(|(s, _)| s.as_str()).chain(clear_set.iter().map(|(s, _)| s.as_str())).chain(clear_all_set.iter().map(String::as_str)).find(|s| !known.contains(s)); if let Some(slice) = unknown { return Err(unknown_slice_err(plan_name, slice)); } Ok(())`.
 
-**Quality delta:** `~-60 LOC, -1 misleading always-applied prompt, -4 duplicated guidance sections, lower prompt/call-site burden`.
+**Quality delta:** `~-22 LOC, -2 helper fns, -1 branch cluster (three loops → one find)`.
 
-**Net LOC:** `plugins/capture/rules/capture.mdc` **79 -> <=20**.
+**Net LOC:** `src/commands/plan/create.rs` **956 → ~934**.
 
-**Architectural impact:** Always-applied plugin rules should route the model to the right source of truth, not restate migration policy that belongs in adapter briefs and target build references.
+**Done when:** `rg -nF 'fn dedup_sets|fn dedup_clears' src/commands/plan/create.rs` returns **0**, `rg -nF 'for (slice, _) in set_map.keys()' src/commands/plan/create.rs` returns **0**, and `cargo make check` passes.
 
-**Done when:** `wc -l plugins/capture/rules/capture.mdc` reports **<=20**, `rg 'migrates existing TypeScript services|production-grade Rust WASM components|Known Challenges|TypeScript Libraries with No Rust Equivalent' plugins/capture/rules/capture.mdc` returns **0**, and `make checks` passes.
+**Rule?** no - localised to one handler.
 
-**Rule?** no.
-
-**Counter-argument:** The current rule gives the model useful context without opening references. It loses because the context is now stale in the one place loaded unconditionally; progressive disclosure through `SKILL.md` and adapter references is cheaper and less wrong.
-
-**Depends on:** none.
-
-### F5 - Delete capture plugin page
-
-**Evidence:** `docs/reference/plugins/capture.md` is **53 lines** and duplicates `plugins/capture/README.md` (**21 lines**) plus `plugins/capture/skills/wiretapper/SKILL.md`. It already drifted: `docs/reference/plugins/capture.md:16-21` documents `/capture:wiretapper <legacy-dir> [app-name <name>]` and `--app-name`, but the skill frontmatter is positional `argument-hint: <legacy-dir> [app-name]` (`plugins/capture/skills/wiretapper/SKILL.md:4`).
-
-Current-state grep:
-
-```text
-docs/SUMMARY.md:37:- [Capture](reference/plugins/capture.md)
-docs/reference/plugins/capture.md:16:/capture:wiretapper <legacy-dir> [app-name <name>]
-docs/reference/plugins/capture.md:21:- `--app-name` - Name for the captured wiretap file.
-```
-
-**Action:**
-1. Delete `docs/reference/plugins/capture.md`.
-2. Remove the `Capture` child page from `docs/SUMMARY.md`.
-3. In `docs/reference/plugins/index.md`, either leave the Capture row unlinked or point it at `../../../plugins/capture/README.md`; do not keep a second synopsis page.
-
-**Quality delta:** `~-54 LOC, -1 duplicate docs page, -1 argument-shape drift, -1 documentation source of truth`.
-
-**Net LOC:** `docs/reference/plugins/capture.md` + `docs/SUMMARY.md` + `docs/reference/plugins/index.md` **177 -> ~123**.
-
-**Architectural impact:** Plugin behavior should live with the shipped plugin (`README.md` + `SKILL.md`); a mdBook mirror adds another contract surface and has already gone stale.
-
-**Done when:** `test ! -e docs/reference/plugins/capture.md`, `rg 'reference/plugins/capture.md|app-name <name>|--app-name' docs/reference/plugins docs/SUMMARY.md` returns **0**, and `make checks` passes.
-
-**Rule?** no.
-
-**Counter-argument:** The reference section should have a page for every plugin. It loses because this page is not authoritative and duplicates the plugin artifact users actually install.
-
-**Depends on:** none.
-
-### F6 - Delete impossible odd-arg guard
-
-**Evidence:** `src/commands/plan/cli.rs:57-63`, `:186-192`, and `:200-206` declare every call-site feeding `parse_slice_pair_args` with `num_args = 2`. The helper still carries an odd-length branch at `src/commands/plan/create.rs:238-258` while its own comment says clap prevents it in practice.
-
-Current-state span:
-
-```text
-src/commands/plan/create.rs:241:clap's own `num_args = 2` guard prevents
-src/commands/plan/create.rs:254:if !raw.len().is_multiple_of(2) {
-src/commands/plan/create.rs:257:detail: format!("{flag} expects {value_names}; got an odd number...
-```
-
-**Action:**
-1. Delete the `if !raw.len().is_multiple_of(2)` block from `parse_slice_pair_args`.
-2. Keep the empty-slice validation and typed `T::from_str` error mapping.
-
-**Quality delta:** `~-7 LOC, -1 impossible branch, lower handler noise`.
-
-**Net LOC:** `src/commands/plan/create.rs` **966 -> ~959**.
-
-**Done when:** `rg 'odd number of positional values|future surface changes|is_multiple_of\(2\)' src/commands/plan/create.rs` returns **0**, and `cargo make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** The guard protects future maintainers if they loosen clap. It loses because the present helper has exactly `num_args = 2` callers; future looseners can re-add validation with the new contract in hand.
+**Counter-argument:** Named helpers document intent. They lose because each "helper" is a one-line iterator chain inlined at one site; the function name is longer than the body, and `refuse_unknown_slices`'s three-loop shape obscures a single `find`-on-chain.
 
 **Depends on:** none.
 
 ## One-Touch Tidies
 
-None. Everything below the structural bar either failed the quality-axis test or wanted a broader cleanup than this pass allows.
+### T1 - Drop unused `_value_names` parameter on `parse_slice_pair_args`
 
-## Post-mortem
+**Evidence:** The helper carries a leading-underscore parameter that exists only to be ignored, and every caller pays the line of ceremony:
 
-- F1 (init wire drift): actual ΔLOC -1 vs predicted 0; done when clean; regressions none.
-- F2 (package-client trait wrapper): actual ΔLOC -36 vs predicted -36; done when clean; regressions none.
-- F3 (VersionMode::Preserve): actual ΔLOC -64 vs predicted -43; done when clean; regressions none.
-- F4 (capture rule pointers): actual ΔLOC -67 vs predicted -60; done when clean; regressions none.
-- F5 (capture plugin page): actual ΔLOC -54 vs predicted -54; done when clean; regressions none.
-- F6 (impossible odd-arg guard): actual ΔLOC -10 vs predicted -7; done when clean; regressions none.
+```text
+src/commands/plan/create.rs:245:    raw: &[String], flag: &'static str, _value_names: &str,
+src/commands/plan/create.rs:556:            "<slice> <kind>=<key>",
+src/commands/plan/create.rs:760:            "<slice> <kind>=<key>",
+src/commands/plan/create.rs:768:            "<slice> <kind>",
+```
+
+**Action:**
+1. Remove the `_value_names: &str` parameter from `parse_slice_pair_args` (`:244-246`).
+2. Drop the three `<slice> …` string arguments at `:556`, `:760`, `:768`.
+
+**Quality delta:** `-4 LOC, -1 unused parameter, lower call-site burden`.
+
+**Net LOC:** `src/commands/plan/create.rs` **956 → 952**.
+
+**Done when:** `rg -nF '_value_names' src/commands/plan/create.rs` returns **0**, `rg -nF '"<slice> <kind>=<key>"' src/commands/plan/create.rs` returns **0**, and `cargo make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** The token documents the value-name shape at each invocation. It loses because the helper does nothing with the value-name string and the closed `T::from_str` impl already shapes the diagnostic; the would-be documentation is dead bytes.
+
+**Depends on:** none.

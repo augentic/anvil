@@ -47,7 +47,7 @@ If the proposal lists `core` only, skip the iOS and Android phase sub-briefs who
 
 Each writer / verifier / reviewer phase sub-brief runs in its **own sub-agent** with a clean context window. `/spec:build` coordinates the sequence but does not execute phase bodies inline.
 
-**Inputs (orchestrator → sub-agent):** `task` (one of `core-writer`, `test-writer`, `ios-writer`, `android-writer`, `core-reviewer`, `ios-reviewer`, `android-reviewer`), `arguments` (standard arguments above), `mode` (`create`, `update`, or `repair` — decided by the orchestrator from on-disk inspection), `skip_verification` (true for shell writers; verification runs in a dedicated sub-agent afterward), `artifact_paths` (paths to `spec.md`, `design.md`, `proposal.md`, regenerated `composition.yaml`, and sibling `tokens.yaml` / `assets.yaml` when present), `orchestrated` (reviewer sub-agents only; when true the reviewer returns `design_findings` instead of writing a follow-up slice), `extra_context` (phase-specific: error output for `repair` mode, baseline test log for regression checks, prior phase warnings).
+**Inputs (orchestrator → sub-agent):** `task` (one of `core-writer`, `test-writer`, `ios-writer`, `android-writer`, `core-reviewer`, `ios-reviewer`, `android-reviewer`), `arguments` (standard arguments above), `mode` (`create`, `update`, or `repair` — decided by the orchestrator from on-disk inspection), `skip_verification` (true for shell writers; verification runs in a dedicated sub-agent afterward), `artifact_paths` (paths to `spec.md`, `design.md`, `proposal.md`, regenerated `composition.yaml`, and sibling `tokens.yaml` / `assets.yaml` when present), `orchestrated` (reviewer sub-agents only; signals that the reviewer is running inside a build phase so its `design_findings` should flow into § Consolidate review findings — reviewers always return `design_findings` for the parent to consolidate, never auto-spawn follow-up slices), `extra_context` (phase-specific: error output for `repair` mode, baseline test log for regression checks, prior phase warnings).
 
 **Outputs (sub-agent → orchestrator):** `status` (`success` / `failure` / `pending`), `files_modified`, `verification` (inline result when the sub-agent ran one), `errors`, `warnings`, `design_findings` (reviewers only; empty list when nothing surfaced).
 
@@ -67,6 +67,8 @@ When all in-scope reviews complete:
 ## § Template / version-pin drift handling
 
 The Vectis scaffold tool (`specify tool run vectis -- scaffold ...`) is render-only and ships with embedded version pins. Upstream bumps (Crux core, uniffi, AGP / Gradle, cargo-swift, Xcode) can break a freshly rendered scaffold even when the rest of the slice is correct. Detect this when a verify-repair loop fails repeatedly with cargo / Gradle / Xcode errors that look like API renames, missing imports, or toolchain mismatches rather than feature-level bugs. When detected, do **not** auto-fix in-band: record the failing combo (caps + shells), the failing host step, and the load-bearing error line, then mark the build outcome as `deferred` with a template-drift signal. The operator opens a separate slice rooted in the CLI repo to bump the embedded `versions.toml`.
+
+Symptom triage table: [`../references/known-drift.md`](../references/known-drift.md) — start here before escalating; if the reproduced failure matches a listed item, the operator can route directly to that item's playbook in the host-side template-updater workflow.
 
 ## § Phase outcome contract
 

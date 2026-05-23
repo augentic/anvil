@@ -136,7 +136,7 @@ For mode 1, `/spec:execute` reads the `failure` outcome, translates it to per-en
 
 `--summary` writing rules for post-merge findings: the load-bearing string is `"<validator-or-host-step-name>: <one-line failure snippet>"` (e.g. `"vectis.validate.composition: unresolved token colors.primary.dark"`, `"core.cargo-clippy: type mismatch in shared/src/app.rs:142"`, `"android.gradlew-assembleDebug: unresolved reference 'CoreFfi'"`). Keep it short enough to fit a CLI argument without truncation; route the validator report, invocation stderr, or full structured host step list through `--context` instead. When the declared validator itself fails to start, use `"vectis.validate.composition could not run: <stderr first line>"`. When a host prerequisite is missing, use the failing preflight step name such as `"android.preflight-java21: Java 21 not configured"`.
 
-If the cap-matrix failure looks like a version-pin drift (AGP / Gradle / uniffi mismatch surfaced after pins changed in this slice), the matching repair flow is the template-updater host workflow against `specify-cli` (see `build.md` Step 12). Record the failure here and surface it; the operator decides whether the next step is a template fix in the CLI repo, a pin rollback, or a follow-up slice.
+If the cap-matrix failure looks like a version-pin drift (AGP / Gradle / uniffi mismatch surfaced after pins changed in this slice), the matching repair flow is the template-updater host workflow against `specify-cli` (see [build.md](build.md) § Template / version-pin drift handling; symptom triage table: [`../references/known-drift.md`](../references/known-drift.md)). Record the failure here and surface it; the operator decides whether the next step is a template fix in the CLI repo, a pin rollback, or a follow-up slice.
 
 ### deferred
 
@@ -148,7 +148,7 @@ A merge prerequisite is unclear and `specify slice merge` was never invoked. Typ
 
 Plus Vectis-specific triggers around upstream-pin and shell-toolchain decisions:
 
-- A breaking upstream change (new Crux core release with renamed exports, a uniffi bump that decouples from `crux_core::cli::bindgen`, an AGP / Gradle major bump, a cargo-swift bump) surfaced during this slice's build or after a successful merge. The mechanical repair path lives in the `specify-cli` template-updater workflow, but the operator needs to confirm whether to take the upstream change at all before the brief commits.
+- A breaking upstream change (new Crux core release with renamed exports, a uniffi bump that decouples from `crux_core::cli::bindgen`, an AGP / Gradle major bump, a cargo-swift bump) surfaced during this slice's build or after a successful merge. The mechanical repair path lives in the `specify-cli` template-updater workflow (symptom triage table: [`../references/known-drift.md`](../references/known-drift.md)), but the operator needs to confirm whether to take the upstream change at all before the brief commits.
 - The operator wants to pin to a specific older version (holding back AGP 9.x because of `rust-android-gradle 0.9.6` drift, or holding back `crux_core` for a known-incompatible downstream consumer). The bump that verified is not the bump the operator wants to land.
 
 Record the deferral on the slice — first journal the question, then stamp the outcome:

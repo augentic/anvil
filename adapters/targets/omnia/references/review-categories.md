@@ -162,4 +162,4 @@ Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severit
 
 For each universal finding, also set `rule_id` to the stable codex ID that triggered it (for example, local finding `UNI-2` may carry `rule_id: UNI-014`). Use the severity from the codex rule.
 
-Tag findings that have a **Spec-change indicator** (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) for inclusion in the Adversarial Review and report synthesis. When the spec is silent on the concern a check raises, note the finding as a candidate for a spec update via `/spec:define`.
+Tag findings that have a **Spec-change indicator** (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) for inclusion in the Adversarial Review and report synthesis. When the spec is silent on the concern a check raises, surface the finding as a `spec-change` design finding for the operator's `/spec:plan` follow-up rather than auto-spawning a Specify slice (the legacy reviewer-spawns-slice path is retired in 2.0).

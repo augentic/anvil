@@ -34,7 +34,7 @@ cd "$IOS_SHELL_DIR" && make sim-build              # 3. Simulator build.
 
 If a step fails, fix the issue and re-run from step 1. Repeat until all three checks pass or 3 iterations are exhausted. If the same error recurs across iterations with no change in output, stop early. If still failing after 3 iterations: **stop**, report the remaining failures with full error output, and escalate.
 
-If the iOS app panics with `UniFFI contract version mismatch`, the installed `cargo-swift` version is incompatible with the active Vectis version pins — surface this to the operator (it is typically a template-drift fix; the legacy `template-updater` skill body now lives at [../build.md](../../build.md) § Step 12).
+If the iOS app panics with `UniFFI contract version mismatch`, the installed `cargo-swift` version is incompatible with the active Vectis version pins — surface this to the operator (it is typically a template-drift fix; the legacy `template-updater` skill body now lives at [../build.md](../../build.md) § Template / version-pin drift handling, with the symptom triage table at [`../../../references/known-drift.md`](../../../references/known-drift.md)).
 
 ## Worked examples
 

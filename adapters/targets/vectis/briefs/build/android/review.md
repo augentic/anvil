@@ -18,7 +18,7 @@ Carries the body of the retired `vectis-android-reviewer` skill. The Android-spe
 
 ## Orchestrated mode
 
-When the parent build brief passes `orchestrated: true`, the reviewer returns classified `design_findings` (`code-fix` vs `spec-change`) instead of writing a follow-up Specify slice. The parent consolidates findings across iOS and Android (see [../../build.md](../../build.md) § Consolidate review findings).
+The reviewer always returns classified `design_findings` (`code-fix` vs `spec-change`) for the parent build brief to consolidate across iOS and Android into one cross-platform finding set (see [../../build.md](../../build.md) § Consolidate review findings). The legacy "reviewer auto-creates a Specify change" path is retired in 2.0 — follow-up work is queued as a new slice via the operator's normal `/spec:plan` flow.
 
 ## Finding-ID conventions
 
