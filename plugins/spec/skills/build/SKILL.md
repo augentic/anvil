@@ -18,7 +18,6 @@ $TARGET                 = active slice's target adapter (from `specify plan next
 $PROJECT                = active slice's workspace project (workspace mode only)
 $SLICE_DIR              = .specify/slices/$SLICE/
 $LOG_PATH               = brief-captured stdout/stderr on failure (target-specific path)
-$SPECIFY_PLAN_LOCK_HELD = "1" when invoked from /spec:execute (parent already holds the plan lock)
 ```
 
 `$SLICE` defaults to the active `in-progress` entry. When `[slice-name]` is supplied it MUST equal that active entry; mismatches refuse to preserve the single-active-slice invariant.
@@ -26,7 +25,7 @@ $SPECIFY_PLAN_LOCK_HELD = "1" when invoked from /spec:execute (parent already ho
 ## Critical Path
 
 1. **Resolve the active slice.** Run `specify plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$TARGET` (and `$PROJECT` in workspace mode) from the same response.
-2. **Acquire the plan lock when invoked standalone.** When `$SPECIFY_PLAN_LOCK_HELD = 1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
+2. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, run `specify workspace sync $PROJECT` and `chdir` into `.specify/workspace/$PROJECT/` before continuing. Single-repo mode is a no-op.
 4. **Refuse on slice lifecycle.** Read `$SLICE_DIR/.metadata.yaml`. Proceed only when `status: refined`. Pre-`refined` (e.g. `refining`) → halt with hint pointing at `/spec:refine`. Post-`refined` (`built`, `merged`, `dropped`) → halt with "no rebuild needed" / "already merged".
 5. **Load the target build brief.** Run `specify target resolve $TARGET --format json` and read `adapters/targets/$TARGET/briefs/build.md` from the resolved path. The brief carries the orchestration (omnia: crate / test / guest / review; vectis: core / iOS / Android / `composition.yaml` regen; contracts: format-dispatched author-import-verify). Follow it linearly; do not invoke retired writer or reviewer skills directly.
@@ -45,20 +44,16 @@ A build failure surfaces a stop hint as the body's final output — a single str
 
 Render the hint as the final visible output of the run. Do not call `specify slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly. Do not write to `plan.yaml`; the per-entry status stays `in-progress`, which is the v1 wire signal that execution is parked rather than drained.
 
-## Plan-lock semantics
-
-This body shares the plan lock with `/spec:execute`. Detection is the env var `SPECIFY_PLAN_LOCK_HELD=1`: when set, the parent (almost always `/spec:execute`) holds the lock and this body MUST NOT re-acquire — re-entrant `flock(LOCK_EX | LOCK_NB)` would error and abort the loop. When unset (the standalone-breakout path) this body acquires the lock at the workspace root in workspace mode or at `.specify/plan.lock` in single-repo mode, releases on process exit, and exposes `SPECIFY_PLAN_LOCK_HELD=1` to any sub-invocations it spawns. Full detail and the acquisition snippet live in [plan-lock.md](../../references/plan-lock.md).
+Plan-lock acquisition follows [plan-lock.md](../../references/plan-lock.md); env var `SPECIFY_PLAN_LOCK_HELD=1` suppresses re-acquire.
 
 ## Guardrails
 
 - **Refuse only on slice lifecycle, never on synthesis tags.** `[unknown]` / `[conflict]` / `[divergence]` in `spec.md` are review signals; the build proceeds against whatever spec is on disk.
 - **Never write `plan.yaml` from this body.** Per-entry transitions are owned by `specify plan next` (writes `in-progress`) and `specify slice merge` (writes `done`). `/spec:build` only writes the slice's `.metadata.yaml` via `specify slice transition`.
-- **Never hand-edit `.metadata.yaml` or archive paths.** See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
-- **Never re-acquire the plan lock when `SPECIFY_PLAN_LOCK_HELD=1`.** Re-entrant acquisition aborts the loop.
+- **Lifecycle single-writer:** [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never invoke retired writer or reviewer skills directly.** The target build brief carries those bodies inline; calling them out-of-band bypasses brief orchestration and breaks shape-injection guarantees.
 
 ## References
 
-- [plan-lock.md](../../references/plan-lock.md) — env-var detection and the `flock` snippet shared with `/spec:execute` and `/spec:merge`.
 - [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
 - `adapters/targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts).

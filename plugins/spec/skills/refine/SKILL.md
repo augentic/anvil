@@ -13,7 +13,7 @@ argument-hint: "[slice-name]"
 1. **Resolve target and sources** — from `plan.yaml.slices[<slice>]`; each `sources[]` binding supplies `(source-key, candidate-id)`. Bare-string shorthand `<key>` normalises to `{ key: <key>, candidate: <slice-name> }`.
 2. **Create the slice directory** — `specify slice create $SLICE_NAME --target <target>`. CLI stamps `.metadata.yaml` at `refining`; this is the first step that materialises any path under `.specify/slices/$SLICE_NAME/`.
 3. **Extract serially per binding** — invoke each source adapter's `extract` brief once per binding in declaration order; persist `Evidence` at `.specify/slices/$SLICE_NAME/evidence/<source-key>.yaml`; emit `slice.extract.completed` per binding.
-4. **Synthesise** — load the target `shape` brief and write `proposal.md → spec.md → design.md → tasks.md` per the synthesis playbook; emit one `slice.synthesis.{unknown|conflict|divergence}` event per tagged requirement.
+4. **Synthesise** — load the target `shape` brief and write `proposal.md → spec.md → design.md → tasks.md` per the synthesis playbook.
 5. **Write `fusion.yaml`** — author the reconciliation index atomically at `.specify/slices/$SLICE_NAME/fusion.yaml` per [`../../references/synthesis/fusion.md`](../../references/synthesis/fusion.md); one entry per `REQ-*` id in `spec.md`, every contributing `(source, claim-id)` pair, inline truncated `value`, `winner` markers, closed `resolution` enum, and `resolution-trace` on override paths.
 6. **Validate** — `specify slice validate $SLICE_NAME` runs the provenance parser, the Evidence schema validator, and the `spec.md ↔ fusion.yaml ↔ evidence` drift gate (exit 2 on `slice-fusion-drift`). Do not transition if validation fails.
 7. **Transition to refined** — `specify slice transition $SLICE_NAME refined`. CLI emits `slice.transition.refined`. Print the closing hint.
@@ -55,7 +55,7 @@ Load the target `shape` brief via `specify target resolve <target> --format json
 3. `design.md` — fold the target `shape` brief plus design-side claims (`decision` / `section` / `excerpt` / `type` / `call`); include a `## UI / layout` H2 when spatial claims contribute.
 4. `tasks.md` — flat `- [ ] …` checkbox list following the target's task skeleton.
 
-For each requirement written with a `[unknown]` / `[conflict]` / `[divergence]` tag, append one NDJSON line per event to `.specify/journal.jsonl` using the adjacency-tagged `{ timestamp, event, payload }` shape with the matching `slice.synthesis.{unknown|conflict|divergence}` event id and payload `{ slice-name: $SLICE_NAME, requirement-id: REQ-NNN }` per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md) §Journal-event hand-off and the worked line in [`../plan/fixtures/divergence-journal/journal.jsonl`](../plan/fixtures/divergence-journal/journal.jsonl). Tags never park the slice — proceed to step 5 regardless of tag count.
+Tags never park the slice — proceed to step 5 regardless of tag count.
 
 ## Step 5 — Write `fusion.yaml`
 
@@ -69,7 +69,7 @@ Follow the block grammar in [`fusion.md`](../../references/synthesis/fusion.md).
 specify slice validate "$SLICE_NAME" --format json
 ```
 
-The CLI runs the spec.md provenance parser (`ID:` / `Sources:` / `Status:` shape; closed `Status` enum; tag/Status coherence; `Sources:` keys cross-resolved against plan-level bindings), the Evidence schema validator, and the `fusion.yaml` drift gate. On non-zero exit, surface the structured error verbatim; do **not** transition; the slice stays `refining`. Common causes: malformed `REQ-NNN` id, `Sources:` key not in the slice's bindings, headline tag without matching `Status:`, Evidence missing `claim-id` on a `requirement` / `criterion` claim, or `slice-fusion-drift` when `fusion.yaml` is stale w.r.t. `spec.md` or `evidence/*.yaml` (re-run step 5 to regenerate).
+The CLI runs the spec.md provenance parser (`ID:` / `Sources:` / `Status:` shape; closed `Status` enum; tag/Status coherence; `Sources:` keys cross-resolved against plan-level bindings), the Evidence schema validator, and the `fusion.yaml` drift gate. On success it appends synthesis-tag journal events per [`../../references/synthesis/tags.md`](../../references/synthesis/tags.md) §Journal-event hand-off (one line per tagged requirement; CLI-owned — not skill-appended). On non-zero exit, surface the structured error verbatim; do **not** transition; the slice stays `refining`. Common causes: malformed `REQ-NNN` id, `Sources:` key not in the slice's bindings, headline tag without matching `Status:`, Evidence missing `claim-id` on a `requirement` / `criterion` claim, or `slice-fusion-drift` when `fusion.yaml` is stale w.r.t. `spec.md` or `evidence/*.yaml` (re-run step 5 to regenerate).
 
 ## Step 7 — Transition to refined
 
@@ -110,7 +110,7 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 
 ## Guardrails
 
-- **Never hand-edit `.metadata.yaml`, `plan.yaml`, or `discovery.md`.** Route every lifecycle write through `specify slice create` / `specify slice transition` / `specify slice validate`; route any plan mutation through `specify plan amend`.
+- **Lifecycle single-writer:** [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never materialise `.specify/slices/$SLICE_NAME/` outside step 2.** `specify slice create` is the sole writer; before step 2 the on-disk shape is plan-only.
 - **Never run `extract` in parallel.** Bindings are processed in `slices[].sources[]` declaration order; deterministic goldens depend on it.
 - **Never park the slice on tags.** `[unknown]` / `[conflict]` / `[divergence]` are review signals; the slice still transitions to `refined`. Validation failure (provenance / Evidence schema) is the only condition that keeps the slice in `refining` after extract succeeds.

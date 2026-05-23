@@ -19,7 +19,6 @@ $PROJECT                = active slice's workspace project (workspace mode only)
 $SLICE_DIR              = .specify/slices/$SLICE/
 $LOG_PATH               = brief-captured stdout/stderr on pre-merge or post-merge failure
 $PROJECT_ROOT           = repo root (single-repo) or active workspace project slot (workspace mode)
-$SPECIFY_PLAN_LOCK_HELD = "1" when invoked from /spec:execute (parent already holds the plan lock)
 ```
 
 `$SLICE` defaults to the active `in-progress` entry. When `[slice-name]` is supplied it MUST equal that active entry; mismatches refuse to preserve the single-active-slice invariant.
@@ -27,7 +26,7 @@ $SPECIFY_PLAN_LOCK_HELD = "1" when invoked from /spec:execute (parent already ho
 ## Critical Path
 
 1. **Resolve the active slice.** Run `specify plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$TARGET` (and `$PROJECT` in workspace mode) from the same response.
-2. **Acquire the plan lock when invoked standalone.** When `$SPECIFY_PLAN_LOCK_HELD = 1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
+2. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, run `specify workspace sync $PROJECT` and `chdir` into `.specify/workspace/$PROJECT/` before continuing. Single-repo mode is a no-op.
 4. **Refuse if lifecycle is not `built`.** Read `$SLICE_DIR/.metadata.yaml`. Halt on `refining` / `refined` with a hint pointing at `/spec:build`; halt on `merged` / `dropped` with "already finalised". Only `built` proceeds.
 5. **Load and run the target merge brief.** Resolve `specify target resolve $TARGET --format json`; read `adapters/targets/$TARGET/briefs/merge.md`. The brief covers target-specific pre-merge gates (omnia: cargo + clippy + test + `cargo build --target wasm32-wasip2`; vectis: cap-matrix re-run; contracts: WASI tool against the slice). Pre-merge gate failure → emit a stop hint (§ Stop hint contract); slice stays `built`.
@@ -47,20 +46,17 @@ When the pre-merge gate, the CLI delta merge, or the post-merge hook fails, emit
 
 Lifecycle invariants: `pre-merge-gate` and `baseline-conflict` leave the slice at `built` and the plan entry at `in-progress`. `post-merge-validator` runs after `specify slice merge` succeeded, so the slice is already `merged` and the plan entry is already `done` — the hint is observability, not a park.
 
-## Plan-lock semantics
-
-This body shares the plan lock with `/spec:execute`. Detection is the env var `SPECIFY_PLAN_LOCK_HELD=1`: when set, the parent loop holds it and this body MUST NOT re-acquire — re-entrant `flock(LOCK_EX | LOCK_NB)` would error and abort the loop. When unset (the standalone-breakout path) this body acquires the lock at the workspace root in workspace mode or at `.specify/plan.lock` in single-repo mode, releases on process exit, and exposes `SPECIFY_PLAN_LOCK_HELD=1` to any sub-invocations. Full detail and the acquisition snippet live in [plan-lock.md](../../references/plan-lock.md).
+Plan-lock acquisition follows [plan-lock.md](../../references/plan-lock.md); env var `SPECIFY_PLAN_LOCK_HELD=1` suppresses re-acquire.
 
 ## Guardrails
 
-- **`specify slice merge` is the sole writer of per-entry `done`** and the only writer that transitions a slice to `merged` or moves a slice into `.specify/archive/`. Never hand-edit `plan.yaml`, `.metadata.yaml`, or archive paths. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
-- **Never re-acquire the plan lock when `SPECIFY_PLAN_LOCK_HELD=1`.** Re-entrant acquisition aborts the loop.
+- **`specify slice merge` is the sole writer of per-entry `done`** and the only writer that transitions a slice to `merged` or moves a slice into `.specify/archive/`.
+- **Lifecycle single-writer:** [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never auto-revert on a `post-merge-validator` failure.** The merge already landed; surface the failure and let the operator queue a repair slice. Reverting an archived slice is operator-only.
 - **Never treat `--check-only` success as a green light to skip the target merge brief's pre-merge gate.** `--check-only` probes baseline drift; the brief gate covers target-specific build, lint, and validation.
 - **Run the AskQuestion confirmation when invoked interactively** (i.e. `SPECIFY_PLAN_LOCK_HELD` unset). When invoked from `/spec:execute` the loop is its own confirmation seam; skip the prompt.
 
 ## References
 
-- [plan-lock.md](../../references/plan-lock.md) — env-var detection and the `flock` snippet shared with `/spec:execute` and `/spec:build`.
 - [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
 - `adapters/targets/<target>/briefs/merge.md` — pre-merge gate and post-merge hook this skill drives (omnia, vectis, contracts).
