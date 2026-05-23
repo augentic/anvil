@@ -17,6 +17,5 @@ Specify 2.0 routes every operator action through `/spec:*`. `/spec:init` scaffol
 
 ## References
 
-- [Adapter Resolution](references/adapter-resolution.md)
 - [Spec Format](references/spec-format.md)
 - [Synthesis pipeline](references/synthesis/)

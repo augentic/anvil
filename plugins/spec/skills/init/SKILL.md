@@ -26,7 +26,7 @@ The CLI owns every filesystem write — `.specify/`, `project.yaml`, the resolve
 
 After a regular init, the skill optionally detects existing code indicators (`Cargo.toml`, `package.json`, `src/`, etc.) and offers to create an `initial-baseline` slice via `specify slice create`. Hub init skips that step entirely — a hub never carries code. The three render templates (greenfield / brownfield / hub) live in [`../../references/init-output-templates.md`](../../references/init-output-templates.md).
 
-See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the skill-scope boundaries). The runbook in turn links the shared references siblings (output templates, topology flow, adapter resolution, baseline detection, and the high-level Specify model).
+See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail and [`../../references/init-output-templates.md`](../../references/init-output-templates.md) for the rendered greenfield, brownfield, and hub outputs.
 
 ## Guardrails
 
