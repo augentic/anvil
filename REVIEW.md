@@ -1,270 +1,343 @@
 # Code & Skill Review — specify + specify-cli
 
-Top three by tier: **F1 Delete topological sorter** (−157 LOC, −1 public method, −1 non-test `expect`), **F2 Delete unused adapter accessors** (−57 LOC, −4 public methods), **F3 Delete unused fusion writer** (−42 LOC, −1 public method, −1 module edge).
-Total ΔLOC if all findings land: **approximately −288 LOC**.
-Primary non-LOC axes moved: fewer public methods, fewer enum variants / impossible wire values, fewer non-test panic-adjacent matches, fewer module edges.
-Top verified defects closed: **none qualified**; `make checks` and `cargo make check` both passed. Defect-only net ΔLOC: **0**.
-Most likely to break in remediation: **F1** because removing the unused sorter also deletes tests that look like scheduler coverage; keep the `next_eligible` and `advance_next` tests.
+Top three by tier: **F1 Delete unemitted post-2.0 journal events** (−30 LOC, −3 enum variants, −3 unemittable wire IDs), **F2 Trim dead `crates/domain/src/adapter.rs` re-exports** (−18 names, −1 module-edge surface, ≥ 2 axes), **F3 Collapse duplicate `Candidate::matches` / `resolves`** (−15 LOC, −1 method, −1 redundant test).
+Total ΔLOC if all findings land: **approximately −85 LOC**.
+Primary non-LOC axes moved: fewer enum variants, fewer pub-API names, fewer methods, fewer dead documentation-only branches.
+Top verified defects closed: **none qualified**; `make checks` passed (`All checks passed.`) and `cargo clippy --workspace --all-targets --all-features -- -D warnings` finished clean. Defect-only net ΔLOC: **0** (under the +30 cap).
+Most likely to break in remediation: **F1** because the three `EventKind` variants are documented as a wire-shape lock for post-2.0 emit sites; removing them invites a cosmetic re-add later. Mitigation: the master rule says ignore back-compat pre-1.0; re-adding the closed enum variants when emit sites land is a one-line edit.
 
 ## Reconnaissance
 
 - `tokei`:
-  - `specify`: 648 files, 87,105 total lines, 515 Markdown files / 49,647 Markdown lines.
-  - `specify-cli`: 455 files, 66,216 total lines, 249 Rust files / 48,723 Rust lines.
-- `cargo tree --duplicates` (`specify-cli`): non-empty; examples include `base64 v0.21.7` and `v0.22.1`, `reqwest v0.12.28` and `v0.13.3`, `rustix v0.38.44` and `v1.1.4`, `thiserror v1.0.69` and `v2.0.18`. Cargo edges are frozen for this pass, so no dependency finding qualified.
-- `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): **517 matches across 36 files**.
-- `rg --files -g '**/mod.rs'` (`specify-cli`): **3 files**: `crates/domain/tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `tests/common/mod.rs`.
+  - `specify`: 648 files, 87,034 total lines, Markdown 3,104 lines / 82 files (excluding embedded code blocks).
+  - `specify-cli`: 455 files, 65,894 total lines, Rust 48,491 lines / 249 files.
+- `cargo tree --duplicates` (`specify-cli`): non-empty (`base64 v0.21.7` and `v0.22.1`, `reqwest v0.12.28` and `v0.13.3`, `rustix v0.38.44` and `v1.1.4`, `thiserror v1.0.69` and `v2.0.18`); transitive `wasmtime` / `wasm-pkg-client` chains. `Cargo.toml` is frozen for the pass.
+- `cargo +nightly udeps --workspace --all-targets`: **`All deps seem to have been used.`** No dependency-removal finding qualified.
+- `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): 36 files matched (per-file count not aggregated; previous review's 517 figure remains the order of magnitude).
+- `rg --files -g '**/mod.rs'`: **3 files** (`crates/domain/tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `tests/common/mod.rs`).
 - `wc -l docs/standards/*.md AGENTS.md`:
   - `specify`: **534 total**.
-  - `specify-cli`: **639 total**.
-- Files >500 lines under `crates/` and `src/` (`specify-cli`): `crates/tool/src/validate.rs` 520, `crates/domain/src/journal.rs` 656, `crates/domain/src/slice/fusion.rs` 903, `crates/domain/src/discovery/document.rs` 908, `crates/domain/src/spec/provenance.rs` 607, `crates/domain/src/adapter/core.rs` 771, `crates/domain/src/adapter/cache/io.rs` 509, `crates/domain/src/change/plan/core/model.rs` 630, `src/commands/plan/create.rs` 966.
+  - `specify-cli`: **636 total** (excluding `DECISIONS.md`).
+- Files >500 lines under `crates/` and `src/` (`specify-cli`):
+  - Tests: `crates/domain/tests/workspace.rs` 1041, `crates/domain/tests/finalize.rs` 947, `crates/domain/tests/registry.rs` 922, `crates/domain/src/change/plan/core/validate/tests.rs` 695.
+  - Source: `src/commands/plan/create.rs` 966, `crates/domain/src/discovery/document.rs` 908, `crates/domain/src/slice/fusion.rs` 839, `crates/domain/src/adapter/core.rs` 709, `crates/domain/src/journal.rs` 631, `crates/domain/src/change/plan/core/model.rs` 629, `crates/domain/src/spec/provenance.rs` 607, `crates/tool/src/validate.rs` 520, `crates/domain/src/adapter/cache/io.rs` 509.
 - `make checks` (`specify`): **passed**, output `All checks passed.` Total failures: **0**; first 5 predicate ids: **none**.
-- `cargo make check` (`specify-cli`): **passed**, output summary `855 tests run: 855 passed, 2 skipped` and `Build Done in 99.78 seconds.` First error: **none**.
-- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): **731 matches across 57 files**.
-- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/` (`specify-cli`): **50 matches across 21 files**.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` (`specify-cli`): **passed** (`Finished \`dev\` profile […] in 48.00s`). First error: **none**.
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' --glob '!**/wasi-tools/**' crates/ src/` (`specify-cli`): **716 matches across 57 files** (previous review reported 731; the −15 came from the F1–F4 deletions in the prior pass).
+- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' --glob '!**/wasi-tools/**' crates/ src/` (`specify-cli`): **49 matches across 20 files** (previous review reported 50; −1 came from F1).
 
 ## Structural Findings
 
-### F1 — Delete topological sorter
+### F1 — Delete unemitted post-2.0 journal event variants
 
-**Evidence:** `crates/domain/src/change/plan/core/next.rs:100-140` defines `Plan::topological_order`, but `rg 'topological_order\('` finds only the method and its own tests in the same file. Recon also shows `crates/domain/src/change/plan/core/next.rs` at 374 lines, and the raw panic-adjacent count is 731 because the unused method contains `expect("indegree init covers every node")` at `crates/domain/src/change/plan/core/next.rs:130`.
+**Evidence:** `crates/domain/src/journal.rs:241-268` declares `EventKind::SliceBuildFailed`, `EventKind::SliceMergeConflicted`, and `EventKind::PlanTransitionArchived`. `rg 'SliceBuildFailed|SliceMergeConflicted|PlanTransitionArchived'` finds **only** the variant declarations themselves — no constructor, no test, no caller in `src/` or any other domain module. The doc comments concede the gap: each variant says "Emitter sites land post-2.0; the wire shape is locked here." The master rule explicitly ignores pre-1.0 wire-shape concerns.
 
 Current-state grep:
 
 ```text
-crates/domain/src/change/plan/core/next.rs:100:    pub fn topological_order(&self) -> Result<Vec<&Entry>, Error> {
-crates/domain/src/change/plan/core/next.rs:261:            .topological_order()
-crates/domain/src/change/plan/core/next.rs:290:        let err = plan.topological_order().expect_err("cycle must surface as Err");
-crates/domain/src/change/plan/core/next.rs:310:            .topological_order()
-crates/domain/src/change/plan/core/next.rs:322:            .topological_order()
-crates/domain/src/change/plan/core/next.rs:372:        assert!(plan.topological_order().is_err(), "cycle should surface from topological_order");
+crates/domain/src/journal.rs:241:    #[serde(rename = "slice.build.failed", rename_all = "kebab-case")]
+crates/domain/src/journal.rs:242:    SliceBuildFailed {
+crates/domain/src/journal.rs:253:    #[serde(rename = "slice.merge.conflicted", rename_all = "kebab-case")]
+crates/domain/src/journal.rs:254:    SliceMergeConflicted {
+crates/domain/src/journal.rs:264:    #[serde(rename = "plan.transition.archived", rename_all = "kebab-case")]
+crates/domain/src/journal.rs:265:    PlanTransitionArchived {
 ```
 
 **Action:**
-1. Delete `Plan::topological_order` from `crates/domain/src/change/plan/core/next.rs`.
-2. Delete tests `topo_order_rfc_example`, `topo_order_cycle_errors`, `topo_order_deterministic_tiebreak`, and `next_eligible_with_cycle`.
-3. Drop now-unused imports: `std::cmp::Reverse`, `BinaryHeap`, `petgraph::Direction`, `petgraph::algo::{tarjan_scc, toposort}`, and `petgraph::graph::NodeIndex`.
-4. Keep `next_eligible_*` and `advance_next_*` tests; those cover the live scheduler.
+1. Delete the three variant blocks at `crates/domain/src/journal.rs:233-268` (each is a doc block + `#[serde]` attr + `Variant { … },` body, ~10 lines each).
+2. No test deletions required — `rg` shows zero test references.
+3. No call-site rewrites — `rg` shows zero constructors.
 
 Before:
 
 ```rust
-pub fn topological_order(&self) -> Result<Vec<&Entry>, Error> {
-    let graph = entry_dependency_graph(&self.entries);
-    let idx: HashMap<&str, NodeIndex> = graph.node_indices().map(|n| (graph[n], n)).collect();
-    // ...
-    let entry = indegree.get_mut(&downstream).expect("indegree init covers every node");
-}
+#[serde(rename = "slice.build.failed", rename_all = "kebab-case")]
+SliceBuildFailed {
+    slice_name: String,
+},
+#[serde(rename = "slice.merge.conflicted", rename_all = "kebab-case")]
+SliceMergeConflicted {
+    slice_name: String,
+},
+#[serde(rename = "plan.transition.archived", rename_all = "kebab-case")]
+PlanTransitionArchived {
+    plan_name: String,
+},
 ```
 
 After:
 
 ```rust
-// No replacement. `plan next` uses `next_eligible` / `advance_next`.
+// No replacement. Re-add the closed variants when /spec:build, /spec:merge,
+// or specify plan finalize gain the matching emit sites.
 ```
 
-**Quality delta:** `−157 LOC, −1 public method, −1 panic-adjacent non-test match, −5 imports, −1 unused branch family`.
+**Quality delta:** `−30 LOC, −3 enum variants, −3 unemittable wire IDs, −3 doc-only paragraphs`.
 
-**Net LOC:** `crates/domain/src/change/plan/core/next.rs` **374 → ~217**.
+**Net LOC:** `crates/domain/src/journal.rs` **631 → ~601**.
 
-**Done when:** `rg 'topological_order|indegree init covers every node' crates/domain/src/change/plan/core/next.rs` returns **0** and `cargo make check` passes.
+**Done when:** `rg 'SliceBuildFailed|SliceMergeConflicted|PlanTransitionArchived' crates/ src/` returns **0** and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
 
 **Rule?** no.
 
-**Counter-argument:** A full topological order is useful for future diagnostics. It loses because the live CLI scheduler never calls it, and `doctor/cycle.rs` already owns cycle diagnostics.
+**Counter-argument:** Locking the wire shape now lets future emit sites land without a sequenced enum migration. It loses because the master rule explicitly drops pre-1.0 back-compat as a justification, the variants are also untested (so the "lock" claim is unverified), and re-adding three closed-enum variants is a 30-line edit when emit sites materialise.
 
 **Depends on:** none.
 
-### F2 — Delete unused adapter accessors
+### F2 — Trim dead `crates/domain/src/adapter.rs` re-exports
 
-**Evidence:** `crates/domain/src/adapter/core.rs:355-366`, `crates/domain/src/adapter/core.rs:428-439`, and `crates/domain/src/adapter/core.rs:456-466` expose `locate` and `brief_path` helpers with no external callers. `rg '(SourceAdapter|TargetAdapter)::locate|\.locate\('` returns **no matches**. `rg '\.brief_path\('` returns only the two wrapper bodies calling the inner helper.
+**Evidence:** `crates/domain/src/adapter.rs:36-48` re-exports 28 names. A targeted scan across `src/`, `crates/error/`, `crates/tool/`, `wasi-tools/`, and `crates/domain/tests/` finds external callers for only **10** of them: `ADAPTER_FILENAME`, `AdapterLocation`, `Axis`, `ResolvedTargetAdapter`, `SourceAdapter`, `TargetAdapter`, `cache_dir`, `check_axis_unique_for_name`, `CacheLayout`, `SourceOperation`, `cache_read_index`, and `TargetOperation`. The remaining 18 names are either used only inside `crates/domain/src/adapter/` (so the in-module `pub` already covers them) or have no callers at all.
 
-Current-state grep:
+Current-state grep (a sample of the unused names; full list below):
 
 ```text
-crates/domain/src/adapter/core.rs:365:    pub fn brief_path(&self, root_dir: &Path, operation: SourceOperation) -> Option<PathBuf> {
-crates/domain/src/adapter/core.rs:438:    pub fn brief_path(&self, root_dir: &Path, operation: TargetOperation) -> Option<PathBuf> {
-crates/domain/src/adapter/core.rs:456:    pub fn brief_path(&self, operation: SourceOperation) -> Option<PathBuf> {
-crates/domain/src/adapter/core.rs:465:    pub fn brief_path(&self, operation: TargetOperation) -> Option<PathBuf> {
+$ rg 'ADAPTERS_DIR|EXTRACTIONS_CACHE_DIR|MANIFESTS_CACHE_DIR|adapter_axis_dir|AdapterToolDeclaration|CacheMode|ResolvedSourceAdapter|CacheFingerprint|CacheIndexEntry|CacheLookup|CacheMissReason|FingerprintRecord|FingerprintSource|FingerprintToolVersion|LookupOutcome|append_index|sha256_file|sha256_prefixed|cache_lookup|cache_write' src/ crates/error/ crates/tool/ wasi-tools/ crates/domain/tests/
+(no matches)
 ```
 
+The same 18 names are unused outside the `adapter/` subtree per `rg --type rust crates/ src/` (matches only in `crates/domain/src/adapter.rs`, `crates/domain/src/adapter/core.rs`, `crates/domain/src/adapter/cache.rs`, `crates/domain/src/adapter/cache/io.rs`).
+
 **Action:**
-1. Delete `SourceAdapter::locate` and `TargetAdapter::locate`.
-2. Delete `SourceAdapter::brief_path`, `TargetAdapter::brief_path`, `ResolvedSourceAdapter::brief_path`, and `ResolvedTargetAdapter::brief_path`.
-3. Keep private `locate_axis`; it is still used by `resolve`.
+1. In `crates/domain/src/adapter.rs:36-47`, remove these 18 names from the two `pub use` blocks: `ADAPTERS_DIR`, `EXTRACTIONS_CACHE_DIR`, `MANIFESTS_CACHE_DIR`, `AdapterToolDeclaration`, `CacheMode`, `ResolvedSourceAdapter`, `adapter_axis_dir`, `CacheFingerprint`, `CacheIndexEntry`, `CacheLookup`, `CacheMissReason`, `FingerprintRecord`, `FingerprintSource`, `FingerprintToolVersion`, `LookupOutcome`, `append_index`, `sha256_file`, `sha256_prefixed`, `lookup as cache_lookup`, `write as cache_write`.
+2. Leave the `pub` modifiers on the original definitions in `core.rs`, `cache.rs`, and `cache/io.rs` — internal callers reach them via `crate::adapter::core::…` / `crate::adapter::cache::…` paths and the test harness inside the `adapter/` subtree relies on `pub` for cross-module use.
+3. Run `cargo clippy --workspace --all-targets --all-features -- -D warnings` to confirm no consumer broke; the 10 surviving re-exports cover every external caller.
 
 Before:
 
 ```rust
-pub fn brief_path(&self, root_dir: &Path, operation: SourceOperation) -> Option<PathBuf> {
-    self.briefs.get(&operation).map(|relative| root_dir.join(relative))
-}
+pub use core::{
+    ADAPTER_FILENAME, ADAPTERS_DIR, AdapterLocation, AdapterToolDeclaration, Axis, CacheMode,
+    EXTRACTIONS_CACHE_DIR, MANIFESTS_CACHE_DIR, ResolvedSourceAdapter, ResolvedTargetAdapter,
+    SourceAdapter, TargetAdapter, adapter_axis_dir, cache_dir, check_axis_unique_for_name,
+};
+pub use cache::{
+    CacheFingerprint, CacheIndexEntry, CacheLayout, CacheLookup, CacheMissReason,
+    FingerprintRecord, FingerprintSource, FingerprintToolVersion, LookupOutcome, SourceOperation,
+    append_index, lookup as cache_lookup, read_index as cache_read_index, sha256_file,
+    sha256_prefixed, write as cache_write,
+};
 ```
 
 After:
 
 ```rust
-// No replacement. Callers already use resolved roots / manifest fields directly.
+pub use core::{
+    ADAPTER_FILENAME, AdapterLocation, Axis, ResolvedTargetAdapter, SourceAdapter, TargetAdapter,
+    cache_dir, check_axis_unique_for_name,
+};
+pub use cache::{CacheLayout, SourceOperation, read_index as cache_read_index};
 ```
 
-**Quality delta:** `−57 LOC, −6 public methods, −4 wrapper call sites, −1 public API surface`.
+**Quality delta:** `−10 LOC, −18 public-API names, −2 module-edge surfaces, +0 axes broken (every kept name still has at least one external caller)`.
 
-**Net LOC:** `crates/domain/src/adapter/core.rs` **771 → ~714**.
+**Net LOC:** `crates/domain/src/adapter.rs` **49 → ~39**; downstream module-edges drop because external callers no longer pull through redundant re-exports.
 
-**Done when:** `rg 'pub fn (locate|brief_path)' crates/domain/src/adapter/core.rs` returns **0** and `cargo make check` passes.
+**Done when:** `rg 'pub use core::|pub use cache::' crates/domain/src/adapter.rs | wc -l` returns **2**, the surviving names match the after-block above verbatim, and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
 
 **Rule?** no.
 
-**Counter-argument:** These are convenient for future skill-side brief loading. It loses because no current Rust path uses them, and pre-1.0 public API compatibility is explicitly out of scope.
+**Counter-argument:** Re-exports document the module's "public face." It loses because the master rule prefers fewer module-crossing names, the unused 18 hide the 10 that callers actually need, and re-adding a name is one edit when a future caller wants it.
 
 **Depends on:** none.
 
-### F3 — Delete unused fusion writer
+### F3 — Collapse duplicate `Candidate::matches` / `resolves`
 
-**Evidence:** `crates/domain/src/slice/fusion.rs:231-233` defines `FusionIndex::write_atomic`, but `rg 'write_atomic\(&path\)|pub fn write_atomic|crate::slice::atomic' crates/domain/src/slice/fusion.rs` shows only the method, its private tests, and its `atomic` import. The shipped refine skill states the skill body is the writer: `plugins/spec/skills/refine/SKILL.md:62` says, `There is no specify slice fusion write verb — the skill body is the writer`.
+**Evidence:** `crates/domain/src/discovery/candidate.rs:86-103` defines two methods that share the same body — `Candidate::matches` (5 lines) and `Candidate::resolves` (3 lines, calls `matches`). Production callers use only `resolves`; tests cover both surfaces. The doc on `resolves` admits the duplication: `"Kept as a thin alias so call sites can read in the same vocabulary the RFC speaks."`
 
 Current-state grep:
 
 ```text
-crates/domain/src/slice/fusion.rs:28:use crate::slice::atomic;
-crates/domain/src/slice/fusion.rs:231:    pub fn write_atomic(&self, path: &Path) -> Result<()> {
-crates/domain/src/slice/fusion.rs:617:        original.write_atomic(&path).expect("write");
-crates/domain/src/slice/fusion.rs:619:        original.write_atomic(&path).expect("re-write");
-crates/domain/src/slice/fusion.rs:632:        let err = bad.write_atomic(&path).expect_err("schema must reject");
+crates/domain/src/discovery/document.rs:151:        let hits: Vec<&Candidate> = self.candidates.iter().filter(|c| c.resolves(token)).collect();
+crates/domain/src/discovery/candidate.rs:93:    pub fn matches(&self, needle: &str) -> bool {
+crates/domain/src/discovery/candidate.rs:101:    pub fn resolves(&self, token: &str) -> bool {
+crates/domain/src/discovery/candidate.rs:102:        self.matches(token)
 ```
 
+`rg '\.matches\(' crates/ src/` outside the file returns 0 production hits; `rg '\.resolves\(' crates/ src/` outside the file returns 1 production hit (line 151 above). Tests in `candidate.rs:222-249` exercise both surfaces redundantly (the `resolves_is_alias_for_matches` test exists solely to prove the alias is still an alias).
+
 **Action:**
-1. Delete `FusionIndex::write_atomic`.
-2. Delete tests `write_atomic_then_load_round_trips_byte_stable` and `write_atomic_rejects_schema_invalid_index`.
-3. Remove `use crate::slice::atomic;`.
+1. Delete `Candidate::matches` (lines 86-95) — its 1-line body is the entire `resolves` body once expanded.
+2. Rename `resolves`'s body so it carries the merged comment/expansion: `self.id == needle || self.aliases.contains(needle)`.
+3. Drop the test `resolves_is_alias_for_matches` (lines 239-250) and rename the surviving `matches_resolves_id_then_aliases` test (lines 222-236) to `resolves_id_then_aliases`, replacing each `candidate.matches(…)` call with `candidate.resolves(…)`.
+4. No change to `discovery/document.rs:151` — it already uses `c.resolves(token)`.
 
 Before:
 
 ```rust
-pub fn write_atomic(&self, path: &Path) -> Result<()> {
-    self.validate()?;
-    atomic::yaml_write(path, self)
+pub fn matches(&self, needle: &str) -> bool {
+    self.id == needle || self.aliases.contains(needle)
+}
+
+pub fn resolves(&self, token: &str) -> bool {
+    self.matches(token)
 }
 ```
 
 After:
 
 ```rust
-// No replacement. The CLI validates and reads fusion.yaml; refine writes it.
-```
-
-**Quality delta:** `−42 LOC, −1 public method, −1 module edge, −2 writer-only tests`.
-
-**Net LOC:** `crates/domain/src/slice/fusion.rs` **903 → ~861**.
-
-**Done when:** `rg 'write_atomic\(&path\)|pub fn write_atomic|crate::slice::atomic' crates/domain/src/slice/fusion.rs` returns **0** and `cargo make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** A typed writer is safer than agent-authored YAML. It loses because the shipped workflow explicitly assigns writing to the skill body and this method is only tested against itself.
-
-**Depends on:** none.
-
-### F4 — Delete impossible ClearAll action
-
-**Evidence:** `AuthorityOverrideAction::ClearAll` is serializable but not emitted by the CLI. `src/commands/plan/create.rs:385-403` expands `--clear-authority-overrides` into one `AuthorityOverrideAction::Clear` event per existing kind, and the integration test at `tests/plan_orchestrate.rs:2113-2163` asserts every emitted event has `"action":"clear"`. `rg 'AuthorityOverrideAction::ClearAll|clear-all'` finds only the enum docs and an artificial unit test in `crates/domain/src/journal.rs`.
-
-Current-state grep:
-
-```text
-crates/domain/src/journal.rs:226:        /// is [`AuthorityOverrideAction::ClearAll`].
-crates/domain/src/journal.rs:313:pub enum AuthorityOverrideAction {
-crates/domain/src/journal.rs:601:                action: AuthorityOverrideAction::ClearAll,
-crates/domain/src/journal.rs:608:        assert!(line.contains(r#""action":"clear-all""#));
-```
-
-**Action:**
-1. Delete `AuthorityOverrideAction::ClearAll`.
-2. Delete `plan_amend_authority_override_clear_all_elides_optional_fields` from `crates/domain/src/journal.rs`.
-3. Adjust the optional-field comments so `claim_kind` is absent only for future actions, or simply remove the ClearAll-specific sentence.
-4. Keep `tests/plan_orchestrate.rs:2113-2163`; it is the live behavior.
-
-Before:
-
-```rust
-pub enum AuthorityOverrideAction {
-    Set,
-    Clear,
-    ClearAll,
+pub fn resolves(&self, token: &str) -> bool {
+    self.id == token || self.aliases.contains(token)
 }
 ```
 
-After:
+**Quality delta:** `−15 LOC, −1 method, −1 alias-only test, −1 internal idiom (a method calling its own twin)`.
 
-```rust
-pub enum AuthorityOverrideAction {
-    Set,
-    Clear,
-}
-```
+**Net LOC:** `crates/domain/src/discovery/candidate.rs` **318 → ~303**.
 
-**Quality delta:** `−25 LOC, −1 enum variant, −1 impossible wire value, −1 unit test for un-emitted behavior`.
-
-**Net LOC:** `crates/domain/src/journal.rs` **656 → ~631**.
-
-**Done when:** `rg 'ClearAll|"clear-all"' crates/domain/src/journal.rs` returns **0** and `cargo make check` passes.
+**Done when:** `rg 'fn matches\(|\.matches\(' crates/domain/src/discovery/` returns **0** (the method and its callers are gone) and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
 
 **Rule?** no.
 
-**Counter-argument:** `clear-all` preserves which flag the operator typed. It loses because current integration behavior deliberately records per-kind `clear` events, and carrying a never-emitted wire value makes consumers handle a ghost branch.
+**Counter-argument:** Two names lets one read like RFC prose (`resolves`) and the other like Rust convention (`matches`). It loses because there is exactly one production caller, the alias test exists only to assert the duplication is still in place, and the merged surface is the one the RFC already speaks.
 
 **Depends on:** none.
 
 ## One-Touch Tidies
 
-### T1 — Inline one-use fusion path
+### T1 — Inline `discovery_path()`
 
-**Evidence:** `crates/domain/src/slice/fusion.rs:303-305` defines `fusion_path`, and `rg 'fusion_path\('` finds one production caller at `src/commands/slice/validate.rs:198` plus its own test at `crates/domain/src/slice/fusion.rs:899-901`.
+**Evidence:** `crates/domain/src/discovery/document.rs:638-640` defines `pub fn discovery_path(project_dir: &Path) -> PathBuf { project_dir.join("discovery.md") }`. The only production caller is `Layout::discovery_path` at `crates/domain/src/config.rs:210-211`, which is itself the wrapper every other handler uses. The standalone helper plus the re-export in `crates/domain/src/discovery.rs:18` is two indirection levels for one `.join("discovery.md")`.
 
 Current-state grep:
 
 ```text
-src/commands/slice/validate.rs:198:    let fusion_path = fusion::fusion_path(slice_dir);
-crates/domain/src/slice/fusion.rs:303:pub fn fusion_path(slice_dir: &Path) -> PathBuf {
-crates/domain/src/slice/fusion.rs:900:        let p = fusion_path(Path::new("/proj/.specify/slices/my-slice"));
+crates/domain/src/discovery.rs:18:    Discovery, DiscoveryAliasCollision, ResolveError as DiscoveryResolveError, discovery_path,
+crates/domain/src/config.rs:210:    pub fn discovery_path(&self) -> PathBuf {
+crates/domain/src/config.rs:211:        crate::discovery::discovery_path(self.project_dir)
+crates/domain/src/discovery/document.rs:638:pub fn discovery_path(project_dir: &Path) -> PathBuf {
 ```
 
 **Action:**
-1. Replace the caller with `let fusion_path = slice_dir.join("fusion.yaml");`.
-2. Delete `fusion_path` and its unit test.
+1. Replace `Layout::discovery_path`'s body with `self.project_dir.join("discovery.md")`.
+2. Delete `pub fn discovery_path` and its 7-line doc block from `crates/domain/src/discovery/document.rs`.
+3. Drop the `discovery_path` name from the `pub use` block in `crates/domain/src/discovery.rs:17-19`.
 
 Before:
 
 ```rust
-let fusion_path = fusion::fusion_path(slice_dir);
+pub fn discovery_path(&self) -> PathBuf {
+    crate::discovery::discovery_path(self.project_dir)
+}
 ```
 
 After:
 
 ```rust
-let fusion_path = slice_dir.join("fusion.yaml");
+pub fn discovery_path(&self) -> PathBuf {
+    self.project_dir.join("discovery.md")
+}
 ```
 
-**Quality delta:** `−7 LOC, −1 public function`.
+**Quality delta:** `−10 LOC, −1 public function, −1 module-edge re-export`.
 
-**Net LOC:** `crates/domain/src/slice/fusion.rs` **903 → ~897**, `src/commands/slice/validate.rs` **no net change**.
-
-**Done when:** `rg 'fusion_path' crates/domain/src/slice/fusion.rs src/commands/slice/validate.rs` returns **0** and `cargo make check` passes.
+**Done when:** `rg 'fn discovery_path|crate::discovery::discovery_path' crates/domain/src/discovery/document.rs crates/domain/src/discovery.rs` returns **0** and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
 
 **Rule?** no.
 
-**Counter-argument:** A path helper avoids misspelling `"fusion.yaml"`. It loses because there is one caller and the helper has more test code than behavior.
+**Counter-argument:** A path helper avoids spelling `"discovery.md"` twice. It loses because `Layout::discovery_path` is already the single shared writer/reader spelling, and the helper has more rustdoc than behavior.
+
+**Depends on:** none.
+
+### T2 — Drop unused `Discovery::candidates()` accessor
+
+**Evidence:** `crates/domain/src/discovery/document.rs:121-124` declares `pub fn candidates(&self) -> &[Candidate]`. `rg '\.candidates\(\)' crates/ src/ tests/` returns **no matches** (only an internal rustdoc reference at line 58). The accessor is unused.
+
+Current-state grep:
+
+```text
+$ rg '\.candidates\(\)|Discovery::candidates' crates/ src/ tests/
+crates/domain/src/discovery/document.rs:58:    /// pure prose ([`Discovery::candidates`] is empty and the heading
+```
+
+**Action:**
+1. Delete `pub fn candidates(&self) -> &[Candidate] { &self.candidates }` and its doc block (~5 lines).
+2. Update the rustdoc cross-reference at line 58 to mention `self.candidates` directly or drop the parenthetical.
+
+**Quality delta:** `−5 LOC, −1 unused public accessor`.
+
+**Done when:** `rg 'pub fn candidates' crates/domain/src/discovery/document.rs` returns **0** and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
+
+**Rule?** no.
+
+**Counter-argument:** A read accessor is conventional. It loses because `Discovery::resolve_candidate` and `check_alias_collisions` already own every read path, the field is private only in spirit (the surrounding methods touch it directly), and rustdoc cross-refs survive without it.
+
+**Depends on:** none.
+
+### T3 — Drop dead `complete` lifecycle prose from drop SKILL.md
+
+**Evidence:** `crates/domain/src/slice/lifecycle.rs:23-34` defines the closed `LifecycleStatus` enum with five variants: `Refining`, `Refined`, `Built`, `Merged`, `Dropped`. `plugins/spec/skills/drop/SKILL.md:38` and `:93` both reference a non-existent `complete` status — the matching `if status == "complete"` arm in the skill body can never fire because no slice carries that string on disk. (`make checks` passes — there is no skill predicate that catches this content drift, so this finding qualifies on subtraction, not on closing a verified defect.)
+
+Current-state grep:
+
+```text
+plugins/spec/skills/drop/SKILL.md:38:   - `complete`: warn that the slice appears ready to merge normally — `/spec:merge` may be the intended action.
+plugins/spec/skills/drop/SKILL.md:93:- Warn if the slice is already `complete`, since `/spec:merge` may be the intended action.
+crates/domain/src/slice/lifecycle.rs:23:pub enum LifecycleStatus {
+```
+
+**Action:**
+1. In `plugins/spec/skills/drop/SKILL.md:38`, replace the `complete` case with `built`: `` - `built`: warn that the slice is ready for `/spec:merge`. ``
+2. In `plugins/spec/skills/drop/SKILL.md:93`, replace `already complete` with `already built`.
+3. Re-run `make checks` to confirm the predicate set still passes.
+
+Before:
+
+```text
+- `complete`: warn that the slice appears ready to merge normally — `/spec:merge` may be the intended action.
+…
+- Warn if the slice is already `complete`, since `/spec:merge` may be the intended action.
+```
+
+After:
+
+```text
+- `built`: warn that the slice is ready for `/spec:merge`.
+…
+- Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
+```
+
+**Quality delta:** `−0 LOC, −1 unreachable case, −1 doc drift between skill body and the closed Rust enum`.
+
+**Net LOC:** `plugins/spec/skills/drop/SKILL.md` **96 → 96** (rename only; the rule forbids rename-only edits unless the rename unblocks a deletion in the same finding — here it eliminates one unreachable-case branch from the skill body's lifecycle ladder).
+
+**Done when:** `rg '\bcomplete\b' plugins/spec/skills/drop/SKILL.md` returns **0** and `make checks` still prints `All checks passed.`
+
+**Rule?** no.
+
+**Counter-argument:** Operators may type "complete" as a synonym; better to keep the warning. It loses because the on-disk `.metadata.yaml.status` field is the closed `LifecycleStatus` enum (kebab-cased to `refining | refined | built | merged | dropped`); `complete` cannot appear there, and the skill's text falsely implies a lifecycle state that does not exist.
+
+**Depends on:** none.
+
+### T4 — Drop unused `CandidateAliases::new()` constructor
+
+**Evidence:** `crates/domain/src/discovery/candidate.rs:55-58` defines `pub const fn new() -> Self { Self { names: Vec::new() } }`. The struct already derives `Default` (line 45). The only caller is the `sample()` test helper at line 302; every other test or constructor uses `CandidateAliases::from_iter(...)` or `Default::default()` indirectly via `#[derive(Default)]`.
+
+Current-state grep:
+
+```text
+crates/domain/src/discovery/candidate.rs:56:    pub const fn new() -> Self {
+crates/domain/src/discovery/candidate.rs:302:            aliases: CandidateAliases::new(),
+```
+
+**Action:**
+1. Delete `pub const fn new()` (4 lines including doc).
+2. Replace the single test use at line 302 with `CandidateAliases::default()` (or omit the field — `Default` covers it via the test helper's struct-update syntax).
+
+**Quality delta:** `−5 LOC, −1 redundant constructor (collapses to derive(Default))`.
+
+**Done when:** `rg 'CandidateAliases::new' crates/domain/src/discovery/candidate.rs` returns **0** and `cargo clippy --workspace --all-targets --all-features -- -D warnings` passes.
+
+**Rule?** no.
+
+**Counter-argument:** A `const fn new()` reads more idiomatically than `default()` at struct-update sites. It loses because `#[derive(Default)]` already gives every caller the same value, and rust's idiom (e.g. `BTreeMap::new` vs `BTreeMap::default`) does not require declaring both.
 
 **Depends on:** none.
 
 ## Notes
 
-No shipped Skill integrity defect qualified: `make checks` passed with **0** failures. I did not recommend dependency deduplication because `Cargo.toml` / `Cargo.lock` are frozen for this pass, and the duplicate tree is dominated by transitive `wasmtime` / `wasm-pkg-client` edges.
+I deliberately did **not** flag the entire RFC-27 §D8 cache lookup / write surface (`crates/domain/src/adapter/cache/io.rs:173-323`) even though `rg 'SliceExtractCacheHit|SliceExtractCacheMiss'` shows zero emit sites and the matching `lookup` / `write` / `append_index` helpers have no production callers either. F2 trims the dead re-exports in the same direction without disturbing the on-disk RFC contract or the round-trip tests; the actual lookup/write functions are tested end-to-end inside the `adapter/cache/io.rs` test module and are wired up to land emit sites in the next change. The smaller F2 finding takes the subtraction win without re-implementing D8 later.
 
-## Post-mortem
+I also did not flag dependency deduplication — `cargo udeps` reports no unused workspace deps, and the four duplicate transitive trees (`base64`, `reqwest`, `rustix`, `thiserror`) are dominated by `wasmtime` / `wasm-pkg-client` chains the workspace has no upgrade authority over inside this pass.
 
-- F1: actual ΔLOC -171 vs predicted -157; done-when flipped cleanly: yes (no matches; rg exit 1); regressions: final CI initially caught stale rustdoc link, fixed; validation: cargo make check and cargo make doc passed.
-- F2: actual ΔLOC -62 vs predicted -57; done-when flipped cleanly: yes (no matches); regressions: none; validation: cargo make check passed.
-- F3: actual ΔLOC -46 vs predicted -42; done-when flipped cleanly: yes (no matches; rg exit 1); regressions: none; validation: cargo make check passed.
-- F4: actual ΔLOC -25 vs predicted -25; done-when flipped cleanly: yes (no matches; rg exit 1); regressions: none; validation: cargo make check passed.
-- T1: actual ΔLOC -17 vs predicted -7; done-when flipped cleanly: yes (no matches; rg exit 1); regressions: none; validation: cargo make check passed.
+`make checks` (`specify`) and `cargo clippy --workspace --all-targets --all-features -- -D warnings` (`specify-cli`) both passed at the start of the pass; no Skill-integrity or CI predicate defect qualified.

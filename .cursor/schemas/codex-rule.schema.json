@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/codex-rule.schema.json",
+  "$id": "https://github.com/augentic/specify/.cursor/schemas/codex-rule.schema.json",
   "title": "Specify codex rule frontmatter",
-  "description": "Validates the YAML frontmatter block at the top of a codex rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across a resolved rule set, is handled by the codex parser and resolver.",
+  "description": "Validates the YAML frontmatter block at the top of a codex rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `scripts/checks/codex.ts`.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "title", "severity", "trigger"],

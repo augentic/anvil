@@ -104,7 +104,7 @@ Inefficient patterns that cause slow response times.
 
 - N+1 query patterns (loop with API calls) (`rule_id: UNI-007`)
 - Excessive HTTP requests (not batched) (`rule_id: UNI-007`)
-- Missing caching for repeated data (`rule_id: UNI-005` when growth is unbounded, otherwise omit `rule_id` unless the default codex has a clearer match)
+- Missing caching for repeated data (`rule_id: UNI-005` when growth is unbounded, otherwise omit `rule_id` unless the universal codex has a clearer match)
 - Large allocations in hot paths (`rule_id: UNI-005` when unbounded)
 - Unnecessary cloning
 - Synchronous operations in async context (`rule_id: OMNIA-002`)
@@ -128,7 +128,7 @@ Readability and maintainability issues.
 
 ## Universal checks (`UNI-` prefix)
 
-After all three specialists report, the lead applies the default codex rules `UNI-001` through `UNI-021` from `codex/` with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all three specialists report, the lead applies the universal codex rules `UNI-001` through `UNI-021` from `codex/` (at the repo root) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

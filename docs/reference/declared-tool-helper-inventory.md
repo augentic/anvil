@@ -30,7 +30,7 @@ The following command families are intentionally outside this scope. They are no
 
 ## Current status
 
-No additional first-party helper binary in the active skill and brief surface currently meets the migration threshold. Contracts and the filesystem-only Vectis helpers are already declared tools. `default` and `omnia` do not currently expose a first-party helper that should become a WASI component.
+No additional first-party helper binary in the active skill and brief surface currently meets the migration threshold. Contracts and the filesystem-only Vectis helpers are already declared tools. `omnia` does not currently expose a first-party helper that should become a WASI component.
 
 Future migrations should update this inventory first, then add the WASI component, declare it in the owning target's `adapter.yaml` `tools[]`, rewrite active callers to `specify tool run`, and extend the consistency check for retired host-helper spellings. See the [Decision Log](../explanation/decision-log.md) for the longer-form rationale.
 
