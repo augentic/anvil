@@ -1,8 +1,8 @@
-# Foundational codex (UNI-\*)
+# Shared target codex (UNI-\*)
 
-The foundational, target-agnostic rule library read by every target adapter's review brief during `/spec:build`. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
+Shared, target-agnostic review rules at the root of `adapters/targets/` — read by every target adapter's build review brief during `/spec:build`. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
 
-This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under [`adapters/targets/<name>/references/codex/`](../adapters/targets/) (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`); source adapters may grow overlays under `adapters/sources/<name>/codex/` on the same shape. Namespace ownership is enforced by [`scripts/checks/codex.ts`](../scripts/checks/codex.ts).
+This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/codex/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`); source adapters may grow overlays under `adapters/sources/<name>/codex/` on the same shape. Namespace ownership is enforced by [`scripts/checks/codex.ts`](../../../scripts/checks/codex.ts).
 
 ## Rule inventory
 
@@ -46,7 +46,7 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter validated against [`.cursor/schemas/codex-rule.schema.json`](../.cursor/schemas/codex-rule.schema.json), followed by a required `## Rule` heading. The minimum form:
+Each rule is a small markdown file with YAML frontmatter validated against [`.cursor/schemas/codex-rule.schema.json`](../../../.cursor/schemas/codex-rule.schema.json), followed by a required `## Rule` heading. The minimum form:
 
 ```markdown
 ---
@@ -71,22 +71,22 @@ Optional frontmatter fields (`applicability`, `review_mode`, `deterministic_hint
 
 Target review briefs read this directory directly and apply each rule with target-specific heuristics:
 
-- **Omnia** — [`adapters/targets/omnia/briefs/build/review.md`](../adapters/targets/omnia/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](../adapters/targets/omnia/references/review-categories.md).
-- **Vectis** — [`adapters/targets/vectis/references/review/universal-checks.md`](../adapters/targets/vectis/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
-- **Contracts** — [`docs/reference/targets/contracts.md`](../docs/reference/targets/contracts.md) cites its overlay alongside the foundational set.
+- **Omnia** — [`adapters/targets/omnia/briefs/build/review.md`](../omnia/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](../omnia/references/review-categories.md).
+- **Vectis** — [`adapters/targets/vectis/references/review/universal-checks.md`](../vectis/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
+- **Contracts** — [`docs/reference/targets/contracts.md`](../../../docs/reference/targets/contracts.md) cites its overlay alongside this shared set.
 
 A review finding always carries:
 
 - a report-local occurrence id (`UNI-1`, `UNI-2`, …) that restarts in each `REVIEW.md`, and
 - a stable `rule_id` (`UNI-014`, `OMNIA-002`, …) that cites the codex file.
 
-Adapter overlays are preferred over the foundational rule when both match — e.g. a hardcoded secret in Omnia handler code maps to `SEC-001`, not `UNI-018`.
+Adapter overlays are preferred over the shared rule when both match — e.g. a hardcoded secret in Omnia handler code maps to `SEC-001`, not `UNI-018`.
 
 ## Adding or evolving rules
 
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
-3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../adapters/targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../adapters/targets/vectis/references/review/universal-checks.md), etc.) — `make checks` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
-4. Run `make checks`. The relevant predicate is `validateCodexRuleShape` in [`scripts/checks/codex.ts`](../scripts/checks/codex.ts), which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the foundational tree and every per-adapter overlay.
+3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../omnia/references/review-categories.md), Vectis [`universal-checks.md`](../vectis/references/review/universal-checks.md), etc.) — `make checks` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
+4. Run `make checks`. The relevant predicate is `validateCodexRuleShape` in [`scripts/checks/codex.ts`](../../../scripts/checks/codex.ts), which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

@@ -2,7 +2,7 @@
 
 Read this at step 2c of the review-fix cycle, after the specialists complete and before the antagonist runs.
 
-The lead applies universal codex rules `UNI-001` through `UNI-021` from the universal codex at `codex/` (at the repo root). Several universal checks overlap with categories already covered by the specialists; skip those:
+The lead applies every `UNI-*` rule from [`adapters/targets/codex/`](../../../codex/). Several universal checks overlap with categories already covered by the specialists; skip those:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

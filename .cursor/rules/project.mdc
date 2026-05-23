@@ -73,10 +73,10 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   │   ├── code-runtime/       # captured fixture trees -> kind: example Evidence (RFC-27 §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
   └── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
+      ├── codex/            # Shared UNI-* review rules read by per-target review briefs
       ├── omnia/
       ├── vectis/
       └── contracts/
-/codex/                   # Foundational UNI-* review rules read by per-target review briefs
 /schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
 /scripts/                 # Validation and plugin management
 ```

@@ -13,8 +13,8 @@ These prefixes are review-local occurrence IDs. They restart in each report (`SE
 
 Stable codex sources for this reviewer:
 
-- `codex/` — Omnia-specific rules: `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors, No Panic Paths, and `SEC-001` Host-Managed Secrets and Identity.
-- `codex/` — universal `UNI-001` through `UNI-021` rules. Read these codex files directly.
+- [`adapters/targets/omnia/codex/`](../codex/) — Omnia-specific rules: `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors, No Panic Paths, and `SEC-001` Host-Managed Secrets and Identity.
+- [`adapters/targets/codex/`](../../codex/) — shared `UNI-001` through `UNI-021` rules. Read these codex files directly.
 
 Prefer the most specific matching rule. For example, direct `std::env` access for a secret maps to `SEC-001`; direct `std::env` access for ordinary configuration maps to `OMNIA-002` or `OMNIA-001` depending on whether the core violation is WASM runtime behavior or provider bypass.
 
@@ -128,7 +128,7 @@ Readability and maintainability issues.
 
 ## Universal checks (`UNI-` prefix)
 
-After all three specialists report, the lead applies the universal codex rules `UNI-001` through `UNI-021` from `codex/` (at the repo root) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all three specialists report, the lead applies every `UNI-*` rule from [`adapters/targets/codex/`](../../codex/) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|

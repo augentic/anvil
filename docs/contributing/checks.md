@@ -161,7 +161,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 16. First-party codex rule shape
 
-First-party codex rule files are validated in the repo-root `codex/**/*.md` foundational tree (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/codex/**/*.md` and `adapters/targets/*/codex/**/*.md`.
+First-party codex rule files are validated in the shared tree at `adapters/targets/codex/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/codex/**/*.md` and `adapters/targets/<name>/codex/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
@@ -171,18 +171,18 @@ invoke any external validator. It validates:
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- the foundational repo-root `codex/` owns `UNI-*`;
+- **Namespace ownership** -- `adapters/targets/codex/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: Codex rule frontmatter: codex/example.md — / missing required property 'trigger'
-FAIL: Codex rule frontmatter: codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-FAIL: Codex rule body: codex/example.md — missing required '## Rule' heading
-FAIL: Codex namespace ownership: codex/example.md — codex owner 'foundational' may only use UNI-* ids, got 'SEC-001'
-FAIL: Codex rule duplicate id 'UNI-001' across files: codex/a.md, codex/b.md
+FAIL: Codex rule frontmatter: adapters/targets/codex/example.md — / missing required property 'trigger'
+FAIL: Codex rule frontmatter: adapters/targets/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+FAIL: Codex rule body: adapters/targets/codex/example.md — missing required '## Rule' heading
+FAIL: Codex namespace ownership: adapters/targets/codex/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+FAIL: Codex rule duplicate id 'UNI-001' across files: adapters/targets/codex/a.md, adapters/targets/codex/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`

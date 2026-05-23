@@ -68,7 +68,7 @@ The invariant: **adapter resolution is a downstream concern**. Core owns the sli
 
 A target adapter ships a manifest plus the briefs that implement domain behaviour. Imperative behaviour (provider configuration, file generation, format validation, drift detection) lives in the briefs and in checked-in helper tools. There is no second plugin runtime hidden behind `adapter.yaml`.
 
-Target adapters may also ship an optional `codex/` directory by convention for review rules (resolved outside `adapter.yaml`).
+Target adapters may also ship an optional `codex/` directory by convention for review rules (resolved outside `adapter.yaml`). Shared universal rules (`UNI-*`) live at [`adapters/targets/codex/`](../../../adapters/targets/codex/); per-target overlays live at `adapters/targets/<name>/codex/`.
 
 ## Validation
 

@@ -1,11 +1,11 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers rule markdown under the repo-root `codex/**` foundational
-//     tree (UNI-* ids), plus per-adapter overlays at
+//   - discovers shared rule markdown under adapters/targets/codex/**
+//     (UNI-* ids), plus per-adapter overlays at
 //     adapters/targets/<cap>/codex/** and adapters/sources/<cap>/codex/**,
 //   - validates frontmatter against codex-rule.schema.json,
 //   - enforces a `## Rule` body heading and per-owner namespace ownership
-//     (foundational repo-root codex owns `UNI-*`; `omnia` may only emit
-//     `OMNIA-*`, `RUST-*`, `SEC-*` rule ids; etc.).
+//     (`universal` owns shared `UNI-*` at targets/codex/; `omnia` may only
+//     emit `OMNIA-*`, `RUST-*`, `SEC-*` rule ids; etc.).
 
 import {
   Ajv2020,
@@ -28,15 +28,23 @@ interface CodexFile {
 }
 
 const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
-const FOUNDATIONAL_CODEX_OWNER = "foundational";
+const SHARED_TARGETS_CODEX_OWNER = "universal";
 const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
-  [FOUNDATIONAL_CODEX_OWNER]: new Set(["UNI"]),
+  [SHARED_TARGETS_CODEX_OWNER]: new Set(["UNI"]),
   omnia: new Set(["OMNIA", "RUST", "SEC"]),
   contracts: new Set(["IFACE"]),
   vectis: new Set(["VECTIS"]),
 };
 
 const CODEX_DISCOVERY_ROOTS = [SOURCES_DIR, TARGETS_DIR];
+
+// `README.md` (any case) is reserved for human-oriented index pages that
+// describe a codex directory; it is not a rule and must not be validated
+// against the rule schema. This mirrors the README convention used elsewhere
+// in the repo (per-adapter `references/`, etc.).
+function isCodexReadme(name: string): boolean {
+  return name.toLowerCase() === "readme.md";
+}
 
 async function discoverCodexRuleFiles(): Promise<string[]> {
   const paths: string[] = [];
@@ -52,6 +60,7 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
         })
       ) {
         if (await underSymlink(entry.path)) continue;
+        if (isCodexReadme(entry.name)) continue;
         const parts = relative(root, entry.path).split("/");
         if (parts.length >= 3 && parts[1] === "codex") {
           paths.push(entry.path);
@@ -62,22 +71,23 @@ async function discoverCodexRuleFiles(): Promise<string[]> {
     }
   }
 
-  const rootCodexDir = join(REPO_ROOT, "codex");
+  const sharedCodexDir = join(TARGETS_DIR, "codex");
   try {
-    const stat = await Deno.stat(rootCodexDir);
+    const stat = await Deno.stat(sharedCodexDir);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(rootCodexDir, {
+        const entry of walk(sharedCodexDir, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
         if (await underSymlink(entry.path)) continue;
+        if (isCodexReadme(entry.name)) continue;
         paths.push(entry.path);
       }
     }
   } catch {
-    // Repo-root codex overlay is optional.
+    // Shared targets codex is optional.
   }
 
   return Array.from(new Set(paths)).sort();
@@ -90,10 +100,10 @@ function namespaceOwnerForCodexPath(path: string): string | null {
     const parts = rel.split("/");
     if (parts.length >= 3 && parts[1] === "codex") return parts[0];
   }
-  const rootCodexDir = join(REPO_ROOT, "codex");
-  const rootRel = relative(rootCodexDir, path);
-  if (!rootRel.startsWith("..") && !rootRel.startsWith("/")) {
-    return FOUNDATIONAL_CODEX_OWNER;
+  const sharedCodexDir = join(TARGETS_DIR, "codex");
+  const sharedRel = relative(sharedCodexDir, path);
+  if (!sharedRel.startsWith("..") && !sharedRel.startsWith("/")) {
+    return SHARED_TARGETS_CODEX_OWNER;
   }
   return null;
 }

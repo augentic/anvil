@@ -98,4 +98,4 @@ The build brief carries the detailed orchestration; tasks.md should follow that 
 - [`../references/guest-patterns.md`](../references/guest-patterns.md) — HTTP / Messaging / WebSocket guest export patterns.
 - [`../references/guest-wiring.md`](../references/guest-wiring.md) — Crate → guest injection contract.
 - [`../references/providers/`](../references/providers/) — Per-provider deep dives (blobstore, broadcast, config, document-store, http-request, identity, publish, state-store).
-- [`../references/codex/`](../references/codex/) — Stable codex rules (classified errors, provider-only host access, host-managed secrets, WASM runtime constraints).
+- [`../codex/`](../codex/) — Stable Omnia codex rules (classified errors, provider-only host access, host-managed secrets, WASM runtime constraints).

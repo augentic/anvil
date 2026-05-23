@@ -64,7 +64,8 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 - [`review-auto-fix.md`](review-auto-fix.md) — `fix` scope, per-category success-rate table, regression guard.
 - [`review-output-template.md`](review-output-template.md) — `REVIEW.md` template and finding-ID conventions.
 - [`agent-teams.md`](agent-teams.md) — shared multi-agent review pattern (specialists + antagonist + lead synthesis).
-- [`codex/`](codex/) — stable codex rules (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`).
+- [`../codex/`](../codex/) — Omnia-specific codex rules (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`).
+- [`../../codex/`](../../codex/) — shared `UNI-*` codex rules.
 
 ### Worked examples
 
