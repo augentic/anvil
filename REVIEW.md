@@ -157,3 +157,12 @@ src/commands/plan/create.rs:768:            "<slice> <kind>",
 **Counter-argument:** The token documents the value-name shape at each invocation. It loses because the helper does nothing with the value-name string and the closed `T::from_str` impl already shapes the diagnostic; the would-be documentation is dead bytes.
 
 **Depends on:** none.
+
+## Post-mortem
+
+- **F1:** actual ΔLOC **~+2** (DECISIONS.md rewrite added two short clauses; production sites were 1:1 substitutions) vs predicted **0**; done-when flipped cleanly (`init-requires-target-or-workspace` 0 hits, `init-requires-adapter-or-hub` 9 hits ≥ 6); `cargo make check` passed; no regressions — the only surviving mention of the old kebab is the intentional DECISIONS.md "gone in 2.0" historical marker.
+- **F2:** actual ΔLOC **−95** vs predicted **~-50** (closure-shape collapse on every `with_state` site cascaded extra savings beyond the headline trait + variant + helper deletions); done-when flipped cleanly (`InitPolicy` 0, `default_for_load` 0, no `.expect()` panics on `AtomicYaml::load`); `cargo make check` passed; one unit test deleted (`with_state_creates_default_when_absent`), one re-seeded (`with_state_propagates_closure_error_and_skips_write`); wire shape preserved (kebab error codes, journal events, atomic-rename semantics all unchanged).
+- **F3:** actual ΔLOC **−25** vs predicted **~-22** (`src/commands/plan/create.rs` 950 → 925 — F2 had already shifted the baseline below the REVIEW estimate); done-when flipped cleanly (no `fn dedup_sets|fn dedup_clears`, no three-loop walk); `cargo make check` passed; no regressions — `BTreeMap<(String, ClaimKind), String>` / `BTreeSet<(String, ClaimKind)>` had to be spelled out at the inlined site since `_, _` left `ClaimKind` un-inferred from a slice input.
+- **T1:** actual ΔLOC **−7** vs predicted **−4** (925 → 918); done-when flipped cleanly (`_value_names` 0 hits, `"<slice> <kind>=<key>"` 0 hits); `cargo make check` passed; no regressions — clap `value_names` attributes in `src/commands/plan/cli.rs` are unrelated and were left untouched.
+
+Final `cargo make ci` (lint + file-size + test + test-docs + doc + vet + outdated + deny + fmt): **passed in 180.88s**.
