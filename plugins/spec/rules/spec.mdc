@@ -88,7 +88,7 @@ Breakouts share skill bodies with the loop and are reached when `/spec:execute` 
 - [Drop SKILL.md](skills/drop/SKILL.md) — Discard a slice without merging specs
 - [Execute SKILL.md](skills/execute/SKILL.md) — Drive the full loop
 - [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
-- [Specify Artifact Specification](../references/specify.md) — Artifact format details
+- [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 
 ## Specification
 

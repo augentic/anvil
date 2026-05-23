@@ -1,5 +1,5 @@
 // Generate the per-command examples section of
-// `plugins/references/cli-output-shapes.md` from the canonical envelope
+// `docs/reference/cli-output-shapes.md` from the canonical envelope
 // fixtures in `augentic/specify-cli`.
 //
 // The top matter (title, conventions, generation note) is hand-written and
@@ -24,8 +24,8 @@ import {
 export const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 export const DOC_PATH = join(
   REPO_ROOT,
-  "plugins",
-  "references",
+  "docs",
+  "reference",
   "cli-output-shapes.md",
 );
 

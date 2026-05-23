@@ -4,7 +4,7 @@ This file collects the format conventions, delta workflows, and self-review obli
 
 ## Spec format conventions
 
-Follow the heading conventions in [`spec-format.md`](./spec-format.md) and the baseline / delta format in [`specify.md`](./specify.md) (Spec Files section). The instruction file provides templates and workflow routing; these conventions govern the content written into those templates.
+Follow the heading conventions in [`spec-format.md`](./spec-format.md) and the baseline / delta format in [`augentic-specify-usage.md`](../../../docs/explanation/augentic-specify-usage.md) (Spec Files section). The instruction file provides templates and workflow routing; these conventions govern the content written into those templates.
 
 ### Delta-specific workflows (modified-crate specs)
 
@@ -28,11 +28,11 @@ Follow the heading conventions in [`spec-format.md`](./spec-format.md) and the b
 
 ## Design writing guidance
 
-Follow the design format and decision criteria in [`specify.md`](./specify.md) (Design Document section, including "When To Create A Full Design"). The instruction file provides the output template.
+Follow the design format and decision criteria in [`augentic-specify-usage.md`](../../../docs/explanation/augentic-specify-usage.md) (Design Document section, including "When To Create A Full Design"). The instruction file provides the output template.
 
 ## Task format conventions
 
-Follow the task format and guidelines in [`specify.md`](./specify.md) (Tasks Document section). The instruction file provides the available-skills table per adapter. The build phase parses checkbox format to track progress.
+Follow the task format and guidelines in [`augentic-specify-usage.md`](../../../docs/explanation/augentic-specify-usage.md) (Tasks Document section). The instruction file provides the available-skills table per adapter. The build phase parses checkbox format to track progress.
 
 ### Agent-completable task invariant
 

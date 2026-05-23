@@ -69,4 +69,4 @@ On a clean drain, the closing hint is the literal string `drained — run /spec:
 - **Never skip the lock.** Every shell that runs `specify plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`references/plan-lock.md`](references/plan-lock.md).
 - **Stop on the first failure.** Build non-zero or merge conflict ends the run; do not advance to the next entry, do not retry the failing phase, do not paper over the stop with a "best-effort" continue.
 - **No `gh pr merge`, no branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
-- Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
+- Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).

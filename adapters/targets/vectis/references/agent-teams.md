@@ -1,1 +1,1 @@
-../../../../references/agent-teams.md
+../../../../docs/reference/review-team-protocol.md

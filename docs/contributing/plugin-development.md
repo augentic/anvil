@@ -93,16 +93,17 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
-Files in `plugins/references/` are shared across plugins:
+Cross-cutting reference material lives under `docs/`, not in any single plugin:
 
 | File | Purpose |
 |------|---------|
-| `specify.md` | Master reference: artifact format, lifecycle states, naming conventions, delta-merge rules, hard constraints |
-| `agent-teams.md` | Multi-agent review pattern (structural, logic, quality specialists + antagonist) |
+| [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Definitive artifact format spec (proposal, spec, design, tasks) |
+| [`docs/explanation/augentic-specify-usage.md`](../explanation/augentic-specify-usage.md) | Augentic-specific supplement on how specialists use the artifacts |
+| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Multi-agent review pattern (specialists + antagonist + lead synthesis) |
+| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md) | Canonical JSON envelope shapes for `specify *` commands |
+| [`docs/standards/skill-guardrails.md`](../standards/skill-guardrails.md) | Cross-cutting "do not / never / always" rules for skill authors |
 
-Skills reference these files via symlinks. For example, a skill at `plugins/spec/skills/refine/` might symlink `references/specify.md` to `../../../references/specify.md`. This keeps relative paths in the skill body short while sharing a single source of truth.
-
-The `checks.ts` script validates that all symlinks under `plugins/` resolve to valid targets.
+Plugin skills, rules, and adapter briefs link to these documents directly via relative paths. The only surviving cross-tree symlink pattern is per-target-adapter — `adapters/targets/<name>/references/agent-teams.md` symlinks to `docs/reference/review-team-protocol.md` so each review brief keeps a self-contained relative link.
 
 ## Publishing a new plugin
 

@@ -25,11 +25,17 @@ Artifacts move through the normal Specify lifecycle:
 
 The human workflow is:
 
-```text
-/spec:plan -> /spec:execute (drives /spec:refine -> /spec:build -> /spec:merge per slice)
-/spec:refine -> /spec:drop
-/spec:build  -> /spec:drop
+```mermaid
+flowchart LR
+  plan["/spec:plan"] --> execute["/spec:execute"]
+  execute --> refine["/spec:refine"]
+  refine --> build["/spec:build"]
+  build --> merge["/spec:merge"]
+  refine --> drop["/spec:drop"]
+  build --> drop
 ```
+
+`/spec:execute` drives the per-slice loop (`/spec:refine` -> `/spec:build` -> `/spec:merge`); `/spec:drop` is the rollback exit from either `/spec:refine` or `/spec:build`.
 
 ## Artifact Locations
 

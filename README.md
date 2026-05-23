@@ -138,7 +138,7 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
   - [Tutorials](docs/tutorials/index.md) -- progressive walkthroughs from first slice to multi-repo migration
   - [Reference](docs/reference/index.md) -- skills, CLI, plugins, adapters, configuration
   - [Quick Reference](docs/reference/quick-reference.md) -- single-page cheat sheet
-- [Specify Artifact Guidance](plugins/references/specify.md)
+- [Specify Artifact Guidance Supplement](docs/explanation/augentic-specify-usage.md)
 - [Project Rule](.cursor/rules/project.mdc)
 - [Agent Instructions](AGENTS.md)
 - [Contribution Guide](CONTRIBUTING.md)

@@ -32,4 +32,4 @@ Change <name> finalized. Plan archived at <.specify>/archive/plans/<name>-<YYYYM
 |---|---|
 | [`references/runbook.md`](references/runbook.md) | Verbatim five-step body, halt classifications, polling parameters, re-entry rules, and guard discipline |
 | [`../execute/SKILL.md`](../execute/SKILL.md) | Peer driver skill that drains the plan this skill closes |
-| [`../../../references/guardrails.md`](../../../references/guardrails.md) | Shared single-writer rules every plan-driven skill inherits |
+| [`docs/standards/skill-guardrails.md`](../../../../docs/standards/skill-guardrails.md) | Shared single-writer rules every plan-driven skill inherits |

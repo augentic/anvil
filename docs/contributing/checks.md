@@ -40,9 +40,11 @@ The 1.x pipeline-graph integrity check retired with RFC-25 — manifests no long
 
 ### 5. Symlink integrity
 
-Every symlink under `plugins/` must resolve to a valid target. Skills often symlink shared references (e.g. `plugins/references/specify.md`) into their `references/` directory.
+Every symlink under `plugins/` must resolve to a valid target.
 
-**Common fix:** recreate the symlink if the target was moved or renamed.
+The companion `checkAgentTeamsCanonical` predicate additionally enforces the cross-tree canonicalisation for the per-target-adapter `agent-teams.md` overlays. Each `adapters/targets/<name>/references/agent-teams.md` must be either a real symlink resolving to `docs/reference/review-team-protocol.md` or a regular file whose SHA-256 matches the canonical doc. The symlink form is preferred; the SHA-256 fallback keeps the door open for adapters that need a non-symlink layout without inviting silent content drift.
+
+**Common fix:** recreate the symlink if the target was moved or renamed; if the file diverged, replace it with a symlink or re-sync its content from the canonical doc.
 
 ### 6. SKILL.md frontmatter validation
 

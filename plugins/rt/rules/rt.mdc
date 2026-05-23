@@ -76,4 +76,4 @@ The `code-typescript` source adapter's `extract` operation produces platform-agn
 - [Wiretapper SKILL.md](../skills/wiretapper/SKILL.md) — fixture capture from legacy services (also hosts the inlined clone snippet for legacy-repo bootstrap)
 - [`runtime-fixtures` source adapter](../../../adapters/sources/runtime-fixtures/) — runtime fixture Evidence extraction
 - [Omnia target build briefs](../../../adapters/targets/omnia/briefs/build.md) — crate generation, replay tests, fixture replay
-- [Specify Artifact Specification](../../references/specify.md) — artifact format details
+- [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks

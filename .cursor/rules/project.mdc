@@ -26,7 +26,7 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **plugins/references/** and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/**, and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
@@ -136,7 +136,7 @@ In this repository:
 
 - Mark uncertain behavior with `[unknown]`; mark authority-resolved disagreements with `[divergence]`; mark unresolvable same-authority disagreements with `[conflict]`. Tags never park the slice — the lifecycle still transitions to `refined`.
 - Keep specs behavioral and technical detail in `design.md`
-- Review `plugins/references/specify.md` when artifact responsibilities feel blurred
+- Review `docs/explanation/augentic-specify-usage.md` when artifact responsibilities feel blurred
 
 ### Generation Issues
 
@@ -156,7 +156,7 @@ Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](
 
 ## Getting Help
 
-- Review `plugins/references/specify.md`
+- Review `docs/explanation/augentic-specify-usage.md`
 - Review the relevant `SKILL.md`
 - Review `adapters/targets/omnia/references/`
 - Review `adapters/targets/vectis/references/`

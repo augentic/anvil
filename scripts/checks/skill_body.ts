@@ -6,7 +6,7 @@
 //   - inline `json` / `jsonc` fences must not exceed 30 lines,
 //   - inline `json` / `jsonc` fences must not show CLI envelope shapes
 //     (`envelope-version` or wrapped `ok` + `data`/`error`); those live
-//     in `plugins/references/cli-output-shapes.md`,
+//     in `docs/reference/cli-output-shapes.md`,
 //   - `$VAR`s defined in the Arguments section must be referenced in the
 //     body (and vice versa).
 
@@ -215,7 +215,7 @@ export async function checkInlineJsonBlocks(): Promise<void> {
       if (inBlock && line.startsWith("```")) {
         if (blockLength > MAX_INLINE_JSON_LINES) {
           fail(
-            `Inline JSON too long: ${rel}:${blockStart} — ${blockLength} body lines (limit ${MAX_INLINE_JSON_LINES}); move large output shapes to plugins/references/cli-output-shapes.md and link to them`,
+            `Inline JSON too long: ${rel}:${blockStart} — ${blockLength} body lines (limit ${MAX_INLINE_JSON_LINES}); move large output shapes to docs/reference/cli-output-shapes.md and link to them`,
           );
         }
         inBlock = false;
@@ -228,7 +228,7 @@ export async function checkInlineJsonBlocks(): Promise<void> {
 
 // Detect fenced ```json / ```jsonc blocks whose contents look like a
 // `specify *` CLI envelope (the wrapper that lives in
-// `plugins/references/cli-output-shapes.md`). Forbid those in the
+// `docs/reference/cli-output-shapes.md`). Forbid those in the
 // SKILL.md body so envelope shapes drift in exactly one place. Body
 // shapes that are NOT wrapped envelopes (e.g. a one-line config
 // snippet, or a sidecar artifact like analyze's `metadata.json`)
@@ -287,7 +287,7 @@ export async function checkNoEnvelopeExamples(): Promise<void> {
     if (count > 0) {
       const where = violations.map((n) => `line ${n}`).join(", ");
       fail(
-        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} (link to plugins/references/cli-output-shapes.md instead of embedding the envelope shape)`,
+        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} (link to docs/reference/cli-output-shapes.md instead of embedding the envelope shape)`,
       );
     }
   }

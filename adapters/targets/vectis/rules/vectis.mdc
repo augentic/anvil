@@ -82,4 +82,4 @@ Token changes in `tokens.yaml` are picked up by each shell writer, which emits s
 - [`build` brief](../briefs/build.md) — code generation + `composition.yaml` regeneration
 - [`merge` brief](../briefs/merge.md) — landing + host cap-matrix re-verification
 - [Vectis references](../references/) — Crux patterns, design-system docs, layout-inferer contract
-- [Specify artifact specification](../../../../plugins/references/specify.md) — artifact format details
+- [Specify Artifact Guidance Supplement](../../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks

@@ -49,10 +49,12 @@ import {
   validateScenarioFrontmatter,
 } from "./checks/scenarios.ts";
 import { validateCodexRuleShape } from "./checks/codex.ts";
+import { checkAgentTeamsCanonical } from "./checks/agent_teams.ts";
 
 await Promise.all([
   checkMarkdownLinks(),
   checkSymlinks(),
+  checkAgentTeamsCanonical(),
 ]);
 await Promise.all([
   validateAdapterYaml(),
