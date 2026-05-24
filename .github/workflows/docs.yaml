@@ -31,22 +31,16 @@ jobs:
             ~/.cargo/bin/mdbook-linkcheck
             ~/.cargo/bin/mdbook-pagetoc
             ~/.cargo/bin/mdbook-template
-          key: docs-tools-mdbook-0.4.52-d2-0.3.4-lc-0.7.7-pt-0.2.0-tpl-1.1.1
+          key: docs-tools-mdbook
 
       - name: Install mdbook tool chain
-        env:
-          MDBOOK_VERSION: "0.4.52"
-          MDBOOK_D2_VERSION: "0.3.4"
-          MDBOOK_LINKCHECK_VERSION: "0.7.7"
-          MDBOOK_PAGETOC_VERSION: "0.2.0"
-          MDBOOK_TEMPLATE_VERSION: "1.1.1"
         run: |
           set -euo pipefail
-          cargo install --force --locked --version "$MDBOOK_VERSION" mdbook
-          cargo install --force --locked --version "$MDBOOK_D2_VERSION" mdbook-d2
-          cargo install --force --locked --version "$MDBOOK_LINKCHECK_VERSION" mdbook-linkcheck
-          cargo install --force --locked --version "$MDBOOK_PAGETOC_VERSION" mdbook-pagetoc
-          cargo install --force --locked --version "$MDBOOK_TEMPLATE_VERSION" mdbook-template
+          cargo install --force --locked mdbook
+          cargo install --force --locked mdbook-d2
+          cargo install --force --locked mdbook-linkcheck
+          cargo install --force --locked mdbook-pagetoc
+          cargo install --force --locked mdbook-template
           if ! command -v d2 >/dev/null 2>&1; then
             curl -fsSL https://d2lang.com/install.sh | sh -s --
           fi
