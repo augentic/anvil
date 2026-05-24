@@ -7,6 +7,10 @@
   "required": ["name", "owner", "metadata", "plugins"],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Editor schema hint; ignored by tooling check semantics."
+    },
     "name": {
       "type": "string",
       "minLength": 1,
