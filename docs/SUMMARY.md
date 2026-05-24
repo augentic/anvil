@@ -7,8 +7,40 @@
 # Getting Started
 
 - [What is Specify?](orientation/index.md)
-- [Core concepts](explanation/concepts.md)
 - [Prerequisites](orientation/prerequisites.md)
+
+---
+
+# Tutorials
+
+- [Overview](tutorials/index.md)
+- [Quick start](tutorials/quick-start.md)
+- [Your first multi-slice change](tutorials/first-change.md)
+- [Cross-repo changes](tutorials/cross-repo-change.md)
+- [Legacy migration at scale](tutorials/legacy-migration-at-scale.md)
+
+---
+
+# How-to Guides
+
+- [Overview](how-to/index.md)
+- [Drop down a layer](how-to/drop-down-a-layer.md)
+- [Drive a slice manually](how-to/drive-slice-manually.md)
+- [Amend a plan at Gate 1](how-to/amend-plan-at-gate-1.md)
+- [Resolve spec conflicts](how-to/resolve-spec-conflicts.md)
+- [Bind multiple sources](how-to/bind-multiple-sources.md)
+
+---
+
+# Understanding Specify
+
+- [Core concepts](explanation/concepts.md)
+- [The layered stack](explanation/layered-stack.md)
+- [Artifacts in depth](explanation/artifacts.md)
+- [Anatomy of an adapter](explanation/adapter-anatomy.md)
+- [Using artifacts with Augentic specialists](explanation/augentic-specify-usage.md)
+- [Tool declarations](explanation/tool-declarations.md)
+- [Decision log](explanation/decision-log.md)
 
 ---
 
@@ -19,8 +51,13 @@
 - [Artifact format](reference/artifact-format.md)
 - [Lifecycle](reference/lifecycle.md)
 - [Directory layout](reference/directory-layout.md)
+- [Change skills](reference/change-skills/index.md)
+  - [/spec:plan](reference/change-skills/plan.md)
+  - [/spec:execute](reference/change-skills/execute.md)
+  - [/spec:finalize](reference/change-skills/finalize.md)
 - [Slice skills](reference/slice-skills/index.md)
   - [/spec:init](reference/slice-skills/init.md)
+  - [/spec:refine](reference/slice-skills/refine.md)
   - [/spec:build](reference/slice-skills/build.md)
   - [/spec:merge](reference/slice-skills/merge.md)
   - [/spec:drop](reference/slice-skills/drop.md)
@@ -28,11 +65,13 @@
   - [specify init](reference/cli/init.md)
   - [specify slice](reference/cli/slice.md)
   - [specify plan](reference/cli/plan.md)
+  - [specify adapter](reference/cli/adapter.md)
   - [specify registry](reference/cli/registry.md)
   - [specify workspace](reference/cli/workspace.md)
   - [specify tool](reference/cli/tool.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [Vectis WASI tools](reference/cli/vectis.md)
+  - [CLI output shapes](reference/cli-output-shapes.md)
 - [Plugins](reference/plugins/index.md)
   - [Client](reference/plugins/client.md)
 - [Target adapters](reference/targets/index.md)
@@ -42,23 +81,14 @@
 - [Registry](reference/registry.md)
 - [Configuration files](reference/configuration.md)
 - [Declared tool helper inventory](reference/declared-tool-helper-inventory.md)
-
----
-
-# Understanding Specify
-
-- [The layered stack](explanation/layered-stack.md)
-- [Artifacts in depth](explanation/artifacts.md)
-- [Anatomy of an adapter](explanation/adapter-anatomy.md)
-- [Tool declarations](explanation/tool-declarations.md)
-- [Decision log](explanation/decision-log.md)
-- [Release notes](explanation/release-notes.md)
+- [Review team protocol](reference/review-team-protocol.md)
 
 ---
 
 # Appendices
 
 - [Glossary](appendices/glossary.md)
+- [Release notes](explanation/release-notes.md)
 
 ---
 
@@ -67,6 +97,7 @@
 - [Overview](contributing/index.md)
 - [Documentation authoring standards](standards/doc-authoring.md)
 - [Skill authoring standards](standards/skill-authoring.md)
+- [Skill guardrails](standards/skill-guardrails.md)
 - [Plugin development](contributing/plugin-development.md)
 - [CLI architecture](contributing/cli-architecture.md)
 - [Consistency checks](contributing/checks.md)

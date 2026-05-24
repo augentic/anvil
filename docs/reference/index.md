@@ -12,7 +12,8 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Skills
 
-- [Slice Skills](slice-skills/index.md) — `/spec:init`, `/spec:build`, `/spec:merge`, `/spec:drop`. The full per-slice surface (`/spec:plan`, `/spec:execute`, `/spec:refine`, `/spec:finalize`) is documented in the operator guide; this reference covers the deterministic breakouts.
+- [Change Skills](change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize`
+- [Slice Skills](slice-skills/index.md) — `/spec:init`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`
 
 ### CLI
 
@@ -35,7 +36,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 | I want to...                            | Go to...                                              |
 | --------------------------------------- | ----------------------------------------------------- |
-| Understand how a skill works             | [Slice Skills](slice-skills/index.md)                |
+| Understand how a skill works             | [Change Skills](change-skills/index.md) or [Slice Skills](slice-skills/index.md) |
 | Look up a CLI command                    | [CLI Reference](cli/index.md)                        |
 | Check artifact format                    | [Artifact Format](artifact-format.md)                |
 | Understand lifecycle states              | [Lifecycle](lifecycle.md)                            |

@@ -2,6 +2,21 @@
 
 House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
 
+## Document types (Diátaxis)
+
+Organise chapters by reader intent. The `docs/SUMMARY.md` section order follows this model:
+
+| Type | Directory | Reader goal | Structure |
+| ---- | --------- | ----------- | --------- |
+| **Tutorial** | `tutorials/` | Learn by doing — first success guaranteed | Numbered steps; minimal forward references; link out for depth |
+| **How-to** | `how-to/` | Solve one specific task | Prerequisites (one line) → steps → See also |
+| **Explanation** | `explanation/`, `orientation/` | Understand concepts and design | Prose + SVG diagrams; no step-by-step commands as primary content |
+| **Reference** | `reference/`, `appendices/` | Look up precise facts | Synopsis first; tables; link to explanation for rationale |
+
+Getting Started (`orientation/`) is setup and path selection only — vocabulary lives under Understanding Specify (`explanation/concepts.md`).
+
+Contributing and standards docs (`contributing/`, `standards/`) follow reference conventions unless they are explicitly procedural how-tos.
+
 ## Visual system
 
 The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
@@ -140,7 +155,7 @@ OS-level `prefers-color-scheme` is **no longer consulted directly** — `book.to
 
 ## Diagram policy
 
-- **Explanation and orientation pages** must use committed SVG assets for workflow and architecture diagrams. Do not add new ` ```text ` pipeline diagrams or `d2` blocks in those directories.
+- **Explanation, orientation, tutorial, and how-to pages** must use committed SVG assets for workflow and architecture diagrams. Do not add new ` ```text ` pipeline diagrams or `d2` blocks in those directories.
 - **Reference pages** may keep D2 and ASCII command snippets where scannability matters (e.g. quick-reference per-command blocks).
 - Prefer one flagship SVG per conceptual page over several small ASCII fragments.
 - The [`mdbook-d2`](https://github.com/danieleades/mdbook-d2) preprocessor renders fenced ` ```d2 ` blocks inline; the [`d2`](https://d2lang.com/) binary must be on `PATH` for the build to succeed.

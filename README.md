@@ -10,8 +10,8 @@ Read the [Developer Guide](docs/index.md) in this order:
 
 1. [What is Specify?](docs/orientation/index.md)
 2. [Prerequisites](docs/orientation/prerequisites.md)
-3. [Quick Start](docs/tutorials/quick-start.md)
-4. [Your First Slice](docs/tutorials/first-change.md)
+3. [Quick start tutorial](docs/tutorials/quick-start.md)
+4. [Core concepts](docs/explanation/concepts.md)
 
 Initialize a project in Cursor Agent chat with a adapter:
 
@@ -133,11 +133,12 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 
 ## Documentation
 
-- **[Developer Guide](docs/SUMMARY.md)** -- tutorials, how-to guides, reference, and appendices (mdBook)
-  - [Tutorials](docs/tutorials/index.md) -- progressive walkthroughs from first slice to multi-repo migration
-  - [Reference](docs/reference/index.md) -- skills, CLI, plugins, adapters, configuration
-  - [Quick Reference](docs/reference/quick-reference.md) -- single-page cheat sheet
-- [Specify Artifact Guidance Supplement](docs/explanation/augentic-specify-usage.md)
+- **[Developer Guide](docs/SUMMARY.md)** — tutorials, how-to guides, explanation, reference, and appendices (mdBook)
+  - [Tutorials](docs/tutorials/index.md) — progressive walkthroughs from first slice to cross-repo changes
+  - [How-to guides](docs/how-to/index.md) — task recipes for common operator situations
+  - [Reference](docs/reference/index.md) — skills, CLI, plugins, adapters, configuration
+  - [Quick reference](docs/reference/quick-reference.md) — single-page cheat sheet
+- [Specify artifact guidance supplement](docs/explanation/augentic-specify-usage.md)
 - [Project Rule](.cursor/rules/project.mdc)
 - [Agent Instructions](AGENTS.md)
 - [Contribution Guide](CONTRIBUTING.md)

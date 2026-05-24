@@ -205,4 +205,4 @@ The current CLI already validates tool declaration structure during `specify too
 ## See also
 
 - [specify tool](../reference/cli/tool.md) -- command reference
-- [Anatomy of a Adapter](../contributing/adapter-anatomy.md) -- adapter sidecar conventions
+- [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter sidecar conventions

@@ -26,15 +26,12 @@ exclude = [
   '/$',
   # Retired-stub redirect pages — present on disk so external bookmarks
   # don't 404, but intentionally omitted from SUMMARY.md so they don't
-  # clutter the nav. Linked from a handful of upstream docs as gentle
-  # forwarding pointers. The regex matches the raw href in markdown.
-  'quick-start\.md',
-  'cross-repo-change\.md',
-  '(/|^)adapter\.md',
-  'change-skills/(draft|execute|finalize)\.md',
-  'adapter-anatomy\.md',
+  # clutter the nav.
+  'change-skills/draft\.md',
+  'contributing/adapter-anatomy\.md',
   'platform-repo\.md',
-  'drop-down-a-layer\.md',
+  'workspace-tiers\.md',
+  'change-component\.md',
   'cli-contract\.md',
   '_STYLE\.md',
   # Out-of-tree refs covered by docs/standards/doc-authoring.md as

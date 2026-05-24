@@ -12,38 +12,45 @@ Specify 2.0 turns ad-hoc AI prompting into a repeatable, auditable workflow. Eve
 
 - **Durable reasoning.** The thinking that connects intent to implementation is captured in version-controlled artifacts, not lost when the chat session ends.
 - **Baseline accumulation.** Each merged slice adds to a growing specification. Future slices build on what came before rather than starting from scratch.
-- **One workflow rhythm.** `/spec:plan` → Gate 1 (operator stamps `reviewed`) → `/spec:execute` → `/spec:finalize`. The same rhythm drives a one-slice fix and a twelve-slice migration.
+- **One workflow rhythm.** `/spec:plan` → operator review step (Gate 1) → `/spec:execute` → `/spec:finalize`. A one-slice change uses the same steps as a twelve-slice migration.
+
+## Choose your path
+
+| I want to… | Start here |
+| ---------- | ---------- |
+| Run Specify for the first time | [Quick start](tutorials/quick-start.md) |
+| Look up a command | [Quick reference](reference/quick-reference.md) |
+| Understand the architecture | [Layered stack](explanation/layered-stack.md) |
+| Recover when execute stops | [Drive a slice manually](how-to/drive-slice-manually.md) |
 
 ## See it in action
 
 ```text
-/spec:init https://github.com/augentic/specify/targets/omnia
+/spec:init omnia
 
-/spec:plan add-greeting source intent="Add a greeting endpoint that accepts a name and returns a message"
-  --> enumerates intent, proposes one slice, writes change.md + plan.yaml + discovery.md, exits at `pending`
+/spec:plan fix-typo source intent="fix typo in user.rs"
+  --> writes change.md + plan.yaml + discovery.md, exits at pending
 
-specify plan transition add-greeting reviewed
-  --> Gate 1: operator-stamped lifecycle transition
+specify plan transition fix-typo reviewed
+  --> operator review step (Gate 1)
 
 /spec:execute
   --> /spec:refine + /spec:build + /spec:merge per slice until drained
 
-/spec:finalize add-greeting
+/spec:finalize fix-typo
   --> push branches, observe PRs, archive plan
 ```
 
-The same rhythm runs at N=1 and N=12: `intent.enumerate` makes the trivial case degenerate rather than special.
-
 ## Two adapter roles
 
-Specify 2.0 splits adapters by direction. **Source adapters** (`intent`, `documentation`, `code-typescript`, `screenshots`) read external material and emit `Evidence`. **Target adapters** (`omnia`, `vectis`, `contracts`) consume `spec.md` + `design.md` and produce code. See [Anatomy of an adapter](explanation/adapter-anatomy.md).
+Specify 2.0 splits adapters by direction. **Source adapters** read external material and emit `Evidence`. **Target adapters** consume `spec.md` + `design.md` and produce code. See [Anatomy of an adapter](explanation/adapter-anatomy.md).
 
 ## Start here
 
 {{#template templates/audience-grid-open.md}}
 
 {{#template templates/audience-open.md who=New to Specify}}
-Read [What is Specify?](orientation/index.md), install the [Prerequisites](orientation/prerequisites.md), then skim the [Quick reference card](reference/quick-reference.md).
+Read [What is Specify?](orientation/index.md), install [Prerequisites](orientation/prerequisites.md), then follow the [Quick start](tutorials/quick-start.md) tutorial.
 {{#template templates/audience-close.md}}
 
 {{#template templates/audience-open.md who=Returning from 1.x}}
@@ -58,7 +65,9 @@ Jump to [Contributing](contributing/index.md) and [Skill authoring standards](st
 
 ## Guide structure
 
-- **[Getting Started](orientation/index.md)** builds the mental model and gets you set up.
-- **[Reference](reference/index.md)** provides the complete lookup table for every skill, CLI command, artifact format, and configuration file.
-- **[Understanding Specify](explanation/layered-stack.md)** explains the architecture and design decisions.
-- **[Contributing](contributing/index.md)** covers skill authoring, plugin development, and checks.
+- **[Getting Started](orientation/index.md)** — what Specify is and how to install it.
+- **[Tutorials](tutorials/index.md)** — hands-on walkthroughs from first slice to cross-repo changes.
+- **[How-to Guides](how-to/index.md)** — task-oriented recipes for common operator situations.
+- **[Understanding Specify](explanation/concepts.md)** — concepts, architecture, and design decisions.
+- **[Reference](reference/index.md)** — skills, CLI commands, artifact formats, and configuration.
+- **[Contributing](contributing/index.md)** — skill authoring, plugin development, and checks.

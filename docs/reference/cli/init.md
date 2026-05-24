@@ -53,7 +53,7 @@ When `--format json` is provided, returns:
 
 ## See also
 
-- [Platform repo topologies](../../explanation/platform-repo.md) -- when to choose hub vs platform-as-project
+- [Configuration files](../../reference/configuration.md#projectyaml) and [Registry](../../reference/registry.md) -- when to choose hub vs platform-as-project
 - [Configuration Files](../configuration.md) -- project.yaml and metadata format
 - `AGENTS.md` context is generated during `specify init`; later inspection is direct file review.
 - [Prerequisites](../../orientation/prerequisites.md) -- setup before first init

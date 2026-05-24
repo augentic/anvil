@@ -128,4 +128,4 @@ A helper that genuinely needs host toolchains, network access, or platform SDKs 
 ## See also
 
 - [Tool declarations](../../explanation/tool-declarations.md) -- where tools are declared and how precedence works
-- [Anatomy of a Adapter](../../contributing/adapter-anatomy.md) -- optional adapter `tools.yaml` sidecar
+- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) -- optional adapter `tools.yaml` sidecar

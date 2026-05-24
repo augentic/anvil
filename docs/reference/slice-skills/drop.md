@@ -5,48 +5,47 @@ Discard a slice without merging specs into the baseline.
 ## Synopsis
 
 ```text
-/spec:drop [change-name?] [reason "<rationale>"]
+/spec:drop [slice-name] [reason "<rationale>"]
 ```
 
 ## Arguments
 
 | Argument | Required | Description |
-|----------|----------|-------------|
-| `change-name` | No | Name of the slice to drop. If omitted, prompts for selection. |
-| `--reason` | No | Rationale for dropping. Skips interactive confirmation when provided. |
+| -------- | -------- | ----------- |
+| `slice-name` | No | Name of the slice to drop. Required in non-interactive mode. |
+| `reason` | No | Rationale for dropping. Skips interactive confirmation when provided. |
 
 ## When to use
 
-- A change was exploratory and should not be merged.
-- A change has been superseded by a different approach.
-- A change is blocked and should be discarded.
+- A slice was exploratory and should not be merged.
+- A slice has been superseded by a different approach.
+- A slice is blocked and should be discarded.
 
 ## Artifacts produced
 
 | Artifact | Location | Content |
-|----------|----------|---------|
-| Archived change | `.specify/archive/YYYY-MM-DD-<name>/` | The full slice directory with `dropped` status |
+| -------- | -------- | ------- |
+| Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | Full slice directory with `dropped` status |
+
+Baseline specs remain unchanged.
 
 ## Behavior
 
-1. Confirms with the user (unless `--reason` is supplied for non-interactive use).
-2. Runs `specify slice drop` which:
-   - Transitions the slice to `dropped`.
-   - Archives the slice directory.
-3. Baseline specs remain unchanged.
+1. **Select slice** — use argument or prompt when multiple active slices exist.
+2. **Check lifecycle** — warn when slice is `built` (ready for merge); refuse when already `merged` or `dropped`.
+3. **Confirm** — AskQuestion unless `reason` supplied (non-interactive).
+4. **Drop** — `specify slice transition <name> dropped --reason "..."`; CLI archives the slice directory.
 
 ## Lifecycle transitions
 
-`created|defined|building|complete --> dropped`
-
-Drop is available from any pre-terminal state.
+`* → dropped` from any pre-terminal slice state (`refining`, `refined`, `built`)
 
 ## Error modes
 
 | Error | Cause | Resolution |
-|-------|-------|------------|
-| Change already terminal | Change is already merged or dropped | No action needed |
-| No active slices | No changes exist to drop | Nothing to do |
+| ----- | ----- | ---------- |
+| Already terminal | Slice is `merged` or `dropped` | No action needed |
+| No active slices | Nothing to drop | Nothing to do |
 
 ## Examples
 
@@ -60,5 +59,5 @@ Drop is available from any pre-terminal state.
 
 ## See also
 
-- [/spec:merge](merge.md) -- the alternative to dropping
-- [Lifecycle](../lifecycle.md) -- the dropped state
+- [/spec:merge](merge.md) — the alternative to dropping
+- [Lifecycle](../lifecycle.md) — the dropped state

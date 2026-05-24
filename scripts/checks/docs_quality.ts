@@ -3,8 +3,9 @@
 //     in tutorials, how-tos, references, or explanations. Linking the
 //     archived RFC file via a markdown link target is still allowed so
 //     long as the visible prose does not name the RFC.
-//   - Pipeline diagrams in explanation/orientation use committed SVGs,
-//     not ```text fences (reference pages may keep ASCII command blocks).
+//   - Pipeline diagrams in explanation/orientation/tutorials/how-to use
+//     committed SVGs, not ```text fences (reference pages may keep
+//     ASCII command blocks).
 //
 // The predicate tolerates the docs tree being absent so partial
 // checkouts still finish cleanly.
@@ -21,6 +22,8 @@ import {
 const EXPLANATION_ORIENTATION = [
   join(REPO_ROOT, "docs/explanation"),
   join(REPO_ROOT, "docs/orientation"),
+  join(REPO_ROOT, "docs/tutorials"),
+  join(REPO_ROOT, "docs/how-to"),
 ];
 
 const TEXT_FENCE_ALLOWLIST = new Set<string>([

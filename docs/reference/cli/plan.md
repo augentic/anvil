@@ -114,7 +114,7 @@ Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYM
 ## See also
 
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
-- [/spec:plan](../change-skills/draft.md) -- skill that authors plans
+- [/spec:plan](../change-skills/plan.md) -- skill that authors plans
 - [/spec:execute](../change-skills/execute.md) -- skill that drives plan execution
 - [/spec:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
 - [Configuration Files](../configuration.md) -- plan.yaml and registry format

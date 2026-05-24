@@ -66,7 +66,7 @@ Check whether `.specify/project.yaml` exists.
 
 ### 3. Decide the topology — regular project or platform hub
 
-See [Platform repo topologies](../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
+See [Configuration files](../../../docs/reference/configuration.md#projectyaml) and [Registry](../../../docs/reference/registry.md) for the full background on the two shapes. Briefly:
 
 - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **adapter**.
 - **Platform hub** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
