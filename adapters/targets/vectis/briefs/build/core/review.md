@@ -25,5 +25,5 @@ The core reviewer has no orchestrated mode — when design-level findings accumu
 
 - Report-local occurrence IDs: `CRX-1`, `LOG-1`, `GEN-1`, `UNI-1`, `NEW-1`.
 - Stable codex citations: `rule_id: VECTIS-CORE-001` (for example) appears alongside each mapped finding. Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
-- Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence ID.
-- Every finding carries a `file:line` reference and a verbatim code snippet.
+
+See [iteration-report.md](../../../references/review/iteration-report.md) § Finding-ID conventions for severity and `file:line` rules.

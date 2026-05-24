@@ -67,3 +67,8 @@ Output format for `2g. Produce iteration report`. Use the full template on the f
 ````
 
 Classify each finding as **mechanical** (auto-fixable) or **design-level** (requires architectural decisions). Add design-level findings to the accumulated list.
+
+## Finding-ID conventions
+
+- Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence ID.
+- Every finding carries a `file:line` reference and a verbatim code snippet.

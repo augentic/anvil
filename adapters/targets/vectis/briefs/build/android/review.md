@@ -21,5 +21,5 @@ Carries the body of the retired `vectis-android-reviewer` skill. The Android-spe
 
 - Report-local occurrence IDs: `AND-1`, `KTL-1`, `INT-1`, `UNI-1`, `NEW-1`.
 - Stable codex citations: `rule_id: VECTIS-AND-001` (for example) appears alongside each mapped finding. Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
-- Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence ID.
-- Every finding carries a `file:line` reference and a verbatim code snippet.
+
+See [iteration-report.md](../../../references/review/iteration-report.md) § Finding-ID conventions for severity and `file:line` rules.
