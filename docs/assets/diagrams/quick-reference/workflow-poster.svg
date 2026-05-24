@@ -21,7 +21,7 @@
   <rect x="650" y="44" width="140" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="662" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/spec:finalize</text>
   <text x="20" y="120" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify plan transition &lt;name&gt; reviewed</text>
-  <text x="20" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#555">Inside execute: /spec:refine � /spec:build � /spec:merge per slice</text>
-  <text x="20" y="160" font-family="ui-monospace, monospace" font-size="11" fill="#555">Multi-source: /spec:plan &lt;name&gt; source legacy=./& source docs=./&</text>
-  <text x="20" y="188" font-family="ui-monospace, monospace" font-size="11" fill="#888">Breakouts: /spec:refine � /spec:build � /spec:merge � /spec:drop</text>
+  <text x="20" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#555">Inside execute: /spec:refine &#8594; /spec:build &#8594; /spec:merge per slice</text>
+  <text x="20" y="160" font-family="ui-monospace, monospace" font-size="11" fill="#555">Multi-source: /spec:plan &lt;name&gt; source legacy=./repo source docs=./design-notes</text>
+  <text x="20" y="188" font-family="ui-monospace, monospace" font-size="11" fill="#888">Breakouts: /spec:refine &#8594; /spec:build &#8594; /spec:merge &#8594; /spec:drop</text>
 </svg>
