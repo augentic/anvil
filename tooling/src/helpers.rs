@@ -57,6 +57,42 @@ pub fn walk_skill_files(framework_root: &Path) -> Result<Vec<PathBuf>, ToolingEr
     walk_matching_files(framework_root, &framework_root.join("plugins"), "SKILL.md")
 }
 
+/// Walk every `.md` file under `root`, skipping symlinked paths.
+pub fn walk_markdown_files(framework_root: &Path, root: &Path) -> Result<Vec<PathBuf>, ToolingError> {
+    walk_matching_files(framework_root, root, ".md")
+}
+
+/// Resolve a markdown link target relative to the containing file.
+///
+/// Mirrors `resolveMarkdownAsset()` in `scripts/checks/docs_quality.ts`.
+pub fn resolve_markdown_asset(md_path: &Path, target: &str) -> PathBuf {
+    let mut resolved = md_path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    for part in target.split('/') {
+        match part {
+            "." | "" => {}
+            ".." => {
+                resolved.pop();
+            }
+            _ => resolved.push(part),
+        }
+    }
+
+    resolved
+}
+
+/// Display `path` relative to `framework_root` with forward slashes.
+pub fn relative_display(framework_root: &Path, path: &Path) -> String {
+    path.strip_prefix(framework_root)
+        .unwrap_or(path)
+        .display()
+        .to_string()
+        .replace('\\', "/")
+}
+
 /// Walk files ending with `suffix` under `root`, skipping symlinked paths.
 pub fn walk_matching_files(
     framework_root: &Path,
