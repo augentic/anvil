@@ -4,7 +4,13 @@
 
 ## Abstract
 
-Replace this repo's Deno tooling (`scripts/check.ts`, `scripts/gen-envelope-doc.ts`, `tests/cross_repo.ts`) with a small Rust workspace at **`augentic/specify/tooling/`**, introduced in phases. The workspace lives in a dedicated subdirectory so skill and adapter authors see a markdown-first repo root (`plugins/`, `adapters/`, `docs/`) without `Cargo.toml`, `crates/`, or `rust-toolchain.toml` beside the content they edit. The first phase is deliberately narrow: JSON Schemas are the canonical contract for every artifact whose shape can be expressed declaratively; cross-file rules that schemas cannot express live in a single `rules` library crate; that library backs a thin **`tooling`** binary whose `check` subcommand runs locally and in CI. Once that rule engine is proven, the same binary gains a `docgen` subcommand and an `accept` integration-test crate ports fixture acceptance. The operator `specify` binary in `augentic/specify-cli` is deliberately **not** extended; framework tooling stays with the framework it validates.
+Replace this repo's Deno tooling (`scripts/check.ts`, `scripts/gen-envelope-doc.ts`, `tests/cross_repo.ts`) with a small Rust workspace at `**augentic/specify/tooling/**`, introduced in phases. 
+
+The workspace lives in a dedicated subdirectory so skill and adapter authors see a markdown-first repo root (`plugins/`, `adapters/`, `docs/`) without `Cargo.toml`, `crates/`, or `rust-toolchain.toml` beside the content they edit. 
+
+The first phase is deliberately narrow: JSON Schemas are the canonical contract for every artifact whose shape can be expressed declaratively; cross-file rules that schemas cannot express live in a single `rules` library crate; that library backs a thin `**tooling**` binary whose `check` subcommand runs locally and in CI. Once that rule engine is proven, the same binary gains a `docgen` subcommand and an `accept` integration-test crate ports fixture acceptance. 
+
+The operator `specify` binary in `augentic/specify-cli` is deliberately **not** extended; framework tooling stays with the framework it validates.
 
 ## Motivation
 
@@ -159,14 +165,16 @@ Failure messages MUST match the current `check.ts` wording during the overlap pe
 
 ### Crate naming
 
-The library crate is **`rules`** (`tooling/crates/rules/`). User-facing commands run through a single **`tooling`** binary (`tooling/tools/tooling/`; artifact path `tooling/target/debug/tooling`). Subcommands replace the separate binaries from earlier drafts:
+The library crate is `**rules`** (`tooling/crates/rules/`). User-facing commands run through a single `**tooling**` binary (`tooling/tools/tooling/`; artifact path `tooling/target/debug/tooling`). Subcommands replace the separate binaries from earlier drafts:
+
 
 | Subcommand       | Replaces                              | Library  |
 | ---------------- | ------------------------------------- | -------- |
 | `tooling check`  | `scripts/check.ts`, `framework-check` | `rules`  |
 | `tooling docgen` | `scripts/gen-envelope-doc.ts`         | `docgen` |
 
-Acceptance stays **`cargo test -p accept`** — not a CLI subcommand. The `framework-` prefix from earlier drafts is dropped; the `tooling/` workspace scopes these names away from the operator product. This is **not** `specify check` or `specify review` — those surfaces validate consumer projects on the operator binary (rejected in §Alternatives and reserved separately in RFC-28 / roadmap RM-10). Contributors disambiguate the `check` subcommand from `make check`, `scripts/check.ts` (during Deno overlap), and `cargo check` by context: day-to-day invocation is always `./scripts/run-tool check …` or `make check`, never a global install.
+
+Acceptance stays `**cargo test -p accept**` — not a CLI subcommand. The `framework-` prefix from earlier drafts is dropped; the `tooling/` workspace scopes these names away from the operator product. This is **not** `specify check` or `specify review` — those surfaces validate consumer projects on the operator binary (rejected in §Alternatives and reserved separately in RFC-28 / roadmap RM-10). Contributors disambiguate the `check` subcommand from `make check`, `scripts/check.ts` (during Deno overlap), and `cargo check` by context: day-to-day invocation is always `./scripts/run-tool check …` or `make check`, never a global install.
 
 **Broader renaming.** This RFC is canonical for the shortened names and the single-binary shape. Landing the workspace must update every cross-reference that still says `framework-rules`, `framework-check`, `framework-lsp`, or separate `check`/`docgen` binaries: [RFC-1](done/rfc-1-cli.md), [RFC-4](future/rfc-4-dsl.md), [RFC-10](done/rfc-10-skills.md), [RFC-13](done/rfc-13-extensibility.md), [RFC-28](next/rfc-28-codex-rules.md), [RFC-30](next/rfc-30-init.md), [roadmap RM-16 / RM-07](roadmap.md), [docs/contributing/checks.md](../docs/contributing/checks.md), and the `.github/actions/tooling/` composite. Module paths in prose become `rules::codex` rather than `framework-rules::codex`. No rename is required in `specify-cli` — the operator binary is unchanged.
 
@@ -211,7 +219,7 @@ One clap root with subcommands. Day-to-day callers at the framework root use `sc
 
 #### `tooling check`
 
-A thin dispatcher over `rules`. **`--repo`** names the framework root to scan; it defaults to the parent of the workspace directory when the binary is invoked from `tooling/`.
+A thin dispatcher over `rules`. `**--repo`** names the framework root to scan; it defaults to the parent of the workspace directory when the binary is invoked from `tooling/`.
 
 ```bash
 # day-to-day (framework root) — build is automatic
@@ -262,8 +270,8 @@ Test-binary names mirror the existing Deno suites (`sources`, `targets`, `skills
 
 The pre-commit hook is part of the first `tooling check` rollout; PR annotations are deferred until JSON findings have fixtures:
 
-- **`tooling/hooks/pre-commit`** — a shell shim that calls `scripts/run-tool check --repo .. --changed` and exits non-zero on findings. The hook reuses the cached debug binary; it does not call `cargo run` on every commit. `make install-hooks` copies or symlinks it into `.git/hooks/pre-commit` at the framework root. Installation is **opt-in** — skill authors who rely on editor schemas and CI never need the hook.
-- **`.github/actions/tooling/`** — a follow-on composite action that runs a release-built `tooling check --repo . --format json`, parses the envelope, and posts PR annotations via `actions/github-script`. CI builds the binary once per job, then invokes it directly (see §*Invisible entry points and auto-build*).
+- `**tooling/hooks/pre-commit**` — a shell shim that calls `scripts/run-tool check --repo .. --changed` and exits non-zero on findings. The hook reuses the cached debug binary; it does not call `cargo run` on every commit. `make install-hooks` copies or symlinks it into `.git/hooks/pre-commit` at the framework root. Installation is **opt-in** — skill authors who rely on editor schemas and CI never need the hook.
+- `**.github/actions/tooling/`** — a follow-on composite action that runs a release-built `tooling check --repo . --format json`, parses the envelope, and posts PR annotations via `actions/github-script`. CI builds the binary once per job, then invokes it directly (see §*Invisible entry points and auto-build*).
 
 ### Invisible entry points and auto-build
 
@@ -271,11 +279,13 @@ Framework tooling must **disappear into the background** for day-to-day skill an
 
 #### Contract
 
+
 | Audience                          | What they run                                                      | Rust required locally?                     |
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
 | Skill / adapter authors (default) | Cursor schemas while editing; `make check` before a PR; CI on push | Optional — schemas and CI cover most needs |
 | Authors who want faster feedback  | `make install-hooks` (opt-in pre-commit)                           | Yes (via `tooling/rust-toolchain.toml`)    |
 | Tooling contributors              | `cd tooling && cargo test`, `cargo build -p tooling`, …            | Yes                                        |
+
 
 Authors never run `cargo build` as a separate step before `make check`. Build logic lives in one place; entry points call through it.
 
@@ -351,7 +361,7 @@ Rust appears under prerequisites only for contributors who run `make check` or h
 #### Explicitly out of scope
 
 - **Committed prebuilt binaries** — platform-specific churn; Cargo incremental build is enough.
-- **`cargo install tooling`** — adds global install/update ceremony; repo-local binaries via `scripts/run-tool` are simpler.
+- `**cargo install tooling`** — adds global install/update ceremony; repo-local binaries via `scripts/run-tool` are simpler.
 - **Auto-build on every file save** — cross-file rules are too heavy; editor schemas cover save-time feedback. A future `lsp` would reuse `rules` without changing this contract.
 
 ### `lsp` (deferred)
@@ -387,7 +397,7 @@ During migration, `make check` calls both `scripts/check.ts` and `scripts/run-to
 ### Coordination with other RFCs
 
 - **RFC-4 (typed skill expression).** Option 1 (framework-tooling skill validation) is satisfied by the schema-first pass plus the `skill_frontmatter` / `skill_body` modules in `rules`. The "CLI" in that RFC is reinterpreted as `tooling check`, not `specify check`. Options 2 and 3 are unchanged.
-- **RFC-28 (codex resolution).** RFC-28 cites RFC-5 for namespace-ownership enforcement. That contract is preserved verbatim — the rule moves to `rules::codex` and continues to enforce that first-party files do not use `ORG-*`. Where the rule lives (this repo, not specify-cli) is invisible to RFC-28's resolver and finding shape.
+- **RFC-28 (codex resolution).** RFC-28 cites RFC-5 for namespace-ownership enforcement. That contract is preserved verbatim — the rule moves to `rules::codex` and continues to enforce that first-party files do not use `ORG-`*. Where the rule lives (this repo, not specify-cli) is invisible to RFC-28's resolver and finding shape.
 - **Roadmap RM-16.** The roadmap entry tracks this RFC's framework dev-tooling workspace: schema-first authoring feedback, `tooling check`, `accept`, `tooling docgen`, and Deno retirement. The unblocks line (RFC-4 Option 1, declared-WASI-tool helper migration) is unchanged.
 
 ## Alternatives Considered
@@ -412,13 +422,14 @@ During migration, `make check` calls both `scripts/check.ts` and `scripts/run-to
 
 ## References
 
-- [`scripts/check.ts`](../scripts/check.ts) + [`scripts/checks/`](../scripts/checks/) — the framework linter being replaced.
-- [`scripts/gen-envelope-doc.ts`](../scripts/gen-envelope-doc.ts) — the doc generator being replaced.
-- [`tests/cross_repo.ts`](../tests/cross_repo.ts) + [`tests/lib/`](../tests/lib/) — the acceptance harness being replaced.
-- [`docs/standards/skill-authoring.md`](../docs/standards/skill-authoring.md) — invariants the skill-discipline modules enforce.
-- [`docs/explanation/adapter-anatomy.md`](../docs/explanation/adapter-anatomy.md) — the adapter model the `adapter` and `brief` modules validate.
-- [`docs/contributing/acceptance.md`](../docs/contributing/acceptance.md) — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
-- [Specify CLI `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — crate graph this workspace consumes via `specify-domain`.
+- `[scripts/check.ts](../scripts/check.ts)` + `[scripts/checks/](../scripts/checks/)` — the framework linter being replaced.
+- `[scripts/gen-envelope-doc.ts](../scripts/gen-envelope-doc.ts)` — the doc generator being replaced.
+- `[tests/cross_repo.ts](../tests/cross_repo.ts)` + `[tests/lib/](../tests/lib/)` — the acceptance harness being replaced.
+- `[docs/standards/skill-authoring.md](../docs/standards/skill-authoring.md)` — invariants the skill-discipline modules enforce.
+- `[docs/explanation/adapter-anatomy.md](../docs/explanation/adapter-anatomy.md)` — the adapter model the `adapter` and `brief` modules validate.
+- `[docs/contributing/acceptance.md](../docs/contributing/acceptance.md)` — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
+- [Specify CLI `AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md)` — crate graph this workspace consumes via `specify-domain`.
 - [Specify CLI handler-shape contract](https://github.com/augentic/specify-cli/blob/main/docs/standards/handler-shape.md) — JSON envelope shape `tooling check --format json` mirrors.
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md) — Option 1 is satisfied by the schema-first pass plus the skill-discipline modules.
 - [RFC-28: Codex Resolution and Structured Review Findings](next/rfc-28-codex-rules.md) — namespace-ownership contract preserved by `rules::codex`.
+
