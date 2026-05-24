@@ -10,17 +10,19 @@ additional-css = ["assets/theme/specify-docs.css"]
 additional-js = ["assets/theme/authority-widget.js"]
 default-theme = "light"
 preferred-dark-theme = "navy"
+sidebar-header-nav = true
+admonitions = true
 
 [output.html.fold]
 enable = true
 level = 1
 
-[output.linkcheck]
+[output.linkcheck2]
 follow-web-links = false
 warning-policy = "error"
 traverse-parent-directories = true
 exclude = [
-  # Directory-style links (path ends with `/`). mdbook-linkcheck cannot
+  # Directory-style links (path ends with `/`). mdbook-linkcheck2 cannot
   # follow directory links to file listings; cleanup happens in a follow-up
   # PR that retargets each ref to a specific anchor.
   '/$',
@@ -41,12 +43,3 @@ exclude = [
   '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
   '\.\./\.\./plugins/spec/references/synthesis/authority\.md',
 ]
-
-[preprocessor.d2]
-layout = "elk"
-inline = true
-
-[preprocessor.template]
-renderers = ["html"]
-
-[preprocessor.pagetoc]

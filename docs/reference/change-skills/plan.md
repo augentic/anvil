@@ -1,14 +1,25 @@
-{{#template ../../templates/hero-open.md eyebrow=Reference title=/spec:plan}}
+<div class="hero">
+<div class="eyebrow">Reference</div>
+<h1 class="hero-title">/spec:plan</h1>
+
 Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
 
-{{#template ../../templates/meta-row-open.md}}
-{{#template ../../templates/meta-chip.md label=Layer value=2 — Change}}
-{{#template ../../templates/meta-chip.md label=Writes value=change.md, plan.yaml, discovery.md}}
-{{#template ../../templates/meta-chip.md label=Gate value=Exits pending}}
-{{#template ../../templates/meta-row-close.md}}
-{{#template ../../templates/hero-close.md}}
+<div class="meta-row">
 
-{{#template ../../templates/synopsis-open.md}}
+<span class="meta-chip"><strong>Layer</strong> 2 — Change</span>
+
+<span class="meta-chip"><strong>Writes</strong> change.md, plan.yaml, discovery.md</span>
+
+<span class="meta-chip"><strong>Gate</strong> Exits pending</span>
+
+</div>
+
+</div>
+
+
+<div class="synopsis">
+<strong>Synopsis.</strong>
+
 
 ```text
 /spec:plan <name> [source <key>=<adapter>:<binding> ...]
@@ -16,7 +27,8 @@ Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and
 
 Agent-driven orchestrator. Deterministic work delegates to `specify plan *` and `specify source resolve`. Never writes `reviewed`.
 
-{{#template ../../templates/synopsis-close.md}}
+</div>
+
 
 ## Arguments
 
@@ -102,9 +114,12 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 /spec:plan identity-revamp source legacy=code-typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
-{{#template ../../templates/see-also-open.md}}
+<div class="see-also">
+<strong>See also</strong>
+
 - [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `reviewed`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
 - [specify plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change
-{{#template ../../templates/see-also-close.md}}
+</div>
+

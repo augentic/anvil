@@ -77,7 +77,7 @@ The discipline:
 2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `checkBriefSize` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
 3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `checkBriefSize`.
 4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as `checkMarkdownLinks` failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
-5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite "see worked example [examples/…]"; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
+5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
 
 The pattern that emerges:
 

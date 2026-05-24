@@ -1,1 +1,0 @@
-<div class="meta-row">

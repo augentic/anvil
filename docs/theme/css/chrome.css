@@ -3,7 +3,7 @@
 html {
     scrollbar-color: var(--scrollbar) var(--bg);
 }
-#searchresults a,
+#mdbook-searchresults a,
 .content a:link,
 a:visited,
 a > .hljs {
@@ -11,10 +11,10 @@ a > .hljs {
 }
 
 /*
-    body-container is necessary because mobile browsers don't seem to like
+    mdbook-body-container is necessary because mobile browsers don't seem to like
     overflow-x on the body tag when there is a <meta name="viewport"> tag.
 */
-#body-container {
+#mdbook-body-container {
     /*
         This is used when the sidebar pushes the body content off the side of
         the screen on small screens. Without it, dragging on mobile Safari
@@ -25,12 +25,12 @@ a > .hljs {
 
 /* Menu Bar */
 
-#menu-bar,
-#menu-bar-hover-placeholder {
+#mdbook-menu-bar,
+#mdbook-menu-bar-hover-placeholder {
     z-index: 101;
     margin: auto calc(0px - var(--page-padding));
 }
-#menu-bar {
+#mdbook-menu-bar {
     position: relative;
     display: flex;
     flex-wrap: wrap;
@@ -39,24 +39,24 @@ a > .hljs {
     border-block-end-width: 1px;
     border-block-end-style: solid;
 }
-#menu-bar.sticky,
-#menu-bar-hover-placeholder:hover + #menu-bar,
-#menu-bar:hover,
-html.sidebar-visible #menu-bar {
+#mdbook-menu-bar.sticky,
+#mdbook-menu-bar-hover-placeholder:hover + #mdbook-menu-bar,
+#mdbook-menu-bar:hover,
+html.sidebar-visible #mdbook-menu-bar {
     position: -webkit-sticky;
     position: sticky;
     top: 0 !important;
 }
-#menu-bar-hover-placeholder {
+#mdbook-menu-bar-hover-placeholder {
     position: sticky;
     position: -webkit-sticky;
     top: 0;
     height: var(--menu-bar-height);
 }
-#menu-bar.bordered {
+#mdbook-menu-bar.bordered {
     border-block-end-color: var(--table-border-color);
 }
-#menu-bar i, #menu-bar .icon-button {
+#mdbook-menu-bar .fa-svg, #mdbook-menu-bar .icon-button {
     position: relative;
     padding: 0 8px;
     z-index: 10;
@@ -65,7 +65,7 @@ html.sidebar-visible #menu-bar {
     transition: color 0.5s;
 }
 @media only screen and (max-width: 420px) {
-    #menu-bar i, #menu-bar .icon-button {
+    #mdbook-menu-bar .fa-svg, #mdbook-menu-bar .icon-button {
         padding: 0 5px;
     }
 }
@@ -76,7 +76,7 @@ html.sidebar-visible #menu-bar {
     padding: 0;
     color: inherit;
 }
-.icon-button i {
+.icon-button .fa-svg {
     margin: 0;
 }
 
@@ -118,14 +118,14 @@ html:not(.js) .left-buttons button {
 .mobile-nav-chapters,
 .mobile-nav-chapters:visited,
 .menu-bar .icon-button,
-.menu-bar a i {
+.menu-bar a .fa-svg {
     color: var(--icons);
 }
 
-.menu-bar i:hover,
+.menu-bar .fa-svg:hover,
 .menu-bar .icon-button:hover,
 .nav-chapters:hover,
-.mobile-nav-chapters i:hover {
+.mobile-nav-chapters .fa-svg:hover {
     color: var(--icons-hover);
 }
 
@@ -186,10 +186,6 @@ html:not(.js) .left-buttons button {
     left: var(--page-padding);
 }
 
-/* Use the correct buttons for RTL layouts*/
-[dir=rtl] .previous i.fa-angle-left:before {content:"\f105";}
-[dir=rtl] .next i.fa-angle-right:before { content:"\f104"; }
-
 @media only screen and (max-width: 1080px) {
     .nav-wide-wrapper { display: none; }
     .nav-wrapper { display: block; }
@@ -197,8 +193,8 @@ html:not(.js) .left-buttons button {
 
 /* sidebar-visible */
 @media only screen and (max-width: 1380px) {
-    #sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wide-wrapper { display: none; }
-    #sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wrapper { display: block; }
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wide-wrapper { display: none; }
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wrapper { display: block; }
 }
 
 /* Inline code */
@@ -244,13 +240,10 @@ pre > .buttons :hover {
     border-color: var(--icons-hover);
     background-color: var(--theme-hover);
 }
-pre > .buttons i {
-    margin-inline-start: 8px;
-}
 pre > .buttons button {
     cursor: inherit;
     margin: 0px 5px;
-    padding: 4px 4px 3px 5px;
+    padding: 2px 3px 0px 4px;
     font-size: 23px;
 
     border-style: solid;
@@ -314,7 +307,7 @@ pre > .result {
 
 /* Search */
 
-#searchresults a {
+#mdbook-searchresults a {
     text-decoration: none;
 }
 
@@ -344,13 +337,13 @@ mark.fade-out {
     max-width: var(--content-max-width);
 }
 
-#searchbar-outer.searching #searchbar {
+#mdbook-searchbar-outer.searching #mdbook-searchbar {
     padding-right: 30px;
 }
-#searchbar-outer .spinner-wrapper {
+#mdbook-searchbar-outer .spinner-wrapper {
     display: none;
 }
-#searchbar-outer.searching .spinner-wrapper {
+#mdbook-searchbar-outer.searching .spinner-wrapper {
     display: block;
 }
 
@@ -369,7 +362,21 @@ mark.fade-out {
     background-color: var(--bg);
 }
 
-#searchbar {
+#fa-spin {
+    animation: rotating 2s linear infinite;
+    display: inline-block;
+}
+
+@keyframes rotating {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#mdbook-searchbar {
     width: 100%;
     margin-block-start: var(--searchbar-margin-block-start);
     margin-block-end: 0;
@@ -382,8 +389,8 @@ mark.fade-out {
     background-color: var(--searchbar-bg);
     color: var(--searchbar-fg);
 }
-#searchbar:focus,
-#searchbar.active {
+#mdbook-searchbar:focus,
+#mdbook-searchbar.active {
     box-shadow: 0 0 3px var(--searchbar-shadow-color);
 }
 
@@ -404,19 +411,19 @@ mark.fade-out {
     border-block-end: 1px dashed var(--searchresults-border-color);
 }
 
-ul#searchresults {
+ul#mdbook-searchresults {
     list-style: none;
     padding-inline-start: 20px;
 }
-ul#searchresults li {
+ul#mdbook-searchresults li {
     margin: 10px 0px;
     padding: 2px;
     border-radius: 2px;
 }
-ul#searchresults li.focus {
+ul#mdbook-searchresults li.focus {
     background-color: var(--searchresults-li-bg);
 }
-ul#searchresults span.teaser {
+ul#mdbook-searchresults span.teaser {
     display: block;
     clear: both;
     margin-block-start: 5px;
@@ -425,7 +432,7 @@ ul#searchresults span.teaser {
     margin-inline-end: 0;
     font-size: 0.8em;
 }
-ul#searchresults span.teaser em {
+ul#mdbook-searchresults span.teaser em {
     font-weight: bold;
     font-style: normal;
 }
@@ -502,9 +509,9 @@ html:not(.sidebar-resizing) .sidebar {
     height: 16px;
     color: var(--icons);
     margin-inline-start: var(--sidebar-resize-indicator-space);
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
 }
 .sidebar-resize-handle .sidebar-resize-indicator::before {
     content: "";
@@ -527,11 +534,16 @@ html:not(.sidebar-resizing) .sidebar {
     cursor: col-resize;
     width: calc(var(--sidebar-resize-indicator-width) - var(--sidebar-resize-indicator-space));
 }
+
+html:not(.js) .sidebar-resize-handle {
+    display: none;
+}
+
 /* sidebar-hidden */
-#sidebar-toggle-anchor:not(:checked) ~ .sidebar {
+#mdbook-sidebar-toggle-anchor:not(:checked) ~ .sidebar {
     transform: translateX(calc(0px - var(--sidebar-width) - var(--sidebar-resize-indicator-width)));
 }
-[dir=rtl] #sidebar-toggle-anchor:not(:checked) ~ .sidebar {
+[dir=rtl] #mdbook-sidebar-toggle-anchor:not(:checked) ~ .sidebar {
     transform: translateX(calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width)));
 }
 .sidebar::-webkit-scrollbar {
@@ -542,18 +554,18 @@ html:not(.sidebar-resizing) .sidebar {
 }
 
 /* sidebar-visible */
-#sidebar-toggle-anchor:checked ~ .page-wrapper {
+#mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
     transform: translateX(calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width)));
 }
-[dir=rtl] #sidebar-toggle-anchor:checked ~ .page-wrapper {
+[dir=rtl] #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
     transform: translateX(calc(0px - var(--sidebar-width) - var(--sidebar-resize-indicator-width)));
 }
 @media only screen and (min-width: 620px) {
-    #sidebar-toggle-anchor:checked ~ .page-wrapper {
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
         transform: none;
         margin-inline-start: calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width));
     }
-    [dir=rtl] #sidebar-toggle-anchor:checked ~ .page-wrapper {
+    [dir=rtl] #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
         transform: none;
     }
 }
@@ -564,17 +576,18 @@ html:not(.sidebar-resizing) .sidebar {
     line-height: 2.2em;
 }
 
-.chapter ol {
-    width: 100%;
-}
-
 .chapter li {
-    display: flex;
     color: var(--sidebar-non-existant);
 }
+
+/* This is a span wrapping the chapter link and the fold chevron. */
+.chapter-link-wrapper {
+    /* Used to position the chevron to the right, allowing the text to wrap before it. */
+    display: flex;
+}
+
 .chapter li a {
-    display: block;
-    padding: 0;
+    /* Remove underlines. */
     text-decoration: none;
     color: var(--sidebar-fg);
 }
@@ -587,21 +600,22 @@ html:not(.sidebar-resizing) .sidebar {
     color: var(--sidebar-active);
 }
 
-.chapter li > a.toggle {
+/* This is the toggle chevron. */
+.chapter-fold-toggle {
     cursor: pointer;
-    display: block;
+    /* Positions the chevron to the side. */
     margin-inline-start: auto;
     padding: 0 10px;
     user-select: none;
     opacity: 0.68;
 }
 
-.chapter li > a.toggle div {
+.chapter-fold-toggle div {
     transition: transform 0.5s;
 }
 
 /* collapse the section */
-.chapter li:not(.expanded) + li > ol {
+.chapter li:not(.expanded) > ol {
     display: none;
 }
 
@@ -610,10 +624,26 @@ html:not(.sidebar-resizing) .sidebar {
     margin-block-start: 0.6em;
 }
 
-.chapter li.expanded > a.toggle div {
+/* When expanded, rotate the chevron to point down. */
+.chapter li.expanded > span > .chapter-fold-toggle div {
     transform: rotate(90deg);
 }
 
+.chapter a.current-header {
+    color: var(--sidebar-active);
+}
+
+.on-this-page {
+    margin-left: 22px;
+    border-inline-start: 4px solid var(--sidebar-header-border-color);
+    padding-left: 8px;
+}
+
+.on-this-page > ol {
+    padding-left: 0;
+}
+
+/* Horizontal line in chapter list. */
 .spacer {
     width: 100%;
     height: 3px;
@@ -623,6 +653,7 @@ html:not(.sidebar-resizing) .sidebar {
     background-color: var(--sidebar-spacer);
 }
 
+/* On touch devices, add more vertical spacing to make it easier to tap links. */
 @media (-moz-touch-enabled: 1), (pointer: coarse) {
     .chapter li a { padding: 5px 0; }
     .spacer { margin: 10px 0; }
@@ -736,8 +767,12 @@ html:not(.sidebar-resizing) .sidebar {
 :root {
     /* 1280px outer max-width minus the 300px sidebar. */
     --content-max-width: 980px;
-    --sidebar-target-width: 280px;
+    --sidebar-target-width: 300px;
     --menu-bar-height: 56px;
+}
+
+body {
+    font-size: 1.75rem;
 }
 
 /* Slightly tighter sidebar typography */
@@ -755,10 +790,7 @@ html:not(.sidebar-resizing) .sidebar {
     margin-top: 1.6em;
 }
 
-/* The menu-title in our forked index.hbs is a <div>, not a <h1> — restore
- * baseline spacing now that mdbook's `.menu-title { ... }` rule no longer
- * applies the right baseline. */
-#menu-bar .menu-title {
+#mdbook-menu-bar .menu-title {
     flex: 1;
     min-width: 0;
     text-align: left;
@@ -767,10 +799,229 @@ html:not(.sidebar-resizing) .sidebar {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
-/* Thin, sticky breadcrumb bar with backdrop blur.
- * mdbook's menu-bar is already sticky; tune the rest. */
-#menu-bar.menu-bar.sticky {
+#mdbook-menu-bar.sticky {
     backdrop-filter: saturate(140%) blur(8px);
+}
+
+/* Sidebar heading navigation ("On this page") */
+.on-this-page {
+    font-size: 0.88em;
+}
+
+.on-this-page a {
+    color: var(--sidebar-fg);
+}
+
+.on-this-page a.current-header {
+    color: var(--sidebar-active);
+    font-weight: 600;
+}
+
+/* Augentic-derived chrome pass ----------------------------------------- */
+#mdbook-menu-bar.menu-bar {
+    align-items: center;
+    min-height: var(--menu-bar-height);
+    background:
+        linear-gradient(90deg, rgba(0, 91, 234, 0.08), rgba(0, 198, 251, 0.06)),
+        color-mix(in srgb, var(--bg) 96%, transparent);
+    border-bottom: 1px solid var(--spec-rule);
+    box-shadow: 0 1px 0 rgba(6, 18, 58, 0.04);
+}
+
+#mdbook-menu-bar.sticky {
+    backdrop-filter: saturate(150%) blur(14px);
+}
+
+#mdbook-menu-bar .left-buttons,
+#mdbook-menu-bar .right-buttons {
+    align-items: center;
+    gap: 6px;
+}
+
+#mdbook-menu-bar .icon-button,
+#mdbook-menu-bar .right-buttons a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    color: var(--icons);
+    transition: background 0.16s ease, color 0.16s ease;
+}
+
+#mdbook-menu-bar .icon-button:hover,
+#mdbook-menu-bar .right-buttons a:hover {
+    background: var(--theme-hover);
+    color: var(--icons-hover);
+    text-decoration: none;
+}
+
+#mdbook-menu-bar .fa-svg,
+#mdbook-menu-bar .icon-button {
+    line-height: 1;
+}
+
+#mdbook-menu-bar .menu-title {
+    align-items: center;
+    gap: 10px;
+    padding-inline: 0.75rem;
+}
+
+.sidebar {
+    border-right: 1px solid var(--sidebar-spacer);
+    box-shadow: 8px 0 28px rgba(6, 18, 58, 0.04);
+    font-size: 1em;
+}
+
+.sidebar .sidebar-scrollbox {
+    padding: 22px 18px 26px;
+}
+
+.chapter {
+    line-height: 1.4;
+}
+
+.chapter li.chapter-item {
+    margin: 0;
+    padding-block: 3px;
+}
+
+.chapter li a {
+    display: block;
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--sidebar-fg);
+    transition: background 0.16s ease, color 0.16s ease;
+}
+
+.chapter li a:hover {
+    background: var(--theme-hover);
+    color: var(--sidebar-active);
+    text-decoration: none;
+}
+
+.chapter li a.active,
+.chapter a.current-header {
+    background: color-mix(in srgb, var(--sidebar-active) 14%, var(--sidebar-bg));
+    color: var(--sidebar-active);
+    font-weight: 700;
+}
+
+.chapter li.part-title {
+    color: color-mix(in srgb, var(--sidebar-fg) 72%, var(--sidebar-bg));
+    font-family: var(--spec-mono);
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    margin: 1.8em 0 0.45em;
+    padding-inline: 10px;
+}
+
+.section {
+    padding-inline-start: 12px;
+}
+
+.chapter-fold-toggle {
+    color: color-mix(in srgb, var(--sidebar-fg) 62%, var(--sidebar-bg));
+    padding-inline-end: 4px;
+}
+
+.on-this-page {
+    border-inline-start: 1px solid var(--sidebar-header-border-color);
+    margin: 8px 0 8px 12px;
+    padding-left: 10px;
+}
+
+.sidebar .on-this-page a {
+    border-radius: 6px;
+    color: color-mix(in srgb, var(--sidebar-fg) 68%, var(--sidebar-bg));
+    padding-block: 4px;
+}
+
+.sidebar .on-this-page a:hover,
+.sidebar .on-this-page a.current-header {
+    color: var(--sidebar-active);
+}
+
+.theme-popup {
+    min-width: 150px;
+    border-radius: 12px;
+    box-shadow: 0 18px 50px var(--spec-shadow);
+}
+
+.theme-popup .theme {
+    padding: 7px 18px 7px 24px;
+    line-height: 1.5;
+}
+
+#mdbook-search-wrapper {
+    border-bottom: 1px solid var(--spec-rule);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+}
+
+.searchbar-outer,
+.searchresults-outer {
+    max-width: min(var(--content-max-width), calc(100vw - 48px));
+}
+
+#mdbook-searchbar {
+    border-radius: 999px;
+    padding: 11px 18px;
+}
+
+#mdbook-searchbar:focus,
+#mdbook-searchbar.active {
+    border-color: var(--spec-teal);
+    box-shadow: 0 0 0 4px var(--spec-focus);
+    outline: none;
+}
+
+ul#mdbook-searchresults {
+    padding: 0 0 16px;
+}
+
+ul#mdbook-searchresults li {
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.nav-chapters {
+    color: color-mix(in srgb, var(--icons) 72%, transparent);
+}
+
+.nav-chapters:hover {
+    background: color-mix(in srgb, var(--theme-hover) 68%, transparent);
+}
+
+.mobile-nav-chapters {
+    background: var(--spec-panel);
+    border: 1px solid var(--spec-rule);
+}
+
+.spec-footer {
+    background:
+        linear-gradient(90deg, rgba(0, 91, 234, 0.06), rgba(0, 198, 251, 0.05)),
+        var(--bg);
+    border-top: 1px solid var(--spec-rule);
+}
+
+@media only screen and (max-width: 700px) {
+    #mdbook-menu-bar .menu-title .crumb {
+        display: none;
+    }
+
+    #mdbook-menu-bar .menu-title .title-mini {
+        max-width: 42vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }

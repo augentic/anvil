@@ -1,37 +1,82 @@
-{{#template ../templates/hero-open.md eyebrow=Specify Developer Guide title=Tutorials}}
+<div class="hero">
+<div class="eyebrow">Specify Developer Guide</div>
+<h1 class="hero-title">Tutorials</h1>
+
 Hands-on walkthroughs from zero to a working Specify change. Each tutorial builds on the previous one.
 
-{{#template ../templates/meta-row-open.md}}
-{{#template ../templates/meta-chip.md label=Start value=Quick start}}
-{{#template ../templates/meta-chip.md label=Prerequisites value=Required first}}
-{{#template ../templates/meta-row-close.md}}
-{{#template ../templates/hero-close.md}}
+<div class="meta-row">
+
+<span class="meta-chip"><strong>Start</strong> Quick start</span>
+
+<span class="meta-chip"><strong>Prerequisites</strong> Required first</span>
+
+</div>
+
+</div>
+
 
 Complete [Prerequisites](../orientation/prerequisites.md) (Cursor, Augentic plugins, `specify` CLI, and adapter tooling) before you start.
 
-{{#template ../templates/card-grid-open.md}}
+<div class="card-grid">
 
-{{#template ../templates/card-open.md title=Quick start time=~30 min href=quick-start.md}}
+
+<a class="card" href="quick-start.md">
+<div class="card-head">
+<h3 class="card-title">Quick start</h3>
+<span class="card-time">~30 min</span>
+</div>
+<div class="card-body">
+
 Run a one-slice Omnia change from intent through finalize.
-{{#template ../templates/card-close.md}}
+</div>
+</a>
 
-{{#template ../templates/card-open.md title=Your first multi-slice change time=~45 min href=first-change.md}}
+
+<a class="card" href="first-change.md">
+<div class="card-head">
+<h3 class="card-title">Your first multi-slice change</h3>
+<span class="card-time">~45 min</span>
+</div>
+<div class="card-body">
+
 Plan and execute three dependent slices from documentation.
-{{#template ../templates/card-close.md}}
+</div>
+</a>
 
-{{#template ../templates/card-open.md title=Cross-repo changes time=~60 min href=cross-repo-change.md}}
+
+<a class="card" href="cross-repo-change.md">
+<div class="card-head">
+<h3 class="card-title">Cross-repo changes</h3>
+<span class="card-time">~60 min</span>
+</div>
+<div class="card-body">
+
 Coordinate a change across workspace project slots.
-{{#template ../templates/card-close.md}}
+</div>
+</a>
 
-{{#template ../templates/card-open.md title=Legacy migration at scale time=~15 min read href=legacy-migration-at-scale.md}}
+
+<a class="card" href="legacy-migration-at-scale.md">
+<div class="card-head">
+<h3 class="card-title">Legacy migration at scale</h3>
+<span class="card-time">~15 min read</span>
+</div>
+<div class="card-body">
+
 Learn how legacy code enters the workflow.
-{{#template ../templates/card-close.md}}
+</div>
+</a>
 
-{{#template ../templates/card-grid-close.md}}
+
+</div>
+
 
 After the quick start, skim [Core concepts](../explanation/concepts.md) for vocabulary, then bookmark the [Quick reference card](../reference/quick-reference.md) for daily lookup.
 
-{{#template ../templates/see-also-open.md}}
+<div class="see-also">
+<strong>See also</strong>
+
 - [How-to guides](../how-to/index.md) — task recipes for common operator situations
 - [What is Specify?](../orientation/index.md) — mental model without hands-on steps
-{{#template ../templates/see-also-close.md}}
+</div>
+

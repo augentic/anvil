@@ -4,11 +4,14 @@ Change skills coordinate one or more slices through `change.md` and `plan.yaml`.
 
 ## The change rhythm
 
-{{#template ../../templates/pipeline-open.md}}
+<div class="pipeline">
+
 
 ![Default workflow poster](../../assets/diagrams/quick-reference/workflow-poster.svg)
 
-{{#template ../../templates/pipeline-close.md caption=plan → Gate 1 → execute → finalize; slice loop runs inside execute.}}
+<p class="pipeline-caption">plan → Gate 1 → execute → finalize; slice loop runs inside execute.</p>
+</div>
+
 
 Inside `/spec:execute`, each slice runs through the per-slice loop documented in [Slice skills](../slice-skills/index.md): refine → build → merge. Every phase is also reachable as a manual breakout when execute parks or when you want to drive one slice by hand.
 
