@@ -12,12 +12,10 @@
 
 import {
   fail,
-  join,
   relative,
   REPO_ROOT,
   skillBodyLines,
-  underSymlink,
-  walk,
+  walkSkillFiles,
 } from "./_shared.ts";
 
 const MAX_BODY_LINES = 200;
@@ -29,17 +27,9 @@ const MAX_SECTION_LINES = 45;
 // Single walk: cheaper than two passes and keeps the body and per-H2
 // section budgets co-located.
 export async function checkBodyAndSectionLineCounts(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const lines = skillBodyLines(content);
     if (!lines) continue;
@@ -114,18 +104,11 @@ function countSectionBodyLines(sectionLines: string[]): number {
 }
 
 export async function checkCriticalPath(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
 
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const lines = skillBodyLines(content);
     if (!lines || lines.length < CRITICAL_PATH_MIN_LINES) continue;
@@ -187,17 +170,9 @@ export async function checkCriticalPath(): Promise<void> {
 }
 
 export async function checkInlineJsonBlocks(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = content.split("\n");
 
     let inBlock = false;
@@ -235,17 +210,10 @@ export async function checkInlineJsonBlocks(): Promise<void> {
 // remain allowed; the predicate is intentionally narrow.
 export async function checkNoEnvelopeExamples(): Promise<void> {
   const FENCE_OPEN_RE = /^\s*(`{3,})(json|jsonc)\b/;
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = content.split("\n");
 
     let inBlock = false;
@@ -339,17 +307,9 @@ function isListOrHeadingLine(line: string): boolean {
 }
 
 export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = skillBodyLines(content);
     if (!lines) continue;
 
@@ -416,17 +376,9 @@ export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
 // `docs/standards/skill-authoring.md` (§Skill body discipline,
 // rule 1) stays mechanically enforced.
 export async function checkNoFrontmatterRestatement(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = skillBodyLines(content);
     if (!lines) continue;
 
@@ -448,17 +400,9 @@ export async function checkVariables(): Promise<void> {
   const INLINE_CODE_RE = /`[^`]+`/g;
   const BUILTIN = new Set(["ARGUMENTS", "HOME"]);
 
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const headingMatch = content.match(ARGS_HEADING_RE);
     if (!headingMatch || headingMatch.index === undefined) continue;

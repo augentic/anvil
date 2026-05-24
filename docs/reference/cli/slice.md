@@ -131,7 +131,7 @@ Performs:
 1. Applies spec deltas from the slice to the baseline at `.specify/specs/`.
 2. Applies composition deltas (Vectis only) -- merges `composition.yaml` screen-level `added`/`modified`/`removed` operations into the baseline `composition.yaml`, using per-screen SHA-256 checksums (`.composition-checksums.yaml`) for conflict detection.
 3. Validates coherence of the merged baseline.
-4. Transitions the slice to `merged` and stamps `PhaseOutcome { phase: merge, outcome: success }` atomically with the status transition.
+4. Transitions the slice to `merged` and stamps the plan entry's per-entry status to `done`.
 5. Moves the slice directory to `.specify/archive/YYYY-MM-DD-<name>/`.
 
 This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.

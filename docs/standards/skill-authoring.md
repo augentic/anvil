@@ -48,7 +48,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
 3. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](../explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
-4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.
+4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).`
 
 ## Cross-cutting guardrails
 
@@ -56,7 +56,7 @@ Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules
 
 The canonical "skills MUST NOT" list:
 
-- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition`, `specify slice outcome set`, `specify slice journal append`, or `specify plan transition`.
+- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
 - **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
 - **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan finalize`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).

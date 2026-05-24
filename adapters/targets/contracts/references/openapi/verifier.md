@@ -252,7 +252,7 @@ Field semantics:
 - `findings[].detail` — single-line human-readable description.
 - `exit-code` — mirrors the process exit code (`0` clean / `1` findings / `2` invocation error).
 
-Callers that need to journal individual findings (the merge brief on a `failure` outcome) parse `findings[]` and feed `{ rule-id, path, detail }` triples through `specify slice journal append --kind failure`. The merge brief's `--summary` MUST name the load-bearing finding (typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`); the full envelope rides along on `--context`.
+Callers that surface post-merge validator failures (the merge brief on a blocking finding) parse `findings[]` and include `{ rule-id, path, detail }` triples in the stop hint's `paths` field. The load-bearing finding is typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`; the full envelope is captured at the log path referenced in the stop hint.
 
 ### Exit semantics
 

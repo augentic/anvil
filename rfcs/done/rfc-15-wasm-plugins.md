@@ -229,5 +229,5 @@ If accepted, RFC-13 should be amended to say open-ended capability plugins remai
 - [RFC-13: Immutable core + capability extensions](rfc-13-extensibility.md) - owns the capability protocol and the open distribution question.
 - [RFC-12: Refine RFC-8](rfc-12-refine-rfc-8.md) - owns the contract validation behavior that moves to a helper.
 - [RFC-1: `specify` CLI](rfc-1-cli.md) - owns the CLI and capability resolver.
-- [RFC-5: Framework Linter](../rfc-5-lint.md) - home for the follow-up lints.
+- [RFC-5: Framework Developer Tooling](../rfc-5-tooling.md) - home for the follow-up lints.
 

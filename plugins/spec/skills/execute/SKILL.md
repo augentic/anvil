@@ -37,7 +37,7 @@ When the active plan entry carries a `project` field, plan artifacts stay at the
 
 ## Phase invocation
 
-Inside the lock, after routing, sequence the three phase skills against the active `in-progress` entry. Their skill bodies are the authoritative source of phase behaviour; this skill only sequences them and reads their phase outcome from `.metadata.yaml`:
+Inside the lock, after routing, sequence the three phase skills against the active `in-progress` entry. Their skill bodies are the authoritative source of phase behaviour; this skill only sequences them and reads slice lifecycle from `.metadata.yaml` and phase exit codes; not an on-disk outcome field.
 
 | Phase | Skill body | Trigger |
 |---|---|---|
@@ -46,16 +46,6 @@ Inside the lock, after routing, sequence the three phase skills against the acti
 | Merge | [`../merge/SKILL.md`](../merge/SKILL.md) | slice lifecycle is `built` (merge is the sole writer of per-entry `done`). |
 
 When the slice is already past a phase on re-entry (e.g. `refined` after a build-failure stop), skip that phase silently and dispatch to the next one. The phase skills are idempotent by lifecycle and do not write per-entry status themselves; merge alone transitions the plan entry to `done` via `specify slice merge`.
-
-## Stop conditions
-
-Three terminal cases per loop iteration; every other return falls through to the next `specify plan next`. The structured hints are templated in [`references/stop-conditions.md`](references/stop-conditions.md):
-
-- **Build non-zero exit.** Leave the entry `in-progress`. Surface the failing task id and the log path. Hint: *Fix the failure; re-run `/spec:execute` or `/spec:build` to resume from the failed task.*
-- **Merge baseline conflict.** Leave the entry `in-progress`. Surface the conflicting baseline paths. Hint: *Resolve the conflict; re-run `/spec:execute` to retry the merge.*
-- **Drained.** No `pending` or `in-progress` entries remain. Print the closing hint *drained — run `/spec:finalize <name>`* and exit cleanly. This is the only successful exit.
-
-The lock is released on every exit path by the trailing edge of the snippet's `trap` (or by Python interpreter exit on the macOS fallback).
 
 ## Hand-off to `/spec:finalize`
 

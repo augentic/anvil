@@ -372,13 +372,13 @@ The `change → slice` / `initiative → change` rows reuse the noun "change" wi
 Four invariants guard the landing:
 
 1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:define → /spec:build → /spec:merge` on a canonical omnia slice end-to-end.
-2. **The core never learns a capability name.** `specify check` rejects hard-coded capability-name literals in core crate sources outside tests, including first-party domain capability names after extraction.
+2. **The core never learns a capability name.** `framework-check` rejects hard-coded capability-name literals in core crate sources outside tests, including first-party domain capability names after extraction.
 3. **Concern-specific behavior leaves core.** A companion rule rejects hard-coded first-party capability behavior in core crate sources outside tests; phase 2 retires the current canonical violations.
 4. **Platform components stay outside the active capability set.** A rule verifies `specify-core` does not depend on `specify registry` or `specify change`; dependency direction flows from the change component down to registry/core, never the reverse.
 
 The hard-coded-name lints are RFC-5 design work, not a naive string-literal ban. RFC-5 should define the crate allowlist, generated-code exemptions, test exemptions, and AST-aware matching needed to avoid flagging unrelated prose or diagnostics.
 
-Linter rules in `specify-check` (RFC-5) enforce, additionally:
+Linter rules in `framework-check` (RFC-5) enforce, additionally:
 
 - **First-party capability parity:** bundled domain capabilities pass every rule URL-resolved capabilities must pass.
 
@@ -399,6 +399,6 @@ Linter rules in `specify-check` (RFC-5) enforce, additionally:
 - [RFC-3b: Platform](rfc-3b-platform.md) — registry routing and materialised project clones.
 - [RFC-9: Platform](rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; informs change-driven orchestration.
 - [RFC-12: Refine RFC-8](rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become contracts capability validation behavior.
-- [RFC-5: Framework Linter](../rfc-5-lint.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
+- [RFC-5: Framework Developer Tooling](../rfc-5-tooling.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
 - [Roadmap](../roadmap.md) — §5 / §6 / §7 are consumers of a stable core surface.
 

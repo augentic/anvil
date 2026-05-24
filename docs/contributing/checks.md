@@ -24,21 +24,17 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 **Common fix:** update the link target or remove a stale link.
 
-### 2. Stale claims
-
-No markdown file may reference a stale checklist count from an earlier version of the documentation. The specific patterns are defined in `scripts/check.ts`.
-
-### 3. Adapter manifest YAML validation
+### 2. Adapter manifest YAML validation
 
 Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by `scripts/checks/adapter.ts` through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
-### 4. Adapter referential integrity
+### 3. Adapter referential integrity
 
 The 1.x pipeline-graph integrity check retired at the 2.0 cut — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
 
-### 5. Symlink integrity
+### 4. Symlink integrity
 
 Every symlink under `plugins/` must resolve to a valid target.
 
@@ -46,7 +42,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 **Common fix:** recreate the symlink if the target was moved or renamed; if the file diverged, replace it with a symlink or re-sync its content from the canonical doc.
 
-### 6. SKILL.md frontmatter validation
+### 5. SKILL.md frontmatter validation
 
 Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.schema.json`:
 
@@ -58,11 +54,11 @@ The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`
 
 Long `SKILL.md` bodies are also checked for structure: bodies over 200 post-frontmatter lines fail (strict — no grandfathering), and bodies with at least 150 post-frontmatter lines must include a `## Critical Path` section with 5-7 bullets, numbered items, or `### N. Title` H3 step headings.
 
-### 7. Skill reference link resolution
+### 6. Skill reference link resolution
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.
 
-### 8. Skill variable consistency
+### 7. Skill variable consistency
 
 For skills that declare an `## Arguments` or `## Derived Arguments` section with `$VARIABLE = ...` definitions in ` ```text` blocks:
 
@@ -71,18 +67,18 @@ For skills that declare an `## Arguments` or `## Derived Arguments` section with
 
 Built-in variables (`$ARGUMENTS`, `$HOME`) are excluded from the check.
 
-### 9. Skill directive validation
+### 8. Skill directive validation
 
 `<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under `rfcs/` are excluded.
 
-### 10. Marketplace manifest consistency
+### 9. Marketplace manifest consistency
 
 Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 - Every plugin with a `.cursor-plugin/plugin.json` file must be listed in the manifest
 - Every plugin listed in the manifest must have a `skills/` directory
 
-### 12. Instruction file preambles
+### 10. Instruction file preambles
 
 Files matching `adapters/targets/**/instructions/<name>.md` must contain an output location preamble:
 
@@ -92,7 +88,7 @@ Files matching `adapters/targets/**/instructions/<name>.md` must contain an outp
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.
 
-### 14. Acceptance scenario frontmatter
+### 11. Acceptance scenario frontmatter
 
 Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
@@ -154,14 +150,14 @@ FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across fi
 
 Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
 
-### 15. Recorded trace freshness
+### 12. Recorded trace freshness
 
 The recorded-trace check is opt-in. If a future suite adds
 `tests/recorded/**/*.jsonl`, every trace must lead with a
 `recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
 `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
-### 16. First-party codex rule shape
+### 13. First-party codex rule shape
 
 First-party codex rule files are validated in the shared tree at `adapters/shared/codex/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/codex/**/*.md` and `adapters/targets/<name>/codex/**/*.md`.
 
@@ -203,7 +199,7 @@ To add a new check:
 3. Add the function to one of the `Promise.all` groups at the bottom of the file. Independent checks can run in the same group; checks that depend on earlier results go in a later group.
 4. Run `make check` to verify the new check works.
 
-The checks are numbered but the numbers are not contiguous (check 11 does not exist). New checks should use the next available number.
+Checks are numbered 1–13 contiguously. New checks should use the next available number (currently 14).
 
 ## CLI checks
 
