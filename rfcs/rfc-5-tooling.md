@@ -26,7 +26,7 @@ Putting all of this on the operator `specify` binary conflates two audiences. Op
 
 The Deno scripts work today. They are ~5,500 lines across three surfaces and run reliably in CI. This RFC is therefore not motivated by breakage but by three durable goals:
 
-1. **Shift authoring feedback left.** Schema-first contracts let Cursor's built-in JSON/YAML language servers surface most violations as red squigglies, removing a class of PR round-trips.
+1. **Shift authoring feedback left.** Schema-first contracts let Cursor's built-in JSON/YAML language servers surface plain YAML/JSON violations as red squigglies, and give Markdown frontmatter the same canonical shape enforced by `tooling check`, removing a class of PR round-trips without depending on unproven editor behaviour.
 2. **Eliminate parser duplication.** `tests/lib/spec_provenance.ts` mirrors `specify-domain`'s requirement-block parser; `scripts/checks/adapter.ts` re-runs Ajv against the same schemas `specify-domain` already ships. Sharing the Rust library kills both.
 3. **Collapse the toolchain.** Remove Deno from `make check`, `make test`, and contributor prerequisites without adding it to the operator CLI's install surface.
 
@@ -180,16 +180,19 @@ Acceptance stays `**cargo test -p accept**` — not a CLI subcommand. The `frame
 
 ### Schema-first layer (do this first)
 
-Most checks in `scripts/checks/` enforce shapes that JSON Schema can express. The earliest, highest-leverage work is to make sure every such shape **is** a schema, and that Cursor sees it.
+Most checks in `scripts/checks/` enforce shapes that JSON Schema can express. The earliest, highest-leverage work is to make sure every such shape **is** a schema, and that Cursor sees it where the active language service can bind the schema directly.
+
+Plain YAML and JSON files get inline diagnostics through Cursor's built-in language servers. Markdown-frontmatter files (`SKILL.md`, codex rules, scenario docs) still use JSON Schema as the canonical shape, but a local Cursor proof spike showed the YAML language service validates a matching `.yaml` control file while not reporting diagnostics for the same invalid schema fields inside Markdown frontmatter. Until a frontmatter-aware editor integration or the deferred `lsp` exists, `tooling check` owns Markdown-frontmatter enforcement by extracting the leading `---` block and validating it with the same schema.
 
 Concrete moves:
 
 - **Authoritative location.** Runtime schemas consumed by `specify-cli` stay in `specify-cli/schemas/` and are reused through `specify-domain`. Framework-only schemas (skill frontmatter, codex rule authoring, scenario metadata, marketplace manifests) stay in `augentic/specify/tooling/schemas/`; `.cursor/schemas/` contains editor-facing symlinks or aliases only when Cursor needs them. A schema moves to `specify-cli` only when the runtime binary genuinely consumes it.
-- **Editor wiring.** Workspace settings (`.cursor/settings.json` or per-file `# yaml-language-server: $schema=` directives) point every `adapter.yaml`, `SKILL.md` frontmatter, scenario file, codex rule, marketplace manifest, and `tools.yaml` at its schema. The YAML/JSON LSPs Cursor already ships then surface violations live, with no extra tooling installed.
+- **Editor wiring.** Workspace settings or per-file `# yaml-language-server: $schema=` directives point plain YAML/JSON files (`adapter.yaml`, marketplace manifests, scenario YAML when present, target-owned YAML artifacts, and `tools.yaml` during migration) at their schemas. The YAML/JSON LSPs Cursor already ships then surface those violations live, with no extra tooling installed.
+- **Markdown-frontmatter enforcement.** `SKILL.md`, codex rules, and scenario Markdown files still declare and share schemas, but `tooling check` remains the enforcement surface for their frontmatter unless a future editor integration proves reliable inline diagnostics for Markdown frontmatter.
 - **Schema strengthening.** Rules currently enforced imperatively in `skill_frontmatter.ts` (description grammar, argument-hint shape, 200/45/512 caps on counted fields) are expressed as `pattern`, `maxLength`, and `enum` constraints where they fit. The minority that genuinely cannot be schema'd (variable consistency, cross-skill directive resolution, body-section discipline) stays in `rules`.
-- **Documentation.** `docs/contributing/checks.md` gets a new section explaining the editor-first model: most violations are red squigglies before a single CLI command runs.
+- **Documentation.** `docs/contributing/checks.md` gets a new section explaining the split: plain YAML/JSON shape violations appear as editor diagnostics, while Markdown-frontmatter and cross-file rules are caught by `tooling check`.
 
-This phase delivers contributor value before any Rust binary lands.
+This phase delivers contributor value before any Rust binary lands for plain YAML/JSON artifacts, and gives the later Rust rule engine canonical schemas to reuse for Markdown frontmatter.
 
 ### `rules` library
 
@@ -282,7 +285,7 @@ Framework tooling must **disappear into the background** for day-to-day skill an
 
 | Audience                          | What they run                                                      | Rust required locally?                     |
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
-| Skill / adapter authors (default) | Cursor schemas while editing; `make check` before a PR; CI on push | Optional — schemas and CI cover most needs |
+| Skill / adapter authors (default) | Cursor schemas while editing where available; `make check` before a PR; CI on push | Optional — schemas and CI cover most needs |
 | Authors who want faster feedback  | `make install-hooks` (opt-in pre-commit)                           | Yes (via `tooling/rust-toolchain.toml`)    |
 | Tooling contributors              | `cd tooling && cargo test`, `cargo build -p tooling`, …            | Yes                                        |
 
@@ -351,7 +354,7 @@ The same pattern applies to `tooling docgen envelopes --check` and `cargo test` 
 
 `docs/contributing/index.md` and `docs/contributing/checks.md` describe the split explicitly:
 
-- **Editor-first** — most violations surface as schema squigglies; no CLI install required.
+- **Editor-first where available** — plain YAML/JSON violations surface as schema squigglies; Markdown frontmatter and cross-file rules surface through `tooling check`.
 - **Local gate** — `make check` auto-builds and runs `tooling check`; first run after clone compiles once, subsequent runs reuse the cached binary until tooling sources change.
 - **CI gate** — authoritative full scan on every PR; sufficient on its own for contributors who skip local Rust.
 - **Optional hook** — `make install-hooks` for `--changed` scans before commit.
@@ -376,7 +379,7 @@ Listed in the architecture diagram so contributors see the full intended shape. 
 
 Sequenced for minimum risk, with Deno retiring incrementally rather than in one cutover:
 
-1. **Schema-first pass.** Keep runtime schemas in `specify-cli/schemas/`, move or strengthen framework-only schemas under `augentic/specify/tooling/schemas/`, and wire Cursor `$schema` references. No Rust code yet. Largest contributor-experience win for smallest cost.
+1. **Schema-first pass.** Keep runtime schemas in `specify-cli/schemas/`, move or strengthen framework-only schemas under `augentic/specify/tooling/schemas/`, wire Cursor `$schema` references for plain YAML/JSON files, and document that Markdown frontmatter is schema-backed but enforced by `tooling check`. No Rust code yet. Largest contributor-experience win for smallest cost without overcommitting to editor frontmatter diagnostics.
 2. **Rule-engine scaffold.** Land `tooling/Cargo.toml`, `tooling/rust-toolchain.toml`, `scripts/run-tool`, `rules`, and the `tooling` binary with a `check` subcommand that compiles and runs a no-op full scan against `--repo ..` via `make check`. CI still runs Deno; Rust is allowed to be empty. Mechanical, self-contained PR.
 3. **Port high-leverage checks first.** Start with checks that remove parser/schema duplication: adapter manifest validation and brief discipline, then skill frontmatter/body shape. Add structured finding fixtures as each module lands. Each merged module deletes its Deno counterpart after message and fixture parity.
 4. **Stabilize `tooling check` output.** Add `--format json`, rule-id filters, and the best-effort `--changed` mode only after several modules have stable ids and locations. Keep CI on full scans; use `--changed` only for pre-commit speed.
@@ -406,7 +409,7 @@ During migration, `make check` calls both `scripts/check.ts` and `scripts/run-to
 
 **One binary per Deno script (`check`, `docgen`).** Considered: mirror `scripts/check.ts` and `scripts/gen-envelope-doc.ts` as separate Cargo packages under `tooling/tools/`, dispatched through `scripts/run-tool <package>`. Rejected because the binaries are thin clap shells over library crates, share one workspace dependency story, and differ only by subcommand. A single `tooling` binary with `check` and `docgen` subcommands matches the `specify` operator pattern, simplifies `run-tool` (one package to build), and keeps acceptance on `cargo test` where it belongs.
 
-**Keep `scripts/check.ts` indefinitely.** Tempting because the script works and is not blocking. Rejected because (a) `tests/lib/spec_provenance.ts` and `tests/lib/validators.ts` actively duplicate `specify-domain`, and that duplication grows with every new schema; (b) schemas without an editor-first contract are invisible to contributors; (c) keeping Deno in CI forever to validate Rust-defined schemas is a coordination tax with no offsetting benefit.
+**Keep `scripts/check.ts` indefinitely.** Tempting because the script works and is not blocking. Rejected because (a) `tests/lib/spec_provenance.ts` and `tests/lib/validators.ts` actively duplicate `specify-domain`, and that duplication grows with every new schema; (b) schemas without an editor or `tooling check` contract are invisible to contributors; (c) keeping Deno in CI forever to validate Rust-defined schemas is a coordination tax with no offsetting benefit.
 
 **Merge the repos.** Considered: one workspace with `cli/` and `plugins/` top-level directories would kill the cross-repo coordination entirely. Rejected because it conflates two audiences (Rust contributors vs skill/adapter authors), couples operator-CLI release cadence to plugin-content cadence, and forces a single review style on both halves. The dev-tooling problem does not require it.
 
