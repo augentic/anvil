@@ -36,7 +36,7 @@ Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.js
 
 ### 4. Adapter referential integrity
 
-The 1.x pipeline-graph integrity check retired with RFC-25 — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
+The 1.x pipeline-graph integrity check retired at the 2.0 cut — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
 
 ### 5. Symlink integrity
 

@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #6.
+[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #6.
 
 > Operator runs `/spec:plan` in a workspace.
 

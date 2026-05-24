@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: [RM-03](roadmap.md#rm-03-codex-rule-format), [RFC-10](archive/rfc-10-skills.md), [RFC-13](archive/rfc-13-extensibility.md)
+> Status: Draft - Depends: [RFC-28](rfc-28-codex-rules.md), [RFC-10](../done/rfc-10-skills.md), [RFC-13](../done/rfc-13-extensibility.md)
 
 ## Abstract
 
@@ -30,7 +30,7 @@ Order-of-magnitude economics are favorable if Specify is used across many downst
 
 First-pass training should be in the low thousands of dollars or less on rented GPUs. A practical budget is roughly `$400-$1,200` for optional continual pretraining, SFT, and DPO on a rented H100-class machine. Delta retraining for SDK changes should usually be much cheaper.
 
-At 100 crate generations per month, the economics are close but still favorable over a year once training is amortized. At 500+ crate generations per month, the SLM pays back quickly. At migration scale, where `/change:execute loop` may generate or repair many crates across many slices, inference cost stops being a gating concern.
+At 100 crate generations per month, the economics are close but still favorable over a year once training is amortized. At 500+ crate generations per month, the SLM pays back quickly. At migration scale, where `/spec:execute` may generate or repair many crates across many slices in a reviewed change, inference cost stops being a gating concern.
 
 ### Operational Motivation
 
@@ -177,7 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- [RM-03: Codex rule format](roadmap.md#rm-03-codex-rule-format)
+- [RFC-28: Codex Resolution and Structured Review Findings](rfc-28-codex-rules.md)
 - [RFC-10: Skills](archive/rfc-10-skills.md)
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
 - [`adapters/targets/omnia/briefs/build/crate.md`](../adapters/targets/omnia/briefs/build/crate.md)

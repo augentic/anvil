@@ -19,8 +19,8 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
 - **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
-- **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [DECISIONS.md §"RFC-27 §D4 — `fusion.yaml` is audit-only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d4--fusionyaml-is-audit-only).
-- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, candidate id). See [DECISIONS.md §"RFC-27 §D8 — cache fingerprint inputs"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d8--cache-fingerprint-inputs).
+- **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [DECISIONS.md §"workflow §D4 — `fusion.yaml` is audit-only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d4--fusionyaml-is-audit-only).
+- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, candidate id). See [DECISIONS.md §"workflow §D8 — cache fingerprint inputs"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d8--cache-fingerprint-inputs).
 
 ### Workflow nouns
 
@@ -33,7 +33,7 @@ Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk u
 
 The full mechanics — per-kind authority overrides, per-slice operator overrides, fusion-index shape, cache-fingerprint inputs, extraction-cache layout — live in the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). The headline rules:
 
-- **Authority resolution order** — per-slice override → per-Evidence per-kind override → Evidence document-level `authority:` → conflict. See [DECISIONS.md §"RFC-27 §D2 — per-kind authority on Evidence"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d2--per-kind-authority-on-evidence) and [§"RFC-27 §D3 — per-slice authority on `plan.yaml`"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d3--per-slice-authority-on-planyaml).
+- **Authority resolution order** — per-slice override → per-Evidence per-kind override → Evidence document-level `authority:` → conflict. See [DECISIONS.md §"workflow §D2 — per-kind authority on Evidence"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d2--per-kind-authority-on-evidence) and [§"workflow §D3 — per-slice authority on `plan.yaml`"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d3--per-slice-authority-on-planyaml).
 - **`captures` source adapter** — consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`.
 - **Authority-override authoring** — `specify plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source-key`.
 - **Fusion drift** — `specify slice validate` catches REQ-id and contributing-claim drift under `slice-fusion-drift`.

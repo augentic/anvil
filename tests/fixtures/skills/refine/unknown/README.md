@@ -1,6 +1,6 @@
 # Fixture: `[unknown]`
 
-Single-source slice whose `documentation` extract returned `claims: []` (the candidate exists in `discovery.md` but the extract brief could not resolve any docs for it — empty-but-valid per RFC-25 §Extraction reliability "Empty / Invalid Evidence"). Synthesis still surfaces the requirement gap as `[unknown]`.
+Single-source slice whose `documentation` extract returned `claims: []` (the candidate exists in `discovery.md` but the extract brief could not resolve any docs for it — empty-but-valid per workflow §Extraction reliability "Empty / Invalid Evidence"). Synthesis still surfaces the requirement gap as `[unknown]`.
 
 Playbook rules exercised:
 

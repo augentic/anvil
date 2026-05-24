@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/archive/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/archive/rfc-25-workflow.md#acceptance-scenarios), row #5e.
+[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #5e.
 
 > Two adapters surface the same candidate; the `/spec:plan` agent merges them automatically at `propose`.
 

@@ -185,5 +185,5 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## References
 
-- [RFC-9: Platform](../../../rfcs/archive/rfc-9-platform.md) — registry-only platform hub topology.
-- [RFC-13: Extensibility](../../../rfcs/archive/rfc-13-extensibility.md) — adapter vs `--hub` shape requirements.
+- [RFC-9: Platform](../../../rfcs/done/rfc-9-platform.md) — registry-only platform hub topology.
+- [RFC-13: Extensibility](../../../rfcs/done/rfc-13-extensibility.md) — adapter vs `--hub` shape requirements.

@@ -1,6 +1,6 @@
 # Vectis reference material
 
-Reference documentation for the Vectis target adapter at [`adapters/targets/vectis/`](..). In Specify 2.0 (RFC-25) Vectis is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
+Reference documentation for the Vectis target adapter at [`adapters/targets/vectis/`](..). In Specify 2.0 Vectis is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
 The orchestration of the retired `vectis-core-writer`, `vectis-test-writer`, `vectis-ios-writer`, `vectis-android-writer`, `vectis-core-reviewer`, `vectis-ios-reviewer`, `vectis-android-reviewer`, and `vectis-template-updater` skills now lives in [`../briefs/build.md`](../briefs/build.md) and eight phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (Crux idioms, SwiftUI patterns, Compose patterns, hard rules, review check libraries, token templates, design-system integration) and worked examples live in this folder.
 

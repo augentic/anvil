@@ -357,4 +357,4 @@ its own colors.
 
 ## References
 
-- [RFC-11 — UI Spec (archived)](../../../../../rfcs/archive/rfc-11-ui-spec.md) — Vectis platform contract: assets pipeline (§E), tokens artifact (§F), structural identity and component directive (§G–§I), generated layout and compatibility policy (§L).
+- [RFC-11 — UI Spec (archived)](../../../../../rfcs/done/rfc-11-ui-spec.md) — Vectis platform contract: assets pipeline (§E), tokens artifact (§F), structural identity and component directive (§G–§I), generated layout and compatibility policy (§L).

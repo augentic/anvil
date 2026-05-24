@@ -56,9 +56,9 @@ Add global observability flags to `Cli`:
 
 ```bash
 specify -v status
-specify -vv change plan status
+specify -vv plan validate
 specify --log-filter specify=debug,specify_tool=trace,warn tool fetch contract
-specify --log-format json --log-filter specify=info change plan next
+specify --log-format json --log-filter specify=info plan next
 ```
 
 Target clap shape:
@@ -96,7 +96,7 @@ In normal successful runs, this emits nothing because success-path progress even
 Use crate and module targets rather than hand-authored product names. Examples:
 
 - `specify` for the root binary;
-- `specify_change` for plan and change library events;
+- `specify_change` for change umbrella and plan-entry events;
 - `specify_slice` for slice lifecycle and merge events;
 - `specify_tool` for declared WASI tool resolution and execution;
 - `specify_registry` for registry validation and peer operations;
@@ -113,7 +113,7 @@ SPECIFY_LOG=specify_change=debug,specify_tool=trace,warn specify plan validate
 Every command should enter a top-level span before dispatch:
 
 ```text
-command{name="change", action="plan.next", format="json", run_id="..."}
+command{name="plan", action="next", format="json", run_id="..."}
 ```
 
 Common fields:
@@ -161,8 +161,8 @@ Start with the workflows that are hardest to reconstruct:
 - command start and finish in `src/commands.rs`;
 - project config load and version-floor checks in `specify-config`;
 - slice create, transition, task marking, outcome setting, merge preview, conflict check, merge run, archive, and drop in `specify-slice` / `specify-merge`;
-- plan create, validate, doctor, next, transition, archive, and lock operations in `specify-change`;
-- change finalize remote verification;
+- plan create, validate, next, transition, archive, finalize, and lock operations in `specify-change`;
+- `/spec:finalize` remote verification;
 - registry add, remove, show, and validate;
 - workspace sync, status, push, clone refresh, branch preparation, and PR creation/update calls;
 - adapter resolve, check, and pipeline selection;

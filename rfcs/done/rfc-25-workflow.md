@@ -1,5 +1,7 @@
 # RFC-25: Workflow
 
+> **Implemented.** The in-force contract lives in [`specify-cli/docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md); cite that document by `§`-anchor from code and skill briefs. This RFC is retained for historical motivation and design context.
+>
 > Status: Implemented. Supersedes [RFC-20 (archived)](archive/rfc-20-survey.md) and [RFC-23 (archived)](archive/rfc-23-change-lifecycle.md). Ships as Specify 2.0. Compatible with [RFC-22](rfc-22-ledger.md) and [RFC-24](rfc-24-omnia.md) (target rename + `shape` ownership).
 
 ## Abstract

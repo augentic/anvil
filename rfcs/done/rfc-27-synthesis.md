@@ -1,5 +1,7 @@
 # RFC-27: Synthesis Sharpening
 
+> **Implemented.** The in-force contract lives in [`specify-cli/docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) (§D1-D8 sub-sections cover the four sharpenings); cite that document by `§`-anchor from code and skill briefs. This RFC is retained for historical motivation.
+>
 > Status: Implemented. Additive to [RFC-25](rfc-25-workflow.md); supersedes nothing. Lifts the four sharpening recommendations in [rfc-25-synthesis.md](rfc-25-synthesis.md) into normative decisions. Compatible with [RFC-19](rfc-19-observability.md) (new journal events), [RFC-21](rfc-21-catalogue.md) (`sources.yaml`), and [RFC-24](rfc-24-omnia.md) (`shape` is unchanged).
 
 ## Abstract

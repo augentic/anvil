@@ -1,6 +1,6 @@
 # `tests/fixtures/targets/omnia/`
 
-Fixture for the Omnia target adapter (RFC-25 W2.5, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
+Fixture for the Omnia target adapter (Wave 2.5, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
 
 ## What this fixture demonstrates
 
@@ -40,4 +40,4 @@ The deterministic boundary the harness covers — provenance shape on `spec.md`,
 
 - `targets/omnia/briefs/shape.md` — the idiom guidance this fixture's `input/` reflects.
 - `targets/omnia/briefs/build.md` — the orchestration this fixture's `expected/crate/` reflects.
-- `rfcs/rfc-25-workflow.md` §Acceptance scenarios #5h.
+- `rfcs/done/rfc-25-workflow.md` §Acceptance scenarios #5h.

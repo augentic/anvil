@@ -1,6 +1,6 @@
 # Fixture: combined documentation + legacy
 
-Multi-source slice where a `documentation` Evidence and a `code-typescript` Evidence agree on a `claim-id` after fusion. Matches RFC-25 §Worked multi-source `plan.yaml` (slice `identity-user-registration`).
+Multi-source slice where a `documentation` Evidence and a `code-typescript` Evidence agree on a `claim-id` after fusion. Matches workflow §Worked multi-source `plan.yaml` (slice `identity-user-registration`).
 
 Playbook rules exercised:
 

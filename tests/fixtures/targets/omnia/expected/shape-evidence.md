@@ -4,7 +4,7 @@ Synthesis (W3.1, `/spec:refine`) MUST fold the Omnia `shape` brief's idiom guida
 
 ## `spec.md` checklist
 
-- [x] Per-requirement provenance block (`ID:`, `Sources:`, `Status:`) per RFC-25 §Requirement block contract.
+- [x] Per-requirement provenance block (`ID:`, `Sources:`, `Status:`) per workflow §Requirement block contract.
 - [x] One requirement block per handler-observable behaviour (HTTP / message / WebSocket / scheduled).
 - [x] Acceptance scenarios that name **inputs**, **provider state preconditions**, and **observable outcomes**.
 - [x] An "Error conditions" table mapping triggers to `omnia_sdk::Error` variants (one of `BadRequest`, `NotFound`, `ServerError`, `BadGateway`) with stable `code` strings.

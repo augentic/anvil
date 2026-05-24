@@ -52,7 +52,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** RM-03 resolved codex export.
+**Consumes:** [RFC-28](future/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
 **Target surface:**
 
 ```bash
@@ -131,7 +131,7 @@ specify events export
 ```bash
 specify forge doctor
 specify workspace push --forge github
-specify change finalize --forge github
+specify plan finalize --forge github
 ```
 
 ---

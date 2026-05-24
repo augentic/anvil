@@ -105,7 +105,7 @@ Three claims, three anchors, no raw source bodies. Synthesis fuses these into `S
 
 ## Path rules
 
-Same skip-root and traversal rules as the enumerate brief: relative paths only, no `..`, no leading `/`, never under `node_modules`, `vendor`, `target`, `.venv`, `dist`, `build`, no `*.d.ts` files. A symlink inside `$SOURCE_DIR` pointing outside is denied at canonicalization; the host runner returns `source-extract-path-denied` and the slice stays `refining` per RFC-25 §Extraction reliability.
+Same skip-root and traversal rules as the enumerate brief: relative paths only, no `..`, no leading `/`, never under `node_modules`, `vendor`, `target`, `.venv`, `dist`, `build`, no `*.d.ts` files. A symlink inside `$SOURCE_DIR` pointing outside is denied at canonicalization; the host runner returns `source-extract-path-denied` and the slice stays `refining` per workflow §Extraction reliability.
 
 ## Anti-patterns
 

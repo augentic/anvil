@@ -60,7 +60,7 @@ The synthesised design MUST NOT prescribe `Utc::now()` inside `from_input()` —
 
 ### `spec.md`
 
-Per-requirement provenance lines (`ID:`, `Sources:`, `Status:`) are core's responsibility (RFC-25 §Requirement block contract). On top of that, an Omnia slice's `spec.md` MUST cover:
+Per-requirement provenance lines (`ID:`, `Sources:`, `Status:`) are core's responsibility (workflow §Requirement block contract). On top of that, an Omnia slice's `spec.md` MUST cover:
 
 - One requirement block per handler-observable behaviour (HTTP request → response shape, message topic → handler effect, WebSocket event → server-side reaction). The block names the trigger and the observable outcome; provider mechanics belong in `design.md`.
 - Acceptance scenarios that name **inputs**, **provider state preconditions** (`StateStore` keys present / absent, `DocumentStore` rows, `Config` keys), and **observable outcomes** (response body, published events, state writes, status code).

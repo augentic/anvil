@@ -51,7 +51,7 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 
 ## Vocabulary cheat sheet
 
-Two lifecycle nouns appear constantly in this codebase. RFC-25 §Vocabulary locked their meaning:
+Two lifecycle nouns appear constantly in this codebase. workflow §Vocabulary locked their meaning:
 
 - **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.

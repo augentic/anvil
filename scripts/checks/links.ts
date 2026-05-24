@@ -18,17 +18,19 @@ import {
 } from "./_shared.ts";
 
 export async function checkMarkdownLinks(): Promise<void> {
-  // `rfcs/archive/` keeps the as-shipped prose of historical RFCs intact;
-  // those documents intentionally retain paths that have since been
-  // renamed or retired and are not part of the live workflow surface.
-  // The same applies to non-archived historical RFCs (everything except
-  // the current `rfc-25-*` workflow contract).
+  // `rfcs/done/`, `rfcs/future/`, and `rfcs/next/` keep the as-shipped
+  // prose of historical or speculative RFCs intact; those documents
+  // intentionally retain paths that have since been renamed or retired
+  // and are not part of the live workflow surface. The in-force contract
+  // lives in `specify-cli/docs/standards/workflow.md`.
   const SKIP_DIRS = [
     /node_modules/,
     /\.git/,
     /temp/,
     /specify-cli/,
-    /rfcs\/archive/,
+    /rfcs\/done/,
+    /rfcs\/future/,
+    /rfcs\/next/,
     /rfcs\/rfc-(?!25)/,
   ];
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;

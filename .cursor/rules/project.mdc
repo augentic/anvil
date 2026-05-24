@@ -70,7 +70,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
   │   ├── code-typescript/    # legacy TypeScript enumeration + extract
-  │   ├── captures/       # runtime capture trees -> kind: example Evidence (RFC-27 §D1)
+  │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
   ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
   │   ├── omnia/

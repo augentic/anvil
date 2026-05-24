@@ -1,6 +1,6 @@
 # `tests/fixtures/targets/vectis/`
 
-Fixtures for the Vectis target adapter (RFC-25 W2.6, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief"). Vectis is the source/target-split poster child: the **source** half (screenshots → spatial Evidence) belongs to W2.4; the **target** half (core synthesis → `spec.md` + `design.md` → `build` regenerates `composition.yaml` alongside code) is exercised here.
+Fixtures for the Vectis target adapter (Wave 2.6, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief"). Vectis is the source/target-split poster child: the **source** half (screenshots → spatial Evidence) belongs to W2.4; the **target** half (core synthesis → `spec.md` + `design.md` → `build` regenerates `composition.yaml` alongside code) is exercised here.
 
 ## Fixtures
 
@@ -27,4 +27,4 @@ The deterministic boundary the harness covers runs green on every `make test`. B
 - [`adapters/targets/vectis/briefs/shape.md`](../../../../adapters/targets/vectis/briefs/shape.md) — the idiom guidance each fixture's `input/` reflects.
 - [`adapters/targets/vectis/briefs/build.md`](../../../../adapters/targets/vectis/briefs/build.md) — the orchestration each fixture's `expected/composition.yaml` reflects.
 - [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) — the matching source-side fixture (W2.4) whose `expected/evidence/` feeds these fixtures' `input/evidence/`.
-- [`rfcs/archive/rfc-25-workflow.md`](../../../../rfcs/archive/rfc-25-workflow.md) §Acceptance scenarios #5h.
+- [`rfcs/done/rfc-25-workflow.md`](../../../../rfcs/done/rfc-25-workflow.md) §Acceptance scenarios #5h.

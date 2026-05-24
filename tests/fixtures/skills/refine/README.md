@@ -31,4 +31,4 @@ The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.
 | `conflict/`                      | `product-notes` + `identity-design-notes` (both documentation) | `[conflict]` | Tied top authority leaves the operator to reconcile.      |
 | `unknown/`                       | `product-notes`                        | `[unknown]`              | Source emits `claims: []`; synthesis still surfaces the requirement gap. |
 
-The five fixtures together cover RFC-25 §Acceptance scenarios `#5`, `#5a`, `#5b`, `#5c`, `#5h` (target `shape` injection happens in every fixture since all five target `omnia`).
+The five fixtures together cover workflow §Acceptance scenarios `#5`, `#5a`, `#5b`, `#5c`, `#5h` (target `shape` injection happens in every fixture since all five target `omnia`).

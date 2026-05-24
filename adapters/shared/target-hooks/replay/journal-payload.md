@@ -25,7 +25,7 @@ Taxonomy reference: [specify-cli `DECISIONS.md` — journal events](https://gith
 
 ## Aspirational `.metadata.yaml` block (future CLI)
 
-RFC-27 §D1 defines an additive block targets MAY write to `$SLICE_DIR/.metadata.yaml` once a CLI-owned surface lands. **Agents must not hand-edit this block in v1** — journal-only recording until then.
+workflow §D1 defines an additive block targets MAY write to `$SLICE_DIR/.metadata.yaml` once a CLI-owned surface lands. **Agents must not hand-edit this block in v1** — journal-only recording until then.
 
 ```yaml
 replay:

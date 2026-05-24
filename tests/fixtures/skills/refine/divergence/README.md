@@ -1,6 +1,6 @@
 # Fixture: `[divergence]`
 
-Two sources contribute claims with the same `claim-id` but contradictory bodies; authority hierarchy (`documentation > behaviour`) picks the winner. Mirrors RFC-25 §Per-requirement provenance variants — `[divergence]` from authority resolution.
+Two sources contribute claims with the same `claim-id` but contradictory bodies; authority hierarchy (`documentation > behaviour`) picks the winner. Mirrors workflow §Per-requirement provenance variants — `[divergence]` from authority resolution.
 
 Playbook rules exercised:
 

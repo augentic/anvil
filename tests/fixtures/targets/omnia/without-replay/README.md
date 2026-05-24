@@ -1,6 +1,6 @@
 # `omnia` target — `without-replay` fixture
 
-Worked example for the omission-is-not-an-error posture on the shared replay hook ([`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md), RFC-27 §D1). The `.metadata.yaml` in this directory is what a build emits when the slice has no `captures` source binding (or when a target adapter fork has not implemented the hook).
+Worked example for the omission-is-not-an-error posture on the shared replay hook ([`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md), workflow §D1). The `.metadata.yaml` in this directory is what a build emits when the slice has no `captures` source binding (or when a target adapter fork has not implemented the hook).
 
 ## What this fixture demonstrates
 

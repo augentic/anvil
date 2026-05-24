@@ -27,7 +27,7 @@ The Vectis target adapter contributes its `shape` / `build` / `merge` briefs to 
 
 The adapter manifest, the three briefs (`shape`, `build`, `merge`), the WASI tool declaration, the shared schemas (`composition.schema.json`, `tokens.schema.json`, `assets.schema.json`), the Vectis codex, and the operator-facing `tokens.yaml` example all live under [`adapters/targets/vectis/`](..).
 
-The eight earlier Vectis writer / reviewer / template-updater skills (`core-writer`, `core-reviewer`, `test-writer`, `ios-writer`, `ios-reviewer`, `android-writer`, `android-reviewer`, `template-updater`) were retired in RFC-25 W2.6; their bodies live inline in [`../briefs/build.md`](../briefs/build.md) (writers and reviewers) and [`../briefs/merge.md`](../briefs/merge.md) (post-merge host cap-matrix re-verification). The `vectis:image-layout-inferer` skill body was lifted into the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml) per RFC-25 W2.4.
+The eight earlier Vectis writer / reviewer / template-updater skills (`core-writer`, `core-reviewer`, `test-writer`, `ios-writer`, `ios-reviewer`, `android-writer`, `android-reviewer`, `template-updater`) were retired in Wave 2.6; their bodies live inline in [`../briefs/build.md`](../briefs/build.md) (writers and reviewers) and [`../briefs/merge.md`](../briefs/merge.md) (post-merge host cap-matrix re-verification). The `vectis:image-layout-inferer` skill body was lifted into the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml) per Wave 2.4.
 
 ## Common Patterns
 

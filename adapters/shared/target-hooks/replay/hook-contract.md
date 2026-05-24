@@ -1,6 +1,6 @@
 # Replay hook contract
 
-Target-agnostic rules for the optional build-time `replay` hook (RFC-27 §D1). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
+Target-agnostic rules for the optional build-time `replay` hook (workflow §D1). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
 
 ## When to run
 
@@ -38,7 +38,7 @@ The implementing target's runner sub-brief supplies the `runner` string (e.g. `o
 
 Agents must not write slice metadata by hand. RFC-25 retired `specify slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
 
-A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (RFC-27 §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
+A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (workflow §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
 ## Merge posture
 

@@ -1,6 +1,6 @@
 # `omnia` target — `with-replay` fixture
 
-Worked example for the **optional** replay hook on the [`omnia` target adapter's `build/replay.md`](../../../../../adapters/targets/omnia/briefs/build/replay.md) sub-brief (RFC-27 §D1, target half). Shared hook contract: [`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md). The `.metadata.yaml` in this directory carries a top-level `replay:` block alongside the standard slice metadata.
+Worked example for the **optional** replay hook on the [`omnia` target adapter's `build/replay.md`](../../../../../adapters/targets/omnia/briefs/build/replay.md) sub-brief (workflow §D1, target half). Shared hook contract: [`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md). The `.metadata.yaml` in this directory carries a top-level `replay:` block alongside the standard slice metadata.
 
 ## What this fixture demonstrates
 

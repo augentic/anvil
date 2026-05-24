@@ -120,7 +120,7 @@ Deno.test("adapters/sources/screenshots: discovery.md present and non-empty", as
 // deterministic shape of the fixture without re-running the
 // `enumerate` / `extract` briefs (those require an LLM and are
 // explicitly out of scope per the harness top comment). The
-// assertions cover what RFC-27 §Acceptance scenarios #26-1 demands at
+// assertions cover what workflow §Acceptance scenarios #26-1 demands at
 // the data-structure level:
 //
 //   1. The `captures` source adapter is discoverable in `plg`.
@@ -249,7 +249,7 @@ Deno.test("adapters/sources/captures: discovery.md names runtime as the bound so
     }
     if (!/sources:\s*\[\s*runtime\s*\]/.test(md)) {
       throw new Error(
-        `${entry.path}: candidate block must cite the bound \`runtime\` source key (per RFC-27 §Binding example)`,
+        `${entry.path}: candidate block must cite the bound \`runtime\` source key (per workflow §Binding example)`,
       );
     }
   }

@@ -1,6 +1,6 @@
 # `build/failure-replay/`
 
-Pins the build-failure stop hint contract from [`plugins/spec/skills/build/SKILL.md`](../../../../../plugins/spec/skills/build/SKILL.md) §Stop hint contract. Stress-tests RFC-25 §Acceptance scenario `#9` from the `/spec:build`-only angle (the loop-side variant lives at [`tests/fixtures/skills/execute/09-build-failure-recovery/`](../../execute/09-build-failure-recovery/)).
+Pins the build-failure stop hint contract from [`plugins/spec/skills/build/SKILL.md`](../../../../../plugins/spec/skills/build/SKILL.md) §Stop hint contract. Stress-tests workflow §Acceptance scenario `#9` from the `/spec:build`-only angle (the loop-side variant lives at [`tests/fixtures/skills/execute/09-build-failure-recovery/`](../../execute/09-build-failure-recovery/)).
 
 ## Scenario
 

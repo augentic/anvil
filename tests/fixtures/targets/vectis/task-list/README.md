@@ -1,6 +1,6 @@
 # `tests/fixtures/targets/vectis/task-list/`
 
-End-to-end fixture covering a Vectis slice that exercises `screenshots`-sourced spatial Evidence → `spec.md` + `design.md` → `composition.yaml` regeneration (RFC-25 W2.6 / scenario #5h).
+End-to-end fixture covering a Vectis slice that exercises `screenshots`-sourced spatial Evidence → `spec.md` + `design.md` → `composition.yaml` regeneration (Wave 2.6 / scenario #5h).
 
 The fixture is paired with [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../sources/screenshots/task-list-two-screen/) — the source-side fixture (W2.4) whose `expected/evidence/` is the same shape as this fixture's `input/evidence/screens.yaml`. The two fixtures are intentionally aligned so the full plan-time → slice-time chain can be wired end-to-end once both chunks land.
 

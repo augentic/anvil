@@ -1,6 +1,6 @@
 # Diagram authoring contract
 
-Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pages stay visually consistent with the RFC-27 reference style.
+Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pages stay visually consistent with the Specify 2.0 reference style.
 
 ## File format
 

@@ -67,7 +67,7 @@ Every internal staged reference to a file under `$SOURCE_DIR` MUST be a relative
 - Resolves to a file under `$SOURCE_DIR`.
 - Not under a skip-root (`node_modules`, `vendor`, `target`, `.venv`, `dist`, `build`).
 
-A symlink inside `$SOURCE_DIR` pointing outside the bound root is denied at canonicalization; the host runner returns `source-enumerate-path-denied` and the slice stays `refining` per RFC-25 §Extraction reliability.
+A symlink inside `$SOURCE_DIR` pointing outside the bound root is denied at canonicalization; the host runner returns `source-enumerate-path-denied` and the slice stays `refining` per workflow §Extraction reliability.
 
 ## Working JSON shape
 

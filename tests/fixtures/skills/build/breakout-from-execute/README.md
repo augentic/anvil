@@ -1,6 +1,6 @@
 # `build/breakout-from-execute/`
 
-Pins the plan-lock re-entrancy contract from [`plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md). Stress-tests RFC-25 §Acceptance scenario `#11` (workspace breakout after build failure) at the env-var-detection layer — the same logic applies whether the parent is single-repo `/spec:execute` or workspace `/spec:execute`.
+Pins the plan-lock re-entrancy contract from [`plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md). Stress-tests workflow §Acceptance scenario `#11` (workspace breakout after build failure) at the env-var-detection layer — the same logic applies whether the parent is single-repo `/spec:execute` or workspace `/spec:execute`.
 
 ## Scenario
 

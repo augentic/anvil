@@ -77,7 +77,7 @@ Deno.test("adapters/targets/vectis/*/expected/composition.yaml: well-formed with
   }
   if (seen === 0) {
     throw new Error(
-      "no Vectis fixture exposed expected/composition.yaml (RFC-25 W3.4 requires at least one)",
+      "no Vectis fixture exposed expected/composition.yaml (Wave 3.4 requires at least one)",
     );
   }
 });
@@ -102,7 +102,7 @@ Deno.test("adapters/targets/omnia/expected/crate: Cargo.toml + src/lib.rs presen
   }
   if (seen === 0) {
     throw new Error(
-      "no Omnia fixture exposed expected/crate/Cargo.toml (RFC-25 W3.1 requires at least one)",
+      "no Omnia fixture exposed expected/crate/Cargo.toml (Wave 3.1 requires at least one)",
     );
   }
 });
@@ -125,7 +125,7 @@ Deno.test("adapters/targets/*/expected/shape-evidence.md: bullet items present",
 //
 // The target-half of the release blocker: D1 carries an *optional*
 // build-time replay hook for targets that consume runtime
-// captures (RFC-27 §`build`-time replay).
+// captures (workflow §`build`-time replay).
 // Targets that have not implemented the hook simply omit the
 // `replay` field; `merge` does not require it.
 //
@@ -177,7 +177,7 @@ Deno.test("adapters/targets/omnia/without-replay: .metadata.yaml omits replay (o
   }
   if ("replay" in data) {
     throw new Error(
-      `${path}: without-replay metadata MUST omit the replay key entirely — its presence in this fixture would regress RFC-27 §D1 'omission is not an error'`,
+      `${path}: without-replay metadata MUST omit the replay key entirely — its presence in this fixture would regress workflow §D1 'omission is not an error'`,
     );
   }
   if (data.target !== "omnia") {

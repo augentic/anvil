@@ -47,7 +47,7 @@ const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
 //
 // First-party tools are declared inline in `adapters/targets/<name>/adapter.yaml` under
 // `tools[]` ({ name, version } objects validated by `target.schema.json`). The
-// 1.x `adapters/<name>/tools.yaml` sidecar shape was retired with RFC-25.
+// 1.x `adapters/<name>/tools.yaml` sidecar shape was retired at the 2.0 cut.
 async function resolveAdapterDeclarations(
   adapter: string,
 ): Promise<{ rel: string; declarations: Map<string, string> } | null> {

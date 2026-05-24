@@ -58,7 +58,7 @@ export async function checkNoRfcCitationsInDocs(): Promise<void> {
     "docs/contributing/",
   ];
   const RFC_RE = /RFC[- ]?\d+/;
-  // Strip markdown link targets so `](rfcs/archive/rfc-N-...)` is not
+  // Strip markdown link targets so `](rfcs/done/rfc-N-...)` is not
   // counted as an RFC citation in the visible prose.
   const LINK_TARGET_RE = /\]\([^)]*\)/g;
 

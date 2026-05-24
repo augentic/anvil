@@ -4,7 +4,7 @@ The producer-side contract every Vectis layout inferer follows. It pins the argu
 
 The contract is source-agnostic. The first-pass implementer is the `vectis-image-layout-inferer` skill; planned future producers (`vectis-figma-layout-inferer`, `vectis-code-layout-inferer`) reuse the same contract unless their own RFC explicitly amends it. Source-specific arguments (image input lists, Figma file IDs, source-tree paths) live in each skill's `SKILL.md`; this document covers only the surface every inferer shares.
 
-The normative source is [RFC-11 §A, §G, §H](../../../../rfcs/archive/rfc-11-ui-spec.md). When this document and the RFC disagree, the RFC wins and the discrepancy is a bug in this file.
+The normative source is [RFC-11 §A, §G, §H](../../../../rfcs/done/rfc-11-ui-spec.md). When this document and the RFC disagree, the RFC wins and the discrepancy is a bug in this file.
 
 ## Common arguments
 
@@ -61,7 +61,7 @@ Arguments deliberately excluded from the common surface:
 
 ## Component directive emission
 
-The `component: <slug>` directive is the v1 cross-shell factoring contract (see [RFC-11 §G](../../../../rfcs/archive/rfc-11-ui-spec.md)). Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
+The `component: <slug>` directive is the v1 cross-shell factoring contract (see [RFC-11 §G](../../../../rfcs/done/rfc-11-ui-spec.md)). Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
 
 Emission policy:
 
@@ -141,6 +141,6 @@ Source-specific skills MAY add additional sections (e.g. the image inferer repor
 
 ## See also
 
-- [RFC-11: UI Specification Workflow](../../../../rfcs/archive/rfc-11-ui-spec.md) — normative source for §A (this contract), §G (component directive), §H (CLI validation modes).
+- [RFC-11: UI Specification Workflow](../../../../rfcs/done/rfc-11-ui-spec.md) — normative source for §A (this contract), §G (component directive), §H (CLI validation modes).
 - [`adapters/targets/vectis/schemas/composition.schema.json`](../schemas/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
 - [`adapters/targets/vectis/schemas/tokens.schema.json`](../schemas/tokens.schema.json) and [`adapters/targets/vectis/schemas/assets.schema.json`](../schemas/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.
