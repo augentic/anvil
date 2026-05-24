@@ -1,12 +1,21 @@
-{{#template templates/hero-open.md eyebrow=Specify Developer Guide title=From prompts to durable specs}}
+<div class="hero">
+<div class="eyebrow">Specify Developer Guide</div>
+<h1 class="hero-title">From prompts to durable specs</h1>
+
 Specify 2.0 turns ad-hoc AI prompting into a repeatable, auditable workflow. Every change you make through Specify produces durable artifacts -- a plan, a per-slice proposal, behavioral specs, a technical design, and a task list -- that accumulate as your project's living specification.
 
-{{#template templates/meta-row-open.md}}
-{{#template templates/meta-chip.md label=Version value=2.0}}
-{{#template templates/meta-chip.md label=Status value=Released}}
-{{#template templates/meta-chip.md label=Workflow value=plan → reviewed → execute → finalize}}
-{{#template templates/meta-row-close.md}}
-{{#template templates/hero-close.md}}
+<div class="meta-row">
+
+<span class="meta-chip"><strong>Version</strong> 2.0</span>
+
+<span class="meta-chip"><strong>Status</strong> Released</span>
+
+<span class="meta-chip"><strong>Workflow</strong> plan → reviewed → execute → finalize</span>
+
+</div>
+
+</div>
+
 
 ## What you get
 
@@ -47,21 +56,38 @@ Specify 2.0 splits adapters by direction. **Source adapters** read external mate
 
 ## Start here
 
-{{#template templates/audience-grid-open.md}}
+<div class="audience-grid">
 
-{{#template templates/audience-open.md who=New to Specify}}
+
+<div class="audience">
+  <div class="who">New to Specify</div>
+  <div class="path">
+
 Read [What is Specify?](orientation/index.md), install [Prerequisites](orientation/prerequisites.md), then follow the [Quick start](tutorials/quick-start.md) tutorial.
-{{#template templates/audience-close.md}}
+  </div>
+</div>
 
-{{#template templates/audience-open.md who=Returning from 1.x}}
+
+<div class="audience">
+  <div class="who">Returning from 1.x</div>
+  <div class="path">
+
 [Release notes](explanation/release-notes.md) catalogues the 2.0 cut.
-{{#template templates/audience-close.md}}
+  </div>
+</div>
 
-{{#template templates/audience-open.md who=Authoring skills or adapters}}
+
+<div class="audience">
+  <div class="who">Authoring skills or adapters</div>
+  <div class="path">
+
 Jump to [Contributing](contributing/index.md) and [Skill authoring standards](standards/skill-authoring.md).
-{{#template templates/audience-close.md}}
+  </div>
+</div>
 
-{{#template templates/audience-grid-close.md}}
+
+</div>
+
 
 ## Guide structure
 

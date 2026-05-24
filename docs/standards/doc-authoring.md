@@ -17,7 +17,7 @@ Getting Started (`orientation/`) is setup and path selection only — vocabulary
 
 Contributing and standards docs (`contributing/`, `standards/`) follow reference conventions unless they are explicitly procedural how-tos.
 
-Chapters that use a hero partial should **omit** the duplicate `# Title` H1 — the hero owns the page title. See the exemplar pages listed under [Page-type scaffolds](#page-type-scaffolds).
+Chapters that use a hero block should **omit** the duplicate `# Title` H1 — the hero owns the page title. See the exemplar pages listed under [Page-type scaffolds](#page-type-scaffolds).
 
 ## Visual system
 
@@ -33,7 +33,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 | `.matrix` + `.dot` + `.blocker` + `.scenario-id` + `.blocker-flag` | Acceptance / scenario matrices |
 | `details.alt` + `.alt-tag` + `.body` | Alternatives accordion (Rejected / Partial) |
 | `.pipeline` + `.pipeline-caption` | Architecture / workflow SVG diagrams |
-| `.callout` + `[data-variant=gate\|gotcha\|success\|unchanged]` | Posture notes, Gate reminders, gotchas, completion, unchanged callouts |
+| Native admonitions (`> [!NOTE]`, `> [!IMPORTANT]`, …) | Posture notes, Gate reminders, gotchas, completion (see [Admonitions](#admonitions)) |
 | `.tutorial-step` + `.step-label` + `.step-title` | Numbered tutorial step panels |
 | `.prereq` / `.when` | Prerequisites block (tutorials) / when-to-use opener (how-tos) |
 | `.rhythm` + `.rhythm-step` + `.rhythm-num` + `.rhythm-label` | Change-rhythm summary cards (explanation pages) |
@@ -46,203 +46,157 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 | `.authority-widget` | Interactive authority resolution demo (adapter-anatomy only) |
 | `.waves` | Wave / timeline wrapper |
 
-## Authoring partials
+## HTML component blocks
 
-Reusable component scaffolds live in [`docs/templates/`](../templates/) and are expanded by the [`mdbook-template`](https://github.com/sgoudham/mdbook-template) preprocessor. Authors call them with:
-
-```markdown
-\{{#template <relative-path>.md key=value …}}
-```
-
-The path is **relative to the chapter file** (so chapters in `docs/` use `templates/<partial>.md` and chapters under `docs/reference/` use `../templates/<partial>.md`). Argument values are everything between `=` and the next `<space>key=` pattern — do **not** quote values, mdbook-template keeps the quote characters literal.
+Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`specify-docs.css`](../assets/theme/specify-docs.css); do not invent one-off CSS.
 
 ### Hero block
 
-```markdown
-\{{#template templates/hero-open.md eyebrow=Specify Developer Guide title=From prompts to durable specs}}
-Specify 2.0 turns ad-hoc AI prompting into a repeatable, auditable workflow…
+Omit the duplicate `# Title` H1 when using a hero — the hero owns the page title. See [`index.md`](../index.md).
 
-\{{#template templates/meta-row-open.md}}
-\{{#template templates/meta-chip.md label=Version value=2.0}}
-\{{#template templates/meta-chip.md label=Status value=Released}}
-\{{#template templates/meta-row-close.md}}
-\{{#template templates/hero-close.md}}
+```html
+<div class="hero">
+<div class="eyebrow">Specify Developer Guide</div>
+<h1 class="hero-title">From prompts to durable specs</h1>
+
+First paragraph is styled as the lede automatically.
+
+<div class="meta-row">
+<span class="meta-chip"><strong>Version</strong> 2.0</span>
+<span class="meta-chip"><strong>Status</strong> Released</span>
+</div>
+</div>
 ```
-
-The first paragraph inside the hero is styled as the lede automatically; subsequent paragraphs fall back to normal weight.
 
 ### Numbered section
 
-```markdown
-\{{#template templates/section-open.md id=goals num=A title=Goals}}
-…body markdown…
-\{{#template templates/section-close.md}}
+```html
+<section id="goals" markdown="1">
+
+<h2><span class="num">A</span> Goals</h2>
+
+Body markdown…
+</section>
 ```
+
+The `markdown="1"` attribute lets mdBook render markdown inside the section.
 
 ### Decision card
 
-```markdown
-\{{#template templates/decisions-open.md}}
+```html
+<div class="decisions">
 
-\{{#template templates/decision-open.md id=D1 tag=behaviour title=Authority hierarchy}}
+<div class="decision" data-d="D1">
+  <span class="tag">behaviour</span>
+  <h4>Authority hierarchy</h4>
 Body paragraph(s) describing the decision.
-\{{#template templates/decision-close.md}}
+</div>
 
-\{{#template templates/decisions-close.md}}
+</div>
 ```
 
-Available `data-d` values are `D1`–`D8`; they drive the tag colour. Pick a tag word that matches the decision intent (`behaviour`, `documentation`, `intent`, …).
+Available `data-d` values are `D1`–`D8`; they drive the tag colour.
 
 ### Pipeline diagram
 
-```markdown
-\{{#template templates/pipeline-open.md}}
+```html
+<div class="pipeline">
 
 ![Workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-\{{#template templates/pipeline-close.md caption=init → plan → Gate 1 → execute → finalize.}}
+<p class="pipeline-caption">init → plan → Gate 1 → execute → finalize.</p>
+</div>
 ```
 
 ### Audience cards
 
-```markdown
-\{{#template templates/audience-grid-open.md}}
+```html
+<div class="audience-grid">
 
-\{{#template templates/audience-open.md who=New to Specify}}
-Read [What is Specify?](orientation/index.md), install the [Prerequisites](orientation/prerequisites.md).
-\{{#template templates/audience-close.md}}
+<div class="audience">
+<h4>New to Specify</h4>
+Read [What is Specify?](orientation/index.md)…
+</div>
 
-\{{#template templates/audience-grid-close.md}}
+</div>
 ```
-
-### Question / FAQ card
-
-```markdown
-\{{#template templates/questions-open.md}}
-\{{#template templates/question-open.md qnum=Q1 q=How do candidates fuse across sources?}}
-Behaviour wins on the closed authority enum.
-\{{#template templates/question-close.md}}
-\{{#template templates/questions-close.md}}
-```
-
-### Alternatives accordion
-
-```markdown
-\{{#template templates/alt-open.md status=rejected title=Status property on Evidence files tag=Rejected}}
-Why we ruled this out.
-\{{#template templates/alt-close.md}}
-```
-
-`status` accepts `rejected` (default) or `partial`; the tag colour follows.
-
-### Callout
-
-```markdown
-\{{#template templates/callout-open.md variant=gate}}
-**Gate 1.** The operator stamps `reviewed` explicitly — `/spec:plan` never writes it.
-\{{#template templates/callout-close.md}}
-```
-
-Optional `variant=` values: `gate`, `gotcha`, `success`, `unchanged`. Omit `variant` for the default accent bar.
 
 ### Tutorial step
 
-```markdown
-\{{#template templates/tutorial-step-open.md num=01 title=Initialise the project}}
+```html
+<div class="tutorial-step">
+<span class="step-label">Step 01</span>
+<h3 class="step-title">Initialise the project</h3>
+
 Run once per project: `/spec:init omnia`
-\{{#template templates/tutorial-step-close.md}}
-```
-
-### Prerequisites
-
-```markdown
-\{{#template templates/prereq-open.md}}
-Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
-\{{#template templates/prereq-close.md}}
-```
-
-### When to use (how-to)
-
-```markdown
-\{{#template templates/when-open.md}}
-Use this guide when `/spec:execute` parks on build or merge failure.
-\{{#template templates/when-close.md}}
-```
-
-### Workflow rhythm cards
-
-```markdown
-\{{#template templates/rhythm-open.md}}
-\{{#template templates/rhythm-step-open.md num=01 label=Plan title=Define the change}}
-`/spec:plan` writes `plan.yaml` and exits at `pending`.
-\{{#template templates/rhythm-step-close.md}}
-\{{#template templates/rhythm-close.md}}
+</div>
 ```
 
 ### Card grid (section landing)
 
-```markdown
-\{{#template templates/card-grid-open.md}}
-\{{#template templates/card-open.md title=Quick start time=~30 min href=quick-start.md}}
+```html
+<div class="card-grid">
+<a class="card" href="quick-start.md">
+<div class="card-head">
+<h3 class="card-title">Quick start</h3>
+<span class="card-time">~30 min</span>
+</div>
+<div class="card-body">
 Run a one-slice Omnia change from intent through finalize.
-\{{#template templates/card-close.md}}
-\{{#template templates/card-grid-close.md}}
+</div>
+</a>
+</div>
 ```
 
-### Synopsis (reference)
+### Synopsis and see-also
 
-```markdown
-\{{#template templates/synopsis-open.md}}
+```html
+<div class="synopsis">
 Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
-\{{#template templates/synopsis-close.md}}
-```
+</div>
 
-### See also
+<div class="see-also">
+<strong>See also</strong>
 
-```markdown
-\{{#template templates/see-also-open.md}}
 - [Core concepts](../explanation/concepts.md)
-- [Quick reference](../reference/quick-reference.md)
-\{{#template templates/see-also-close.md}}
+</div>
 ```
-
-### Platform stack
-
-```markdown
-\{{#template templates/platform-open.md}}
-\{{#template templates/platform-product-open.md name=Specify role=Workflow engine active=true}}
-Enforces the spec-first rhythm documented in this guide.
-\{{#template templates/platform-product-close.md}}
-\{{#template templates/platform-close.md}}
-```
-
-Set `active=true` on the current product; omit on sibling products.
-
-### Decision consequence (optional)
-
-```markdown
-\{{#template templates/decision-consequence.md text=Losers survive as inline commentary.}}
-```
-
-Place before `decision-close.md` when a decision card needs a consequence line.
 
 ### Status pill (inline)
 
-```markdown
-This document is \{{#template templates/status-pill.md label=Draft}}.
+```html
+This document is <span class="status-pill">Draft</span>.
 ```
+
+## Admonitions
+
+Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/markdown.html#admonitions) for posture notes instead of custom callout HTML:
+
+| Kind | Syntax | Use |
+| ---- | ------ | --- |
+| Gate / operator stamp | `> [!IMPORTANT]` | Gate 1 reminders, required human steps |
+| Gotcha | `> [!WARNING]` | Pitfalls and failure modes |
+| Success / completion | `> [!TIP]` | Tutorial outcomes, “you’re done” notes |
+| Unchanged behaviour | `> [!NOTE]` | Behaviour that did not change |
+
+```markdown
+> [!IMPORTANT]
+> **Gate 1.** The operator stamps `reviewed` explicitly — `/spec:plan` never writes it.
+```
+
+Multi-line bodies prefix every line with `> `.
 
 ## Page-type scaffolds
 
 Copy the exemplar chapter for each Diátaxis type when authoring or migrating pages:
 
-| Type | Exemplar | Key partials |
+| Type | Exemplar | Key components |
 | ---- | -------- | -------------- |
-| **Tutorial** | [`tutorials/quick-start.md`](../tutorials/quick-start.md) | `hero`, `meta-chip`, `prereq`, `tutorial-step`, `pipeline`, `callout variant=success`, `see-also` |
-| **How-to** | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | `hero`, `when`, `section-open`, `callout variant=gate`, `see-also` |
-| **Explanation** | [`explanation/concepts.md`](../explanation/concepts.md) | `hero`, `audience-grid`, `rhythm`, `pipeline`, `callout`, `see-also` |
-| **Reference** | [`reference/change-skills/plan.md`](../reference/change-skills/plan.md) | `hero`, `synopsis`, tables below fold, `see-also` |
-| **Section landing** | [`tutorials/index.md`](../tutorials/index.md) | `hero`, `card-grid`, `see-also` |
+| **Tutorial** | [`tutorials/quick-start.md`](../tutorials/quick-start.md) | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
+| **How-to** | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also |
+| **Explanation** | [`explanation/concepts.md`](../explanation/concepts.md) | hero, audience-grid, rhythm, pipeline, admonition, see-also |
+| **Reference** | [`reference/change-skills/plan.md`](../reference/change-skills/plan.md) | hero, synopsis, tables below fold, see-also |
+| **Section landing** | [`tutorials/index.md`](../tutorials/index.md) | hero, card-grid, see-also |
 
 ## Palette and theme picker
 
@@ -251,36 +205,27 @@ Light / dark mode is driven by mdbook's theme picker (the paintbrush icon in the
 - `html.light`, `html.rust` → light palette
 - `html.coal`, `html.navy`, `html.ayu` → dark palette
 
-OS-level `prefers-color-scheme` is **no longer consulted directly** — `book.toml` sets `default-theme = "light"` and `preferred-dark-theme = "navy"`, then mdbook handles user toggling and persistence. If you add a new colour, declare it in every bucket so all five themes stay readable.
+OS-level `prefers-color-scheme` is available via the **Auto** entry in mdBook's theme picker. `book.toml` sets `default-theme = "light"` and `preferred-dark-theme = "navy"`. If you add a new colour, declare it in every bucket so all five themes stay readable.
 
-## Right-rail per-page TOC
+## Sidebar heading navigation
 
-[`mdbook-pagetoc`](https://github.com/slowsage/mdbook-pagetoc) injects a scrollspy table of contents on every chapter at viewports ≥ 1440 px. Authors don't need to opt in — every `## H2` and `### H3` heading appears automatically. The widget hides on narrow viewports.
+mdBook 0.5 adds an **On this page** block to the left sidebar while you read a chapter. Every `##` and `###` heading appears automatically — no author opt-in. Style overrides live in [`specify-docs.css`](../assets/theme/specify-docs.css) and [`theme/css/chrome.css`](../theme/css/chrome.css).
 
 ## Diagram policy
 
-- **Explanation, orientation, tutorial, and how-to pages** must use committed SVG assets for workflow and architecture diagrams. Do not add new ` ```text ` pipeline diagrams or `d2` blocks in those directories.
-- **Reference pages** may keep D2 and ASCII command snippets where scannability matters (e.g. quick-reference per-command blocks).
+- **Explanation, orientation, tutorial, and how-to pages** must use committed SVG assets for workflow and architecture diagrams. Do not add new ` ```text ` pipeline diagrams in those directories.
+- **Reference and contributing pages** may use SVG or ASCII command snippets where scannability matters.
 - Prefer one flagship SVG per conceptual page over several small ASCII fragments.
-- The [`mdbook-d2`](https://github.com/danieleades/mdbook-d2) preprocessor renders fenced ` ```d2 ` blocks inline; the [`d2`](https://d2lang.com/) binary must be on `PATH` for the build to succeed.
 
 Diagram assets live under [`docs/assets/diagrams/`](../assets/diagrams/). Follow `_STYLE.md` in that folder for SVG authoring.
 
 ## Raw HTML in markdown
 
-mdBook allows inline HTML. Use it for callouts and audience grids when the partial syntax doesn't fit (e.g. tight inline composition):
-
-```html
-<div class="callout">
-  <strong>Gate 1.</strong> The operator stamps <code>reviewed</code> explicitly — <code>/spec:plan</code> never writes it.
-</div>
-```
-
-Keep factual prose in markdown; use HTML only for layout components the CSS targets.
+mdBook allows inline HTML for layout components the CSS targets (hero, cards, sections with `markdown="1"`, etc.). Keep factual prose in markdown where possible; use admonitions for callouts.
 
 ## Link gate
 
-`mdbook-linkcheck` validates every internal link on every `mdbook build`. The relevant settings live in [`docs/book.toml`](../book.toml) under `[output.linkcheck]`:
+[`mdbook-linkcheck2`](https://crates.io/crates/mdbook-linkcheck2) validates every internal link on every `mdbook build`. Settings live in [`docs/book.toml`](../book.toml) under `[output.linkcheck2]`:
 
 - `follow-web-links = false` — local links only.
 - `warning-policy = "error"` — broken refs fail the build.
@@ -296,10 +241,10 @@ User-facing docs must not cite RFC numbers in visible prose except in [`../expla
 ## Building locally
 
 ```bash
-make docs        # mdbook build docs (HTML + linkcheck)
+make docs        # mdbook build docs (HTML + linkcheck2)
 make docs-serve  # live reload at http://localhost:3000
 ```
 
-Requires the pinned versions of `mdbook`, `mdbook-d2`, `mdbook-linkcheck`, `mdbook-pagetoc`, `mdbook-template`, and `D2` — see [`docs/README.md`](../README.md) for install commands and the version table.
+Requires mdBook **0.5.1+** (linkcheck2 compatibility) and `mdbook-linkcheck2` — see [`docs/README.md`](../README.md).
 
 Run `make docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.

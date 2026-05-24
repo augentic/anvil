@@ -22,31 +22,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Cache cargo bin
-        uses: actions/cache@v4
+      - name: Install mdbook toolchain
+        uses: taiki-e/install-action@v2
         with:
-          path: |
-            ~/.cargo/bin/mdbook
-            ~/.cargo/bin/mdbook-d2
-            ~/.cargo/bin/mdbook-linkcheck
-            ~/.cargo/bin/mdbook-pagetoc
-            ~/.cargo/bin/mdbook-template
-          key: docs-tools-mdbook
-
-      - name: Install mdbook tool chain
-        run: |
-          set -euo pipefail
-          cargo install --force --locked mdbook
-          cargo install --force --locked mdbook-d2
-          cargo install --force --locked mdbook-linkcheck
-          cargo install --force --locked mdbook-pagetoc
-          cargo install --force --locked mdbook-template
-          if ! command -v d2 >/dev/null 2>&1; then
-            curl -fsSL https://d2lang.com/install.sh | sh -s --
-          fi
+          tool: |
+            mdbook
+            mdbook-linkcheck2
 
       - name: Build book (HTML + linkcheck)
-        run: make docs
+        run: mdbook build docs
 
       - name: Set release date
         id: date

@@ -21,7 +21,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [Deno](https://deno.land) -- runs `scripts/check.ts` via `make check`
-- [mdBook](https://rust-lang.github.io/mdBook/) + [D2](https://d2lang.com/) -- for building documentation locally (optional)
+- [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
 
 **For CLI work** (specify-cli repo):
 

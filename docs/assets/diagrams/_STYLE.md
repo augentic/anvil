@@ -57,7 +57,6 @@ Adjust `../` depth for file location (`orientation/` uses `../assets/…`, `refe
 
 ## When to use SVG vs other formats
 
-- **SVG**: workflow pipelines, layered architecture, state machines, adapter axis diagrams.
+- **SVG**: workflow pipelines, layered architecture, state machines, adapter axis diagrams, crate graphs.
 - **Table**: field inventories, CLI flag lists, closed enums.
-- **D2** (legacy): reference pages only until individually upgraded.
 - **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `make check`).

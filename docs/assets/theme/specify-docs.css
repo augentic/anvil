@@ -1011,11 +1011,11 @@ html.ayu {
  * project breadcrumb (crumb + title-mini) and a status-pill slot.
  * ──────────────────────────────────────────────────────────────────────── */
 
-#menu-bar.menu-bar {
+#mdbook-menu-bar.menu-bar {
   border-bottom: 1px solid var(--spec-rule);
 }
 
-#menu-bar .menu-title {
+#mdbook-menu-bar .menu-title {
   display: inline-flex;
   align-items: baseline;
   gap: 12px;
@@ -1024,7 +1024,7 @@ html.ayu {
   line-height: 1.2;
 }
 
-#menu-bar .menu-title .crumb {
+#mdbook-menu-bar .menu-title .crumb {
   font-family: var(--spec-mono);
   font-size: 12px;
   color: var(--spec-ink-faint);
@@ -1032,13 +1032,13 @@ html.ayu {
   text-transform: uppercase;
 }
 
-#menu-bar .menu-title .title-mini {
+#mdbook-menu-bar .menu-title .title-mini {
   font-weight: 600;
   font-size: 14px;
   color: var(--spec-ink);
 }
 
-#menu-bar .menu-title .title-mini::before {
+#mdbook-menu-bar .menu-title .title-mini::before {
   content: "·";
   margin-right: 8px;
   color: var(--spec-ink-faint);
@@ -1048,7 +1048,7 @@ html.ayu {
 /* Status pill chrome slot (authors drop a <span class="status-pill"> into
  * a hero or top-of-page raw block; this styles it consistently). */
 .content main .status-pill,
-#menu-bar .status-pill {
+#mdbook-menu-bar .status-pill {
   display: inline-block;
   font-family: var(--spec-mono);
   font-size: 11px;
@@ -1062,50 +1062,81 @@ html.ayu {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * mdbook-pagetoc restyle — the per-page nav.toc lives on the right rail
- * with active-section scrollspy. mdbook-pagetoc creates a `.sidetoc` >
- * `.pagetoc` structure inside `#content > main`; we restyle it to match.
- * The upstream pagetoc.css hides the rail under 1440px viewports, which
- * we keep as-is.
+ * Sidebar heading navigation — mdBook 0.5 "On this page" block in the
+ * left sidebar while reading a chapter.
  * ──────────────────────────────────────────────────────────────────────── */
 
-@media only screen and (min-width: 1440px) {
-  .content main .sidetoc {
-    width: 240px;
-  }
-
-  .content main .pagetoc {
-    border-left: 1px solid var(--spec-rule);
-    padding-left: 16px;
-    font-size: 13px;
-  }
-
-  .content main .pagetoc a {
-    border-left: 2px solid transparent !important;
-    color: var(--spec-ink-dim) !important;
-    padding: 4px 8px !important;
-    border-radius: 0 4px 4px 0;
-    background: transparent !important;
-    font-family: var(--spec-sans);
-  }
-
-  .content main .pagetoc a:hover {
-    background: var(--spec-panel-2) !important;
-    color: var(--spec-ink) !important;
-  }
-
-  .content main .pagetoc a.active,
-  .content main .pagetoc .active {
-    color: var(--spec-accent) !important;
-    background: var(--spec-accent-soft) !important;
-    border-left-color: var(--spec-accent) !important;
-  }
+.sidebar .on-this-page {
+  margin-top: 0.5em;
 }
 
-@media only screen and (max-width: 880px) {
-  .content main .sidetoc {
-    display: none;
-  }
+.sidebar .on-this-page ol {
+  font-family: var(--spec-sans);
+}
+
+.sidebar .on-this-page a {
+  color: var(--spec-ink-dim);
+  font-size: 0.88em;
+  line-height: 1.45;
+}
+
+.sidebar .on-this-page a:hover {
+  color: var(--spec-ink);
+}
+
+.sidebar .on-this-page a.current-header {
+  color: var(--spec-accent);
+  font-weight: 600;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Native admonitions — styled to match the former .callout variants.
+ * mdBook 0.5 renders `> [!KIND]` as blockquote.blockquote-tag-* .
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.content main blockquote.blockquote-tag {
+  margin: 1.25em 0;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--spec-rule);
+  border-inline-start-width: 4px;
+  background: var(--spec-panel);
+  font-family: var(--spec-sans);
+}
+
+.content main blockquote.blockquote-tag p {
+  margin: 0.4em 0;
+}
+
+.content main blockquote.blockquote-tag .blockquote-tag-title {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 0.6em;
+}
+
+.content main blockquote.blockquote-tag-note {
+  border-inline-start-color: var(--spec-accent);
+  background: var(--spec-accent-soft);
+}
+
+.content main blockquote.blockquote-tag-tip {
+  border-inline-start-color: var(--spec-ok);
+  background: var(--spec-ok-soft);
+}
+
+.content main blockquote.blockquote-tag-important {
+  border-inline-start-color: var(--spec-warn);
+  background: var(--spec-warn-soft);
+}
+
+.content main blockquote.blockquote-tag-warning,
+.content main blockquote.blockquote-tag-caution {
+  border-inline-start-color: var(--spec-danger);
+  background: var(--spec-danger-soft);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1167,7 +1198,7 @@ html.ayu {
   user-select: none;
 }
 
-#menu-bar .menu-title .brand {
+#mdbook-menu-bar .menu-title .brand {
   font-family: var(--spec-mono);
   font-size: 12px;
   font-weight: 600;
@@ -1178,11 +1209,11 @@ html.ayu {
   flex-shrink: 0;
 }
 
-#menu-bar .menu-title .brand:hover {
+#mdbook-menu-bar .menu-title .brand:hover {
   color: var(--spec-accent);
 }
 
-#menu-bar .menu-title .brand::after {
+#mdbook-menu-bar .menu-title .brand::after {
   content: "·";
   margin-left: 12px;
   margin-right: 4px;
