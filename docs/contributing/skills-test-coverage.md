@@ -17,7 +17,7 @@ path end to end?
 The audit is hand-curated and is intended to be re-run whenever a new skill
 or scenario lands. The deterministic-boundary fixtures under
 [`tests/fixtures/{sources,targets,skills}/`](../../tests/fixtures/) drive
-[`tests/cross_repo.ts`](../../tests/cross_repo.ts) on every `make test`; the
+[`tooling/tests/`](../../tooling/tests/) on every `make test`; the
 manual scenarios under [`tests/cross-repo/`](../../tests/cross-repo/) and
 [`tests/plan/`](../../tests/plan/) cover the LLM-driven body bytes that the
 harness intentionally does not pin.
@@ -42,7 +42,7 @@ harness intentionally does not pin.
 > mentions `tests/scenarios/*.json` fixtures, but no such directory or file
 > exists in the repository at audit time. The repository's test packs are the
 > markdown scenarios listed above; their YAML frontmatter (validated by
-> [`scripts/checks/scenarios.ts`](../../scripts/checks/scenarios.ts)) is the
+> [`tooling/src/check/scenarios.rs`](../../tooling/src/check/scenarios.rs)) is the
 > closest analogue to a fixture. The matrix below uses the markdown scenarios
 > as the unit of coverage. See [Plan amendments](#plan-amendments) for
 > follow-up.

@@ -2,20 +2,20 @@
 
 The acceptance surface has two layers:
 
-1. **Deterministic boundary harness** — `make test` runs the Deno acceptance harness at [`tests/cross_repo.ts`](../../tests/cross_repo.ts). It schema-validates every fixture under `tests/fixtures/{sources,targets,skills}/`, parses every `expected/spec.md` with the W1.3 provenance parser, and structurally validates the synthesised goldens (`expected/composition.yaml`, `expected/crate/`, `expected-trace.md`, transcript files). When `SPECIFY_BIN` is set or `specify` is on `PATH`, the harness can additionally drive `specify source resolve`, `specify target resolve`, and the slice-loop verbs against the same fixtures.
+1. **Deterministic boundary harness** — `make test` runs the Rust acceptance tests under [`tooling/tests/`](../../tooling/tests/). They schema-validate every fixture under `tests/fixtures/{sources,targets,skills}/`, parse every `expected/spec.md` with the W1.3 provenance parser, and structurally validate the synthesised goldens (`expected/composition.yaml`, `expected/crate/`, `expected-trace.md`, transcript files). When `SPECIFY_BIN` is set or `specify` is on `PATH`, the harness can additionally drive `specify source resolve`, `specify target resolve`, and the slice-loop verbs against the same fixtures.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; the deterministic-boundary harness above does **not** pin synthesised bytes.
 
 ## Targets
 
 - `make check` runs static repository checks, including scenario frontmatter validation.
-- `make test` runs the Deno acceptance harness against the fixture trees.
+- `make test` runs the Rust acceptance tests under `tooling/tests/`.
 - `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 
 ## Synthesis byte-replay (deferred)
 
-The harness in `tests/cross_repo.ts` covers every deterministic surface — schema validation, provenance parsing, fixture-shape goldens — but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+The harness in `tooling/tests/` covers every deterministic surface — schema validation, provenance parsing, fixture-shape goldens — but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
 
 - a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
 - a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.

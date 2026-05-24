@@ -8,15 +8,15 @@ This is a pre-1.0 codebase. There are no backward-compatibility constraints on s
 
 Each `SKILL.md` `description` field must:
 
-- Lead with an **imperative verb** drawn from the curated allow-list in [scripts/checks/skill_frontmatter.ts](../../scripts/checks/skill_frontmatter.ts) (`IMPERATIVE_VERBS`). Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
+- Lead with an **imperative verb** drawn from the curated allow-list in [tooling/src/check/skill_frontmatter.rs](../../tooling/src/check/skill_frontmatter.rs) (`IMPERATIVE_VERBS`). Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
 - Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary. The clause describes a trigger condition (when an operator should reach for this skill over its siblings), not a restatement of what the skill does. "Use when an operator wants to X" is an anti-pattern; "Use when starting Y from scratch, not when resuming Z" is the shape.
 - Stay **≤ 512 chars** total.
 
-`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively. See [scripts/checks/](../../scripts/checks/) for the implementation.
+`SkillDescriptionGrammarCheck` and the skill schema enforce the three rules respectively. See [tooling/src/check/](../../tooling/src/check/) for the implementation.
 
 ## Argument-hint grammar
 
-Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by `checkArgumentHintGrammar` in [scripts/checks/skill_frontmatter.ts](../../scripts/checks/skill_frontmatter.ts)):
+Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by `SkillArgumentHintGrammarCheck` in [tooling/src/check/skill_frontmatter.rs](../../tooling/src/check/skill_frontmatter.rs)):
 
 - `<name>` — required positional, kebab-case noun (e.g. `<slice-dir>`, `<change-name>`).
 - `[name]` — optional positional (e.g. `[crate-name]`, `[mode]`).
@@ -31,7 +31,7 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 - **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
 - **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
-Both caps are enforced in a single walk by `checkBodyAndSectionLineCounts` (see [scripts/checks/skill_body.ts](../../scripts/checks/skill_body.ts)).
+Both caps are enforced by `SkillBodyLineCount` and `SkillSectionLineCount` (see [tooling/src/check/skill_body.rs](../../tooling/src/check/skill_body.rs)).
 
 All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
 
@@ -73,9 +73,9 @@ Briefs split into two roles:
 
 The discipline:
 
-1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by `checkBriefNoFrontmatter` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
-2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `checkBriefSize` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
-3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `checkBriefSize`.
+1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by `BriefCheck` in [tooling/src/check/brief.rs](../../tooling/src/check/brief.rs).
+2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `BriefCheck` in [tooling/src/check/brief.rs](../../tooling/src/check/brief.rs).
+3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `BriefCheck`.
 4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as `checkMarkdownLinks` failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
 5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
 

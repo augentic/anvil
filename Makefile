@@ -1,26 +1,20 @@
-DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/deno))
+TOOLING_MANIFEST := tooling/Cargo.toml
 
-.PHONY: check
+.PHONY: check test ci use-local-plugins use-team-plugins
+
+# Regenerate CLI envelope docs: cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes
+# Verify drift (CI): cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes --check
+
 check:
-	@$(DENO) run --allow-read --allow-env scripts/check.ts
+	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- check
 
-.PHONY: doc-envelopes
-doc-envelopes:
-	@$(DENO) run --allow-read --allow-write --allow-env scripts/gen-envelope-doc.ts
-
-.PHONY: test
 test:
-	@$(DENO) test \
-		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
-		tests/cross_repo.ts
+	cargo test --manifest-path $(TOOLING_MANIFEST)
 
-.PHONY: ci
 ci: check test
 
-.PHONY: use-local-plugins
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh
 
-.PHONY: use-team-plugins
 use-team-plugins:
 	@bash ./scripts/use-team-plugins.sh

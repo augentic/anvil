@@ -19,6 +19,9 @@ pub const RULE_UNKNOWN_TOOL: &str = "skill.unknown-tool";
 pub const RULE_DESCRIPTION_GRAMMAR: &str = "skill.description-grammar";
 pub const RULE_ARGUMENT_HINT_GRAMMAR: &str = "skill.argument-hint-grammar";
 
+/// Kept in sync with `tooling/schemas/skill.schema.json` (`description.maxLength`).
+pub const MAX_DESCRIPTION_CHARS: usize = 512;
+
 const PREFIX_OVERRIDES: &[(&str, &str)] = &[("spec", "specify")];
 
 /// Validate SKILL.md frontmatter against `tooling/schemas/skill.schema.json`.

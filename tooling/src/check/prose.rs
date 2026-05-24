@@ -138,8 +138,8 @@ fn check_skill_numeric_caps(framework_root: &Path) -> Vec<Finding> {
     let files: [(&str, bool, bool); 4] = [
         (".cursor/schemas/skill.schema.json", true, false),
         ("docs/standards/skill-authoring.md", true, true),
-        ("scripts/checks/skill_frontmatter.ts", true, false),
-        ("scripts/checks/skill_body.ts", false, true),
+        ("tooling/src/check/skill_frontmatter.rs", true, false),
+        ("tooling/src/check/skill_body.rs", false, true),
     ];
 
     let mut findings = Vec::new();
