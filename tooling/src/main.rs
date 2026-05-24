@@ -17,7 +17,7 @@ struct Cli {
 enum Command {
     /// Run framework consistency checks over the repo root.
     Check,
-    /// Generate or verify generated documentation (stub).
+    /// Generate or verify generated documentation.
     Docgen {
         #[command(subcommand)]
         target: DocgenTarget,
@@ -26,9 +26,9 @@ enum Command {
 
 #[derive(Debug, Subcommand)]
 enum DocgenTarget {
-    /// Regenerate CLI output-shape docs (stub until Change 15).
+    /// Regenerate CLI output-shape docs from specify-cli fixtures.
     Envelopes {
-        /// Exit 2 when generated output would drift (stub).
+        /// Exit 2 when generated output would drift.
         #[arg(long)]
         check: bool,
     },
@@ -71,10 +71,19 @@ fn run_check() -> Exit {
 }
 
 fn run_docgen_envelopes(check: bool) -> Exit {
-    if check {
-        eprintln!("docgen envelopes --check is not implemented yet (RFC-5 Change 15)");
-        return Exit::GenericFailure;
+    let result = (|| -> Result<Exit, ToolingError> {
+        let ctx = Context::discover()?;
+        tooling::docgen::run_envelopes(ctx.framework_root(), &ctx.specify_cli_dir(), check)
+    })();
+
+    match &result {
+        Ok(_) => {}
+        Err(error) => eprintln!("error: {error}"),
     }
-    eprintln!("docgen envelopes is not implemented yet (RFC-5 Change 15)");
-    Exit::GenericFailure
+
+    match result {
+        Ok(exit) => exit,
+        Err(ToolingError::Validation(_)) => Exit::ValidationFailed,
+        Err(ToolingError::Infrastructure(_)) => Exit::GenericFailure,
+    }
 }

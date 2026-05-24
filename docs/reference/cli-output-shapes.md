@@ -27,7 +27,6 @@ Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
 {
   "action": "amend",
   "entry": {
-    "adapter": null,
     "depends-on": [
       "a",
       "b"
@@ -36,10 +35,8 @@ Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
     "name": "foo",
     "project": "default",
     "sources": [],
-    "status": "pending",
-    "status-reason": null
+    "status": "pending"
   },
-  "envelope-version": 6,
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
@@ -55,10 +52,9 @@ Source fixture: `tests/fixtures/plan/archive-outstanding-work.json`
 
 ```json
 {
-  "envelope-version": 6,
   "error": "plan-has-outstanding-work",
   "exit-code": 1,
-  "message": "plan has outstanding non-terminal work: [\"b\"]"
+  "message": "plan-has-outstanding-work: plan has outstanding non-terminal work: [\"b\"]"
 }
 ```
 
@@ -70,7 +66,6 @@ Source fixture: `tests/fixtures/plan/archive-success.json`
 {
   "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": null,
-  "envelope-version": 6,
   "plan": {
     "name": "demo"
   }
@@ -85,14 +80,13 @@ Source fixture: `tests/fixtures/plan/archive-success-with-working-dir.json`
 {
   "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>",
-  "envelope-version": 6,
   "plan": {
     "name": "demo"
   }
 }
 ```
 
-### `specify plan add`
+### `specify plan create`
 
 Source fixture: `tests/fixtures/plan/create-foo.json`
 
@@ -100,38 +94,16 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 {
   "action": "create",
   "entry": {
-    "adapter": "contracts@v1",
     "depends-on": [],
     "description": null,
     "name": "foo",
     "project": null,
     "sources": [],
     "status": "pending",
-    "status-reason": null
+    "target": "contracts@v1"
   },
-  "envelope-version": 6,
   "plan": {
     "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  }
-}
-```
-
-### `specify plan create`
-
-Source fixture: `tests/fixtures/plan/init-success.json`
-
-The merged scaffold writes `change.md` and `plan.yaml` together; the
-envelope carries one ref per file.
-
-```json
-{
-  "brief": {
-    "path": "<TEMPDIR>/change.md"
-  },
-  "envelope-version": 6,
-  "name": "my-change",
-  "plan": {
     "path": "<TEMPDIR>/plan.yaml"
   }
 }
@@ -146,13 +118,12 @@ Source fixture: `tests/fixtures/plan/next-all-done.json`
 ```json
 {
   "active": null,
-  "adapter": null,
   "description": null,
-  "envelope-version": 6,
   "next": null,
   "project": null,
-  "reason": "all-done",
-  "sources": null
+  "reason": "drained",
+  "sources": null,
+  "target": null
 }
 ```
 
@@ -163,13 +134,12 @@ Source fixture: `tests/fixtures/plan/next-first-pending.json`
 ```json
 {
   "active": null,
-  "adapter": null,
   "description": null,
-  "envelope-version": 6,
   "next": "b",
   "project": "default",
   "reason": null,
-  "sources": []
+  "sources": [],
+  "target": null
 }
 ```
 
@@ -180,13 +150,12 @@ Source fixture: `tests/fixtures/plan/next-in-progress.json`
 ```json
 {
   "active": "a",
-  "adapter": null,
   "description": null,
-  "envelope-version": 6,
   "next": null,
   "project": null,
   "reason": "in-progress",
-  "sources": null
+  "sources": null,
+  "target": null
 }
 ```
 
@@ -197,13 +166,152 @@ Source fixture: `tests/fixtures/plan/next-stuck.json`
 ```json
 {
   "active": null,
-  "adapter": null,
   "description": null,
-  "envelope-version": 6,
   "next": null,
   "project": null,
-  "reason": "stuck",
-  "sources": null
+  "reason": "drained",
+  "sources": null,
+  "target": null
+}
+```
+
+### `specify plan plan`
+
+Source fixture: `tests/fixtures/plan/plan-create.json`
+
+```json
+{
+  "name": "my-change",
+  "plan": "<TEMPDIR>/plan.yaml",
+  "lifecycle": "pending"
+}
+```
+
+### `specify plan status`
+
+Source fixture: `tests/fixtures/plan/status-platform-v2.json`
+
+```json
+{
+  "counts": {
+    "done": 1,
+    "in-progress": 1,
+    "pending": 7,
+    "total": 9
+  },
+  "drained": false,
+  "entries": [
+    {
+      "depends-on": [],
+      "description": null,
+      "lifecycle": null,
+      "name": "user-registration",
+      "sources": [
+        "monolith"
+      ],
+      "status": "done"
+    },
+    {
+      "depends-on": [
+        "user-registration"
+      ],
+      "description": null,
+      "lifecycle": null,
+      "name": "email-verification",
+      "sources": [
+        "monolith"
+      ],
+      "status": "in-progress"
+    },
+    {
+      "depends-on": [],
+      "description": "Duplicate email submission returns 500 instead of 409. Discovered during email-verification extraction. Modifies user-registration.\n",
+      "lifecycle": null,
+      "name": "registration-duplicate-email-crash",
+      "sources": [],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "user-registration"
+      ],
+      "description": "Greenfield — user-facing notification channel and frequency settings.\n",
+      "lifecycle": null,
+      "name": "notification-preferences",
+      "sources": [],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "email-verification"
+      ],
+      "description": "Pull duplicated input validation into a shared validation crate before building checkout-flow. Delta-targets user-registration and email-verification.\n",
+      "lifecycle": null,
+      "name": "extract-shared-validation",
+      "sources": [],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "extract-shared-validation"
+      ],
+      "description": null,
+      "lifecycle": null,
+      "name": "product-catalog",
+      "sources": [
+        "monolith"
+      ],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "product-catalog",
+        "user-registration"
+      ],
+      "description": null,
+      "lifecycle": null,
+      "name": "shopping-cart",
+      "sources": [
+        "orders"
+      ],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "shopping-cart"
+      ],
+      "description": null,
+      "lifecycle": null,
+      "name": "checkout-api",
+      "sources": [
+        "payments"
+      ],
+      "status": "pending"
+    },
+    {
+      "depends-on": [
+        "checkout-api"
+      ],
+      "description": null,
+      "lifecycle": null,
+      "name": "checkout-ui",
+      "sources": [
+        "frontend"
+      ],
+      "status": "pending"
+    }
+  ],
+  "in-progress": {
+    "lifecycle": null,
+    "name": "email-verification"
+  },
+  "lifecycle": "pending",
+  "next-eligible": null,
+  "order": "topological",
+  "plan": {
+    "name": "platform-v2",
+    "path": "<TEMPDIR>/plan.yaml"
+  }
 }
 ```
 
@@ -215,35 +323,14 @@ Source fixture: `tests/fixtures/plan/transition-in-progress-to-done.json`
 
 ```json
 {
-  "entry": {
-    "name": "foo",
-    "status": "done",
-    "status-reason": null
-  },
-  "envelope-version": 6,
+  "current": "done",
+  "kind": "entry",
+  "name": "foo",
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
-  }
-}
-```
-
-#### `in-progress-to-failed-with-reason`
-
-Source fixture: `tests/fixtures/plan/transition-in-progress-to-failed-with-reason.json`
-
-```json
-{
-  "entry": {
-    "name": "foo",
-    "status": "failed",
-    "status-reason": "boom"
   },
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  }
+  "previous": "in-progress"
 }
 ```
 
@@ -258,11 +345,27 @@ Source fixture: `tests/fixtures/plan/transition-pending-to-in-progress.json`
     "status": "in-progress",
     "status-reason": null
   },
-  "envelope-version": 6,
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
   }
+}
+```
+
+#### `plan-reviewed`
+
+Source fixture: `tests/fixtures/plan/transition-plan-reviewed.json`
+
+```json
+{
+  "current": "reviewed",
+  "kind": "plan",
+  "name": "demo",
+  "plan": {
+    "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  },
+  "previous": "pending"
 }
 ```
 
@@ -274,7 +377,6 @@ Source fixture: `tests/fixtures/plan/validate-clean.json`
 
 ```json
 {
-  "envelope-version": 6,
   "passed": true,
   "plan": {
     "name": "demo",
@@ -290,7 +392,6 @@ Source fixture: `tests/fixtures/plan/validate-duplicate-name.json`
 
 ```json
 {
-  "envelope-version": 6,
   "passed": false,
   "plan": {
     "name": "demo",
@@ -300,8 +401,8 @@ Source fixture: `tests/fixtures/plan/validate-duplicate-name.json`
     {
       "code": "duplicate-name",
       "entry": "foo",
-      "level": "error",
-      "message": "duplicate plan entry name 'foo'"
+      "message": "duplicate plan entry name 'foo'",
+      "severity": "error"
     }
   ]
 }
@@ -313,9 +414,9 @@ Source fixture: `tests/fixtures/e2e/goldens/merge-two-spec.json`
 
 ```json
 {
-  "envelope-version": 6,
   "merged-specs": [
     {
+      "baseline-path": "<TEMPDIR>/.specify/specs/login/spec.md",
       "name": "login",
       "operations": [
         {
@@ -326,6 +427,7 @@ Source fixture: `tests/fixtures/e2e/goldens/merge-two-spec.json`
       ]
     },
     {
+      "baseline-path": "<TEMPDIR>/.specify/specs/oauth/spec.md",
       "name": "oauth",
       "operations": [
         {
@@ -345,7 +447,6 @@ Source fixture: `tests/fixtures/e2e/goldens/task-mark.json`
 
 ```json
 {
-  "envelope-version": 6,
   "idempotent": true,
   "marked": "1.1",
   "new-content-path": "<TEMPDIR>/.specify/slices/my-slice/tasks.md"
@@ -359,7 +460,6 @@ Source fixture: `tests/fixtures/e2e/goldens/task-progress.json`
 ```json
 {
   "complete": 2,
-  "envelope-version": 6,
   "pending": 3,
   "tasks": [
     {
@@ -425,7 +525,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "status": "pass"
       },
       {
-        "rule": "Has a Crates/Features section listing at least one entry",
+        "rule": "Has a Crates section listing at least one entry",
         "rule-id": "proposal.crates-listed",
         "status": "pass"
       },
@@ -436,7 +536,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "status": "deferred"
       }
     ],
-    "specs": [
+    "specs/login/spec.md": [
       {
         "rule": "Every requirement has at least one scenario",
         "rule-id": "specs.requirements-have-scenarios",
@@ -474,7 +574,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
   },
   "cross-checks": [
     {
-      "rule": "Every crate/feature listed in the proposal has a matching spec file",
+      "rule": "Every crate listed in the proposal has a matching spec file",
       "rule-id": "cross.proposal-crates-have-specs",
       "status": "pass"
     },
@@ -489,7 +589,6 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
       "status": "pass"
     }
   ],
-  "envelope-version": 6,
   "passed": true
 }
 ```
@@ -517,7 +616,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
         "status": "fail"
       },
       {
-        "rule": "Has a Crates/Features section listing at least one entry",
+        "rule": "Has a Crates section listing at least one entry",
         "rule-id": "proposal.crates-listed",
         "status": "pass"
       },
@@ -528,7 +627,7 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
         "status": "deferred"
       }
     ],
-    "specs": [
+    "specs/login/spec.md": [
       {
         "detail": "one or more requirements have no scenarios",
         "rule": "Every requirement has at least one scenario",
@@ -569,8 +668,8 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
   },
   "cross-checks": [
     {
-      "detail": "one or more crates/features listed in the proposal have no matching spec file",
-      "rule": "Every crate/feature listed in the proposal has a matching spec file",
+      "detail": "one or more crates listed in the proposal have no matching spec file",
+      "rule": "Every crate listed in the proposal has a matching spec file",
       "rule-id": "cross.proposal-crates-have-specs",
       "status": "fail"
     },
@@ -586,7 +685,6 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
       "status": "pass"
     }
   ],
-  "envelope-version": 6,
   "passed": false
 }
 ```
