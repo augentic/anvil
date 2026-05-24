@@ -910,13 +910,13 @@ body {
 
 .chapter li a.active,
 .chapter a.current-header {
-    background: #e1edff;
+    background: color-mix(in srgb, var(--sidebar-active) 14%, var(--sidebar-bg));
     color: var(--sidebar-active);
     font-weight: 700;
 }
 
 .chapter li.part-title {
-    color: #5b6f99;
+    color: color-mix(in srgb, var(--sidebar-fg) 72%, var(--sidebar-bg));
     font-family: var(--spec-mono);
     font-size: 0.72em;
     font-weight: 700;
@@ -930,7 +930,7 @@ body {
 }
 
 .chapter-fold-toggle {
-    color: #7f93ba;
+    color: color-mix(in srgb, var(--sidebar-fg) 62%, var(--sidebar-bg));
     padding-inline-end: 4px;
 }
 
@@ -942,7 +942,7 @@ body {
 
 .sidebar .on-this-page a {
     border-radius: 6px;
-    color: #526b9b;
+    color: color-mix(in srgb, var(--sidebar-fg) 68%, var(--sidebar-bg));
     padding-block: 4px;
 }
 

@@ -85,12 +85,13 @@ Operator stamps `reviewed`. Nothing executes until this transition.
 
 Every change flows through one rhythm. Full command detail: [Quick reference card](../reference/quick-reference.md).
 
-{{#template ../templates/pipeline-open.md}}
+<div class="pipeline">
 
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-{{#template ../templates/pipeline-close.md caption=/spec:plan exits pending; operator stamps Gate 1; /spec:execute drives slices; /spec:finalize closes the change.}}
+<p class="pipeline-caption">/spec:plan exits pending; operator stamps Gate 1; /spec:execute drives slices; /spec:finalize closes the change.</p>
+</div>
 
 
 `/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan transition <name> reviewed` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
@@ -101,12 +102,13 @@ A one-slice change uses the same steps as a twelve-slice change: `intent.enumera
 
 Each slice runs through three phases inside `/spec:execute`. `/spec:refine` extracts evidence per bound source and synthesizes the artifacts. `/spec:build` works through the task list and writes code. `/spec:merge` folds the slice's specs into the baseline.
 
-{{#template ../templates/pipeline-open.md}}
+<div class="pipeline">
 
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-{{#template ../templates/pipeline-close.md caption=refine → build → merge inside /spec:execute; merge folds specs into .specify/specs/ baseline.}}
+<p class="pipeline-caption">refine → build → merge inside /spec:execute; merge folds specs into .specify/specs/ baseline.</p>
+</div>
 
 
 The same skills are available as breakouts — run one phase by hand — when execute parks on a failure or when you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).

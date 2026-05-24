@@ -26,7 +26,6 @@ Use this guide when execute stops on build or merge failure, when you cancel a r
 
 <h2><span class="num">1</span> When execute parks on build failure</h2>
 
-{{#template ../templates/section-open.md id=build-failure num=1 title=When execute parks on build failure}}
 1. Read the stop hint — note `failing-task` and `log-path`.
 2. Fix the code or configuration issue.
 3. Re-run build for the active slice:
@@ -95,7 +94,6 @@ Standalone breakouts acquire `.specify/plan.lock` the same way execute does. If 
 <div class="see-also">
 <strong>See also</strong>
 
-{{#template ../templates/see-also-open.md}}
 - [/spec:execute](../reference/change-skills/execute.md) — stop conditions and re-entry
 - [Drop down a layer](drop-down-a-layer.md) — full manual Layer 2 control
 - [Slice skills](../reference/slice-skills/index.md) — refine, build, merge reference

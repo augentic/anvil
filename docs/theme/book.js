@@ -219,13 +219,13 @@ aria-label="Show hidden lines"></button>';
             if (this.title === 'Show hidden lines') {
                 this.innerHTML = document.getElementById('fa-eye-slash').innerHTML;
                 this.title = 'Hide lines';
-                this.setAttribute('aria-label', e.target.title);
+                this.setAttribute('aria-label', this.title);
 
                 block.classList.remove('hide-boring');
             } else if (this.title === 'Hide lines') {
                 this.innerHTML = document.getElementById('fa-eye').innerHTML;
                 this.title = 'Show hidden lines';
-                this.setAttribute('aria-label', e.target.title);
+                this.setAttribute('aria-label', this.title);
 
                 block.classList.add('hide-boring');
             }
