@@ -194,5 +194,4 @@ Bullets 3 (`Severity reflects antagonist adjustments …`) and 4 (`Every finding
 - F2 (Patch::from_string_option): actual ΔLOC +7 vs predicted -9; done when clean; regressions none.
 - F3 (candidate_mut_or_unknown helper): actual ΔLOC +3 vs predicted -7; done when clean; regressions none.
 - T1 (parse_authority_override_assigns helper): actual ΔLOC -11 vs predicted -7; done when clean; regressions none.
-- T1 (parse_authority_override_assigns helper): actual ΔLOC -11 vs predicted -7; done when clean; regressions none.
 - T2 (Finding-ID conventions dedup): actual ΔLOC +5 vs predicted -4; done when clean; regressions none.
