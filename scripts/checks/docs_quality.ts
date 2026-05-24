@@ -99,7 +99,9 @@ export async function checkNoRfcCitationsInDocs(): Promise<void> {
   }
 }
 
-const TEXT_DIAGRAM_ARROW_RE = /(-->|->|→)/;
+function hasTextDiagramArrow(block: string): boolean {
+  return block.includes("->") || block.includes("→");
+}
 
 export async function checkNoTextPipelineDiagramsInExplanation(): Promise<void> {
   for (const root of EXPLANATION_ORIENTATION) {
@@ -126,7 +128,7 @@ export async function checkNoTextPipelineDiagramsInExplanation(): Promise<void> 
       }
       const blocks = content.match(/```text[\s\S]*?```/g) ?? [];
       for (const block of blocks) {
-        if (TEXT_DIAGRAM_ARROW_RE.test(block)) {
+        if (hasTextDiagramArrow(block)) {
           fail(
             `${rel} uses a \`\`\`text flow diagram — replace with SVG under docs/assets/diagrams/ (see docs/assets/diagrams/_STYLE.md)`,
           );
