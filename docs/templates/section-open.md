@@ -1,4 +1,3 @@
 <section id="[[#id]]" markdown="1">
 
-## <span class="num">[[#num]]</span>[[#title]]
-
+<h2><span class="num">[[#num]]</span> [[#title]]</h2>

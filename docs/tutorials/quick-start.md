@@ -1,13 +1,18 @@
-# Quick start
+{{#template ../templates/hero-open.md eyebrow=Tutorial title=Quick start}}
+Run a complete Specify change in one sitting: one slice, intent-only source, Omnia target. When you finish, merged specs live in your baseline and the plan is archived.
 
-This tutorial walks you through a complete Specify change: one slice, intent-only source, Omnia target. When you finish, you will have merged specs in your baseline and an archived plan.
+{{#template ../templates/meta-row-open.md}}
+{{#template ../templates/meta-chip.md label=Time value=~30 min}}
+{{#template ../templates/meta-chip.md label=Target value=Omnia}}
+{{#template ../templates/meta-chip.md label=Outcome value=First merged slice}}
+{{#template ../templates/meta-row-close.md}}
+{{#template ../templates/hero-close.md}}
 
-## What you will build
-
+{{#template ../templates/section-open.md id=outcome num=1 title=What you will build}}
 A minimal Omnia project where Specify plans, specifies, implements, and merges a single slice driven entirely by operator intent — fixing a typo in `user.rs`. A one-slice change uses the same steps as a twelve-slice migration; only the plan row count differs.
+{{#template ../templates/section-close.md}}
 
-## Prerequisites
-
+{{#template ../templates/prereq-open.md}}
 Complete [Prerequisites](../orientation/prerequisites.md):
 
 - Cursor with Augentic plugins installed
@@ -15,9 +20,11 @@ Complete [Prerequisites](../orientation/prerequisites.md):
 - Rust toolchain with `wasm32-wasip2` target for Omnia
 
 Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposable repo.
+{{#template ../templates/prereq-close.md}}
 
-## Step 1 — Initialise the project
+{{#template ../templates/section-open.md id=steps num=2 title=Steps}}
 
+{{#template ../templates/tutorial-step-open.md num=01 title=Initialise the project}}
 Run once per project:
 
 ```text
@@ -36,9 +43,9 @@ AGENTS.md           ← generated when absent
 ```
 
 See [Directory layout](../reference/directory-layout.md) for the full tree.
+{{#template ../templates/tutorial-step-close.md}}
 
-## Step 2 — Plan the change
-
+{{#template ../templates/tutorial-step-open.md num=02 title=Plan the change}}
 Describe what you want in one line:
 
 ```text
@@ -99,7 +106,7 @@ The skill exits at `plan.lifecycle: pending` and prints:
 Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
-### Operator review step (Gate 1)
+#### Operator review step (Gate 1)
 
 Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `reviewed` itself; you do:
 
@@ -108,9 +115,9 @@ specify plan transition fix-typo reviewed
 ```
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
+{{#template ../templates/tutorial-step-close.md}}
 
-## Step 3 — Execute the slice
-
+{{#template ../templates/tutorial-step-open.md num=03 title=Execute the slice}}
 Drive the per-slice loop:
 
 ```text
@@ -119,14 +126,13 @@ Drive the per-slice loop:
 
 Inside execute, each slice runs **refine → build → merge**:
 
-<div class="pipeline">
+{{#template ../templates/pipeline-open.md}}
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-<p class="pipeline-caption">refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.</p>
-</div>
+{{#template ../templates/pipeline-close.md caption=refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.}}
 
-### After refine
+##### After refine
 
 Under `.specify/slices/fix-typo/` you will find:
 
@@ -150,20 +156,20 @@ Status: agreed
 
 Exact wording varies with your intent; see refine fixtures for shape reference.
 
-### After build
+##### After build
 
 Source code changes land in your project tree (not under `.specify/`). Task checkboxes in `tasks.md` flip to complete via the CLI.
 
-### After merge
+##### After merge
 
 - Spec deltas apply to `.specify/specs/`
 - The slice directory moves to `.specify/archive/`
 - `plan.yaml` marks the entry `done`
 
 If execute parks on a failure, see [Drive a slice manually](../how-to/drive-slice-manually.md).
+{{#template ../templates/tutorial-step-close.md}}
 
-## Step 4 — Finalize the change
-
+{{#template ../templates/tutorial-step-open.md num=04 title=Finalize the change}}
 When every plan entry is `done`, close the change:
 
 ```text
@@ -171,18 +177,17 @@ When every plan entry is `done`, close the change:
 ```
 
 Finalize pushes branches (when configured), observes PR state, and archives the plan. On a local-only run without remotes, archive still runs once the plan is drained.
+{{#template ../templates/tutorial-step-close.md}}
 
-## What you learned
+{{#template ../templates/section-close.md}}
 
-- **`/spec:init`** scaffolds `.specify/` once per project.
-- **`/spec:plan`** authors the change and exits at `pending`.
-- **Gate 1** is the operator review seam before execution.
-- **`/spec:execute`** loops refine → build → merge per slice.
-- **`/spec:finalize`** closes the change after drain.
+{{#template ../templates/callout-open.md variant=success}}
+**Done.** You completed the full rhythm: `/spec:init` scaffolds once; `/spec:plan` exits at `pending`; Gate 1 is the operator review seam; `/spec:execute` loops refine → build → merge; `/spec:finalize` closes the change.
+{{#template ../templates/callout-close.md}}
 
-## Next steps
-
+{{#template ../templates/see-also-open.md}}
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
 - [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize` reference
+{{#template ../templates/see-also-close.md}}

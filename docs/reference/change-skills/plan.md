@@ -1,12 +1,22 @@
-# /spec:plan
+{{#template ../../templates/hero-open.md eyebrow=Reference title=/spec:plan}}
+Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
 
-Plan a Specify change end-to-end: scaffold `change.md` and `plan.yaml`, enumerate each bound source, fuse candidates into `slices[]`, and exit at `pending` with the operator review step (Gate 1) hint.
+{{#template ../../templates/meta-row-open.md}}
+{{#template ../../templates/meta-chip.md label=Layer value=2 — Change}}
+{{#template ../../templates/meta-chip.md label=Writes value=change.md, plan.yaml, discovery.md}}
+{{#template ../../templates/meta-chip.md label=Gate value=Exits pending}}
+{{#template ../../templates/meta-row-close.md}}
+{{#template ../../templates/hero-close.md}}
 
-## Synopsis
+{{#template ../../templates/synopsis-open.md}}
 
 ```text
 /spec:plan <name> [source <key>=<adapter>:<binding> ...]
 ```
+
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *` and `specify source resolve`. Never writes `reviewed`.
+
+{{#template ../../templates/synopsis-close.md}}
 
 ## Arguments
 
@@ -92,9 +102,9 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 /spec:plan identity-revamp source legacy=code-typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
-## See also
-
+{{#template ../../templates/see-also-open.md}}
 - [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `reviewed`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
 - [specify plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change
+{{#template ../../templates/see-also-close.md}}
