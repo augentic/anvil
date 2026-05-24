@@ -1,32 +1,53 @@
-# Core concepts
+{{#template ../templates/hero-open.md eyebrow=Understanding Specify title=Core concepts}}
+Recognise every term that appears throughout the guide after a quick skim of [What is Specify?](../orientation/index.md) or the [Quick start](../tutorials/quick-start.md).
 
-This primer is for developers who have skimmed [What is Specify?](../orientation/index.md) or completed the [Quick start](../tutorials/quick-start.md). After reading it you will recognise every term that appears throughout the rest of the guide.
+{{#template ../templates/meta-row-open.md}}
+{{#template ../templates/meta-chip.md label=Read time value=~12 min}}
+{{#template ../templates/meta-chip.md label=Depth value=Conceptual}}
+{{#template ../templates/meta-row-close.md}}
+{{#template ../templates/hero-close.md}}
 
-<div class="audience-grid">
-  <div class="audience">
-    <div class="who">Operator</div>
-    <div class="path"><a href="#the-plan--gate-1--execute--finalize-rhythm">Change rhythm</a> → <a href="#the-per-slice-loop">Slice loop</a> → <a href="../reference/quick-reference.md">Quick reference</a></div>
-  </div>
-  <div class="audience">
-    <div class="who">Adapter author</div>
-    <div class="path"><a href="#source-and-target-adapters">Adapters</a> → <a href="adapter-anatomy.md">Anatomy</a></div>
-  </div>
-  <div class="audience">
-    <div class="who">Spec reader</div>
-    <div class="path"><a href="#the-four-slice-artifacts">Artifacts</a> → <a href="#evidence-provenance-authority">Evidence</a></div>
-  </div>
-</div>
+{{#template ../templates/audience-grid-open.md}}
+
+{{#template ../templates/audience-open.md who=Operator}}
+<a href="#the-plan--gate-1--execute--finalize-rhythm">Change rhythm</a> → <a href="#the-per-slice-loop">Slice loop</a> → <a href="../reference/quick-reference.md">Quick reference</a>
+{{#template ../templates/audience-close.md}}
+
+{{#template ../templates/audience-open.md who=Adapter author}}
+<a href="#source-and-target-adapters">Adapters</a> → <a href="adapter-anatomy.md">Anatomy</a>
+{{#template ../templates/audience-close.md}}
+
+{{#template ../templates/audience-open.md who=Spec reader}}
+<a href="#the-four-slice-artifacts">Artifacts</a> → <a href="#evidence-provenance-authority">Evidence</a>
+{{#template ../templates/audience-close.md}}
+
+{{#template ../templates/audience-grid-close.md}}
+
+{{#template ../templates/rhythm-open.md}}
+
+{{#template ../templates/rhythm-step-open.md num=01 label=Plan title=Define the change}}
+`/spec:plan` enumerates sources and writes `plan.yaml`. Exits at `pending`.
+{{#template ../templates/rhythm-step-close.md}}
+
+{{#template ../templates/rhythm-step-open.md num=02 label=Gate 1 title=Human approval}}
+Operator stamps `reviewed`. Nothing executes until this transition.
+{{#template ../templates/rhythm-step-close.md}}
+
+{{#template ../templates/rhythm-step-open.md num=03 label=Execute title=Build in the loop}}
+`/spec:execute` drives refine → build → merge per slice until drained.
+{{#template ../templates/rhythm-step-close.md}}
+
+{{#template ../templates/rhythm-close.md}}
 
 ## The plan → operator review (Gate 1) → execute → finalize rhythm
 
 Every change flows through one rhythm. Full command detail: [Quick reference card](../reference/quick-reference.md).
 
-<div class="pipeline">
+{{#template ../templates/pipeline-open.md}}
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-<p class="pipeline-caption">/spec:plan exits pending; operator stamps Gate 1; /spec:execute drives slices; /spec:finalize closes the change.</p>
-</div>
+{{#template ../templates/pipeline-close.md caption=/spec:plan exits pending; operator stamps Gate 1; /spec:execute drives slices; /spec:finalize closes the change.}}
 
 `/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan transition <name> reviewed` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
 
@@ -36,12 +57,11 @@ A one-slice change uses the same steps as a twelve-slice change: `intent.enumera
 
 Each slice runs through three phases inside `/spec:execute`. `/spec:refine` extracts evidence per bound source and synthesizes the artifacts. `/spec:build` works through the task list and writes code. `/spec:merge` folds the slice's specs into the baseline.
 
-<div class="pipeline">
+{{#template ../templates/pipeline-open.md}}
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-<p class="pipeline-caption">refine → build → merge inside /spec:execute; merge folds specs into .specify/specs/ baseline.</p>
-</div>
+{{#template ../templates/pipeline-close.md caption=refine → build → merge inside /spec:execute; merge folds specs into .specify/specs/ baseline.}}
 
 The same skills are available as breakouts — run one phase by hand — when execute parks on a failure or when you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
@@ -102,14 +122,14 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 
 The default rhythm:
 
-<div class="callout">
-  <strong>Commands.</strong> <code>/spec:init &lt;target&gt;</code> → <code>/spec:plan &lt;name&gt; source …</code> → <code>specify plan transition &lt;name&gt; reviewed</code> (Gate 1) → <code>/spec:execute</code> → <code>/spec:finalize &lt;name&gt;</code>
-</div>
+{{#template ../templates/callout-open.md}}
+**Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specify plan transition <name> reviewed` (Gate 1) → `/spec:execute` → `/spec:finalize <name>`
+{{#template ../templates/callout-close.md}}
 
 Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) run one phase by hand when execute parks or you want manual control.
 
-## Where to next
-
-- [Anatomy of an adapter](adapter-anatomy.md) — how source and target adapters compose with core synthesis.
-- [The layered stack](layered-stack.md) — the architectural framing.
-- [Quick reference card](../reference/quick-reference.md) — every verb at a glance.
+{{#template ../templates/see-also-open.md}}
+- [Anatomy of an adapter](adapter-anatomy.md) — how source and target adapters compose with core synthesis
+- [The layered stack](layered-stack.md) — the architectural framing
+- [Quick reference card](../reference/quick-reference.md) — every verb at a glance
+{{#template ../templates/see-also-close.md}}

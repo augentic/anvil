@@ -1,1 +1,1 @@
-<div class="callout">
+<div class="callout" data-variant="[[#variant ]]">

@@ -17,6 +17,8 @@ Getting Started (`orientation/`) is setup and path selection only — vocabulary
 
 Contributing and standards docs (`contributing/`, `standards/`) follow reference conventions unless they are explicitly procedural how-tos.
 
+Chapters that use a hero partial should **omit** the duplicate `# Title` H1 — the hero owns the page title. See the exemplar pages listed under [Page-type scaffolds](#page-type-scaffolds).
+
 ## Visual system
 
 The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
@@ -31,7 +33,14 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 | `.matrix` + `.dot` + `.blocker` + `.scenario-id` + `.blocker-flag` | Acceptance / scenario matrices |
 | `details.alt` + `.alt-tag` + `.body` | Alternatives accordion (Rejected / Partial) |
 | `.pipeline` + `.pipeline-caption` | Architecture / workflow SVG diagrams |
-| `.callout` | Posture notes, gotchas, "unchanged" reminders |
+| `.callout` + `[data-variant=gate\|gotcha\|success\|unchanged]` | Posture notes, Gate reminders, gotchas, completion, unchanged callouts |
+| `.tutorial-step` + `.step-label` + `.step-title` | Numbered tutorial step panels |
+| `.prereq` / `.when` | Prerequisites block (tutorials) / when-to-use opener (how-tos) |
+| `.rhythm` + `.rhythm-step` + `.rhythm-num` + `.rhythm-label` | Change-rhythm summary cards (explanation pages) |
+| `.card-grid` + `.card` + `.card-time` | Section landing page link cards |
+| `.synopsis` | Reference page scannable lead |
+| `.see-also` | Consistent footer link block |
+| `.platform` + `.platform-product[data-active=true]` | Augentic product stack strip (Specify / Omnia / Vectis) |
 | `.status-pill` | Inline status badge (e.g. Draft) |
 | `.pill.agreed` / `.divergence` / `.conflict` | Inline requirement status chips |
 | `.authority-widget` | Interactive authority resolution demo (adapter-anatomy only) |
@@ -129,16 +138,111 @@ Why we ruled this out.
 ### Callout
 
 ```markdown
-\{{#template templates/callout-open.md}}
+\{{#template templates/callout-open.md variant=gate}}
 **Gate 1.** The operator stamps `reviewed` explicitly — `/spec:plan` never writes it.
 \{{#template templates/callout-close.md}}
 ```
+
+Optional `variant=` values: `gate`, `gotcha`, `success`, `unchanged`. Omit `variant` for the default accent bar.
+
+### Tutorial step
+
+```markdown
+\{{#template templates/tutorial-step-open.md num=01 title=Initialise the project}}
+Run once per project: `/spec:init omnia`
+\{{#template templates/tutorial-step-close.md}}
+```
+
+### Prerequisites
+
+```markdown
+\{{#template templates/prereq-open.md}}
+Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
+\{{#template templates/prereq-close.md}}
+```
+
+### When to use (how-to)
+
+```markdown
+\{{#template templates/when-open.md}}
+Use this guide when `/spec:execute` parks on build or merge failure.
+\{{#template templates/when-close.md}}
+```
+
+### Workflow rhythm cards
+
+```markdown
+\{{#template templates/rhythm-open.md}}
+\{{#template templates/rhythm-step-open.md num=01 label=Plan title=Define the change}}
+`/spec:plan` writes `plan.yaml` and exits at `pending`.
+\{{#template templates/rhythm-step-close.md}}
+\{{#template templates/rhythm-close.md}}
+```
+
+### Card grid (section landing)
+
+```markdown
+\{{#template templates/card-grid-open.md}}
+\{{#template templates/card-open.md title=Quick start time=~30 min href=quick-start.md}}
+Run a one-slice Omnia change from intent through finalize.
+\{{#template templates/card-close.md}}
+\{{#template templates/card-grid-close.md}}
+```
+
+### Synopsis (reference)
+
+```markdown
+\{{#template templates/synopsis-open.md}}
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+\{{#template templates/synopsis-close.md}}
+```
+
+### See also
+
+```markdown
+\{{#template templates/see-also-open.md}}
+- [Core concepts](../explanation/concepts.md)
+- [Quick reference](../reference/quick-reference.md)
+\{{#template templates/see-also-close.md}}
+```
+
+### Platform stack
+
+```markdown
+\{{#template templates/platform-open.md}}
+\{{#template templates/platform-product-open.md name=Specify role=Workflow engine active=true}}
+Enforces the spec-first rhythm documented in this guide.
+\{{#template templates/platform-product-close.md}}
+\{{#template templates/platform-close.md}}
+```
+
+Set `active=true` on the current product; omit on sibling products.
+
+### Decision consequence (optional)
+
+```markdown
+\{{#template templates/decision-consequence.md text=Losers survive as inline commentary.}}
+```
+
+Place before `decision-close.md` when a decision card needs a consequence line.
 
 ### Status pill (inline)
 
 ```markdown
 This document is \{{#template templates/status-pill.md label=Draft}}.
 ```
+
+## Page-type scaffolds
+
+Copy the exemplar chapter for each Diátaxis type when authoring or migrating pages:
+
+| Type | Exemplar | Key partials |
+| ---- | -------- | -------------- |
+| **Tutorial** | [`tutorials/quick-start.md`](../tutorials/quick-start.md) | `hero`, `meta-chip`, `prereq`, `tutorial-step`, `pipeline`, `callout variant=success`, `see-also` |
+| **How-to** | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | `hero`, `when`, `section-open`, `callout variant=gate`, `see-also` |
+| **Explanation** | [`explanation/concepts.md`](../explanation/concepts.md) | `hero`, `audience-grid`, `rhythm`, `pipeline`, `callout`, `see-also` |
+| **Reference** | [`reference/change-skills/plan.md`](../reference/change-skills/plan.md) | `hero`, `synopsis`, tables below fold, `see-also` |
+| **Section landing** | [`tutorials/index.md`](../tutorials/index.md) | `hero`, `card-grid`, `see-also` |
 
 ## Palette and theme picker
 

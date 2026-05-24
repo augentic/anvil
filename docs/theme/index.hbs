@@ -171,6 +171,7 @@
                     </div>
 
                     <div class="menu-title">
+                        <a class="brand" href="https://augentic.io" title="Augentic">Augentic</a>
                         <span class="crumb">{{ book_title }}</span>
                         {{#if chapter_title}}
                         <span class="title-mini">{{ chapter_title }}</span>
@@ -261,6 +262,16 @@
                     </a>
                 {{/next}}
             </nav>
+
+            <footer class="spec-footer">
+                <a href="https://augentic.io">Augentic</a>
+                <span class="sep">·</span>
+                <span>Specify Developer Guide</span>
+                {{#if git_repository_url}}
+                <span class="sep">·</span>
+                <a href="{{git_repository_url}}">GitHub</a>
+                {{/if}}
+            </footer>
 
         </div>
 

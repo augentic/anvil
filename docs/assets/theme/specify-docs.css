@@ -26,7 +26,7 @@ html.rust {
   --spec-ink-faint: #888;
   --spec-rule: #e4e2dc;
   --spec-rule-strong: #c9c6bc;
-  --spec-accent: #2e5a87;
+  --spec-accent: #244a72;
   --spec-accent-soft: #e8f0f8;
   --spec-behaviour: #6b4dbf;
   --spec-documentation: #2e5a87;
@@ -542,6 +542,316 @@ html.ayu {
   color: var(--spec-accent);
 }
 
+.content main .callout[data-variant="gate"] {
+  background: var(--spec-accent-soft);
+  border-left-color: var(--spec-accent);
+}
+
+.content main .callout[data-variant="gate"] strong {
+  color: var(--spec-accent);
+}
+
+.content main .callout[data-variant="gotcha"] {
+  background: var(--spec-warn-soft);
+  border-left-color: var(--spec-warn);
+}
+
+.content main .callout[data-variant="gotcha"] strong {
+  color: var(--spec-warn);
+}
+
+.content main .callout[data-variant="success"] {
+  background: var(--spec-ok-soft);
+  border-left-color: var(--spec-ok);
+}
+
+.content main .callout[data-variant="success"] strong {
+  color: var(--spec-ok);
+}
+
+.content main .callout[data-variant="unchanged"] {
+  background: var(--spec-panel-2);
+  border-left-color: var(--spec-rule-strong);
+}
+
+.content main .callout[data-variant="unchanged"] strong {
+  color: var(--spec-ink-dim);
+}
+
+.content main .callout[data-variant=""] strong,
+.content main .callout:not([data-variant]) strong {
+  color: var(--spec-accent);
+}
+
+/* Tutorial steps ------------------------------------------------------ */
+.content main .tutorial-step {
+  background: var(--spec-panel);
+  border: 1px solid var(--spec-rule);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 20px 0;
+}
+
+.content main .tutorial-step .step-label {
+  font-family: var(--spec-mono);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--spec-accent);
+  line-height: 1;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.content main .tutorial-step .step-title {
+  font-family: var(--spec-serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--spec-ink);
+}
+
+.content main .tutorial-step > p:first-of-type {
+  margin-top: 0;
+}
+
+/* Prereq / when blocks ------------------------------------------------ */
+.content main .prereq,
+.content main .when {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 16px 0;
+  color: var(--spec-ink-dim);
+}
+
+.content main .prereq {
+  background: var(--spec-panel-2);
+  border: 1px solid var(--spec-rule);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.content main .prereq strong,
+.content main .when strong {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--spec-ink-faint);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.content main .when {
+  border-left: 2px solid var(--spec-rule-strong);
+  padding-left: 14px;
+}
+
+/* Workflow rhythm cards ----------------------------------------------- */
+.content main .rhythm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.content main .rhythm-step {
+  background: var(--spec-panel);
+  border: 1px solid var(--spec-rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.content main .rhythm-step:hover {
+  border-color: var(--spec-rule-strong);
+}
+
+.content main .rhythm-num {
+  font-family: var(--spec-mono);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--spec-accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.content main .rhythm-label {
+  font-family: var(--spec-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--spec-ink-faint);
+  margin-bottom: 6px;
+}
+
+.content main .rhythm-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--spec-ink);
+}
+
+.content main .rhythm-step p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--spec-ink-dim);
+  line-height: 1.5;
+}
+
+/* Card grid (section landing pages) ----------------------------------- */
+.content main .card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.content main a.card {
+  display: block;
+  background: var(--spec-panel);
+  border: 1px solid var(--spec-rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.content main a.card:hover {
+  border-color: var(--spec-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.content main a.card .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.content main a.card .card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--spec-ink);
+}
+
+.content main a.card .card-time {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  color: var(--spec-ink-faint);
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--spec-panel-2);
+  border: 1px solid var(--spec-rule);
+}
+
+.content main a.card .card-body {
+  font-size: 13.5px;
+  color: var(--spec-ink-dim);
+  line-height: 1.5;
+}
+
+.content main a.card .card-body p {
+  margin: 0;
+}
+
+/* Synopsis (reference pages) ------------------------------------------ */
+.content main .synopsis {
+  background: var(--spec-panel-2);
+  border-left: 3px solid var(--spec-accent);
+  padding: 12px 16px;
+  margin: 0 0 20px;
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--spec-ink-dim);
+}
+
+.content main .synopsis strong {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--spec-accent);
+  margin-right: 6px;
+}
+
+/* See also footer block ----------------------------------------------- */
+.content main .see-also {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--spec-rule);
+  font-size: 14px;
+}
+
+.content main .see-also strong {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--spec-ink-faint);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.content main .see-also ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.content main .see-also li {
+  margin: 4px 0;
+}
+
+/* Platform stack strip ------------------------------------------------ */
+.content main .platform {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.content main .platform-product {
+  background: var(--spec-panel);
+  border: 1px solid var(--spec-rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.content main .platform-product[data-active="true"] {
+  border-color: var(--spec-accent);
+  box-shadow: inset 0 0 0 1px var(--spec-accent-soft);
+}
+
+.content main .platform-name {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+  color: var(--spec-ink);
+}
+
+.content main .platform-role {
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--spec-ink-faint);
+  margin-bottom: 8px;
+}
+
+.content main .platform-body {
+  font-size: 13.5px;
+  color: var(--spec-ink-dim);
+  line-height: 1.5;
+}
+
+.content main .platform-body p {
+  margin: 0;
+}
+
 /* Status pills inline ------------------------------------------------- */
 .content main .pill {
   display: inline-block;
@@ -825,4 +1135,57 @@ html.ayu {
   border-radius: 3px;
   font-size: 0.88em;
   color: var(--spec-ink);
+}
+
+/* Site footer --------------------------------------------------------- */
+.spec-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  padding: 20px 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--spec-rule);
+  font-family: var(--spec-mono);
+  font-size: 12px;
+  color: var(--spec-ink-faint);
+  background: var(--spec-bg);
+}
+
+.spec-footer a {
+  color: var(--spec-accent);
+  text-decoration: none;
+}
+
+.spec-footer a:hover {
+  text-decoration: underline;
+}
+
+.spec-footer .sep {
+  color: var(--spec-rule-strong);
+  user-select: none;
+}
+
+#menu-bar .menu-title .brand {
+  font-family: var(--spec-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--spec-ink-faint);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+#menu-bar .menu-title .brand:hover {
+  color: var(--spec-accent);
+}
+
+#menu-bar .menu-title .brand::after {
+  content: "·";
+  margin-left: 12px;
+  margin-right: 4px;
+  color: var(--spec-ink-faint);
+  font-weight: normal;
 }
