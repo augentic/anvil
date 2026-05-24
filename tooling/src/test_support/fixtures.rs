@@ -17,6 +17,13 @@ pub struct TargetFixture {
     pub dir: PathBuf,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillFixture {
+    pub skill: String,
+    pub case_name: String,
+    pub dir: PathBuf,
+}
+
 fn list_dirs(root: &Path) -> Vec<String> {
     let Ok(entries) = fs::read_dir(root) else {
         return Vec::new();
@@ -68,4 +75,20 @@ pub fn walk_target_fixtures(ctx: &Context) -> Vec<TargetFixture> {
         }
     }
     out
+}
+
+/// Every skill fixture under `tests/fixtures/skills/<skill>/<case>/`.
+pub fn walk_skill_fixtures(ctx: &Context, skill: &str) -> Vec<SkillFixture> {
+    let root = fixtures_dir(ctx).join("skills").join(skill);
+    list_dirs(&root)
+        .into_iter()
+        .map(|case_name| {
+            let dir = root.join(&case_name);
+            SkillFixture {
+                skill: skill.to_string(),
+                case_name,
+                dir,
+            }
+        })
+        .collect()
 }
