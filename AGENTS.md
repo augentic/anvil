@@ -77,15 +77,15 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make check` — runs `tooling check` via Cargo for documentation and workflow consistency checks.
-- `make test` — runs integration tests under `tooling/tests/` via Cargo.
+- `make check` — forwards to `tooling check` (`cargo run --release --manifest-path tooling/Cargo.toml -- check`) for documentation and workflow consistency checks.
+- `make test` — runs integration tests under `tooling/tests/` via Cargo (`cargo test --manifest-path tooling/Cargo.toml`).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
 The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the test will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in [tooling/src/check/](tooling/src/check/). Enforced strictly by `make check` — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in [tooling/src/check/](tooling/src/check/). Enforced strictly by `tooling check` (`make check` locally) — every predicate fails on the first violation, with no per-file grandfathering.
 
 ## Gotchas
 

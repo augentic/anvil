@@ -7,6 +7,7 @@ on:
       - "schemas/**"
       - "scripts/**"
       - "docs/**"
+      - "tooling/**"
       - ".cursor/rules/**"
       - ".cursor-plugin/**"
       - ".github/workflows/ci.yaml"
@@ -50,10 +51,23 @@ jobs:
             schemas
           sparse-checkout-cone-mode: false
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Run checks
-        run: make check
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tooling
+
+      - name: Run acceptance tests
+        run: cargo test --manifest-path tooling/Cargo.toml
+        env:
+          SPECIFY_CLI_DIR: specify-cli
+
+      - name: Run framework checks
+        run: cargo run --release --manifest-path tooling/Cargo.toml -- check
+
+      - name: Verify envelope docs
+        run: cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --check
         env:
           SPECIFY_CLI_DIR: specify-cli

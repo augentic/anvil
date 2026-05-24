@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker. During the RFC-5 migration, `make check` still runs the Deno orchestrator at `scripts/check.ts`; the Rust `tooling check` binary under `tooling/` will replace it once every predicate has ported. Run checks before every pull request.
+The `specify` repo includes an automated consistency checker at `tooling/`. `make check` forwards to `tooling check`; CI runs the same binary in release mode. Run checks before every pull request.
 
 ## Editor-first vs tooling check
 
@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`tooling check` (Markdown + cross-file)** | Local `make check` and CI | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`tooling check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … -- check` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
 **Authoritative schemas** live in [`tooling/schemas/`](../../tooling/schemas/). [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing symlinks to those files so Cursor's JSON/YAML language servers resolve the same contract.
 
@@ -29,20 +29,17 @@ Use the same pattern for other plain YAML files when a framework or runtime sche
 make check
 ```
 
-This runs `scripts/check.ts` via [Deno](https://deno.land):
+This runs `cargo run --release --manifest-path tooling/Cargo.toml -- check`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+
+Tooling contributors can invoke the binary and acceptance tests directly:
 
 ```bash
-deno run --allow-read --allow-env scripts/check.ts
-```
-
-Exit code `0` means all checks pass. Any failure prints `FAIL: <description>` and exits non-zero with a count of failures.
-
-Tooling contributors can also run the in-progress Rust binary directly:
-
-```bash
-cargo run --manifest-path tooling/Cargo.toml -- check
+cargo run --release --manifest-path tooling/Cargo.toml -- check
 cargo test --manifest-path tooling/Cargo.toml
+cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --check
 ```
+
+Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation or envelope docgen needs runtime schemas (defaults to `../specify-cli`).
 
 ## What the checks enforce
 
@@ -54,7 +51,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by `scripts/checks/adapter.ts` through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by [`tooling/src/check/adapter.rs`](../../tooling/src/check/adapter.rs) through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -222,12 +219,12 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 To add a new check:
 
-1. Write an `async function` in `scripts/check.ts` following the existing pattern.
-2. Call `fail(msg)` for each violation -- this increments the error counter and prints the failure.
-3. Add the function to one of the `Promise.all` groups at the bottom of the file. Independent checks can run in the same group; checks that depend on earlier results go in a later group.
+1. Add a module under [`tooling/src/check/`](../../tooling/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
+2. Register the check in the `checks` array in [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs).
+3. Add a fixture-based integration test under [`tooling/tests/`](../../tooling/tests/) when the predicate needs regression coverage.
 4. Run `make check` to verify the new check works.
 
-Checks are numbered 1–13 contiguously. New checks should use the next available number (currently 14).
+Checks are numbered 1–13 contiguously in this document. New checks should use the next available number (currently 14).
 
 ## CLI checks
 
