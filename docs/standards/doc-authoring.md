@@ -162,6 +162,89 @@ Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 </div>
 ```
 
+Optional `variant=` values: `gate`, `gotcha`, `success`, `unchanged`. Omit `variant` for the default accent bar.
+
+### Tutorial step
+
+```markdown
+\{{#template templates/tutorial-step-open.md num=01 title=Initialise the project}}
+Run once per project: `/spec:init omnia`
+\{{#template templates/tutorial-step-close.md}}
+```
+
+### Prerequisites
+
+```markdown
+\{{#template templates/prereq-open.md}}
+Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
+\{{#template templates/prereq-close.md}}
+```
+
+### When to use (how-to)
+
+```markdown
+\{{#template templates/when-open.md}}
+Use this guide when `/spec:execute` parks on build or merge failure.
+\{{#template templates/when-close.md}}
+```
+
+### Workflow rhythm cards
+
+```markdown
+\{{#template templates/rhythm-open.md}}
+\{{#template templates/rhythm-step-open.md num=01 label=Plan title=Define the change}}
+`/spec:plan` writes `plan.yaml` and exits at `pending`.
+\{{#template templates/rhythm-step-close.md}}
+\{{#template templates/rhythm-close.md}}
+```
+
+### Card grid (section landing)
+
+```markdown
+\{{#template templates/card-grid-open.md}}
+\{{#template templates/card-open.md title=Quick start time=~30 min href=quick-start.md}}
+Run a one-slice Omnia change from intent through finalize.
+\{{#template templates/card-close.md}}
+\{{#template templates/card-grid-close.md}}
+```
+
+### Synopsis (reference)
+
+```markdown
+\{{#template templates/synopsis-open.md}}
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+\{{#template templates/synopsis-close.md}}
+```
+
+### See also
+
+```markdown
+\{{#template templates/see-also-open.md}}
+- [Core concepts](../explanation/concepts.md)
+- [Quick reference](../reference/quick-reference.md)
+\{{#template templates/see-also-close.md}}
+```
+
+### Platform stack
+
+```markdown
+\{{#template templates/platform-open.md}}
+\{{#template templates/platform-product-open.md name=Specify role=Workflow engine active=true}}
+Enforces the spec-first rhythm documented in this guide.
+\{{#template templates/platform-product-close.md}}
+\{{#template templates/platform-close.md}}
+```
+
+Set `active=true` on the current product; omit on sibling products.
+
+### Decision consequence (optional)
+
+```markdown
+\{{#template templates/decision-consequence.md text=Losers survive as inline commentary.}}
+```
+
+Place before `decision-close.md` when a decision card needs a consequence line.
+
 ### Status pill (inline)
 
 ```html

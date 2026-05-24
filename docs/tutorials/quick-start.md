@@ -21,6 +21,7 @@ Run a complete Specify change in one sitting: one slice, intent-only source, Omn
 
 <h2><span class="num">1</span> What you will build</h2>
 
+{{#template ../templates/section-open.md id=outcome num=1 title=What you will build}}
 A minimal Omnia project where Specify plans, specifies, implements, and merges a single slice driven entirely by operator intent — fixing a typo in `user.rs`. A one-slice change uses the same steps as a twelve-slice migration; only the plan row count differs.
 </section>
 
@@ -47,6 +48,7 @@ Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposa
 <div class="step-label">01</div>
 <h3 class="step-title">Initialise the project</h3>
 
+{{#template ../templates/tutorial-step-open.md num=01 title=Initialise the project}}
 Run once per project:
 
 ```text
@@ -156,13 +158,12 @@ Drive the per-slice loop:
 
 Inside execute, each slice runs **refine → build → merge**:
 
-<div class="pipeline">
+{{#template ../templates/pipeline-open.md}}
 
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-<p class="pipeline-caption">refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.</p>
-</div>
+{{#template ../templates/pipeline-close.md caption=refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.}}
 
 
 ##### After refine
@@ -226,6 +227,7 @@ Finalize pushes branches (when configured), observes PR state, and archives the 
 <div class="see-also">
 <strong>See also</strong>
 
+{{#template ../templates/see-also-open.md}}
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
