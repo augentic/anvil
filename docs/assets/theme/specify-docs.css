@@ -1220,3 +1220,385 @@ html.ayu {
   color: var(--spec-ink-faint);
   font-weight: normal;
 }
+
+/* Augentic-derived component pass -------------------------------------- */
+html.light,
+html.rust {
+  --spec-bg: #f6f2ea;
+  --spec-surface: #fffaf1;
+  --spec-panel: #fffaf1;
+  --spec-panel-2: #eee6d6;
+  --spec-panel-3: #e5dcc9;
+  --spec-ink: #171b22;
+  --spec-ink-dim: #47514f;
+  --spec-ink-muted: #66716d;
+  --spec-ink-faint: #8b948f;
+  --spec-rule: #ddd2bd;
+  --spec-rule-strong: #c9b996;
+  --spec-accent: #155f64;
+  --spec-accent-soft: #dcece8;
+  --spec-teal: #155f64;
+  --spec-teal-soft: #dcece8;
+  --spec-gold: #b98b2f;
+  --spec-gold-soft: #f4e7bf;
+  --spec-shadow: rgba(17, 24, 34, 0.12);
+  --spec-focus: rgba(21, 95, 100, 0.2);
+  --spec-behaviour: #6c5fbd;
+  --spec-documentation: #155f64;
+  --spec-intent: #9f6326;
+  --spec-ok: #28744d;
+  --spec-ok-soft: #dfeee3;
+  --spec-warn: #9f6326;
+  --spec-warn-soft: #f4e7cf;
+  --spec-danger: #a2463e;
+  --spec-danger-soft: #f4dfdc;
+}
+
+html.coal,
+html.navy,
+html.ayu {
+  --spec-bg: #0d1218;
+  --spec-surface: #111822;
+  --spec-panel: #121b24;
+  --spec-panel-2: #182330;
+  --spec-panel-3: #202d39;
+  --spec-ink: #e7ece7;
+  --spec-ink-dim: #b8c4bf;
+  --spec-ink-muted: #95a39e;
+  --spec-ink-faint: #74847f;
+  --spec-rule: #26343f;
+  --spec-rule-strong: #384b57;
+  --spec-accent: #7fd6ce;
+  --spec-accent-soft: #162b2d;
+  --spec-teal: #7fd6ce;
+  --spec-teal-soft: #162b2d;
+  --spec-gold: #f1d58a;
+  --spec-gold-soft: #352d18;
+  --spec-shadow: rgba(0, 0, 0, 0.34);
+  --spec-focus: rgba(127, 214, 206, 0.22);
+  --spec-behaviour: #a99bf1;
+  --spec-documentation: #7fd6ce;
+  --spec-intent: #f1d58a;
+  --spec-ok: #73c990;
+  --spec-ok-soft: #172a20;
+  --spec-warn: #d7a657;
+  --spec-warn-soft: #302512;
+  --spec-danger: #e58a7d;
+  --spec-danger-soft: #321d1b;
+}
+
+.content {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--spec-gold) 12%, transparent), transparent 30rem),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--spec-teal) 10%, transparent), transparent 28rem);
+}
+
+.content main {
+  color: var(--spec-ink);
+  padding-block: 34px 26px;
+}
+
+.content main > h1:first-child,
+.content main .header h1 {
+  color: var(--spec-ink);
+  font-family: var(--spec-sans);
+  font-size: clamp(32px, 5vw, 56px);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.content main h1,
+.content main h2,
+.content main h3 {
+  color: var(--spec-ink);
+  letter-spacing: -0.03em;
+}
+
+.content main h2 {
+  font-size: clamp(24px, 3vw, 34px);
+  margin-top: 2.4em;
+}
+
+.content main h2::after {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 2px;
+  margin-top: 10px;
+  background: linear-gradient(90deg, var(--spec-gold), var(--spec-teal));
+  border-radius: 999px;
+}
+
+.content main p,
+.content main li {
+  color: var(--spec-ink-dim);
+  line-height: 1.68;
+}
+
+.content main strong {
+  color: var(--spec-ink);
+}
+
+.content main a {
+  text-underline-offset: 0.18em;
+}
+
+.content main a:hover {
+  color: var(--spec-teal);
+}
+
+.content main .hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--spec-rule);
+  border-radius: 28px;
+  padding: clamp(34px, 6vw, 72px);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--spec-panel) 92%, transparent), color-mix(in srgb, var(--spec-panel-2) 72%, transparent)),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--spec-teal) 18%, transparent), transparent 24rem);
+  box-shadow: 0 24px 70px var(--spec-shadow);
+}
+
+.content main .hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 32px 28px auto;
+  width: 90px;
+  height: 90px;
+  border: 1px solid color-mix(in srgb, var(--spec-gold) 55%, transparent);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
+.content main .hero .eyebrow {
+  color: var(--spec-gold);
+  font-weight: 750;
+  letter-spacing: 0.16em;
+}
+
+.content main .hero h1,
+.content main .hero .hero-title {
+  max-width: 12ch;
+  color: var(--spec-ink);
+  font-family: var(--spec-sans);
+  font-size: clamp(42px, 7vw, 78px);
+  font-weight: 760;
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.content main .hero > p:first-of-type,
+.content main .hero .lede {
+  max-width: 66ch;
+  color: var(--spec-ink-dim);
+  font-size: clamp(17px, 2vw, 20px);
+  line-height: 1.62;
+}
+
+.content main .meta-chip,
+.content main .pill,
+.content main .status-pill {
+  background: color-mix(in srgb, var(--spec-panel-2) 82%, transparent);
+  border-color: var(--spec-rule);
+  color: var(--spec-ink-muted);
+}
+
+.content main .audience,
+.content main .decision,
+.content main .question,
+.content main .tutorial-step,
+.content main .rhythm-step,
+.content main a.card,
+.content main .platform-product,
+.content main .authority-widget {
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--spec-panel) 95%, transparent), color-mix(in srgb, var(--spec-panel-2) 58%, transparent));
+  border: 1px solid var(--spec-rule);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--spec-shadow) 65%, transparent);
+}
+
+.content main .audience,
+.content main .decision,
+.content main .question,
+.content main .platform-product,
+.content main a.card {
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.content main .audience:hover,
+.content main .decision:hover,
+.content main .question:hover,
+.content main .platform-product:hover,
+.content main a.card:hover {
+  border-color: color-mix(in srgb, var(--spec-teal) 58%, var(--spec-rule));
+  box-shadow: 0 18px 46px var(--spec-shadow);
+  transform: translateY(-1px);
+}
+
+.content main .audience .who,
+.content main a.card .card-title,
+.content main .platform-name,
+.content main .rhythm-title {
+  color: var(--spec-ink);
+  font-weight: 720;
+}
+
+.content main .audience .path,
+.content main a.card .card-body,
+.content main .platform-body,
+.content main .rhythm-step p {
+  color: var(--spec-ink-dim);
+}
+
+.content main .rhythm-step {
+  padding: 20px;
+}
+
+.content main .rhythm-num {
+  color: var(--spec-gold);
+  font-size: 34px;
+}
+
+.content main .rhythm-label,
+.content main .platform-role,
+.content main .synopsis strong,
+.content main .see-also strong {
+  color: var(--spec-gold);
+  letter-spacing: 0.12em;
+}
+
+.content main .callout,
+.content main .synopsis,
+.content main blockquote.blockquote-tag {
+  border-radius: 14px;
+  border: 1px solid var(--spec-rule);
+  border-left: 4px solid var(--spec-teal);
+  background: color-mix(in srgb, var(--spec-teal-soft) 82%, var(--spec-panel));
+  color: var(--spec-ink-dim);
+}
+
+.content main table {
+  border: 1px solid var(--spec-rule);
+  border-radius: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--spec-shadow) 46%, transparent);
+}
+
+.content main thead th {
+  background: var(--spec-panel-2);
+  color: var(--spec-ink);
+}
+
+.content main tbody td {
+  background: color-mix(in srgb, var(--spec-panel) 74%, transparent);
+}
+
+.content main tbody tr:hover td {
+  background: var(--spec-panel-2);
+}
+
+.content main pre {
+  border-radius: 16px;
+  border: 1px solid var(--spec-rule);
+  background:
+    linear-gradient(180deg, var(--spec-panel-2), color-mix(in srgb, var(--spec-panel-2) 72%, #000));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 34px color-mix(in srgb, var(--spec-shadow) 50%, transparent);
+}
+
+.content main :not(pre) > code {
+  border: 1px solid color-mix(in srgb, var(--spec-rule) 80%, transparent);
+}
+
+.content main .proof-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.content main .proof-item {
+  border: 1px solid var(--spec-rule);
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: var(--spec-panel);
+}
+
+.content main .proof-kicker {
+  color: var(--spec-gold);
+  font-family: var(--spec-mono);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.content main .proof-value {
+  color: var(--spec-ink);
+  font-size: 28px;
+  font-weight: 760;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.content main .proof-copy {
+  color: var(--spec-ink-dim);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+#mdbook-menu-bar .menu-title .brand {
+  color: var(--spec-ink);
+  letter-spacing: 0.12em;
+}
+
+#mdbook-menu-bar .menu-title .brand::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--spec-gold), var(--spec-teal));
+  box-shadow: 0 0 18px var(--spec-focus);
+}
+
+#mdbook-menu-bar .menu-title .brand::after,
+#mdbook-menu-bar .menu-title .title-mini::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  vertical-align: middle;
+  background: var(--spec-rule);
+}
+
+#mdbook-menu-bar .menu-title .crumb {
+  color: var(--spec-ink-muted);
+  letter-spacing: 0.08em;
+}
+
+#mdbook-menu-bar .menu-title .title-mini {
+  color: var(--spec-ink);
+  font-weight: 650;
+}
+
+@media only screen and (max-width: 720px) {
+  .content main {
+    padding-block-start: 22px;
+  }
+
+  .content main .hero {
+    border-radius: 22px;
+    padding: 30px 24px;
+  }
+
+  .content main .hero::after {
+    display: none;
+  }
+}

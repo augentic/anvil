@@ -232,7 +232,7 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 - `traverse-parent-directories = true` — refs outside `docs/` (e.g. `../../adapters/…`) are allowed.
 - `exclude = [ … ]` — regexes for intentional out-of-tree refs and retired stubs.
 
-`make docs` runs the full pipeline, including linkcheck. If a build fails on a new ref, the cleanest fix is to retarget the link to the canonical 2.0 page; only add to `exclude` if the path is intentionally external.
+`mdbook build docs` runs the full pipeline (HTML + linkcheck2). If a build fails on a new ref, the cleanest fix is to retarget the link to the canonical 2.0 page; only add to `exclude` if the path is intentionally external.
 
 ## RFC citations
 
@@ -241,10 +241,10 @@ User-facing docs must not cite RFC numbers in visible prose except in [`../expla
 ## Building locally
 
 ```bash
-make docs        # mdbook build docs (HTML + linkcheck2)
-make docs-serve  # live reload at http://localhost:3000
+mdbook build docs   # HTML + linkcheck2
+mdbook serve docs   # live reload at http://localhost:3000
 ```
 
 Requires mdBook **0.5.1+** (linkcheck2 compatibility) and `mdbook-linkcheck2` — see [`docs/README.md`](../README.md).
 
-Run `make docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.
+Run `mdbook build docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.

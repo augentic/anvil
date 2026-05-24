@@ -381,3 +381,194 @@
         --sidebar-header-border-color: #3473ad;
     }
 }
+
+/* Augentic-derived documentation palette.
+ *
+ * mdBook still exposes the stock theme names in its picker. We map those
+ * buckets into two intentional docs palettes so every native chrome variable
+ * resolves to the same brand-adjacent visual system.
+ */
+:root {
+    --sidebar-target-width: 292px;
+    --content-max-width: 980px;
+    --menu-bar-height: 60px;
+    --page-padding: 18px;
+    --mono-font: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+.light,
+.rust,
+html:not(.js) {
+    --bg: #f6f2ea;
+    --fg: #171b22;
+
+    --sidebar-bg: #111822;
+    --sidebar-fg: #d5dedb;
+    --sidebar-non-existant: #6f7b7c;
+    --sidebar-active: #f1d58a;
+    --sidebar-spacer: rgba(241, 213, 138, 0.16);
+
+    --scrollbar: #a9b2ac;
+
+    --icons: #647071;
+    --icons-hover: #17212f;
+
+    --links: #155f64;
+    --inline-code-color: #0f4f54;
+
+    --theme-popup-bg: #fffaf1;
+    --theme-popup-border: #ddd2bd;
+    --theme-hover: #ebe4d6;
+
+    --quote-bg: #ede5d5;
+    --quote-border: #d6c7aa;
+
+    --warning-border: #b0712f;
+
+    --table-border-color: #ddd2bd;
+    --table-header-bg: #ebe4d6;
+    --table-alternate-bg: #f0eadf;
+
+    --searchbar-border-color: #cfc1a9;
+    --searchbar-bg: #fffaf1;
+    --searchbar-fg: #171b22;
+    --searchbar-shadow-color: rgba(21, 95, 100, 0.24);
+    --searchresults-header-fg: #66716d;
+    --searchresults-border-color: #d6c7aa;
+    --searchresults-li-bg: #ebe4d6;
+    --search-mark-bg: #f1d58a;
+
+    --color-scheme: light;
+
+    --copy-button-filter: invert(38%) sepia(9%) saturate(422%) hue-rotate(125deg) brightness(91%) contrast(84%);
+    --copy-button-filter-hover: invert(26%) sepia(57%) saturate(742%) hue-rotate(139deg) brightness(82%) contrast(91%);
+
+    --footnote-highlight: #155f64;
+    --overlay-bg: rgba(17, 24, 34, 0.42);
+
+    --blockquote-note-color: #155f64;
+    --blockquote-tip-color: #28744d;
+    --blockquote-important-color: #8b6127;
+    --blockquote-warning-color: #b0712f;
+    --blockquote-caution-color: #a2463e;
+
+    --sidebar-header-border-color: rgba(241, 213, 138, 0.42);
+}
+
+.navy,
+.coal,
+.ayu {
+    --bg: #0d1218;
+    --fg: #e7ece7;
+
+    --sidebar-bg: #080d12;
+    --sidebar-fg: #cbd6d1;
+    --sidebar-non-existant: #5c6868;
+    --sidebar-active: #f1d58a;
+    --sidebar-spacer: rgba(241, 213, 138, 0.14);
+
+    --scrollbar: #4c5b5b;
+
+    --icons: #91a09c;
+    --icons-hover: #f1d58a;
+
+    --links: #7fd6ce;
+    --inline-code-color: #9ce2dc;
+
+    --theme-popup-bg: #111822;
+    --theme-popup-border: #293742;
+    --theme-hover: #182330;
+
+    --quote-bg: #121b24;
+    --quote-border: #273642;
+
+    --warning-border: #d7a657;
+
+    --table-border-color: #26343f;
+    --table-header-bg: #17222e;
+    --table-alternate-bg: #111922;
+
+    --searchbar-border-color: #30414a;
+    --searchbar-bg: #111822;
+    --searchbar-fg: #e7ece7;
+    --searchbar-shadow-color: rgba(127, 214, 206, 0.28);
+    --searchresults-header-fg: #95a39e;
+    --searchresults-border-color: #293742;
+    --searchresults-li-bg: #17222e;
+    --search-mark-bg: #806b32;
+
+    --color-scheme: dark;
+
+    --copy-button-filter: invert(67%) sepia(9%) saturate(360%) hue-rotate(125deg) brightness(92%) contrast(89%);
+    --copy-button-filter-hover: invert(86%) sepia(42%) saturate(520%) hue-rotate(358deg) brightness(101%) contrast(89%);
+
+    --footnote-highlight: #7fd6ce;
+    --overlay-bg: rgba(4, 8, 12, 0.7);
+
+    --blockquote-note-color: #7fd6ce;
+    --blockquote-tip-color: #73c990;
+    --blockquote-important-color: #f1d58a;
+    --blockquote-warning-color: #d7a657;
+    --blockquote-caution-color: #e58a7d;
+
+    --sidebar-header-border-color: rgba(241, 213, 138, 0.46);
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not(.js) {
+        --bg: #0d1218;
+        --fg: #e7ece7;
+
+        --sidebar-bg: #080d12;
+        --sidebar-fg: #cbd6d1;
+        --sidebar-non-existant: #5c6868;
+        --sidebar-active: #f1d58a;
+        --sidebar-spacer: rgba(241, 213, 138, 0.14);
+
+        --scrollbar: #4c5b5b;
+
+        --icons: #91a09c;
+        --icons-hover: #f1d58a;
+
+        --links: #7fd6ce;
+        --inline-code-color: #9ce2dc;
+
+        --theme-popup-bg: #111822;
+        --theme-popup-border: #293742;
+        --theme-hover: #182330;
+
+        --quote-bg: #121b24;
+        --quote-border: #273642;
+
+        --warning-border: #d7a657;
+
+        --table-border-color: #26343f;
+        --table-header-bg: #17222e;
+        --table-alternate-bg: #111922;
+
+        --searchbar-border-color: #30414a;
+        --searchbar-bg: #111822;
+        --searchbar-fg: #e7ece7;
+        --searchbar-shadow-color: rgba(127, 214, 206, 0.28);
+        --searchresults-header-fg: #95a39e;
+        --searchresults-border-color: #293742;
+        --searchresults-li-bg: #17222e;
+        --search-mark-bg: #806b32;
+
+        --color-scheme: dark;
+
+        --copy-button-filter: invert(67%) sepia(9%) saturate(360%) hue-rotate(125deg) brightness(92%) contrast(89%);
+        --copy-button-filter-hover: invert(86%) sepia(42%) saturate(520%) hue-rotate(358deg) brightness(101%) contrast(89%);
+
+        --footnote-highlight: #7fd6ce;
+        --overlay-bg: rgba(4, 8, 12, 0.7);
+
+        --blockquote-note-color: #7fd6ce;
+        --blockquote-tip-color: #73c990;
+        --blockquote-important-color: #f1d58a;
+        --blockquote-warning-color: #d7a657;
+        --blockquote-caution-color: #e58a7d;
+
+        --sidebar-header-border-color: rgba(241, 213, 138, 0.46);
+    }
+}

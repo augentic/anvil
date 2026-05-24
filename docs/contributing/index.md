@@ -35,7 +35,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make check` in the specify repo; `cargo make ci` in the specify-cli repo. For documentation changes, also run `make docs` before opening the PR.
+4. **Run checks.** `make check` in the specify repo; `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
