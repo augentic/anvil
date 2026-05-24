@@ -1,168 +1,175 @@
-# Code & Skill Review - specify + specify-cli
+# Code & Skill Review — specify + specify-cli
 
-Top three findings by tier: **F1 Rename stale `init-requires-target-or-workspace` kebab** (verified wire-contract defect), **F2 Delete `InitPolicy::CreateMissing` and `default_for_load`** (subtraction plus one operator-path panic removal), **F3 Inline plan/create dedup helpers** (subtraction plus a -1 branch-cluster collapse).
-Total ΔLOC if all land: **approximately -85 LOC**.
-Primary non-LOC axes moved: fewer enum variants, fewer trait methods, lower panic surface, fewer hand-rolled helpers, fewer match-arm branches.
-Top verified defects closed: **1 qualified** (`Error::Diag.code == "init-requires-target-or-workspace"` emitted by `specify-cli` contradicts `specify-cli/docs/init.md:5,49` which documents the kebab as `init-requires-adapter-or-hub`). Defect-only net ΔLOC: **0**.
-Most likely to break in remediation: **F2** - it touches the `AtomicYaml` trait surface and the registry-add write path; the helper's atomic-write semantics must be preserved when the one `CreateMissing` caller is inlined.
+Top three findings by tier: **F1 Share plan test fixtures across doctor/core** (~−52 LOC), **F2 Replace validate/tests Plan+Entry boilerplate** (~−75 LOC), **F3 Collapse authority-override journal event triple** (~−22 LOC).
+Total ΔLOC if all land: **approximately −195 LOC**.
+Primary non-LOC axes moved: fewer duplicate test DTO literals, fewer hand-rolled helper fns, fewer branch clusters, lower call-site ceremony in tests.
+Top verified defects closed: **none qualified** (0 open from this pass); defect-only net ΔLOC: **0** (portfolio cap unused).
+Most likely to break in remediation: **F4** — `emit_override_events` sort-key tuple and set-then-clear dedup logic must stay byte-identical to the batched journal append tests.
 
 ## Reconnaissance
 
 - `tokei`:
-  - `specify`: **647 files**, **87,087 total lines**; Markdown **514 files / 49,526 lines**.
-  - `specify-cli`: **446 files**, **64,723 total lines**; Rust **245 files / 47,642 lines**.
-- `cargo tree --duplicates` (`specify-cli`): non-empty. `base64 v0.21.7 / v0.22.1`, `reqwest v0.12.28 / v0.13.3`, `bitflags v2.11.1` against `rustix v0.38.44 / v1.1.4`, plus the wider `wasmtime` / `wasm-pkg-client` transitive families. `Cargo.toml` is frozen for this pass.
+  - `specify`: **648 files**, **87,122 total lines**; Markdown **515 files / 49,552 lines**.
+  - `specify-cli`: **446 files**, **64,600 total lines**; Rust **245 files / 47,549 lines**.
+- `cargo tree --duplicates` (`specify-cli`): non-empty. `base64 v0.21.7 / v0.22.1`, `reqwest v0.12.28 / v0.13.3`, `bitflags v2.11.1` against `rustix v0.38.44 / v1.1.4`, plus wider `wasmtime` / `wasm-pkg-client` transitive families. `Cargo.toml` frozen for this pass.
 - `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): **512** test functions.
-- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files - all under `tests/` trees (`tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs`).
+- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files — `crates/domain/tests/common/mod.rs`, `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`.
 - `wc -l docs/standards/*.md AGENTS.md`:
   - `specify`: **555 total**.
-  - `specify-cli`: **638 total** (DECISIONS.md adds **624** on top).
+  - `specify-cli`: **638 total** (`DECISIONS.md` adds **624** on top).
 - Files >500 lines under `crates/` and `src/` (`specify-cli`):
   - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**.
-  - Source: `src/commands/plan/create.rs` **956**, `crates/domain/src/discovery/document.rs` **891**, `crates/domain/src/slice/fusion.rs` **839**, `crates/domain/src/adapter/core.rs` **709**, `crates/domain/src/change/plan/core/model.rs` **629**, `crates/domain/src/spec/provenance.rs` **607**, `crates/domain/src/journal.rs` **595**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**.
-- `make checks` (`specify`): **passed** - `All checks passed.` Total failures: **0**; first five predicate ids: **none**.
-- `cargo make check` (`specify-cli`): **passed** - `Build Done in 164.24 seconds.` First error: **none**.
-- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **695** matching lines (filename-`*tests*.rs` files included; production-path count is materially smaller).
+  - Source: `src/commands/plan/create.rs` **918**, `crates/domain/src/discovery/document.rs` **891**, `crates/domain/src/slice/fusion.rs` **839**, `crates/domain/src/adapter/core.rs` **709**, `crates/domain/src/change/plan/core/model.rs` **629**, `crates/domain/src/spec/provenance.rs` **607**, `crates/domain/src/journal.rs` **595**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**.
+- `make checks` (`specify`): **passed** — `All checks passed.` Total failures: **0**; first five predicate ids: **none**.
+- `cargo make check` (`specify-cli`): **passed** — `Build Done in 165.71 seconds.` First error: **none**.
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **695** matching lines (includes `#[cfg(test)]` modules co-located in production files; operator-path count is materially smaller).
 - `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **48** matching lines.
 
 ## Structural Findings
 
-### F1 - Rename stale `init-requires-*` kebab to match docs
+### F1 — Share plan test fixtures with doctor
 
-**Evidence:** `specify-cli/docs/init.md:5` says "missing both surfaces as `init-requires-adapter-or-hub`" and `:49` reinforces "refuses the ambiguous shape at the entry point with the `init-requires-adapter-or-hub` discriminant." The CLI binary emits a different kebab from five production-path sites:
+**Evidence:** `crates/domain/src/change/plan/doctor/tests.rs:13-41` re-declares `change`, `change_with_deps`, and `plan_with` — byte-for-byte mirrors of `crates/domain/src/change/plan/core/test_support.rs:77-114`. `change_with_deps` in test_support duplicates the full `Entry { … }` literal instead of delegating to `change` (doctor's copy already delegates at `:28-31`). Recon: doctor/tests.rs **458** lines; duplicated block **29** lines.
 
 ```text
-crates/domain/src/init.rs:171:                    code: "init-requires-target-or-workspace",
-crates/domain/src/init.rs:200:                    code: "init-requires-target-or-workspace",
-crates/error/src/error.rs:140:                "init-requires-target-or-workspace" => Some(
-crates/domain/src/init/regular.rs:35:        code: "init-requires-target-or-workspace",
-crates/domain/src/init/hub.rs:51:            code: "init-requires-target-or-workspace",
+crates/domain/src/change/plan/doctor/tests.rs:13:fn change(name: &str, status: Status) -> Entry {
+crates/domain/src/change/plan/doctor/tests.rs:34:fn plan_with(changes: Vec<Entry>) -> Plan {
+crates/domain/src/change/plan/core/test_support.rs:86:pub(super) fn change(name: &str, status: Status) -> Entry {
+crates/domain/src/change/plan/core/test_support.rs:101:pub(super) fn change_with_deps(name: &str, status: Status, deps: &[&str]) -> Entry {
 ```
 
-The leftover `workspace` token predates the Specify 2.0 hub/adapter rename and is the same wire-contract drift the previous review closed in the skill repo (`plugins/spec/skills/init/SKILL.md`, `docs/reference/slice-skills/init.md`).
-
 **Action:**
-1. Replace `init-requires-target-or-workspace` with `init-requires-adapter-or-hub` in `crates/domain/src/init/regular.rs:35`, `crates/domain/src/init/hub.rs:51`, and the hint-match arm in `crates/error/src/error.rs:140`.
-2. Update the two test assertions in `crates/domain/src/init.rs:171` and `:200` to match.
-3. Rephrase the docstring in `crates/domain/src/init.rs:86` and the test comment in `tests/init.rs:127` to use the new spelling.
-4. Adjust the historical note in `DECISIONS.md:266` to call out that 2.0 settled on the documented spelling.
+1. In `crates/domain/src/change/plan/core.rs`, after `mod test_support;`, add `#[cfg(test)] pub(crate) use test_support::{change, change_with_deps, plan_with_changes};`.
+2. Slim `change_with_deps` in `test_support.rs` to four lines: `let mut e = change(name, status); e.depends_on = deps.iter().map(|s| (*s).to_string()).collect(); e`.
+3. Delete `change`, `change_with_deps`, and `plan_with` from `doctor/tests.rs`; import `use crate::change::plan::core::{change, change_with_deps, plan_with_changes};` and rename call sites from `plan_with` → `plan_with_changes`. Keep `plan_with_sources` (doctor-only).
 
-**Quality delta:** `0 LOC, -1 wire-contract defect, -5 stale kebab emit sites`.
+**Quality delta:** `−52 LOC, −3 duplicate fns, −2 duplicate Entry-literal sites, −1 module edge (shared fixture home)`.
 
-**Net LOC:** affected files **0 net change** (five string literals rename in place; test/doc strings round-trip).
+**Net LOC:** `doctor/tests.rs` + `test_support.rs` + `core.rs` **~573 → ~521**.
 
-**Architectural impact:** Defect-only finding. The kebab is the wire contract; emitting a token that contradicts `docs/init.md` breaks any operator or CI that filters JSON envelopes by `error: "init-requires-adapter-or-hub"`.
+**Done when:** `rg -n 'fn change\(|fn plan_with\(|fn change_with_deps' crates/domain/src/change/plan/doctor/tests.rs` returns **0**, `rg -n 'pub\(crate\) use test_support' crates/domain/src/change/plan/core.rs` returns **≥ 1**, and `cargo make check` passes.
 
-**Done when:** `rg -nF 'init-requires-target-or-workspace' crates/ src/ tests/` returns **0**, `rg -nF 'init-requires-adapter-or-hub' crates/ src/ tests/ docs/` returns **≥ 6**, and `cargo make check` passes.
+**Rule?** no — one duplicated fixture island, not a repo-wide pattern.
 
-**Rule?** no - one-time vocabulary alignment, no recurring pattern to police.
-
-**Counter-argument:** The kebab is unreachable from the shipped clap surface (clap intercepts the empty / both-set cases) so the drift is academic. It loses because `docs/init.md` advertises this kebab to operators and downstream tooling, and the domain-level `init()` function is a public library entry point exercised directly by tests; the surfaced kebab must match the documented contract.
+**Counter-argument:** Doctor tests stay self-contained without reaching into `core/`. It loses because the fixtures are already maintained in `test_support` for six other `core/` test modules; a third copy will drift on the next `Entry` field addition.
 
 **Depends on:** none.
 
-### F2 - Delete `InitPolicy::CreateMissing` and `default_for_load`
+### F2 — Replace validate/tests Plan+Entry boilerplate
 
-**Evidence:** Exactly one production caller passes `InitPolicy::CreateMissing` (`src/commands/registry/add.rs:40`); every other call site already uses `RequireExisting`. The optional trait method exists solely to feed that single caller, and its `None` arm is a live operator-path panic:
-
-```text
-src/commands/registry/add.rs:40:        with_state::<Registry, _, _>(ctx.layout(), InitPolicy::CreateMissing, move |registry| {
-crates/domain/src/config/atomic.rs:29:    fn default_for_load() -> Option<Self> {
-crates/domain/src/config/atomic.rs:55:pub enum InitPolicy {
-crates/domain/src/config/atomic.rs:100:        (None, InitPolicy::CreateMissing) => S::default_for_load().expect(
-crates/domain/src/config/atomic.rs:121:    fn default_for_load() -> Option<Self> {  // Registry
-crates/domain/src/config/atomic.rs:149:    fn default_for_load() -> Option<Self> {  // ProjectConfig, returns None
-crates/domain/src/change/plan/core/io.rs:24:    fn default_for_load() -> Option<Self> {  // Plan, returns None
-```
-
-`InitPolicy::RequireExisting` is the only branch actually exercised by the seven non-Registry call sites under `src/commands/plan/*.rs`, `src/commands/slice/merge.rs`, and `src/commands/registry/remove.rs`.
+**Evidence:** `crates/domain/src/change/plan/core/validate/tests.rs` already imports `change` and `plan_with_changes` (`:9`) but **eight** registry / project tests still hand-build full `Plan { … entries: vec![Entry { … }] }` blocks (`:179-195`, `:212-228`, `:254-270`, `:299-315`, `:337-353`, `:379-395`, `:407-423`, `:433-449`). Each block is **14–18 lines** where `let mut e = change("a", Status::Pending); e.project = …; let plan = plan_with_changes(vec![e]);` is **4 lines**.
 
 **Action:**
-1. Inline `Registry::load_or_default` semantics in `src/commands/registry/add.rs`: `let mut registry = Registry::load(&ctx.project_dir)?.unwrap_or_else(|| Registry { version: 1, projects: Vec::new() }); … yaml_write(&Registry::path(&ctx.project_dir), &registry)?;`. Keep the existing validate-shape gates inside the mutation block.
-2. Delete `InitPolicy` outright. Change `with_state`'s signature to `fn with_state<S, B, F>(layout, missing_kind: &'static str, f: F)` and drop the match-on-policy in favour of a single `S::load(layout)?.ok_or_else(|| Error::ArtifactNotFound { kind: missing_kind, path })?`. Update the six remaining call sites from `InitPolicy::RequireExisting("plan.yaml")` to `"plan.yaml"`.
-3. Delete `AtomicYaml::default_for_load` (trait default + Registry / ProjectConfig / Plan impls).
-4. Delete the `with_state_creates_default_when_absent` test and adjust `with_state_propagates_closure_error_and_skips_write` to seed `registry.yaml` first (or drop it; the closure-error path is already covered by integration tests).
+1. For each of the eight tests, replace the manual `Plan` + `Entry` literal with `change` / `plan_with_changes`, mutating only the fields under test (`project`, `target`, `sources`, etc.).
+2. Do not touch tests that already mutate `change()` outputs (e.g. `:35-41` cycle fixture) or need `RFC_EXAMPLE_YAML`.
 
-**Quality delta:** `~-50 LOC, -1 enum, -1 enum variant, -1 trait method, -1 production-path expect() panic, -2 match arms`.
+**Quality delta:** `−75 LOC, −8 duplicate Entry literals, lower call-site burden in tests`.
 
-**Net LOC:** `crates/domain/src/config/atomic.rs` + `crates/domain/src/change/plan/core/io.rs` + `src/commands/registry/add.rs` **~447 → ~395**.
+**Net LOC:** `validate/tests.rs` **595 → ~520**.
 
-**Architectural impact:** `AtomicYaml` becomes a pure shape contract (`path` + `load`); creation policy stops being an interface concern and moves to the one caller that needs it. Cargo's `git2::Config` follows the same shape — load existing or fail, with creation explicit at the call site.
+**Done when:** `rg -c 'entries: vec!\[Entry \{' crates/domain/src/change/plan/core/validate/tests.rs` drops from **8** to **0**, and `cargo make check` passes.
 
-**Done when:** `rg -nF 'InitPolicy|default_for_load' crates/ src/` returns **0**, `rg -nF '\.expect\("AtomicYaml::load' crates/` returns **0**, and `cargo make check` passes.
+**Rule?** no.
 
-**Rule?** no - one trait family, not a repo-wide pattern.
+**Counter-argument:** Explicit struct literals make each test's inputs obvious at a glance. It loses because `change()` defaults are stable and field overrides are one line; the 14-line blocks obscure the one field each test cares about.
 
-**Counter-argument:** The `CreateMissing` policy keeps `registry add` symmetric with the other mutation helpers. It loses because that symmetry costs an Option-typed trait method, a two-variant policy enum, an operator-path panic guard, and a dedicated unit test, all to factor out five lines of struct-literal construction in one handler.
+**Depends on:** F1 (optional — validate/tests already sees `change` via `super::super::test_support`; no hard dependency).
+
+### F3 — Use fixtures in plan io tests
+
+**Evidence:** `crates/domain/src/change/plan/core/io.rs:98-99` imports only `RFC_EXAMPLE_YAML`; three tests still spell full `Entry { … }` literals inside `Plan { … }` (`:144-155`, `:201-213`, `:252-264`) plus two empty-plan literals (`:115-120`, `:240-245`) that match `plan_with_changes(vec![])`.
+
+**Action:**
+1. Extend the test import to `use super::super::test_support::{RFC_EXAMPLE_YAML, change, plan_with_changes};`.
+2. Replace `entries: vec![Entry { … }]` with `plan_with_changes(vec![change("only-entry", Status::Pending)])` (adjust name/status per test).
+3. Replace empty `Plan { name: "init", … entries: vec![] }` with `plan_with_changes(vec![])` and mutate `.name` when the test asserts on disk content.
+
+**Quality delta:** `−40 LOC, −5 duplicate Entry literals, −2 duplicate Plan shells`.
+
+**Net LOC:** `io.rs` **275 → ~235**.
+
+**Done when:** `rg -c 'Entry \{' crates/domain/src/change/plan/core/io.rs` drops from **3** to **0** (inside `mod tests`), and `cargo make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** io tests are self-describing integration fixtures. It loses because the literals carry no extra signal — every field except `name`/`status` is default.
 
 **Depends on:** none.
 
-### F3 - Inline plan/create dedup helpers and flatten the unknown-slice walk
+### F4 — Collapse authority-override journal triple
 
-**Evidence:** `src/commands/plan/create.rs:268-309` carries two single-call-site helpers that wrap `Iterator::collect` and a three-loop walk that re-tests the same membership predicate:
-
-```text
-src/commands/plan/create.rs:268:fn dedup_sets(sets: &[(String, ClaimKind, String)]) -> BTreeMap<(String, ClaimKind), String> {
-src/commands/plan/create.rs:278:fn dedup_clears(clears: &[(String, ClaimKind)]) -> BTreeSet<(String, ClaimKind)> {
-src/commands/plan/create.rs:289:fn refuse_unknown_slices(
-src/commands/plan/create.rs:293:    let known: BTreeSet<&str> = plan.entries.iter().map(|e| e.name.as_str()).collect();
-src/commands/plan/create.rs:294:    for (slice, _) in set_map.keys() { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
-src/commands/plan/create.rs:299:    for (slice, _) in clear_set       { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
-src/commands/plan/create.rs:304:    for slice in clear_all_set         { if !known.contains(slice.as_str()) { return Err(unknown_slice_err(plan_name, slice)); } }
-```
-
-Each of `dedup_sets` / `dedup_clears` has exactly one caller (`mutate_authority_overrides` at `:427-429`), and both bodies are one `iter().cloned().[map(…)].collect()`.
+**Evidence:** `src/commands/plan/create.rs:299-371` — `emit_override_events` repeats the same `journal::Event::new(… PlanAmendAuthorityOverride { … })` shape three times (set loop `:311-323`, per-kind clear `:333-345`, clear-all `:351-363`). Only `action`, `claim_kind`, and `source_key` vary.
 
 **Action:**
-1. Inline the two helpers at `mutate_authority_overrides` (`:427`-`:429`): `let set_map: BTreeMap<_, _> = sets.iter().cloned().map(|(s, k, v)| ((s, k), v)).collect(); let clear_set: BTreeSet<_> = clears.iter().cloned().collect();`. Delete `dedup_sets` and `dedup_clears`.
-2. Replace the three near-identical loops in `refuse_unknown_slices` with one chained iterator: `let unknown = set_map.keys().map(|(s, _)| s.as_str()).chain(clear_set.iter().map(|(s, _)| s.as_str())).chain(clear_all_set.iter().map(String::as_str)).find(|s| !known.contains(s)); if let Some(slice) = unknown { return Err(unknown_slice_err(plan_name, slice)); } Ok(())`.
+1. Inside `emit_override_events`, add a closure (not a free function) `let mut record = |slice, action, claim_kind, source_key| { … }` that pushes `(sort_key, journal::Event::new(…))` onto `pending`.
+2. Replace the three `journal::Event::new` blocks with `record(...)` calls; keep the existing continue/skip guards in each loop unchanged.
 
-**Quality delta:** `~-22 LOC, -2 helper fns, -1 branch cluster (three loops → one find)`.
+**Quality delta:** `−22 LOC, −2 branch clusters (three struct-literal copies → one closure), lower call-site burden`.
 
-**Net LOC:** `src/commands/plan/create.rs` **956 → ~934**.
+**Net LOC:** `create.rs` **918 → ~896**.
 
-**Done when:** `rg -nF 'fn dedup_sets|fn dedup_clears' src/commands/plan/create.rs` returns **0**, `rg -nF 'for (slice, _) in set_map.keys()' src/commands/plan/create.rs` returns **0**, and `cargo make check` passes.
+**Done when:** `rg -c 'PlanAmendAuthorityOverride' src/commands/plan/create.rs` stays **3** (one closure body + two loop call patterns), `rg -c 'journal::Event::new' src/commands/plan/create.rs` inside `emit_override_events` drops from **3** to **1**, and `cargo make check` passes.
 
-**Rule?** no - localised to one handler.
+**Rule?** no — single handler, three copies only.
 
-**Counter-argument:** Named helpers document intent. They lose because each "helper" is a one-line iterator chain inlined at one site; the function name is longer than the body, and `refuse_unknown_slices`'s three-loop shape obscures a single `find`-on-chain.
+**Counter-argument:** Three explicit blocks document the set vs clear vs clear-all payloads. It loses because the payload shape is identical except for three fields already named at each call site; the closure keeps those names at the call.
 
 **Depends on:** none.
 
 ## One-Touch Tidies
 
-### T1 - Drop unused `_value_names` parameter on `parse_slice_pair_args`
+### T1 — Drop triplicate orchestrated-mode prose
 
-**Evidence:** The helper carries a leading-underscore parameter that exists only to be ignored, and every caller pays the line of ceremony:
+**Evidence:** The same "legacy reviewer auto-creates a Specify change" paragraph appears verbatim in three briefs:
 
 ```text
-src/commands/plan/create.rs:245:    raw: &[String], flag: &'static str, _value_names: &str,
-src/commands/plan/create.rs:556:            "<slice> <kind>=<key>",
-src/commands/plan/create.rs:760:            "<slice> <kind>=<key>",
-src/commands/plan/create.rs:768:            "<slice> <kind>",
+adapters/targets/vectis/briefs/build.md:65
+adapters/targets/vectis/briefs/build/ios/review.md:21
+adapters/targets/vectis/briefs/build/android/review.md:21
 ```
 
+Parent `build.md` § Consolidate review findings already covers orchestrated `design_findings` handling (`:60-65`).
+
 **Action:**
-1. Remove the `_value_names: &str` parameter from `parse_slice_pair_args` (`:244-246`).
-2. Drop the three `<slice> …` string arguments at `:556`, `:760`, `:768`.
+1. Delete the entire `## Orchestrated mode` section (`:19-21`) from `adapters/targets/vectis/briefs/build/ios/review.md` and `adapters/targets/vectis/briefs/build/android/review.md`.
+2. Add one bullet to each review brief's Pipeline step 5 (Synthesis): "Return classified `design_findings` per [build.md](adapters/targets/vectis/briefs/build.md) § Consolidate review findings."
 
-**Quality delta:** `-4 LOC, -1 unused parameter, lower call-site burden`.
+**Quality delta:** `−6 LOC, −2 duplicate prose blocks`.
 
-**Net LOC:** `src/commands/plan/create.rs` **956 → 952**.
+**Net LOC:** ios + android review briefs **58 → 52** combined.
 
-**Done when:** `rg -nF '_value_names' src/commands/plan/create.rs` returns **0**, `rg -nF '"<slice> <kind>=<key>"' src/commands/plan/create.rs` returns **0**, and `cargo make check` passes.
+**Done when:** `rg -nF 'legacy "reviewer auto-creates a Specify change"' adapters/targets/vectis/briefs/build/` returns **1** (parent brief only), and `make checks` passes.
 
 **Rule?** no.
 
-**Counter-argument:** The token documents the value-name shape at each invocation. It loses because the helper does nothing with the value-name string and the closed `T::from_str` impl already shapes the diagnostic; the would-be documentation is dead bytes.
+**Counter-argument:** Platform reviewers should carry standalone context. It loses because they already link the parent build brief for synthesis; triplicate prose is the drift class `make checks` brief caps were written to prevent.
+
+**Depends on:** none.
+
+### T2 — Delete `context.rs` `diag` one-liner wrapper
+
+**Evidence:** `src/commands/context.rs:42-47` defines `diag(code, detail)` — a two-field `Error::Diag` wrapper. Grep shows **zero** call sites outside the definition (handlers use `Error::Diag` directly or `error_from_fence`).
+
+**Action:**
+1. Delete `fn diag` at `:42-47`.
+
+**Quality delta:** `−6 LOC, −1 dead fn`.
+
+**Net LOC:** `context.rs` **204 → 198**.
+
+**Done when:** `rg -n 'fn diag' src/commands/context.rs` returns **0**, and `cargo make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** The helper standardises future context errors. It loses because it has zero callers today — YAGNI until a second site appears.
 
 **Depends on:** none.
 
 ## Post-mortem
 
-- **F1:** actual ΔLOC **~+2** (DECISIONS.md rewrite added two short clauses; production sites were 1:1 substitutions) vs predicted **0**; done-when flipped cleanly (`init-requires-target-or-workspace` 0 hits, `init-requires-adapter-or-hub` 9 hits ≥ 6); `cargo make check` passed; no regressions — the only surviving mention of the old kebab is the intentional DECISIONS.md "gone in 2.0" historical marker.
-- **F2:** actual ΔLOC **−95** vs predicted **~-50** (closure-shape collapse on every `with_state` site cascaded extra savings beyond the headline trait + variant + helper deletions); done-when flipped cleanly (`InitPolicy` 0, `default_for_load` 0, no `.expect()` panics on `AtomicYaml::load`); `cargo make check` passed; one unit test deleted (`with_state_creates_default_when_absent`), one re-seeded (`with_state_propagates_closure_error_and_skips_write`); wire shape preserved (kebab error codes, journal events, atomic-rename semantics all unchanged).
-- **F3:** actual ΔLOC **−25** vs predicted **~-22** (`src/commands/plan/create.rs` 950 → 925 — F2 had already shifted the baseline below the REVIEW estimate); done-when flipped cleanly (no `fn dedup_sets|fn dedup_clears`, no three-loop walk); `cargo make check` passed; no regressions — `BTreeMap<(String, ClaimKind), String>` / `BTreeSet<(String, ClaimKind)>` had to be spelled out at the inlined site since `_, _` left `ClaimKind` un-inferred from a slice input.
-- **T1:** actual ΔLOC **−7** vs predicted **−4** (925 → 918); done-when flipped cleanly (`_value_names` 0 hits, `"<slice> <kind>=<key>"` 0 hits); `cargo make check` passed; no regressions — clap `value_names` attributes in `src/commands/plan/cli.rs` are unrelated and were left untouched.
-
-Final `cargo make ci` (lint + file-size + test + test-docs + doc + vet + outdated + deny + fmt): **passed in 180.88s**.
+- **F1:** actual ΔLOC **−30** vs predicted **−52** (re-export + `#[expect(clippy::redundant_pub_crate)]` + `pub` visibility widened helpers offset deletion); done-when flipped cleanly (doctor duplicate fns 0, `pub(crate) use test_support` ≥1); `cargo make check` passed; no regressions — initial compile failed until helpers were `pub` not `pub(super)`.
+- **F2:** actual ΔLOC **−110** vs predicted **−75** (cascade removed unused `Entry`/`Lifecycle` imports per prior F2 pattern); done-when flipped cleanly (`entries: vec![Entry {` 8→0); `cargo make check` passed; no regressions.
+- **F3:** actual ΔLOC **−52** vs predicted **−40** (unused imports removed with literals); done-when flipped cleanly (`Entry {` in io tests 3→0); `cargo make check` passed; no regressions.
+- **F4:** actual ΔLOC **−23** vs predicted **−22** (`create.rs` 918→900); done-when mostly clean (`journal::Event::new` in `emit_override_events` 3→1; `PlanAmendAuthorityOverride` file-wide 4→2 because `plan add` site remains — REVIEW "stays 3" miscounted the separate handler); `cargo make check` passed; no regressions — RFC-27 §D3 journal ordering/payload tests green.
+- **T1:** actual ΔLOC **−6** vs predicted **−6** (ios + android review briefs); done-when flipped cleanly (legacy phrase 1 hit, parent `build.md` only); `make checks` passed after fixing broken `../../build.md` link in REVIEW action text; no regressions.
+- **T2:** actual ΔLOC **−2** net vs predicted **−6** (`context.rs` −7 but 5 callers existed in `check.rs`/`generate.rs`, not zero — inlined `Error::Diag` at call sites); done-when flipped cleanly (`fn diag` 0); `cargo make check` passed; no regressions — REVIEW "zero callers" claim was stale.

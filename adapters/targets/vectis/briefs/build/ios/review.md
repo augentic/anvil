@@ -14,11 +14,8 @@ Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific te
 3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../../shared/codex/universal/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
 4. **Adversarial challenge.** Forward all findings to the antagonist per [`agent-teams.md`](../../../references/agent-teams.md).
 5. **Synthesis.** Lead authors the iteration report per [`review/iteration-report.md`](../../../references/review/iteration-report.md).
+   - Return classified `design_findings` per [../../build.md](../../build.md) § Consolidate review findings.
 6. **Mechanical auto-fixes (when safe).** Accessibility labels, design-token swaps, missing `#Preview`, Inject boilerplate. Revert the batch if `swiftformat` or the build regresses.
-
-## Orchestrated mode
-
-The reviewer always returns classified `design_findings` (`code-fix` vs `spec-change`) for the parent build brief to consolidate across iOS and Android into one cross-platform finding set (see [../../build.md](../../build.md) § Consolidate review findings). The legacy "reviewer auto-creates a Specify change" path is retired in 2.0 — follow-up work is queued as a new slice via the operator's normal `/spec:plan` flow.
 
 ## Finding-ID conventions
 
