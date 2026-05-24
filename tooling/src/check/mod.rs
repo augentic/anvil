@@ -7,6 +7,7 @@ pub mod links;
 mod plugins;
 mod prose;
 pub mod scenarios;
+pub mod skill_frontmatter;
 mod skill_body;
 pub mod tools;
 
@@ -31,6 +32,13 @@ pub use scenarios::{
     RULE_RECORDED_TRACE_VIOLATION, RULE_SCHEMA_VIOLATION as SCENARIO_RULE_SCHEMA_VIOLATION,
     RULE_STAGES_NOT_CONTIGUOUS, RULE_STALE_RECORDED_TRACE,
 };
+pub use skill_frontmatter::{
+    SkillArgumentHintGrammarCheck, SkillDescriptionGrammarCheck, SkillDuplicateNameCheck,
+    SkillFrontmatterSchemaCheck, SkillNameDirectoryMismatchCheck, SkillUnknownToolCheck,
+    RULE_ARGUMENT_HINT_GRAMMAR, RULE_DESCRIPTION_GRAMMAR, RULE_DUPLICATE_NAME,
+    RULE_MISSING_FRONTMATTER, RULE_NAME_DIRECTORY_MISMATCH,
+    RULE_SCHEMA_VIOLATION as SKILL_RULE_SCHEMA_VIOLATION, RULE_UNKNOWN_TOOL,
+};
 pub use skill_body::{
     SkillBodyLineCount, SkillEnvelopeJsonInBody, SkillFrontmatterRestatement,
     SkillInlineJsonTooLong, SkillInvalidCriticalPath, SkillMissingCriticalPath,
@@ -40,7 +48,7 @@ pub use tools::{DeclaredToolEquivalentInvocations, FirstPartyToolDeclarations};
 
 /// Run every registered check predicate sequentially.
 pub fn run(ctx: &Context) -> Vec<Finding> {
-    let checks: [&dyn Check; 25] = [
+    let checks: [&dyn Check; 31] = [
         &AdapterCheck,
         &AgentTeamsCheck,
         &BriefCheck,
@@ -57,6 +65,12 @@ pub fn run(ctx: &Context) -> Vec<Finding> {
         &SkillNumericCaps,
         &InvocationPositional,
         &ScenariosCheck,
+        &SkillFrontmatterSchemaCheck,
+        &SkillNameDirectoryMismatchCheck,
+        &SkillDuplicateNameCheck,
+        &SkillUnknownToolCheck,
+        &SkillDescriptionGrammarCheck,
+        &SkillArgumentHintGrammarCheck,
         &SkillBodyLineCount,
         &SkillSectionLineCount,
         &SkillMissingCriticalPath,
