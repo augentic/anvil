@@ -69,6 +69,20 @@ For each leaf, copy the visible text content into `content:` / `label:` (preserv
 
 Every leaf claim carries a `parent:` reference to its enclosing container or region claim's `claim-id`.
 
+## 5b. Resolve variant families
+
+When a sibling `assets.yaml` exists, disambiguate `icon`, `icon-button`, and `image` leaves that belong to a variant family — a set of asset IDs sharing a common base with visual-state suffixes. This sub-stage runs after leaf inference (stage 5) and before candidate-component detection (stage 6).
+
+1. **Discover variant families.** Scan `assets.yaml` IDs and group by longest shared kebab-case prefix where the remaining suffix is a recognised state token: `default`, `active`, `focussed`, `focused`, `selected`, `checked`, `disabled`, `empty`, `highlighted`, `pressed`, `hovered`, `high`, `medium`, `low`. Example: `{nav-lists-default, nav-lists-active, nav-lists-focussed}` → family `nav-lists` with 3 variants. When an entry carries an explicit `variant_of:` field, use that grouping instead of the suffix heuristic.
+2. **Identify candidate leaves.** Walk the inferred leaf claims and collect every `icon`, `icon-button`, or `image` leaf whose `name:` matches any entry in a variant family.
+3. **Multi-image comparison pass.** For each candidate leaf:
+   - Load the source file (SVG / PNG) for every variant in the family.
+   - Crop or zoom the relevant region from the input screenshot.
+   - If any variant carries a `usage_hint:`, include those hints as labelled textual guidance alongside the source images (e.g. "Variant A (`nav-lists-active`): Outlined shapes with background halo.").
+   - Present all variant source images + hints alongside the screenshot region to the vision model as a focused comparison: "Which of these N variants does the icon in this screenshot region most closely match?"
+   - Replace the initially inferred `name:` with the best match.
+4. **Confidence gate.** If the model is uncertain (e.g. two variants look too similar at the screenshot resolution to distinguish), emit the best-guess `name:` paired with `notes.todo: confirm variant — candidates: <a>, <b>, <c>` on the affected claim.
+
 ## 6. Detect candidate components conservatively
 
 Walk every container claim produced in stage 4 and compare every `container: group` claim against every other for **structural identity**:
