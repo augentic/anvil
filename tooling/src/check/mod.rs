@@ -6,6 +6,8 @@ mod docs_quality;
 pub mod links;
 mod plugins;
 mod prose;
+pub mod scenarios;
+mod skill_body;
 pub mod tools;
 
 use crate::context::Context;
@@ -21,11 +23,24 @@ pub use docs_quality::{MissingDiagramAsset, RfcCitationInDocs, TextPipelineDiagr
 pub use links::LinksCheck;
 pub use plugins::{BrokenSymlinkCheck, MarketplaceDriftCheck};
 pub use prose::{InvocationPositional, OperationalVocabulary, SkillNumericCaps};
+pub use scenarios::{
+    check_recorded_trace_freshness, validate_scenario_frontmatter, ScenariosCheck,
+    RULE_ARTIFACT_PATH_UNSAFE as SCENARIO_RULE_ARTIFACT_PATH_UNSAFE,
+    RULE_BODY_ID_MISMATCH as SCENARIO_RULE_BODY_ID_MISMATCH,
+    RULE_DUPLICATE_ID as SCENARIO_RULE_DUPLICATE_ID,
+    RULE_RECORDED_TRACE_VIOLATION, RULE_SCHEMA_VIOLATION as SCENARIO_RULE_SCHEMA_VIOLATION,
+    RULE_STAGES_NOT_CONTIGUOUS, RULE_STALE_RECORDED_TRACE,
+};
+pub use skill_body::{
+    SkillBodyLineCount, SkillEnvelopeJsonInBody, SkillFrontmatterRestatement,
+    SkillInlineJsonTooLong, SkillInvalidCriticalPath, SkillMissingCriticalPath,
+    SkillSectionLineCount, SkillStepBodyDuplicatesCriticalPath, SkillVariableCoverage,
+};
 pub use tools::{DeclaredToolEquivalentInvocations, FirstPartyToolDeclarations};
 
 /// Run every registered check predicate sequentially.
 pub fn run(ctx: &Context) -> Vec<Finding> {
-    let checks: [&dyn Check; 15] = [
+    let checks: [&dyn Check; 25] = [
         &AdapterCheck,
         &AgentTeamsCheck,
         &BriefCheck,
@@ -41,6 +56,16 @@ pub fn run(ctx: &Context) -> Vec<Finding> {
         &OperationalVocabulary,
         &SkillNumericCaps,
         &InvocationPositional,
+        &ScenariosCheck,
+        &SkillBodyLineCount,
+        &SkillSectionLineCount,
+        &SkillMissingCriticalPath,
+        &SkillInvalidCriticalPath,
+        &SkillInlineJsonTooLong,
+        &SkillEnvelopeJsonInBody,
+        &SkillStepBodyDuplicatesCriticalPath,
+        &SkillFrontmatterRestatement,
+        &SkillVariableCoverage,
     ];
     let mut findings = Vec::new();
 
