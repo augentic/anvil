@@ -51,7 +51,12 @@ impl Context {
         self.framework_root.join("adapters").join("shared")
     }
 
-    /// `.cursor/schemas/` under the framework root.
+    /// Authoritative framework-only schemas under `tooling/schemas/`.
+    pub fn framework_schema_dir(&self) -> PathBuf {
+        self.framework_root.join("tooling").join("schemas")
+    }
+
+    /// Editor-facing schema aliases under `.cursor/schemas/` (symlinks to `tooling/schemas/`).
     pub fn cursor_schema_dir(&self) -> PathBuf {
         self.framework_root.join(".cursor").join("schemas")
     }

@@ -4,6 +4,7 @@ pub mod error;
 pub mod exit;
 pub mod finding;
 pub mod helpers;
+pub mod schema;
 
 pub use context::Context;
 pub use error::ToolingError;
@@ -13,3 +14,4 @@ pub use helpers::{
     skill_body_lines, skill_frontmatter, strip_html_comments, under_symlink, walk_matching_files,
     walk_skill_files,
 };
+pub use schema::{validate_frontmatter, validate_value, SchemaError, SchemaId, ValidationError};

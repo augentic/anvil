@@ -4985,6 +4985,7 @@ dependencies = [
  "sha2 0.10.9",
  "specify-domain",
  "specify-error",
+ "tempfile",
  "walkdir",
 ]
 

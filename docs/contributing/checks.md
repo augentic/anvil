@@ -1,6 +1,27 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `scripts/check.ts` that validates documentation, skills, adapter manifests, and the marketplace manifest. Run it before every pull request.
+The `specify` repo includes an automated consistency checker. During the RFC-5 migration, `make check` still runs the Deno orchestrator at `scripts/check.ts`; the Rust `tooling check` binary under `tooling/` will replace it once every predicate has ported. Run checks before every pull request.
+
+## Editor-first vs tooling check
+
+Framework validation splits into two surfaces:
+
+| Surface | When it runs | What it covers |
+| --- | --- | --- |
+| **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
+| **`tooling check` (Markdown + cross-file)** | Local `make check` and CI | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+
+**Authoritative schemas** live in [`tooling/schemas/`](../../tooling/schemas/). [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing symlinks to those files so Cursor's JSON/YAML language servers resolve the same contract.
+
+**Plain YAML/JSON wiring.** Adapter manifests already carry a first-line schema directive:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
+```
+
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `tooling/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `tooling check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `tooling/schemas/`.
 
 ## Running checks
 
@@ -15,6 +36,13 @@ deno run --allow-read --allow-env scripts/check.ts
 ```
 
 Exit code `0` means all checks pass. Any failure prints `FAIL: <description>` and exits non-zero with a count of failures.
+
+Tooling contributors can also run the in-progress Rust binary directly:
+
+```bash
+cargo run --manifest-path tooling/Cargo.toml -- check
+cargo test --manifest-path tooling/Cargo.toml
+```
 
 ## What the checks enforce
 
@@ -44,7 +72,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.schema.json`:
+Every `SKILL.md` under `plugins/` is validated against [`tooling/schemas/skill.schema.json`](../../tooling/schemas/skill.schema.json) (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Name match** -- the `name` field must match the parent directory name
@@ -90,7 +118,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Acceptance scenario files are validated against [`tooling/schemas/scenario.schema.json`](../../tooling/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
@@ -165,7 +193,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to `.cursor/schemas/codex-rule.schema.json`.
+  conforms to [`tooling/schemas/codex-rule.schema.json`](../../tooling/schemas/codex-rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
