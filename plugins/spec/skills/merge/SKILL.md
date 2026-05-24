@@ -1,101 +1,60 @@
 ---
 name: specify-merge
-description: Merge a completed slice — apply delta specs to the baseline and archive the slice. Use when an implementation slice is finished and the operator is ready to fold it into `.specify/specs/`; not for discarding a slice (that is `/spec:drop`).
+description: Merge the active built slice via `specify slice merge` — apply delta specs to the baseline, archive the slice, and stamp the plan entry `done`. Use when `/spec:execute` reaches the merge phase or for a manual breakout after `/spec:build` succeeds; not when the slice is still `refining` / `refined` (use `/spec:build`) or has already merged.
 argument-hint: "[slice-name]"
 ---
 
-# Merge
+# Merge skill
 
-Merge a completed slice. Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-adapter merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
+Merge the active `in-progress` slice. The skill body is shared with the `/spec:execute` loop — when the loop runs merge, it loads this same body. Both the loop and standalone breakouts resolve the active slice from `specify plan next`, hold the same plan lock, and walk the same target merge brief. Deterministic work — preview, baseline conflict detection, delta merge, lifecycle transition, archive move, and per-entry `done` stamping — runs through `specify slice merge`. This body drives the agent-side coordination: pre-merge gate from the target brief, the AskQuestion confirmation when interactive, and post-merge result rendering.
 
-When working plan-driven (a `plan.yaml` exists), after `specify slice merge run` returns successfully the plan entry should be transitioned to `done`:
+`specify slice merge` is the **sole writer of per-entry `done`**. No other plan or slice verb produces that value. `/spec:merge` is therefore the only place a plan entry can advance through merge — every other path leaves the entry `in-progress`.
 
-```bash
-specify plan transition <name> done
+## Bindings
+
+```text
+$SLICE                  = active in-progress plan entry's slice name (from `specify plan next`)
+$TARGET                 = active slice's target adapter (from `specify plan next`)
+$PROJECT                = active slice's workspace project (workspace mode only)
+$SLICE_DIR              = .specify/slices/$SLICE/
+$LOG_PATH               = brief-captured stdout/stderr on pre-merge or post-merge failure
+$PROJECT_ROOT           = repo root (single-repo) or active workspace project slot (workspace mode)
 ```
 
-This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.
+`$SLICE` defaults to the active `in-progress` entry. When `[slice-name]` is supplied it MUST equal that active entry; mismatches refuse to preserve the single-active-slice invariant.
 
 ## Critical Path
 
-### 1. Select and confirm the slice
+1. **Resolve the active slice.** Run `specify plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$TARGET` (and `$PROJECT` in workspace mode) from the same response.
+2. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
+3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, run `specify workspace sync $PROJECT` and `chdir` into `.specify/workspace/$PROJECT/` before continuing. Single-repo mode is a no-op.
+4. **Refuse if lifecycle is not `built`.** Read `$SLICE_DIR/.metadata.yaml`. Halt on `refining` / `refined` with a hint pointing at `/spec:build`; halt on `merged` / `dropped` with "already finalised". Only `built` proceeds.
+5. **Load and run the target merge brief.** Resolve `specify target resolve $TARGET --format json`; read `adapters/targets/$TARGET/briefs/merge.md`. The brief covers target-specific pre-merge gates (omnia: cargo + clippy + test + `cargo build --target wasm32-wasip2`; vectis: cap-matrix re-run; contracts: WASI tool against the slice). Pre-merge gate failure → emit a stop hint (§ Stop hint contract); slice stays `built`.
+6. **Apply the merge through `specify slice merge run $SLICE --format json`.** The CLI runs the deterministic delta merge against `.specify/specs/`, transitions the slice to `merged`, archives `$SLICE_DIR` into `.specify/archive/YYYY-MM-DD-$SLICE/`, and stamps the plan entry's per-entry status to `done`. A non-zero exit on baseline conflict surfaces the conflict paths; the slice stays `built` and the plan entry stays `in-progress`. Use `specify slice merge preview $SLICE` first when the operator asks to preview without writing; use `specify slice merge conflict-check $SLICE` for a baseline-conflict probe.
+7. **Run the post-merge target hook.** Some target merge briefs (notably `contracts`) re-run a validator against the promoted baseline (e.g. `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`). A failure here is a post-merge signal, not a rollback — the slice is already `merged` and the plan entry is already `done`. Surface the failure so the operator can queue a repair slice; do not attempt to revert.
+8. **Surface the replay summary in the closing message** when `$SLICE_DIR/.metadata.yaml` carried a `replay:` block (written by the target's optional build-time replay hook — see [`adapters/shared/target-hooks/replay/hook-contract.md`](../../../../adapters/shared/target-hooks/replay/hook-contract.md)). Capture the block before step 6 — `specify slice merge` archives the slice dir — and render one line in the close, e.g. `replay: 47 passed, 0 failed, 2 skipped`. `merge` does **not** auto-refuse on `failed > 0`; the operator decides whether to land. Missing block → omit the line; omission is not an error.
 
-If a slice name was provided, use it. Otherwise run `specify status --format json` to enumerate active slices from the dashboard:
+## Stop hint contract
 
-- If only one entry exists, use it but confirm with the user.
-- If multiple, use the **AskQuestion tool** to let the user select.
+When the pre-merge gate, the CLI delta merge, or the post-merge hook fails, emit a structured stop hint as the body's final output:
 
-Always confirm the slice name before merging.
+- `slice` — slice name from `specify plan next`.
+- `phase` — `merge`.
+- `failure-kind` — one of `pre-merge-gate`, `baseline-conflict`, `lifecycle-refused`, `post-merge-validator`.
+- `paths` — for `baseline-conflict`: the conflicting baseline files reported by `specify slice merge`. For `pre-merge-gate` / `post-merge-validator`: the captured `$LOG_PATH`.
+- `next-action` — `resolve and re-run /spec:merge $SLICE` for conflicts; `re-run /spec:build $SLICE` for gate failures classified as build regressions; `queue repair slice` for `post-merge-validator` drift.
 
-### 2. Check prerequisites via CLI
-
-Run, in order:
-
-```bash
-specify slice status <name> --format json
-specify slice validate <name> --format json
-specify slice task progress <name> --format json
-```
-
-Branch on the responses:
-
-- **Status** — `complete` is the expected value. Warn on anything else (e.g. `building`, `defining`) and use **AskQuestion** to confirm proceeding. `specify slice merge run` will fail later if status isn't `Complete`, so this is a courtesy early exit.
-- **Validate** — if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
-- **Tasks** — if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
-
-`specify slice validate` already runs baseline coherence checks, so a separate "Baseline coherence check" step is unnecessary.
-
-### 3. Preview the merge and check for baseline drift
-
-Run:
-
-```bash
-specify slice merge preview <name> --format json
-specify slice merge conflict-check <name> --format json
-```
-
-Render the preview as a human-readable summary using the preview template in [`references/merge-runbook.md`](references/merge-runbook.md#preview-template); surface any `slice merge conflict-check` `conflicts` entries using the format in that file's conflict-check section. If the preview's `specs` array is empty, report "No delta specs to merge" and stop.
-
-### 4. Get explicit confirmation
-
-Use the **AskQuestion tool** to let the user:
-
-- **Proceed** — apply the merge (next step).
-- **Show full content** — display the merged baseline that would be written (re-run `slice merge preview --format json` and extract the operations list, or read each delta/baseline pair from disk).
-- **Cancel** — abort and stamp `deferred` via the [phase outcome contract](../../references/phase-outcome-contract.md).
-
-Only proceed after the user confirms.
-
-### 5. Apply the merge through `merge run`
-
-Run:
-
-```bash
-specify slice merge run <name> --format json
-```
-
-This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<adapter>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually. Workspace-clone auto-commit semantics (which trees get committed, warning-vs-error, residue handling) live in [`references/merge-runbook.md`](references/merge-runbook.md#workspace-clone-auto-commit).
-
-### 6. Handle outcomes
-
-On success, the CLI has already stamped the merge outcome — **do not call `outcome set`** (see §Phase outcome contract below).
-
-If the call exits non-zero, the filesystem is unchanged (baselines not written, slice dir not moved). Record the failure via `specify slice outcome set` (the slice directory still exists), report the error, and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
-
-### 7. Summarise the archive
-
-On success, the CLI returns `merged-specs[]` with the same operation list. Render the completion summary using the template in [`references/merge-runbook.md`](references/merge-runbook.md#summary-template), and mention any workspace auto-commit warning or residue note returned by the CLI.
-
-## Phase outcome contract
-
-This skill is the **merge** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including merge's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
+Lifecycle invariants: `pre-merge-gate` and `baseline-conflict` leave the slice at `built` and the plan entry at `in-progress`. `post-merge-validator` runs after `specify slice merge` succeeded, so the slice is already `merged` and the plan entry is already `done` — the hint is observability, not a park.
 
 ## Guardrails
 
-- Always confirm the slice before merging.
-- Validate prerequisites via the CLI before running `specify slice merge run`; warn but don't block if the user explicitly accepts.
-- All spec-level operations (preview, merge, validate, conflict-check) go through the `specify` CLI. Never hand-merge delta sections or re-implement the algorithm — the CLI is the sole implementation.
-- `specify slice merge run` is the sole writer for `.metadata.yaml` and the archive directory on merge — it handles the status transition and archive move atomically; on failure the filesystem is left untouched. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
-- If `specify slice merge run` reports an error, stop and ask the user before retrying.
+- **`specify slice merge` is the sole writer of per-entry `done`** and the only writer that transitions a slice to `merged` or moves a slice into `.specify/archive/`.
+- **Lifecycle single-writer:** [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- **Never auto-revert on a `post-merge-validator` failure.** The merge already landed; surface the failure and let the operator queue a repair slice. Reverting an archived slice is operator-only.
+- **Never treat `specify slice merge conflict-check` success as a green light to skip the target merge brief's pre-merge gate.** `conflict-check` probes baseline drift; the brief gate covers target-specific build, lint, and validation.
+- **Run the AskQuestion confirmation when invoked interactively** (i.e. `SPECIFY_PLAN_LOCK_HELD` unset). When invoked from `/spec:execute` the loop is its own confirmation seam; skip the prompt.
 
-For the merge algorithm and a worked example, see `delta-merge.md`.
+## References
+
+- [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
+- `adapters/targets/<target>/briefs/merge.md` — pre-merge gate and post-merge hook this skill drives (omnia, vectis, contracts).

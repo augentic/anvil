@@ -4,22 +4,18 @@ The `specify` CLI lives in the [`augentic/specify-cli`](https://github.com/augen
 
 ## Core crate dependency graph
 
-The core CLI crates stay adapter-agnostic:
+The workspace is leaf → root with three crates plus the root binary:
 
 ```text
 specify (binary)
-├── specify-change       Change orchestration, plan CRUD, locks, finalize
-├── specify-config       Project config, layout helpers, version floor
-├── specify-init         Project and hub scaffolding
-├── specify-registry     Registry, workspace sync, branch/push helpers
-├── specify-slice        Slice lifecycle, metadata, outcomes, journals
-├── specify-merge        Delta merge engine, conflict detection
-├── specify-adapter   Adapter resolution, caching, brief pipelines
-├── specify-spec         Spec parsing, delta operations, requirement IDs
-├── specify-task         Task file parsing, checkbox tracking
-├── specify-validate     Artifact validation (structural + semantic)
-└── specify-tool         Declared WASI tool resolution and execution
+└── specify-domain      Change orchestration, plan/slice lifecycle, registry,
+    │                   merge engine, spec/task parsing, adapter resolution,
+    │                   journal, schema validation (every domain module)
+    ├── specify-tool    Declared WASI tool resolution and execution
+    └── specify-error   thiserror + serde-saphyr error variants (leaf)
 ```
+
+WASI tools live in the sibling `wasi-tools/` workspace (`wasi-tools/contract`, `wasi-tools/vectis`) and are intentionally carved out of the host workspace's discipline.
 
 The crates form a layered dependency graph with `specify-error` at the base:
 
@@ -29,62 +25,20 @@ direction: down
 specify: "specify (binary)" {
   shape: rectangle
 }
-change: specify-change
-config: specify-config
-init: specify-init
-registry: specify-registry
-slice: specify-slice
-error: specify-error
-merge: specify-merge
-adapter: specify-adapter
-spec: specify-spec
-task: specify-task
-validate: specify-validate
+domain: specify-domain
 tool: specify-tool
+error: specify-error
 
-specify -> change
-specify -> config
-specify -> init
-specify -> registry
-specify -> slice
-specify -> merge
-specify -> adapter
-specify -> spec
-specify -> task
-specify -> validate
+specify -> domain
 specify -> tool
+specify -> error
 
-change -> error
-change -> config
-change -> registry
-change -> slice
-config -> error
-config -> adapter
-config -> slice
-config -> tool
-init -> error
-init -> adapter
-init -> config
-init -> registry
-registry -> error
-slice -> error
-slice -> adapter
-slice -> registry
-merge -> error
-merge -> spec
-merge -> adapter
-merge -> slice
-validate -> error
-validate -> adapter
-validate -> spec
-validate -> task
+domain -> tool
+domain -> error
 tool -> error
-spec -> error
-task -> error
-adapter -> error
 ```
 
-Vectis no longer links a adapter-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by `adapters/vectis/tools.yaml`: `vectis` (`validate`) for UI artifact validation and `vectis` (`scaffold`) for render-only scaffolding. The root CLI remains responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior remains skill-owned host workflow.
+Vectis no longer links a adapter-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`): `vectis` (`validate`) for UI artifact validation and `vectis` (`scaffold`) for render-only scaffolding. The root CLI remains responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior now lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs (the bodies of the retired Vectis writer / reviewer / template-updater skills were consolidated there in Wave 2.6).
 
 ## Dispatch pattern
 

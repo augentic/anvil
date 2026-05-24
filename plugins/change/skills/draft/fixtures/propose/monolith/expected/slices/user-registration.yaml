@@ -1,5 +1,0 @@
-version: 1
-include:
-  - src/auth/verify.ts
-  - src/users/register.ts
-  - src/users/validation.ts

@@ -12,7 +12,7 @@ Project authors declare project-local tools in `.specify/project.yaml`:
 
 ```yaml
 name: payments-service
-adapter: https://github.com/augentic/specify/adapters/contracts
+target: https://github.com/augentic/specify/adapters/targets/contracts
 
 tools:
   - name: contract
@@ -31,22 +31,22 @@ Use project scope when a repo needs a local override, a development build, a pri
 
 ### Adapter scope
 
-Adapter authors may ship a `tools.yaml` sidecar next to `adapter.yaml`:
+Target adapter authors declare tools inline in `adapter.yaml`'s `tools:` array:
 
 ```text
-adapters/contracts/
-├── adapter.yaml
-├── tools.yaml
+adapters/targets/contracts/
+├── adapter.yaml      # carries `tools:` per target.schema.json
 └── briefs/
 ```
 
 ```yaml
-# adapters/contracts/tools.yaml
+# adapters/targets/contracts/adapter.yaml (excerpt)
 tools:
-  - "specify:contract@0.3.0"
+  - name: contract
+    version: 0.3.0
 ```
 
-First-party adapter entries are exact wasm-pkg package requests in the `specify` namespace. The CLI derives the tool name and version from the package request and applies embedded permission defaults for first-party tools. `adapter.yaml` itself remains closed and does not gain a `tools:` field.
+First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. The legacy 1.x `tools.yaml` sidecar is no longer recognised in 2.0.
 
 Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 
@@ -148,7 +148,7 @@ Project-scope override of a adapter tool:
 ```yaml
 # .specify/project.yaml
 name: payments-service
-adapter: https://github.com/augentic/specify/adapters/contracts
+target: https://github.com/augentic/specify/adapters/targets/contracts
 tools:
   - name: contract
     version: 1.0.1-dev
@@ -162,7 +162,7 @@ tools:
 Adapter-scope tool with a bundled read-only template directory:
 
 ```yaml
-# adapters/example/tools.yaml
+# adapters/targets/example/adapter.yaml (excerpt)
 tools:
   - name: example-generate
     version: 1.2.0
@@ -179,15 +179,15 @@ tools:
 First-party adapter-scope package that must create root-level project files:
 
 ```yaml
-# adapters/vectis/tools.yaml
+# adapters/targets/vectis/adapter.yaml (tools[])
 tools:
-  - "specify:vectis@0.3.0"
+  - name: vectis
+    version: "0.3.0"
 ```
 
 Invocation:
 
 ```bash
-specify tool list
 specify tool fetch contract
 specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 ```
@@ -205,4 +205,4 @@ The current CLI already validates tool declaration structure during `specify too
 ## See also
 
 - [specify tool](../reference/cli/tool.md) -- command reference
-- [Anatomy of a Adapter](../contributing/adapter-anatomy.md) -- adapter sidecar conventions
+- [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter sidecar conventions

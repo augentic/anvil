@@ -18,10 +18,10 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 
 None required. Optionally a adapter identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and project context. The adapter argument is irrelevant for hub mode and must be omitted there.
 
-**Adapter vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with the same diagnostic:
+**Adapter vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with clap's standard parse-error diagnostic and exit code `2`:
 
-- `specify init` (no positional, no `--hub`) → exits with `init-requires-adapter-or-hub`.
-- `specify init <adapter> --hub` (both supplied) → exits with `init-requires-adapter-or-hub`.
+- `specify init` (no positional, no `--hub`) → exits `2` with a missing-required-argument diagnostic.
+- `specify init <adapter> --hub` (both supplied) → exits `2` with an argument-conflict diagnostic.
 
 A regular project must declare a adapter; a hub must declare `--hub` and never carries a `adapter:`.
 
@@ -66,7 +66,7 @@ Check whether `.specify/project.yaml` exists.
 
 ### 3. Decide the topology — regular project or platform hub
 
-See [Platform repo topologies](../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
+See [Configuration files](../../../docs/reference/configuration.md#projectyaml) and [Registry](../../../docs/reference/registry.md) for the full background on the two shapes. Briefly:
 
 - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **adapter**.
 - **Platform hub** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
@@ -83,10 +83,10 @@ Branch:
 If `$PROFILE` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia adapter identifier unless project context clearly indicates another adapter:
 
 ```text
-https://github.com/augentic/specify/adapters/omnia
+https://github.com/augentic/specify/adapters/targets/omnia
 ```
 
-For local development in this repository, a local adapter directory such as `./adapters/omnia` is also valid. If multiple adapters are plausible, use the **AskQuestion tool** to let the user select which one.
+For local development in this repository, a local target directory such as `./adapters/targets/omnia` is also valid. If multiple targets are plausible, use the **AskQuestion tool** to let the user select which one.
 
 Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specify init <adapter>`.
 
@@ -110,11 +110,11 @@ specify init --hub \
   ${DOMAIN:+--domain "$DOMAIN"}
 ```
 
-Never combine the two: `specify init "$PROFILE" --hub` errors with `init-requires-adapter-or-hub`. `specify init` with neither supplied errors with the same diagnostic.
+Never combine the two: `specify init "$PROFILE" --hub` exits `2` with clap's argument-conflict diagnostic. `specify init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
 
 The CLI writes:
 
-- **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved adapter manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
+- **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/.cache/manifests/targets/<adapter>/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
 - **Hub** — `.specify/project.yaml` with `hub: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; generated hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
 If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
@@ -128,14 +128,14 @@ On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mo
 For a **regular** init, tell the user:
 
 - "Specify initialized. Config written to `.specify/project.yaml`."
-- "Generated starter context at `AGENTS.md`; refresh it later with `specify context generate`."
+- "Generated starter context at `AGENTS.md`; inspect the file directly for later review."
 - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
-- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<adapter>/adapter.yaml`."
+- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/manifests/targets/<adapter>/adapter.yaml`."
 
 For a **hub** init, tell the user:
 
 - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `adapter:`)."
-- "Generated hub context at `AGENTS.md`; refresh it later with `specify context generate`."
+- "Generated hub context at `AGENTS.md`; inspect the file directly for later review."
 - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
 
 Do NOT print "Next steps" yet — Step 7 determines which output to show.
@@ -153,12 +153,12 @@ If **none** of these are found, show the **greenfield output** and stop.
 
 If at least one indicator is found, use the **AskQuestion tool**:
 
-> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
+> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This is driven by `/spec:plan` with the matching `code-*` source adapter (e.g. `code-typescript`)."
 
 Options:
 
 - **Yes, generate baseline specs** — proceed to create the slice
-- **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
+- **No, skip for now** — show the greenfield output and stop (user can run `/spec:plan` manually later with the matching `code-*` source)
 
 If the user chooses **yes**, create the slice via the CLI:
 
@@ -174,16 +174,16 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## Skill scope
 
-`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
 
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
 - **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
-- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is `/spec:extract`'s job.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
 - **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
-- **Adapter vs `--hub` is mutually exclusive.** The CLI rejects the combination with `init-requires-adapter-or-hub`; pick exactly one shape per run.
+- **Adapter vs `--hub` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.
 
 ## References
 
-- [RFC-9: Platform](../../../rfcs/archive/rfc-9-platform.md) — registry-only platform hub topology.
-- [RFC-13: Extensibility](../../../rfcs/archive/rfc-13-extensibility.md) — adapter vs `--hub` shape requirements.
+- [RFC-9: Platform](../../../rfcs/done/rfc-9-platform.md) — registry-only platform hub topology.
+- [RFC-13: Extensibility](../../../rfcs/done/rfc-13-extensibility.md) — adapter vs `--hub` shape requirements.

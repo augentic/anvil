@@ -2,25 +2,20 @@
 
 Every Specify slice produces a set of interdependent artifacts. Together they form the contract between human intent and agent execution.
 
+<div class="callout">
+  <strong>Read order.</strong> Start with the dependency chain, then the core four artifacts table below.
+</div>
+
 ## Artifact dependency chain
 
 The define pipeline generates artifacts in dependency order. Each artifact builds on the ones before it:
 
-```d2
-direction: right
+<div class="pipeline">
 
-proposal: "proposal.md\n(why)" {shape: page}
-specs: "spec.md\n(what)" {shape: page}
-contracts: "contracts/\n(shape)" {shape: page}
-design: "design.md\n(how)" {shape: page}
-tasks: "tasks.md\n(sequence)" {shape: page}
+![Artifact dependency chain](../assets/diagrams/artifacts/dependency-chain.svg)
 
-proposal -> specs: "scopes adapters"
-specs -> contracts: "alignment check"
-contracts -> design: "shapes referenced"
-specs -> design: "behavioral input"
-design -> tasks: "what to build"
-```
+<p class="pipeline-caption">proposal → spec → contracts → design → tasks; Vectis adds composition.yaml between contracts and design.</p>
+</div>
 
 The Vectis adapter inserts a `composition.yaml` stage between contracts and design.
 
@@ -65,7 +60,7 @@ Contract artifacts live in two locations:
 Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central contracts.
 
 The composition surface ships as two sibling artifacts, both validated against the same JSON Schema:
-- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers) or hand-authored before the define pipeline runs. Validated by `specify tool run vectis -- validate layout`.
+- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the [`screenshots` source adapter](../../adapters/sources/screenshots/adapter.yaml) is the first-party producer; future Figma and source-code inferers reuse the same contract) or hand-authored before the define pipeline runs. Validated by `specify tool run vectis -- validate layout`.
 - **`composition.yaml` (wired lifecycle artifact)** -- the same regions enriched with `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` keys. Produced by the define pipeline and consumed by shell writers. Validated by `specify tool run vectis -- validate composition` (which auto-invokes `tokens` / `assets` modes when sibling manifests exist).
 
 ### Proposal

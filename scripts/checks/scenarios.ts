@@ -10,7 +10,7 @@
 
 import {
   Ajv2020,
-  PROFILES_DIR,
+  TARGETS_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   join,
@@ -28,7 +28,7 @@ interface ScenarioFile {
   frontmatter: Record<string, unknown>;
 }
 
-const STAGES_ORDER = ["define", "build", "merge", "drop"] as const;
+const STAGES_ORDER = ["plan", "refine", "build", "merge", "drop"] as const;
 const SCENARIO_ID_BODY_RE = /^Scenario ID:\s*`?([a-z][a-z0-9-]*)`?\s*$/m;
 
 async function discoverScenarioCandidates(): Promise<string[]> {
@@ -100,23 +100,23 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // Optional root.
   }
 
-  // Discovery roots 4 & 5: adapters/<cap>/tests/<scenario>.md
-  // and adapters/<cap>/tests/<scenario>/scenario.md
+  // Discovery roots 4 & 5: adapters/targets/<target>/tests/<scenario>.md
+  // and adapters/targets/<target>/tests/<scenario>/scenario.md.
   try {
-    const stat = await Deno.stat(PROFILES_DIR);
+    const stat = await Deno.stat(TARGETS_DIR);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(PROFILES_DIR, {
+        const entry of walk(TARGETS_DIR, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
-        const rel = relative(PROFILES_DIR, entry.path).split("/");
-        // Flat: <cap>/tests/<scenario>.md  → 3 parts
+        const rel = relative(TARGETS_DIR, entry.path).split("/");
+        // Flat: <target>/tests/<scenario>.md  → 3 parts
         if (rel.length === 3 && rel[1] === "tests") {
           candidates.push(entry.path);
         }
-        // Directory: <cap>/tests/<scenario>/scenario.md → 4 parts
+        // Directory: <target>/tests/<scenario>/scenario.md → 4 parts
         if (
           rel.length === 4 &&
           rel[1] === "tests" &&
@@ -127,7 +127,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
       }
     }
   } catch {
-    // No adapters/.
+    // Optional root.
   }
 
   // Discovery root 6:
@@ -162,10 +162,17 @@ async function discoverScenarioCandidates(): Promise<string[]> {
 }
 
 function isContiguousStagesPrefix(stages: unknown): boolean {
+  // RFC-25: stages MUST be a contiguous slice of STAGES_ORDER. Scenarios
+  // may anchor at the plan-authoring phase or at any later slice phase
+  // (e.g. an adapter-scope scenario that starts in `refine`); the rule
+  // is contiguity rather than always-starts-at-plan.
   if (!Array.isArray(stages) || stages.length === 0) return false;
+  const first = stages[0];
+  const start = STAGES_ORDER.indexOf(first as typeof STAGES_ORDER[number]);
+  if (start < 0) return false;
   for (let i = 0; i < stages.length; i++) {
-    if (i >= STAGES_ORDER.length) return false;
-    if (stages[i] !== STAGES_ORDER[i]) return false;
+    if (start + i >= STAGES_ORDER.length) return false;
+    if (stages[i] !== STAGES_ORDER[start + i]) return false;
   }
   return true;
 }
@@ -234,7 +241,7 @@ export async function validateScenarioFrontmatter(): Promise<void> {
     if (stages === undefined) continue;
     if (!isContiguousStagesPrefix(stages)) {
       fail(
-        `Scenario frontmatter: ${sc.rel} — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ${
+        `Scenario frontmatter: ${sc.rel} — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ${
           JSON.stringify(stages)
         }`,
       );
@@ -406,7 +413,7 @@ export async function checkRecordedTraceFreshness(): Promise<void> {
   // surfaces any of the present trace files, suggest the operator
   // disclose the source run in their commit message. Failures here
   // (no git, shallow clone, single-commit history, no `--allow-run`
-  // permission) are non-fatal — `make checks` keeps its narrow
+  // permission) are non-fatal — `make check` keeps its narrow
   // `--allow-read` posture by default.
   try {
     const perm = await Deno.permissions.query({ name: "run", command: "git" });

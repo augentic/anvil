@@ -1,0 +1,17 @@
+source: legacy-monolith
+adapter: code-typescript
+authority: behaviour
+candidate: user-registration
+claims:
+  - kind: excerpt
+    path: src/users/register.ts#L6-L18
+    excerpt: "registerUser handler validates the email field against an RFC-5322 regex and rejects passwords shorter than 8 characters with `400 invalid-email` / `400 weak-password`; on success it delegates to insertUser and returns `201` with the persisted user."
+  - kind: type
+    path: src/users/repository.ts#L1-L5
+    signature: "interface User { id: string; email: string; createdAt: Date }"
+  - kind: call
+    path: src/users/register.ts#L16
+    callee: "src/users/repository.ts:insertUser"
+  - kind: excerpt
+    path: src/server.ts#L4-L6
+    excerpt: "Express app wires JSON body parsing then registers POST /users to the registerUser handler."

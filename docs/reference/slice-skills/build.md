@@ -1,22 +1,26 @@
 # /spec:build
 
-Implement tasks from a defined change.
+Implement tasks from a refined slice by loading the target adapter's build brief.
 
 ## Synopsis
 
 ```text
-/spec:build [change-name?]
+/spec:build [slice-name]
 ```
 
 ## Arguments
 
 | Argument | Required | Description |
-|----------|----------|-------------|
-| `change-name` | No | Name of the slice to build. If omitted, uses the only active slice or prompts for selection. |
+| -------- | -------- | ----------- |
+| `slice-name` | No | Name of the slice to build. When omitted, uses the active `in-progress` entry from `specify plan next`. Must match the active entry when supplied. |
 
 ## When to use
 
-- A change is `defined` (all artifacts present) and you want to start or continue implementation.
+- A slice is `refined` and you want to start or continue implementation.
+- `/spec:execute` parked on a build failure and you fixed the failing task.
+- Running build standalone after `/spec:refine` outside the execute loop.
+
+Not when the slice has not been refined (use [/spec:refine](refine.md)) or has already merged.
 
 ## Artifacts produced
 
@@ -24,47 +28,46 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 
 ## Behavior
 
-1. Validates that the slice is in `defined` or `building` state.
-2. Transitions the slice from `defined` to `building` (if not already).
-3. Reads the adapter's build brief.
-4. Runs pre-shell validation when `composition.yaml` is present (Vectis only): checks field coverage, event coverage, ViewModel mapping, overlay trigger consistency, and navigation graph consistency. Errors halt shell generation; warnings are logged.
-5. Works through tasks sequentially:
-   - Tasks with a **skill directive tag** (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist skill.
-   - Tasks without a skill tag are implemented via the adapter's default build instruction.
-6. Marks each task complete via `specify slice task mark`.
-7. On completion of all tasks, transitions to `complete`.
-8. Writes phase outcome.
+1. **Resolve active slice** — `specify plan next --format json`; refuse if `[slice-name]` mismatches active entry.
+2. **Acquire plan lock** when invoked standalone (skip when `SPECIFY_PLAN_LOCK_HELD=1` from `/spec:execute`).
+3. **Workspace routing** — `chdir` into `.specify/workspace/<project>/` when in workspace mode.
+4. **Refuse on lifecycle** — proceed only when slice status is `refined`.
+5. **Load target build brief** — `specify target resolve` + read `briefs/build.md`; follow orchestration linearly.
+6. **Stop on failure** — non-zero exit leaves slice at `refined`; emit structured stop hint with failing task and log path.
+7. **Transition on success** — `specify slice transition <name> built`.
+
+Synthesis review tags in `spec.md` are not build blockers — build proceeds against whatever spec is on disk.
 
 ### Contract-only changes
 
-Changes using the `contracts` adapter have a different build behavior. The build brief delegates to the format-appropriate `/contract:*` skill -- `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas -- rather than code-generation skills. It runs author or importer intent to produce change-local contract artifacts, then verifier intent for structural validation. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
+The contracts adapter build brief dispatches to format sub-flows (`openapi`, `asyncapi`, `json-schema`), runs author or importer intent, then verifier intent with a verify-repair loop. No implementation code is generated.
 
 ## Lifecycle transitions
 
-`defined --> building --> complete`
+`refined → built` (stays `refined` on build failure)
 
 ## Error modes
 
 | Error | Cause | Resolution |
-|-------|-------|------------|
-| Change not defined | Artifacts are incomplete | Run `/spec:define` first |
-| Validation failure | Artifact does not conform to validation rules | Fix the artifact and retry |
-| Specialist skill failure | A delegated skill encounters an error | Check the skill's output, fix, and re-run `/spec:build` |
-| Build failure | Generated code does not compile or pass tests | The agent iterates on fixes within the build phase |
+| ----- | ----- | ---------- |
+| Slice not refined | Lifecycle is `refining` or earlier | Run `/spec:refine` first |
+| Lifecycle refused | Slice already `built`, `merged`, or `dropped` | Run appropriate next phase or drop |
+| Build failure | Compile, test, or brief step exited non-zero | Fix failure; re-run `/spec:build` |
+| Specialist skill failure | Delegated skill error | Fix and re-run build |
 
 ## Examples
 
 ```text
-# Build the only active slice
+# Build the active in-progress slice
 /spec:build
 
-# Build a specific change by name
-/spec:build add-auth
+# Build a specific slice by hand
+/spec:build fix-typo
 ```
 
 ## See also
 
-- [/spec:define](define.md) -- generate artifacts before building
-- [/spec:merge](merge.md) -- next step after all tasks complete
-- [Artifact Format](../artifact-format.md) -- skill directive tag syntax
-- [Plugins](../plugins/index.md) -- specialist skills invoked during build
+- [/spec:refine](refine.md) — generate artifacts before building
+- [/spec:merge](merge.md) — next step after all tasks complete
+- [Drive a slice manually](../../how-to/drive-slice-manually.md) — when execute parks on build
+- [Artifact format](../artifact-format.md) — skill directive tag syntax

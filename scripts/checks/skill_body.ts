@@ -6,18 +6,16 @@
 //   - inline `json` / `jsonc` fences must not exceed 30 lines,
 //   - inline `json` / `jsonc` fences must not show CLI envelope shapes
 //     (`envelope-version` or wrapped `ok` + `data`/`error`); those live
-//     in `plugins/references/cli-output-shapes.md`,
+//     in `docs/reference/cli-output-shapes.md`,
 //   - `$VAR`s defined in the Arguments section must be referenced in the
 //     body (and vice versa).
 
 import {
   fail,
-  join,
   relative,
   REPO_ROOT,
   skillBodyLines,
-  underSymlink,
-  walk,
+  walkSkillFiles,
 } from "./_shared.ts";
 
 const MAX_BODY_LINES = 200;
@@ -29,17 +27,9 @@ const MAX_SECTION_LINES = 45;
 // Single walk: cheaper than two passes and keeps the body and per-H2
 // section budgets co-located.
 export async function checkBodyAndSectionLineCounts(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const lines = skillBodyLines(content);
     if (!lines) continue;
@@ -114,18 +104,11 @@ function countSectionBodyLines(sectionLines: string[]): number {
 }
 
 export async function checkCriticalPath(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
 
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const lines = skillBodyLines(content);
     if (!lines || lines.length < CRITICAL_PATH_MIN_LINES) continue;
@@ -187,17 +170,9 @@ export async function checkCriticalPath(): Promise<void> {
 }
 
 export async function checkInlineJsonBlocks(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = content.split("\n");
 
     let inBlock = false;
@@ -215,7 +190,7 @@ export async function checkInlineJsonBlocks(): Promise<void> {
       if (inBlock && line.startsWith("```")) {
         if (blockLength > MAX_INLINE_JSON_LINES) {
           fail(
-            `Inline JSON too long: ${rel}:${blockStart} — ${blockLength} body lines (limit ${MAX_INLINE_JSON_LINES}); move large output shapes to plugins/references/cli-output-shapes.md and link to them`,
+            `Inline JSON too long: ${rel}:${blockStart} — ${blockLength} body lines (limit ${MAX_INLINE_JSON_LINES}); move large output shapes to docs/reference/cli-output-shapes.md and link to them`,
           );
         }
         inBlock = false;
@@ -228,24 +203,17 @@ export async function checkInlineJsonBlocks(): Promise<void> {
 
 // Detect fenced ```json / ```jsonc blocks whose contents look like a
 // `specify *` CLI envelope (the wrapper that lives in
-// `plugins/references/cli-output-shapes.md`). Forbid those in the
+// `docs/reference/cli-output-shapes.md`). Forbid those in the
 // SKILL.md body so envelope shapes drift in exactly one place. Body
 // shapes that are NOT wrapped envelopes (e.g. a one-line config
 // snippet, or a sidecar artifact like analyze's `metadata.json`)
 // remain allowed; the predicate is intentionally narrow.
 export async function checkNoEnvelopeExamples(): Promise<void> {
   const FENCE_OPEN_RE = /^\s*(`{3,})(json|jsonc)\b/;
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = content.split("\n");
 
     let inBlock = false;
@@ -287,7 +255,7 @@ export async function checkNoEnvelopeExamples(): Promise<void> {
     if (count > 0) {
       const where = violations.map((n) => `line ${n}`).join(", ");
       fail(
-        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} (link to plugins/references/cli-output-shapes.md instead of embedding the envelope shape)`,
+        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} (link to docs/reference/cli-output-shapes.md instead of embedding the envelope shape)`,
       );
     }
   }
@@ -339,17 +307,9 @@ function isListOrHeadingLine(line: string): boolean {
 }
 
 export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = skillBodyLines(content);
     if (!lines) continue;
 
@@ -416,17 +376,9 @@ export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
 // `docs/standards/skill-authoring.md` (§Skill body discipline,
 // rule 1) stays mechanically enforced.
 export async function checkNoFrontmatterRestatement(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
     const lines = skillBodyLines(content);
     if (!lines) continue;
 
@@ -448,17 +400,9 @@ export async function checkVariables(): Promise<void> {
   const INLINE_CODE_RE = /`[^`]+`/g;
   const BUILTIN = new Set(["ARGUMENTS", "HOME"]);
 
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
 
     const headingMatch = content.match(ARGS_HEADING_RE);
     if (!headingMatch || headingMatch.index === undefined) continue;

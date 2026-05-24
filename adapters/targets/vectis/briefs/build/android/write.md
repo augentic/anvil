@@ -1,0 +1,77 @@
+# Vectis build — Android shell (write + verify)
+
+Loaded by [../../build.md](../../build.md) Steps 9 + 10 when `android` is in `proposal.md` `## Platforms`. The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
+
+Carries the body of the retired `vectis-android-writer` skill. Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`../../../references/android/`](../../../references/android/).
+
+## Mode detection
+
+Inspect `${ANDROID_SHELL_DIR}/app/src/main/java/<package>/Core.kt`:
+
+- Missing → **create mode**: scaffold with `specify tool run vectis -- scaffold android <APP_NAME> [--caps <csv>] [--android-package <package>]`, then enter pre-flight (see § Verify below), then update mode.
+- Present → **update mode**: diff core types against existing Kotlin code and apply targeted edits.
+
+Spawn the writer sub-agent with `mode: create|update` and `skip_verification: true`; the dedicated verify sub-agent (§ Verify) runs afterward.
+
+## Writer steps
+
+1. **Read inputs.** `app.rs`, the regenerated `composition.yaml`, sibling `tokens.yaml` / `assets.yaml` when present, the `## Android Shell Requirements` section of `spec.md`, and the `## Android Shell Details` section of `design.md`. Extract App name, ViewModel / Effect / Event / Route variants, and the capability set.
+2. **Build an inventory** of existing Kotlin code: effect handlers, ViewModel cases, screen composables, event dispatches, adapter clients (Ktor for HTTP / SSE, SharedPreferences for KV), DI modules (Koin when multiple non-Render effects are used).
+3. **Diff Rust core types vs Kotlin inventory** by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
+4. **Apply changes.** Expand or strip CAP blocks in `Core.kt`, `AndroidManifest.xml`, and Gradle build files. Add or remove screen composables for each ViewModel variant under `Android/app/src/main/java/com/vectis/<app>/ui/screens/`. Update the root `when` over the `ViewModel` enum. Dispatch new `Event`s through `Core.update(...)`. Emit one named composable per `component: <slug>` directive in `composition.yaml` (PascalCased), with props inferred from variation across instances. Patterns: [`android/shell-pattern.md`](../../../references/android/shell-pattern.md), [`android/view-patterns.md`](../../../references/android/view-patterns.md).
+5. **Refresh generated UI surfaces.** Regenerate shell-local theme code under `Android/app/src/main/java/com/vectis/<app>/ui/theme/` (Material 3 fallback when `tokens.yaml` is absent — full templates: [`android/token-templates.md`](../../../references/android/token-templates.md)), and drawable resources under `Android/app/src/main/res/drawable*/` (one entry per `assets.yaml` declaration; Material icons resolve at the call site without copy). Design-system integration depth: [`android/design-system-integration.md`](../../../references/android/design-system-integration.md).
+6. **Update build configuration** (`libs.versions.toml`, `build.gradle.kts`, manifest permissions, `network_security_config.xml`) to match the changed capability set. Remove any legacy `:vectis-design` Gradle module references — there is no shared Compose module in 2.0; the writer emits shell-local theme + drawable code exclusively. Replace any stale `import com.vectis.design.*` with `import com.vectis.<app>.ui.theme.*`.
+7. **UniFFI bridging contract.** The `Application` class MUST set `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded — without this the app fails with `UnsatisfiedLinkError` on launch. Imports for generated FFI types follow `import com.vectis.<app>.*` (not `com.vectis.design.*`). Rethrow `CancellationException` from coroutines — never swallow it.
+
+## Hard rules
+
+Full set at [`hard-rules-android.md`](../../../references/hard-rules-android.md). Highlights:
+
+- Java 21 only — Java 25+ environments hit `IllegalArgumentException` in AGP; pin `org.gradle.java.home` in `gradle.properties`.
+- Always include `@Preview` blocks for new composables.
+- Coroutine cancellation MUST rethrow `CancellationException`.
+
+## Verify (max 3 iterations)
+
+Spawn this loop in its own sub-agent with `ANDROID_SHELL_DIR`. The sub-agent returns `status`, `iterations_used`, and any unresolved errors.
+
+### Pre-flight (fail fast on misconfiguration)
+
+Run these before entering the loop. If any check fails, report the missing prerequisite and mark Android verification as **pending** rather than entering the build loop.
+
+```bash
+test -f "${ANDROID_SHELL_DIR}/local.properties"
+grep -q "sdk.dir" "${ANDROID_SHELL_DIR}/local.properties"
+grep -q "org.gradle.java.home" "${ANDROID_SHELL_DIR}/gradle.properties"  # Must point to Java 21.
+rustup target list --installed | grep android
+```
+
+### Gradle wrapper bootstrap
+
+Before any `./gradlew` invocation, verify `gradlew` exists and is executable and `gradle/wrapper/gradle-wrapper.jar` is present. If the wrapper is missing, bootstrap from a minimal init project:
+
+```bash
+tmp_dir=$(mktemp -d)
+cd "$tmp_dir" && gradle wrapper && cd -
+cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_SHELL_DIR/"
+cp -r "$tmp_dir/gradle" "$ANDROID_SHELL_DIR/"
+chmod +x "$ANDROID_SHELL_DIR/gradlew"
+rm -rf "$tmp_dir"
+```
+
+If `gradle` itself is not installed, report the prerequisite (`brew install gradle`) and mark Android verification as pending.
+
+### Build loop
+
+```bash
+cd "$ANDROID_SHELL_DIR" && make build                       # 1. Type generation + cross-compile.
+cd "$ANDROID_SHELL_DIR" && ./gradlew :shared:cargoBuild     # 2. Rust library build.
+cd "$ANDROID_SHELL_DIR" && ./gradlew :app:assembleDebug     # 3. APK build.
+```
+
+If a step fails, fix the issue and re-run. Repeat until all three checks pass or 3 iterations are exhausted. Stop early on identical-output regressions. If still failing after 3 iterations: **stop** and escalate. Java 25+ environments hit `IllegalArgumentException`; the fix is pinning `org.gradle.java.home` to Java 21 in `gradle.properties`.
+
+## Worked examples
+
+- [`examples/android/01-simple-counter.md`](../../../references/examples/android/01-simple-counter.md) — minimal Core.kt + Application.kt + root composable.
+- [`examples/android/02-http-counter.md`](../../../references/examples/android/02-http-counter.md) — Ktor HTTP capability, coroutine scope, suspending effect handlers.

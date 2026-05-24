@@ -1,0 +1,28 @@
+<svg viewBox="0 0 920 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Slice artifact dependency chain from proposal through specs design to tasks">
+  <title>Artifact dependency chain</title>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+  <rect x="20" y="50" width="120" height="56" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="32" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">proposal.md</text>
+  <text x="32" y="90" font-family="ui-monospace, monospace" font-size="10" fill="#555">why</text>
+  <path d="M140 78 L170 78" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="170" y="50" width="120" height="56" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="182" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">spec.md</text>
+  <text x="182" y="90" font-family="ui-monospace, monospace" font-size="10" fill="#555">what</text>
+  <path d="M290 78 L320 78" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="320" y="50" width="120" height="56" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="332" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">contracts/</text>
+  <text x="332" y="90" font-family="ui-monospace, monospace" font-size="10" fill="#555">shape</text>
+  <path d="M440 78 L470 78" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="470" y="50" width="120" height="56" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="482" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">design.md</text>
+  <text x="482" y="90" font-family="ui-monospace, monospace" font-size="10" fill="#555">how</text>
+  <path d="M590 78 L620 78" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+  <rect x="620" y="50" width="120" height="56" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="632" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">tasks.md</text>
+  <text x="632" y="90" font-family="ui-monospace, monospace" font-size="10" fill="#555">sequence</text>
+  <text x="20" y="130" font-family="ui-monospace, monospace" font-size="11" fill="#888">Vectis inserts composition.yaml between contracts and design.</text>
+</svg>

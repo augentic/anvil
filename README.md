@@ -2,7 +2,7 @@
 
 Specify is a plugin system to orchestrate spec-driven software development. This repository provides the specialist skills used to power structured proposal-to-implementation workflows.
 
-Each slice flows through a defined lifecycle — define, build, merge — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
+Each slice flows through a defined lifecycle — refine, build, merge — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
 
 ## Getting Started
 
@@ -10,53 +10,51 @@ Read the [Developer Guide](docs/index.md) in this order:
 
 1. [What is Specify?](docs/orientation/index.md)
 2. [Prerequisites](docs/orientation/prerequisites.md)
-3. [Quick Start](docs/tutorials/quick-start.md)
-4. [Your First Slice](docs/tutorials/first-change.md)
+3. [Quick start tutorial](docs/tutorials/quick-start.md)
+4. [Core concepts](docs/explanation/concepts.md)
 
 Initialize a project in Cursor Agent chat with a adapter:
 
 ```text
-/spec:init https://github.com/augentic/specify/adapters/omnia
+/spec:init https://github.com/augentic/specify/adapters/targets/omnia
 ```
 
-Common adapters:
+Common targets:
 
-| Adapter | URL | Use case |
+| Target | URL | Use case |
 | ---------- | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/adapters/omnia` | [Omnia](https://omnia.host) Rust WASM services |
-| `vectis` | `https://github.com/augentic/specify/adapters/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | `https://github.com/augentic/specify/adapters/contracts` | API/interface contract work |
+| `omnia` | `https://github.com/augentic/specify/adapters/targets/omnia` | [Omnia](https://omnia.host) Rust WASM services |
+| `vectis` | `https://github.com/augentic/specify/adapters/targets/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work |
 
 Then work through a slice:
 
 ```text
-/spec:define "Add a new feature"
-/spec:build
-/spec:merge
+/spec:plan "Add a new feature"
+specify plan transition <name> reviewed
+/spec:execute
 ```
 
-For larger efforts, `/change:draft` authors `plan.yaml`, the operator reviews it, `/change:execute loop` drives each planned slice through the same define-build-merge loop, and `/change:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `reviewed` with `specify plan transition <name> reviewed`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
-Specify ships as a Cursor plugin marketplace with seven plugins:
+Specify ships as a Cursor plugin marketplace with three plugins:
 
-- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Change-level plan authoring and execution live in the `change` plugin.
-- **Change** (`change`) -- Change lifecycle (Layer 2): `/change:draft` (plan authoring), `/change:execute` (per-slice driver), and `/change:finalize` (push, PR observation, archive).
-- **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
-- **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
-- **Contract** (`contract`) -- API contract generation, validation, and import
-- **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
+- **Specify** (`spec`) -- End-to-end workflow: `/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`. Plan authoring, execution driving, and finalization all live in the same plugin in 2.0.
+- **Capture** (`capture`) -- Runtime capture for migration workflows
 - **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
+
+Domain-specific code generation lives in target adapters (`omnia`, `vectis`, `contracts`), not Cursor plugins.
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 
 ## Vocabulary cheat sheet
 
-Two lifecycle nouns appear constantly in this codebase. RFC-13 §Migration locked their meaning:
+Two lifecycle nouns appear constantly in this codebase. workflow §Vocabulary locked their meaning:
 
-- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
+- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
 
 ## Installing the CLI
 
@@ -75,10 +73,10 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make checks
+make check
 ```
 
-This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be installed separately.
+This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.
 
 ### Local plugin development
 
@@ -135,11 +133,12 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 
 ## Documentation
 
-- **[Developer Guide](docs/SUMMARY.md)** -- tutorials, how-to guides, reference, and appendices (mdBook)
-  - [Tutorials](docs/tutorials/index.md) -- progressive walkthroughs from first slice to multi-repo migration
-  - [Reference](docs/reference/index.md) -- skills, CLI, plugins, adapters, configuration
-  - [Quick Reference](docs/reference/quick-reference.md) -- single-page cheat sheet
-- [Specify Artifact Guidance](plugins/references/specify.md)
+- **[Developer Guide](docs/SUMMARY.md)** — tutorials, how-to guides, explanation, reference, and appendices (mdBook)
+  - [Tutorials](docs/tutorials/index.md) — progressive walkthroughs from first slice to cross-repo changes
+  - [How-to guides](docs/how-to/index.md) — task recipes for common operator situations
+  - [Reference](docs/reference/index.md) — skills, CLI, plugins, adapters, configuration
+  - [Quick reference](docs/reference/quick-reference.md) — single-page cheat sheet
+- [Specify artifact guidance supplement](docs/explanation/augentic-specify-usage.md)
 - [Project Rule](.cursor/rules/project.mdc)
 - [Agent Instructions](AGENTS.md)
 - [Contribution Guide](CONTRIBUTING.md)

@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
+name: captures
+version: 1
+axis: source
+briefs:
+  enumerate: briefs/enumerate.md
+  extract: briefs/extract.md
+tools:
+  - name: replay-index
+    version: 0.1.0
+description: >-
+  Runtime capture source adapter. Walks a read-only capture tree under
+  `$SOURCE_DIR` (the directory layout `/capture:wiretapper` writes —
+  `tests/data/replays/<handler>/<scenario>.json` plus optional `samples/`),
+  enumerates one candidate per observed handler entry point (HTTP route,
+  message handler, scheduled job, WebSocket handler), and extracts behavioural
+  Evidence as `kind: example` claims carrying `replay-digest: sha256:<hex>`
+  anchors. Authority emitted is `behaviour`; capture bodies above 64 KiB
+  inline are carried by digest + path only.

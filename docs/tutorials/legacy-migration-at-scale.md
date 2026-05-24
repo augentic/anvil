@@ -1,234 +1,45 @@
-# Legacy Migration at Scale
+# Legacy migration at scale
 
-Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice change using the analyze/extract split -- the strategy that makes this tractable.
+Bring existing codebases into Specify through source adapters rather than rewriting intent by hand. This page orients you to the migration path; it is not a full fixture walk-through.
 
-**Prerequisites:** Familiarity with [multi-slice changes](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
+## Prerequisites
 
-## Contents
+- Completed [Quick start](quick-start.md)
+- A legacy codebase suitable for the `code-typescript` source adapter (TypeScript today; language siblings follow the same pattern)
 
-- [The scaling challenge](#the-scaling-challenge)
-- [1. Set up the registry](#1-set-up-the-registry)
-- [2. Draft the migration plan](#2-draft-the-migration-plan)
-- [3. Handle tangled code](#3-handle-tangled-code)
-- [4. Execute the migration](#4-execute-the-migration)
-- [5. Mix extraction and greenfield slices](#5-mix-extraction-and-greenfield-slices)
-- [The migration workflow](#the-migration-workflow)
-- [What you learned](#what-you-learned)
+## How legacy code enters Specify
 
-## The scaling challenge
-
-A legacy monolith might have hundreds of thousands of lines of code. You cannot extract full specs from the entire codebase in one pass -- it would be too slow, too expensive, and the output would be overwhelming.
-
-Specify solves this with a **two-skill split**:
-
-| Skill | When | Depth | Scope | Cost |
-|-------|------|-------|-------|------|
-| `/change:analyze` | Plan time | Shallow (adapter summaries) | Entire source | Low |
-| `/spec:extract` | Define time | Deep (full specs + design) | Per-change slice | Higher, but focused |
-
-At plan time, analyze scans the whole monolith cheaply to build an inventory. At define time, extract runs deeply against only the files relevant to each change.
-
-## 1. Set up the registry
-
-Define the target repos where migrated adapters will land:
-
-```yaml
-# registry.yaml
-version: 1
-projects:
-  - name: auth-service
-    url: git@github.com:org/auth-service.git
-    adapter: omnia@v1
-    description: >
-      Authentication and authorization. Token management,
-      OAuth providers, session handling, RBAC.
-
-  - name: order-service
-    url: git@github.com:org/order-service.git
-    adapter: omnia@v1
-    description: >
-      Order processing. Cart management, checkout flow,
-      payment integration, order lifecycle.
-
-  - name: notification-service
-    url: git@github.com:org/notification-service.git
-    adapter: omnia@v1
-    description: >
-      Notification dispatch. Email, SMS, push notifications,
-      template management, delivery tracking.
-```
-
-## 2. Draft the migration plan
-
-Point the draft skill at the monolith:
+At plan time, bind a code source alongside or instead of documentation:
 
 ```text
-/change:draft modernise-platform source monolith=/path/to/legacy-monolith
+/spec:plan legacy-migration source legacy=code-typescript:./vendor/monolith
 ```
 
-<details>
-<summary>Expected output (discovery phase)</summary>
+The source adapter's `enumerate` operation scans the bound tree and emits slice-sized **candidates** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis fuses into `spec.md`.
 
-```text
-Planning modernise-platform...
+Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `/spec:execute` drives each slice through refine → build → merge.
 
-Discovery:
-  Analyzing /path/to/legacy-monolith...
-  Language: TypeScript, ~245,000 LOC, 47 modules
-  Found 12 adapters across 3 domains
+## Capture and replay
 
-  Writing .specify/plans/modernise-platform/discovery.md
-```
+For regression-ready migrations, use the Capture plugin to wiretap a legacy service and record fixtures:
 
-</details>
+- **`wiretapper`** — add capture code to a legacy TypeScript repo
+- **`replay-writer`** — fold captured fixtures into tests on the generated Omnia crate
 
-### Discovery phase
+See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anatomy.md) for the source/target contract.
 
-`/change:analyze` scans the entire monolith at plan time. For each discovered adapter, it emits a summary to `discovery.md`:
+## Recommended reading order
 
-```markdown
-### token-validation
+1. [Bind multiple sources](../how-to/bind-multiple-sources.md) — combine legacy code with design notes at plan time
+2. [Your first multi-slice change](first-change.md) — multi-slice execute rhythm
+3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — enumerate vs extract operations
+4. [Target adapters](../reference/targets/omnia.md) — Omnia build and merge briefs
 
-Summary: Validates JWT tokens and checks expiry, signature, and claims.
-Sources: src/auth/token.ts, src/auth/jwt.ts, src/middleware/auth.ts
-Depends-on: [session-management]
-Confidence: high
-```
+## Acceptance scenarios
 
-It also produces structural metadata at `.specify/plans/modernise-platform/analyze/monolith/metadata.json`:
+The cross-repo acceptance pack includes a code-multi-slice scenario under `tests/cross-repo/runs/2.0.0/` for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
 
-```json
-{
-  "language": "TypeScript",
-  "loc": 245000,
-  "modules": 47
-}
-```
+## Next steps
 
-This is intentionally shallow. Analyze identifies *what adapters exist* and *where they live*, not the full behavioral specification.
-
-### Workspace sync
-
-Because the registry declares multiple projects, the sync-workspace phase clones the target repos and inventories them. For greenfield targets, this confirms they have no existing baselines.
-
-### Propose phase
-
-The propose phase decomposes discovered adapters into plan entries. Each proposed change is presented for review:
-
-```
-Proposed: extract-token-validation
-  Description: Migrate token validation from the monolith
-  Sources: [monolith]
-  Depends-on: []
-  Accept / Edit / Reject?
-```
-
-Propose creates entries without a `project` field -- it handles decomposition, not routing.
-
-### Assignment
-
-After all slices are accepted, the draft skill's assignment step (3d) matches each entry to a target project. It infers routing from `workspace.md` -- project descriptions, baseline spec affinity, and schema compatibility -- then presents a batch review:
-
-```
-| # | Entry                    | Project              | Rationale                              |
-|---|--------------------------|----------------------|----------------------------------------|
-| 1 | extract-token-validation | auth-service         | description overlap: token, auth, RBAC |
-| 2 | extract-checkout-flow    | order-service        | description overlap: checkout, payment  |
-| 3 | extract-email-dispatch   | notification-service | baseline spec: email-templates exists   |
-```
-
-The operator can override any assignment. Once confirmed, the draft skill writes each routing decision via `specify plan amend <name> --project <project>`.
-
-## 3. Handle tangled code
-
-Legacy monoliths often have tangled dependencies. A adapter's source files may be scattered across multiple modules, or a single file may contain logic for multiple adapters.
-
-### Manifest scopes
-
-For tangled codebases, you can provide a **manifest** -- a file listing exactly which source files a slice should extract from:
-
-```text
-# migration-manifest.txt
-src/auth/token.ts
-src/auth/jwt.ts
-src/middleware/auth.ts
-src/shared/crypto.ts
-```
-
-During the propose phase, you can edit a slice to include a manifest reference. At define time, `/spec:extract` uses the manifest to scope its deep analysis.
-
-### Overlapping slices
-
-When multiple slices touch the same source files, `specify slice overlap` detects the overlap and reports it. You can then:
-
-- Merge the slices into one.
-- Sequence them with `depends-on` so one extracts first.
-- Accept the overlap if the adapters are truly independent.
-
-## 4. Execute the migration
-
-```text
-/change:execute loop
-```
-
-For each slice in dependency order:
-
-1. **Define** -- `/spec:define` invokes `/spec:extract` against the monolith source files relevant to this slice. This is the **deep extraction** -- full behavioral specs and design.
-2. **Build** -- Specialist skills generate the new implementation in the target repo.
-3. **Merge** -- Specs merge into the target repo's baseline.
-
-Each merged slice adds to the target repo's baseline. Subsequent slices see the accumulated baseline and produce deltas against it.
-
-## 5. Mix extraction and greenfield slices
-
-A migration plan often includes both:
-
-- **Extraction slices** -- migrating existing adapters from the monolith (have `sources`).
-- **Greenfield slices** -- adding new adapters that do not exist in the legacy code (no `sources`).
-
-Both types coexist in a single plan. The define phase handles them differently:
-
-- Extraction changes invoke `/spec:extract` to derive specs from source.
-- Greenfield changes generate specs from the description alone.
-
-```yaml
-changes:
-  - name: extract-auth
-    description: "Migrate authentication from monolith"
-    sources: [monolith]
-    project: auth-service
-    status: pending
-
-  - name: add-oauth
-    description: "Add OAuth2 provider support (not in legacy)"
-    depends-on: [extract-auth]
-    project: auth-service
-    status: pending
-```
-
-## The migration workflow
-
-```text
-# One-time setup
-Create registry.yaml with target repos
-/change:draft modernise-platform source monolith=/path/to/legacy
-
-# Review — see [Reviewing the plan](reviewing-a-plan.md)
-specify plan status
-
-# Execute
-/change:execute loop
-
-# Finalize — pushes branches, observes PR state, halts until PRs are merged,
-# then archives the plan. Re-run after merging PRs externally.
-/change:finalize modernise-platform
-```
-
-## What you learned
-
-- The **analyze/extract split** makes large migrations tractable: cheap scanning at plan time, deep extraction at define time.
-- Discovery produces adapter summaries with source-file hints and dependency edges.
-- The propose phase decomposes adapters into plan entries; the assignment step matches them to target projects.
-- Tangled code is handled with manifest scopes and overlap detection.
-- Extraction and greenfield changes coexist in a single plan.
-- Baseline accumulation in target repos gives subsequent changes context.
+- [Quick reference card](../reference/quick-reference.md) — source binding grammar
+- [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md) — when legacy and docs disagree

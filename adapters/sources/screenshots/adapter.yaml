@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
+name: screenshots
+version: 1
+axis: source
+description: Vision-assisted spatial inference over a directory of screen images. `enumerate` identifies one candidate per screen from `$SOURCE_DIR`; `extract` emits `documentation`-authority Evidence with the `region` / `container` / `leaf` claim kinds for downstream targets (Vectis) that need layout structure.
+briefs:
+  enumerate: briefs/enumerate.md
+  extract: briefs/extract.md

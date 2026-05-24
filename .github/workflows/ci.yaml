@@ -29,8 +29,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Choose specify-cli ref
+        id: specify-cli-ref
+        shell: bash
+        run: |
+          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
+            echo "ref=$branch" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout specify-cli schemas
+        uses: actions/checkout@v6
+        with:
+          repository: augentic/specify-cli
+          path: specify-cli
+          ref: ${{ steps.specify-cli-ref.outputs.ref }}
+          sparse-checkout: |
+            schemas
+          sparse-checkout-cone-mode: false
+
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
       - name: Run checks
-        run: make checks
+        run: make check
+        env:
+          SPECIFY_CLI_DIR: specify-cli

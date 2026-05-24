@@ -1,42 +1,33 @@
 # Change skills
 
-Change-scoped skills coordinate multi-slice changes through `change.md` + `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. All change-scoped skills (`/change:analyze`, `/change:draft`, `/change:execute`, `/change:finalize`) live on the `change` plugin.
+Change skills coordinate one or more slices through `change.md` and `plan.yaml`. They drive the operator rhythm: plan, operator review step (Gate 1), execute, finalize.
 
-The change layer is split into three peer skills with an explicit human seam between authoring and execution. The lifecycle reads `draft → execute → finalize`, mirroring `/spec`'s `define → build → merge` rhythm at the change layer. There is no umbrella mode; the human pause between authoring and execution is the design.
+## The change rhythm
 
-## The three-skill lifecycle
+{{#template ../../templates/pipeline-open.md}}
 
-```text
-/change:draft <name>  →  operator review  →  /change:execute loop  →  /change:finalize <name>
-        │                       │                     │                        │
-        │                       │                     │                        │
-        ▼                       ▼                     ▼                        ▼
-   author plan.yaml,     specify plan amend,   per-slice define →        specify workspace push,
-   stop at hand-off      specify plan status   build → merge until       gh pr list, specify
-                                               no eligible slice         change finalize
-                                               remains
-```
+![Default workflow poster](../../assets/diagrams/quick-reference/workflow-poster.svg)
 
-`/change:draft` produces the plan and stops. The operator reviews `plan.yaml` (and may edit it via `specify plan amend`). `/change:execute` consumes the plan by running define-build-merge per slice in dependency order. `/change:finalize` pushes branches, observes PR state, and archives the change once every PR is `MERGED`.
+{{#template ../../templates/pipeline-close.md caption=plan → Gate 1 → execute → finalize; slice loop runs inside execute.}}
 
-Re-entry across all three skills: fix the cause, re-run the same skill. Nothing tracks "where the operator was" outside `plan.yaml`, `change.md`, and the on-disk brief artefacts.
+Inside `/spec:execute`, each slice runs through the per-slice loop documented in [Slice skills](../slice-skills/index.md): refine → build → merge. Every phase is also reachable as a manual breakout when execute parks or when you want to drive one slice by hand.
 
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
-|-------|---------|-------|--------|
-| [/change:analyze](analyze.md) | Plan-time adapter inference (invoked internally by `/change:draft`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
-| [/change:draft](draft.md) | Author `plan.yaml` from inputs; stop at the operator review seam | Sources, docs, registry, baseline specs | `plan.yaml`, `change.md`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with the CLI project option via the assignment step |
-| [/change:execute](execute.md) | Drive the plan through define-build-merge per slice; supports supervised, `dry-run`, and `loop` modes with self-heal | `plan.yaml` | Plan status transitions (via CLI); prepares workspace branches, routes into workspace clones for multi-project plans, and commits non-baseline residue after merge |
-| [/change:finalize](finalize.md) | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` | `plan.yaml`, workspace clones, remote PR state | Composition only — shells out to `specify workspace push`, `gh pr list`, `specify change finalize`; never writes directly |
+| ----- | ------- | ----- | ------ |
+| [/spec:plan](plan.md) | Enumerate sources, propose slices, exit at `pending` | Bound sources, `project.yaml` | `change.md`, `plan.yaml`, `discovery.md` |
+| [/spec:execute](execute.md) | Drive reviewed plan through refine → build → merge | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
+| [/spec:finalize](finalize.md) | Push branches, observe PRs, archive plan | Drained plan, workspace slots | Archived plan; no direct `.specify/` writes |
 
-## Layered composition
+## How skills delegate
 
-These skills are optional. You can use the define-build-merge loop without ever touching plans. But when you do need them, they compose:
+Each skill is an agent-driven orchestrator. Deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — run through the `specify` CLI. Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/` with shell tools, and never move files into `.specify/archive/` directly.
 
-- **Plan authoring alone (`/change:draft`)** — author a plan, then drive it manually with the CLI.
-- **Plan + drive (`/change:draft` then `/change:execute`)** — author a plan, then automate execution.
-- **Full lifecycle (`/change:draft` then `/change:execute` then `/change:finalize`)** — author, drive, and close out a change end-to-end across three skills with an explicit operator review seam between draft and execute.
-- **Single slice** — skip plans entirely, define and build slices one at a time.
+Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `/spec:execute` sequences those skills; the same bodies run when you invoke a breakout by hand.
 
-The underlying CLI commands (`specify plan ...`, `specify workspace ...`, `specify change ...`) remain available as manual fallback at every level. There is no one-command convenience wrapper; teams that want one can compose the three skills in their own shell script, accepting that the wrapper opts out of the operator review pause.
+## See also
+
+- [Quick reference card](../quick-reference.md) — every skill and CLI verb at a glance
+- [Lifecycle](../lifecycle.md) — plan, per-entry, and slice state machines
+- [The layered stack](../../explanation/layered-stack.md) — Layer 2 (change) composes on Layer 1 (slice)

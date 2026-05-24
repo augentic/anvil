@@ -1,138 +1,308 @@
-# Senior-engineer review — `specify` + `specify-cli` (Pre-1.0, subtraction-biased)
+# Code & Skill Review — specify + specify-cli
 
-## Summary
+Top three findings by tier: **F1 Delete retired `outcome set` / `journal append` from merge briefs** (wire-contract defect, ~−130 LOC), **F2 Stop double cycle diagnostics on `plan validate`** (wire-contract defect, ~−34 LOC), **F3 Single-pass `specs/` scan in `slice validate`** (~−55 LOC, hot-path I/O).
+Total ΔLOC if all land: **approximately −380 LOC**.
+Primary non-LOC axes moved: defect surface (nonexistent CLI verbs, duplicate cycle rows), duplicate I/O on validate hot paths, test duplication, check-script duplication.
+Top verified defects closed: **3** — merge briefs cite `specify slice outcome set` / `specify slice journal append` (verbs absent from `src/commands/slice/cli.rs`), `specify plan validate` emits two cycle codes for one SCC, execute skill reads retired `phase outcome` from `.metadata.yaml`; defect-only net ΔLOC: **~−134** (F1 + F2; portfolio cap unused).
+Most likely to break in remediation: **F2** — `plan.next` currently blocks cycles only through `Plan::validate`'s `dependency-cycle` findings; moving the gate to `doctor::cycle::detect` must preserve the `plan-structural-errors` refusal before `advance_next`.
 
-- Three findings; if all land: **−540 LOC**, **−3 modules**, **−1 public trait**, **−2 enums**, **−4 structs**, **−2 error discriminants**.
-- Top three by LOC: F1 dead detector subsystem (−496), F2 collapse `dispatch_survey`/`SurveyArgs` (−27), T1 drop dead `extract_code` 3rd arm (−7).
-- Primary non-LOC axes: types (−5 in F1), branches (−2 error variants in F1), module edges (−3 modules in F1).
-- Riskiest in remediation: F1 — RFC-20 calls the detector trait a "deferred extension point". Justification below; fold the prose move into the same diff so AGENTS / SKILLs don't go stale.
+## Reconnaissance
 
-## Reconnaissance (current state)
+- `tokei`: **specify** **658** files / **89,907** lines (Markdown **525** / **51,952**; Rust **3** / **120**); **specify-cli** **453** files / **65,244** lines (Rust **250** / **47,814**).
+- `cargo tree --duplicates` (`specify-cli`): non-empty — `base64 v0.21.7 / v0.22.1`, `reqwest v0.12.28 / v0.13.3`, multi-version `wasmtime` / `wasm-pkg-client` transitives. `Cargo.toml` frozen for this pass.
+- `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): summed **514** `#[test]` declarations.
+- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files — `tests/common/mod.rs`, `crates/domain/tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`.
+- `wc -l docs/standards/*.md AGENTS.md`:
+  - `specify`: **584 total**.
+  - `specify-cli`: **780 total**.
+- Files >500 lines under `crates/` and `src/` (`specify-cli`):
+  - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**.
+  - Source: `crates/domain/src/discovery/document.rs` **890**, `crates/domain/src/slice/fusion.rs` **843**, `crates/domain/src/adapter/core.rs` **742**, `crates/domain/src/change/plan/core/model.rs` **700**, `crates/domain/src/journal.rs` **659**, `crates/domain/src/spec/provenance.rs` **607**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**, `src/commands/plan/lifecycle.rs` **506**.
+- `make check` (`specify`): **passed** — `All checks passed.` Total failures: **0**.
+- `cargo make check` (`specify-cli`): **passed** — `[cargo-make] INFO - Build Done in 169.93 seconds.` First error: **none**.
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **698** matching lines (dominated by inline `#[cfg(test)]` modules inside source files; **no operator-path panic defect** in `src/commands` outside `#[cfg(test)]`).
+- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **50** matching lines (same test-module inflation).
 
-- `tokei`: Rust = **50,429 lines / 281 files**, Markdown = **66,636 / 677**.
-- `wc -l crates/domain/src/survey/*.rs` → `detector.rs 108 + registry.rs 41 + merge.rs 66 = 215 LOC`.
-- `wc -l crates/domain/tests/survey.rs` → `696`; lines 410–684 are detector tests = **275 LOC**.
-- `rg '\bLanguage::' --type rust` outside `survey/detector.rs` and `tests/survey.rs` returns only the unrelated Crux `Language::{Swift,Kotlin,Typescript}` in `templates/vectis/core/codegen.rs`. **Zero production callers of `survey::Language`.**
-- `rg 'merge_detector_outputs|DetectorRegistry|with_builtins' --type rust` outside `crates/domain/src/survey/{detector,registry,merge}.rs` and `crates/domain/tests/survey.rs` returns **zero hits**.
-- `find plugins -type l` confirms apparent doc duplicates (`plugins/omnia/skills/crate-writer/references/adapters.md` etc.) are symlinks, not copies — no LOC duplication. Drop that line of inquiry.
-- `cargo tree --duplicates` shows `base64 0.21/0.22` and crossings through `warg-*`, `oci-client`, `hyper-util`, `reqwest` 0.12/0.13. All third-party transitive; not actionable here.
+## Structural Findings
 
----
+### F1 — Delete retired merge outcome commands
 
-## Structural findings (ranked by LOC removed)
+**Evidence:** RFC-25 retired `PhaseOutcome` and `specify slice outcome set` ([`plugins/spec/references/phase-outcome-contract.md:3`](plugins/spec/references/phase-outcome-contract.md)). The CLI exposes no such verbs — `src/commands/slice/cli.rs` lists only `create`, `validate`, `merge`, `task`, `transition`, `touched-specs`, `overlap`, `drop`. `rg 'specify slice outcome set' adapters/targets` returns **12** hits across the three merge briefs; each also instructs `specify slice journal append`, which is likewise absent from the slice CLI surface.
 
-### F1. Delete the deferred detector subsystem
+```text
+adapters/targets/omnia/briefs/merge.md:85:specify slice outcome set $SLICE_NAME merge failure \
+adapters/targets/vectis/briefs/merge.md:120:specify slice outcome set <slice> merge failure \
+adapters/targets/contracts/briefs/merge.md:82:specify slice outcome set <slice> merge failure \
+src/commands/slice/cli.rs:8-72   (no outcome / journal subcommands)
+```
 
-**Evidence**
+Merge brief totals: omnia **121**, vectis **169**, contracts **134** lines; § Outcome signalling blocks occupy **~52 / ~82 / ~82** lines respectively.
 
-- `crates/domain/src/survey.rs:1-24` documents detector / registry / merge as "deferred extension points… v1 ships the registry empty; every legacy-code source flows through the agent-driven `ingest` pipeline."
-- `crates/domain/src/survey/registry.rs:25-29` — `with_builtins()` literally returns `Self { detectors: Vec::new() }`. The `iter()` accessor and `impl Debug for dyn Detector + Send + Sync` exist only to satisfy `#[derive(Debug)]` on an empty `Vec`.
-- `crates/domain/src/survey/merge.rs:1-66` — module doc-comment: "the `detector-failure` and `detector-id-collision` codes are unreachable through the CLI handler today."
-- `crates/domain/src/survey/detector.rs:1-108` — `Detector` trait, `DetectorInput`, `DetectorOutput`, `DetectorError`, and the `Language` enum.
-- `git status` already shows all three v1 detector implementations (`detectors/{express,nestjs,bullmq}.rs`), their `tests/detectors_*.rs` integration tests, and their fixtures **deleted on the working tree**, with `crates/domain/src/survey/ingest.rs` newly added — the architectural pivot has already happened.
-- `rg` proves zero production call sites for `merge_detector_outputs`, `DetectorRegistry`, `with_builtins`, or `survey::Language` outside the dead-code island.
-- `crates/domain/tests/survey.rs` lines 410–684 (275 LOC: `MockDetector`, `merge_detector_*`, `language_serde_round_trip`) exercise nothing the production binary can reach.
+**Action:**
+1. In each of the three merge briefs, delete § Outcome signalling / Outcome contract branches (`success` / `failure` / `deferred` / bash examples for retired verbs).
+2. Replace with the pattern already used in [`plugins/spec/skills/merge/SKILL.md:37-47`](plugins/spec/skills/merge/SKILL.md) § Stop hint contract: one paragraph + bullet list (`slice`, `phase`, `failure-kind`, `paths`, `next-action`).
+3. Keep only adapter-unique gate prose (Omnia cargo/wasm32, Vectis cap-matrix, Contracts validator modes) under existing pre-merge sections; link `phase-outcome-contract.md` in one line only.
+4. In the same pass, fix [`docs/standards/skill-authoring.md:59`](docs/standards/skill-authoring.md) (drop `specify slice outcome set` from the canonical guardrails list) and [`docs/reference/cli/slice.md:134`](docs/reference/cli/slice.md) (remove `PhaseOutcome` stamp prose).
 
-**Action**
+**Quality delta:** `−130 LOC, −1 wire-contract defect, −1 skill-integrity defect, −3 duplicate prose blocks`.
 
-1. `rm crates/domain/src/survey/{detector,registry,merge}.rs`.
-2. In `crates/domain/src/survey.rs`, drop `pub mod detector;`, `pub mod merge;`, `pub mod registry;` and the three matching `pub use` lines.
-3. In `crates/domain/tests/survey.rs`, delete from the first `// ── Detector contract ──` banner (line 410) through the closing brace of `language_serde_round_trip` (line 684); keep `assert_has_finding` at line 686+ (also called by surfaces tests). Remove the now-unused `use specify_domain::survey::Language` (line 667).
-4. Tighten the module doc-comment on `crates/domain/src/survey.rs:1-7` to "DTOs, validators, sources file, and ingest pipeline." (drop the "deferred extension point" prose).
-5. `rg 'DetectorRegistry|merge_detector_outputs|survey::Language' plugins/ docs/ AGENTS.md rfcs/` and update every hit in the same diff (per `docs/standards/coding-standards.md` §Drift audit).
+**Net LOC:** merge briefs **424 → ~294** combined; standards/cli doc touch **~−6**.
 
-**Quality delta** `−496 LOC, −3 modules, −1 trait (Detector), −2 enums (Language, DetectorError), −2 structs (DetectorInput, DetectorOutput), −1 struct (DetectorRegistry), −2 error discriminants (detector-failure, detector-id-collision), −1 cross-module Debug impl on `dyn Detector`.`
+**Done when:** `rg 'specify slice outcome set|specify slice journal append' adapters/targets` returns **0**; `make check` passes.
 
-**Net LOC** `survey source 990 + survey tests 696 = 1686  →  990 − 215  +  696 − 275  =  1196` (≈ 30% smaller).
+**Rule?** no — retired contract, three briefs only.
 
-**Done when** `rg --type rust 'Detector|merge_detector_outputs|with_builtins|survey::Language'` returns **0 hits** outside `templates/vectis/core/codegen.rs` (the unrelated Crux `Language` enum). Currently returns ~50.
+**Counter-argument:** Journal append examples document the intended failure observability shape. It loses because the verbs do not exist in the binary — agents that follow the brief shell out to commands that fail immediately.
 
-**Rule?** No. One-shot deletion; nothing recurring to enforce.
+**Depends on:** none.
 
-**Counter-argument** "RFC-20 §Future mechanical reversion explicitly preserves the trait so a future detector can replace the agent producer for one (language, framework) pair." Loses because pre-1.0 means `git revert` is the time machine — paying 496 LOC of carrying cost forever to save one diff in a hypothetical v2 is the textbook YAGNI tax, and the RFC explicitly says the **artifact contract** doesn't change in either direction (i.e., the DTOs in `dto.rs` are the actual reversion seam, not the trait).
+### F2 — One cycle diagnostic per plan validate
 
-**Depends on** none.
+**Evidence:** `Plan::validate` runs `detect_cycles` (`crates/domain/src/change/plan/core/validate.rs:35,97-132`, code `dependency-cycle`). `plan_doctor` then runs the same graph again via `cycle::detect` (`crates/domain/src/change/plan/doctor.rs:167-170`, `doctor/cycle.rs:16-48`, code `cycle-in-depends-on`). Both share `entry_dependency_graph` (`validate.rs:74-90`). On a cyclic plan, `specify plan validate` emits **two** error rows for the same SCC.
 
----
+```text
+crates/domain/src/change/plan/core/validate.rs:35:        results.extend(detect_cycles(&self.entries));
+crates/domain/src/change/plan/doctor.rs:170:    out.extend(cycle::detect(&plan.entries));
+tests/plan_orchestrate.rs:1588:        .find(|d| d["code"] == "cycle-in-depends-on")
+```
 
-### F2. Collapse `dispatch_survey` + `SurveyArgs` into one match arm
+`plan.next` blocks only through `plan.validate` (`src/commands/plan/lifecycle.rs:110`), not `plan_doctor`.
 
-**Evidence**
+**Action:**
+1. Delete `detect_cycles` and its call at `validate.rs:35` (**~41 LOC**).
+2. `pub use` `doctor::cycle::detect` (change `pub(super)` → `pub` in `doctor/cycle.rs`).
+3. In `plan.next`'s `with_state` closure (`lifecycle.rs:109-117`), after loading the plan and before `advance_next`, refuse when `!cycle::detect(&plan.entries).is_empty()` with the existing `plan-structural-errors` envelope.
+4. Retarget `crates/domain/src/change/plan/core/validate/tests.rs` cycle tests (`:33-59`) to call `cycle::detect` directly (expect `cycle-in-depends-on`-equivalent non-empty output) instead of `plan.validate`'s `dependency-cycle`.
 
-- `src/commands/change.rs:26-93` — the `ChangeAction::Survey { … 7 fields }` arm copies its 7 fields into a private `SurveyArgs` struct, then `dispatch_survey` immediately destructures `SurveyArgs` to match on the same 5 `Option<…>` fields and build a `survey::Form::Single | Batch`.
-- `wc -l src/commands/change.rs` = `365`; `SurveyArgs` is used at exactly one site.
-- `src/commands/change/survey.rs:21-48` already defines `Form::{Single, Batch}` with the matching shape; the dispatch is the only thing standing between clap and the form.
+**Quality delta:** `−34 LOC, −1 wire-contract defect, −1 duplicate algorithm, −1 defect surface (double cycle row)`.
 
-**Action**
+**Net LOC:** `validate.rs` **359 → ~318**; `lifecycle.rs` **506 → ~512** (+6 gate lines).
 
-1. Inline the field→`Form` resolution into `commands::change::survey::run` (or a new `survey::Form::resolve(...)` taking the clap fields).
-2. In `src/commands/change.rs`, replace the `ChangeAction::Survey { … } => dispatch_survey(...)` arm with a one-liner: `ChangeAction::Survey { source_path, source_key, surfaces, sources, staged, out, validate_only } => survey::run(ctx, source_path, source_key, surfaces, sources, staged, out, validate_only)`.
-3. Delete `struct SurveyArgs` (lines 49-57) and `fn dispatch_survey` (lines 59-93).
+**Done when:** `rg -n 'dependency-cycle' crates/domain/src/change/plan/core/validate.rs` returns **0** (only doctor/cycle path remains); `cargo test cycle_error cycle-in-depends-on plan_validate_structured_cycle_payload --test plan_orchestrate` passes; cyclic plan JSON validate returns **exactly one** cycle diagnostic.
 
-**Quality delta** `−27 LOC, −1 type (SurveyArgs), −1 fn (dispatch_survey).` Same hand-rolled idiom that ripgrep / jj use: clap arm → handler with named args, no DTO between.
+**Rule?** no — single duplicate check.
 
-**Net LOC** `change.rs 365 → ~338`.
+**Counter-argument:** Dashboards route `dependency-cycle` separately from `cycle-in-depends-on`. It loses pre-1.0 because both describe the same SCC and the structured `cycle-in-depends-on` payload is strictly more useful.
 
-**Done when** `rg 'SurveyArgs|dispatch_survey' src/` returns **0 hits**. Currently returns 7.
+**Depends on:** none.
 
-**Rule?** No.
+### F3 — Single-pass spec.md scan in slice validate
 
-**Counter-argument** "Bundling args in a struct improves readability." Loses by the master rule — readability is unfalsifiable, and the struct exists at one call site for one frame of life. ripgrep / cargo handle 7-field clap arms by passing them through directly.
+**Evidence:** Three functions each walk `specs/**/*.md`, read, and `parse_spec_md`:
 
-**Depends on** none.
+```text
+src/commands/slice/validate.rs:120-140  collect_synthesis_tags
+src/commands/slice/validate.rs:244-263  collect_spec_req_ids
+src/commands/slice/validate.rs:273-303  validate_spec_provenance
+```
 
----
+All three call `collect_spec_files` + `read_to_string` + `provenance::parse_spec_md` independently on the operator hot path (`validate.rs:29-50`).
 
-## One-touch tidies
+**Action:**
+1. Add a private `struct ScannedSpec { path: PathBuf, parsed: ParsedSpec }` and `fn scan_slice_specs(slice_dir: &Path, source_keys: &BTreeSet<String>) -> Result<(BTreeSet<String>, Vec<(String, RequirementTag)>, Vec<ValidationSummary>)>` that walks once and fans out req-ids, synthesis tags, and provenance summaries.
+2. Replace the three call sites in `run`, `collect_fusion_drift_findings` (pass pre-scanned req-ids), and delete `collect_synthesis_tags`, `collect_spec_req_ids`, and the inner loop of `validate_spec_provenance`.
 
-### T1. `extract_code` in `commands/change/survey.rs:283-289` lies about its third arm
+**Quality delta:** `−55 LOC, −2 duplicate walks, lower call-site burden on validate hot path`.
 
-**Evidence** `src/commands/change/survey.rs:283-289` returns `"io"` for any non-`Diag`, non-`Validation` `Error`, including `ArtifactNotFound`, `Filesystem`, `BranchPrepareFailed`, `CliTooOld`, `NotInitialized`, `YamlDe`, `YamlSer`. `Error::variant_str(&self) -> String` already exists in `crates/error/src/error.rs:161-174` and returns the truthful kebab discriminant.
+**Net LOC:** `validate.rs` **382 → ~327**.
 
-**Action** Replace the body of `extract_code` with `err.variant_str()`; widen `RowError.code` (line 115) from `&'static str` to `String`. Inline the helper at its single call site.
+**Done when:** `rg -c 'fn collect_synthesis_tags|fn collect_spec_req_ids' src/commands/slice/validate.rs` returns **0**; `cargo test --test slice validate_passes_on_clean_fusion_inputs validate_flags_missing_req_id_in_fusion` passes.
 
-**Quality delta** `−7 LOC, −1 hand-rolled match, −1 lying default arm.`
+**Rule?** no — one handler, three duplicate loops.
 
-**Done when** `rg 'fn extract_code' src/` returns **0 hits**. Currently returns 1.
+**Counter-argument:** Three small functions are easier to read in isolation. It loses because every `slice validate` invocation pays triple parse cost on the same files.
 
-**Rule?** No.
+**Depends on:** none.
 
-**Counter-argument** "`&'static str` is cheaper than `String`." Loses because the surrounding `RowError.detail: String` already heap-allocates; a `String` for `code` is rounding error and the truthful value is worth more.
+### F4 — Share evidence YAML path enumerator
 
-**Depends on** none.
+**Evidence:** Near-identical `readdir` + `.yaml`/`.yml` filter + sort in:
 
-### T2. Drop the `survey/SKILL.md` line-83 RFC citation in body prose
+```text
+crates/domain/src/schema.rs:101-117       validate_evidence_dir
+crates/domain/src/slice/fusion.rs:417-433 collect_evidence_claim_ids
+```
 
-**Evidence** `plugins/change/skills/survey/SKILL.md:83` reads `See [rfcs/rfc-20-survey.md](../../../../rfcs/rfc-20-survey.md) §"Determinism Policy" for the long form.` `docs/standards/skill-authoring.md:50` (rule 3): "**No RFC citations in skill bodies.** … Mechanically enforced by `checkNoRfcCitationsInSkillBody`." The same RFC appears (correctly) in the `## Reference Documentation` table at line 130.
+Both run on every `specify slice validate` (`validate.rs:29` then `:204` via fusion drift) — every evidence file is walked twice.
 
-**Action** Delete the second sentence of the `## Determinism policy` paragraph (line 83); keep the bulleted summary that follows. The reference table at line 130 already carries the link.
+**Action:**
+1. Add `pub fn evidence_yaml_paths(slice_dir: &Path) -> Result<Vec<PathBuf>>` to `crates/domain/src/schema.rs` (move the shared loop there).
+2. Replace both inline loops with calls to `evidence_yaml_paths`.
+3. Optionally piggyback claim-id extraction on the schema-validation read in a follow-up; this finding stops at deduplicating the walk.
 
-**Quality delta** `−1 LOC, −1 standards violation.`
+**Quality delta:** `−32 LOC, −1 duplicate walk, lower I/O on validate hot path`.
 
-**Done when** `rg '§"Determinism Policy"' plugins/` returns **0 hits**. Currently returns 1.
+**Net LOC:** `schema.rs` **250 → ~258** (+8 helper); `fusion.rs` **843 → ~825**; net **−32**.
 
-**Rule?** No — the predicate already exists; this is just one stale violation.
+**Done when:** `rg -n 'eq_ignore_ascii_case\("yaml"\)' crates/domain/src/slice/fusion.rs` returns **0**; `cargo test collect_evidence_claim_ids -p specify-domain && cargo test --test slice` pass.
 
-**Counter-argument** "Linking to the RFC inline helps reviewers." Loses — the reference table at the bottom is the canonical location, and skill discovery loads bodies into context where the inline link is dead weight.
+**Rule?** no — two call sites, one loop.
 
-**Depends on** none.
+**Counter-argument:** Fusion and schema validation are separate concerns. It loses because the filter/sort logic is byte-identical and the operator path executes it back-to-back.
 
----
+**Depends on:** none.
 
-## Items considered and dropped
+### F5 — Table-drive journal wire-shape tests
 
-- **Duplicate `*.md` references under `plugins/omnia/skills/{crate,test}-writer/`** — `find plugins -type l` confirms they are symlinks. Zero LOC.
-- **`base64 0.21` vs `0.22` cargo duplication** — entirely transitive through `warg-*`, `oci-client`, `hyper-util`, `reqwest` 0.12/0.13. Cannot dedupe without dropping `wasm-pkg-client`. Out of scope.
-- **`is_kebab` placement in `specify-error`** — eight production call sites across the binary and three workspace crates; the leaf is the right home. Workspace-wide reuse beats the "leaf has only thiserror + saphyr" purity claim in `AGENTS.md`.
-- **`SurfaceKind` / `SurfacesDocument` consolidation** — schema closure (`additionalProperties: false`) and the closed enum are load-bearing for the wire contract; no axis moves in the reducing direction.
-- **`commands/change.rs:337-364` handler-level tests for `Landing`** — could move to `crates/domain/tests/finalize.rs`, but this is a relocation, not a deletion; net ~0 LOC and no axis improvement that beats taste.
-- **`crates/tool/src/{package.rs (504), validate.rs (459), host.rs (376), manifest.rs (360)}`** — read-only spot-checks didn't surface a clean subtraction; each file pays for a real wire-contract surface (wasm-pkg client, JSON Schema validation, wasmtime host, manifest shape). Not worth a finding without a prototype delete.
-- **Skill body caps** — every `SKILL.md` is below the 200-line cap; the largest (`plugins/omnia/skills/code-reviewer/SKILL.md`, 163) clears comfortably. No structural skill finding.
+**Evidence:** Five near-identical append-one-event-read-one-line tests in `crates/domain/src/journal.rs:495-614` (`slice_extract_cache_hit_wire_shape`, `cache_miss`, `fusion_written`, `replay_completed`, `plan_amend_authority_override`). Each is **~15–20 LOC** of tempdir + `append_batch` + substring asserts. Integration coverage for CLI-driven emits lives in `tests/journal.rs` (**482 LOC**, golden fixtures) but does **not** cover cache-hit/miss wire bytes (`rg cache tests/journal.rs` → **0**).
 
----
+**Action:**
+1. Replace the five tests with one table-driven `event_wire_shapes_match_contract` test: `&[(EventKind, &[&str])]` rows asserting required JSON substrings.
+2. Keep `append_batch_empty_slice_is_no_op` and `no_snake_case_fields_or_values_leak_to_wire` unchanged.
+
+**Quality delta:** `−65 LOC, −4 test functions, −4 duplicate setup blocks`.
+
+**Net LOC:** `journal.rs` **659 → ~594**.
+
+**Done when:** `rg -c '_wire_shape' crates/domain/src/journal.rs` drops from **5** to **0**; `rg -c 'fn event_wire_shapes' crates/domain/src/journal.rs` returns **≥ 1**; `cargo test -p specify-domain journal::` passes.
+
+**Rule?** no — one module, five copies.
+
+**Counter-argument:** Separate tests give clearer failure names. It loses because the setup is identical and a table row pinpoints the failing event kind in the assertion output.
+
+**Depends on:** none.
+
+### F6 — Trim fusion drift unit tests covered by integration
+
+**Evidence:** `crates/domain/src/slice/fusion.rs:633-788` carries six granular `detect_drift_flags_*` / sort-stability unit tests. End-to-end drift ordering and message shape are already exercised in `tests/slice.rs:622-771` (`validate_passes_on_clean_fusion_inputs`, `validate_flags_missing_req_id_in_fusion`, `validate_flags_contributing_claim_not_found`, …).
+
+**Action:**
+1. Delete `detect_drift_flags_missing_fusion_entry`, `detect_drift_flags_extra_fusion_entry`, `detect_drift_flags_contributing_claim_with_no_evidence_row`, `detect_drift_flags_contributing_claim_with_missing_source_file`, `detect_drift_flags_orphan_evidence_claim`, and `detect_drift_findings_sort_byte_stable` from the inline `#[cfg(test)] mod tests`.
+2. Keep `round_trips_through_yaml`, `validates_against_embedded_schema`, `load_reports_schema_failure_for_hand_edited_file`, and one representative `detect_drift_clean_inputs_yield_no_findings` smoke.
+
+**Quality delta:** `−95 LOC, −6 redundant test functions, lower maintenance surface in 843-LOC file`.
+
+**Net LOC:** `fusion.rs` **843 → ~748**.
+
+**Done when:** `rg -c 'fn detect_drift_flags_' crates/domain/src/slice/fusion.rs` drops from **6** to **0**; `cargo test -p specify-domain fusion:: && cargo test --test slice fusion` pass.
+
+**Rule?** no — integration tests already pin the operator-visible shape.
+
+**Counter-argument:** Unit tests catch drift logic regressions faster. It loses because `tests/slice.rs` already drives `specify slice validate` through the same drift codes with real on-disk fixtures.
+
+**Depends on:** none.
+
+### F7 — Wire `skill_body.ts` through `walkSkillFiles`
+
+**Evidence:** `walkSkillFiles()` is defined at `scripts/checks/_shared.ts:134-147` ("Used by every skill-body discipline predicate") but never imported. `skill_body.ts` re-declares `PLUGINS_DIR` + `walk(...)` in **seven** exported predicates (`:32`, `:117`, `:190`, `:238`, `:342`, `:419`, `:451`).
+
+```text
+rg 'const PLUGINS_DIR = join\(REPO_ROOT, "plugins"\)' scripts/checks/skill_body.ts
+→ 7 matches
+rg 'walkSkillFiles' scripts/checks/
+→ 1 match (_shared.ts definition only)
+```
+
+**Action:**
+1. Import `walkSkillFiles` from `./_shared.ts` in `skill_body.ts`.
+2. Replace each inline `walk(PLUGINS_DIR, { match: [/SKILL\.md$/], …})` loop with `for (const path of await walkSkillFiles())`.
+3. Delete the seven redundant `PLUGINS_DIR` declarations and duplicate traversal blocks.
+
+**Quality delta:** `−52 LOC, −6 duplicate walks, lower check-script maintenance`.
+
+**Net LOC:** `skill_body.ts` **524 → ~472**.
+
+**Done when:** `rg 'const PLUGINS_DIR' scripts/checks/skill_body.ts` returns **0**; `make check` passes.
+
+**Rule?** no — dead helper already documented as the canonical walk.
+
+**Counter-argument:** Inline walks are self-contained per predicate. It loses because the traversal rules (symlink skip) must stay identical and `_shared.ts` already owns them.
+
+**Depends on:** none.
+
+## One-Touch Tidies
+
+### T1 — Fix execute skill outcome drift
+
+**Evidence:** [`plugins/spec/skills/execute/SKILL.md:40`](plugins/spec/skills/execute/SKILL.md) says phase skills "reads their phase outcome from `.metadata.yaml`" — contradicts [`phase-outcome-contract.md:3-5`](plugins/spec/references/phase-outcome-contract.md). Critical Path step 4 (`:15`) and § Stop conditions (`:50-56`) restate the same three terminal cases verbatim.
+
+**Action:**
+1. Line 40: replace with "reads slice lifecycle from `.metadata.yaml` and phase exit codes; not an on-disk outcome field."
+2. Delete § Stop conditions (`:50-58`); CP step 4 already links [`stop-conditions.md`](plugins/spec/skills/execute/references/stop-conditions.md).
+
+**Quality delta:** `−10 LOC, −1 wire-contract defect, −1 duplicate section`.
+
+**Net LOC:** `execute/SKILL.md` **72 → ~62**.
+
+**Done when:** `rg 'phase outcome' plugins/spec/skills/execute/SKILL.md` returns **0**; `make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** Stop conditions inline aid skimming. It loses because the reference file is the single writer and duplication already drifted once.
+
+**Depends on:** none.
+
+### T2 — Delete ghost outcome-restatement predicate claim
+
+**Evidence:** [`docs/standards/skill-authoring.md:51`](docs/standards/skill-authoring.md) claimed mechanical enforcement for the phase-outcome one-line link rule, but no matching predicate exists under `scripts/` (and this pass does not add one).
+
+**Action:** Delete the false "Mechanically enforced by …" sentence from rule 4; keep the one-line link rule itself.
+
+**Quality delta:** `−1 LOC, −1 doc/implementation drift`.
+
+**Net LOC:** `skill-authoring.md` **154 → 153**.
+
+**Done when:** no repo references to the retired predicate name; `make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** The predicate should be implemented instead. It loses because this pass forbids new xtask predicates; deleting the false claim is the smallest honest fix.
+
+**Depends on:** F1 (merge brief cleanup makes the ghost claim moot).
+
+### T3 — Delete stale checks.md §2
+
+**Evidence:** [`docs/contributing/checks.md:27-29`](docs/contributing/checks.md) documents "### 2. Stale claims" pointing at `scripts/check.ts`, but `rg 'Stale claims|checkStale' scripts/checks/` returns **0** — no predicate implements it.
+
+**Action:** Delete §2 and renumber subsequent sections.
+
+**Quality delta:** `−4 LOC, −1 doc drift`.
+
+**Net LOC:** `checks.md` **218 → ~214**.
+
+**Done when:** `rg 'Stale claims' docs/contributing/checks.md` returns **0**; `make check` passes.
+
+**Rule?** no.
+
+**Counter-argument:** The check may be planned. It loses because contributors currently believe CI enforces something that does not run.
+
+**Depends on:** none.
+
+### T4 — Collapse validate JSON-schema boilerplate
+
+**Evidence:** Identical serialize → `validate_value` → filter `Fail` → `Error::Validation` pattern:
+
+```text
+crates/domain/src/schema.rs:52-67         validate_plan
+crates/domain/src/slice/fusion.rs:174-189 FusionIndex::validate
+```
+
+**Action:**
+1. Add `fn validate_serialisable<T: Serialize>(value: &T, schema: &str, rule_id: &str, rule: &str) -> Result<(), Error>` beside `validate_value` in `schema.rs` (**~10 LOC**).
+2. Replace both call-site blocks with one-liners.
+
+**Quality delta:** `−14 LOC net, −1 duplicate branch cluster`.
+
+**Net LOC:** combined **−14**.
+
+**Done when:** `rg -c 'filter\(\|s\| s\.status == ValidationStatus::Fail\)' crates/domain/src/slice/fusion.rs crates/domain/src/schema.rs` drops from **2** to **0**; `cargo test validates_against_embedded_schema -p specify-domain` passes.
+
+**Rule?** no — two sites only.
+
+**Counter-argument:** Inline validation is explicit about which schema failed. It loses because the filter/collect/error path is byte-identical.
+
+**Depends on:** none.
 
 ## Post-mortem
 
-- **F2**: actual −77 LOC (30 insertions, 107 deletions across `src/commands/change.rs` and `src/commands/change/survey.rs`) vs predicted −27; the ~50-LOC beat came from collapsing `survey::Form` (an internal enum, ~28 LOC of `Single { … } / Batch { … }` arms whose only consumer was `dispatch_survey`) directly into the `plan_rows` match — the REVIEW's "or a new `survey::Form::resolve(...)` taking the clap fields" parenthetical anticipated the option to keep `Form`, the implementation took the inline path and obsoleted the type. `−1 type (SurveyArgs)` and `−1 fn (dispatch_survey)` flipped clean; an additional `−1 type (Form enum)` fell out for free. The new `survey::run` takes the 7 raw clap fields directly under `#[expect(clippy::too_many_arguments, reason = "mirrors the clap-declared ChangeAction::Survey fields one-to-one")]` (Cursor's local clippy is on `-D clippy::allow_attributes` + `allow_attributes_without_reason`, so the older `#[allow]` shape no longer compiles — note for future "−27 LOC" style findings on this binary). "Done when" flipped clean: `rg 'SurveyArgs|dispatch_survey' src/` returns 0 hits (was 7). `cargo make ci` green end-to-end at 251s (lint + nextest + doc + vet + outdated + deny + fmt). No regressions — `Error::Argument { flag, detail }` payload preserved verbatim at its new site inside `plan_rows`, both mutually-exclusive clap-group shapes still resolve to the same `Row`s, and tests under `tests/cli.rs` covering `change survey` pass unchanged.
-
-- **F1**: actual −503 LOC (3 insertions, 506 deletions across 6 files in `specify-cli` — `detector.rs −108`, `registry.rs −41`, `merge.rs −66`, `survey.rs −12` net, `tests/survey.rs −277`, `schemas/surfaces.schema.json` 0 net wording tweak) vs predicted −496; tiny 7-LOC beat came from the test-block deletion landing 2 lines wider than the line-410-684 estimate (`use` block + helper struct sit just outside the banner and went too). −3 modules, −1 trait, −2 enums, −4 structs all flipped clean; the "−2 error discriminants" framing held in spirit (the strings `detector-failure` and `detector-id-collision` are gone) but they were `Error::Diag { code: "..." }` literals, never enum variants, so no `Error` discriminant arithmetic. "Done when" flipped clean: `rg --type rust 'Detector|merge_detector_outputs|with_builtins|survey::Language'` returns only the unrelated context-detect `Detector` struct in `src/commands/context/detect/runtimes.rs` (review predicted `templates/vectis/core/codegen.rs` for the `Language` enum, but that file has since moved/disappeared; the underlying point — only unrelated `Detector`/`Language` symbols survive — still holds), and the 28-test `crates/domain/tests/survey.rs` suite passes after the detector block deletion. `cargo make ci` green end-to-end at 245s (lint + nextest + doc + vet + outdated + deny + fmt). No regressions — the survey module's exports shrank to exactly what `src/commands/change/survey.rs` and `tests/survey.rs` use (`MetadataDocument`, `Surface`, `SurfaceKind`, `SurfacesDocument`, `IngestInputs`, `IngestOutcome`, `ingest`, `SourcesFile`, `validate_metadata`, `validate_surfaces`), the `Detector`-trait `Debug` impl on `dyn Detector + Send + Sync` (a cross-module orphan-rule footgun) is gone, and `make checks` in the parent repo is unchanged (15 pre-existing broken-link failures under `rfcs/archive/`, all unrelated to F1). RFC drift folded into the same set of edits: `rfc-20-survey.md` Abstract + §Future mechanical reversion + §Implementation Plan, `rfc-20-plan.md` §Conventions + §Change A + §Cross-cutting guardrails (replaced "retained" with "deleted; `git revert` is the time machine; the DTOs in `dto.rs` are the actual reversion seam"), `rfc-25-source-adapters.md` editorial banner at the top noting the adapter-keyed detector registry portions are now predicated on a prior `git revert`.
+- **F1:** actual ΔLOC **−175** vs predicted **−130** (8 files; contracts verifier collateral required for `adapters/targets` grep); done-when flipped cleanly (`rg` → 0, `make check` pass); no regressions.
+- **F2:** actual ΔLOC **−31** vs predicted **−34** (+34/−65; amend/create cycle gates added beyond action list after `amend_rejects_cycle` failed); done-when flipped cleanly (`dependency-cycle` gone, orchestrate tests + `cargo make check` pass); no regressions.
+- **F3:** actual ΔLOC **−23** vs predicted **−55** (382→359; scan helper structure offset savings); done-when flipped cleanly (removed fns gone, slice tests + `cargo make check` pass); no regressions.
+- **F4:** actual ΔLOC **−13** vs predicted **−32** (+32/−45; helper doc/errors block offset savings); done-when flipped cleanly (fusion yaml filter gone, domain + slice tests + `cargo make check` pass); no regressions.
+- **F5:** actual ΔLOC **−18** vs predicted **−65** (659→642; table inlines full EventKind payloads); done-when mostly clean (`fn event_wire_shapes` present, journal tests + `cargo make check` pass; `_wire_shape` count stays 1 because new test name contains substring); no regressions.
+- **F6:** actual ΔLOC **−170** vs predicted **−95** (843→673; sort-stability fixture was larger than estimated; orphan test never existed); done-when flipped cleanly (`detect_drift_flags_` → 0, fusion + slice tests + `cargo make check` pass); no regressions.
+- **F7:** actual ΔLOC **−56** vs predicted **−52** (524→468); done-when flipped cleanly (`PLUGINS_DIR` → 0, `make check` pass); no regressions.
+- **T1:** actual ΔLOC **−10** vs predicted **−10**; done-when flipped cleanly (`phase outcome` → 0, `make check` pass); no regressions.
+- **T2:** actual ΔLOC **−1** vs predicted **−1** (skill-authoring only; REVIEW.md T2 block reworded so repo-wide grep → 0); done-when flipped cleanly; no regressions.
+- **T3:** actual ΔLOC **−5** vs predicted **−4** (218→213; renumber 3–16→2–13); done-when flipped cleanly (`Stale claims` → 0, `make check` pass); no regressions.
+- **T4:** actual ΔLOC **−4** code-only vs predicted **−14** (+12 incl. helper doc; explicit serialise_code/label params preserved byte-identical errors); done-when flipped cleanly (filter pattern → 0, schema test + `cargo make check` pass); no regressions.

@@ -1,14 +1,17 @@
 // First-party codex rule shape (RM-03 Change 07):
-//   - discovers rule markdown under adapters/<cap>/codex/** plus
-//     the optional repo-root codex/** overlay,
+//   - discovers shared rule markdown under adapters/shared/codex/universal/**
+//     (UNI-* ids), plus per-adapter overlays at
+//     adapters/targets/<cap>/codex/** and adapters/sources/<cap>/codex/**,
 //   - validates frontmatter against codex-rule.schema.json,
-//   - enforces a `## Rule` body heading and adapter-namespace
-//     ownership (e.g. `omnia` may only emit `OMNIA-*`, `RUST-*`, `SEC-*`
-//     rule ids).
+//   - enforces a `## Rule` body heading and per-owner namespace ownership
+//     (`universal` owns shared `UNI-*`; `omnia` may only emit `OMNIA-*`,
+//     `RUST-*`, `SEC-*` rule ids; etc.).
 
 import {
+  ADAPTERS_SHARED_DIR,
   Ajv2020,
-  PROFILES_DIR,
+  SOURCES_DIR,
+  TARGETS_DIR,
   CURSOR_SCHEMA_DIR,
   fail,
   formatSchemaError,
@@ -26,60 +29,82 @@ interface CodexFile {
 }
 
 const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
+const SHARED_CODEX_OWNER = "universal";
 const CODEX_PROFILE_NAMESPACES: Record<string, Set<string>> = {
-  default: new Set(["UNI"]),
+  [SHARED_CODEX_OWNER]: new Set(["UNI"]),
   omnia: new Set(["OMNIA", "RUST", "SEC"]),
   contracts: new Set(["IFACE"]),
   vectis: new Set(["VECTIS"]),
 };
 
+const CODEX_DISCOVERY_ROOTS = [SOURCES_DIR, TARGETS_DIR];
+const SHARED_CODEX_DIR = join(ADAPTERS_SHARED_DIR, "codex", SHARED_CODEX_OWNER);
+
+// `README.md` (any case) is reserved for human-oriented index pages that
+// describe a codex directory; it is not a rule and must not be validated
+// against the rule schema. This mirrors the README convention used elsewhere
+// in the repo (per-adapter `references/`, etc.).
+function isCodexReadme(name: string): boolean {
+  return name.toLowerCase() === "readme.md";
+}
+
 async function discoverCodexRuleFiles(): Promise<string[]> {
   const paths: string[] = [];
 
-  try {
-    const stat = await Deno.stat(PROFILES_DIR);
-    if (stat.isDirectory) {
+  for (const root of CODEX_DISCOVERY_ROOTS) {
+    try {
+      const stat = await Deno.stat(root);
+      if (!stat.isDirectory) continue;
       for await (
-        const entry of walk(PROFILES_DIR, {
+        const entry of walk(root, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
         if (await underSymlink(entry.path)) continue;
-        const parts = relative(PROFILES_DIR, entry.path).split("/");
+        if (isCodexReadme(entry.name)) continue;
+        const parts = relative(root, entry.path).split("/");
         if (parts.length >= 3 && parts[1] === "codex") {
           paths.push(entry.path);
         }
       }
+    } catch {
+      // Optional root.
     }
-  } catch {
-    // No adapters/.
   }
 
-  const rootCodexDir = join(REPO_ROOT, "codex");
   try {
-    const stat = await Deno.stat(rootCodexDir);
+    const stat = await Deno.stat(SHARED_CODEX_DIR);
     if (stat.isDirectory) {
       for await (
-        const entry of walk(rootCodexDir, {
+        const entry of walk(SHARED_CODEX_DIR, {
           exts: [".md"],
           includeDirs: false,
         })
       ) {
         if (await underSymlink(entry.path)) continue;
+        if (isCodexReadme(entry.name)) continue;
         paths.push(entry.path);
       }
     }
   } catch {
-    // Repo-root codex overlay is optional.
+    // Shared codex is optional.
   }
 
   return Array.from(new Set(paths)).sort();
 }
 
-function adapterOwnerForCodexPath(path: string): string | null {
-  const parts = relative(PROFILES_DIR, path).split("/");
-  if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+function namespaceOwnerForCodexPath(path: string): string | null {
+  for (const root of CODEX_DISCOVERY_ROOTS) {
+    const rel = relative(root, path);
+    if (rel.startsWith("..") || rel.startsWith("/")) continue;
+    const parts = rel.split("/");
+    if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+  }
+  const sharedRel = relative(SHARED_CODEX_DIR, path);
+  if (!sharedRel.startsWith("..") && !sharedRel.startsWith("/")) {
+    return SHARED_CODEX_OWNER;
+  }
   return null;
 }
 
@@ -152,13 +177,13 @@ export async function validateCodexRuleShape(): Promise<void> {
     const id = fm.id;
     if (typeof id !== "string") continue;
 
-    const adapter = adapterOwnerForCodexPath(path);
-    if (!adapter) continue;
+    const owner = namespaceOwnerForCodexPath(path);
+    if (!owner) continue;
 
-    const allowedNamespaces = CODEX_PROFILE_NAMESPACES[adapter];
+    const allowedNamespaces = CODEX_PROFILE_NAMESPACES[owner];
     if (!allowedNamespaces) {
       fail(
-        `Codex namespace ownership: ${rel} — adapter '${adapter}' has no configured codex namespace owner; update scripts/checks/codex.ts before adding first-party rules here`,
+        `Codex namespace ownership: ${rel} — codex owner '${owner}' has no configured namespace; update scripts/checks/codex.ts before adding first-party rules here`,
       );
       continue;
     }
@@ -166,7 +191,7 @@ export async function validateCodexRuleShape(): Promise<void> {
     const namespace = namespaceForRuleId(id);
     if (namespace && !allowedNamespaces.has(namespace)) {
       fail(
-        `Codex namespace ownership: ${rel} — adapter '${adapter}' may only use ${
+        `Codex namespace ownership: ${rel} — codex owner '${owner}' may only use ${
           namespaceList(allowedNamespaces)
         } ids, got '${id}'`,
       );

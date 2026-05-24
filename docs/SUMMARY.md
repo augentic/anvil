@@ -7,51 +7,40 @@
 # Getting Started
 
 - [What is Specify?](orientation/index.md)
-- [Core concepts](explanation/concepts.md)
 - [Prerequisites](orientation/prerequisites.md)
-- [Quick Start (5 minutes)](tutorials/quick-start.md)
 
 ---
 
 # Tutorials
 
 - [Overview](tutorials/index.md)
-- [Your first slice](tutorials/first-change.md)
-- [Iterating on a baseline](tutorials/iterating-on-baseline.md)
-- [Brownfield onboarding](tutorials/brownfield-onboarding.md)
-- [A multi-slice change](tutorials/single-repo-change.md)
-- [Working across repos: planning](tutorials/cross-repo-change.md)
-- [Reviewing the plan](tutorials/reviewing-a-plan.md)
-- [Working across repos: executing](tutorials/cross-repo-execute.md)
-- [Working across repos: landing](tutorials/landing-a-change.md)
+- [Quick start](tutorials/quick-start.md)
+- [Your first multi-slice change](tutorials/first-change.md)
+- [Cross-repo changes](tutorials/cross-repo-change.md)
 - [Legacy migration at scale](tutorials/legacy-migration-at-scale.md)
-- [Monolith decomposition](tutorials/monolith-decomposition.md)
-- [Legacy fleet decomposition](tutorials/legacy-fleet-decomposition.md)
 
 ---
 
-# How-To Guides
+# How-to Guides
 
 - [Overview](how-to/index.md)
-- [Recover from a failed change](how-to/recover-failed-change.md)
-- [Recover from `registry-amendment-required`](how-to/recover-from-registry-amendment.md)
-- [Resolve cross-project contract warnings](how-to/resolve-cross-project-contract-warnings.md)
-- [Add a adapter to an existing project](how-to/add-adapter.md)
-- [Bootstrap a platform hub](how-to/bootstrap-a-platform-hub.md)
-- [Onboard a team member](how-to/onboard-team-member.md)
-- [Manage registry projects](how-to/manage-registry-projects.md)
-- [Work with contracts across repos](how-to/cross-repo-contracts.md)
-- [Land a change](how-to/land-a-change.md)
-- [Drop a slice](how-to/drop-a-slice.md)
 - [Drop down a layer](how-to/drop-down-a-layer.md)
-- [Troubleshooting overview](how-to/troubleshooting/index.md)
-  - [Slice lifecycle](how-to/troubleshooting/slice-lifecycle.md)
-  - [Merge problems](how-to/troubleshooting/merge.md)
-  - [Plan and execution](how-to/troubleshooting/plan-and-execution.md)
-  - [Init and adapters](how-to/troubleshooting/init-and-adapters.md)
-  - [Hub and registry](how-to/troubleshooting/hub-and-registry.md)
-  - [Contracts](how-to/troubleshooting/contracts.md)
-  - [Change landing](how-to/troubleshooting/change-landing.md)
+- [Drive a slice manually](how-to/drive-slice-manually.md)
+- [Amend a plan at Gate 1](how-to/amend-plan-at-gate-1.md)
+- [Resolve spec conflicts](how-to/resolve-spec-conflicts.md)
+- [Bind multiple sources](how-to/bind-multiple-sources.md)
+
+---
+
+# Understanding Specify
+
+- [Core concepts](explanation/concepts.md)
+- [The layered stack](explanation/layered-stack.md)
+- [Artifacts in depth](explanation/artifacts.md)
+- [Anatomy of an adapter](explanation/adapter-anatomy.md)
+- [Using artifacts with Augentic specialists](explanation/augentic-specify-usage.md)
+- [Tool declarations](explanation/tool-declarations.md)
+- [Decision log](explanation/decision-log.md)
 
 ---
 
@@ -62,75 +51,53 @@
 - [Artifact format](reference/artifact-format.md)
 - [Lifecycle](reference/lifecycle.md)
 - [Directory layout](reference/directory-layout.md)
+- [Change skills](reference/change-skills/index.md)
+  - [/spec:plan](reference/change-skills/plan.md)
+  - [/spec:execute](reference/change-skills/execute.md)
+  - [/spec:finalize](reference/change-skills/finalize.md)
 - [Slice skills](reference/slice-skills/index.md)
   - [/spec:init](reference/slice-skills/init.md)
-  - [/spec:define](reference/slice-skills/define.md)
+  - [/spec:refine](reference/slice-skills/refine.md)
   - [/spec:build](reference/slice-skills/build.md)
   - [/spec:merge](reference/slice-skills/merge.md)
   - [/spec:drop](reference/slice-skills/drop.md)
-  - [/spec:extract](reference/slice-skills/extract.md)
-- [Change skills](reference/change-skills/index.md)
-  - [/change:analyze](reference/change-skills/analyze.md)
-  - [/change:draft](reference/change-skills/draft.md)
-  - [/change:execute](reference/change-skills/execute.md)
-  - [/change:finalize](reference/change-skills/finalize.md)
 - [CLI reference](reference/cli/index.md)
-  - [specify status](reference/cli/status.md)
+  - [specify init](reference/cli/init.md)
   - [specify slice](reference/cli/slice.md)
   - [specify plan](reference/cli/plan.md)
-  - [specify change](reference/cli/change.md)
-  - [specify registry](reference/cli/registry.md)
   - [specify adapter](reference/cli/adapter.md)
-  - [specify codex](reference/cli/codex.md)
-  - [specify context](reference/cli/context.md)
-  - [specify tool](reference/cli/tool.md)
+  - [specify registry](reference/cli/registry.md)
   - [specify workspace](reference/cli/workspace.md)
+  - [specify tool](reference/cli/tool.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
-  - [specify init](reference/cli/init.md)
   - [Vectis WASI tools](reference/cli/vectis.md)
+  - [CLI output shapes](reference/cli-output-shapes.md)
 - [Plugins](reference/plugins/index.md)
-  - [Omnia](reference/plugins/omnia.md)
-  - [Vectis](reference/plugins/vectis.md)
-  - [Contract](reference/plugins/contract.md)
-  - [Change](reference/plugins/change.md)
-  - [RT](reference/plugins/rt.md)
   - [Client](reference/plugins/client.md)
-- [Adapters](reference/adapters/index.md)
-  - [Omnia adapter](reference/adapters/omnia.md)
-  - [Vectis adapter](reference/adapters/vectis.md)
-  - [Contracts adapter](reference/adapters/contracts.md)
+- [Target adapters](reference/targets/index.md)
+  - [Omnia](reference/targets/omnia.md)
+  - [Vectis](reference/targets/vectis.md)
+  - [Contracts](reference/targets/contracts.md)
 - [Registry](reference/registry.md)
-- [Change component](reference/change-component.md)
 - [Configuration files](reference/configuration.md)
 - [Declared tool helper inventory](reference/declared-tool-helper-inventory.md)
-
----
-
-# Understanding Specify
-
-- [The layered stack](explanation/layered-stack.md)
-- [Artifacts in depth](explanation/artifacts.md)
-- [Adapters and plugins](explanation/adapters-and-plugins.md)
-- [Platform repo topologies](explanation/platform-repo.md)
-- [Workspace tiers](explanation/workspace-tiers.md)
-- [Tool declarations](explanation/tool-declarations.md)
-- [Decision log](explanation/decision-log.md)
-- [Legacy migration at scale](explanation/legacy-migration-at-scale.md)
-- [Release notes](explanation/release-notes.md)
+- [Review team protocol](reference/review-team-protocol.md)
 
 ---
 
 # Appendices
 
 - [Glossary](appendices/glossary.md)
+- [Release notes](explanation/release-notes.md)
 
 ---
 
 # Contributing
 
 - [Overview](contributing/index.md)
+- [Documentation authoring standards](standards/doc-authoring.md)
 - [Skill authoring standards](standards/skill-authoring.md)
-- [Anatomy of a adapter](contributing/adapter-anatomy.md)
+- [Skill guardrails](standards/skill-guardrails.md)
 - [Plugin development](contributing/plugin-development.md)
 - [CLI architecture](contributing/cli-architecture.md)
 - [Consistency checks](contributing/checks.md)

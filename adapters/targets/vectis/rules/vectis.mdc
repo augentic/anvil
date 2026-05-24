@@ -1,0 +1,85 @@
+---
+description: Vectis target adapter context -- Crux cross-platform application generation, iOS shell development, Android shell development, and UI input artifact management (layout, tokens, assets)
+alwaysApply: true
+---
+
+# Vectis Target Adapter - Crux Cross-Platform Development
+
+## Overview
+
+The Vectis target adapter contributes its `shape` / `build` / `merge` briefs to the RFC-25 workflow. The adapter generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, and Kotlin/Jetpack Compose Android shells from synthesised Specify artifacts (`spec.md` + `design.md`) plus operator-curated `tokens.yaml` / `assets.yaml` build inputs.
+
+**Purpose**: Carry the Vectis `shape` / `build` / `merge` briefs and the references the briefs lift from, plus a `screenshots`-driven layout inferer that emits spatial Evidence for the matching source adapter.
+
+## Adapter layout
+
+```text
+/adapters/targets/vectis/
+├── adapter.yaml                     # Target adapter manifest
+├── briefs/                          # shape, build (with sub-briefs), merge
+├── codex/                           # Vectis codex rules
+├── examples/                        # Operator-facing example artifacts
+├── references/                      # Crux idiom prose, design-system docs, layout-inferer contract
+├── rules/
+│   └── vectis.mdc                   # This file
+└── schemas/                         # composition / tokens / assets JSON Schemas
+```
+
+The adapter manifest, the three briefs (`shape`, `build`, `merge`), the WASI tool declaration, the shared schemas (`composition.schema.json`, `tokens.schema.json`, `assets.schema.json`), the Vectis codex, and the operator-facing `tokens.yaml` example all live under [`adapters/targets/vectis/`](..).
+
+The eight earlier Vectis writer / reviewer / template-updater skills (`core-writer`, `core-reviewer`, `test-writer`, `ios-writer`, `ios-reviewer`, `android-writer`, `android-reviewer`, `template-updater`) were retired in Wave 2.6; their bodies live inline in [`../briefs/build.md`](../briefs/build.md) (writers and reviewers) and [`../briefs/merge.md`](../briefs/merge.md) (post-merge host cap-matrix re-verification). The `vectis:image-layout-inferer` skill body was lifted into the [`screenshots` source adapter](../../../sources/screenshots/adapter.yaml) per Wave 2.4.
+
+## Common Patterns
+
+### New Crux Application
+
+A Crux app is defined as a single feature with platforms declared in the proposal. A feature like `todo-app` with platforms `core, ios, android` produces one spec covering all behavioural requirements (core logic plus platform-specific sections), one design document, and one task list. The build brief reads `spec.md` + `design.md`, regenerates `composition.yaml` from the upstream spatial claims that core synthesis folded in, and then drives core, iOS, and Android generation in that order.
+
+### Feature Update
+
+Updated feature specs and design generate targeted changes across all affected platforms: modified Event variants and `update()` logic in the core, updated screen views in iOS and Android, and regenerated tokens if the design system changed. All changes flow from a single feature spec.
+
+### Adding a Platform
+
+When a new platform is added, the feature spec gains a new platform section (e.g., `## Android Shell Requirements`), the design gains a platform details section, and the build brief invokes the new platform's writer pass. Existing specs and code are unaffected.
+
+### Design System Update
+
+Token changes in `tokens.yaml` are picked up by each shell writer, which emits shell-local theme code under `iOS/<App>/Theme/` (iOS) and `Android/.../ui/theme/` (Android). Token changes can be part of a feature change or a standalone feature; `tokens.yaml` and `assets.yaml` remain operator-curated and are consumed by the build brief, never synthesised.
+
+## Troubleshooting
+
+### Generated Core Incomplete
+
+- Are specs complete with requirements and scenarios?
+- Does `design.md` include the full Crux type system (Model, Event, ViewModel, Effect)?
+- Are adapters explicitly listed in the design?
+
+### iOS Shell Build Fails
+
+- Does the core exist with `shared/src/app.rs`?
+- Run the explicit iOS host checks from the shell directory: `make typegen`, `make package`, and `make xcode`.
+- If those pass but the iOS app panics with "UniFFI contract version mismatch", the installed cargo-swift version is incompatible with the active Vectis version pins. Reinstall a compatible cargo-swift release and rerun the host checks.
+
+### Android Shell Build Fails
+
+- Does the core exist with `shared/src/app.rs`?
+- Was `make build` run to generate Kotlin types and UniFFI bindings?
+- Is `org.gradle.java.home` set to Java 21 in `gradle.properties`?
+- Does the `Application` class set `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded?
+- Are Rust Android targets installed? (`rustup target list --installed | grep android`)
+
+### Tests Don't Match Expected Behavior
+
+- Are spec scenarios accurate?
+- Were requirements changed after generation?
+
+## Related Documentation
+
+- See the project rule (`.cursor/rules/project.mdc`) for overall project context
+- [Vectis target adapter manifest](../adapter.yaml)
+- [`shape` brief](../briefs/shape.md) — idiom guidance core synthesis folds into `spec.md` + `design.md`
+- [`build` brief](../briefs/build.md) — code generation + `composition.yaml` regeneration
+- [`merge` brief](../briefs/merge.md) — landing + host cap-matrix re-verification
+- [Vectis references](../references/) — Crux patterns, design-system docs, layout-inferer contract
+- [Specify Artifact Guidance Supplement](../../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks

@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs all seven plugins (Specify, Change, Omnia, Vectis, Contract, RT, Client) and their skills.
+This installs the bundled plugins (Specify, Capture, Client) and their skills. Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](../../adapters/targets/), not in plugins.
 
 ## The `specify` CLI
 
@@ -82,7 +82,7 @@ Depending on which adapter you use, you may need additional tooling.
 - Python 3 (required by rust-android-gradle)
 - Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
 
-See the [Vectis plugin reference](../reference/plugins/vectis.md) for complete setup instructions.
+See the [Vectis target adapter reference](../reference/targets/vectis.md) for complete setup instructions.
 
 ## Verify your setup
 

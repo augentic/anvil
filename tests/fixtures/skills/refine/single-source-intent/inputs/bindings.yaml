@@ -1,0 +1,12 @@
+slice:
+  name: add-search-filter
+  target: omnia
+  project: identity-svc
+  sources:
+    - key: intent
+      candidate: add-search-filter
+  status: in-progress
+plan-sources:
+  intent:
+    adapter: intent
+    value: "Add a search filter to the user list."

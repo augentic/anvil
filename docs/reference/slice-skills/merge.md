@@ -1,72 +1,72 @@
 # /spec:merge
 
-Merge a completed slice into the baseline.
+Merge a built slice into the baseline — apply spec deltas, archive the slice, stamp the plan entry `done`.
 
 ## Synopsis
 
 ```text
-/spec:merge [change-name?]
+/spec:merge [slice-name]
 ```
 
 ## Arguments
 
 | Argument | Required | Description |
-|----------|----------|-------------|
-| `change-name` | No | Name of the slice to merge. If omitted, uses the only active slice or prompts for selection. |
+| -------- | -------- | ----------- |
+| `slice-name` | No | Name of the slice to merge. When omitted, uses the active `in-progress` entry from `specify plan next`. |
 
 ## When to use
 
-- All tasks are complete and you want to finalise the slice.
+- All tasks are complete (slice is `built`) and you want to fold deltas into the baseline.
+- `/spec:execute` reached the merge phase or you ran build successfully as a breakout.
+
+Not when the slice is still `refining` or `refined` (use [/spec:build](build.md)).
 
 ## Artifacts produced
 
 | Artifact | Location | Content |
-|----------|----------|---------|
-| Merged baseline specs | `.specify/specs/<adapter>/spec.md` | Updated or new baseline spec files |
-| Adapter output files | Adapter-owned paths such as `contracts/` or generated source trees | Updated project outputs produced by the slice |
-| Merged baseline composition (Vectis) | `.specify/specs/composition.yaml` | Updated baseline screen layouts |
-| Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | The full slice directory, preserved for audit |
+| -------- | -------- | ------- |
+| Merged baseline specs | `.specify/specs/<unit>/spec.md` | Updated baseline spec files |
+| Adapter output files | Project paths (`crates/`, `contracts/`, …) | Code or contracts from the slice |
+| Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | Full slice directory for audit |
+| Per-entry `done` | `plan.yaml` | Written only by `specify slice merge` |
 
 ## Behavior
 
-1. Validates that the slice is in `complete` state.
-2. Previews the merge via `specify slice merge preview` -- shows what will change in the baseline.
-3. Checks for baseline drift via `specify slice merge conflict-check` -- detects whether the baseline has changed since define.
-4. Confirms with the user (unless running non-interactively).
-5. Runs `specify slice merge run` which:
-   - Applies spec deltas to the baseline.
-   - Copies contract files into `contracts/` using opaque file replacement -- files that share a path are replaced; files absent from the slice are left untouched.
-   - Applies composition deltas to the baseline `composition.yaml` (Vectis only -- screen-level `added`/`modified`/`removed` operations with per-screen checksum conflict detection).
-   - Validates coherence of the merged baseline.
-   - Transitions the slice to `merged`.
-   - Moves the slice directory to the archive.
-   - **Workspace clone auto-commit.** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `.specify/project.yaml`), `specify slice merge run` auto-commits only `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Project-output residue outside those two trees is left uncommitted for `/change:execute`, which commits it as `specify: residue <slice-name>` before marking a routed plan entry `done`. If the merge commit fails, the spec merge still succeeds -- the commit failure is a warning. The operator publishes prepared branches via `specify workspace push`.
-6. Writes phase outcome. On the success path, `specify slice merge run` stamps the outcome automatically -- the skill does not call `outcome set` separately. On failure or deferred paths, the skill writes the outcome via `specify slice outcome set`.
+1. **Resolve active slice** — `specify plan next`; validate optional `[slice-name]` matches active entry.
+2. **Acquire plan lock** when invoked standalone.
+3. **Workspace routing** — `chdir` into workspace slot when `project` is set.
+4. **Refuse if not `built`** — hint toward `/spec:build` or report already finalised.
+5. **Run target merge brief** — pre-merge gates (cargo, clippy, tests, adapter-specific validators).
+6. **Apply merge** — `specify slice merge run <slice>` applies deltas, transitions slice to `merged`, archives slice dir, stamps plan entry `done`.
+7. **Post-merge hook** — some targets re-validate promoted baseline; failures are observability only (merge already landed).
+
+Use `specify slice merge preview` to preview without writing. Use `specify slice merge conflict-check` to probe baseline drift.
 
 ## Lifecycle transitions
 
-`complete --> merged`
+`built → merged`; per-entry: `in-progress → done`
 
 ## Error modes
 
 | Error | Cause | Resolution |
-|-------|-------|------------|
-| Change not complete | Tasks remain unfinished | Run `/spec:build` to complete remaining tasks |
-| Conflict detected | Baseline changed since define (another slice merged) | Re-run `/spec:define` to update specs against current baseline, or resolve conflicts manually |
-| Coherence failure | Merged baseline has structural issues | Fix spec files and retry |
+| ----- | ----- | ---------- |
+| Slice not built | Tasks incomplete or still `refined` | Run `/spec:build` |
+| Baseline conflict | Baseline changed since refine | Re-refine or resolve conflicts manually |
+| Pre-merge gate failure | Target validation failed | Fix and re-run merge |
+| Already finalised | Slice `merged` or `dropped` | No action needed |
 
 ## Examples
 
 ```text
-# Merge the only active slice
+# Merge the active in-progress slice
 /spec:merge
 
-# Merge a specific change
-/spec:merge add-auth
+# Merge a specific slice
+/spec:merge fix-typo
 ```
 
 ## See also
 
-- [/spec:build](build.md) -- complete tasks before merging
-- [Lifecycle](../lifecycle.md) -- the merged state and archiving
-- [Directory Layout](../directory-layout.md) -- where archived changes go
+- [/spec:build](build.md) — complete tasks before merging
+- [Lifecycle](../lifecycle.md) — merged state and archiving
+- [Directory layout](../directory-layout.md) — archive paths

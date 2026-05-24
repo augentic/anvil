@@ -1,0 +1,10 @@
+## Likely divergences
+
+### identity-session-expiry
+
+| source                | summary                                                               |
+|-----------------------|-----------------------------------------------------------------------|
+| identity-design-notes | Session tokens expire after 60 minutes of inactivity.                 |
+| legacy-monolith       | Session tokens expire after 24 hours of absolute lifetime.            |
+
+Propose merged the two `session-expiry` candidates because they describe the same operator-visible concept (token expiry), but the numeric values disagree. Slice-time synthesis is expected to surface `[divergence]` once `Evidence` lands. Operator acknowledges or rejects at Gate 1 via `specify plan amend identity-session-expiry --divergence accepted` (or `rejected`).

@@ -1,0 +1,159 @@
+# Expected Evidence for candidate `archive` under `<source-key>: screens`.
+# The `archive` screen reuses the `task-row` group skeleton from `task-list`;
+# stage 6 of `screenshots.extract` promotes the second occurrence to
+# `component: task-row` (and back-fills the same slug on the first when the
+# brief sees both candidates in the same run).
+
+source: screens
+adapter: screenshots
+authority: documentation
+candidate: archive
+
+claims:
+  - kind: region
+    claim-id: archive.header
+    path: task-list-two-screen.png
+    screen: archive
+    region: header
+    title: Archive
+
+  - kind: region
+    claim-id: archive.body
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+
+  - kind: region
+    claim-id: archive.states.empty
+    path: task-list-two-screen.png
+    screen: archive
+    region: states.empty
+    state_when: tasks.is_empty
+    state_replaces: body
+
+  - kind: container
+    claim-id: archive.header.leading
+    path: task-list-two-screen.png
+    screen: archive
+    region: header
+    parent: archive.header
+    container: group
+    direction: row
+
+  - kind: container
+    claim-id: archive.body.tasks
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body
+    container: list
+    each: tasks
+    style: plain
+
+  - kind: container
+    claim-id: archive.body.tasks.task-row
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks
+    container: group
+    component: task-row
+    direction: row
+    gap: md
+    padding: md
+    align: center
+
+  - kind: container
+    claim-id: archive.body.tasks.task-row.title-stack
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks.task-row
+    container: group
+    direction: column
+    gap: xs
+    size:
+      width: fill
+
+  - kind: container
+    claim-id: archive.states.empty.hero
+    path: task-list-two-screen.png
+    screen: archive
+    region: states.empty
+    parent: archive.states.empty
+    container: group
+    direction: column
+    gap: md
+    padding: lg
+    align: center
+    justify: center
+
+  - kind: leaf
+    claim-id: archive.header.leading.back
+    path: task-list-two-screen.png
+    screen: archive
+    region: header
+    parent: archive.header.leading
+    leaf: icon-button
+    name: chevron-left
+    label: Back
+
+  - kind: leaf
+    claim-id: archive.body.tasks.task-row.checkbox
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks.task-row
+    leaf: checkbox
+    label: Restore task
+
+  - kind: leaf
+    claim-id: archive.body.tasks.task-row.title-stack.title
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks.task-row.title-stack
+    leaf: text
+    role: heading
+    style: body
+
+  - kind: leaf
+    claim-id: archive.body.tasks.task-row.title-stack.subtitle
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks.task-row.title-stack
+    leaf: text
+    style: caption
+    color: on-surface-variant
+
+  - kind: leaf
+    claim-id: archive.body.tasks.task-row.chevron
+    path: task-list-two-screen.png
+    screen: archive
+    region: body
+    parent: archive.body.tasks.task-row
+    leaf: icon
+    name: chevron-right
+    color: on-surface-variant
+
+  - kind: leaf
+    claim-id: archive.states.empty.hero.title
+    path: task-list-two-screen.png
+    screen: archive
+    region: states.empty
+    parent: archive.states.empty.hero
+    leaf: text
+    content: Nothing archived yet
+    style: title
+
+  - kind: leaf
+    claim-id: archive.states.empty.hero.subtitle
+    path: task-list-two-screen.png
+    screen: archive
+    region: states.empty
+    parent: archive.states.empty.hero
+    leaf: text
+    content: Completed tasks will appear here.
+    style: body
+    color: on-surface-variant

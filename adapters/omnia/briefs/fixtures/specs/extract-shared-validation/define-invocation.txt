@@ -1,2 +1,0 @@
-/spec:define extract-shared-validation \
-    --source monolith=./legacy/monolith

@@ -1,0 +1,12 @@
+version: 1
+name: identity-revamp
+lifecycle: reviewed
+sources:
+  intent:
+    adapter: intent
+    value: "Harden session cookies for the identity service."
+slices:
+  - name: session-cookie-harden
+    target: omnia
+    sources: [intent]
+    status: in-progress

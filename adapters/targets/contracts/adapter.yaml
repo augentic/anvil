@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/target.schema.json
+name: contracts
+version: 1
+axis: target
+description: API contract definition and validation
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+tools:
+  - name: contract
+    version: 0.3.0

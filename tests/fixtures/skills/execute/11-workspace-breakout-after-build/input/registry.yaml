@@ -1,0 +1,10 @@
+version: 1
+projects:
+  - name: project-a
+    url: git@github.com:example/identity-service.git
+    target: omnia
+    description: Identity service.
+  - name: project-b
+    url: git@github.com:example/audit-shipper.git
+    target: omnia
+    description: Audit log shipper.

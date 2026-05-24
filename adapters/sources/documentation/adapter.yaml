@@ -1,0 +1,7 @@
+name: documentation
+version: 1
+axis: source
+briefs:
+  enumerate: briefs/enumerate.md
+  extract: briefs/extract.md
+description: Operator-bound documentation source. Walks a read-only directory under `$SOURCE_DIR`, enumerates one candidate per top-level concept, and extracts structured `documentation`-authority Evidence (requirement, criterion, decision, section claims).

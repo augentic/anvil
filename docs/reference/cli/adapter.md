@@ -1,41 +1,33 @@
-# specify adapter
+# specify source and target resolve
 
-Adapter resolution, validation, and brief pipeline queries.
+Adapter resolution in 2.0 splits by axis. The retired `specify adapter *` verb family is replaced by two entry points.
 
-## Subcommands
+## specify source resolve
 
-### specify adapter resolve
-
-Resolve a adapter identifier or URL to its local cache path.
+Validate and locate a source adapter manifest.
 
 ```bash
-specify adapter resolve <adapter>
+specify source resolve <name>
 ```
 
-Returns the filesystem path to the cached adapter. Used by skills to locate brief files.
+Returns the adapter root, manifest path, and brief paths for `enumerate` and `extract`. Used by `/spec:plan` during enumeration and `/spec:refine` during extract.
 
-### specify adapter pipeline
+## specify target resolve
 
-Show the brief pipeline for a phase.
+Validate and locate a target adapter manifest.
 
 ```bash
-specify adapter pipeline <phase> [--change <slice-dir>] [--format json]
+specify target resolve <value>
 ```
 
-| Phase | Description |
-|-------|-------------|
-| `plan` | Briefs that drive change planning (discovery, propose, assignment) |
-| `define` | Briefs that generate artifacts (proposal, specs, composition*, design, tasks) |
-| `build` | Briefs that drive implementation |
-| `merge` | Briefs that drive spec merging |
+`<value>` may be a bare adapter name (`omnia`), a URL, or a local path. Returns manifest path and brief paths for `shape`, `build`, and `merge`. Used by `/spec:refine`, `/spec:build`, and `/spec:merge`.
 
-*\* `composition` is Vectis-adapter only.*
+## Caching
 
-Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
-
-When `--change` is provided, the `present` flag reflects whether each brief's output already exists in the given slice directory.
+Resolved manifests cache under `.specify/.cache/manifests/{sources,targets}/<name>/`. Cache layout is per-axis and disjoint from the extraction cache at `.specify/.cache/extractions/`.
 
 ## See also
 
-- [Adapters](../adapters/index.md) -- available first-party adapters and manifest structure
-- [Configuration Files](../configuration.md) -- adapter references in project.yaml
+- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) — source vs target contract
+- [Directory layout](../directory-layout.md) — adapter paths in the repo
+- [Target adapters](../targets/index.md) — first-party target adapters

@@ -1,198 +1,101 @@
-# Your First Slice
+# Your first multi-slice change
 
-This tutorial walks you through the complete Specify workflow: initialise a project, define a slice, build the implementation, and merge the result into the baseline. By the end you will understand the core define-build-merge loop that underpins everything else in Specify.
+Plan and execute a change with three slices bound to a documentation source. This tutorial assumes you completed the [Quick start](quick-start.md).
 
-**Prerequisites:** [Cursor IDE, Augentic plugins, and the `specify` CLI installed](../orientation/prerequisites.md).
+## What you will build
 
-## 1. Initialise the project
+An account-management revamp driven by written design notes: three Omnia slices (`account-registration`, `password-reset`, `account-audit-log`) that `/spec:execute` drives in plan order.
 
-Open your project in Cursor and type the following in the agent chat:
+## Prerequisites
 
-```text
-/spec:init https://github.com/augentic/specify/adapters/omnia
-```
+- Completed [Quick start](quick-start.md)
+- A `documentation` source path with design notes (or use your own `./design-notes/account` tree)
 
-> Replace `omnia` with `vectis` if you are building a cross-platform Crux application.
+## Step 1 — Plan with a documentation source
 
-<details>
-<summary>Expected output</summary>
+Bind a filesystem path instead of inline intent:
 
 ```text
-Specify Initialized
-  Adapter: omnia@latest
-  Project config: .specify/project.yaml
-  Agent context: AGENTS.md
-  Context lock: .specify/context.lock
-  Cache: .specify/.cache/omnia/
+/spec:plan account-revamp source docs=./design-notes/account
 ```
 
-</details>
+The plan enumerates the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
 
-Specify creates the `.specify/` directory:
-
-```
-AGENTS.md                  # generated agent context
-.specify/
-├── project.yaml           # project configuration
-├── context.lock           # context freshness fingerprint
-├── .cache/omnia/           # cached adapter and briefs
-├── slices/                # will hold active slices
-├── specs/                 # will hold merged baseline specs
-└── archive/               # will hold finalized slices
-```
-
-Open `.specify/project.yaml` and review it. This is where you describe your project's domain, tech stack, and any constraints the agent should know about. Customise it to match your project.
-
-## 2. Define a slice
-
-Now describe what you want to build:
-
-```text
-/spec:define "Add a greeting endpoint that accepts a name and returns a personalised message"
-```
-
-<details>
-<summary>Expected output</summary>
-
-```text
-Slice created: add-greeting-endpoint
-
-Generating artifacts...
-  ✓ proposal.md
-  ✓ specs/greeting/spec.md
-  ✓ design.md
-  ✓ tasks.md
-
-Slice defined (4 tasks).
+```yaml
+version: 1
+name: account-revamp
+sources:
+  docs:
+    adapter: documentation
+    path: ./design-notes/account
+slices:
+  - name: account-registration
+    target: omnia
+    sources:
+      - key: docs
+        candidate: account-registration
+    status: pending
+  - name: password-reset
+    target: omnia
+    sources:
+      - key: docs
+        candidate: password-reset
+    status: pending
+  - name: account-audit-log
+    target: omnia
+    sources:
+      - key: docs
+        candidate: account-audit-log
+    status: pending
 ```
 
-</details>
+Each slice row maps one candidate from `discovery.md` to a unit of work.
 
-Specify generates four artifacts (five for the Vectis adapter, which adds `composition.yaml` for screen layout):
+## Step 2 — Inspect at Gate 1
 
-1. **`proposal.md`** -- captures the motivation and scope. It names the adapters that will be affected.
-2. **`specs/greeting/spec.md`** -- behavioral requirements with scenarios:
-   - `REQ-001`: The system SHALL accept a name and return a greeting.
-   - Scenario: WHEN a valid name is provided, THEN return "Hello, {name}!".
-   - Scenario: WHEN the name is empty, THEN return an error.
-3. **`design.md`** -- the technical shape: domain model, API contract, error handling.
-4. **`tasks.md`** -- the implementation checklist with checkboxes.
+Before stamping `reviewed`, read:
 
-Take a moment to read each artifact. Notice how they separate concerns: the proposal says *why*, the specs say *what*, the design says *how*, and the tasks say *in what order*.
+- **`change.md`** — scope and any tentative merge notes
+- **`plan.yaml`** — slice names, source bindings, dependency order
+- **`discovery.md`** — full candidate inventory
 
-## 3. Check status
-
-At any point you can check where things stand:
+Amend if needed:
 
 ```bash
-specify status
+specify plan amend account-revamp --add-source ...
+specify plan transition account-revamp reviewed
 ```
 
-<details>
-<summary>Expected output</summary>
+See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
+
+## Step 3 — Execute and watch per-entry status
 
 ```text
-Active slices:
-  add-greeting-endpoint  defined  (4 tasks, 0 complete)
+/spec:execute
 ```
 
-</details>
+Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.
 
-You will see the slice listed with status `defined`, all artifacts marked complete, and the task count.
+Only one entry is `in-progress` at a time. `specify plan next` picks the next eligible slice. Each slice gets its own directory under `.specify/slices/<name>/`.
 
-## 4. Build the implementation
+If you need to run one phase by hand (a **breakout**), cancel execute and invoke `/spec:refine`, `/spec:build`, or `/spec:merge` directly. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Now implement the slice:
+## Step 4 — Finalize when drained
+
+When all three entries are `done`:
 
 ```text
-/spec:build
-```
-
-<details>
-<summary>Expected output</summary>
-
-```text
-Building add-greeting-endpoint...
-  ✓ 1.1 Generate the domain crate
-  ✓ 1.2 Generate test suites
-  ✓ 1.3 Verify and review output
-  ✓ 1.4 Final verification
-
-Implementation Complete
-  Tasks: 4/4 done
-```
-
-</details>
-
-The agent reads the build brief and works through the tasks in `tasks.md`. For each task:
-
-- If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
-- If the task has no tag, the agent implements it using the adapter's default build instruction.
-
-As each task completes, the agent marks it done via `specify slice task mark`. You can watch the checkboxes flip in `tasks.md`.
-
-When all tasks are complete, the slice transitions to `complete`.
-
-## 5. Merge into the baseline
-
-Finalise the slice:
-
-```text
-/spec:merge
-```
-
-<details>
-<summary>Expected output</summary>
-
-```text
-Merge preview:
-  + specs/greeting/spec.md (new adapter)
-
-Merge complete.
-  Baseline updated: .specify/specs/greeting/spec.md
-  Archived: .specify/archive/2026-04-27-add-greeting-endpoint/
-```
-
-</details>
-
-The agent:
-
-1. **Previews** the merge -- shows what will be added to the baseline.
-2. **Checks for conflicts** -- verifies the baseline has not changed since you defined the slice.
-3. **Asks for confirmation.**
-4. **Merges** -- applies the spec deltas to `.specify/specs/` and archives the slice.
-
-After merging, look at `.specify/specs/`:
-
-```
-.specify/specs/
-└── greeting/
-    └── spec.md    # your greeting spec is now part of the baseline
-```
-
-This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future slices will see it and build on it. The slice directory has been moved to the archive:
-
-```
-.specify/archive/
-└── 2026-04-24-add-greeting-endpoint/
-    ├── .metadata.yaml
-    ├── proposal.md
-    ├── design.md
-    ├── tasks.md
-    └── specs/greeting/spec.md
+/spec:finalize account-revamp
 ```
 
 ## What you learned
 
-- **`/spec:init`** sets up the project once.
-- **`/spec:define`** generates all artifacts from a description.
-- **`/spec:build`** implements the tasks, delegating to specialist skills.
-- **`/spec:merge`** applies specs to the baseline and archives the slice.
-- Artifacts separate *why*, *what*, *how*, and *sequence*.
-- The baseline accumulates over time, giving future slices context.
+- Documentation sources bind at plan time with `source docs=<adapter>:<path>`.
+- Multi-slice plans share one `change.md` and one operator review step.
+- Per-entry status tracks progress through the execute loop.
 
-If you decide a slice should not be merged, see [Drop a slice](../how-to/drop-a-slice.md) -- but for this tutorial we'll merge it.
+## Next steps
 
-## Next
-
-[Iterating on a Baseline](iterating-on-baseline.md) -- make a second slice that modifies an existing adapter and learn about delta specs.
+- [Bind multiple sources](../how-to/bind-multiple-sources.md) — fuse legacy code and docs at plan time
+- [Cross-repo changes](cross-repo-change.md) — workspace mode
+- [Lifecycle](../reference/lifecycle.md) — per-entry and slice state machines

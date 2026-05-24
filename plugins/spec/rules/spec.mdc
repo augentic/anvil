@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for defining, building, merging, and dropping slices
+description: Specify plugin context -- Specify workflow orchestration for planning, refining, building, merging, and dropping slices
 alwaysApply: true
 ---
 
@@ -7,86 +7,88 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: define a slice, build (validate and implement) a slice, merge a completed slice, drop a discarded slice, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
+This plugin provides the core Specify 2.0 workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Capture, Client) and target adapters (Omnia, Vectis, Contracts) build on.
 
-**Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
+**Purpose**: Drive the `plan -> execute` loop (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
-## Adapter Structure
+## Source / target adapter structure
 
-Adapters define the artifact graph, briefs, and heading conventions. Each adapter directory contains:
+Adapters split into two roles in 2.0:
 
-```text
-adapters/<name>/
-├── adapter.yaml
-└── briefs/
-```
+- **Source adapters** (`adapters/sources/<name>/`) supply input — `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`.
+- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `shape`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
 
-`adapter.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter.
+Each directory contains `adapter.yaml` plus operation briefs under `briefs/`.
 
-## Slice Lifecycle
+## Slice lifecycle
 
-Slices track their status in `.metadata.yaml`:
+Slices track lifecycle in `.metadata.yaml`. The fixed loop is `refine -> build -> merge`, with `drop` as the rollback path:
 
 ```text
-defining -> defined -> building -> complete -> merged
-    \          \          \
-     `-------> `-------> `-------> dropped
+refining -> refined -> built -> merged
+    \          \         \
+     `--------> `-------> `-------> dropped
 ```
 
-- **defining**: Artifacts are being generated (define in progress)
-- **defined**: All artifacts created, ready for implementation
-- **building**: Tasks are being implemented (artifacts validated on entry)
-- **complete**: All tasks done, ready to merge
-- **merged**: Specs merged into baseline, slice moved to archive
-- **dropped**: Slice moved to archive without merging specs into the baseline
+- **refining**: Slice directory created; `/spec:refine` extract + synthesis in flight
+- **refined**: Proposal, spec, design, and tasks are validated
+- **built**: All tasks done, ready to merge
+- **merged**: Delta specs merged into baseline, slice archived
+- **dropped**: Slice archived without merging into baseline
+
+Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadata.yaml`.
 
 ## Workflow
 
 ```text
-/spec:init (once per project)
+/spec:init <target>               (once per project; for a registry-only platform hub, use specify init --hub)
 
-/spec:define  ->  /spec:build  ->  /spec:merge
-                       ^
-                       |
-                  /spec:drop    (discard instead of merge)
-                  /spec:extract (extract artifacts from existing source code)
+/spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
+
+specify plan transition <name> reviewed   (Gate 1; operator-only)
+
+/spec:execute                     (drives /spec:refine -> /spec:build -> /spec:merge per slice)
+
+/spec:finalize <name>             (push branches, observe PRs, archive)
 ```
 
-- **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
-- **define**: Create a slice directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
-- **build**: Validate artifacts against `adapter.yaml` rules and cross-blueprint consistency, then implement tasks from the slice, marking them complete as you go
-- **merge**: Preview merge operations, finalize a completed slice, merge delta specs into baseline
-- **drop**: Discard an active slice, set `status: dropped`, and move it to archive without merging specs
-- **extract**: Extract Specify artifacts (specs + design.md) from existing source code
+Breakouts share skill bodies with the loop and are reached when `/spec:execute` parks or the operator wants to inspect a slice by hand:
+
+- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
+- **/spec:build**: Validate artifacts and implement tasks for one slice.
+- **/spec:merge**: Fold a slice's deltas into the baseline and archive it.
+- **/spec:drop**: Abandon a slice without merging.
 
 ## Troubleshooting
 
-### Project Not Initialized
+### Project not initialized
 
-- Run `/spec:init` in the project root to create the `.specify/` directory structure
-- Verify with `specify status`
+- Run `/spec:init <target>` in the project root to create `.specify/` and write `project.yaml`
+- Verify `.specify/project.yaml` exists
 
-### Change Not Found
+### Slice not found
 
-- Run `specify status` to see active slices
+- Inspect `.specify/slices/` to see active slices
 - Check the slice name matches (kebab-case)
 
-### Artifacts Incomplete
+### Artifacts incomplete
 
-- Run `specify slice status <name>` to check artifact status
-- Use `/spec:define <name> <blueprint-id>` to regenerate a single artifact
-- Use `/spec:define` to create a new change with all artifacts
+- Run `specify slice validate <name>` to check artifact status
+- Re-run `/spec:refine <name>` to regenerate artifacts for one slice
+- Re-run `/spec:plan <name> ...` to author a fresh change
 
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [Init SKILL.md](skills/init/SKILL.md) - Initialize Specify
-- [Define SKILL.md](skills/define/SKILL.md) - Create changes with artifacts
-- [Build SKILL.md](skills/build/SKILL.md) - Validate artifacts and implement change tasks
-- [Merge SKILL.md](skills/merge/SKILL.md) - Finalize completed changes
-- [Drop SKILL.md](skills/drop/SKILL.md) - Discard a slice without merging specs
-- [Extract SKILL.md](skills/extract/SKILL.md) - Extract artifacts from existing source code
-- [Specify Artifact Specification](../references/specify.md) - Artifact format details
+- [Init SKILL.md](skills/init/SKILL.md) — Initialize Specify
+- [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
+- [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice
+- [Build SKILL.md](skills/build/SKILL.md) — Validate artifacts and implement tasks
+- [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices
+- [Drop SKILL.md](skills/drop/SKILL.md) — Discard a slice without merging specs
+- [Execute SKILL.md](skills/execute/SKILL.md) — Drive the full loop
+- [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
+- [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 
 ## Specification
 

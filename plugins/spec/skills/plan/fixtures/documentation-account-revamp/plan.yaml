@@ -1,0 +1,25 @@
+version: 1
+name: account-revamp
+sources:
+  docs:
+    adapter: documentation
+    path: ./design-notes/account
+slices:
+  - name: account-registration
+    target: omnia
+    sources:
+      - key: docs
+        candidate: account-registration
+    status: pending
+  - name: password-reset
+    target: omnia
+    sources:
+      - key: docs
+        candidate: password-reset
+    status: pending
+  - name: account-audit-log
+    target: omnia
+    sources:
+      - key: docs
+        candidate: account-audit-log
+    status: pending

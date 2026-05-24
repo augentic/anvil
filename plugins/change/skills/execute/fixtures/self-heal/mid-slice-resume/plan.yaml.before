@@ -1,9 +1,0 @@
-name: platform-v2
-
-sources:
-  catalog: git@github.com:org/catalog-service.git
-
-changes:
-  - name: product-catalog
-    sources: [catalog]
-    status: in-progress

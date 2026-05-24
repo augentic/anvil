@@ -1,8 +1,8 @@
 # Skill Authoring Standards
 
-Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make checks` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
+Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make check` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
 
-This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. `/spec:extract` migrating off a legacy codebase).
+This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. the `code-typescript` source adapter consuming a legacy codebase).
 
 ## Description grammar
 
@@ -39,7 +39,7 @@ All caps are floors, not budgets — overflow means the relocate-to-`references/
 
 Long-form rules, code-block examples, output templates, and edge-case enumerations belong in siblings the SKILL.md body links to (Anthropic's [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns) pattern). The SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; sibling files (`references/`, `examples/`, topical files) carry the prose.
 
-Push prose to `references/<topic>.md` (or, for cross-skill prose, [plugins/references/](../../plugins/references/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
+Push prose to `references/<topic>.md` (or, for cross-skill prose, the relevant tree under [docs/](../../docs/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
 
 ## Skill body discipline
 
@@ -48,23 +48,56 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
 3. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](../explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
-4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.
+4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).`
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [plugins/references/guardrails.md](../../plugins/references/guardrails.md). SKILL.md files **link** to them; they do **not** restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [docs/standards/skill-guardrails.md](./skill-guardrails.md). SKILL.md files **link** to them; they do **not** restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
 
 The canonical "skills MUST NOT" list:
 
-- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition`, `specify slice outcome set`, `specify slice journal append`, or `specify plan transition`.
-- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify change draft`; the CLI owns directory shape.
-- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge run`, `specify slice drop`, `specify plan archive`, and `specify change finalize`.
+- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
+- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
+- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan finalize`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
-- **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with a stable anchor instead.
+- **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with a stable anchor instead.
+
+## Brief authoring
+
+Adapter briefs live at `adapters/targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/briefs/{enumerate,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+
+Briefs split into two roles:
+
+- **Parent briefs** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-briefs by relative-link instruction. The CLI resolves only the parent path declared in `adapter.yaml`; the agent walks links into sub-briefs.
+- **Phase sub-briefs** carry the operational body of one phase. They live under `adapters/targets/<name>/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/briefs/extract/<axis>.md`.
+
+The discipline:
+
+1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by `checkBriefNoFrontmatter` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
+2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `checkBriefSize` in [scripts/checks/brief_size.ts](../../scripts/checks/brief_size.ts).
+3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `checkBriefSize`.
+4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as `checkMarkdownLinks` failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
+5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite "see worked example [examples/…]"; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
+
+The pattern that emerges:
+
+```text
+adapters/targets/<name>/briefs/
+  shape.md                  parent: synthesis idiom guidance, <=150 LOC
+  build.md                  parent: orchestrator, <=150 LOC
+  merge.md                  parent: pre-merge gate, <=150 LOC
+  build/<phase>.md          phase sub-brief, soft cap 500 / hard cap 800 LOC
+
+plugins/<name>/references/
+  <topic>.md                load-on-demand depth
+  examples/<flavour>/...    worked examples (no size cap)
+```
+
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/briefs/extract/<axis>.md`).
 
 ## Envelope examples and wire contract
 
-CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. `checkNoEnvelopeExamples` flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the predicate is intentionally narrow.
+CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. `checkNoEnvelopeExamples` flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the predicate is intentionally narrow.
 
 The wire contract itself — exit codes, kebab-case `error` discriminants, the `envelope-version` floor — is owned by the CLI repo. See [cli-contract.md](cli-contract.md) for the surface skills depend on and the link to the authoritative exit-code table.
 
@@ -75,7 +108,7 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+The phase skills (`/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:execute`, `/spec:finalize`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
 

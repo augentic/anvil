@@ -6,7 +6,7 @@
 //     briefs and skill bodies.
 
 import {
-  PROFILES_DIR,
+  TARGETS_DIR,
   fail,
   join,
   parseYaml,
@@ -26,7 +26,7 @@ interface ExpectedToolDeclaration {
   package: string;
 }
 
-const PACKAGE_RE = /^specify:([a-z][a-z0-9-]*)@(\d+\.\d+\.\d+)$/;
+const VERSION_RE = /^(\d+\.\d+\.\d+)$/;
 
 const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
   {
@@ -41,70 +41,83 @@ const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
   },
 ];
 
+// Resolve the per-target tool declaration map keyed by tool name and yielding
+// the canonical `specify:<name>@<version>` package request for comparison
+// against the expected first-party list.
+//
+// First-party tools are declared inline in `adapters/targets/<name>/adapter.yaml` under
+// `tools[]` ({ name, version } objects validated by `target.schema.json`). The
+// 1.x `adapters/<name>/tools.yaml` sidecar shape was retired at the 2.0 cut.
+async function resolveAdapterDeclarations(
+  adapter: string,
+): Promise<{ rel: string; declarations: Map<string, string> } | null> {
+  const targetManifestPath = join(TARGETS_DIR, adapter, "adapter.yaml");
+  let stat: Deno.FileInfo;
+  try {
+    stat = await Deno.stat(targetManifestPath);
+  } catch {
+    return null;
+  }
+  if (!stat.isFile) return null;
+
+  const rel = relative(REPO_ROOT, targetManifestPath);
+  const manifest = parseYaml(
+    await Deno.readTextFile(targetManifestPath),
+  ) as ToolManifest;
+  const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
+  const declarations = new Map<string, string>();
+  for (const tool of tools) {
+    if (typeof tool !== "object" || tool === null) {
+      fail(
+        `First-party tool declaration: ${rel} — \`tools[]\` entries must be { name, version } objects under target.schema.json`,
+      );
+      continue;
+    }
+    const entry = tool as Record<string, unknown>;
+    const name = entry.name;
+    const version = entry.version;
+    if (typeof name !== "string" || typeof version !== "string") {
+      fail(
+        `First-party tool declaration: ${rel} — tool object must carry string \`name\` and \`version\` fields`,
+      );
+      continue;
+    }
+    if (!VERSION_RE.test(version)) {
+      fail(
+        `First-party tool declaration: ${rel} — tool '${name}' version '${version}' must be \`<major>.<minor>.<patch>\` without prerelease metadata`,
+      );
+      continue;
+    }
+    declarations.set(name, `specify:${name}@${version}`);
+  }
+  return { rel, declarations };
+}
+
 export async function checkFirstPartyToolDeclarations(): Promise<void> {
-  const declarationsByAdapter = new Map<
+  const cache = new Map<
     string,
-    Map<string, string>
+    { rel: string; declarations: Map<string, string> } | null
   >();
 
   for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
-    if (declarationsByAdapter.has(expected.adapter)) continue;
-    const manifestPath = join(
-      PROFILES_DIR,
-      expected.adapter,
-      "tools.yaml",
-    );
-    const rel = relative(REPO_ROOT, manifestPath);
-    let manifest: ToolManifest;
-    try {
-      manifest = parseYaml(
-        await Deno.readTextFile(manifestPath),
-      ) as ToolManifest;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      fail(`First-party tool declaration: ${rel} — cannot read or parse: ${msg}`);
-      continue;
+    let resolved = cache.get(expected.adapter);
+    if (resolved === undefined) {
+      resolved = await resolveAdapterDeclarations(expected.adapter);
+      cache.set(expected.adapter, resolved);
     }
+    if (!resolved) continue;
 
-    const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
-    const declarations = new Map<string, string>();
-    for (const tool of tools) {
-      if (typeof tool !== "string") {
-        fail(
-          `First-party tool declaration: ${rel} — entries must be scalar package requests`,
-        );
-        continue;
-      }
-      const match = PACKAGE_RE.exec(tool);
-      if (!match) {
-        fail(
-          `First-party tool declaration: ${rel} — '${tool}' must be an exact specify:*@<semver> package request without prerelease metadata`,
-        );
-        continue;
-      }
-      declarations.set(match[1], tool);
-    }
-    declarationsByAdapter.set(
-      expected.adapter,
-      declarations,
-    );
-  }
-
-  for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
-    const rel = `adapters/${expected.adapter}/tools.yaml`;
-    const packageRequest = declarationsByAdapter
-      .get(expected.adapter)
-      ?.get(expected.name);
+    const packageRequest = resolved.declarations.get(expected.name);
     if (!packageRequest) {
       fail(
-        `First-party tool declaration: ${rel} — missing tool '${expected.name}'`,
+        `First-party tool declaration: ${resolved.rel} — missing tool '${expected.name}'`,
       );
       continue;
     }
 
     if (packageRequest !== expected.package) {
       fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' package must be '${expected.package}'`,
+        `First-party tool declaration: ${resolved.rel} — '${expected.name}' package must be '${expected.package}'`,
       );
     }
   }
@@ -165,15 +178,22 @@ const RETIRED_HELPER_PATTERNS: RetiredHelperPattern[] = [
 async function activeBriefAndSkillFiles(): Promise<string[]> {
   const files: string[] = [];
 
-  for await (
-    const entry of walk(PROFILES_DIR, {
-      exts: [".md"],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const parts = relative(PROFILES_DIR, entry.path).split("/");
-    if (parts.length >= 3 && parts[1] === "briefs") files.push(entry.path);
+  try {
+    const stat = await Deno.stat(TARGETS_DIR);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(TARGETS_DIR, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        if (await underSymlink(entry.path)) continue;
+        const parts = relative(TARGETS_DIR, entry.path).split("/");
+        if (parts.length >= 3 && parts[1] === "briefs") files.push(entry.path);
+      }
+    }
+  } catch {
+    // Optional root.
   }
 
   const pluginsDir = join(REPO_ROOT, "plugins");

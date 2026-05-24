@@ -22,10 +22,10 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Keep the CLI authoritative.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
 - **Treat `registry.yaml` as a projection.** Rich catalog metadata can live in Backstage or another catalog; Specify should consume reviewable registry projections for routing, workspace sync, and execution.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; codex rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
-- **Optimize for local first, cloud later.** `/change:execute loop` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
+- **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo linting and consumer-project review. The planned `specify check` linter and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `framework-check` validator and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
 
 ## Sequenced Roadmap
 
@@ -41,7 +41,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 #### RM-07: RFC-4 Option 1: typed skill expression
 
-**Goal:** Add deterministic structural validation for skill authoring inside `specify check`.  
+**Goal:** Add deterministic structural validation for skill authoring inside `framework-check`.  
 **Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.  
 **Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
 
@@ -52,7 +52,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** RM-03 resolved codex export.
+**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
 **Target surface:**
 
 ```bash
@@ -61,7 +61,7 @@ specify review --slice <name>
 specify review --format json
 ```
 
-**First task:** Define the structured finding shape before reviewer code lands. The schema consumes `specify codex export --format json` as the resolved rule-catalog input, owns finding-specific fields, and should not redefine codex rule storage.
+**First task:** Define the structured finding shape before reviewer code lands. The schema consumes a project-resolved rule catalogue owned by the future review surface, owns finding-specific fields, and should not redefine codex rule storage.
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
@@ -93,7 +93,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Initial tools:** `specify_status`, `specify_registry_show`, `specify_workspace_status`, `specify_change_plan_status`, `specify_change_plan_next`, `specify_change_plan_doctor`, `specify_slice_validate`, `specify_slice_outcome_show`.
+**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
 #### RM-14: Local structured workflow events
@@ -103,7 +103,6 @@ specify registry diff <source>
 **Target surface:**
 
 ```bash
-specify status --format json
 specify events tail
 specify events export
 ```
@@ -112,15 +111,15 @@ specify events export
 
 #### RM-15: Structured change-lifecycle status for re-entry
 
-**Goal:** Make the `/change:draft` → `/change:execute` → `/change:finalize` lifecycle's re-entry and pause points machine-readable.
+**Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
 
-#### RM-16: RFC-5: `specify check` framework linter port
+#### RM-16: RFC-5: framework developer tooling workspace
 
-**Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
-**Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
-**Codex follow-up:** May surface first-party codex shape validation by delegating to the codex parser/resolver, while leaving project-resolved review behavior under `specify codex` and future `specify review`.
+**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a `framework-rules` library crate, a `framework-check` binary for CI and local use, an `accept` crate that replaces `tests/cross_repo.ts`, a `docgen` binary that replaces `scripts/gen-envelope-doc.ts`, and full Deno retirement.
+**Why now:** Removes Deno from CI and contributor prerequisites, kills the parser duplication between `tests/lib/spec_provenance.ts` and `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner — without bloating the operator `specify` binary with dev-only surfaces.
+**Codex follow-up:** First-party codex shape validation lives in `framework-rules::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize
@@ -132,7 +131,7 @@ specify events export
 ```bash
 specify forge doctor
 specify workspace push --forge github
-specify change finalize --forge github
+specify plan finalize --forge github
 ```
 
 ---
@@ -142,7 +141,7 @@ specify change finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
-**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/change:execute loop`.
+**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
 **Target surface:**
 
 ```bash

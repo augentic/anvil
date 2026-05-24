@@ -6,11 +6,47 @@ src = "."
 
 [output.html]
 git-repository-url = "https://github.com/augentic/specify"
+additional-css = ["assets/theme/specify-docs.css"]
+additional-js = ["assets/theme/authority-widget.js"]
+default-theme = "light"
+preferred-dark-theme = "navy"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.linkcheck]
+follow-web-links = false
+warning-policy = "error"
+traverse-parent-directories = true
+exclude = [
+  # Directory-style links (path ends with `/`). mdbook-linkcheck cannot
+  # follow directory links to file listings; cleanup happens in a follow-up
+  # PR that retargets each ref to a specific anchor.
+  '/$',
+  # Retired-stub redirect pages — present on disk so external bookmarks
+  # don't 404, but intentionally omitted from SUMMARY.md so they don't
+  # clutter the nav.
+  'change-skills/draft\.md',
+  'contributing/adapter-anatomy\.md',
+  'platform-repo\.md',
+  'workspace-tiers\.md',
+  'change-component\.md',
+  'cli-contract\.md',
+  '_STYLE\.md',
+  # Out-of-tree refs covered by docs/standards/doc-authoring.md as
+  # intentional repo-root links that resolve at deploy time only.
+  '\.\./\.\./tests/fixtures',
+  '\.\./\.\./scripts/checks',
+  '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
+  '\.\./\.\./plugins/spec/references/synthesis/authority\.md',
+]
 
 [preprocessor.d2]
 layout = "elk"
 inline = true
 
-[output.html.fold]
-enable = true
-level = 1
+[preprocessor.template]
+renderers = ["html"]
+
+[preprocessor.pagetoc]

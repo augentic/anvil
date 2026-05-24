@@ -41,7 +41,7 @@ When CWD is inside a workspace clone (`.specify/workspace/*/` with
 `.specify/specs/` and `.specify/archive/` with message
 `specify: merge <slice-name>`. Commit failure is a **warning**, not an
 error — the spec merge still succeeds. Any project-output residue outside
-those two trees is left for `/change:execute` to commit as
+those two trees is left for `/spec:execute` to commit as
 `specify: residue <slice-name>`. Committed changes remain local until the
 operator explicitly runs `specify workspace push`.
 

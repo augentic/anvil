@@ -1,16 +1,15 @@
 # Plugin Development
 
-Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
+Specify ships as a Cursor plugin marketplace. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
+
+> Domain-specific code generation lives in **target adapters** (`adapters/targets/<name>/`), not plugins. Omnia and Vectis are target adapters — see [`adapters/targets/omnia/`](../../adapters/targets/omnia/) and [`adapters/targets/vectis/`](../../adapters/targets/vectis/) — and their `shape` / `build` / `merge` briefs drive code generation directly without slash-command skills.
 
 ## Plugins overview
 
 | Plugin | Directory | Prefix | Purpose |
 |--------|-----------|--------|---------|
 | Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
-| Omnia | `plugins/omnia/` | `/omnia:` | Rust WASM crate generation and review |
-| Vectis | `plugins/vectis/` | `/vectis:` | Cross-platform Crux app generation |
-| Contract | `plugins/contract/` | `/contract:` | API contract generation and validation (OpenAPI, AsyncAPI, JSON Schema) |
-| RT | `plugins/rt/` | `/rt:` | Fixture capture and regression testing |
+| Capture | `plugins/capture/` | `/capture:` | Runtime capture and regression testing |
 | Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
 Each plugin directory follows the same structure:
@@ -57,7 +56,7 @@ The top-level marketplace manifest at `.cursor-plugin/marketplace.json` declares
 | `plugins[].source` | Subdirectory name under `pluginRoot` |
 | `plugins[].description` | Human-readable description |
 
-The `checks.ts` script validates that every plugin with a `.cursor-plugin/plugin.json` file is listed in the marketplace manifest, and that every listed plugin has a `skills/` directory.
+The `check.ts` script validates that every plugin with a `.cursor-plugin/plugin.json` file is listed in the marketplace manifest, and that every listed plugin has a `skills/` directory.
 
 ## Dev/prod workflow
 
@@ -94,16 +93,17 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
-Files in `plugins/references/` are shared across plugins:
+Cross-cutting reference material lives under `docs/`, not in any single plugin:
 
 | File | Purpose |
 |------|---------|
-| `specify.md` | Master reference: artifact format, lifecycle states, naming conventions, delta-merge rules, hard constraints |
-| `agent-teams.md` | Multi-agent review pattern (structural, logic, quality specialists + antagonist) |
+| [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Definitive artifact format spec (proposal, spec, design, tasks) |
+| [`docs/explanation/augentic-specify-usage.md`](../explanation/augentic-specify-usage.md) | Augentic-specific supplement on how specialists use the artifacts |
+| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Multi-agent review pattern (specialists + antagonist + lead synthesis) |
+| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md) | Canonical JSON envelope shapes for `specify *` commands |
+| [`docs/standards/skill-guardrails.md`](../standards/skill-guardrails.md) | Cross-cutting "do not / never / always" rules for skill authors |
 
-Skills reference these files via symlinks. For example, a skill at `plugins/omnia/skills/crate-writer/` might symlink `references/specify.md` to `../../../references/specify.md`. This keeps relative paths in the skill body short while sharing a single source of truth.
-
-The `checks.ts` script validates that all symlinks under `plugins/` resolve to valid targets.
+Plugin skills, rules, and adapter briefs link to these documents directly via relative paths. The only surviving cross-tree symlink pattern is per-target-adapter — `adapters/targets/<name>/references/agent-teams.md` symlinks to `docs/reference/review-team-protocol.md` so each review brief keeps a self-contained relative link.
 
 ## Publishing a new plugin
 
@@ -122,7 +122,7 @@ After this initial setup, the plugin participates in the normal dev/prod workflo
 
 There is no automated test harness for skills (they are markdown documents interpreted by an LLM). Testing is manual:
 
-1. Run `make checks` to validate structural consistency.
+1. Run `make check` to validate structural consistency.
 2. Run `make use-local-plugins` and restart Cursor.
 3. Open a target project and invoke the skill.
 4. Verify the skill produces the expected artifacts and CLI interactions.

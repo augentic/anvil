@@ -9,37 +9,11 @@ This repository provides specialist skills and references for Specify-driven dev
 
 ## Vocabulary
 
-Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked their meaning:
-
-- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
-
-Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
+See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 ## Operating Model
 
-The intended workflow is human-driven Specify. Single-slice loop:
-
-```bash
-/spec:init      # once per project (use `hub` for a registry-only platform hub)
-/spec:define
-/spec:build     # validates artifacts, then implements
-/spec:merge
-/spec:drop
-```
-
-Multi-slice change (RFC-23 three-skill lifecycle):
-
-```bash
-/change:draft <name> source legacy=./path   # author plan.yaml, stop at hand-off
-# operator reviews plan.yaml (specify plan amend / status as needed)
-/change:execute loop                        # drive per-slice define → build → merge
-/change:finalize <name>                     # push branches, observe PRs, archive
-```
-
-The operator review pause between `/change:draft` and `/change:execute` is deliberate — there is no umbrella mode and no one-command convenience wrapper. Teams that want one compose the three skills in their own shell script.
-
-Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
+See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
 ## Main Inputs
 
@@ -51,115 +25,68 @@ Specify owns the workflow contract. This repository contributes specialist analy
 When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
-2. **Specify artifacts** - `proposal.md`, `spec.md`, `composition.yaml`, `design.md`, `tasks.md` (Vectis also: `layout.yaml`, `tokens.yaml`, `assets.yaml`)
-3. **plugins/references/** - authoritative patterns and examples
-4. **Source** - reference for ambiguity only
+2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
+3. **docs/reference/**, **docs/standards/**, and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
-**Key principle**: If artifacts conflict with source, trust the artifacts. If the artifacts are incomplete, mark unknowns rather than guessing.
+When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls. Higher-authority sources win; losers survive as inline commentary. Same-authority disagreements emit `[conflict]` for operator reconciliation. See [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md).
+
+**Key principle**: If artifacts conflict with source, trust the artifacts. If artifacts are incomplete, mark unknowns rather than guessing.
 
 ## Artifact Boundaries
 
 Specify artifacts have separate responsibilities:
 
 - **`proposal.md`**: why the slice exists and what is in scope
-- **`spec.md`**: behavioral requirements, scenarios, error conditions, optional metrics
-- **`composition.yaml`**: spatial layout of screens — regions, groups, item bindings, and event wiring (Vectis only)
+- **`spec.md`**: behavioral requirements with `ID:`, `Sources:`, `Status:` provenance lines; scenarios; error conditions; optional metrics
 - **`design.md`**: domain model, APIs, integrations, configuration, technical logic
 - **`tasks.md`**: implementation sequencing only
-- **`layout.yaml`**: unwired layout input — screen regions, groups, and item vocabulary before `/spec:define` wires them to specs and Crux types (Vectis only)
-- **`tokens.yaml`**: design tokens — colours, typography, spacing, radii, and elevation values consumed by shell writers (Vectis only)
+- **`tokens.yaml`**: design tokens — colours, typography, spacing, radii, and elevation values consumed by Vectis shell writers (Vectis only)
 - **`assets.yaml`**: asset inventory — raster, vector, and symbol entries with per-platform source mappings (Vectis only)
 
-Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references.
+Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside the code it accompanies; they are not Specify artifacts and core does not synthesize them.
 
 ## Specialist Skills
 
-### Specify Plugin (`plugins/spec/`)
-
-- `init` - initialize Specify in a project from a positional `<adapter>` (one-time setup; mutually exclusive with the `hub` positional, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
-- `define` - create a slice and generate all artifacts in one step
-- `build` - validate artifacts and implement tasks from a Specify slice
-- `merge` - finalize and merge a completed slice
-- `drop` - discard a slice without merging specs into baseline
-- `extract` - extract Specify artifacts from existing source code
-
-### Change Plugin (`plugins/change/`)
-
-- `draft` - author `plan.yaml` via the planning brief pipeline; stop at the operator review seam (RFC-23).
-- `execute` - drive a change's plan through define, build, merge per slice.
-- `finalize` - push branches, observe PR state, run `specify change finalize` once every PR is `MERGED`.
-- `analyze` - plan-time adapter inference; emits adapter summaries.
-- `survey` - decompose legacy-code sources into slice-sized candidates by driving per-language enumeration briefs and validating the result against the closed `surfaces.json` schema.
-
-### Omnia Plugin (`plugins/omnia/`)
-
-- `crate-writer` - generate or update Rust crates from Specify artifacts
-- `test-writer` - generate or update test suites from Specify artifacts and crate code
-- `guest-writer` - generate the WASM guest wrapper
-- `code-reviewer` - review generated code for correctness and Omnia/WASM compliance
-
-### RT Plugin (`plugins/rt/`)
-
-- `replay-writer` - add regression tests from captured fixtures
-- `wiretapper` - capture fixture data from legacy services
-
-Cloning a remote source tree is no longer a dedicated skill — both callers (`/change:analyze` and `/rt:wiretapper`) inline a guarded `git clone` snippet directly. See the *Cloning a source tree* subsection in `plugins/change/skills/analyze/SKILL.md` (or `plugins/rt/skills/wiretapper/SKILL.md` for legacy-repo bootstrap).
-
-### Vectis Plugin (`plugins/vectis/`)
-
-- `core-writer` - generate or update Rust Crux shared crates
-- `test-writer` - generate or update test suites with spec-to-test traceability
-- `core-reviewer` - review Crux core via agent team (structural/logic/quality specialists + antagonist)
-- `ios-writer` - generate or update SwiftUI iOS shells
-- `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
-- `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
-- `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
-- `image-layout-inferer` - reconstruct `layout.yaml` from screenshot images via vision-assisted pipeline
-- `template-updater` - fix Vectis CLI templates and version pins when upstream bumps break a fresh scaffold
-
-### Contract Plugin (`plugins/contract/`)
-
-Format-first specialist skills; each carries author / import / verify intents internally and dispatches via its own intent table.
-
-- `openapi` - author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
-- `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
-- `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
-
-The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` adapter, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` (RFC-13 §"Merge and adoption contract" + RFC-15). It walks a baseline `contracts/` directory and enforces the RFC-12 §Validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7; the contracts adapter merge brief now shells out through `specify tool run` as the post-merge baseline gate.
-
-### Client Plugin (`plugins/client/`)
-
-- `sow-writer` - translate Specify artifacts into client-facing SoW material
+See [AGENTS.md](../../AGENTS.md#skill--cli-responsibility-split) for the skill / CLI responsibility split. Per-skill detail (description, argument hints, body) lives in each plugin's `SKILL.md` frontmatter under `plugins/<plugin>/skills/<skill>/SKILL.md`.
 
 ## Repository Layout
 
-See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for the full directory structure. Key directories:
+See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.md) for the full directory structure. Key directories:
 
 ```text
 /.cursor/rules/           # Project guidance for agents
 /.cursor-plugin/          # Multi-plugin marketplace manifest
-/docs/                    # Extended documentation (architecture, plugins)
+/docs/                    # Extended documentation (explanation, contributing)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, extract)
-  ├── change/             # Change orchestration plugin (draft, execute, finalize, analyze)
-  │   └── references/     # Artifact templates and adapter resolution
-  ├── omnia/              # Omnia code generation plugin
-  │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
-  ├── vectis/             # Vectis Crux development plugin
-  │   └── references/     # Crux patterns, design system references
-  ├── contracts/          # API contract generation and validation plugin
-  ├── rt/                 # RT migration plugin
+  ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop)
+  ├── contract/           # Contract authoring/import/verify skills
+  ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/adapters/            # Adapter manifests (omnia, vectis, contracts) — each ships `adapter.yaml`
+/adapters/
+  ├── sources/            # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
+  │   ├── intent/             # operator brief; degenerate N=1 entry point
+  │   ├── documentation/      # operator-provided written intent
+  │   ├── code-typescript/    # legacy TypeScript enumeration + extract
+  │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
+  │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
+  ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
+  │   ├── omnia/
+  │   ├── vectis/
+  │   └── contracts/
+  └── shared/               # Shared adapter support material, not adapters
+      ├── codex/universal/  # Shared UNI-* review rules read by per-target review briefs
+      └── target-hooks/replay/
+/schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
 /scripts/                 # Validation and plugin management
 ```
 
 ## Validation
 
 ```bash
-make checks
+make check
 ```
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
@@ -188,7 +115,7 @@ cargo clippy -- -D warnings
 
 ### WASM And Omnia SDK Constraints
 
-See [guardrails.md](plugins/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
+See [guardrails.md](../../adapters/targets/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
 
 ## File Locations
 
@@ -199,26 +126,27 @@ In downstream consumer projects:
 
 In this repository:
 
-- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/`
+- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/` (with per-source evidence at `evidence/<source-key>.yaml`)
 - **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
+- **Plan + discovery**: `$PROJECT_DIR/.specify/{change.md,plan.yaml,discovery.md}` (workspace mode places these at the workspace root)
 
 ## Troubleshooting
 
 ### Artifact Issues
 
-- Mark uncertain behavior with `[unknown]`
+- Mark uncertain behavior with `[unknown]`; mark authority-resolved disagreements with `[divergence]`; mark unresolvable same-authority disagreements with `[conflict]`. Tags never park the slice — the lifecycle still transitions to `refined`.
 - Keep specs behavioral and technical detail in `design.md`
-- Review `plugins/references/specify.md` when artifact responsibilities feel blurred
+- Review `docs/explanation/augentic-specify-usage.md` when artifact responsibilities feel blurred
 
 ### Generation Issues
 
 - Check the relevant `SKILL.md` first
-- Review Omnia references for adapter and provider patterns
+- Review Omnia references for target and provider patterns
 - Compare against worked examples before inventing a new pattern
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources: [scripts/checks/](../../scripts/checks/); schema: [.cursor/schemas/skill.schema.json](../../.cursor/schemas/skill.schema.json). `make checks` enforces both.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources: [scripts/checks/](../../scripts/checks/); schema: [.cursor/schemas/skill.schema.json](../../.cursor/schemas/skill.schema.json). `make check` enforces both.
 
 ## For Contributors
 
@@ -228,8 +156,8 @@ Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](
 
 ## Getting Help
 
-- Review `plugins/references/specify.md`
+- Review `docs/explanation/augentic-specify-usage.md`
 - Review the relevant `SKILL.md`
-- Review `plugins/omnia/references/`
-- Review `plugins/vectis/references/`
+- Review `adapters/targets/omnia/references/`
+- Review `adapters/targets/vectis/references/`
 - Open an issue for bugs or enhancement requests

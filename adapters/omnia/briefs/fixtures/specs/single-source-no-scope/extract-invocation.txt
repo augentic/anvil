@@ -1,1 +1,0 @@
-/spec:extract ./legacy <slice-dir>/.extract/legacy/

@@ -1,6 +1,6 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <adapter>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` or `/change:*` command; not for re-initializing an existing `.specify/`.
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <adapter>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` command; not for re-initializing an existing `.specify/`.
 argument-hint: <adapter>
 ---
 
@@ -20,13 +20,13 @@ argument-hint: <adapter>
 
 `/spec:init` selects between two on-disk shapes per run. A **regular project** carries code and `.specify/` together; the CLI scaffolds `slices/`, `specs/`, `archive/`, `.cache/`, and a `project.yaml` whose `adapter:` field drives every downstream pipeline. A **platform hub** carries only platform state (`registry.yaml`, later `change.md` / `plan.yaml` / `workspace/`); `project.yaml` records `hub: true` with no `adapter:`, and phase pipelines are disabled on the hub itself.
 
-Adapter vs `--hub` is mutually exclusive: `specify init` with neither, or both, exits with `init-requires-adapter-or-hub`. A regular project must declare a adapter; a hub must declare `--hub` and never carries a `adapter:`.
+Adapter vs `--hub` is mutually exclusive: `specify init` with neither, or both, exits `2` with clap's standard parse-error diagnostic. A regular project must declare a adapter; a hub must declare `--hub` and never carries a `adapter:`.
 
 The CLI owns every filesystem write — `.specify/`, `project.yaml`, the resolved adapter cache, root `AGENTS.md`, and `.specify/context.lock`. When `AGENTS.md` already exists, the CLI preserves it byte-for-byte. The skill never hand-rolls scaffold files; on non-zero exit it surfaces the CLI error and stops.
 
 After a regular init, the skill optionally detects existing code indicators (`Cargo.toml`, `package.json`, `src/`, etc.) and offers to create an `initial-baseline` slice via `specify slice create`. Hub init skips that step entirely — a hub never carries code. The three render templates (greenfield / brownfield / hub) live in [`../../references/init-output-templates.md`](../../references/init-output-templates.md).
 
-See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the skill-scope boundaries). The runbook in turn links the shared references siblings (output templates, topology flow, adapter resolution, baseline detection, and the high-level Specify model).
+See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail and [`../../references/init-output-templates.md`](../../references/init-output-templates.md) for the rendered greenfield, brownfield, and hub outputs.
 
 ## Guardrails
 

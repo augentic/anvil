@@ -1,0 +1,17 @@
+slice:
+  name: identity-password-reset-expiry
+  target: omnia
+  project: identity-svc
+  sources:
+    - key: product-notes
+      candidate: password-reset-expiry
+    - key: identity-design-notes
+      candidate: password-reset-expiry
+  status: in-progress
+plan-sources:
+  product-notes:
+    adapter: documentation
+    path: ./design-notes/product
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity

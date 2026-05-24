@@ -1,0 +1,14 @@
+version: 1
+name: identity-revamp
+lifecycle: reviewed
+sources:
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity
+slices:
+  - name: identity-user-registration
+    target: omnia
+    sources:
+      - key: identity-design-notes
+        candidate: user-registration
+    status: in-progress

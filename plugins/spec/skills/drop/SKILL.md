@@ -12,45 +12,30 @@ Deterministic bookkeeping — slice selection, lifecycle transition, archive mov
 
 ## Non-interactive mode
 
-When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure.
-
-Non-interactive mode is how `/change:execute` invokes this skill during `loop`, supervised single-slice runs, and self-heal reclaim of a `failure` / `deferred` outcome (see `/change:execute` steps 11b, 12b, and §"Self-heal on startup" step 2). The driver supplies a `reason` string assembled from the upstream phase's outcome — see the verbatim-`summary` rule in [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md). This skill forwards that string to `specify slice drop` verbatim, without prompting.
-
-When working plan-driven (a `plan.yaml` exists), after `specify slice drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
-
-```bash
-specify plan transition <name> failed  --reason "<short rationale>"
-specify plan transition <name> blocked --reason "<short rationale>"
-```
-
-This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.
+When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure. Non-interactive mode forwards `--reason` to `specify slice drop`.
 
 ## Phase outcome contract
 
-This skill is the **drop** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including drop's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
+> See [Phase outcome contract](../../references/phase-outcome-contract.md).
 
 ## Steps
 
 1. **Select the slice**
 
-   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active slices from the dashboard:
+   If a name is provided, use it. Otherwise inspect `.specify/slices/*/.metadata.yaml` directly to enumerate active slices:
 
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.
 
-   **IMPORTANT**: Always confirm the slice name before dropping it.
-
-   If `reason` was supplied (non-interactive mode — see above), the slice name must be the positional argument; skip the prompting fallback and the confirmation.
-
 2. **Check lifecycle status**
 
-   Run `specify slice status <name> --format json` and inspect `status`:
+   Read `.specify/slices/<name>/.metadata.yaml` and inspect `status`:
 
-   - `complete`: warn that the slice appears ready to merge normally — `/spec:merge` may be the intended action.
+   - `built`: warn that the slice is ready for `/spec:merge`.
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
    - Any other status: explain that dropping will discard the working slice without promoting its specs.
 
-   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm the user wants to drop the slice. In non-interactive mode skip the prompt and proceed (the CLI still enforces the terminal-status check in step 4 — a `merged` / `dropped` slice surfaces `Error::Lifecycle` there).
+   Use the **AskQuestion tool** to confirm the user wants to drop the slice. (non-interactive: skip — see above; the CLI still enforces the terminal-status check in step 4.)
 
 3. **Summarize what will happen**
 
@@ -65,12 +50,7 @@ This skill is the **drop** phase of the `/change:execute` driver loop. Apply the
    - Existing baseline specs remain unchanged
    ```
 
-   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm:
-
-   - **Proceed**: drop the slice
-   - **Cancel**: keep the slice as-is
-
-   In non-interactive mode skip this confirmation too; the preview may still be printed as an informational line but the skill does not wait for input.
+   Use the **AskQuestion tool** to confirm: **Proceed** drops the slice, **Cancel** keeps it as-is. (non-interactive: skip — see above; the preview may still be printed as an informational line.)
 
 4. **Drop and archive**
 
@@ -99,8 +79,7 @@ The baseline remains unchanged.
 
 ## Guardrails
 
-- Always confirm the slice before dropping it.
 - Do not merge or rewrite any files under `.specify/specs/`.
-- Warn if the slice is already `complete`, since `/spec:merge` may be the intended action.
+- Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
-- `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
+- `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).

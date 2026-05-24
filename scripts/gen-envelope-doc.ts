@@ -1,5 +1,5 @@
 // Generate the per-command examples section of
-// `plugins/references/cli-output-shapes.md` from the canonical envelope
+// `docs/reference/cli-output-shapes.md` from the canonical envelope
 // fixtures in `augentic/specify-cli`.
 //
 // The top matter (title, conventions, generation note) is hand-written and
@@ -24,8 +24,8 @@ import {
 export const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 export const DOC_PATH = join(
   REPO_ROOT,
-  "plugins",
-  "references",
+  "docs",
+  "reference",
   "cli-output-shapes.md",
 );
 
@@ -57,7 +57,6 @@ const E2E_STEM_TO_GROUP: Record<string, { command: string; variant: string }> =
       command: "specify slice merge run",
       variant: "two-spec",
     },
-    "slice-outcome": { command: "specify slice outcome show", variant: "" },
     "task-mark": { command: "specify slice task mark", variant: "" },
     "task-progress": { command: "specify slice task progress", variant: "" },
     "validate-good": { command: "specify slice validate", variant: "clean" },

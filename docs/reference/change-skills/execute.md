@@ -1,103 +1,78 @@
-# /change:execute
+# /spec:execute
 
-Drive a change through its plan, automating define-build-merge.
+Drive a reviewed plan through refine → build → merge per entry under an exclusive plan lock.
 
 ## Synopsis
 
 ```text
-/change:execute              # run one slice, stop
-/change:execute dry-run    # preview next slice + progress
-/change:execute loop       # run until no eligible slice remains
+/spec:execute
 ```
 
-## Arguments
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `--dry-run` | No | Preview what would happen without making changes |
-| `--loop` | No | Run continuously until all slices are `done` or execution is `stuck` |
+Takes no positional arguments and no flags. The active plan is the one at `.specify/plan.yaml`.
 
 ## When to use
 
-- A `plan.yaml` exists and you want to automate the slice-by-slice execution loop.
-- You prefer automated execution over manually invoking define/build/merge for each slice.
+- Gate 1 has stamped the plan `reviewed` and you want to drive every slice to completion.
+- Re-entering after execute parks on a build failure or merge conflict (reads on-disk state; no resume flags).
 
-## Artifacts produced
+Not before Gate 1, nor after every per-entry status is `done` (use [/spec:finalize](finalize.md)).
 
-For routed workspace entries, prepares the selected workspace branch before phase writes and may create a non-baseline residue commit after merge. It invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spec:drop` on failure) for each slice. Writes plan entry transitions via `specify plan transition`. Manages `.specify/plan.lock` for concurrency safety.
+## Artifacts read/written
+
+| Artifact | Role |
+| -------- | ---- |
+| `.specify/plan.yaml` | Reads lifecycle and per-entry status; never writes `reviewed` or `done` directly |
+| `.specify/plan.lock` | Exclusive advisory lock for the duration of the loop |
+| Slice directories | Created and updated by phase skills (`/spec:refine`, `/spec:build`, `/spec:merge`) |
+| Per-entry `done` | Written only by `/spec:merge` via `specify slice merge` |
 
 ## Behavior
 
-### Per-slice algorithm
+1. **Refusal gate** — `specify plan next --format json` refuses when `plan-not-reviewed`; prints `specify plan transition <name> reviewed` verbatim.
+2. **Acquire plan lock** — exclusive non-blocking lock on `.specify/plan.lock` (workspace root in workspace mode). On `plan-lock-busy`, exit with holder pid.
+3. **Loop** — for each `specify plan next` result:
+   - Route to workspace slot when `project` is set.
+   - Invoke `/spec:refine` when slice is fresh (`refining` or absent).
+   - Invoke `/spec:build` when slice is `refined`.
+   - Invoke `/spec:merge` when slice is `built`.
+4. **Stop on first failure** — build non-zero exit or merge baseline conflict leaves entry `in-progress`; surface stop hint.
+5. **Drain** — when no `pending` or `in-progress` entries remain, print `drained — run /spec:finalize <name>` and release lock.
 
-1. **Resolve project.** Walk upward from CWD looking for `.specify/project.yaml`.
-2. **Lock.** Acquires `.specify/plan.lock` via `specify plan lock acquire`.
-3. **Self-heal.** Checks for stale `in-progress` entries from a prior crashed run and resolves them. For entries with `project`, metadata is read under the target project's workspace clone, not the initiating repo.
-4. **Pick next.** `specify plan next --format json` returns the first `pending` entry whose `depends-on` are all `done`. The JSON response includes `project`, `description`, and `sources` for the entry.
-5. **Workspace preparation (multi-repo only).** If `project` is non-null: resolve the selected project through `registry.yaml`, materialise only that slot when missing, and run `specify workspace prepare-branch <project> --change <change-name>` before any phase writes.
-6. **Transition and CWD routing.** Moves the entry to `in-progress` via `specify plan transition`, saves CWD, resolves source paths to absolute paths, and `chdir`s into the prepared target project root. Emits `Routing: <name> → <project> (<path>)`.
-7. **Define.** Invokes `/spec:define` with the entry's description and resolved sources.
-8. **Build.** Invokes `/spec:build`.
-9. **Merge.** Invokes `/spec:merge`. In workspace clones, the CLI auto-commits only `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`.
-10. **Residue guard (multi-repo merge success only).** Verifies the baseline commit boundary is clean and commits remaining non-baseline residue as `specify: residue <slice-name>` before `done`.
-11. **CWD restore (multi-repo only).** Restores CWD to the initiating repo root.
-12. **Read outcome.** Reads the phase outcome from `.metadata.yaml`.
-13. **Transition plan entry:**
-    - `success` --> `done`
-    - `failure` --> `failed` (invokes `/spec:drop` first)
-    - `deferred` --> `blocked`
-14. **Release lock.**
+Re-entry is implicit: re-running `/spec:execute` picks up the active `in-progress` entry and resumes mid-loop.
 
-### Loop mode
+### Workspace routing
 
-With `--loop`, the algorithm repeats from step 1 until:
+When a plan entry carries `project`, plan artifacts stay at the workspace root and phase work runs in `.specify/workspace/<project>/`. See [specify workspace](../cli/workspace.md).
 
-- **`all-done`** -- every entry is `done` or `skipped`.
-- **`stuck`** -- no `pending` entry has all dependencies satisfied.
-- **SIGINT/SIGTERM** -- graceful shutdown after the current slice completes.
+## Lifecycle interactions
 
-### Dry-run mode
+| Trigger | Transition | Writer |
+| ------- | ---------- | ------ |
+| `specify plan next` picks pending row | per-entry: `pending → in-progress` | CLI |
+| `/spec:merge` succeeds | per-entry: `in-progress → done` | `specify slice merge` |
 
-With `--dry-run`, reports the next eligible slice and current plan progress without executing anything.
-
-## Lifecycle transitions
-
-Transitions plan entries: `pending --> in-progress --> done|failed|blocked`.
+Execute never writes `reviewed` or `done` directly.
 
 ## Error modes
 
 | Error | Cause | Resolution |
-|-------|-------|------------|
-| No plan exists | `plan.yaml` not found | Run `/change:draft` first |
-| Lock held | Another `/change:execute` session is running | Wait for it to finish or release the lock |
-| Self-heal failure | Stale `in-progress` entry cannot be resolved | Manually transition or drop the stale slice |
-| Stuck | No eligible entries remain but not all are done | Review `failed`/`blocked` entries and resolve |
+| ----- | ----- | ---------- |
+| `plan-not-reviewed` | Plan still `pending` | Run `specify plan transition <name> reviewed` |
+| `plan-lock-busy` | Another process holds `.specify/plan.lock` | Wait or remove stale lock if holder is dead |
+| Build failure | Task exited non-zero | Fix failure; re-run `/spec:execute` or [/spec:build](../slice-skills/build.md) |
+| Merge conflict | Baseline drift | Resolve conflict; re-run execute or merge |
 
 ## Examples
 
 ```text
-# Preview what would happen next
-/change:execute dry-run
-
-# Run one slice
-/change:execute
-
-# Run until all done
-/change:execute loop
-```
-
-**Typical change flow:**
-
-```text
-/change:draft migrate-to-v2 source monolith=/path/to/legacy
-specify plan status              # review the plan
-/change:execute loop             # run until all-done
-/change:finalize migrate-to-v2   # push, observe PRs, archive
+# Drive every slice after Gate 1
+specify plan transition fix-typo reviewed
+/spec:execute
 ```
 
 ## See also
 
-- [/change:draft](draft.md) -- author the plan that execute consumes
-- [/spec:define](../slice-skills/define.md), [/spec:build](../slice-skills/build.md), [/spec:merge](../slice-skills/merge.md) -- the skills invoked per slice
-- [Lifecycle](../lifecycle.md) -- plan entry states
-- [Troubleshooting](../../how-to/troubleshooting/index.md) -- self-heal, lock issues
+- [Drive a slice manually](../../how-to/drive-slice-manually.md) — when execute parks
+- [Drop down a layer](../../how-to/drop-down-a-layer.md) — manual CLI fallback
+- [/spec:finalize](finalize.md) — post-drain closure
+- [Slice skills](../slice-skills/index.md) — refine, build, merge breakouts

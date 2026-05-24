@@ -2,8 +2,6 @@
 
 Scaffold, populate, validate, transition, and archive change plans. The `plan` verb is the top-level home of every `plan.yaml` operation; each verb on this page is invoked as `specify plan <verb>`.
 
-> Need to scaffold `change.md` alongside `plan.yaml` in one step? See [`specify change draft`](change.md#specify-change-draft), which delegates to the same plan-scaffold helper that backs [`specify plan create`](#specify-plan-create) below.
-
 ## Verb cheat-sheet
 
 | Verb | When to use |
@@ -11,12 +9,10 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
-| [`transition`](#specify-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
-| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus the four health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry`). First triage step when `/change:execute` reports `stuck`. |
-| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/change:execute` and ad-hoc operators). |
-| [`status`](#specify-plan-status) | Render plan progress in topological order with per-status counts. |
-| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify change finalize` rather than directly.) |
-| [`lock`](#specify-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/change:execute`. |
+| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> reviewed`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
+| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
+| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify plan finalize` rather than directly.) |
 
 ## Subcommands
 
@@ -25,10 +21,10 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 Scaffold an empty plan.
 
 ```bash
-specify plan create <name> [--source <key>=<path>...]
+specify plan create <name> [--source <key>=<adapter>:<path>...] [--source <key>=<adapter>:value:<literal>...]
 ```
 
-Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present. Shares its scaffold helper with [`specify change draft`](change.md#specify-change-draft), which additionally writes `change.md` in the same atomic step.
+Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Each optional `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present.
 
 ### specify plan validate
 
@@ -46,16 +42,15 @@ Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on
 - `description-missing-multi-repo` (error) -- when the registry has multiple projects, every project must carry a `description`.
 - `adapter-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
 
-Health diagnostics layered on top — first triage step when `/change:execute` reports `stuck`:
+Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
 | `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specify plan amend <name> --depends-on …` to break the cycle, then re-run validate. |
 | `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
-| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `missing-sync-stamp` (no stamp file and no readable git remote). | `specify workspace sync` to refresh the clone. |
-| `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Payload lists the immediate blocking predecessors and their statuses. | `specify plan transition <pred> pending` (after fixing the underlying issue) or `specify plan transition <entry> skipped --reason …` to drop the leaf. |
+| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specify workspace sync` to refresh the clone. |
 
-JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone` / `unreachable-entry`). Base validate findings carry no `data` field; the four health diagnostics always do.
+JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone`). Base validate findings carry no `data` field; the three health diagnostics always do.
 
 Exit code: `0` when no error-severity finding fires (warnings are non-fatal); `2` when any error-severity finding fires.
 
@@ -70,16 +65,6 @@ specify plan next
 Returns the first `pending` entry whose `depends-on` entries are all `done`. Returns an error if no eligible entry exists.
 
 With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
-
-### specify plan status
-
-Render plan progress.
-
-```bash
-specify plan status [--format json|table]
-```
-
-Shows entries in topological order with per-status counts, the active `in-progress` entry (if any), and any `status-reason` annotations.
 
 ### specify plan add
 
@@ -101,19 +86,18 @@ specify plan amend <name> [--project <name>] [--description "<text>"] [--depends
 
 ### specify plan transition
 
-Move a plan entry through the status state machine.
+Stamp Gate 1 or close a merged plan entry.
 
 ```bash
 specify plan transition <name> <target> [--reason "<text>"]
 ```
 
-| Target | Legal from |
-|--------|-----------|
-| `in-progress` | `pending` |
-| `done` | `in-progress` |
-| `failed` | `in-progress` |
-| `blocked` | `in-progress` |
-| `skipped` | `pending` |
+| Target | Applies to | Meaning |
+|--------|------------|---------|
+| `reviewed` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
+| `done` | `<entry-name>` (a `slices[]` row) | Close the entry after `/spec:merge` folded the slice. |
+
+Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 At most one entry may be `in-progress` at a time.
 
@@ -127,23 +111,10 @@ specify plan archive
 
 Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-### specify plan lock
-
-Manage the advisory plan lock.
-
-```bash
-specify plan lock acquire --pid <pid>
-specify plan lock release --pid <pid>
-specify plan lock status
-```
-
-The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prevent concurrent execution. The CLI `pid` option defaults to the current process PID; `/change:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
-
 ## See also
 
-- [specify change](change.md) -- the change-lifecycle verbs (`draft`, `show`, `finalize`) that scaffold `change.md` + `plan.yaml` together and trigger close-out.
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
-- [/change:draft](../change-skills/draft.md) -- skill that authors plans
-- [/change:execute](../change-skills/execute.md) -- skill that drives plan execution
-- [/change:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
+- [/spec:plan](../change-skills/plan.md) -- skill that authors plans
+- [/spec:execute](../change-skills/execute.md) -- skill that drives plan execution
+- [/spec:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
 - [Configuration Files](../configuration.md) -- plan.yaml and registry format

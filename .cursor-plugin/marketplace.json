@@ -6,19 +6,14 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.26.0",
+    "version": "0.27.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
     {
-      "name": "rt",
-      "source": "rt",
-      "description": "Skills to assist in the migration of TypeScript projects to Omnia Rust wasm32-wasip2 crates."
-    },
-    {
-      "name": "omnia",
-      "source": "omnia",
-      "description": "Skills to generate Omnia Rust wasm32-wasip2 crates."
+      "name": "capture",
+      "source": "capture",
+      "description": "Skills to capture runtime fixtures from legacy TypeScript services for Specify migration workflows."
     },
     {
       "name": "client",
@@ -26,24 +21,9 @@
       "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts."
     },
     {
-      "name": "vectis",
-      "source": "vectis",
-      "description": "Skills to generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system)."
-    },
-    {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, and extract. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; the plan-time analyze skill moved alongside (use /change:analyze). Use the three-skill change lifecycle (/change:draft, /change:execute, /change:finalize) for change-level orchestration."
-    },
-    {
-      "name": "change",
-      "source": "change",
-      "description": "Skills for Specify change orchestration: authors `plan.yaml` (`/change:draft`) and finalizes a completed change (`/change:finalize`); execution remains `/change:execute`. `/change:analyze` infers plan-time adapter summaries from legacy code or documentation inputs."
-    },
-    {
-      "name": "contract",
-      "source": "contract",
-      "description": "Skills to author, import, and verify API/interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future formats — from Specify artifacts."
+      "description": "Skills for the Specify 2.0 workflow: `/spec:init` scaffolds a project, `/spec:plan` authors the change-level plan, `/spec:execute` drives the per-slice loop, and the per-slice breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) plus `/spec:finalize` round out the operator surface."
     }
   ]
 }

@@ -1,6 +1,6 @@
 # specify slice
 
-Create, inspect, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
+Create, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
 
 Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg).
 
@@ -9,13 +9,10 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
-| [`status`](#specify-slice-status) | Detailed status for one slice (lifecycle state, artifacts, tasks, timestamps). The multi-slice dashboard lives at [`specify status`](status.md). |
-| [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`created` -> `defining` -> `defined` -> `building` -> `complete` -> `merged`/`dropped`). |
+| [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
 | [`task`](#specify-slice-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
-| [`outcome`](#specify-slice-outcome) | `outcome {set, show}` -- write or read the phase outcome that `/change:execute` consumes. |
-| [`journal`](#specify-slice-journal) | `journal {append, show}` -- append or read `journal.yaml` entries (questions, failures, recoveries). |
 | [`touched-specs`](#specify-slice-touched-specs) | Scan or set the spec files this slice affects. |
 | [`overlap`](#specify-slice-overlap) | Find slices whose touched specs overlap. |
 | [`drop`](#specify-slice-drop) | Discard a slice without merging. Archive moves are owned by `slice merge run`, `slice drop`, and `change finalize`. |
@@ -38,16 +35,6 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 
 Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
 
-### specify slice status
-
-Show detailed status for a slice.
-
-```bash
-specify slice status <name>
-```
-
-Returns lifecycle state, artifact completion, task progress, and timestamps. The multi-slice project dashboard lives at [`specify status`](status.md) — there is no `specify slice list`; skills enumerate slices through the umbrella status verb.
-
 ### specify slice transition
 
 Move a slice through the lifecycle state machine.
@@ -59,7 +46,7 @@ specify slice transition <name> <target>
 | Argument | Description |
 |----------|-------------|
 | `name` | Slice name |
-| `target` | Target state: `defining`, `defined`, `building`, `complete`, `dropped`. The transient states (`defining`, `building`) are typically set by skills, not operators. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
+| `target` | Target state: `refining`, `refined`, `built`, `dropped`. Skills stamp `refined` and `built` after `/spec:refine` and `/spec:build`. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
 
 Enforces legal transitions. Records timestamps in `.metadata.yaml`.
 
@@ -144,14 +131,14 @@ Performs:
 1. Applies spec deltas from the slice to the baseline at `.specify/specs/`.
 2. Applies composition deltas (Vectis only) -- merges `composition.yaml` screen-level `added`/`modified`/`removed` operations into the baseline `composition.yaml`, using per-screen SHA-256 checksums (`.composition-checksums.yaml`) for conflict detection.
 3. Validates coherence of the merged baseline.
-4. Transitions the slice to `merged` and stamps `PhaseOutcome { phase: merge, outcome: success }` atomically with the status transition.
+4. Transitions the slice to `merged` and stamps the plan entry's per-entry status to `done`.
 5. Moves the slice directory to `.specify/archive/YYYY-MM-DD-<name>/`.
 
 This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
-**Preconditions.** Slice must be in `complete` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
+**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
 
 ### specify slice task
 
@@ -179,76 +166,12 @@ Flips the checkbox from `- [ ]` to `- [x]` for the specified task. The task ID i
 
 Used by `/spec:build` as it completes each task.
 
-### specify slice outcome
-
-Two subcommands cover the phase outcome surface (renamed from the historical `specify change phase-outcome` / bare `specify change outcome` forms).
-
-#### specify slice outcome set
-
-Write the phase outcome for a slice.
-
-```bash
-specify slice outcome set <name> <phase> <outcome> --summary "..." [--context "..."]
-```
-
-| Argument | Description |
-|----------|-------------|
-| `name` | Slice name |
-| `phase` | Phase that completed: `define`, `build`, or `merge` |
-| `outcome` | One of `success`, `failure`, or `deferred` |
-| `--summary` | Short description of the outcome |
-| `--context` | Optional verbatim detail (stderr tail, failing test, etc.) |
-
-Used by `/change:execute` to determine plan entry transitions. For merge success, the CLI stamps the outcome automatically during `slice merge run` -- skills do not call `outcome set` on the merge success path.
-
-#### specify slice outcome show
-
-Read the phase outcome for a slice.
-
-```bash
-specify slice outcome show <name> [--format json]
-```
-
-Returns the `outcome` field from `.metadata.yaml`. Falls back to the archive when the active slice directory is absent (e.g. after a successful merge archives the slice). Used by `/change:execute` to read the result of a phase after it returns.
-
-### specify slice journal
-
-Two subcommands cover the slice journal surface (renamed from the historical `specify change journal-append`; `show` is new).
-
-#### specify slice journal append
-
-Append an entry to the slice's journal.
-
-```bash
-specify slice journal append <name> <phase> <kind> --summary "..." [--context "..."]
-```
-
-| Argument | Description |
-|----------|-------------|
-| `name` | Slice name |
-| `phase` | Phase context: `define`, `build`, or `merge` |
-| `kind` | Entry type: `question`, `failure`, or `recovery` |
-| `--summary` | Short description |
-| `--context` | Optional verbatim detail |
-
-Records questions, failures, and recovery steps in `journal.yaml` for audit. The journal is append-only and never consumed as a signalling channel -- `.metadata.yaml:outcome` is the only state `/change:execute` reads.
-
-#### specify slice journal show
-
-Read the journal entries for a slice.
-
-```bash
-specify slice journal show <name> [--format json]
-```
-
-Renders the journal in chronological order. Useful for triaging failed or deferred runs.
-
 ## See also
 
-- [/spec:define](../slice-skills/define.md) -- skill that creates slices
+- [/spec:refine](../slice-skills/index.md) -- per-slice refine breakout
 - [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
 - [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
 - [/spec:drop](../slice-skills/drop.md) -- skill that drops slices
-- [specify change](change.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
+- [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

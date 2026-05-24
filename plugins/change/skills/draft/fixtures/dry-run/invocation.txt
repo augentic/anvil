@@ -1,1 +1,0 @@
-/change:draft demo --source monolith=/tmp/legacy --dry-run

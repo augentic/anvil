@@ -1,1 +1,0 @@
-../../core-writer/references/crux-testing-patterns.md
