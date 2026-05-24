@@ -1,32 +1,45 @@
 # Augentic Plugins - Agent Instructions
 
-## Cursor Cloud specific instructions
-
 This is a **documentation/prompt-engineering repository**. The codebase consists of markdown skill definitions, reference docs, templates, and shell scripts. Generated Rust crates and Swift shells appear in downstream projects, not in this repository itself.
 
-### Vocabulary
+## Vocabulary
 
-Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verbatim:
+Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verbatim.
 
-- **source adapter** — input role with two operations: `enumerate` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures` (RFC-27 §D1; consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`). Lives at `adapters/sources/<name>/adapter.yaml`.
-- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter". Adapter names are unique across axes — the same `name` must not appear under both `adapters/sources/` and `adapters/targets/` (rejected at `specify init` and `*Adapter::resolve` time as `adapter-name-axis-collision`). See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
-- **plugin** — historical shorthand for the shared adapter shape. The Rust loader lives at `crates/domain/src/adapter/` (single entry point `Adapter::resolve(axis, name, project_dir)`) and validates manifests against the per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The vocabulary noun "plugin" stays in operator-facing prose where source + target authors share the same audience tag.
+### Adapter roles
+
+- **source adapter** — input role with two operations: `enumerate` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`.
+- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter". Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
+- **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`crates/domain/src/adapter/`](https://github.com/augentic/specify-cli/tree/main/crates/domain/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
+
+### Synthesis terms
+
 - **candidate** — slice-sized unit emitted by `enumerate`; one block per candidate under `## Candidate inventory` in `discovery.md`, with stable `id` and `sources[]`.
 - **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
-- **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement. RFC-27 §D2 promotes authority from a property of the Evidence document alone to a property of `(Evidence document, claim kind)` via optional per-kind `authority-overrides:` maps on Evidence files. RFC-27 §D3 adds per-slice operator overrides on `plan.yaml.slices[].authority-override` (claim-kind → source-key) authored by `specify plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source-key`. Resolution order: per-slice → per-Evidence → document-level → conflict.
-- **fusion.yaml** — RFC-27 §D4 reconciliation index at `.specify/slices/<slice>/fusion.yaml`. One entry per `REQ-*` id in `spec.md` listing every `(source, claim-id)` pair the synthesis consulted, inline `value` payloads with a 16 KiB cap, `winner` markers on entries dropped by authority resolution, and a `resolution` enum (`single-source`, `single-value-agreement`, `authority-resolved`, `per-slice-override`, `unknown-no-evidence`, `tied-conflict`). Written atomically by `/spec:refine` between `tasks.md` and `slice validate`. Audit-only — `spec.md` remains the authoritative artifact. Inspect the file directly; the drift gate `specify slice validate` catches REQ-id and contributing-claim drift under `slice-fusion-drift`.
-- **cache fingerprints** — RFC-27 §D8 makes every `extract` lookup key on the closed five-input fingerprint (source path canonicalised, adapter name@version, brief sha256, sorted declared-tool versions, candidate id). Recorded in `.specify/.cache/extractions/<adapter>/index.jsonl` (per-adapter, not per-axis — only source adapters extract); journal events `slice.extract.cache-hit` / `.cache-miss` carry the fingerprint and a closed `reason` enum on miss. Adapters opt out with `cache: opt-out` on `adapter.yaml`. The extraction-cache tree is disjoint from the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/` — see [DECISIONS.md §"Cache layout"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#cache-layout).
+- **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
+- **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [DECISIONS.md §"RFC-27 §D4 — `fusion.yaml` is audit-only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d4--fusionyaml-is-audit-only).
+- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, candidate id). See [DECISIONS.md §"RFC-27 §D8 — cache fingerprint inputs"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d8--cache-fingerprint-inputs).
 
-Two workflow nouns recur throughout the codebase:
+### Workflow nouns
 
-- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
+- **slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
 
-### Workflow overview
+### Authority and fusion mechanics
+
+The full mechanics — per-kind authority overrides, per-slice operator overrides, fusion-index shape, cache-fingerprint inputs, extraction-cache layout — live in the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). The headline rules:
+
+- **Authority resolution order** — per-slice override → per-Evidence per-kind override → Evidence document-level `authority:` → conflict. See [DECISIONS.md §"RFC-27 §D2 — per-kind authority on Evidence"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d2--per-kind-authority-on-evidence) and [§"RFC-27 §D3 — per-slice authority on `plan.yaml`"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d3--per-slice-authority-on-planyaml).
+- **`captures` source adapter** — consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`.
+- **Authority-override authoring** — `specify plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source-key`.
+- **Fusion drift** — `specify slice validate` catches REQ-id and contributing-claim drift under `slice-fusion-drift`.
+- **Adapter opt-out of extraction cache** — `cache: opt-out` on `adapter.yaml`.
+
+## Workflow overview
 
 The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
 
@@ -42,7 +55,7 @@ The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:exe
 
 N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
-### Skill / CLI responsibility split
+## Skill / CLI responsibility split
 
 Phase skills are agent-driven orchestrators. Every deterministic operation — manifest validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, baseline conflict detection, delta merge, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting operator intent, reading brief bodies, writing evidence and synthesized artifacts, invoking specialist skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
@@ -50,17 +63,17 @@ The CLI surface skills depend on is documented in [`specify` `--help`](https://g
 
 Never hand-edit `.metadata.yaml`, `project.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, or `targets.yaml`; never `mkdir -p .specify/...`; never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal lifecycle set and validates inputs in one place for humans, agents, and CI.
 
-### Contracts target adapter
+## Contracts target adapter
 
 The contracts target adapter owns API contract authoring, import, and validation. Its `build` brief runs the OpenAPI, AsyncAPI, and JSON Schema format sub-flows, each with author / import / verify references under `adapters/targets/contracts/references/`.
 
 The matching CLI validation surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
-### Plan-driven loop
+## Plan-driven loop
 
 `/spec:plan` authors the plan and exits at Gate 1; the operator stamps `reviewed`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
 
-### Commands
+## Commands
 
 All commands are run from the repository root:
 
@@ -70,17 +83,18 @@ All commands are run from the repository root:
 
 The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the test will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
-### Skill authoring
+## Skill authoring
 
 Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in [scripts/checks/](scripts/checks/). Enforced strictly by `make checks` — every predicate fails on the first violation, with no per-file grandfathering.
 
-### Gotchas
+## Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
+- **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
 - 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace.
 
-### Related coding standards
+## Related coding standards
 
 - CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in the CLI repo's [AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) and [docs/standards/](https://github.com/augentic/specify-cli/blob/main/docs/standards/). Skills that shell out to `specify` rely on the kebab-case `error` discriminants documented there.
