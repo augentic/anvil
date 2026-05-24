@@ -161,10 +161,10 @@ Failure messages MUST match the current `check.ts` wording during the overlap pe
 
 The library crate is **`rules`** (`tooling/crates/rules/`). User-facing commands run through a single **`tooling`** binary (`tooling/tools/tooling/`; artifact path `tooling/target/debug/tooling`). Subcommands replace the separate binaries from earlier drafts:
 
-| Subcommand | Replaces | Library |
-|---|---|---|
-| `tooling check` | `scripts/check.ts`, `framework-check` | `rules` |
-| `tooling docgen` | `scripts/gen-envelope-doc.ts` | `docgen` |
+| Subcommand       | Replaces                              | Library  |
+| ---------------- | ------------------------------------- | -------- |
+| `tooling check`  | `scripts/check.ts`, `framework-check` | `rules`  |
+| `tooling docgen` | `scripts/gen-envelope-doc.ts`         | `docgen` |
 
 Acceptance stays **`cargo test -p accept`** — not a CLI subcommand. The `framework-` prefix from earlier drafts is dropped; the `tooling/` workspace scopes these names away from the operator product. This is **not** `specify check` or `specify review` — those surfaces validate consumer projects on the operator binary (rejected in §Alternatives and reserved separately in RFC-28 / roadmap RM-10). Contributors disambiguate the `check` subcommand from `make check`, `scripts/check.ts` (during Deno overlap), and `cargo check` by context: day-to-day invocation is always `./scripts/run-tool check …` or `make check`, never a global install.
 
@@ -271,11 +271,11 @@ Framework tooling must **disappear into the background** for day-to-day skill an
 
 #### Contract
 
-| Audience | What they run | Rust required locally? |
-|---|---|---|
+| Audience                          | What they run                                                      | Rust required locally?                     |
+| --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
 | Skill / adapter authors (default) | Cursor schemas while editing; `make check` before a PR; CI on push | Optional — schemas and CI cover most needs |
-| Authors who want faster feedback | `make install-hooks` (opt-in pre-commit) | Yes (via `tooling/rust-toolchain.toml`) |
-| Tooling contributors | `cd tooling && cargo test`, `cargo build -p tooling`, … | Yes |
+| Authors who want faster feedback  | `make install-hooks` (opt-in pre-commit)                           | Yes (via `tooling/rust-toolchain.toml`)    |
+| Tooling contributors              | `cd tooling && cargo test`, `cargo build -p tooling`, …            | Yes                                        |
 
 Authors never run `cargo build` as a separate step before `make check`. Build logic lives in one place; entry points call through it.
 
