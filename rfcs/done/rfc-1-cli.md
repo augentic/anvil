@@ -39,9 +39,9 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 5. **Migrate `init`, `merge`, and `build` skills** to use CLI commands
 6. **`specify task`** subcommands — deterministic task parsing and progress tracking
 
-The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. The framework developer tooling workspace (`checks.ts` → `framework-rules` / `framework-check`) is tracked separately in [RFC-5](../rfc-5-tooling.md); it runs independently of Phase 1 and is not a prerequisite for RFC-2/RFC-3/RFC-4.
+The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. The framework developer tooling workspace (`checks.ts` → `tooling/` / `tooling check`) is tracked separately in [RFC-5](../rfc-5-tooling.md); it runs independently of Phase 1 and is not a prerequisite for RFC-2/RFC-3/RFC-4.
 
-**CI for Phase 1.** The workspace-scaffold item (1) lands with a GitHub Actions workflow — `.github/workflows/ci.yml` — that runs on every pull request and on pushes to `main`. The minimum bar is three jobs against a stable Rust toolchain: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`. Unit tests cover each domain crate (`specify-schema`, `specify-spec`, `specify-merge`, `specify-task`, `specify-validate`, `specify-change`) directly; the root `specify` package adds at least one end-to-end integration test under `tests/` that invokes the built `specify validate` binary against a fixture change directory (e.g. `tests/fixtures/`) and asserts the JSON output matches a golden file (pinning the `schema_version: 1` contract documented in the "Output Format" section). `scripts/checks.ts` continues to run via `make checks` alongside this workflow until `framework-check` reaches parity — see [RFC-5](../rfc-5-tooling.md).
+**CI for Phase 1.** The workspace-scaffold item (1) lands with a GitHub Actions workflow — `.github/workflows/ci.yml` — that runs on every pull request and on pushes to `main`. The minimum bar is three jobs against a stable Rust toolchain: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`. Unit tests cover each domain crate (`specify-schema`, `specify-spec`, `specify-merge`, `specify-task`, `specify-validate`, `specify-change`) directly; the root `specify` package adds at least one end-to-end integration test under `tests/` that invokes the built `specify validate` binary against a fixture change directory (e.g. `tests/fixtures/`) and asserts the JSON output matches a golden file (pinning the `schema_version: 1` contract documented in the "Output Format" section). `scripts/checks.ts` continues to run via `make checks` alongside this workflow until `tooling check` reaches parity — see [RFC-5](../rfc-5-tooling.md).
 
 #### Phase 2: Feature manifest extensions ([RFC-2](../archive/rfc-2-execution.md))
 
@@ -126,7 +126,7 @@ Dependencies flow from leaves to root: `specify-error` has no internal deps; `sp
 
 **The root `specify` package** (`src/main.rs` + `src/lib.rs`) owns the user-facing binary and the glue between domain crates. `main.rs` is a thin clap dispatcher — each subcommand is ~20 lines that parse args, call into `lib.rs` (or a domain crate directly), format the result, and set the exit code. `lib.rs` is the home for top-level specify logic: `init` orchestration (which touches schema resolution, project.yaml writing, and lifecycle creation at once), project config parsing, and the curated public API that embedders (editors, future LSP, CI integrations) consume. Putting `main.rs` and `lib.rs` side-by-side at the root — rather than in a separate `specify-cli` crate — means a single `cargo install specify` produces the binary and a single `use specify::…` imports the embeddable surface.
 
-[RFC-5](../rfc-5-tooling.md) adds `framework-rules` and `framework-check` when the framework linter port begins. They reuse shared schemas and parsers where practical but keep the repo-specific check logic (symlink resolution, SKILL.md frontmatter, docs inventory) out of the runtime crates.
+[RFC-5](../rfc-5-tooling.md) adds the `tooling/` workspace and `tooling check` when the framework linter port begins. The `check` modules reuse shared schemas and parsers where practical but keep the repo-specific check logic (symlink resolution, SKILL.md frontmatter, docs inventory) out of the runtime crates.
 
 ### Module Design: Domain Crates
 
@@ -1141,7 +1141,7 @@ prod-plugins:
 	@./scripts/prod-plugins.sh
 ```
 
-The `make checks` target remains driven by `scripts/checks.ts` for now; its migration to `framework-check` is covered by [RFC-5](../rfc-5-tooling.md) and does not interact with the Phase 1 build target above.
+The `make checks` target remains driven by `scripts/checks.ts` for now; its migration to `tooling check` is covered by [RFC-5](../rfc-5-tooling.md) and does not interact with the Phase 1 build target above.
 
 ### CLI Distribution and Fallback
 
@@ -1187,4 +1187,4 @@ Upgrading `specify_version` is user-driven: running `specify init --upgrade` rew
 - [RFC-2: Feature Manifests](../archive/rfc-2-execution.md) — extends the CLI with `specify manifest` subcommands
 - [RFC-3: Multi-Repo Coordination](rfc-3a-monoliths.md) — extends the CLI with `specify federation` subcommands
 - [RFC-4: Type-Safe Skill Expression](../future/rfc-4-dsl.md) — extends the framework linter with skill validation
-- [RFC-5: Framework Developer Tooling](../rfc-5-tooling.md) — ports `checks.ts` into `framework-rules` / `framework-check`
+- [RFC-5: Framework Developer Tooling](../rfc-5-tooling.md) — ports `checks.ts` into `tooling/` / `tooling check`

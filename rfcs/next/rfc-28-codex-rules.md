@@ -74,7 +74,7 @@ deterministic_hints:
 Configuration values that vary between deployments must not be hardcoded in generated code.
 ```
 
-[RFC-5](../rfc-5-tooling.md) defines the framework dev-tooling workspace at `augentic/specify/tooling/` that validates this shape: the `framework-rules::codex` module enforces the rule-id schema, namespace ownership, and frontmatter discipline from `framework-check`. RFC-28 adds runtime resolution and export semantics to the operator `specify` binary; it does not replace the markdown authoring format or move framework validation into the runtime CLI.
+[RFC-5](../rfc-5-tooling.md) defines the framework dev-tooling workspace at `augentic/specify/tooling/` that validates this shape: the `check::codex` module enforces the rule-id schema, namespace ownership, and frontmatter discipline from `tooling check`. RFC-28 adds runtime resolution and export semantics to the operator `specify` binary; it does not replace the markdown authoring format or move framework validation into the runtime CLI.
 
 ### Namespaces
 
@@ -303,7 +303,7 @@ Human producers may use the same schema for triage decisions. Human-authored sta
 
 ### Relationship to framework tooling
 
-`framework-check` validates the Specify framework repository: rule file shape, duplicate ids, namespace ownership, broken links, skill frontmatter, and adapter brief discipline.
+`tooling check` validates the Specify framework repository: rule file shape, duplicate ids, namespace ownership, broken links, skill frontmatter, and adapter brief discipline.
 
 `specify codex export` resolves rules for consumers.
 
@@ -319,9 +319,9 @@ The shared severity enum is not a compatibility classifier. Compatibility classi
 
 ## Implementation Plan
 
-1. **Schemas.** Add `schemas/codex/resolved.schema.json` and `schemas/review/finding.schema.json` to `specify-cli`. Keep the codex authoring schema aligned with RFC-5's schema-first framework-tooling pass so `framework-check` validates the same shape that the resolver consumes.
+1. **Schemas.** Add `schemas/codex/resolved.schema.json` and `schemas/review/finding.schema.json` to `specify-cli`. Keep the codex authoring schema aligned with RFC-5's schema-first framework-tooling pass so `tooling check` validates the same shape that the resolver consumes.
 2. **Domain types.** Add `CodexRule`, `ResolvedCodex`, `ReviewFinding`, `FindingLocation`, and `FindingEvidence` DTOs in `specify-domain` or a small `specify-review` crate if dependency direction requires it.
-3. **Resolver.** Implement rule discovery and resolution with the roots, applicability, deprecation, and ordering rules above. Put shared markdown/frontmatter parsing in `specify-domain` so RFC-5's `framework-rules::codex` validator and RFC-28's resolver consume the same parser without creating a dependency from the runtime CLI back to the framework repo.
+3. **Resolver.** Implement rule discovery and resolution with the roots, applicability, deprecation, and ordering rules above. Put shared markdown/frontmatter parsing in `specify-domain` so RFC-5's `check::codex` validator and RFC-28's resolver consume the same parser without creating a dependency from the runtime CLI back to the framework repo.
 4. **CLI export.** Add `specify codex export` as a read-only subcommand. It does not require an initialized `.specify/` project when `--repo` and `--target` are supplied, but it may use project context when available.
 5. **Finding validation.** Add a small validation helper and fixtures for good findings, missing required fields, invalid severities, oversize evidence, invalid fingerprints, and invalid rule ids.
 6. **Review brief alignment.** Update Omnia, Vectis, and contracts review briefs to describe the structured finding fields and the distinction between report-local ids and `rule-id`.
