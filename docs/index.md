@@ -25,7 +25,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
     <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The operator reviews and stamps the plan before `/spec:execute` can run.</div>
+    <div class="proof-copy">The operator reviews and stamps the plan before <code>/spec:execute</code> can run.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -41,13 +41,13 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
     <div class="rhythm-num">01</div>
     <div class="rhythm-label">Plan</div>
     <div class="rhythm-title">Define the change</div>
-    <p>Bind sources, enumerate candidates, and produce `change.md`, `plan.yaml`, and `discovery.md`.</p>
+    <p>Bind sources, enumerate candidates, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">02</div>
     <div class="rhythm-label">Review</div>
     <div class="rhythm-title">Lock the scope</div>
-    <p>The operator stamps the plan `reviewed`; the agent does not approve its own scope.</p>
+    <p>The operator stamps the plan <code>reviewed</code>; the agent does not approve its own scope.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">03</div>
