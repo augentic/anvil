@@ -1,5 +1,5 @@
 // Documentation consistency checks for the Augentic Plugins repository.
-// Run via: make checks
+// Run via: make check
 // Exit code 0 = all checks pass; non-zero = one or more failures.
 //
 // This file is the thin orchestration layer. Predicates live in

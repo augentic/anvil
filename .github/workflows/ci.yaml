@@ -43,6 +43,6 @@ jobs:
         uses: denoland/setup-deno@v2
 
       - name: Run checks
-        run: make checks
+        run: make check
         env:
           SPECIFY_CLI_DIR: specify-cli

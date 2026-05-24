@@ -77,7 +77,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make checks` — runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks.
+- `make check` — runs `scripts/check.ts` via Deno for documentation and workflow consistency checks.
 - `make test` — direct cross-repo Deno acceptance test (skips cleanly when no suitable binary is available).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
@@ -85,12 +85,12 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in [scripts/checks/](scripts/checks/). Enforced strictly by `make checks` — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in [scripts/checks/](scripts/checks/). Enforced strictly by `make check` — every predicate fails on the first violation, with no per-file grandfathering.
 
 ## Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
-- `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
+- `check.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
 - 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace.

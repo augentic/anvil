@@ -1,6 +1,6 @@
 # RFC-4: Type-Safe Skill Expression
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-5](../rfc-5-linter.md)
 
 ## Abstract
 
@@ -18,11 +18,11 @@ Skills have two distinct layers with fundamentally different validation needs:
 
 Today both layers live in untyped markdown. YAML frontmatter has no schema enforcement, and the prose body uses conventions (variable names, reference links, section headings) with no structural validation. Breaking a reference or misspelling a tool name produces no feedback until runtime.
 
-### Relationship to RFC-1 and `checks.ts`
+### Relationship to RFC-1, RFC-5, and `check.ts`
 
 [RFC-1](archive/rfc-1-cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This RFC extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
 
-Importantly, `checks.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this RFC is not designing these checks but porting them from TypeScript into the `specify-check` crate — a migration that happens naturally as part of RFC-1's `specify check` subcommand. Once that port is complete, the incremental work for this RFC is small.
+Importantly, `check.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this RFC is not designing these checks but porting them into the Rust dev-tooling workspace defined by [RFC-5](../rfc-5-linter.md) — `framework-rules` (the library carrying every predicate) and `framework-check` (the binary CI invokes). Once that workspace is in place, the incremental work for this RFC is small: the schema-first pass in RFC-5 turns most of Option 1 into editor squigglies before any binary runs, and the residual cross-file rules (variable consistency, cross-skill directive resolution, marketplace consistency) live in `framework-rules` modules.
 
 ## Detailed Design
 
@@ -54,7 +54,7 @@ The Rust compiler gives you broken-reference detection, exhaustive enum matching
 
 ## Recommendation
 
-Option 1 is already mostly implemented in `checks.ts` and will be ported to Rust as part of RFC-1's `specify-check` crate. Once that port is complete, this RFC's Option 1 is done — no additional design or implementation beyond what the CLI migration delivers.
+Option 1 is already mostly implemented in `check.ts` and is satisfied by [RFC-5](../rfc-5-linter.md)'s schema-first pass plus the `skill_frontmatter` / `skill_body` / `links` / `plugins` modules in `framework-rules`. Once that workspace lands, this RFC's Option 1 is done — no additional design or implementation beyond what the dev-tooling migration delivers.
 
 Option 2 is the right next step if skill count grows beyond ~20 and structural drift becomes a recurring problem. Option 3 is justified only when skills need to compose programmatically (e.g., generating variant skills from a base definition) or when the skill count makes manual consistency impractical.
 
@@ -62,5 +62,6 @@ Revisit options 2 and 3 when the ported validation catches real bugs and the fai
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — prerequisite; `specify-check` crate provides the validation infrastructure
-- `checks.ts` — existing Deno implementation of Option 1 checks
+- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — prerequisite; defines `specify validate` and the workflow primitives skill validation builds on
+- [RFC-5: Framework Developer Tooling](../rfc-5-linter.md) — provides the `framework-rules` library and `framework-check` binary that host Option 1
+- `check.ts` — existing Deno implementation of Option 1 checks, retired as RFC-5 lands

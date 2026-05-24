@@ -60,4 +60,4 @@ Adjust `../` depth for file location (`orientation/` uses `../assets/…`, `refe
 - **SVG**: workflow pipelines, layered architecture, state machines, adapter axis diagrams.
 - **Table**: field inventories, CLI flag lists, closed enums.
 - **D2** (legacy): reference pages only until individually upgraded.
-- **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `make checks`).
+- **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `make check`).

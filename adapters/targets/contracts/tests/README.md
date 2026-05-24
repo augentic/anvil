@@ -95,7 +95,7 @@ negative-expectations:                # optional, free-form forbidden-condition 
 ```
 
 The fields are intentionally compatible with `.cursor/schemas/scenario.schema.json`.
-Static validation in `scripts/checks.ts` enforces the frontmatter shape.
+Static validation in `scripts/check.ts` enforces the frontmatter shape.
 
 ## Manual Test Flow
 

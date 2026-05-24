@@ -86,7 +86,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 ## Validation
 
 ```bash
-make checks
+make check
 ```
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
@@ -146,7 +146,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources: [scripts/checks/](../../scripts/checks/); schema: [.cursor/schemas/skill.schema.json](../../.cursor/schemas/skill.schema.json). `make checks` enforces both.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources: [scripts/checks/](../../scripts/checks/); schema: [.cursor/schemas/skill.schema.json](../../.cursor/schemas/skill.schema.json). `make check` enforces both.
 
 ## For Contributors
 

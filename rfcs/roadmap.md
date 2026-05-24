@@ -115,11 +115,11 @@ specify events export
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
 
-#### RM-16: RFC-5: `specify check` framework linter port
+#### RM-16: RFC-5: framework developer tooling workspace
 
-**Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
-**Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
-**Codex follow-up:** May surface first-party codex shape validation by delegating to the codex parser/resolver, while leaving project-resolved review behavior under future `specify review`.
+**Goal:** Land the framework dev-tooling workspace in `augentic/specify` per [RFC-5](rfc-5-linter.md) — schema-first authoring feedback in Cursor, a `framework-rules` library crate, a `framework-check` binary for CI and local use, an `accept` crate that replaces `tests/cross_repo.ts`, a `docgen` binary that replaces `scripts/gen-envelope-doc.ts`, and full Deno retirement.
+**Why now:** Removes Deno from CI and contributor prerequisites, kills the parser duplication between `tests/lib/spec_provenance.ts` and `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner — without bloating the operator `specify` binary with dev-only surfaces.
+**Codex follow-up:** First-party codex shape validation lives in `framework-rules::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize

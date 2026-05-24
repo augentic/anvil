@@ -18,7 +18,7 @@ Most likely to break in remediation: **F1** — the `add` event order must remai
 - Files >500 lines under `crates/` and `src/` (`specify-cli`):
   - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**.
   - Source: `src/commands/plan/create.rs` **895**, `crates/domain/src/discovery/document.rs` **891**, `crates/domain/src/slice/fusion.rs` **839**, `crates/domain/src/adapter/core.rs` **709**, `crates/domain/src/change/plan/core/model.rs` **629**, `crates/domain/src/spec/provenance.rs` **607**, `crates/domain/src/journal.rs` **595**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**.
-- `make checks` (`specify`): **passed** — `All checks passed.` Total failures: **0**.
+- `make check` (`specify`): **passed** — `All checks passed.` Total failures: **0**.
 - `cargo make ci` (`specify-cli`): **passed** — `[cargo-make] INFO - Build Done in 167.86 seconds.` First error: **none**. (`lint + file-size + test + test-docs + doc + vet + outdated + deny + fmt` all green; `Vetting Succeeded (285 fully audited, 35 partially audited, 313 exempted)`; `cargo deny` `advisories ok, bans ok, licenses ok, sources ok`.)
 - `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' --glob '!**/tests.rs' --glob '!**/test_support*' crates/ src/` (`specify-cli`): summed **518** matching lines (still inflated — the largest single contributors are inline `#[cfg(test)] mod tests { … }` blocks inside source files such as `crates/domain/src/init/regular.rs`; the operator-path count is materially smaller and no panic-on-operator-path defect surfaced).
 - `rg -c 'panic!|unreachable!|todo!' --glob '!**/tests/**' --glob '!**/tests.rs' --glob '!**/test_support*' crates/ src/` (`specify-cli`): summed **41** matching lines, again dominated by inline `#[cfg(test)]` modules.
@@ -180,7 +180,7 @@ Bullets 3 (`Severity reflects antagonist adjustments …`) and 4 (`Every finding
 
 **Net LOC:** ios + android + core review briefs **25 + 25 + 30 = 80 → ~72** combined; reference doc gains **~4 LOC**.
 
-**Done when:** `rg -nF 'Severity reflects antagonist adjustments' adapters/targets/vectis/briefs/` returns **0** (all hits live under `references/` now), and `make checks` passes.
+**Done when:** `rg -nF 'Severity reflects antagonist adjustments' adapters/targets/vectis/briefs/` returns **0** (all hits live under `references/` now), and `make check` passes.
 
 **Rule?** no.
 

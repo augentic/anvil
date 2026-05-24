@@ -21,7 +21,7 @@
 // tables) rather than letting individual briefs sprawl. The "wave 2"
 // migration deleted ~34 000 LOC by silently squeezing four+ skill
 // bodies into a single brief; the cap turns that regression class into
-// a hard `make checks` failure.
+// a hard `make check` failure.
 //
 // Briefs additionally MUST NOT carry YAML frontmatter. Skills carry
 // frontmatter because Stage 1 discovery competes their `description`

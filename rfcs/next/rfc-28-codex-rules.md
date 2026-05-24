@@ -74,7 +74,7 @@ deterministic_hints:
 Configuration values that vary between deployments must not be hardcoded in generated code.
 ```
 
-RFC-5 ports the framework linter that validates this shape. RFC-28 adds runtime resolution and export semantics; it does not replace the markdown authoring format.
+[RFC-5](../rfc-5-linter.md) defines the framework dev-tooling workspace that validates this shape — the `framework-rules::codex` module enforces the rule-id schema, namespace ownership, and frontmatter discipline from `framework-check` (run in CI from `augentic/specify`, not from the operator `specify` binary). RFC-28 adds runtime resolution and export semantics; it does not replace the markdown authoring format.
 
 ### Namespaces
 

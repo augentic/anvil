@@ -1,17 +1,17 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `scripts/checks.ts` that validates documentation, skills, adapter manifests, and the marketplace manifest. Run it before every pull request.
+The `specify` repo includes an automated consistency checker at `scripts/check.ts` that validates documentation, skills, adapter manifests, and the marketplace manifest. Run it before every pull request.
 
 ## Running checks
 
 ```bash
-make checks
+make check
 ```
 
-This runs `scripts/checks.ts` via [Deno](https://deno.land):
+This runs `scripts/check.ts` via [Deno](https://deno.land):
 
 ```bash
-deno run --allow-read --allow-env scripts/checks.ts
+deno run --allow-read --allow-env scripts/check.ts
 ```
 
 Exit code `0` means all checks pass. Any failure prints `FAIL: <description>` and exits non-zero with a count of failures.
@@ -26,7 +26,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Stale claims
 
-No markdown file may reference a stale checklist count from an earlier version of the documentation. The specific patterns are defined in `scripts/checks.ts`.
+No markdown file may reference a stale checklist count from an earlier version of the documentation. The specific patterns are defined in `scripts/check.ts`.
 
 ### 3. Adapter manifest YAML validation
 
@@ -198,10 +198,10 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 To add a new check:
 
-1. Write an `async function` in `scripts/checks.ts` following the existing pattern.
+1. Write an `async function` in `scripts/check.ts` following the existing pattern.
 2. Call `fail(msg)` for each violation -- this increments the error counter and prints the failure.
 3. Add the function to one of the `Promise.all` groups at the bottom of the file. Independent checks can run in the same group; checks that depend on earlier results go in a later group.
-4. Run `make checks` to verify the new check works.
+4. Run `make check` to verify the new check works.
 
 The checks are numbered but the numbers are not contiguous (check 11 does not exist). New checks should use the next available number.
 

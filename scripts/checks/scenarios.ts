@@ -413,7 +413,7 @@ export async function checkRecordedTraceFreshness(): Promise<void> {
   // surfaces any of the present trace files, suggest the operator
   // disclose the source run in their commit message. Failures here
   // (no git, shallow clone, single-commit history, no `--allow-run`
-  // permission) are non-fatal — `make checks` keeps its narrow
+  // permission) are non-fatal — `make check` keeps its narrow
   // `--allow-read` posture by default.
   try {
     const perm = await Deno.permissions.query({ name: "run", command: "git" });

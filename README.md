@@ -73,10 +73,10 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make checks
+make check
 ```
 
-This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be installed separately.
+This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.
 
 ### Local plugin development
 

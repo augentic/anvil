@@ -88,7 +88,7 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
-3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../../../targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../../../targets/vectis/references/review/universal-checks.md), etc.) — `make checks` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
-4. Run `make checks`. The relevant predicate is `validateCodexRuleShape` in [`scripts/checks/codex.ts`](../../../../scripts/checks/codex.ts), which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
+3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../../../targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../../../targets/vectis/references/review/universal-checks.md), etc.) — `make check` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
+4. Run `make check`. The relevant predicate is `validateCodexRuleShape` in [`scripts/checks/codex.ts`](../../../../scripts/checks/codex.ts), which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

@@ -20,7 +20,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 **For skill and adapter work** (specify repo):
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
-- [Deno](https://deno.land) -- runs `scripts/checks.ts` via `make checks`
+- [Deno](https://deno.land) -- runs `scripts/check.ts` via `make check`
 - [mdBook](https://rust-lang.github.io/mdBook/) + [D2](https://d2lang.com/) -- for building documentation locally (optional)
 
 **For CLI work** (specify-cli repo):
@@ -35,7 +35,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make checks` in the specify repo; `cargo make ci` in the specify-cli repo. For documentation changes, also run `make docs` before opening the PR.
+4. **Run checks.** `make check` in the specify repo; `cargo make ci` in the specify-cli repo. For documentation changes, also run `make docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
@@ -46,7 +46,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `make checks` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what `make check` enforces and how to extend it
 
 ## Example Patterns
 

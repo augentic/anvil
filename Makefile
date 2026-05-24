@@ -1,8 +1,8 @@
 DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/deno))
 
-.PHONY: checks
-checks:
-	@$(DENO) run --allow-read --allow-env scripts/checks.ts
+.PHONY: check
+check:
+	@$(DENO) run --allow-read --allow-env scripts/check.ts
 
 .PHONY: doc-envelopes
 doc-envelopes:
@@ -28,7 +28,7 @@ docs-prereqs:
 	@bash ./scripts/docs-prereqs.sh
 
 .PHONY: ci
-ci: checks test
+ci: check test
 
 .PHONY: use-local-plugins
 use-local-plugins:

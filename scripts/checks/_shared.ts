@@ -6,7 +6,7 @@
 //     exactly one place,
 //   - the standards allowlist is loaded once per process.
 //
-// `scripts/checks.ts` is the thin entry point that orchestrates the
+// `scripts/check.ts` is the thin entry point that orchestrates the
 // modules and reports the final tally.
 
 import { walk } from "jsr:@std/fs@1/walk";
@@ -16,8 +16,8 @@ import Ajv2020Module from "npm:ajv@8/dist/2020.js";
 
 export { dirname, join, parseYaml, relative, resolve, walk };
 
-// `_shared.ts` lives one extra directory deeper than the original
-// `scripts/checks.ts`, so REPO_ROOT walks up two levels instead of one.
+// `_shared.ts` lives one extra directory deeper than the orchestrator
+// `scripts/check.ts`, so REPO_ROOT walks up two levels instead of one.
 export const REPO_ROOT = resolve(
   dirname(fromFileUrl(import.meta.url)),
   "..",

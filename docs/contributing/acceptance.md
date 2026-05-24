@@ -7,7 +7,7 @@ The acceptance surface has two layers:
 
 ## Targets
 
-- `make checks` runs static repository checks, including scenario frontmatter validation.
+- `make check` runs static repository checks, including scenario frontmatter validation.
 - `make test` runs the Deno acceptance harness against the fixture trees.
 - `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).

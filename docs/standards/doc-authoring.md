@@ -187,7 +187,7 @@ Keep factual prose in markdown; use HTML only for layout components the CSS targ
 
 ## RFC citations
 
-User-facing docs must not cite RFC numbers in visible prose except in [`../explanation/decision-log.md`](../explanation/decision-log.md), [`../explanation/release-notes.md`](../explanation/release-notes.md), and [`../contributing/`](../contributing/). Link targets to archived RFC paths are fine when the link text does not name the RFC. Enforced by `checkNoRfcCitationsInDocs` in `make checks`.
+User-facing docs must not cite RFC numbers in visible prose except in [`../explanation/decision-log.md`](../explanation/decision-log.md), [`../explanation/release-notes.md`](../explanation/release-notes.md), and [`../contributing/`](../contributing/). Link targets to archived RFC paths are fine when the link text does not name the RFC. Enforced by `checkNoRfcCitationsInDocs` in `make check`.
 
 ## Building locally
 

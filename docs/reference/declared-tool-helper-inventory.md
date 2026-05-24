@@ -25,7 +25,7 @@ The following command families are intentionally outside this scope. They are no
 - Core Specify lifecycle and orchestration: `specify slice *`, `specify plan *`, `specify source resolve`, `specify target resolve`, `specify registry *`, `specify workspace *`, and `specify init`.
 - Forge and transport commands: `git`, `gh`, SSH, PR/MR merge queues, and future forge adapters.
 - Language and platform toolchains: `cargo`, `rustup`, `swift`, `swiftformat`, `make`, `xcodebuild`, `gradle`, `./gradlew`, Java/Android SDK tools, `npm`, and `npx`.
-- Repository maintenance scripts: `deno run scripts/checks.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.
+- Repository maintenance scripts: `deno run scripts/check.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.
 - Vectis host verification and template maintenance: verify, version-pin updates, and version queries have no direct WASI wrapper in v1; active skills express them as host workflow or template-updater work, not as declared tools.
 
 ## Current status
@@ -36,4 +36,4 @@ Future migrations should update this inventory first, then add the WASI componen
 
 ## Enforcement
 
-`make checks` includes the rule `skill.invokes-host-binary-with-declared-tool-equivalent`. The check scans active adapter briefs and plugin skills for retired first-party helper invocations when a declared-tool equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.
+`make check` includes the rule `skill.invokes-host-binary-with-declared-tool-equivalent`. The check scans active adapter briefs and plugin skills for retired first-party helper invocations when a declared-tool equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.

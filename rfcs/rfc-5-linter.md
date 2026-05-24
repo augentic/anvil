@@ -1,145 +1,290 @@
-# RFC-5: Framework Linter
+# RFC-5: Framework Developer Tooling
 
-> Status: Draft · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-specify-check-framework-linter-port) · Enables: [RFC-4](rfc-4-dsl.md)
+> Status: Draft · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-specify-check-framework-linter-port) (entry to be renamed when this RFC lands) · Enables: [RFC-4](rfc-4-dsl.md) · Preserves contract with: [RFC-28](next/rfc-28-codex-rules.md)
 
 ## Abstract
 
-Port the repo's existing `scripts/checks.ts` Deno framework linter into a Rust `specify-check` crate exposed via `specify check`. The port is a message-preserving one-for-one migration — each Deno module under `scripts/checks/` maps to a Rust module with identical semantics — that runs alongside the Deno script during rollout and retires it once parity is reached.
+Replace this repo's Deno tooling (`scripts/check.ts`, `scripts/gen-envelope-doc.ts`, `tests/cross_repo.ts`) with a small Rust workspace **inside `augentic/specify`** that follows a layered, schema-first architecture: JSON Schemas are the canonical contract for every artifact whose shape can be expressed declaratively; cross-file rules that schemas cannot express live in a single `framework-rules` library crate; that library backs several thin frontends — a CLI binary for CI, an optional LSP for in-editor feedback, a pre-commit hook, and a GitHub Action. The operator `specify` binary in `augentic/specify-cli` is deliberately **not** extended; framework tooling stays with the framework it validates.
 
 ## Motivation
 
-`scripts/checks.ts` is the framework-level linter for this repo. It runs in CI and enforces invariants the runtime CLI does not need to know about: adapter manifest conformance against `source.schema.json` / `target.schema.json`, brief size and brief-no-frontmatter discipline, marketplace.json alignment, SKILL.md frontmatter and body discipline, cross-skill directive validity, codex rule shape, declared-tool invocation equivalence, scenario fixtures, and docs hygiene.
+The original RFC-5 framed this work as a one-for-one port of `scripts/check.ts` into `specify-cli/crates/check/`, exposed as `specify check`. That framing collapses several different problems into one binary on the wrong product:
 
-The script works. At ~3 200 lines across 13 modules under [`scripts/checks/`](../scripts/checks/) it is not broken, not blocking other RFCs, and not on the critical path for the `specify` CLI's runtime surface. But the port is still worth doing:
+- **Authoring feedback** (catch typos in `SKILL.md` / `adapter.yaml` as you type) belongs in the editor, not in CI.
+- **Pre-commit safety** belongs in a fast local hook scoped to changed files.
+- **CI gating** is the authoritative final check — but should run the same predicates as the local layers.
+- **Cross-repo coherence** (specify ↔ specify-cli schemas, envelopes, error codes) is a library concern; sharing it through a CLI subcommand is awkward.
+- **Doc generation** (`gen-envelope-doc.ts`) and **fixture acceptance** (`tests/cross_repo.ts`) are not "linting" at all but share the same Deno toolchain we are trying to retire.
 
-- It removes the Deno toolchain from `make checks` and collapses the CI dependency surface onto `cargo`.
-- It lets the linter share `specify-domain`'s parsers (adapter manifests, brief paths, codex rules) instead of maintaining a parallel YAML pipeline in TypeScript.
-- It gives [RFC-4](rfc-4-dsl.md)'s Option 1 (CLI-integrated skill validation) a home that already understands the repo's adapter and skill model.
+Putting all of this on the operator `specify` binary conflates two audiences. Operators running Specify on a consumer project never need to validate `plugins/`, `adapters/{sources,targets}/`, or `.cursor-plugin/marketplace.json`. The runtime CLI must stay focused on its job: deterministic workflow primitives for consumer projects (init, plan, slice lifecycle, adapter resolution, merge, workspace sync, WASI tool dispatch).
+
+The Deno scripts work today. They are ~5,500 lines across three surfaces and run reliably in CI. This RFC is therefore not motivated by breakage but by three durable goals:
+
+1. **Shift authoring feedback left.** Schema-first contracts let Cursor's built-in JSON/YAML language servers surface most violations as red squigglies, removing a class of PR round-trips.
+2. **Eliminate parser duplication.** `tests/lib/spec_provenance.ts` mirrors `specify-domain`'s requirement-block parser; `scripts/checks/adapter.ts` re-runs Ajv against the same schemas `specify-domain` already ships. Sharing the Rust library kills both.
+3. **Collapse the toolchain.** Remove Deno from `make check`, `make test`, and contributor prerequisites without adding it to the operator CLI's install surface.
+
+The product principle that follows: **dev tooling for the plugin repo lives in the plugin repo**, not on the operator binary.
 
 ## Detailed Design
 
+### Architecture
+
+Four layers, one rule engine.
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│ Layer 1: Schemas (specify-cli/schemas/, .cursor/schemas/)      │
+│   Authored once. Consumed by Cursor JSON/YAML LSPs for         │
+│   in-editor squigglies. Also embedded in framework-rules and   │
+│   in specify-domain for runtime validation.                    │
+└────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Layer 2: framework-rules (Rust library crate)                  │
+│   Cross-file predicates that schemas cannot express:           │
+│   symlink integrity, marketplace ↔ plugins consistency,        │
+│   variable-definition coverage, cross-skill directive          │
+│   resolution, codex namespace ownership, brief size,           │
+│   declared-tool invocation equivalence, link resolution.       │
+│   Depends on specify-domain for shared parsers and schemas.    │
+└────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+   │ Layer 3a:     │ │ Layer 3b:     │ │ Layer 3c:     │
+   │ framework-    │ │ framework-lsp │ │ pre-commit    │
+   │ check binary  │ │ (future)      │ │ hook          │
+   │ CI + local    │ │ Cursor LSP    │ │ Changed files │
+   └───────────────┘ └───────────────┘ └───────────────┘
+              │
+              ▼
+   ┌───────────────────────┐
+   │ Layer 4: GitHub Action │
+   │ Wraps framework-check  │
+   │ for PR annotations.    │
+   └───────────────────────┘
+```
+
+Each layer optimises for its audience: schemas catch the easy 80% in the editor at zero cost; the library carries the hard 20% once; the frontends are thin shells.
+
 ### Scope
 
-`specify-check` ports every invariant currently enforced by `scripts/checks.ts` and its modules under `scripts/checks/`, and nothing else. New invariants belong to follow-up RFCs or to RFC-4's later options.
+In scope:
 
-The boundary against the runtime crates is unchanged: the `specify` CLI's `specify-domain` / `specify-tool` / `specify-error` stack validates *consumer projects* (artifact correctness at runtime, adapter manifest loads, slice lifecycle transitions); `specify-check` validates *the plugin repo* (skill integrity, adapter brief discipline, marketplace alignment, docs hygiene at CI time). The overlap is intentional and narrow: both parse `adapter.yaml`, so `specify-check` depends on `specify-domain` for that parser and for the per-axis schemas shipped via `include_str!`. Everything else (symlink resolution, SKILL.md frontmatter, brief size, scenario fixtures, marketplace) is plugin-repo-specific and lives in `specify-check`.
+- A new Rust workspace under `augentic/specify` (this repo).
+- `framework-rules` library crate carrying every predicate currently in `scripts/checks/`.
+- `framework-check` binary that runs the library across the repo for CI and local use.
+- `accept` crate that ports `tests/cross_repo.ts` and its `tests/lib/` helpers.
+- `docgen` binary that ports `scripts/gen-envelope-doc.ts`.
+- Schema-first migration: extract every check that can be a JSON Schema into one (or strengthen an existing one), and wire `$schema` references so Cursor surfaces violations inline.
+
+Out of scope (future RFCs):
+
+- `framework-lsp` — designed for here but not implemented until rule count justifies it.
+- WASI extensibility for third-party rule packs — the library shape allows it; this RFC does not adopt it.
+- Any new invariants beyond what the Deno scripts enforce today. New checks belong to RFC-4 Option 1, RFC-28 codex resolution, or successor RFCs.
+- Manual scenario packs under `tests/cross-repo/` and `tests/plan/` — operator-driven by design; see [docs/contributing/acceptance.md](../docs/contributing/acceptance.md).
+
+The boundary against the operator CLI is explicit: `specify-cli` validates *consumer projects* at runtime (adapter manifest loads, slice lifecycle transitions, plan validation, merge); this workspace validates *the framework repo itself* (skill integrity, adapter brief discipline, marketplace alignment, docs hygiene, fixture acceptance). The overlap is intentional and narrow — both sides need the same adapter-manifest parser and the same JSON Schemas — and is handled by depending on `specify-domain` as a library.
 
 ### Workspace layout
 
-`specify-check` is added as a peer leaf to `specify-tool` in the existing `specify-cli` workspace (per the leaf → root graph documented in the CLI's [AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#crate-graph)):
-
 ```text
-specify-cli/
-├── Cargo.toml                          # workspace manifest + root `specify` package
-├── src/                                # binary + top-level lib
+augentic/specify/
+├── Cargo.toml                              # new workspace manifest
+├── rust-toolchain.toml                     # pinned to match specify-cli
 ├── crates/
-│   ├── error/                          # specify-error — leaf
-│   ├── tool/                           # specify-tool — depends on specify-error
-│   ├── domain/                         # specify-domain — depends on {error, tool}
-│   └── check/                          # specify-check — this RFC; depends on {error, domain}
+│   ├── framework-rules/                    # library: predicates + shared walkers
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── adapter.rs                  # adapter.yaml ↔ source/target schemas
+│   │       ├── brief.rs                    # brief size + no-frontmatter discipline
+│   │       ├── codex.rs                    # codex rule shape + RFC-28 namespace ownership
+│   │       ├── docs_quality.rs             # RFC citation hygiene, diagram assets
+│   │       ├── links.rs                    # markdown links + symlink-aware references
+│   │       ├── plugins.rs                  # symlinks + marketplace.json consistency
+│   │       ├── prose.rs                    # invocation positionals, operational vocab, caps
+│   │       ├── scenarios.rs                # scenario frontmatter + recorded-trace freshness
+│   │       ├── skill_body.rs               # skill body discipline (12 predicates)
+│   │       ├── skill_frontmatter.rs        # skill frontmatter discipline (7 predicates)
+│   │       └── tools.rs                    # declared-tool equivalence
+│   └── accept/                             # integration tests over tests/fixtures/
 │       ├── Cargo.toml
-│       └── src/
-│           ├── lib.rs
-│           ├── adapter.rs              # adapter.yaml ↔ source/target schemas
-│           ├── brief.rs                # brief size + no-frontmatter discipline
-│           ├── codex.rs                # codex rule shape
-│           ├── docs_quality.rs         # RFC citation hygiene, diagram assets
-│           ├── links.rs                # markdown links + cross-skill directives + references
-│           ├── plugins.rs              # symlinks + marketplace.json consistency
-│           ├── prose.rs                # invocation positionals, operational vocab, numeric caps
-│           ├── scenarios.rs            # scenario frontmatter + recorded-trace freshness
-│           ├── skill_body.rs           # skill body discipline (12 predicates)
-│           ├── skill_frontmatter.rs    # skill frontmatter discipline (7 predicates)
-│           └── tools.rs                # declared-tool equivalence + first-party tool decls
+│       └── tests/                          # one file per fixture surface (sources / targets / skills)
+├── tools/
+│   ├── framework-check/                    # binary: CI + local
+│   │   ├── Cargo.toml
+│   │   └── src/main.rs                     # ~100 LOC dispatcher
+│   └── docgen/                             # binary: envelope doc regeneration
+│       ├── Cargo.toml
+│       └── src/main.rs
+├── hooks/
+│   └── pre-commit                          # shell shim → framework-check --changed
+└── .github/
+    ├── actions/framework-check/            # composite action wrapping the binary
+    └── workflows/ci.yaml                   # cargo, no Deno
 ```
 
-The augentic/specify repo continues to invoke the linter from `make checks`, which calls `specify check --repo .`. Until parity is reached the Deno script keeps running side-by-side.
+`framework-rules` depends on `specify-domain` and `specify-error`. The dependency is a **git dep** pinned to a tag for releases, with a `[patch.crates-io]` override available for local sibling-checkout development (mirroring how the existing Deno scripts use `SPECIFY_CLI_DIR=../specify-cli`). CI checks out both repos exactly as it does today.
 
-### Module design
+Failure messages MUST match the current `check.ts` wording during the overlap period so PR diffs stay readable; message stability is how we verify it is safe to delete a Deno module.
 
-Each Rust module ports the corresponding Deno module under [`scripts/checks/`](../scripts/checks/) so parity can be verified module-by-module. Failure messages MUST match the current `checks.ts` wording so CI diffs stay readable while both tools run side-by-side; message stability is how we know the migration is safe to finish removing `checks.ts`.
+### Schema-first layer (do this first)
 
-The 12 modules group into five concerns:
+Most checks in `scripts/checks/` enforce shapes that JSON Schema can express. The earliest, highest-leverage work is to make sure every such shape **is** a schema, and that Cursor sees it.
 
-| Concern               | Deno module(s)                                            | Rust module          | Notes                                                                                                              |
-|-----------------------|-----------------------------------------------------------|----------------------|--------------------------------------------------------------------------------------------------------------------|
-| Adapter manifests     | `adapter.ts`                                              | `adapter.rs`         | Validates each `adapters/{sources,targets}/<name>/adapter.yaml` against the schemas shipped by `specify-domain` via `include_str!`. |
-| Brief discipline      | `brief_size.ts`                                           | `brief.rs`           | Walks `adapters/{sources,targets}/<axis>/<name>/briefs/**/*.md`. Enforces parent ≤ 150 / phase ≤ 800 non-blank lines and **no YAML frontmatter on any brief**. Briefs are not skills — they are resolved by path from `adapter.yaml`. |
-| Skill discipline      | `skill_frontmatter.ts`, `skill_body.ts`, `prose.ts`       | three peer modules   | Description grammar, argument-hint grammar, 200/45/512 caps, body restatement, no-RFC-citations-in-bodies, invocation positionals, operational vocab, numeric-cap sync. |
-| Repo hygiene          | `links.ts`, `plugins.ts`, `docs_quality.ts`               | three peer modules   | Markdown link resolution (including symlink-aware references under `plugins/spec/references/`), `.cursor-plugin/marketplace.json` ↔ plugin layout consistency, RFC-citation hygiene in `docs/`, diagram assets. |
-| Specialist surfaces   | `codex.ts`, `scenarios.ts`, `tools.ts`                    | three peer modules   | Codex rule shape against `.cursor/schemas/codex-rule.schema.json`, scenario frontmatter against `scenario.schema.json` plus recorded-trace freshness, declared-tool equivalence between `tools.yaml` and the `specify tool run` invocations referenced in skill bodies. |
+Concrete moves:
 
-`links.rs` in particular carries load-bearing symlink behaviour (the existing `underSymlink` gate in `_shared.ts` governs how shared reference docs under `plugins/spec/references/` are traversed). The port MUST preserve it.
+- **Authoritative location.** Every schema consumed by both `specify-cli` (runtime) and `framework-rules` (CI) lives in `specify-cli/schemas/` and is `include_str!`-ed there. Framework-only schemas (skill frontmatter, codex rule, scenario) move from `.cursor/schemas/` into `specify-cli/schemas/` so both sides consume the same artifacts. The `.cursor/schemas/` aliases stay as symlinks for editor convenience until Cursor settings are updated.
+- **Editor wiring.** Workspace settings (`.cursor/settings.json` or per-file `# yaml-language-server: $schema=` directives) point every `adapter.yaml`, `SKILL.md` frontmatter, scenario file, codex rule, marketplace manifest, and `tools.yaml` at its schema. The YAML/JSON LSPs Cursor already ships then surface violations live, with no extra tooling installed.
+- **Schema strengthening.** Rules currently enforced imperatively in `skill_frontmatter.ts` (description grammar, argument-hint shape, 200/45/512 caps on counted fields) are expressed as `pattern`, `maxLength`, and `enum` constraints where they fit. The minority that genuinely cannot be schema'd (variable consistency, cross-skill directive resolution, body-section discipline) stays in `framework-rules`.
+- **Documentation.** `docs/contributing/checks.md` gets a new section explaining the editor-first model: most violations are red squigglies before a single CLI command runs.
 
-### `specify check` subcommand
+This phase delivers contributor value before any Rust binary lands.
 
-The root `specify` package (`src/main.rs`) gains a single new subcommand:
+### `framework-rules` library
+
+A single crate exposing each predicate as a `Check` returning structured findings:
 
 ```rust
-#[derive(Subcommand)]
-enum Commands {
-    // ... existing subcommands ...
+pub struct Finding {
+    pub rule_id: &'static str,         // stable kebab-case id
+    pub severity: Severity,            // error | warning
+    pub message: String,               // matches check.ts wording during overlap
+    pub location: Option<Location>,    // file + 1-based line + optional column
+}
 
-    /// Validate the specify framework / plugin repo itself
-    Check {
-        /// Repository root (defaults to current directory)
-        #[arg(long, default_value = ".")]
-        repo: PathBuf,
-    },
+pub trait Check {
+    fn id(&self) -> &'static str;
+    fn run(&self, ctx: &Context) -> Vec<Finding>;
 }
 ```
 
-The subcommand is a thin dispatcher that runs every `specify-check` module concurrently (mirroring the `Promise.all` batches in `scripts/checks.ts`) and aggregates results into the JSON envelope shape `specify` uses for its other commands (see the CLI repo's [output shape contract](https://github.com/augentic/specify-cli/blob/main/docs/standards/handler-shape.md)). Exit code follows the standard exit-code table — `0` on success, `2` on validation failures, `1` on infrastructure errors (I/O, schema load failures).
+`Context` carries the resolved repo root, a `specify-domain` adapter resolver, lazily-loaded schemas, and a set of changed paths (for `--changed` mode). Predicates are independent and parallelisable (`rayon` or `tokio::task::spawn_blocking`), mirroring the `Promise.all` batches in `scripts/check.ts`.
 
-### Dependencies
+Rule ids align with RFC-28's reserved namespaces where applicable (the codex namespace-ownership rule lives here as `codex.namespace-ownership-violation` and feeds the future shared finding shape).
 
-```toml
-# crates/check/Cargo.toml
-[dependencies]
-specify-domain = { path = "../domain" }
-specify-error  = { path = "../error" }
-serde         = { workspace = true, features = ["derive"] }
-serde_json    = { workspace = true }
-serde-saphyr  = { workspace = true }
-jsonschema    = "0.29"
+### `framework-check` binary
+
+A ~100 LOC clap dispatcher with three modes:
+
+```bash
+framework-check                            # full repo scan (CI default)
+framework-check --changed                  # only files changed vs origin/main
+framework-check --rule codex.namespace-*   # rule-id glob filter (CI debugging)
+framework-check --format json              # JSON envelope for tooling
 ```
 
-`jsonschema` pulls in `fancy-regex`, `ahash`, `url`, and a handful of transitive crates. This is acceptable because `specify-check` is CI-only — none of that weight leaks into the runtime crates (`specify-domain` ships its own schemas via `include_str!` and validates with `jsonschema::Validator` already, so the dependency is already in the graph for the runtime build).
+Exit codes follow the standard table inherited from `specify-cli`:
+
+- `0` — success.
+- `2` — validation findings or argument errors.
+- `1` — infrastructure errors (I/O, schema load failures, git not available for `--changed`).
+
+The JSON envelope shape matches `specify-cli`'s output shape contract so a future GitHub Action or scorer can consume both.
+
+### `accept` crate
+
+Ports `tests/cross_repo.ts` and its `tests/lib/` helpers into a Rust integration crate that:
+
+- Uses `specify-domain` directly for provenance parsing (kills `tests/lib/spec_provenance.ts`).
+- Uses the same JSON Schema validators as `framework-rules` (kills `tests/lib/validators.ts`).
+- Keeps the optional `SPECIFY_BIN` subprocess tests for `specify source resolve` and `specify target resolve`; skips cleanly when the binary is absent (matches today's harness).
+- Adopts `specify-cli`'s `REGENERATE_GOLDENS=1` discipline for any byte-stable goldens it asserts.
+
+Test-binary names mirror the existing Deno suites (`sources`, `targets`, `skills_refine`, `skills_loop`) so `cargo test --test <name>` is easy.
+
+### `docgen` binary
+
+Ports `scripts/gen-envelope-doc.ts`:
+
+```bash
+docgen envelopes               # regenerate docs/reference/cli-output-shapes.md
+docgen envelopes --check       # CI mode: diff and exit 2 on drift
+```
+
+Same generated-block markers (`<!-- generated:begin -->` / `<!-- generated:end -->`), same explicit fixture-to-section mapping table, same `SPECIFY_CLI_DIR` semantics (renamed env var: `SPECIFY_CLI_ROOT`, with the old name accepted as fallback during transition).
+
+### Pre-commit hook and GitHub Action
+
+Both are thin wrappers, present in this RFC for completeness but trivial to implement:
+
+- **`hooks/pre-commit`** — a shell shim that runs `framework-check --changed` and exits non-zero on findings. Installable via `make install-hooks` or `pre-commit install` for projects that adopt the framework.
+- **`.github/actions/framework-check/`** — a composite action that runs `cargo run -p framework-check -- --format json`, parses the envelope, and posts PR annotations via `actions/github-script`. Replaces the inline `make check` step in `.github/workflows/ci.yaml`.
+
+### `framework-lsp` (deferred)
+
+Listed in the architecture diagram so contributors see the full intended shape. Not implemented in this RFC because:
+
+- Schema-first handles the easy 80% via Cursor's built-in language servers without any custom LSP code.
+- The cross-file rules that would benefit from an LSP (symlink integrity, marketplace consistency, cross-skill directive resolution, variable coverage) are a small enough surface that the CLI-on-save loop is acceptable until contributor pain justifies the engineering investment.
+- A future `framework-lsp` reuses `framework-rules` unchanged, so the architectural commitment is already paid.
 
 ### Migration strategy
 
-The port is a rolling migration, not a flag day:
+Sequenced for minimum risk, with Deno retiring incrementally rather than in one cutover:
 
-1. **Land `specify-check` as a stub.** `specify check` wires up the CLI subcommand, depends on `specify-domain` and `specify-error`, and has empty-but-compiling modules. `make checks` runs both tools; both pass trivially. This change is mechanical and self-contained.
-2. **Port `adapter` and `brief` first.** They are the modules that share the most with `specify-domain` (the per-axis manifest schemas, the adapter brief-path conventions). Porting them first validates the parser reuse story before investing in the larger skill modules.
-3. **Port the remaining modules one at a time.** Each port deletes the corresponding function (or block) from `scripts/checks/<module>.ts`. Failure messages MUST match during the overlap period so CI diffs stay readable.
-4. **Retire `scripts/checks.ts`.** When the orchestrator and every module under `scripts/checks/` are empty, delete the tree, remove the Deno dependency from the Makefile, and switch CI to `specify check` only.
+1. **Schema-first pass.** Move framework-only schemas into `specify-cli/schemas/`, strengthen constraints where they currently live in imperative code, and wire Cursor `$schema` references. No Rust code yet. Largest contributor-experience win for smallest cost.
+2. **Workspace scaffold.** Land `Cargo.toml`, `rust-toolchain.toml`, empty `framework-rules`, `framework-check`, `accept`, and `docgen` crates that compile and run trivially. CI runs both Deno and Rust; Rust is allowed to be empty. Mechanical, self-contained PR.
+3. **Port `docgen` first.** Smallest surface (~250 LOC), proves the workspace dependency story end-to-end, and lets us delete `scripts/gen-envelope-doc.ts` early.
+4. **Port `accept`.** Replaces the worst parser duplication (`spec_provenance.ts`, `validators.ts`). Run side-by-side until output parity is trusted, then delete `tests/cross_repo.ts` and `tests/lib/`.
+5. **Port `framework-rules` modules in dependency order.** `adapter` and `brief` first (highest `specify-domain` reuse), then `skill_frontmatter` / `skill_body` / `prose`, then `links` / `plugins` / `docs_quality`, then `codex` / `scenarios` / `tools`. Each merged module deletes its Deno counterpart. Message-preserving throughout.
+6. **CI cleanup.** When every Deno script is empty, delete the trees, drop `denoland/setup-deno` from `.github/workflows/ci.yaml`, remove Deno from `docs/contributing/index.md` prerequisites, update `Makefile` to call `cargo` directly, and switch the GitHub Action over.
+7. **Optional follow-ups (not part of this RFC).** `framework-lsp` when rule count grows; WASI extensibility if third-party rule packs become a real ask.
 
 Each step is independently mergeable and leaves CI green.
 
 ### Makefile integration
 
+Target end state (Deno fully removed):
+
 ```makefile
-.PHONY: checks
-checks:
-	specify check --repo .
-	deno run --allow-read scripts/checks.ts  # keep during migration; remove once empty
+.PHONY: check test ci docs
+
+check:
+	cargo run -p framework-check -- --repo .
+
+test:
+	cargo test --workspace
+
+ci: check test
 ```
 
-The second line is removed once the Deno tree is gone; until then both tools run side-by-side and any discrepancy between them is treated as a port regression.
+During migration, `make check` and `make test` each call both the Deno script and the Rust binary; any discrepancy is treated as a port regression. The dual-run phase ends per surface (docgen first, then accept, then framework-check).
+
+### Coordination with other RFCs
+
+- **RFC-4 (typed skill expression).** Option 1 (CLI-integrated skill validation) is satisfied by the schema-first pass plus the `skill_frontmatter` / `skill_body` modules in `framework-rules`. The "CLI" in that RFC is reinterpreted as `framework-check`, not `specify check`. Options 2 and 3 are unchanged.
+- **RFC-28 (codex resolution).** RFC-28 cites RFC-5 for namespace-ownership enforcement. That contract is preserved verbatim — the rule moves to `framework-rules::codex` and continues to enforce that first-party files do not use `ORG-*`. Where the rule lives (this repo, not specify-cli) is invisible to RFC-28's resolver and finding shape.
+- **Roadmap RM-16.** The roadmap entry currently reads "Port `scripts/check.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`." When this RFC lands, RM-16's goal becomes "Land the framework dev-tooling workspace in `augentic/specify` per RFC-5: schema-first authoring feedback, `framework-check` binary, `accept` and `docgen` crates, Deno retirement." The unblocks line (RFC-4 Option 1, declared-WASI-tool helper migration) is unchanged.
 
 ## Alternatives Considered
 
-**Keep `scripts/checks.ts` indefinitely.** Rejected because maintaining a second toolchain (Deno) for the framework linter adds CI friction and duplicates the adapter-manifest / brief-path parsing logic `specify-domain` already owns. The duplication is small today, but every new schema-level invariant doubles the implementation work until the port is done.
+**The original RFC-5: port into `specify-cli` as `specify check`.** Rejected because it puts framework dev tooling on the operator product. Operators running Specify on a consumer project never need to validate `plugins/` or `.cursor-plugin/marketplace.json`; bundling that surface bloats the install for everyone to serve the few. The parser-reuse argument that motivated the original choice is satisfied just as well by depending on `specify-domain` as a library from a sibling workspace, which is the standard Rust pattern.
 
-**Rewrite the linter from scratch.** Skips the fidelity constraints but throws away the invariants the current script already encodes. Those invariants capture real lessons about repo drift; preserving them verbatim is cheaper than re-deriving them, and the message-preserving migration lets CI act as a regression test for the port itself.
+**Keep `scripts/check.ts` indefinitely.** Tempting because the script works and is not blocking. Rejected because (a) `tests/lib/spec_provenance.ts` and `tests/lib/validators.ts` actively duplicate `specify-domain`, and that duplication grows with every new schema; (b) schemas without an editor-first contract are invisible to contributors; (c) keeping Deno in CI forever to validate Rust-defined schemas is a coordination tax with no offsetting benefit.
 
-**Land the linter outside the `specify-cli` workspace.** Considered separating the linter into its own crate or repo so the runtime CLI stays narrower. Rejected because the linter's largest dependency (`specify-domain` for adapter parsing and the bundled schemas) is already in the CLI workspace; isolating the linter would require either duplicating the parser or publishing `specify-domain` as a crates.io crate purely to satisfy the linter.
+**Merge the repos.** Considered: one workspace with `cli/` and `plugins/` top-level directories would kill the cross-repo coordination entirely. Rejected because it conflates two audiences (Rust contributors vs skill/adapter authors), couples operator-CLI release cadence to plugin-content cadence, and forces a single review style on both halves. The dev-tooling problem does not require it.
+
+**Self-hosted Specify (the framework repo as a Specify project).** Considered as the long-term aspiration: every plugin and adapter as a slice, framework consistency from `specify slice validate`. Rejected as the *only* solution because mechanical checks still need a deterministic engine underneath, and the framework lifecycle (RFC editing, README polish, contributor docs) does not naturally fit slices. Compatible with this RFC: a self-hosted layer can sit on top of `framework-rules` later.
+
+**WASI rules as the day-one shape.** Considered: ship `framework-check.wasm` declared via an adapter manifest and invoked through `specify tool run framework-check`. Reuses the Vectis pattern and opens third-party rule packs immediately. Rejected as overkill when there is exactly one rule pack and one consumer (CI); the library shape adopted here makes future WASI exposure a small refactor, not a re-architecture.
+
+**Rewrite from scratch (no message preservation).** Rejected for the same reason the original RFC rejected it: the current invariants encode real lessons about repo drift. Preserving wording during overlap lets CI act as a regression test for the port itself.
 
 ## References
 
-- [`scripts/checks.ts`](../scripts/checks.ts) + [`scripts/checks/`](../scripts/checks/) — the modules being ported.
-- [`docs/standards/skill-authoring.md`](../docs/standards/skill-authoring.md) — the invariants the skill-discipline modules enforce.
-- [`docs/explanation/adapter-anatomy.md`](../docs/explanation/adapter-anatomy.md) — the RFC-25 adapter model the brief and adapter modules validate.
-- [Specify CLI `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — the crate graph this RFC slots into.
-- [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md) — Option 1 is satisfied once this port is complete.
+- [`scripts/check.ts`](../scripts/check.ts) + [`scripts/checks/`](../scripts/checks/) — the framework linter being replaced.
+- [`scripts/gen-envelope-doc.ts`](../scripts/gen-envelope-doc.ts) — the doc generator being replaced.
+- [`tests/cross_repo.ts`](../tests/cross_repo.ts) + [`tests/lib/`](../tests/lib/) — the acceptance harness being replaced.
+- [`docs/standards/skill-authoring.md`](../docs/standards/skill-authoring.md) — invariants the skill-discipline modules enforce.
+- [`docs/explanation/adapter-anatomy.md`](../docs/explanation/adapter-anatomy.md) — the adapter model the `adapter` and `brief` modules validate.
+- [`docs/contributing/acceptance.md`](../docs/contributing/acceptance.md) — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
+- [Specify CLI `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — crate graph this workspace consumes via `specify-domain`.
+- [Specify CLI handler-shape contract](https://github.com/augentic/specify-cli/blob/main/docs/standards/handler-shape.md) — JSON envelope shape `framework-check --format json` mirrors.
+- [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md) — Option 1 is satisfied by the schema-first pass plus the skill-discipline modules.
+- [RFC-28: Codex Resolution and Structured Review Findings](next/rfc-28-codex-rules.md) — namespace-ownership contract preserved by `framework-rules::codex`.

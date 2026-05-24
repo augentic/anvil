@@ -56,7 +56,7 @@ The top-level marketplace manifest at `.cursor-plugin/marketplace.json` declares
 | `plugins[].source` | Subdirectory name under `pluginRoot` |
 | `plugins[].description` | Human-readable description |
 
-The `checks.ts` script validates that every plugin with a `.cursor-plugin/plugin.json` file is listed in the marketplace manifest, and that every listed plugin has a `skills/` directory.
+The `check.ts` script validates that every plugin with a `.cursor-plugin/plugin.json` file is listed in the marketplace manifest, and that every listed plugin has a `skills/` directory.
 
 ## Dev/prod workflow
 
@@ -122,7 +122,7 @@ After this initial setup, the plugin participates in the normal dev/prod workflo
 
 There is no automated test harness for skills (they are markdown documents interpreted by an LLM). Testing is manual:
 
-1. Run `make checks` to validate structural consistency.
+1. Run `make check` to validate structural consistency.
 2. Run `make use-local-plugins` and restart Cursor.
 3. Open a target project and invoke the skill.
 4. Verify the skill produces the expected artifacts and CLI interactions.
