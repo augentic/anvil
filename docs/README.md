@@ -4,24 +4,16 @@ This directory contains the [mdbook](https://rust-lang.github.io/mdBook/) source
 
 ## Prerequisites
 
-The build pipeline pins to the mdbook 0.4 ecosystem (the preprocessor crates have not yet caught up with the 0.5 line). One-shot install:
+The build pipeline pins to the mdbook 0.4 ecosystem (the preprocessor crates have not yet caught up with the 0.5 line). Install the pinned versions locally:
 
-```bash
-./scripts/docs-prereqs.sh
-```
-
-The script honours the version pins below; export the corresponding env var to override any one of them:
-
-| Tool | Version | Override env var |
-|------|---------|------------------|
-| `mdbook` | 0.4.52 | `MDBOOK_VERSION` |
-| `mdbook-d2` | 0.3.4 | `MDBOOK_D2_VERSION` |
-| `mdbook-linkcheck` | 0.7.7 | `MDBOOK_LINKCHECK_VERSION` |
-| `mdbook-pagetoc` | 0.2.0 | `MDBOOK_PAGETOC_VERSION` |
-| `mdbook-template` | 1.1.1 | `MDBOOK_TEMPLATE_VERSION` |
-| `D2` | latest | (installed via `https://d2lang.com/install.sh` if missing) |
-
-If you prefer manual installation, mirror the same versions:
+| Tool | Version |
+|------|---------|
+| `mdbook` | 0.4.52 |
+| `mdbook-d2` | 0.3.4 |
+| `mdbook-linkcheck` | 0.7.7 |
+| `mdbook-pagetoc` | 0.2.0 |
+| `mdbook-template` | 1.1.1 |
+| `D2` | latest |
 
 ```bash
 cargo install --locked --version 0.4.52 mdbook
@@ -31,6 +23,8 @@ cargo install --locked --version 0.2.0 mdbook-pagetoc
 cargo install --locked --version 1.1.1 mdbook-template
 curl -fsSL https://d2lang.com/install.sh | sh -s --
 ```
+
+CI installs the same versions inline in [`.github/workflows/docs.yaml`](../.github/workflows/docs.yaml).
 
 ## Serve locally (with live-reload)
 
