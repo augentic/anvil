@@ -1,6 +1,6 @@
 # RFC-28: Codex Resolution and Structured Review Findings
 
-> Status: Draft - Depends: [RFC-5](../rfc-5-lint.md), [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md) - Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-specify-review), [RFC-18](rfc-18-slm.md)
+> Status: Draft - Depends: [RFC-5](../rfc-5-lint.md), [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md) - Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-specify-review), [RFC-18](../future/rfc-18-slm.md)
 
 ## Abstract
 
@@ -383,7 +383,7 @@ For CLI maintainers:
 
 - [Specify Roadmap](../roadmap.md)
 - [RFC-5: Framework Linter](../rfc-5-lint.md)
-- [RFC-18: Specialized SLM Code Generation](rfc-18-slm.md)
+- [RFC-18: Specialized SLM Code Generation](../future/rfc-18-slm.md)
 - [RFC-25: Workflow](../done/rfc-25-workflow.md)
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
 - [Shared target codex](../../adapters/shared/codex/universal/README.md)

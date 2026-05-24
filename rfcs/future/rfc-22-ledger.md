@@ -250,7 +250,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 **Implicit ledger updates from the `/spec:merge` skill body rather than `specify slice merge`.** Rejected. The skill body is per-slice orchestration; deterministic state mutation belongs in the CLI merge verb that already writes the plan entry's `done` status.
 
-**Allow `mapping: many-to-many`.** Rejected. The slice loop's invariant is one slice → one project; `many-to-many` cannot exist on a single slice (it requires multiple slices). The four-value enum captures every legal shape.
+**Allow `mapping: many-to-many`.** Rejected. The slice loop's invariant is one slice -> one project; `many-to-many` cannot exist on a single slice (it requires multiple slices). The four-value enum captures every legal shape.
 
 **Put ledger overrides in a separate `migration-overrides.yaml` file.** Rejected. Two files for one logical audit trail invites drift. The override-block on a ledger entry with empty `change`/`slice` keeps the audit story in one place and is unambiguous to parse (the `override` field is the discriminator).
 
