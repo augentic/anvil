@@ -26,6 +26,23 @@ impl Context {
         Self::from_start_dir(manifest_dir.as_ref())
     }
 
+    /// Construct context when the framework root is already known (tests).
+    pub fn from_framework_root(framework_root: impl AsRef<Path>) -> Result<Self, ToolingError> {
+        let framework_root = framework_root.as_ref();
+        if !is_framework_root(framework_root) {
+            return Err(ToolingError::Infrastructure(format!(
+                "not a framework root: {}",
+                framework_root.display()
+            )));
+        }
+        Ok(Self {
+            framework_root: framework_root
+                .canonicalize()
+                .map_err(|source| ToolingError::Infrastructure(format!("canonicalize path: {source}")))?,
+            schema_cache: Mutex::new(HashMap::new()),
+        })
+    }
+
     /// Framework repo root — parent of `tooling/`, never `tooling/` itself.
     pub fn framework_root(&self) -> &Path {
         &self.framework_root
@@ -61,20 +78,24 @@ impl Context {
         self.framework_root.join(".cursor").join("schemas")
     }
 
-    /// Runtime JSON Schemas from a sibling or overridden `specify-cli` checkout.
+    /// Sibling or overridden `specify-cli` checkout root.
     ///
-    /// Mirrors `scripts/checks/_shared.ts` `resolveSpecifyCliSchemasDir()`:
-    /// `join(framework_root, SPECIFY_CLI_DIR ?? "../specify-cli", "schemas")`.
-    pub fn specify_cli_schemas_dir(&self) -> PathBuf {
+    /// Mirrors `scripts/checks/_shared.ts` and `scripts/gen-envelope-doc.ts`:
+    /// `join(framework_root, SPECIFY_CLI_DIR ?? "../specify-cli")`.
+    pub fn specify_cli_dir(&self) -> PathBuf {
         let checkout = env::var("SPECIFY_CLI_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("../specify-cli"));
-        let checkout = if checkout.is_absolute() {
+        if checkout.is_absolute() {
             checkout
         } else {
             self.framework_root.join(checkout)
-        };
-        checkout.join("schemas")
+        }
+    }
+
+    /// Runtime JSON Schemas from [`Self::specify_cli_dir`].
+    pub fn specify_cli_schemas_dir(&self) -> PathBuf {
+        self.specify_cli_dir().join("schemas")
     }
 
     /// Lazily compile and cache a JSON Schema loaded from `path`.
