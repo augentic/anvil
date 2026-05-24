@@ -1,0 +1,33 @@
+[package]
+name = "tooling"
+version = "0.1.0"
+edition = "2021"
+description = "Framework developer tooling for augentic/specify (RFC-5)"
+publish = false
+
+[[bin]]
+name = "tooling"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+glob = "0.3"
+jsonschema = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde-saphyr = "0.0.6"
+serde_json = "1"
+sha2 = "0.10"
+# tag = "v0.1.0" — v0.1.0 predates specify-domain; bump via scripts/bump-specify-cli when retagged.
+specify-domain = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
+specify-error = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
+walkdir = "2"
+
+# Optional local-development override. Leave commented in committed code.
+# Uncomment only when testing framework tooling against a sibling specify-cli checkout.
+#
+# [patch."https://github.com/augentic/specify-cli.git"]
+# specify-domain = { path = "../../specify-cli/crates/domain" }
+# specify-error  = { path = "../../specify-cli/crates/error" }
