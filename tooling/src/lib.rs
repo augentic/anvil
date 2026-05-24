@@ -1,10 +1,12 @@
 pub mod check;
 pub mod context;
+pub mod docgen;
 pub mod error;
 pub mod exit;
 pub mod finding;
 pub mod helpers;
 pub mod schema;
+pub mod test_support;
 
 pub use context::Context;
 pub use error::ToolingError;

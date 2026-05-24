@@ -100,6 +100,14 @@ fn frontmatter_to_json(frontmatter: BTreeMap<String, JsonValue>) -> JsonValue {
 }
 
 fn collect_errors(compiled: &Validator, value: &JsonValue) -> Result<(), Vec<ValidationError>> {
+    collect_errors_for_test(compiled, value)
+}
+
+/// Shared validation error collection for checks and acceptance tests.
+pub fn collect_errors_for_test(
+    compiled: &Validator,
+    value: &JsonValue,
+) -> Result<(), Vec<ValidationError>> {
     if compiled.is_valid(value) {
         return Ok(());
     }

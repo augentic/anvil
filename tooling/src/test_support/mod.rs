@@ -1,0 +1,57 @@
+//! Shared helpers for cross-repo acceptance tests (`tooling/tests/*`).
+
+mod fixtures;
+mod golden;
+mod schema;
+mod specify;
+
+pub use fixtures::{walk_source_fixtures, walk_target_fixtures, SourceFixture, TargetFixture};
+pub use golden::{assert_golden, assert_golden_tree, regenerate_goldens};
+pub use schema::{validate_cli_schema_or_skip, validate_yaml_file_or_skip, CliSchemaId};
+pub use specify::{resolve_specify_bin, skip_unless_specify_bin, with_specify_bin, SpecifyResult};
+
+use std::path::Path;
+
+use crate::Context;
+
+/// Framework context resolved from the tooling crate manifest directory.
+pub fn framework_context() -> Context {
+    Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root resolves")
+}
+
+/// `tests/fixtures/` under the framework root.
+pub fn fixtures_dir(ctx: &Context) -> std::path::PathBuf {
+    ctx.framework_root().join("tests").join("fixtures")
+}
+
+/// Read a UTF-8 text file; `None` when absent.
+pub fn read_text(path: impl AsRef<Path>) -> Option<String> {
+    std::fs::read_to_string(path).ok()
+}
+
+/// Parse YAML into a JSON value via `serde_saphyr`.
+pub fn read_yaml(path: impl AsRef<Path>) -> Result<serde_json::Value, String> {
+    let raw = std::fs::read_to_string(path.as_ref())
+        .map_err(|err| format!("read {}: {err}", path.as_ref().display()))?;
+    serde_saphyr::from_str(&raw).map_err(|err| format!("YAML parse {}: {err}", path.as_ref().display()))
+}
+
+/// Walk a directory tree yielding every `.yaml` file path.
+pub fn walk_yaml(root: impl AsRef<Path>) -> Vec<std::path::PathBuf> {
+    let root = root.as_ref();
+    if !root.is_dir() {
+        return Vec::new();
+    }
+    walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+        .filter(|entry| {
+            entry
+                .path()
+                .extension()
+                .is_some_and(|ext| ext == "yaml" || ext == "yml")
+        })
+        .map(|entry| entry.into_path())
+        .collect()
+}

@@ -4979,6 +4979,7 @@ dependencies = [
  "clap",
  "glob",
  "jsonschema 0.29.1",
+ "regex",
  "serde",
  "serde-saphyr 0.0.6",
  "serde_json",
