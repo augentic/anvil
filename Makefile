@@ -2,8 +2,9 @@ TOOLING_MANIFEST := tooling/Cargo.toml
 
 .PHONY: check test ci use-local-plugins use-team-plugins
 
-# Regenerate CLI envelope docs: cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes
-# Verify drift (CI): cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes --check
+# Regenerate CLI envelope docs: cargo specify-docgen-envelopes
+# Verify drift (CI):             cargo specify-docgen-envelopes --check
+# (Aliases live in .cargo/config.toml; the bare cargo invocations still work.)
 
 check:
 	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- check

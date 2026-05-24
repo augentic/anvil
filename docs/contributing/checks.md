@@ -39,6 +39,16 @@ cargo test --manifest-path tooling/Cargo.toml
 cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --check
 ```
 
+The repo also ships a pair of workspace `[alias]` shortcuts in [`.cargo/config.toml`](../../.cargo/config.toml) for the same two binary entry points, so you can drop the `--manifest-path` boilerplate from any directory at or below the framework root:
+
+```bash
+cargo specify-check                          # equivalent to `make check`
+cargo specify-docgen-envelopes               # regenerate docs/reference/cli-output-shapes.md
+cargo specify-docgen-envelopes --check       # CI-mode drift check (exit 2 on drift)
+```
+
+The aliases are deliberately namespaced `specify-*` rather than bare `check` / `docgen` so they do not shadow `cargo check` and stay distinct from the operator `specify` CLI in [`augentic/specify-cli`](https://github.com/augentic/specify-cli). They are a convenience over the same release-mode `tooling` binary the Makefile already drives — no install step, no version-drift surface between local and CI.
+
 Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation or envelope docgen needs runtime schemas (defaults to `../specify-cli`).
 
 ## What the checks enforce
