@@ -767,8 +767,12 @@ html:not(.js) .sidebar-resize-handle {
 :root {
     /* 1280px outer max-width minus the 300px sidebar. */
     --content-max-width: 980px;
-    --sidebar-target-width: 280px;
+    --sidebar-target-width: 300px;
     --menu-bar-height: 56px;
+}
+
+body {
+    font-size: 1.75rem;
 }
 
 /* Slightly tighter sidebar typography */
@@ -825,10 +829,10 @@ html:not(.js) .sidebar-resize-handle {
     align-items: center;
     min-height: var(--menu-bar-height);
     background:
-        linear-gradient(90deg, rgba(241, 213, 138, 0.09), rgba(127, 214, 206, 0.06)),
-        color-mix(in srgb, var(--bg) 92%, transparent);
+        linear-gradient(90deg, rgba(0, 91, 234, 0.08), rgba(0, 198, 251, 0.06)),
+        color-mix(in srgb, var(--bg) 96%, transparent);
     border-bottom: 1px solid var(--spec-rule);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
+    box-shadow: 0 1px 0 rgba(6, 18, 58, 0.04);
 }
 
 #mdbook-menu-bar.sticky {
@@ -872,8 +876,9 @@ html:not(.js) .sidebar-resize-handle {
 }
 
 .sidebar {
-    border-right: 1px solid rgba(241, 213, 138, 0.13);
-    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
+    border-right: 1px solid var(--sidebar-spacer);
+    box-shadow: 8px 0 28px rgba(6, 18, 58, 0.04);
+    font-size: 1em;
 }
 
 .sidebar .sidebar-scrollbox {
@@ -886,7 +891,7 @@ html:not(.js) .sidebar-resize-handle {
 
 .chapter li.chapter-item {
     margin: 0;
-    padding-block: 2px;
+    padding-block: 3px;
 }
 
 .chapter li a {
@@ -898,22 +903,22 @@ html:not(.js) .sidebar-resize-handle {
 }
 
 .chapter li a:hover {
-    background: rgba(241, 213, 138, 0.08);
+    background: var(--theme-hover);
     color: var(--sidebar-active);
     text-decoration: none;
 }
 
 .chapter li a.active,
 .chapter a.current-header {
-    background: rgba(241, 213, 138, 0.12);
+    background: #e1edff;
     color: var(--sidebar-active);
-    font-weight: 650;
+    font-weight: 700;
 }
 
 .chapter li.part-title {
-    color: rgba(213, 222, 219, 0.56);
+    color: #5b6f99;
     font-family: var(--spec-mono);
-    font-size: 0.68em;
+    font-size: 0.72em;
     font-weight: 700;
     letter-spacing: 0.13em;
     margin: 1.8em 0 0.45em;
@@ -925,7 +930,7 @@ html:not(.js) .sidebar-resize-handle {
 }
 
 .chapter-fold-toggle {
-    color: rgba(213, 222, 219, 0.58);
+    color: #7f93ba;
     padding-inline-end: 4px;
 }
 
@@ -937,7 +942,7 @@ html:not(.js) .sidebar-resize-handle {
 
 .sidebar .on-this-page a {
     border-radius: 6px;
-    color: rgba(213, 222, 219, 0.68);
+    color: #526b9b;
     padding-block: 4px;
 }
 
@@ -1003,7 +1008,7 @@ ul#mdbook-searchresults li {
 
 .spec-footer {
     background:
-        linear-gradient(90deg, rgba(241, 213, 138, 0.08), rgba(127, 214, 206, 0.06)),
+        linear-gradient(90deg, rgba(0, 91, 234, 0.06), rgba(0, 198, 251, 0.05)),
         var(--bg);
     border-top: 1px solid var(--spec-rule);
 }

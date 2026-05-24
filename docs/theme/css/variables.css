@@ -399,60 +399,60 @@
 .light,
 .rust,
 html:not(.js) {
-    --bg: #f6f2ea;
-    --fg: #171b22;
+    --bg: #ffffff;
+    --fg: #06123a;
 
-    --sidebar-bg: #111822;
-    --sidebar-fg: #d5dedb;
-    --sidebar-non-existant: #6f7b7c;
-    --sidebar-active: #f1d58a;
-    --sidebar-spacer: rgba(241, 213, 138, 0.16);
+    --sidebar-bg: #f5f9ff;
+    --sidebar-fg: #17305f;
+    --sidebar-non-existant: #8ca0c4;
+    --sidebar-active: #005bea;
+    --sidebar-spacer: #dbe7ff;
 
-    --scrollbar: #a9b2ac;
+    --scrollbar: #b8c7e6;
 
-    --icons: #647071;
-    --icons-hover: #17212f;
+    --icons: #4f6694;
+    --icons-hover: #06123a;
 
-    --links: #155f64;
-    --inline-code-color: #0f4f54;
+    --links: #005bea;
+    --inline-code-color: #0046b8;
 
-    --theme-popup-bg: #fffaf1;
-    --theme-popup-border: #ddd2bd;
-    --theme-hover: #ebe4d6;
+    --theme-popup-bg: #ffffff;
+    --theme-popup-border: #d7e2f5;
+    --theme-hover: #eaf2ff;
 
-    --quote-bg: #ede5d5;
-    --quote-border: #d6c7aa;
+    --quote-bg: #f5f9ff;
+    --quote-border: #d7e2f5;
 
-    --warning-border: #b0712f;
+    --warning-border: #af6b00;
 
-    --table-border-color: #ddd2bd;
-    --table-header-bg: #ebe4d6;
-    --table-alternate-bg: #f0eadf;
+    --table-border-color: #d7e2f5;
+    --table-header-bg: #f1f6ff;
+    --table-alternate-bg: #f8fbff;
 
-    --searchbar-border-color: #cfc1a9;
-    --searchbar-bg: #fffaf1;
-    --searchbar-fg: #171b22;
-    --searchbar-shadow-color: rgba(21, 95, 100, 0.24);
-    --searchresults-header-fg: #66716d;
-    --searchresults-border-color: #d6c7aa;
-    --searchresults-li-bg: #ebe4d6;
-    --search-mark-bg: #f1d58a;
+    --searchbar-border-color: #c9d8f2;
+    --searchbar-bg: #ffffff;
+    --searchbar-fg: #06123a;
+    --searchbar-shadow-color: rgba(0, 91, 234, 0.2);
+    --searchresults-header-fg: #5b6f99;
+    --searchresults-border-color: #d7e2f5;
+    --searchresults-li-bg: #f1f6ff;
+    --search-mark-bg: #cfe1ff;
 
     --color-scheme: light;
 
-    --copy-button-filter: invert(38%) sepia(9%) saturate(422%) hue-rotate(125deg) brightness(91%) contrast(84%);
-    --copy-button-filter-hover: invert(26%) sepia(57%) saturate(742%) hue-rotate(139deg) brightness(82%) contrast(91%);
+    --copy-button-filter: invert(40%) sepia(18%) saturate(709%) hue-rotate(182deg) brightness(91%) contrast(87%);
+    --copy-button-filter-hover: invert(29%) sepia(90%) saturate(3757%) hue-rotate(213deg) brightness(95%) contrast(104%);
 
-    --footnote-highlight: #155f64;
-    --overlay-bg: rgba(17, 24, 34, 0.42);
+    --footnote-highlight: #005bea;
+    --overlay-bg: rgba(6, 18, 58, 0.28);
 
-    --blockquote-note-color: #155f64;
+    --blockquote-note-color: #005bea;
     --blockquote-tip-color: #28744d;
-    --blockquote-important-color: #8b6127;
-    --blockquote-warning-color: #b0712f;
+    --blockquote-important-color: #5546b8;
+    --blockquote-warning-color: #af6b00;
     --blockquote-caution-color: #a2463e;
 
-    --sidebar-header-border-color: rgba(241, 213, 138, 0.42);
+    --sidebar-header-border-color: #bfd2f5;
 }
 
 .navy,

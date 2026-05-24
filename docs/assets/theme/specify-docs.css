@@ -1224,32 +1224,32 @@ html.ayu {
 /* Augentic-derived component pass -------------------------------------- */
 html.light,
 html.rust {
-  --spec-bg: #f6f2ea;
-  --spec-surface: #fffaf1;
-  --spec-panel: #fffaf1;
-  --spec-panel-2: #eee6d6;
-  --spec-panel-3: #e5dcc9;
-  --spec-ink: #171b22;
-  --spec-ink-dim: #47514f;
-  --spec-ink-muted: #66716d;
-  --spec-ink-faint: #8b948f;
-  --spec-rule: #ddd2bd;
-  --spec-rule-strong: #c9b996;
-  --spec-accent: #155f64;
-  --spec-accent-soft: #dcece8;
-  --spec-teal: #155f64;
-  --spec-teal-soft: #dcece8;
-  --spec-gold: #b98b2f;
-  --spec-gold-soft: #f4e7bf;
-  --spec-shadow: rgba(17, 24, 34, 0.12);
-  --spec-focus: rgba(21, 95, 100, 0.2);
-  --spec-behaviour: #6c5fbd;
-  --spec-documentation: #155f64;
-  --spec-intent: #9f6326;
+  --spec-bg: #ffffff;
+  --spec-surface: #ffffff;
+  --spec-panel: #ffffff;
+  --spec-panel-2: #f1f6ff;
+  --spec-panel-3: #e3eeff;
+  --spec-ink: #06123a;
+  --spec-ink-dim: #30446f;
+  --spec-ink-muted: #5b6f99;
+  --spec-ink-faint: #8ca0c4;
+  --spec-rule: #d7e2f5;
+  --spec-rule-strong: #b9cbee;
+  --spec-accent: #005bea;
+  --spec-accent-soft: #eaf2ff;
+  --spec-teal: #0078ff;
+  --spec-teal-soft: #eaf2ff;
+  --spec-gold: #00a7ff;
+  --spec-gold-soft: #dff3ff;
+  --spec-shadow: rgba(6, 18, 58, 0.1);
+  --spec-focus: rgba(0, 91, 234, 0.18);
+  --spec-behaviour: #5546b8;
+  --spec-documentation: #005bea;
+  --spec-intent: #006db0;
   --spec-ok: #28744d;
-  --spec-ok-soft: #dfeee3;
-  --spec-warn: #9f6326;
-  --spec-warn-soft: #f4e7cf;
+  --spec-ok-soft: #e6f3ec;
+  --spec-warn: #af6b00;
+  --spec-warn-soft: #fff1d8;
   --spec-danger: #a2463e;
   --spec-danger-soft: #f4dfdc;
 }
@@ -1332,6 +1332,7 @@ html.ayu {
 .content main p,
 .content main li {
   color: var(--spec-ink-dim);
+  font-size: 1.02em;
   line-height: 1.68;
 }
 
