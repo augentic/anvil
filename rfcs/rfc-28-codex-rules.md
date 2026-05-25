@@ -1,6 +1,6 @@
 # RFC-28: Codex Resolution and Structured Review Findings
 
-> Status: Draft - Depends: [RFC-5](../rfc-5-tooling.md) for codex authoring validation, [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md) - Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-specify-review), [RFC-18](../future/rfc-18-slm.md)
+> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-31](rfc-31-workspace-model.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-specify-review), [RFC-18](future/rfc-18-slm.md)
 
 ## Abstract
 
@@ -15,7 +15,7 @@ This RFC adds:
 3. **Codex resolution rules** - namespace ownership, overlay precedence, applicability filters, deprecation handling, and stable ordering.
 4. **Reviewer report alignment** - target adapter review briefs continue to write human `REVIEW.md`, but every machine-readable finding maps to the same schema.
 
-The scanner that produces findings (`specify review`) is a follow-up surface. This RFC defines the rule and finding contract it consumes.
+The scanner that produces findings (`specify review`) is a follow-up surface defined by [RFC-31](rfc-31-workspace-model.md). This RFC defines the rule and finding contract that scanner consumes.
 
 ## Motivation
 
@@ -74,7 +74,7 @@ deterministic_hints:
 Configuration values that vary between deployments must not be hardcoded in generated code.
 ```
 
-[RFC-5](../rfc-5-tooling.md) defines the framework dev-tooling workspace at `augentic/specify/tooling/` that validates this shape: the `check::codex` module enforces the rule-id schema, namespace ownership, and frontmatter discipline from `tooling check`. RFC-28 adds runtime resolution and export semantics to the operator `specify` binary; it does not replace the markdown authoring format or move framework validation into the runtime CLI.
+[RFC-5](done/rfc-5-tooling.md) defines the framework dev-tooling workspace at `augentic/specify/tooling/` that validates this shape: the `check::codex` module enforces the rule-id schema, namespace ownership, and frontmatter discipline from `tooling check`. RFC-28 adds runtime resolution and export semantics to the operator `specify` binary; it does not replace the markdown authoring format or move framework validation into the runtime CLI. [RFC-31](rfc-31-workspace-model.md) adds hint execution and the WorkspaceModel indexer that `specify review` uses; optional Phase 3 there may later converge `tooling check` toward the same finding shape.
 
 ### Namespaces
 
@@ -89,8 +89,9 @@ Rule ids stay closed over the first-party namespaces already used by the reposit
 | `VECTIS-*` | Vectis target adapter overlay under `adapters/targets/vectis/codex/`. |
 | `IFACE-*` | Contracts target adapter overlay under `adapters/targets/contracts/codex/`. |
 | `ORG-*` | Organization-local rules outside the first-party repository. |
+| `FRAME-*` | Reserved by [RFC-31](rfc-31-workspace-model.md) for optional framework-repo declarative checks; not used in consumer codex export. |
 
-Framework tooling keeps enforcing namespace ownership for first-party files. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it.
+Framework tooling keeps enforcing namespace ownership for first-party files. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it. `FRAME-*` is reserved for Phase 3 framework convergence and must not appear under `adapters/*/codex/`.
 
 ### Resolution roots
 
@@ -193,6 +194,22 @@ Ordering is stable:
 2. severity order: `critical`, `important`, `suggestion`, `optional`;
 3. origin order: `target`, `source`, `shared`, `organization`;
 4. `rule-id` lexical order.
+
+### Deterministic hints extensibility
+
+RFC-28 validates `deterministic_hints` shape only; it does not execute hints. The closed v1 authoring enum is:
+
+| Kind | RFC-28 validation | Execution owner |
+| --- | --- | --- |
+| `regex` | shape | [RFC-31](rfc-31-workspace-model.md) Phase 2 |
+| `path-pattern` | shape | RFC-31 Phase 2 |
+| `schema` | shape | RFC-31 Phase 2 |
+| `tool` | shape | RFC-31 Phase 2 |
+| `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `namespace-owner` | shape with `"x-rfc31-status": "reserved"` | RFC-31 reserved; interpreter returns unsupported until implemented |
+
+Rules may declare reserved kinds in frontmatter so authors can land policy before the interpreter catches up. RFC-28 export includes reserved hints verbatim; scanners must not treat undeclared kinds as errors.
+
+When extending the codex authoring schema, add new kinds to the enum and document them in RFC-31 before implementation. Do not embed scripts, SQL, or unconstrained query strings in hint `value` fields.
 
 ### Structured review finding schema
 
@@ -307,9 +324,11 @@ Human producers may use the same schema for triage decisions. Human-authored sta
 
 `specify codex export` resolves rules for consumers.
 
-`specify review` will eventually scan consumer projects and emit findings.
+`specify review` scans consumer projects and emits findings per [RFC-31](rfc-31-workspace-model.md).
 
-These surfaces may share schemas, DTOs, and parsers through `specify-domain`, but they remain separate commands because their inputs, audiences, and failure semantics differ.
+These surfaces share schemas, DTOs, and parsers through `specify-domain`, but they remain separate commands because their inputs, audiences, and failure semantics differ.
+
+**RFC-31 Phase 3 (optional).** Framework-repo checks may later emit the same `ReviewFinding` JSON or migrate select predicates to declarative `FRAME-*` rules. RFC-28 does not require that convergence; imperative `tooling check` may remain indefinitely.
 
 ### Relationship to contracts and compatibility
 
@@ -319,7 +338,7 @@ The shared severity enum is not a compatibility classifier. Compatibility classi
 
 ## Implementation Plan
 
-1. **Schemas.** Add `schemas/codex/resolved.schema.json` and `schemas/review/finding.schema.json` to `specify-cli`. Keep the codex authoring schema aligned with RFC-5's schema-first framework-tooling pass so `tooling check` validates the same shape that the resolver consumes.
+1. **Schemas.** Add `schemas/codex/resolved.schema.json` and `schemas/review/finding.schema.json` to `specify-cli`. Keep the codex authoring schema aligned with RFC-5's schema-first framework-tooling pass so `tooling check` validates the same shape that the resolver consumes. Extend the codex authoring schema enum with RFC-31 reserved hint kinds (documented, not executed here).
 2. **Domain types.** Add `CodexRule`, `ResolvedCodex`, `ReviewFinding`, `FindingLocation`, and `FindingEvidence` DTOs in `specify-domain` or a small `specify-review` crate if dependency direction requires it.
 3. **Resolver.** Implement rule discovery and resolution with the roots, applicability, deprecation, and ordering rules above. Put shared markdown/frontmatter parsing in `specify-domain` so RFC-5's `check::codex` validator and RFC-28's resolver consume the same parser without creating a dependency from the runtime CLI back to the framework repo.
 4. **CLI export.** Add `specify codex export` as a read-only subcommand. It does not require an initialized `.specify/` project when `--repo` and `--target` are supplied, but it may use project context when available.
@@ -361,7 +380,8 @@ For CLI maintainers:
 
 ## Non-Goals
 
-- Implementing `specify review`.
+- Implementing `specify review` (owned by [RFC-31](rfc-31-workspace-model.md)).
+- Executing `deterministic_hints` or building WorkspaceModel (owned by RFC-31).
 - Defining every deterministic scanner.
 - Replacing target adapter review briefs.
 - Replacing `REVIEW.md`.
@@ -375,17 +395,18 @@ For CLI maintainers:
 1. Should `specify codex export` live under `specify codex` or as `specify review rules` once `specify review` exists? Current preference: `specify codex export`, because rule resolution is useful outside scanning.
 2. Should organization-local `ORG-*` rules live in `.specify/codex/`, a registry projection, or both? Current preference: reserve both, implement neither until a downstream project needs it.
 3. Should the finding schema include `autofix` fields in v1? Current preference: no. Autofix belongs to a later command that consumes findings.
-4. Should deterministic hints validate regex syntax in RFC-28, or only shape? Current preference: shape only; scanner-specific validation belongs with the scanner.
+4. Should deterministic hints validate regex syntax in RFC-28, or only shape? Current preference: shape only; regex compilation and execution belong with RFC-31's hint interpreter.
 5. Should finding fingerprints include `severity`? Current preference: no, so severity changes do not create duplicate findings for the same underlying issue.
 6. Should review results include model metadata? Current preference: no for v1; RFC-19 observability can log bounded model/tool metadata later without putting it into the finding contract.
 
 ## References
 
-- [Specify Roadmap](../roadmap.md)
-- [RFC-5: Framework Developer Tooling](../rfc-5-tooling.md)
-- [RFC-18: Specialized SLM Code Generation](../future/rfc-18-slm.md)
-- [RFC-25: Workflow](../done/rfc-25-workflow.md)
-- [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
+- [Specify Roadmap](roadmap.md)
+- [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md)
+- [RFC-31: WorkspaceModel and Declarative Rule Execution](rfc-31-workspace-model.md)
+- [RFC-18: Specialized SLM Code Generation](future/rfc-18-slm.md)
+- [RFC-25: Workflow](done/rfc-25-workflow.md)
+- [RFC-27: Synthesis Sharpening](done/rfc-27-synthesis.md)
 - [Shared target codex](../../adapters/shared/codex/universal/README.md)
 - [Omnia review output template](../../adapters/targets/omnia/references/review-output-template.md)
 - [Consumer impact classification](../../adapters/targets/contracts/codex/consumer-impact-classification.md)

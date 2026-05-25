@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `tooling check` validator and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `tooling check` validator and `specify review` reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-31](rfc-31-workspace-model.md) adds the shared execution substrate for consumer review, with optional framework convergence in Phase 3.
 
 ## Sequenced Roadmap
 
@@ -52,7 +52,8 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** [RFC-28](rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
+**Depends:** [RFC-28](rfc-28-codex-rules.md) (contract + export) then [RFC-31](rfc-31-workspace-model.md) Phase 2 (WorkspaceModel + hint interpreter + `specify review`).
+**Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-31's deterministic scanner.
 **Target surface:**
 
 ```bash
@@ -65,6 +66,8 @@ specify review --format json
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
+
+**Optional follow-on:** [RFC-31](rfc-31-workspace-model.md) Phase 3 — framework `tooling check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
 
 #### RM-11: Dependency-aware compatibility gates
 

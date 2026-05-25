@@ -54,13 +54,10 @@ The skill exits by printing the literal transition command, followed by next-ste
 Plan `<name>` is at `pending`. Run `specify plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
-`/spec:plan` never auto-stamps `reviewed`. Re-running `/spec:plan <name>` re-enumerates every bound source: same-source candidate ids replace in place, new sources append.
-
 ## Guardrails
 
 - **Single-writer for `plan.yaml`.** Every value in `plan.yaml` lands through a `specify plan create` / `plan add` / `plan amend` call; `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
 - **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specify plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
-- **Never auto-stamp `reviewed`.** The closing hint is the only place the operator sees the literal transition command; `/spec:plan` never invokes `specify plan transition`.
 - **Never invent verbs.** Creation/amend paths fold schema validation into `specify plan add` / `plan amend`; validation after writes may call `specify plan validate` for structural/health diagnostics. Confirm the plan parses by re-reading `plan.yaml` after every write.
 - **Never bypass the sandbox.** Source adapter `enumerate` briefs run with the bound `path` mounted read-only as the `SOURCE_DIR` preopen; the CLI denies access outside the granted preopens as `source-enumerate-path-denied`.
 
