@@ -46,7 +46,7 @@ cargo run --release --manifest-path tooling/Cargo.toml -- check
 cargo test --manifest-path tooling/Cargo.toml
 ```
 
-The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo check` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
+The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
 
 Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter manifest validation needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` prints an actionable hint naming the resolved path.
 
