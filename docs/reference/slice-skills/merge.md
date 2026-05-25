@@ -12,7 +12,7 @@ Merge a built slice into the baseline — apply spec deltas, archive the slice, 
 
 | Argument | Required | Description |
 | -------- | -------- | ----------- |
-| `slice-name` | No | Name of the slice to merge. When omitted, uses the active `in-progress` entry from `specify plan next`. |
+| `slice-name` | No | Name of the slice to merge. When omitted, uses the active `in-progress` entry from `specrun plan next`. |
 
 ## When to use
 
@@ -28,19 +28,19 @@ Not when the slice is still `refining` or `refined` (use [/spec:build](build.md)
 | Merged baseline specs | `.specify/specs/<unit>/spec.md` | Updated baseline spec files |
 | Adapter output files | Project paths (`crates/`, `contracts/`, …) | Code or contracts from the slice |
 | Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | Full slice directory for audit |
-| Per-entry `done` | `plan.yaml` | Written only by `specify slice merge` |
+| Per-entry `done` | `plan.yaml` | Written only by `specrun slice merge` |
 
 ## Behavior
 
-1. **Resolve active slice** — `specify plan next`; validate optional `[slice-name]` matches active entry.
+1. **Resolve active slice** — `specrun plan next`; validate optional `[slice-name]` matches active entry.
 2. **Acquire plan lock** when invoked standalone.
 3. **Workspace routing** — `chdir` into workspace slot when `project` is set.
 4. **Refuse if not `built`** — hint toward `/spec:build` or report already finalised.
 5. **Run target merge brief** — pre-merge gates (cargo, clippy, tests, adapter-specific validators).
-6. **Apply merge** — `specify slice merge run <slice>` applies deltas, transitions slice to `merged`, archives slice dir, stamps plan entry `done`.
+6. **Apply merge** — `specrun slice merge run <slice>` applies deltas, transitions slice to `merged`, archives slice dir, stamps plan entry `done`.
 7. **Post-merge hook** — some targets re-validate promoted baseline; failures are observability only (merge already landed).
 
-Use `specify slice merge preview` to preview without writing. Use `specify slice merge conflict-check` to probe baseline drift.
+Use `specrun slice merge preview` to preview without writing. Use `specrun slice merge conflict-check` to probe baseline drift.
 
 ## Lifecycle transitions
 

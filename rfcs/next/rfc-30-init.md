@@ -418,7 +418,7 @@ For the CLI: `specify init --upgrade` replaces the implicit `$UPGRADE=true` runb
 - Automatic CLI updates without confirmation. Every upgrade requires `--yes` or interactive AskQuestion.
 - Cross-major migrations that require operator judgment in artifact contents. RFC-30 migrators are structural; semantic re-extraction belongs to `/spec:plan` + `/spec:execute`.
 - Replacing `cargo install --git` as the development install method.
-- Defining `framework-check` or `specify review`. RFC-5 and RFC-28 own those surfaces.
+- Defining `tooling check` or `specify review`. RFC-5 and RFC-28 own those surfaces.
 - Cross-platform binary distribution beyond what the existing release pipeline supports.
 
 ## Alternatives Considered

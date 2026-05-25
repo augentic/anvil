@@ -34,7 +34,7 @@ Baseline specs remain unchanged.
 1. **Select slice** — use argument or prompt when multiple active slices exist.
 2. **Check lifecycle** — warn when slice is `built` (ready for merge); refuse when already `merged` or `dropped`.
 3. **Confirm** — AskQuestion unless `reason` supplied (non-interactive).
-4. **Drop** — `specify slice transition <name> dropped --reason "..."`; CLI archives the slice directory.
+4. **Drop** — `specrun slice transition <name> dropped --reason "..."`; CLI archives the slice directory.
 
 ## Lifecycle transitions
 

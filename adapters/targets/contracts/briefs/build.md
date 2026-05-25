@@ -64,7 +64,7 @@ A clean verification pass with zero issues is the expected outcome.
 Build's final step invokes the declared `contract` WASI tool to confirm the slice's contract files parse and pass the validation rules in single-mode against the slice's delta:
 
 ```bash
-specify tool run contract -- "$SLICE_DIR/contracts" --format json > /tmp/contract-build.json
+specrun tool run contract -- "$SLICE_DIR/contracts" --format json > /tmp/contract-build.json
 case $? in
   0) ;;  # clean — slice deltas are well-formed; proceed to task completion
   1) ;;  # findings — re-enter the failing format sub-brief per Phase 4

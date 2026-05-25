@@ -23,8 +23,8 @@ The configuration surfaces:
 
 The CLI verbs that read or change Layer 0 state:
 
-- **`specify init <target>`** / **`specify init --hub`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/domain/src/adapter/`) routes by axis.
+- **`specrun init <target>`** / **`specrun init --hub`** — one-time scaffold of `.specify/`, writes `project.yaml`.
+- **`specrun source resolve <name>`** / **`specrun target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/domain/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
@@ -50,7 +50,7 @@ The full set of Layer 1 skills:
 | `/spec:merge`  | Apply spec deltas to the baseline and archive the slice; only writer of per-entry `done`   |
 | `/spec:drop`   | Discard a slice without merging                                                            |
 
-The matching CLI surface is the **`specify slice ...`** family: `slice create`, `slice transition`, `slice validate`, `slice merge`. Operators rarely call these directly; the skills wrap them.
+The matching CLI surface is the **`specrun slice ...`** family: `slice create`, `slice transition`, `slice validate`, `slice merge`. Operators rarely call these directly; the skills wrap them.
 
 ## Layer 2: Planning and driving a change
 
@@ -62,15 +62,15 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | `/spec:execute`  | Drive the plan through the Layer 1 loop; refuses unless plan is `reviewed`                          |
 | `/spec:finalize` | Push branches, observe PR state, archive once every PR is `MERGED`                                  |
 
-The plan is the change's table of contents. `/spec:plan` produces it by enumerating each source, fusing candidates across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> reviewed` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `reviewed` itself.
+The plan is the change's table of contents. `/spec:plan` produces it by enumerating each source, fusing candidates across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specrun plan transition <name> reviewed` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `reviewed` itself.
 
-`/spec:execute` consumes the reviewed plan by picking the next eligible slice (`specify plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
+`/spec:execute` consumes the reviewed plan by picking the next eligible slice (`specrun plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-The matching CLI surface spans **`specify plan {create, add, amend, transition, next, finalize}`**, **`specify workspace {sync, push, prepare}`** for multi-repo changes, and **`specify tool run`** for declared WASI helpers.
+The matching CLI surface spans **`specrun plan {create, add, amend, transition, next, finalize}`**, **`specrun workspace {sync, push, prepare}`** for multi-repo changes, and **`specrun tool run`** for declared WASI helpers.
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `reviewed`. `/spec:execute` refuses on anything other than `reviewed`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specify plan amend` before any per-slice work runs.
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `reviewed`. `/spec:execute` refuses on anything other than `reviewed`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specrun plan amend` before any per-slice work runs.
 
 The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == reviewed`) so automation can opt-in cleanly.
 
@@ -80,7 +80,7 @@ A key design principle: higher layers invoke lower layers, but lower layers are 
 
 This means you can always drop down a layer:
 
-- If `/spec:plan` produces a plan you want to adjust, edit it with `specify plan amend` (split, merge, relabel, rebind sources, accept/reject a predicted divergence) and stamp `reviewed` when ready.
+- If `/spec:plan` produces a plan you want to adjust, edit it with `specrun plan amend` (split, merge, relabel, rebind sources, accept/reject a predicted divergence) and stamp `reviewed` when ready.
 - If `/spec:execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `/spec:execute` to pick up the next entry.
 - If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/.metadata.yaml` directly — they are plain YAML files.

@@ -340,7 +340,7 @@ Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape
 **Detection**: When the wired `composition.yaml` is available (sibling at the change-local or baseline path — see SKILL.md "Gather context"):
 
 1. Walk the composition tree collecting every `group` node.
-2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specify tool run vectis -- validate composition` uses for the §G structural-identity rule).
+2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specrun tool run vectis -- validate composition` uses for the §G structural-identity rule).
 3. Group instances by skeleton equality. For any skeleton that appears in ≥2 instances **without** a sibling `component:` directive on any of those instances, flag the recurrence as a candidate component.
 4. Cross-check the Android shell: if the recurring composition group already corresponds to an extracted `@Composable` under `ui/components/`, downgrade severity to **Info** and note the existing extraction; otherwise emit at the canonical Info severity (the operator will promote both surfaces in lockstep).
 

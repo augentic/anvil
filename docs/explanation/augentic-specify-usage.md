@@ -206,7 +206,7 @@ Guidelines:
 - Each task MUST be agent-completable: a coding agent can perform the action and verify completion through code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills
 - Never generate tasks that require human-only action or judgement, such as manual app testing, visual inspection, real-world API credentials, production services, physical-device-only checks, app store review, or asking the user to verify behavior
 - When behavior appears to require manual validation, write the equivalent agent-verifiable task instead (for example, a mocked API test, replay, simulator/build check, contract test, or scripted smoke test)
-- Before handing `tasks.md` off, the generating agent re-reads every checkbox and rewrites any task whose action requires human-only judgement or whose meaning could be misread out of context. For `tasks.md`, `specify slice validate` checks checkbox/grouping shape only (checkbox format, group headings); it does not inspect task intent, so agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight
+- Before handing `tasks.md` off, the generating agent re-reads every checkbox and rewrites any task whose action requires human-only judgement or whose meaning could be misread out of context. For `tasks.md`, `specrun slice validate` checks checkbox/grouping shape only (checkbox format, group headings); it does not inspect task intent, so agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight
 
 ### Skill Directive Tags
 

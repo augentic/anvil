@@ -22,7 +22,7 @@ Authoring loop:
 1. Group all claims across all Evidence by `claim-id` (deterministic on `requirement` / `criterion` per the Evidence schema; see [`claim-fusion.md`](claim-fusion.md) for how `decision` / `section` / `excerpt` / `type` / `call` / spatial / `intent` claims contribute).
 2. For each fused group, apply [`authority.md`](authority.md)'s decision table to pick `Status:`.
 3. Emit one H3 requirement block per group, numbering `REQ-001`, `REQ-002`, … in source order (top of the highest-authority Evidence document down). Within one Evidence, keep claim order.
-4. For each block that carries a `[unknown]` / `[conflict]` / `[divergence]` tag, `specify slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
+4. For each block that carries a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 
 `spec.md` also opens with a short `## Overview` paragraph (one to three sentences) summarising the slice's behavioural surface; the overview carries no provenance lines.
 
@@ -62,4 +62,4 @@ One bullet per task. Nesting (`  - [ ]`) is allowed for sub-tasks but discourage
 - **Never rewrite an earlier substep.** `proposal.md` is final before `spec.md` opens; `spec.md` is final before `design.md` opens.
 - **Never invent provenance.** A `Sources:` key that did not contribute a claim is a parser failure.
 - **Never park the slice on uncertainty.** Surface `[unknown]` / `[conflict]` / `[divergence]` and proceed.
-- **Never call a `specify slice synthesize` verb.** It does not exist; substeps are hand-coded in the skill body.
+- **Never call a `specrun slice synthesize` verb.** It does not exist; substeps are hand-coded in the skill body.

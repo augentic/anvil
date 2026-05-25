@@ -27,7 +27,7 @@ Each binding creates a slot in `plan.yaml.sources` and contributes candidates to
 At propose time, fuse candidates across sources into one slice row:
 
 ```bash
-specify plan add <slice> --sources legacy=<candidate-id> --sources docs=<candidate-id>
+specrun plan add <slice> --sources legacy=<candidate-id> --sources docs=<candidate-id>
 ```
 
 Single-source intent slices may use the shorthand `sources: [intent]`.

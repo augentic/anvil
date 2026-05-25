@@ -6,7 +6,7 @@ change lifecycle introduced by RFC-23 (`draft → review → execute → finaliz
 
 1. draft a multi-slice change from a short feature brief (`/spec:plan`)
 2. review the draft plan at the operator pause (`inspect plan.yaml`,
-   optional `specify plan amend`)
+   optional `specrun plan amend`)
 3. execute contract and implementation slices in dependency order
    (`/spec:execute loop`)
 4. drive the post-execute tail (`/spec:finalize`): push prepared workspace

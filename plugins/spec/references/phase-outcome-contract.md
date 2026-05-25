@@ -1,6 +1,6 @@
 # Phase outcome contract
 
-RFC-25 retired per-slice `PhaseOutcome` stamping and `specify slice outcome set`. The `/spec:execute` driver parks on phase exit codes, slice lifecycle, and plan entry status — not an on-disk outcome field.
+RFC-25 retired per-slice `PhaseOutcome` stamping and `specrun slice outcome set`. The `/spec:execute` driver parks on phase exit codes, slice lifecycle, and plan entry status — not an on-disk outcome field.
 
 > See [Stop conditions](../skills/execute/references/stop-conditions.md) for the three halt paths and re-entry contract.
 

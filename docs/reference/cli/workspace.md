@@ -1,4 +1,4 @@
-# specify workspace
+# specrun workspace
 
 Materialise, prepare, and publish registry-backed workspace slots for multi-repo changes.
 
@@ -14,8 +14,8 @@ Materialise, prepare, and publish registry-backed workspace slots for multi-repo
 `sync` and `push` accept optional project selectors:
 
 ```bash
-specify workspace sync [<project>...]
-specify workspace push [<project>...]
+specrun workspace sync [<project>...]
+specrun workspace push [<project>...]
 ```
 
 Selectors are registry project names. Unknown selectors fail before filesystem, Git, or forge side effects. When selectors are omitted, `sync` operates on every project declared in `registry.yaml`; `push` classifies every registry project and only performs transport work for branches that need publication.
@@ -30,34 +30,34 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `specify plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specrun workspace push`, and `specrun plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
-### specify workspace sync
+### specrun workspace sync
 
 Clone or refresh selected projects declared in `registry.yaml` into `.specify/workspace/<project>/`.
 
 ```bash
-specify workspace sync [<project>...]
+specrun workspace sync [<project>...]
 ```
 
 For each selected registry project:
 
 - **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot, or fetches an existing matching clone.
 - **Local path** (`.`, `../foo`, `/absolute/path`) -- symlinks the resolved path into the workspace slot.
-- **Greenfield** (remote URL, repo does not yet exist) -- creates the local workspace slot, runs `git init`, sets `origin`, and bootstraps `.specify/project.yaml` via `specify init <adapter>`. Remote repositories are not created during sync; creation happens, when supported, during `workspace push`.
+- **Greenfield** (remote URL, repo does not yet exist) -- creates the local workspace slot, runs `git init`, sets `origin`, and bootstraps `.specify/project.yaml` via `specrun init <adapter>`. Remote repositories are not created during sync; creation happens, when supported, during `workspace push`.
 
-A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
+A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specrun init` is re-attempted without re-running `git init` or `git remote add`.
 
 Selected sync materialises selected slots only. Unselected registry projects are not cloned, fetched, symlinked, or contract-refreshed. Running without selectors syncs all registry projects. Non-zero exit if any selected project fails, with a per-project status summary.
 
-### specify workspace push
+### specrun workspace push
 
 Publish selected workspace clones that are already on the exact change branch.
 
 ```bash
-specify workspace push [<project>...] [--dry-run]
+specrun workspace push [<project>...] [--dry-run]
 ```
 
 The change name is read from `plan.yaml`; the expected branch is exactly `specify/<change-name>`. `workspace push` is transport-only PR publication/update. It never creates the local change branch, never checks out a branch, never commits files, never pushes a default branch, and never merges a PR.
@@ -123,17 +123,17 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 
 ## PR landing
 
-Automated workspace merge has been removed. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
+Automated workspace merge has been removed. There is no active `specrun workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
-specify plan finalize
+specrun plan finalize
 ```
 
-`specify plan finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
+`specrun plan finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
 
 ## See also
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
 - [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
-- [`specify plan finalize`](plan.md) -- closure after PRs are operator-merged
+- [`specrun plan finalize`](plan.md) -- closure after PRs are operator-merged

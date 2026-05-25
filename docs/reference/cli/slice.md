@@ -1,4 +1,4 @@
-# specify slice
+# specrun slice
 
 Create, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
 
@@ -19,12 +19,12 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 
 ## Subcommands
 
-### specify slice create
+### specrun slice create
 
 Create a new slice directory.
 
 ```bash
-specify slice create <name> [--if-exists fail|continue|restart] [--format json]
+specrun slice create <name> [--if-exists fail|continue|restart] [--format json]
 ```
 
 | Argument | Description |
@@ -35,12 +35,12 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 
 Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
 
-### specify slice transition
+### specrun slice transition
 
 Move a slice through the lifecycle state machine.
 
 ```bash
-specify slice transition <name> <target>
+specrun slice transition <name> <target>
 ```
 
 | Argument | Description |
@@ -50,39 +50,39 @@ specify slice transition <name> <target>
 
 Enforces legal transitions. Records timestamps in `.metadata.yaml`.
 
-### specify slice touched-specs
+### specrun slice touched-specs
 
 Scan or set the specs affected by a slice.
 
 ```bash
-specify slice touched-specs <name> --scan
-specify slice touched-specs <name> --set <spec-path>...
+specrun slice touched-specs <name> --scan
+specrun slice touched-specs <name> --set <spec-path>...
 ```
 
-### specify slice overlap
+### specrun slice overlap
 
 Check for spec overlap between active slices.
 
 ```bash
-specify slice overlap <name>
+specrun slice overlap <name>
 ```
 
 Reports which specs are touched by multiple active slices.
 
-### specify slice drop
+### specrun slice drop
 
 Drop a slice (transition to `dropped` and archive).
 
 ```bash
-specify slice drop <name> [--reason "<rationale>"]
+specrun slice drop <name> [--reason "<rationale>"]
 ```
 
-### specify slice validate
+### specrun slice validate
 
 Run structural and semantic artifact validation against a slice.
 
 ```bash
-specify slice validate <name> [--format json]
+specrun slice validate <name> [--format json]
 ```
 
 Checks include:
@@ -94,36 +94,36 @@ Checks include:
 
 Returns a JSON report with `Pass` / `Fail` / `Deferred` classifications. The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones; see the [Decision Log](../../explanation/decision-log.md) for the rationale.
 
-### specify slice merge
+### specrun slice merge
 
 Three subcommands cover the merge surface.
 
-#### specify slice merge preview
+#### specrun slice merge preview
 
 Preview what a merge would do without writing anything.
 
 ```bash
-specify slice merge preview <name> [--format json]
+specrun slice merge preview <name> [--format json]
 ```
 
 Shows which baseline specs would be created, modified, or removed. For Vectis slices, also previews composition delta operations (screen-level `added`/`modified`/`removed`). Used by `/spec:merge` before committing.
 
-#### specify slice merge conflict-check
+#### specrun slice merge conflict-check
 
 Detect whether the baseline has changed since the slice was defined.
 
 ```bash
-specify slice merge conflict-check <name> [--format json]
+specrun slice merge conflict-check <name> [--format json]
 ```
 
 Returns a pass/fail result. Checks for both spec conflicts and composition conflicts (Vectis only -- detects when a baseline screen has been modified by another merged slice since this slice was created, using per-screen checksums). If conflicts are detected, the slice's specs may need to be regenerated against the current baseline.
 
-#### specify slice merge run
+#### specrun slice merge run
 
 The terminal merge operation. Commits the delta merge and archives the slice.
 
 ```bash
-specify slice merge run <name> [--format json]
+specrun slice merge run <name> [--format json]
 ```
 
 Performs:
@@ -136,30 +136,30 @@ Performs:
 
 This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
 
-**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
+**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specrun workspace push` to publish commits to remotes.
 
 **Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
 
-### specify slice task
+### specrun slice task
 
 Two subcommands cover the task surface (renamed from the old top-level `specify task progress` / `specify task mark`).
 
-#### specify slice task progress
+#### specrun slice task progress
 
 Report task completion progress for a slice.
 
 ```bash
-specify slice task progress <name> [--format json]
+specrun slice task progress <name> [--format json]
 ```
 
 Returns the count of completed and total tasks, parsed from `tasks.md` checkbox syntax.
 
-#### specify slice task mark
+#### specrun slice task mark
 
 Mark a task as complete.
 
 ```bash
-specify slice task mark <name> <task-id> [--format json]
+specrun slice task mark <name> <task-id> [--format json]
 ```
 
 Flips the checkbox from `- [ ]` to `- [x]` for the specified task. The task ID is the numbered identifier (e.g. `1.2`, `2.1`).
@@ -172,6 +172,6 @@ Used by `/spec:build` as it completes each task.
 - [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
 - [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
 - [/spec:drop](../slice-skills/drop.md) -- skill that drops slices
-- [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
+- [specrun plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

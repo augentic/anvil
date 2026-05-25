@@ -12,7 +12,7 @@ Implement tasks from a refined slice by loading the target adapter's build brief
 
 | Argument | Required | Description |
 | -------- | -------- | ----------- |
-| `slice-name` | No | Name of the slice to build. When omitted, uses the active `in-progress` entry from `specify plan next`. Must match the active entry when supplied. |
+| `slice-name` | No | Name of the slice to build. When omitted, uses the active `in-progress` entry from `specrun plan next`. Must match the active entry when supplied. |
 
 ## When to use
 
@@ -24,17 +24,17 @@ Not when the slice has not been refined (use [/spec:refine](refine.md)) or has a
 
 ## Artifacts produced
 
-Source code changes in the project codebase (not under `.specify/`). Task checkboxes in `tasks.md` are flipped via `specify slice task mark` as each task completes.
+Source code changes in the project codebase (not under `.specify/`). Task checkboxes in `tasks.md` are flipped via `specrun slice task mark` as each task completes.
 
 ## Behavior
 
-1. **Resolve active slice** — `specify plan next --format json`; refuse if `[slice-name]` mismatches active entry.
+1. **Resolve active slice** — `specrun plan next --format json`; refuse if `[slice-name]` mismatches active entry.
 2. **Acquire plan lock** when invoked standalone (skip when `SPECIFY_PLAN_LOCK_HELD=1` from `/spec:execute`).
 3. **Workspace routing** — `chdir` into `.specify/workspace/<project>/` when in workspace mode.
 4. **Refuse on lifecycle** — proceed only when slice status is `refined`.
-5. **Load target build brief** — `specify target resolve` + read `briefs/build.md`; follow orchestration linearly.
+5. **Load target build brief** — `specrun target resolve` + read `briefs/build.md`; follow orchestration linearly.
 6. **Stop on failure** — non-zero exit leaves slice at `refined`; emit structured stop hint with failing task and log path.
-7. **Transition on success** — `specify slice transition <name> built`.
+7. **Transition on success** — `specrun slice transition <name> built`.
 
 Synthesis review tags in `spec.md` are not build blockers — build proceeds against whatever spec is on disk.
 

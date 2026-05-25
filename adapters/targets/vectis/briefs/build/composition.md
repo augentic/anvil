@@ -32,7 +32,7 @@ Write via the stage → validate → rename sequence used by every Vectis produc
 ```bash
 COMP="${SLICE_DIR}/composition.yaml"
 write_yaml "${COMP}.tmp"
-specify tool run vectis -- validate composition "${COMP}.tmp"
+specrun tool run vectis -- validate composition "${COMP}.tmp"
 mv "${COMP}.tmp" "${COMP}"
 ```
 
@@ -45,7 +45,7 @@ When the slice has no UI surface at all (core-only backend slice), this step wri
 After regenerating, re-run the deterministic validator against the merged input set:
 
 ```bash
-specify tool run vectis -- validate composition
+specrun tool run vectis -- validate composition
 ```
 
 That single call covers:

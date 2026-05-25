@@ -5,7 +5,7 @@
 ## Inputs and bindings
 
 ```text
-$SLICE_NAME    = active in-progress plan entry's slice name (from `specify plan next`)
+$SLICE_NAME    = active in-progress plan entry's slice name (from `specrun plan next`)
 $SLICE_DIR     = .specify/slices/$SLICE_NAME
 $SPEC_PATH     = $SLICE_DIR/spec.md
 $DESIGN_PATH   = $SLICE_DIR/design.md
@@ -16,7 +16,7 @@ $GUEST_PATH    = workspace root (single `src/lib.rs` exports HTTP / Messaging / 
 $REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md
 ```
 
-`/spec:build` resolves `$SLICE_NAME` from `specify plan next`. The brief uses that name throughout.
+`/spec:build` resolves `$SLICE_NAME` from `specrun plan next`. The brief uses that name throughout.
 
 ## Mode detection
 
@@ -72,13 +72,13 @@ Repeat until all four checks pass or 3 iterations exhausted. If still failing af
 
 A build failure surfaces a stop hint as the body's final output — a single structured message the parent skill or the parent loop can act on without re-deriving context:
 
-- `slice` — slice name from `specify plan next`.
+- `slice` — slice name from `specrun plan next`.
 - `phase` — `build`.
 - `failing-task` — the `tasks.md` checkbox (or sub-step) that exited non-zero.
 - `log-path` — absolute path to the captured stdout/stderr.
 - `next-action` — typically `re-run /spec:build $SLICE after fix`.
 
-Render the hint as the final visible output of the run. Do not call `specify slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly.
+Render the hint as the final visible output of the run. Do not call `specrun slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly.
 
 ## References
 

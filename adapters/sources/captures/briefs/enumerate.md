@@ -38,7 +38,7 @@ The bound directory is the only filesystem grant — `$PROJECT_DIR` is unreachab
 
 One candidate per observed handler — that is, one per `tests/data/replays/<handler>/` directory. Each directory groups every captured scenario for one HTTP route, message handler, scheduled job, or WebSocket handler. The slice grain operators reason about is the handler, not the individual capture; per-scenario detail lives in `extract`-time claims (one `kind: example` claim per scenario file).
 
-The directory name is the kebab-case handler identifier — keep it verbatim as the candidate `id`. When two sources surface the same handler under different names (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), the operator adds an `aliases:` row at plan time through `specify plan amend --add-alias`; do not invent aliases here.
+The directory name is the kebab-case handler identifier — keep it verbatim as the candidate `id`. When two sources surface the same handler under different names (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), the operator adds an `aliases:` row at plan time through `specrun plan amend --add-alias`; do not invent aliases here.
 
 ## Output: candidate blocks
 
@@ -118,7 +118,7 @@ Expected output (alphabetically by `id`, source key `runtime`):
 
 - **Inventing handlers from `INSTRUCTIONS.md`.** The prose is operator hint material; the directory listing is the candidate source of truth. If a handler is named in `INSTRUCTIONS.md` but has no scenario JSON files, emit nothing for it.
 - **Per-scenario candidates.** One block per `<handler>/` directory, never one per `<scenario>.json`. Scenario-level detail belongs in `extract`'s `kind: example` claims.
-- **Cross-source aliasing here.** Aliases are added at plan time via `specify plan amend --add-alias`; this brief sees one source's tree.
+- **Cross-source aliasing here.** Aliases are added at plan time via `specrun plan amend --add-alias`; this brief sees one source's tree.
 - **Writing `discovery.md` or `plan.yaml`.** Only candidate blocks. The CLI owns every lifecycle file.
 
 ## Failure modes

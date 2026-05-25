@@ -8,20 +8,35 @@ Specify spans two repositories:
 
 | Repository | Contents | Language |
 |------------|----------|----------|
-| [`augentic/specify`](https://github.com/augentic/specify) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML, TypeScript (checks) |
-| [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specify` binary and its workspace crates | Rust |
+| [`augentic/specify`](https://github.com/augentic/specify) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
+| [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specrun` runtime binary, `specdev` authoring binary, and workspace crates | Rust |
 
 The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
-The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specrun plan add ...`, `specrun slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+
+## Who you're contributing for
+
+Two audiences share this repository:
+
+| Audience | Typical edits | Rust required locally? |
+|----------|---------------|------------------------|
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev check` on every PR |
+| **Tooling contributors** | `specify-authoring` predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
+
+Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make check` and `make test` locally before opening a PR.
 
 ## Development environment
 
 **For skill and adapter work** (specify repo):
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
-- [Deno](https://deno.land) -- runs `scripts/check.ts` via `make check`
 - [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
+
+**For tooling work** (`specify-cli` repo, `crates/authoring/`):
+
+- Rust stable toolchain
+- A sibling checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when running framework checks locally from this repo
 
 **For CLI work** (specify-cli repo):
 
@@ -35,7 +50,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make check` in the specify repo; `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make check` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
@@ -46,7 +61,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `make check` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what `specdev check` enforces and how to extend it
 
 ## Example Patterns
 

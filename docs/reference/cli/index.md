@@ -37,13 +37,13 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
-| [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
-| [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
-| [specify source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |
-| [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
-| [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
-| [specify init](init.md) | Project scaffold | One-time setup |
-| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify tool run` | Adapter-owned validation + render-only scaffolding |
+| [specrun slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
+| [specrun plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
+| [specrun registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
+| [specrun source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |
+| [specrun tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
+| [specrun workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
+| [specrun init](init.md) | Project scaffold | One-time setup |
+| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specrun tool run` | Adapter-owned validation + render-only scaffolding |
 
-Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).
+Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specrun slice`](slice.md).

@@ -1,6 +1,6 @@
 # CLI output shapes
 
-Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline" #2](../standards/skill-authoring.md#skill-body-discipline)).
+Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](../standards/skill-authoring.md#skill-body-discipline)).
 
 ## Conventions
 
@@ -15,101 +15,24 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The per-command sections below are **generated** from the canonical fixtures in `augentic/specify-cli` (`tests/fixtures/plan/*.json` and `tests/fixtures/e2e/goldens/*.json`). To refresh after a fixture change, run `make doc-envelopes` from the repo root. CI runs the same generator with `--check` to ensure the document and fixtures cannot drift.
+The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`augentic/specify-cli/tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-<!-- generated:begin -->
+### `specrun plan create`
 
-### `specify plan amend`
-
-Source fixture: `tests/fixtures/plan/amend-replace-depends-on.json`
-
-```json
-{
-  "action": "amend",
-  "entry": {
-    "adapter": null,
-    "depends-on": [
-      "a",
-      "b"
-    ],
-    "description": null,
-    "name": "foo",
-    "project": "default",
-    "sources": [],
-    "status": "pending",
-    "status-reason": null
-  },
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  }
-}
-```
-
-### `specify plan archive`
-
-#### `outstanding-work`
-
-Source fixture: `tests/fixtures/plan/archive-outstanding-work.json`
-
-```json
-{
-  "envelope-version": 6,
-  "error": "plan-has-outstanding-work",
-  "exit-code": 1,
-  "message": "plan has outstanding non-terminal work: [\"b\"]"
-}
-```
-
-#### `success`
-
-Source fixture: `tests/fixtures/plan/archive-success.json`
-
-```json
-{
-  "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
-  "archived-plans-dir": null,
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo"
-  }
-}
-```
-
-#### `success-with-working-dir`
-
-Source fixture: `tests/fixtures/plan/archive-success-with-working-dir.json`
-
-```json
-{
-  "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
-  "archived-plans-dir": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>",
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo"
-  }
-}
-```
-
-### `specify plan add`
-
-Source fixture: `tests/fixtures/plan/create-foo.json`
+Scaffolds an empty plan and emits its first entry.
 
 ```json
 {
   "action": "create",
   "entry": {
-    "adapter": "contracts@v1",
     "depends-on": [],
     "description": null,
     "name": "foo",
     "project": null,
     "sources": [],
     "status": "pending",
-    "status-reason": null
+    "target": "contracts@v1"
   },
-  "envelope-version": 6,
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
@@ -117,164 +40,104 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 }
 ```
 
-### `specify plan create`
+### `specrun plan amend`
 
-Source fixture: `tests/fixtures/plan/init-success.json`
-
-The merged scaffold writes `change.md` and `plan.yaml` together; the
-envelope carries one ref per file.
+Replaces a field on an existing plan entry. The `entry` body mirrors the post-amend state; absent fields surface as `null` or `[]` so consumers can rely on the shape regardless of which field was touched.
 
 ```json
 {
-  "brief": {
-    "path": "<TEMPDIR>/change.md"
+  "action": "amend",
+  "entry": {
+    "depends-on": ["a", "b"],
+    "description": null,
+    "name": "foo",
+    "project": "default",
+    "sources": [],
+    "status": "pending"
   },
-  "envelope-version": 6,
-  "name": "my-change",
   "plan": {
+    "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
   }
 }
 ```
 
-### `specify plan next`
+### `specrun plan next`
 
-#### `all-done`
-
-Source fixture: `tests/fixtures/plan/next-all-done.json`
+Returns the next entry the executor should pick up, or a `reason` describing why nothing is eligible. Success carries `next: "<entry>"`; drained / blocked / in-progress states carry `next: null` and a populated `reason` (`drained`, `in-progress`, etc.).
 
 ```json
 {
   "active": null,
-  "adapter": null,
   "description": null,
-  "envelope-version": 6,
-  "next": null,
-  "project": null,
-  "reason": "all-done",
-  "sources": null
-}
-```
-
-#### `first-pending`
-
-Source fixture: `tests/fixtures/plan/next-first-pending.json`
-
-```json
-{
-  "active": null,
-  "adapter": null,
-  "description": null,
-  "envelope-version": 6,
   "next": "b",
   "project": "default",
   "reason": null,
-  "sources": []
+  "sources": [],
+  "target": null
 }
 ```
 
-#### `in-progress`
+### `specrun plan transition`
 
-Source fixture: `tests/fixtures/plan/next-in-progress.json`
-
-```json
-{
-  "active": "a",
-  "adapter": null,
-  "description": null,
-  "envelope-version": 6,
-  "next": null,
-  "project": null,
-  "reason": "in-progress",
-  "sources": null
-}
-```
-
-#### `stuck`
-
-Source fixture: `tests/fixtures/plan/next-stuck.json`
+Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.
 
 ```json
 {
-  "active": null,
-  "adapter": null,
-  "description": null,
-  "envelope-version": 6,
-  "next": null,
-  "project": null,
-  "reason": "stuck",
-  "sources": null
-}
-```
-
-### `specify plan transition`
-
-#### `in-progress-to-done`
-
-Source fixture: `tests/fixtures/plan/transition-in-progress-to-done.json`
-
-```json
-{
-  "entry": {
-    "name": "foo",
-    "status": "done",
-    "status-reason": null
-  },
-  "envelope-version": 6,
+  "current": "reviewed",
+  "kind": "plan",
+  "name": "demo",
   "plan": {
     "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  },
+  "previous": "pending"
+}
+```
+
+### `specrun plan status`
+
+Dashboard view over a plan. `counts` summarises per-status totals; `entries` carries the full topologically-sorted entry list with per-entry status and depends-on edges; `in-progress` and `next-eligible` are convenience pointers into `entries`.
+
+```json
+{
+  "counts": {
+    "done": 1,
+    "in-progress": 1,
+    "pending": 7,
+    "total": 9
+  },
+  "drained": false,
+  "entries": [
+    {
+      "depends-on": [],
+      "description": null,
+      "lifecycle": null,
+      "name": "user-registration",
+      "sources": ["monolith"],
+      "status": "done"
+    }
+  ],
+  "in-progress": {
+    "lifecycle": null,
+    "name": "email-verification"
+  },
+  "lifecycle": "pending",
+  "next-eligible": null,
+  "order": "topological",
+  "plan": {
+    "name": "platform-v2",
     "path": "<TEMPDIR>/plan.yaml"
   }
 }
 ```
 
-#### `in-progress-to-failed-with-reason`
+### `specrun plan validate`
 
-Source fixture: `tests/fixtures/plan/transition-in-progress-to-failed-with-reason.json`
-
-```json
-{
-  "entry": {
-    "name": "foo",
-    "status": "failed",
-    "status-reason": "boom"
-  },
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  }
-}
-```
-
-#### `pending-to-in-progress`
-
-Source fixture: `tests/fixtures/plan/transition-pending-to-in-progress.json`
+Runs the plan-shape diagnostics. The `passed` payload field is a result indicator, not an envelope discriminant — both the clean and failed bodies have the same top-level shape, with `results` either empty or populated.
 
 ```json
 {
-  "entry": {
-    "name": "foo",
-    "status": "in-progress",
-    "status-reason": null
-  },
-  "envelope-version": 6,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  }
-}
-```
-
-### `specify plan validate`
-
-#### `clean`
-
-Source fixture: `tests/fixtures/plan/validate-clean.json`
-
-```json
-{
-  "envelope-version": 6,
   "passed": true,
   "plan": {
     "name": "demo",
@@ -284,38 +147,31 @@ Source fixture: `tests/fixtures/plan/validate-clean.json`
 }
 ```
 
-#### `duplicate-name`
+A failed run carries one entry per finding in `results`, each with `code` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `entry` (the entry name or `null` for plan-wide findings), `message`, and `severity` (`error` or `warning`).
 
-Source fixture: `tests/fixtures/plan/validate-duplicate-name.json`
+### `specrun plan archive`
+
+Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
 ```json
 {
-  "envelope-version": 6,
-  "passed": false,
+  "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
+  "archived-plans-dir": null,
   "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  },
-  "results": [
-    {
-      "code": "duplicate-name",
-      "entry": "foo",
-      "level": "error",
-      "message": "duplicate plan entry name 'foo'"
-    }
-  ]
+    "name": "demo"
+  }
 }
 ```
 
-### `specify slice merge run`
+### `specrun slice merge run`
 
-Source fixture: `tests/fixtures/e2e/goldens/merge-two-spec.json`
+Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one entry per spec file touched, each listing the requirement-level operations applied (`added`, `modified`, `removed`).
 
 ```json
 {
-  "envelope-version": 6,
   "merged-specs": [
     {
+      "baseline-path": "<TEMPDIR>/.specify/specs/login/spec.md",
       "name": "login",
       "operations": [
         {
@@ -324,77 +180,37 @@ Source fixture: `tests/fixtures/e2e/goldens/merge-two-spec.json`
           "name": "User can log in"
         }
       ]
-    },
-    {
-      "name": "oauth",
-      "operations": [
-        {
-          "id": "REQ-001",
-          "kind": "added",
-          "name": "Handle OAuth callback"
-        }
-      ]
     }
   ]
 }
 ```
 
-### `specify slice task mark`
+### `specrun slice task mark`
 
-Source fixture: `tests/fixtures/e2e/goldens/task-mark.json`
+Marks one task complete. `idempotent: true` indicates the task was already complete and the call was a no-op; the `new-content-path` always points at the updated `tasks.md` regardless.
 
 ```json
 {
-  "envelope-version": 6,
   "idempotent": true,
   "marked": "1.1",
   "new-content-path": "<TEMPDIR>/.specify/slices/my-slice/tasks.md"
 }
 ```
 
-### `specify slice task progress`
+### `specrun slice task progress`
 
-Source fixture: `tests/fixtures/e2e/goldens/task-progress.json`
+Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pending` are the headline counts; `tasks[]` carries each parsed task with its parent `group`, `number` (`X.Y`), free-form `description`, and optional `skill-directive` (the embedded `<!-- skill: plugin:skill-name -->` reference, if any).
 
 ```json
 {
   "complete": 2,
-  "envelope-version": 6,
   "pending": 3,
   "tasks": [
-    {
-      "complete": false,
-      "description": "Create the `login` crate skeleton",
-      "group": "1. Scaffold",
-      "number": "1.1",
-      "skill-directive": null
-    },
     {
       "complete": true,
       "description": "Wire the crate into the workspace",
       "group": "1. Scaffold",
       "number": "1.2",
-      "skill-directive": null
-    },
-    {
-      "complete": true,
-      "description": "Implement the session issuer per REQ-001",
-      "group": "2. Implement",
-      "number": "2.1",
-      "skill-directive": null
-    },
-    {
-      "complete": false,
-      "description": "Add unit tests covering the happy path",
-      "group": "2. Implement",
-      "number": "2.2",
-      "skill-directive": null
-    },
-    {
-      "complete": false,
-      "description": "Document the public API",
-      "group": "2. Implement",
-      "number": "2.3",
       "skill-directive": null
     }
   ],
@@ -402,11 +218,11 @@ Source fixture: `tests/fixtures/e2e/goldens/task-progress.json`
 }
 ```
 
-### `specify slice validate`
+### `specrun slice validate`
 
-#### `clean`
+Runs the slice-shape brief and cross-check predicates. Like `plan validate`, `passed` is a payload indicator and the envelope shape is identical for clean and failed runs.
 
-Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
+`brief-results` is keyed by per-brief or per-spec scope (`proposal`, `design`, `tasks`, `specs/<name>/spec.md`); each entry is a list of `{rule, rule-id, status, detail?}` records where `status` is `pass`, `fail`, or `deferred` (semantic checks that need LLM judgement). `cross-checks[]` carries inter-artifact predicates with the same record shape.
 
 ```json
 {
@@ -425,38 +241,17 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "status": "pass"
       },
       {
-        "rule": "Has a Crates/Features section listing at least one entry",
-        "rule-id": "proposal.crates-listed",
-        "status": "pass"
-      },
-      {
         "detail": "Semantic check — requires LLM judgment",
         "rule": "Uses imperative language for motivation",
         "rule-id": "proposal.uses-imperative-language",
         "status": "deferred"
       }
     ],
-    "specs": [
+    "specs/login/spec.md": [
       {
         "rule": "Every requirement has at least one scenario",
         "rule-id": "specs.requirements-have-scenarios",
         "status": "pass"
-      },
-      {
-        "rule": "Every requirement has an `ID:` line",
-        "rule-id": "specs.requirements-have-ids",
-        "status": "pass"
-      },
-      {
-        "rule": "IDs use the `REQ-[0-9]{3}` format",
-        "rule-id": "specs.ids-match-pattern",
-        "status": "pass"
-      },
-      {
-        "detail": "Semantic check — requires LLM judgment",
-        "rule": "Uses SHALL/MUST language for normative requirements",
-        "rule-id": "specs.uses-normative-language",
-        "status": "deferred"
       }
     ],
     "tasks": [
@@ -464,135 +259,22 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-good.json`
         "rule": "All tasks use `- [ ] X.Y` checkbox format",
         "rule-id": "tasks.use-checkbox-format",
         "status": "pass"
-      },
-      {
-        "rule": "Tasks grouped under `## ` headings",
-        "rule-id": "tasks.grouped-under-headings",
-        "status": "pass"
       }
     ]
   },
   "cross-checks": [
     {
-      "rule": "Every crate/feature listed in the proposal has a matching spec file",
+      "rule": "Every crate listed in the proposal has a matching spec file",
       "rule-id": "cross.proposal-crates-have-specs",
-      "status": "pass"
-    },
-    {
-      "rule": "Every requirement id referenced in design.md exists in specs",
-      "rule-id": "cross.design-references-valid",
-      "status": "pass"
-    },
-    {
-      "rule": "composition.yaml maps_to values are well-formed",
-      "rule-id": "cross.composition-maps-to-consistent",
       "status": "pass"
     }
   ],
-  "envelope-version": 6,
   "passed": true
 }
 ```
 
-#### `with-findings`
-
-Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
-
-```json
-{
-  "brief-results": {
-    "design": [
-      {
-        "detail": "design.md references requirement IDs not present in any baseline spec",
-        "rule": "References only requirement ids present in specs",
-        "rule-id": "design.references-valid-ids",
-        "status": "fail"
-      }
-    ],
-    "proposal": [
-      {
-        "detail": "`## Why` section missing or has no prose",
-        "rule": "Has a Why section with at least one sentence",
-        "rule-id": "proposal.why-has-content",
-        "status": "fail"
-      },
-      {
-        "rule": "Has a Crates/Features section listing at least one entry",
-        "rule-id": "proposal.crates-listed",
-        "status": "pass"
-      },
-      {
-        "detail": "Semantic check — requires LLM judgment",
-        "rule": "Uses imperative language for motivation",
-        "rule-id": "proposal.uses-imperative-language",
-        "status": "deferred"
-      }
-    ],
-    "specs": [
-      {
-        "detail": "one or more requirements have no scenarios",
-        "rule": "Every requirement has at least one scenario",
-        "rule-id": "specs.requirements-have-scenarios",
-        "status": "fail"
-      },
-      {
-        "rule": "Every requirement has an `ID:` line",
-        "rule-id": "specs.requirements-have-ids",
-        "status": "pass"
-      },
-      {
-        "detail": "one or more requirement IDs do not match `^REQ-[0-9]{3}$`",
-        "rule": "IDs use the `REQ-[0-9]{3}` format",
-        "rule-id": "specs.ids-match-pattern",
-        "status": "fail"
-      },
-      {
-        "detail": "Semantic check — requires LLM judgment",
-        "rule": "Uses SHALL/MUST language for normative requirements",
-        "rule-id": "specs.uses-normative-language",
-        "status": "deferred"
-      }
-    ],
-    "tasks": [
-      {
-        "detail": "found `- …` bullets that do not match the `- [ ] X.Y` checkbox format",
-        "rule": "All tasks use `- [ ] X.Y` checkbox format",
-        "rule-id": "tasks.use-checkbox-format",
-        "status": "fail"
-      },
-      {
-        "rule": "Tasks grouped under `## ` headings",
-        "rule-id": "tasks.grouped-under-headings",
-        "status": "pass"
-      }
-    ]
-  },
-  "cross-checks": [
-    {
-      "detail": "one or more crates/features listed in the proposal have no matching spec file",
-      "rule": "Every crate/feature listed in the proposal has a matching spec file",
-      "rule-id": "cross.proposal-crates-have-specs",
-      "status": "fail"
-    },
-    {
-      "detail": "design.md references requirement IDs that are not present in the baseline",
-      "rule": "Every requirement id referenced in design.md exists in specs",
-      "rule-id": "cross.design-references-valid",
-      "status": "fail"
-    },
-    {
-      "rule": "composition.yaml maps_to values are well-formed",
-      "rule-id": "cross.composition-maps-to-consistent",
-      "status": "pass"
-    }
-  ],
-  "envelope-version": 6,
-  "passed": false
-}
-```
-
-<!-- generated:end -->
+A failed run keeps the same shape with `status: "fail"` on the offending records and an optional `detail` describing why the predicate fired.
 
 ---
 
-When migrating a new dispatcher to `Render`, append its body under a stable H3 heading and link from the corresponding `SKILL.md` instead of inlining the JSON example. If the new command also lands a fixture under `tests/fixtures/plan/` or `tests/fixtures/e2e/goldens/`, prefer regenerating this file via `make doc-envelopes` so the example stays bit-for-bit identical to the test data.
+When migrating a new dispatcher to `Render`, append its body under a stable H3 heading and link from the corresponding `SKILL.md` instead of inlining the JSON example. Trim large example bodies to the smallest shape that illustrates the contract — readers who want byte-for-byte canonical output should follow the fixture link above to the CLI repo.

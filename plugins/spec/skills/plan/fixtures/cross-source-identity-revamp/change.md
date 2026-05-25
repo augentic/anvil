@@ -10,4 +10,4 @@ Two slices, both fused by `propose` from a documentation source and a TypeScript
 
 ## Tentative merges
 
-`password-reset` — the documentation candidate `password-reset` and the legacy candidate `account-pwd-reset` describe the same operator-visible flow under different names. Both surfaced from the same product area but the legacy candidate predates the rename in the design notes. Operator review at Gate 1 should confirm or split via `specify plan amend`.
+`password-reset` — the documentation candidate `password-reset` and the legacy candidate `account-pwd-reset` describe the same operator-visible flow under different names. Both surfaced from the same product area but the legacy candidate predates the rename in the design notes. Operator review at Gate 1 should confirm or split via `specrun plan amend`.

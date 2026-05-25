@@ -82,7 +82,7 @@ During a slice's define phase, proposed contract modifications live in the slice
 
 ### Merge Semantics
 
-When `specify slice merge run` processes a slice:
+When `specrun slice merge run` processes a slice:
 
 - Files in the slice's `contracts/` are copied into root `contracts/`, replacing files at the same path.
 - Files absent from the slice's `contracts/` are left untouched in the baseline.
@@ -90,7 +90,7 @@ When `specify slice merge run` processes a slice:
 
 ### Conflict Detection
 
-Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specify slice merge conflict-check` detects this: if the baseline file was modified after the slice's `defined-at` timestamp, the merge is blocked. Resolution: re-run the slice's define phase against the updated baseline.
+Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specrun slice merge conflict-check` detects this: if the baseline file was modified after the slice's `defined-at` timestamp, the merge is blocked. Resolution: re-run the slice's define phase against the updated baseline.
 
 ## Baseline vs Change-Level
 
@@ -105,7 +105,7 @@ The baseline is what the writer validates specs against. The slice-level delta i
 
 ## Multi-Repo Distribution
 
-In multi-repo initiatives, contracts live in the initiating repo's root `contracts/` directory. Distribution to project clones uses the workspace infrastructure: `specify workspace sync` materialises root `contracts/` into each project clone automatically as part of the multi-repo plan-time sync.
+In multi-repo initiatives, contracts live in the initiating repo's root `contracts/` directory. Distribution to project clones uses the workspace infrastructure: `specrun workspace sync` materialises root `contracts/` into each project clone automatically as part of the multi-repo plan-time sync.
 
 Phase skills always read from root `contracts/` relative to their working directory — they do not need to know whether contracts were authored locally or materialised from a central source.
 

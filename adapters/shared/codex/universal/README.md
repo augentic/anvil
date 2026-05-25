@@ -2,7 +2,7 @@
 
 Shared, target-agnostic review rules under `adapters/shared/` — read by every target adapter's build review brief during `/spec:build`. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
 
-This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/codex/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`); source adapters may grow overlays under `adapters/sources/<name>/codex/` on the same shape. Namespace ownership is enforced by [`scripts/checks/codex.ts`](../../../../scripts/checks/codex.ts).
+This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/codex/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`); source adapters may grow overlays under `adapters/sources/<name>/codex/` on the same shape. Namespace ownership is enforced by `specify-authoring` `check::codex`.
 
 Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks/replay/) — shared build-time replay hook contract for targets that opt in.
 
@@ -89,6 +89,6 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
 3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../../../targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../../../targets/vectis/references/review/universal-checks.md), etc.) — `make check` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
-4. Run `make check`. The relevant predicate is `validateCodexRuleShape` in [`scripts/checks/codex.ts`](../../../../scripts/checks/codex.ts), which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
+4. Run `make check`. The relevant predicate is `CodexCheck` in `specify-authoring` `check::codex`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

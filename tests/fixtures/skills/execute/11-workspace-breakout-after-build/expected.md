@@ -14,7 +14,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 
 1. **Operator runs `/spec:build` from the workspace root.**
    - The breakout body's first action is to acquire `.specify/plan.lock` via the same snippet `/spec:execute` uses ([`../../../../../plugins/spec/skills/execute/references/plan-lock.md`](../../../../../plugins/spec/skills/execute/references/plan-lock.md)). Lock acquired at the workspace root (not in any slot).
-   - `specify plan next` returns slice 1 (`auth-rotate`, `in-progress`, `project: project-a`).
+   - `specrun plan next` returns slice 1 (`auth-rotate`, `in-progress`, `project: project-a`).
    - Workspace routing rule kicks in identically to the loop: save CWD = workspace root; resolve `project-a` through `registry.yaml`; slot already materialised; `chdir` into `.specify/workspace/project-a/`. Emit `Routing: auth-rotate → project-a (.specify/workspace/project-a/)`.
    - `/spec:build` resumes from task 7 (the failing one); operator's patch landed before the breakout; build passes; slice lifecycle transitions to `built`.
    - `/spec:build` records `PhaseOutcome { phase: build, outcome: success }`.
@@ -24,9 +24,9 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 
 2. **Operator runs `/spec:execute`.**
    - Lock acquired.
-   - `specify plan next` returns slice 1 (still `in-progress`).
+   - `specrun plan next` returns slice 1 (still `in-progress`).
    - Slice lifecycle is `built` → loop skips `/spec:refine` and `/spec:build`; dispatches `/spec:merge`.
-   - Merge succeeds; baseline + residue commits land in the slot; `specify plan transition auth-rotate done`.
+   - Merge succeeds; baseline + residue commits land in the slot; `specrun plan transition auth-rotate done`.
    - Next iteration: slice 2 routes into `project-b` (slot materialised); phase sequence runs end-to-end; `done`.
    - Next iteration: drained → closing hint `drained — run /spec:finalize identity-rotation`.
 

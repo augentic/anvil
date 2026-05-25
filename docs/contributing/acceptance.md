@@ -2,20 +2,28 @@
 
 The acceptance surface has two layers:
 
-1. **Deterministic boundary harness** — `make test` runs the Deno acceptance harness at [`tests/cross_repo.ts`](../../tests/cross_repo.ts). It schema-validates every fixture under `tests/fixtures/{sources,targets,skills}/`, parses every `expected/spec.md` with the W1.3 provenance parser, and structurally validates the synthesised goldens (`expected/composition.yaml`, `expected/crate/`, `expected-trace.md`, transcript files). When `SPECIFY_BIN` is set or `specify` is on `PATH`, the harness can additionally drive `specify source resolve`, `specify target resolve`, and the slice-loop verbs against the same fixtures.
+1. **Deterministic boundary harness** — `make test` runs the compact Rust regression suite in the `specify-authoring` crate. It exercises the checker code with targeted broken fixtures plus one real-repo smoke test that runs the registered `specdev check` predicates. It does not replay source/target/skill fixtures or invoke the live `specrun` binary.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; the deterministic-boundary harness above does **not** pin synthesised bytes.
+
+## Running the harness locally
+
+```bash
+cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
+```
+
+Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--framework-root`.
 
 ## Targets
 
-- `make check` runs static repository checks, including scenario frontmatter validation.
-- `make test` runs the Deno acceptance harness against the fixture trees.
+- `make check` runs `specdev check` — static repository checks, including scenario frontmatter validation.
+- `make test` runs the same acceptance tests as `cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`.
 - `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 
 ## Synthesis byte-replay (deferred)
 
-The harness in `tests/cross_repo.ts` covers every deterministic surface — schema validation, provenance parsing, fixture-shape goldens — but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+The harness in the `specify-authoring` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
 
 - a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
 - a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.
@@ -30,18 +38,18 @@ The manual scenario asks an operator to create a fresh temporary workspace with:
 - `shop-backend` and `shop-mobile` projects,
 - an OAuth login fixture brief.
 
-It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, Gate 1 stamping, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `specify plan finalize`, archived plan state, and `plan-not-found` on a second finalize.
+It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, Gate 1 stamping, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `specrun plan finalize`, archived plan state, and `plan-not-found` on a second finalize.
 
-This repository does not add a Deno/Rust runner, fake forge, transcript replay, CI acceptance target, or golden output comparison for this scenario yet. The goal is to run the manual script a few times, learn which checks are stable, and automate only after the simple testing shape is clear.
+This repository does not add an automated runner, fake forge, transcript replay, CI acceptance target, or golden output comparison for this scenario yet. The goal is to run the manual script a few times, learn which checks are stable, and automate only after the simple testing shape is clear.
 
 ## What The Plan Scenarios Prove
 
-The plan-generation scenarios ask an operator to create disposable workspaces and run `/spec:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists with `lifecycle: pending`, `specify plan add` and the propose substep produce coherent slice rows, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
+The plan-generation scenarios ask an operator to create disposable workspaces and run `/spec:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists with `lifecycle: pending`, `specrun plan add` and the propose substep produce coherent slice rows, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
 
-These scenarios deliberately stop at Gate 1 — before `specify plan transition <name> reviewed`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
+These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> reviewed`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
 
 ## Evidence
 
 Each cross-repo manual run should fill out [`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md). On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.
 
-Each plan-generation run should fill out [`tests/plan/run-summary-template.md`](../../tests/plan/run-summary-template.md). On failure, preserve the workspace state, exact `/spec:plan` prompt, `plan.yaml`, `.specify/discovery.md` candidate inventory, validation output, and any `specify plan show` output.
+Each plan-generation run should fill out [`tests/plan/run-summary-template.md`](../../tests/plan/run-summary-template.md). On failure, preserve the workspace state, exact `/spec:plan` prompt, `plan.yaml`, `.specify/discovery.md` candidate inventory, validation output, and any `specrun plan show` output.

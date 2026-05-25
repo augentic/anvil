@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `framework-check` validator and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo authoring checks and consumer-project review. The planned `specdev check` validator and `specrun review` reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-31](rfc-32-declarative-rules.md) adds the shared execution substrate for consumer review, with optional framework convergence in Phase 3.
 
 ## Sequenced Roadmap
 
@@ -41,7 +41,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 #### RM-07: RFC-4 Option 1: typed skill expression
 
-**Goal:** Add deterministic structural validation for skill authoring inside `framework-check`.  
+**Goal:** Add deterministic structural validation for skill authoring inside `specdev check`.  
 **Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.  
 **Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
 
@@ -52,19 +52,22 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
+**Depends:** [RFC-28](rfc-28-codex-rules.md) (contract + export) then [RFC-31](rfc-32-declarative-rules.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
+**Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-31's deterministic scanner.
 **Target surface:**
 
 ```bash
-specify review
-specify review --slice <name>
-specify review --format json
+specrun review
+specrun review --slice <name>
+specrun review --format json
 ```
 
 **First task:** Define the structured finding shape before reviewer code lands. The schema consumes a project-resolved rule catalogue owned by the future review surface, owns finding-specific fields, and should not redefine codex rule storage.
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
+
+**Optional follow-on:** [RFC-31](rfc-32-declarative-rules.md) Phase 3 — framework `specdev check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
 
 #### RM-11: Dependency-aware compatibility gates
 
@@ -73,7 +76,7 @@ specify review --format json
 **Target surface:**
 
 ```bash
-specify plan impact --change <name>
+specrun plan impact --change <name>
 ```
 
 #### RM-12: Catalog import: Backstage adapter
@@ -82,9 +85,9 @@ specify plan impact --change <name>
 **Target surface:**
 
 ```bash
-specify registry import backstage
-specify registry import <source>
-specify registry diff <source>
+specrun registry import backstage
+specrun registry import <source>
+specrun registry diff <source>
 ```
 
 **Mapping:** Backstage `System` to platform/product boundary; `Component` to registry project; `API` to interface inventory; ownership/domain/dependencies to routing and review signals.
@@ -93,7 +96,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
+**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specrun plan next` and `specrun slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
 #### RM-14: Local structured workflow events
@@ -103,8 +106,8 @@ specify registry diff <source>
 **Target surface:**
 
 ```bash
-specify events tail
-specify events export
+specrun events tail
+specrun events export
 ```
 
 **Output:** local JSONL or configurable telemetry sink with run identity.
@@ -117,9 +120,9 @@ specify events export
 
 #### RM-16: RFC-5: framework developer tooling workspace
 
-**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a `framework-rules` library crate, a `framework-check` binary for CI and local use, an `accept` crate that replaces `tests/cross_repo.ts`, a `docgen` binary that replaces `scripts/gen-envelope-doc.ts`, and full Deno retirement.
-**Why now:** Removes Deno from CI and contributor prerequisites, kills the parser duplication between `tests/lib/spec_provenance.ts` and `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner — without bloating the operator `specify` binary with dev-only surfaces.
-**Codex follow-up:** First-party codex shape validation lives in `framework-rules::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
+**Goal:** Maintain the framework authoring checker now hosted by `specify-cli`'s `specdev` binary — schema-first authoring feedback in Cursor, `specdev check` for CI and local use, and integration tests in the publish-disabled `specify-authoring` crate.
+**Why now:** Keeps Deno out of CI and contributor prerequisites, avoids parser duplication with `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner without bloating the `specrun` runtime binary with dev-only surfaces.
+**Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specrun review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize
@@ -129,9 +132,9 @@ specify events export
 **Target surface:**
 
 ```bash
-specify forge doctor
-specify workspace push --forge github
-specify plan finalize --forge github
+specrun forge doctor
+specrun workspace push --forge github
+specrun plan finalize --forge github
 ```
 
 ---

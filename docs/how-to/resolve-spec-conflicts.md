@@ -30,7 +30,7 @@ Authority order: `intent` > `documentation` > `behaviour`.
 4. Run validation:
 
 ```bash
-specify slice validate <name>
+specrun slice validate <name>
 ```
 
 Optionally amend the plan to drop a misleading source before re-refining.
@@ -40,7 +40,7 @@ Optionally amend the plan to drop a misleading source before re-refining.
 When you know which source should win for a claim kind:
 
 ```bash
-specify plan amend <plan> --authority-override <slice> <kind>=<source-key>
+specrun plan amend <plan> --authority-override <slice> <kind>=<source-key>
 ```
 
 Re-run refine after amending.

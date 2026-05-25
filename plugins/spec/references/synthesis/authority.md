@@ -20,7 +20,7 @@ Apply this table per requirement after [claim fusion](claim-fusion.md) has group
 | Multiple sources disagree, tied top authority | `conflict`   | `[conflict]`    | Both values preserved inline as `Note: <source-key> says …` lines; no winner.         |
 | No contributing Evidence at all            | `unknown`     | `[unknown]`     | One-line placeholder noting that no source supplied a claim for this requirement.    |
 
-The tag in the headline MUST match `Status:` per the coherence rule in [`tags.md`](tags.md). The provenance parser (consumed by `specify slice validate`) refuses output where a `[…]` headline tag and `Status:` disagree.
+The tag in the headline MUST match `Status:` per the coherence rule in [`tags.md`](tags.md). The provenance parser (consumed by `specrun slice validate`) refuses output where a `[…]` headline tag and `Status:` disagree.
 
 ## Worked applications
 
@@ -149,14 +149,14 @@ slices:
 Rules:
 
 - Plan-wide and project-wide overrides are out of scope; the map is scoped to a single slice.
-- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specify slice validate` with the structured error `slice-authority-override-orphan-source-key` before `/spec:refine` runs.
+- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specrun slice validate` with the structured error `slice-authority-override-orphan-source-key` before `/spec:refine` runs.
 - Operators author the map via the CLI; the synthesis playbook never asks an agent to hand-edit `plan.yaml`:
 
 ```bash
-specify plan amend <plan> <slice> --authority-override <claim-kind>=<source-key>
-specify plan amend <plan> <slice> --clear-authority-override <claim-kind>
-specify plan amend <plan> <slice> --clear-authority-overrides
-specify plan add   <plan> <slice> --authority-override <claim-kind>=<source-key>   # repeatable on create
+specrun plan amend <plan> <slice> --authority-override <claim-kind>=<source-key>
+specrun plan amend <plan> <slice> --clear-authority-override <claim-kind>
+specrun plan amend <plan> <slice> --clear-authority-overrides
+specrun plan add   <plan> <slice> --authority-override <claim-kind>=<source-key>   # repeatable on create
 ```
 
 ### Resolution order

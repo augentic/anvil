@@ -9,10 +9,10 @@ Operational detail for `/spec:finalize`. The SKILL.md keeps only the orientation
 | Step | CLI verb | Owner |
 |---|---|---|
 | Pre-flight | none (kebab-case + project-root walk + `plan.yaml` presence) | this skill |
-| Drained check | `specify plan next` | CLI |
-| Push | `specify workspace push` | CLI |
+| Drained check | `specrun plan next` | CLI |
+| Push | `specrun workspace push` | CLI |
 | PR observation | `gh pr view <url> --json state,url,number` | CLI / forge |
-| Finalize | `specify plan archive` | CLI |
+| Finalize | `specrun plan archive` | CLI |
 | Wrap-up summary | none (renders the CLI's outputs) | this skill |
 
 The skill writes nothing to `.specify/` directly. Every state mutation is a shell-out, and PR merges stay operator-owned.
@@ -43,12 +43,12 @@ These checks are deterministic and synchronous; nothing observable on disk chang
 
 **Halts.** None classified — pre-flight failures are hard exits with their own diagnostic, not recoverable halt classifications.
 
-### Step 2 — Drained check via `specify plan next`
+### Step 2 — Drained check via `specrun plan next`
 
 **Invocation.**
 
 ```bash
-specify plan next --format json
+specrun plan next --format json
 ```
 
 The plan is drained when the envelope reports `reason: drained` (with `active: null` and `next: null`). All other reasons (`in-progress`, `stuck`, or a queued `next: <name>`) mean at least one entry is still non-`done`. The skill never reads `plan.yaml` directly; drainage is computed by the CLI from the per-entry `status` set.
@@ -57,31 +57,31 @@ This step is read-only.
 
 **Halts.**
 
-- `non-terminal-entries` — `specify plan next` returns anything other than `reason: drained`. The diagnostic names the offending entry (`active` or `next` from the envelope). Operator runs `/spec:execute` to drive the loop forward, then re-enters.
+- `non-terminal-entries` — `specrun plan next` returns anything other than `reason: drained`. The diagnostic names the offending entry (`active` or `next` from the envelope). Operator runs `/spec:execute` to drive the loop forward, then re-enters.
 
-**Failure recovery.** Re-run `/spec:execute` until `specify plan next` reports `drained`. Re-running `/spec:finalize <name>` re-queries the plan; it is idempotent.
+**Failure recovery.** Re-run `/spec:execute` until `specrun plan next` reports `drained`. Re-running `/spec:finalize <name>` re-queries the plan; it is idempotent.
 
 ### Step 3 — Push
 
 **Invocation.**
 
 ```bash
-specify workspace push
+specrun workspace push
 ```
 
 For each project on the plan, the verb pushes the prepared `specify/<name>` branch, creates or updates the corresponding PR, and stops. It does not create a change branch on the fly, does not push a default branch, and does not merge PRs. Greenfield remotes get `gh repo create` first when the underlying CLI reports that path. Single-repo plans are the degenerate case (one project on the table); workspace plans drive every project the plan touches in one invocation.
 
-The skill prints the per-project status table verbatim. The classifications `specify workspace push` exposes are passed through to operator output unchanged.
+The skill prints the per-project status table verbatim. The classifications `specrun workspace push` exposes are passed through to operator output unchanged.
 
 **Halts.**
 
 - `failed` — at least one project's status is `failed` (auth, network, missing remote, branch protection refusal). The skill stops the run.
-- `pending-checks` — `specify workspace push` reports the project as awaiting required CI / branch protection checks. Operator waits and re-enters.
+- `pending-checks` — `specrun workspace push` reports the project as awaiting required CI / branch protection checks. Operator waits and re-enters.
 - `failed-checks` — required checks failed on the pushed branch. Operator fixes the underlying failure (CI break, lint regression) and re-enters.
 
-The skill never aborts a push for a single project's sake while others succeed — `specify workspace push` is best-effort across projects — but it does halt the **finalize** run as a whole if any project is `failed` / `pending-checks` / `failed-checks`.
+The skill never aborts a push for a single project's sake while others succeed — `specrun workspace push` is best-effort across projects — but it does halt the **finalize** run as a whole if any project is `failed` / `pending-checks` / `failed-checks`.
 
-**Failure recovery.** Resolve the upstream issue (push a fix, retry auth, wait for CI), then re-run `/spec:finalize <name>`. `specify workspace push` is idempotent: clones it has already pushed are reported `up-to-date` on the next run.
+**Failure recovery.** Resolve the upstream issue (push a fix, retry auth, wait for CI), then re-run `/spec:finalize <name>`. `specrun workspace push` is idempotent: clones it has already pushed are reported `up-to-date` on the next run.
 
 ### Step 4 — PR observation loop
 
@@ -91,7 +91,7 @@ The skill never aborts a push for a single project's sake while others succeed �
 gh pr view "$PR_URL" --json state,url,number
 ```
 
-The skill calls `gh pr view` directly per pushed PR (the URL is taken from the `specify workspace push` output). It then polls each non-`MERGED` PR until every PR reports `MERGED`.
+The skill calls `gh pr view` directly per pushed PR (the URL is taken from the `specrun workspace push` output). It then polls each non-`MERGED` PR until every PR reports `MERGED`.
 
 **Polling parameters.**
 
@@ -120,12 +120,12 @@ The skill never invokes `gh pr merge`. It only observes remote PR state and wait
 **Invocation.**
 
 ```bash
-specify plan archive
+specrun plan archive
 ```
 
 The verb runs four guards in order: plan presence, plan terminal-state (drained), per-project PR-state (`MERGED` on remote), and workspace-cleanliness (`git status --porcelain` empty). All pass → the verb sweeps `plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`, and co-moves `change.md` and any `.specify/plans/<name>/` working directory under `.specify/archive/plans/<name>-<YYYYMMDD>/` alongside it. Any guard refuses → non-zero exit and the per-project status table is surfaced verbatim.
 
-The skill runs `specify plan archive` only when steps 2, 3, and 4 each report success on the same invocation. Most guard refusals at step 5 should already have been caught upstream — the redundancy is intentional. `specify plan archive` is the canonical guard; the upstream checks exist so the skill can name the right halt before any push happens.
+The skill runs `specrun plan archive` only when steps 2, 3, and 4 each report success on the same invocation. Most guard refusals at step 5 should already have been caught upstream — the redundancy is intentional. `specrun plan archive` is the canonical guard; the upstream checks exist so the skill can name the right halt before any push happens.
 
 **Halts** (all surfaced verbatim with the CLI's diagnostic):
 
@@ -138,7 +138,7 @@ The skill runs `specify plan archive` only when steps 2, 3, and 4 each report su
 
 ### Step 6 — Wrap-up summary
 
-After `specify plan archive` returns success, the skill prints:
+After `specrun plan archive` returns success, the skill prints:
 
 - the merged-PR list (one row per project, each with its PR number and URL);
 - the archived plan path (`<.specify>/archive/plans/<name>-<YYYYMMDD>.yaml`) and archive directory;
@@ -157,16 +157,16 @@ The complete set of halt classifications this skill emits is:
 
 | Classification | Source | Re-entry rule |
 |---|---|---|
-| `non-terminal-entries` | step 2 (`specify plan next`) | run `/spec:execute` until the plan reports `drained`, then re-run finalize |
-| `failed` | step 3 (`specify workspace push`) | fix upstream (auth, network, missing remote), re-run finalize |
-| `pending-checks` | step 3 (`specify workspace push`) | wait for the upstream check, re-run finalize |
-| `failed-checks` | step 3 (`specify workspace push`) | fix the underlying failure, re-run finalize |
+| `non-terminal-entries` | step 2 (`specrun plan next`) | run `/spec:execute` until the plan reports `drained`, then re-run finalize |
+| `failed` | step 3 (`specrun workspace push`) | fix upstream (auth, network, missing remote), re-run finalize |
+| `pending-checks` | step 3 (`specrun workspace push`) | wait for the upstream check, re-run finalize |
+| `failed-checks` | step 3 (`specrun workspace push`) | fix the underlying failure, re-run finalize |
 | `pr-closed` | step 4 (`gh pr view`) | reopen the PR or amend the plan, re-run finalize |
 | `pr-poll-exhausted` | step 4 (`gh pr view`) | merge each named PR through the forge UI or a hand-run `gh pr merge`, re-run finalize |
-| finalize CLI guard refusal — plan absent | step 5 (`specify plan archive`) | already finalized; reporting only — exits zero on re-entry |
-| finalize CLI guard refusal — non-terminal entries | step 5 (`specify plan archive`) | run `/spec:execute`, re-run finalize |
-| finalize CLI guard refusal — dirty workspace | step 5 (`specify plan archive`) | commit / stash the dirty residue, re-run finalize |
-| finalize CLI guard refusal — unmerged PR | step 5 (`specify plan archive`) | merge the named PRs externally, re-run finalize |
+| finalize CLI guard refusal — plan absent | step 5 (`specrun plan archive`) | already finalized; reporting only — exits zero on re-entry |
+| finalize CLI guard refusal — non-terminal entries | step 5 (`specrun plan archive`) | run `/spec:execute`, re-run finalize |
+| finalize CLI guard refusal — dirty workspace | step 5 (`specrun plan archive`) | commit / stash the dirty residue, re-run finalize |
+| finalize CLI guard refusal — unmerged PR | step 5 (`specrun plan archive`) | merge the named PRs externally, re-run finalize |
 
 Every halt is surfaced with the underlying CLI's diagnostic, byte-for-byte. The skill never paraphrases.
 
@@ -174,10 +174,10 @@ Every halt is surfaced with the underlying CLI's diagnostic, byte-for-byte. The 
 
 Each halt re-enters the same skill: fix the cause, re-run `/spec:finalize <name>`. The skill is idempotent because:
 
-1. **It re-runs `specify plan next` on every invocation.** Drainage is computed from on-disk state; nothing tracks "where finalize was last run" outside the plan itself.
-2. **It re-runs `specify workspace push` on every invocation.** The verb reports `up-to-date` for clones it has already pushed; it does not double-push.
+1. **It re-runs `specrun plan next` on every invocation.** Drainage is computed from on-disk state; nothing tracks "where finalize was last run" outside the plan itself.
+2. **It re-runs `specrun workspace push` on every invocation.** The verb reports `up-to-date` for clones it has already pushed; it does not double-push.
 3. **It re-queries `gh pr view` on every invocation.** PR state on the forge is the authoritative source.
-4. **It re-runs `specify plan archive` on every invocation.** The verb is idempotent: after a successful finalize it returns `plan-not-found` and the skill reports the change as already closed.
+4. **It re-runs `specrun plan archive` on every invocation.** The verb is idempotent: after a successful finalize it returns `plan-not-found` and the skill reports the change as already closed.
 
 There is no resume token, no half-state file, no in-skill memory of where a prior run halted. The on-disk and remote state is the source of truth.
 
@@ -188,10 +188,10 @@ Every shell-out is listed here so reviewers can grep for accidental drift:
 | Step | Verb |
 |---|---|
 | Pre-flight | none (skill-internal validation) |
-| Drained check | `specify plan next --format json` |
-| Push | `specify workspace push` |
+| Drained check | `specrun plan next --format json` |
+| Push | `specrun workspace push` |
 | PR observation | `gh pr view "$PR_URL" --json state,url,number` |
-| Finalize | `specify plan archive` |
+| Finalize | `specrun plan archive` |
 
 This skill must not introduce any other shell-out. Any temptation to add a flag, a sub-verb, or a side-effect is a sign the work belongs in `/spec:execute`, in one of the underlying CLI verbs, or in a future RFC.
 
@@ -218,7 +218,7 @@ If a behaviour drift surfaces between this skill and a manual run of the same fo
 - **Forge-agnostic PR observation.** Step 4 uses `gh`; non-GitHub forges fall back to the manual fallback path (merge by hand, re-run finalize).
 - **CHANGELOG generation or release notes synthesis.** Step 6 prints what the underlying CLIs and `change.md` already record. Synthesis is a separate concern.
 - **Multi-plan finalization.** The single-`plan.yaml` invariant is preserved; the skill drives one change at a time.
-- **Driving completed changes.** Once `specify plan archive` returns `plan-not-found`, re-running the skill reports the change as already finalized and exits zero. There is no "rewind" verb.
+- **Driving completed changes.** Once `specrun plan archive` returns `plan-not-found`, re-running the skill reports the change as already finalized and exits zero. There is no "rewind" verb.
 - **Per-slice work.** The skill never invokes `/spec:refine`, `/spec:build`, or `/spec:merge`. Per-slice mutation is `/spec:execute`'s concern.
 
 ## Cross-links

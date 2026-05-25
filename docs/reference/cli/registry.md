@@ -1,8 +1,8 @@
-# specify registry
+# specrun registry
 
 Manage the platform registry at `registry.yaml` -- the catalogue of repositories that make up a multi-repo platform. Optional for single-repo projects.
 
-The registry was promoted from `specify registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every change the platform runs), not change-scoped, so the verb shape now reflects that.
+The registry was promoted from `specrun registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every change the platform runs), not change-scoped, so the verb shape now reflects that.
 
 ## Verb cheat-sheet
 
@@ -14,12 +14,12 @@ The registry was promoted from `specify registry ...` to a top-level noun group 
 
 ## Subcommands
 
-### specify registry validate
+### specrun registry validate
 
 Check structural and referential invariants of `registry.yaml`.
 
 ```bash
-specify registry validate
+specrun registry validate
 ```
 
 Validates:
@@ -31,12 +31,12 @@ Validates:
 
 Used by `/spec:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
-### specify registry add
+### specrun registry add
 
 Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent.
 
 ```bash
-specify registry add <name> --url <url> --adapter <adapter> [--description "..."]
+specrun registry add <name> --url <url> --adapter <adapter> [--description "..."]
 ```
 
 Behaviour:
@@ -46,24 +46,24 @@ Behaviour:
 - Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
-Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specrun plan amend --project <new>`. The validation-ordering invariant is: `specrun registry add` before `specrun plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
 
-### specify registry remove
+### specrun registry remove
 
 Delete a project entry from `registry.yaml`.
 
 ```bash
-specify registry remove <name>
+specrun registry remove <name>
 ```
 
 Behaviour:
 
 - Refuses when the registry is absent or `<name>` is not declared.
 - Validates the resulting shape after the write.
-- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify plan amend <change> --project <other>` separately.
+- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specrun plan amend <change> --project <other>` separately.
 
 ## See also
 
-- [specify plan](plan.md) -- the umbrella verbs for the operator brief at `change.md` and `plan.yaml`.
-- [specify workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
+- [specrun plan](plan.md) -- the umbrella verbs for the operator brief at `change.md` and `plan.yaml`.
+- [specrun workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
 - [Configuration Files → registry.yaml](../configuration.md#registryyaml) -- file format reference.
