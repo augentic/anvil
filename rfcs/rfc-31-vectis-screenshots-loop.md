@@ -35,7 +35,7 @@ The schema-duplication finding is the simplest to land; the cross-cutting compon
 1. **Refine, do not rebuild.** Every surface added here lives inside the RFC-25 vocabulary (source / target adapters, candidate / Evidence, slice lifecycle, plan). Nothing introduces a new slash command, a new lifecycle state, or a second writer for any existing artifact.
 2. **One source of truth per schema.** The tool that consumes a schema is the only repo that contains its body. Everywhere else cites the canonical `$id`. CI enforces it.
 3. **Source adapters get a workbench.** Operators must be able to exercise a source adapter against real inputs without invoking the workflow. Adapter quality is then directly debuggable.
-4. **Cross-cutting state lives outside the slice.** Component reuse is a *project-level* concern. Slices read from and write into the catalog, but the catalog survives every slice merge and informs every future extract and every future build.
+4. **Cross-cutting state lives outside the slice.** Component reuse is a *project-level* concern. Slices read from and write into the catalog, but the catalog survives every slice merge and informs every future extract and every future build. In workspace mode each registry project carries its own catalog — the common monorepo case — rather than sharing one coordinator-wide file across unrelated applications.
 5. **Refactor is operator-triggered.** The catalog and the screenshots adapter together *propose* refactors; only an operator-scheduled slice executes one. RFC-31 v1 does not auto-rewrite baseline `composition.yaml` behind anyone's back.
 6. **Backward compatibility within 2.0.** Projects without `.specify/design-system/components.yaml` work exactly as today; the catalog is opt-in and self-bootstraps on the first extract that emits a `notes.candidate_component` annotation — single-instance skeletons seed the catalog as `candidate` entries so that a later slice's second instance auto-promotes.
 
@@ -49,7 +49,7 @@ The schema-duplication finding is the simplest to land; the cross-cutting compon
 | **D4 `specify source preview`** | The CLI exposes `specify source preview <adapter> --source <path>` that runs `enumerate` + `extract` against a directory, with no plan and no slice required. | Add `src/commands/source/preview.rs`; routes through `SourceAdapter::resolve` and the RFC-29 source runner; writes an inference report to `--out` (default `./.specify-preview/`). |
 | **D5 Optional `preview` adapter operation** | Source adapters MAY declare an optional `briefs/preview.md` that the CLI invokes after extract to produce a human-reviewable render (HTML, annotated images, prose). | Extend `SourceOperation` with a `Preview` variant; treat absent `briefs.preview` as "fall back to a textual report renderer in the CLI"; ship a `preview.md` for `screenshots` that draws claim bboxes onto source images. |
 | **D6 Preview goldens** | `specify source preview --check <fixture>` compares the live inference report against a stored golden and exits non-zero on drift. | Add `InferenceReport` schema; teach the preview command to read `expected/report.json` and diff structurally; reuse `tests/fixtures/sources/screenshots/task-list-two-screen/` as the first golden. |
-| **D7 Project-level component catalog** | A project MAY carry `.specify/design-system/components.yaml`. Entries record canonical skeletons, known variants, asset references, and per-entry status (`candidate`, `confirmed`, `rejected`). The CLI owns both the schema and lifecycle writes; operators may hand-edit `usage_hint` and `description` fields. The schema is CLI-owned (not tool-owned) because the catalog is a project-level artifact mediated by CLI verbs, not a tool runtime input. | Add `schemas/design-system/components.schema.json` to the CLI repo (alongside `evidence.schema.json` and `plan.schema.json`); add `specify component {list, promote, reject, drop}` verbs; expose the catalog to source adapter operations as the read-only `$CATALOG_DIR` preopen. |
+| **D7 Project-level component catalog** | A project MAY carry `.specify/design-system/components.yaml`. Entries record canonical skeletons, known variants, asset references, and per-entry status (`candidate`, `confirmed`, `rejected`). The catalog is **per project**, not per workspace coordinator: in workspace mode it lives under the materialised registry slot (`.specify/workspace/<project>/.specify/design-system/components.yaml`), not at the coordinator root. The CLI owns both the schema and lifecycle writes; operators may hand-edit `usage_hint` and `description` fields. The schema is CLI-owned (not tool-owned) because the catalog is a project-level artifact mediated by CLI verbs, not a tool runtime input. | Add `schemas/design-system/components.schema.json` to the CLI repo (alongside `evidence.schema.json` and `plan.schema.json`); add `specify component {list, promote, reject, drop}` verbs; expose the catalog to source adapter operations as the read-only `$CATALOG_DIR` preopen; resolve catalog paths from the active project root (workspace slot after sync/chdir, same routing as slice execution). |
 | **D8 Catalog-aware extract** | After every `screenshots.extract` invocation, the CLI runs a deterministic catalog reconciliation pass that (a) promotes catalog candidates to confirmed when the new Evidence supplies the missing ≥2-instance match, (b) writes catalog-confirmed `component:` directives back into the Evidence body before persistence, and (c) records single-instance `notes.candidate_component` skeletons as `candidate` catalog entries so that a future extract's second instance auto-promotes without operator intervention. | Add `crates/domain/src/catalog/reconcile.rs`; runs at the same point as `evidence.schema.json` validation; never mutates claims that already carry `component:` set by the adapter. |
 | **D9 Refactor proposals** | When catalog reconciliation finds that a new confirmed component matches ≥1 baseline screen, the CLI writes `refactor-proposal.md` into the slice and emits a `slice.refactor.proposed` journal event. The operator schedules a follow-up slice; no auto-edit of baseline `composition.yaml` ships in v1. | Add `RefactorProposal` DTO and renderer; document the follow-up slice pattern in `docs/explanation/components.md`. |
 | **D10 Vectis catalog consumer** | The Vectis target's `build` brief reads the component catalog and factors shared components in generated code and `composition.yaml`. The scaffold tool's template registry is data-driven by in-scope platform tokens so that new shells (e.g. `web` → React+TypeScript) require only a template addition, not orchestrator code changes. | Update `adapters/targets/vectis/briefs/build.md` and `briefs/build/composition.md` to require catalog reads; teach the scaffold tool to emit one component file per confirmed catalog entry per in-scope platform, dispatching to per-platform templates. |
@@ -142,13 +142,15 @@ https://schemas.specify.dev/<tool>/<version>/<name>.schema.json
 
 `<version>` is the tool version from `Cargo.toml` (already mirrored in `wasi-tools/vectis/embedded/versions.toml`). The published URL resolves to a GitHub Pages mirror of the CLI repo's release tag; operators offline can read identical content with `specify tool schema`.
 
-Plugin-repo CI gains a `make check` predicate:
+Plugin-repo CI gains a standalone test (outside the retiring `scripts/checks/` Deno surface — see RFC-5):
 
 ```text
 brief-schema-link-resolves: every URL matching schemas.specify.dev/<tool>/<version>/...
                             in any brief or reference must round-trip through
                             `specify tool schema <tool> <name>` byte-for-byte.
 ```
+
+The test lives in `tests/schema_links.ts` (or its RFC-5 Rust equivalent when the `rules` crate lands). It is not added to `scripts/check.ts` because that harness is being retired by RFC-5; the invariant migrates to `rules::schema_links` when the Rust rule engine is ready.
 
 ### Migration
 
@@ -158,7 +160,7 @@ brief-schema-link-resolves: every URL matching schemas.specify.dev/<tool>/<versi
 | 2 | Land the `$id` rewrite in each tool's `build.rs`. |
 | 3 | Update every plugin-repo brief that cites a local schema path to cite the canonical URL instead. |
 | 4 | Delete `adapters/targets/vectis/schemas/*.schema.json`; replace `adapters/targets/vectis/schemas/README.md` with the URL list and a `specify tool schema` quickstart. |
-| 5 | Add the `brief-schema-link-resolves` predicate to `scripts/check.ts` and gate `make check` on it. |
+| 5 | Add the `brief-schema-link-resolves` invariant as a standalone CI test (`tests/schema_links.ts`); deferred to RFC-5's `rules` crate for `make check` integration. |
 | 6 | Remove the "byte-identity discipline" comment block from `wasi-tools/vectis/src/validate/engine/shared.rs`; the schemas are now first-class CLI assets. |
 
 After migration, the plugin repo carries zero `.schema.json` files for tool-owned artifacts. Framework-level schemas (adapter, source, target, evidence, plan, slice/fusion) stay where they are — they are CLI-owned and already follow this pattern.
@@ -324,6 +326,14 @@ The pipeline's stage 6 wording — "across screens of the *same run* (within `<c
 .specify/design-system/components.yaml
 ```
 
+In workspace mode the path is the same relative to the **active project root** — the materialised registry slot, not the coordinator root:
+
+```text
+<coordinator-root>/.specify/workspace/<project>/.specify/design-system/components.yaml
+```
+
+Plan artifacts (`change.md`, `plan.yaml`, `plan.lock`) stay at the coordinator root per RFC-14; the catalog follows slice execution and lives beside each project's `tokens.yaml`, `assets.yaml`, and baseline specs. A coordinator that materialises both a shared component library project and an application project therefore carries two independent catalogs. Cross-project reuse remains an operator concern outside RFC-31 v1 (for example by binding the same monorepo path to multiple registry entries or scheduling a dedicated refactor slice).
+
 The file is opt-in: projects that never produce one keep working exactly as today. The CLI creates the file when the first `candidate` entry is recorded — a single-instance skeleton tagged `notes.candidate_component` by stage 6 is enough to seed the catalog; a subsequent slice whose extract produces a matching skeleton auto-promotes the entry to `confirmed`.
 
 Schema sketch (`schemas/design-system/components.schema.json`):
@@ -374,7 +384,7 @@ RFC-25 §Sandboxing enumerates the source-adapter filesystem grant. RFC-31 adds 
 
 | Root | Mode | Contents |
 | --- | --- | --- |
-| `$CATALOG_DIR` | read-only | `.specify/design-system/` — the operator-curated catalog plus sibling `tokens.yaml` / `assets.yaml`. Absent when the project has no catalog yet. |
+| `$CATALOG_DIR` | read-only | `<active-project-root>/.specify/design-system/` — the operator-curated catalog plus sibling `tokens.yaml` / `assets.yaml`. In workspace mode `<active-project-root>` is the materialised slot (`.specify/workspace/<project>/`), not the coordinator root. Absent when the project has no catalog yet. |
 
 The CLI exposes the preopen to *every* source adapter that opts in via `adapter.yaml`:
 
@@ -553,7 +563,7 @@ A.1 — Land `Tool::schemas()` accessor and `specify tool schema` verb on the CL
 A.2 — Land the `$id` rewrite in each WASI tool's `build.rs`.
 A.3 — Update every plugin-repo brief to cite canonical schema URLs.
 A.4 — Delete `adapters/targets/vectis/schemas/*.schema.json`; rewrite the README.
-A.5 — Add `brief-schema-link-resolves` to `scripts/check.ts`.
+A.5 — Add `brief-schema-link-resolves` as a standalone CI test (`tests/schema_links.ts`). The invariant migrates to RFC-5's `rules::schema_links` module when the Rust rule engine lands; it is not added to the retiring `scripts/check.ts` Deno surface.
 
 This wave is independent of waves B and C and is the cheapest win.
 
@@ -571,7 +581,7 @@ Depends on RFC-29 wave A (executable `specify source enumerate` / `specify sourc
 
 C.1 — Land `schemas/design-system/components.schema.json` as a CLI-owned schema (alongside `evidence.schema.json` and `plan.schema.json`; the catalog is a project-level artifact, not a tool runtime input).
 C.2 — Land `crates/domain/src/catalog/{reconcile,store}.rs` with the deterministic reconciliation pass.
-C.3 — Add `$CATALOG_DIR` preopen to the source-adapter sandbox; surface it only for adapters that declare `needs: [catalog]`.
+C.3 — Add `$CATALOG_DIR` preopen to the source-adapter sandbox; surface it only for adapters that declare `needs: [catalog]`. Resolve `<active-project-root>` from the workspace slot when slice execution has chdir'd into `.specify/workspace/<project>/`.
 C.4 — Update `adapters/sources/screenshots/adapter.yaml` to declare `needs: [catalog]`.
 C.5 — Land `specify component {list, show, promote, reject, drop}` verbs.
 C.6 — Add `slice-catalog-drift` to `specify slice validate`.
@@ -590,6 +600,7 @@ Depends on wave A (the components schema follows the same single-source rule). I
 | --- | --- |
 | Existing plugin-repo schema copies | Mechanical delete after wave A; CI predicate catches any brief still citing the old path. |
 | Existing slices without a catalog | Continue to work. The catalog auto-bootstraps when the first ≥2-instance skeleton appears in an extract run. |
+| Workspace mode | No coordinator-root catalog. Each materialised slot owns `.specify/design-system/components.yaml` beside its other project-local design-system files; `$CATALOG_DIR` and `specify component *` resolve against the active slot after workspace sync/chdir. |
 | Existing baseline screens with inlined equivalents | Reconciliation does not retroactively rewrite baseline `composition.yaml`. The operator schedules a refactor slice when ready (RFC-31 v1 is opt-in by design). |
 | Existing `screenshots` golden fixtures | The single-fixture `task-list-two-screen` directory grows an `expected/` subdirectory; existing tests continue to read the same `evidence/screens.yaml` they always did. |
 | Tool versions | The `$id` rewrite lands in the next minor version of `vectis` and `contract` tools. Older tool versions continue to publish their original `$id`s; the `specify tool schema` verb resolves against whichever version is bound. |
@@ -599,7 +610,7 @@ Depends on wave A (the components schema follows the same single-source rule). I
 ## Non-goals
 
 - **No auto-refactor of baseline `composition.yaml`.** Refactor proposals are advisory in v1. A future RFC may wire an opt-in `specify component apply <slug>` that rewrites baseline screens, but it is out of scope here.
-- **No catalog sharing across projects.** Each project's `.specify/design-system/components.yaml` is local. A future "design-system source adapter" could bind external catalogs, but RFC-31 keeps the file project-scoped.
+- **No catalog sharing across projects or workspace peers.** Each project's `.specify/design-system/components.yaml` is local to that project's root (including its workspace slot). There is no coordinator-wide shared catalog. A future "design-system source adapter" could bind external catalogs, but RFC-31 keeps the file project-scoped.
 - **No per-claim authority overrides at the catalog level.** The catalog records *what* the structure looks like, not *who* asserted it. Authority continues to apply at the Evidence / synthesis layer.
 - **No new slice lifecycle.** Refactor proposals do not park the slice or introduce a new state. The slice still progresses `refining → refined → built → merged` regardless of whether the operator acts on the proposal.
 - **No new plan-time gate.** The component-detection feedback all happens at slice time. The operator-stamped `reviewed` gate remains the only plan gate.
@@ -632,8 +643,8 @@ Design choices that explicitly support these futures:
 3. ~~**Single-instance candidates.** Today the adapter emits `notes.candidate_component: <slug>` on single-instance skeletons. Should the catalog record those as `candidate` entries proactively (so a later slice's second instance auto-promotes), or wait until ≥2 instances exist within one run?~~ Resolved: record proactively. The noise concern does not hold — `candidate` entries are inert metadata with no downstream effects (no `component:` rewrites, no shared-component generation, no refactor proposals). Only `confirmed` entries trigger downstream work. The cost of a false positive (`specify component reject`) is far lower than the cost of a false negative (operator manually discovering cross-slice duplication or never discovering it). Without proactive recording, N sequential single-screen slices that each carry one instance of a shared structure never bootstrap the catalog at all — the exact scenario the catalog was designed to solve.
 4. ~~**Preview verb scope beyond screenshots.** `specify source preview` is useful for any source adapter, not just `screenshots`. Should `documentation` and `code-typescript` ship `briefs/preview.md` too in this RFC? Current preference: defer — the verb is generic, but only `screenshots` needs the visual render path in v1.~~ Resolved: defer. Only `screenshots` ships `briefs/preview.md` in this RFC. The `specify source preview` verb is adapter-generic and the optional `Operation::Preview` hook can be added to other input adapters (`documentation`, `code-typescript`, or future visual adapters) if required in future — no RFC-31 change is needed to enable that.
 5. ~~**`specify tool schema` discovery.** Should the verb list available schemas when called as `specify tool schema vectis` (no `<name>`)? Current preference: yes, print the kebab-case schema names and their canonical URLs.~~ Resolved: no. The schema set per tool is tiny and stable (3 for Vectis, 1–2 for contracts), agents read names from briefs, and the replacement README lists them. A listing mode is not worth the surface area; `specify tool schema vectis` with no `<name>` exits `2` like any other missing required argument.
-6. **`brief-schema-link-resolves` predicate cost.** Live HTTP resolution makes `make check` network-dependent. Alternative: ship a snapshot of every published `$id` body in `scripts/check.fixtures/` and diff against it. Current preference: snapshot — keeps `make check` hermetic.
-7. **Catalog file under workspace mode.** Where does the catalog live in workspace mode? Per-project (`.specify/workspace/<project>/.specify/design-system/components.yaml`) or shared at the workspace root? Current preference: per-project; the catalog is design-system state and design systems usually align with the project, not the workspace.
+6. ~~**`brief-schema-link-resolves` predicate cost.** Live HTTP resolution makes `make check` network-dependent. Alternative: ship a snapshot of every published `$id` body in `scripts/check.fixtures/` and diff against it. Current preference: snapshot — keeps `make check` hermetic.~~ Resolved: standalone CI test. RFC-5 is actively retiring `scripts/check.ts` in favour of a Rust rule engine. Rather than extend the retiring Deno surface, the invariant lands as a standalone test (`tests/schema_links.ts`) that shells out to `specify tool schema` and compares byte-for-byte. This keeps the check hermetic (the CLI binary *is* the local cache — no network, no snapshot directory). The predicate migrates to `rules::schema_links` when RFC-5's `tooling check` is ready; at that point it calls `Tool::schemas()` in-process.
+7. ~~**Catalog file under workspace mode.** Where does the catalog live in workspace mode? Per-project (`.specify/workspace/<project>/.specify/design-system/components.yaml`) or shared at the workspace root?~~ Resolved: **per project**. The catalog is design-system state and follows the same project-root routing as slices, baseline specs, and sibling `tokens.yaml` / `assets.yaml`. In workspace mode it lives under the materialised registry slot (`.specify/workspace/<project>/.specify/design-system/components.yaml`), not at the coordinator root. The common case is a monorepo UI initiative where one registry project owns the whole design system; a coordinator that materialises separate library and application projects carries independent catalogs per slot. Cross-project sharing (a central component library project consumed by application projects) remains out of scope for RFC-31 v1 — operators reconcile that through registry topology and follow-up slices, not a shared coordinator-wide file.
 8. ~~**Component schema lives under the Vectis tool, but the catalog file lives in the operator's project.**~~ Resolved: the schema is CLI-owned from day one (see D7). The `$id` cites the CLI version, not the Vectis tool version; no migration is needed when a non-Vectis target consumes the catalog.
 
 ## Acceptance proof
@@ -641,7 +652,7 @@ Design choices that explicitly support these futures:
 RFC-31 is complete when:
 
 1. The plugin-repo `adapters/targets/vectis/schemas/` directory contains only the README.
-2. `make check` fails when a brief cites a non-canonical schema URL.
+2. CI fails when a brief cites a non-canonical schema URL (standalone `tests/schema_links.ts` test; migrates to `make check` via RFC-5's `rules` crate).
 3. `specify tool schema vectis tokens` round-trips byte-identical against the CLI-embedded copy.
 4. `specify source preview screenshots --source <fixture>` produces an inference report that matches `expected/report.json` for the in-tree golden.
 5. `specify source preview screenshots --check <fixture>` exits 0 on the unchanged golden and non-zero after a brief edit.
