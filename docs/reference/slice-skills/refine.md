@@ -12,7 +12,7 @@ Refine a plan entry's slice — run extract per bound source, synthesize proposa
 
 | Argument | Required | Description |
 | -------- | -------- | ----------- |
-| `slice-name` | No | Slice to refine. When omitted, resolves the active `in-progress` entry from `specify plan next`. |
+| `slice-name` | No | Slice to refine. When omitted, resolves the active `in-progress` entry from `specrun plan next`. |
 
 ## When to use
 
@@ -37,12 +37,12 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 ## Behavior
 
 1. **Resolve target and sources** — read `plan.yaml.slices[<slice>]` for `target:` and `sources[]`; cross-resolve against `discovery.md` candidate inventory.
-2. **Create slice directory** — `specify slice create <name> --target <target>` stamps `refining`.
+2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
 4. **Synthesize** — load target `shape` brief; write `proposal.md → spec.md → design.md → tasks.md` in fixed order.
 5. **Write `fusion.yaml`** — atomic reconciliation index per `REQ-*` id.
-6. **Validate** — `specify slice validate`; on failure, slice stays `refining`.
-7. **Transition** — `specify slice transition <name> refined`.
+6. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
+7. **Transition** — `specrun slice transition <name> refined`.
 
 Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
 

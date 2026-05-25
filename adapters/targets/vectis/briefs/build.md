@@ -14,7 +14,7 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 
 | Symbol | Meaning |
 | --- | --- |
-| `SLICE_ID` | The active slice name (`specify plan next` output, or `specify slice` argument). |
+| `SLICE_ID` | The active slice name (`specrun plan next` output, or `specrun slice` argument). |
 | `SLICE_DIR` | `.specify/slices/<SLICE_ID>/`. |
 | `FEATURE_NAME` | The single feature spec folder under `SLICE_DIR/specs/`. When the slice carries multiple features, iterate the per-feature phase sub-briefs in declaration order. |
 | `PROJECT_DIR` | The target project root (single-repo mode) or the resolved workspace slot (workspace mode). |
@@ -66,7 +66,7 @@ When all in-scope reviews complete:
 
 ## § Template / version-pin drift handling
 
-The Vectis scaffold tool (`specify tool run vectis -- scaffold ...`) is render-only and ships with embedded version pins. Upstream bumps (Crux core, uniffi, AGP / Gradle, cargo-swift, Xcode) can break a freshly rendered scaffold even when the rest of the slice is correct. Detect this when a verify-repair loop fails repeatedly with cargo / Gradle / Xcode errors that look like API renames, missing imports, or toolchain mismatches rather than feature-level bugs. When detected, do **not** auto-fix in-band: record the failing combo (caps + shells), the failing host step, and the load-bearing error line, then mark the build outcome as `deferred` with a template-drift signal. The operator opens a separate slice rooted in the CLI repo to bump the embedded `versions.toml`.
+The Vectis scaffold tool (`specrun tool run vectis -- scaffold ...`) is render-only and ships with embedded version pins. Upstream bumps (Crux core, uniffi, AGP / Gradle, cargo-swift, Xcode) can break a freshly rendered scaffold even when the rest of the slice is correct. Detect this when a verify-repair loop fails repeatedly with cargo / Gradle / Xcode errors that look like API renames, missing imports, or toolchain mismatches rather than feature-level bugs. When detected, do **not** auto-fix in-band: record the failing combo (caps + shells), the failing host step, and the load-bearing error line, then mark the build outcome as `deferred` with a template-drift signal. The operator opens a separate slice rooted in the CLI repo to bump the embedded `versions.toml`.
 
 Symptom triage table: [`../references/known-drift.md`](../references/known-drift.md) — start here before escalating; if the reproduced failure matches a listed item, the operator can route directly to that item's playbook in the host-side template-updater workflow.
 
@@ -82,6 +82,6 @@ The `build` phase concludes with exactly one of `success` / `failure` / `deferre
 
 ## Notes for downstream phases
 
-- **`composition.yaml` is a build output.** It lives at `${SLICE_DIR}/composition.yaml` after this brief succeeds; the merge brief lands it into the baseline alongside the code. Operator-curated `tokens.yaml` / `assets.yaml` are also read by `merge`; the merge brief re-runs `specify tool run vectis -- validate composition` against the merged baseline so cross-artifact regressions are caught even when the current slice only touched code.
-- **Do not write `composition.yaml` into `.specify/specs/`.** That is `specify slice merge`'s job, atomically, alongside the spec / design deltas.
+- **`composition.yaml` is a build output.** It lives at `${SLICE_DIR}/composition.yaml` after this brief succeeds; the merge brief lands it into the baseline alongside the code. Operator-curated `tokens.yaml` / `assets.yaml` are also read by `merge`; the merge brief re-runs `specrun tool run vectis -- validate composition` against the merged baseline so cross-artifact regressions are caught even when the current slice only touched code.
+- **Do not write `composition.yaml` into `.specify/specs/`.** That is `specrun slice merge`'s job, atomically, alongside the spec / design deltas.
 - **Operator-curated inputs.** `tokens.yaml` and `assets.yaml` updates accompany the slice when the operator edits them; the merge brief promotes those edits into `design-system/tokens.yaml` / `design-system/assets.yaml` (or slice-local equivalents) using the same delta merge path as the spec deltas.

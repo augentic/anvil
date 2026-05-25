@@ -4,7 +4,7 @@ The synthesis playbook is the agent-facing fusion contract `/spec:refine` follow
 
 ## Substeps in fixed order
 
-The skill body invokes synthesis in this order — each substep is hand-coded, there is no `specify slice synthesize` verb:
+The skill body invokes synthesis in this order — each substep is hand-coded, there is no `specrun slice synthesize` verb:
 
 1. **`proposal.md`** — motivation, scope, non-goals. Carries the slice's *why*.
 2. **`spec.md`** — behavioural requirements. Every block carries `ID:`, `Sources:`, `Status:`. This is the only artifact the provenance parser validates.

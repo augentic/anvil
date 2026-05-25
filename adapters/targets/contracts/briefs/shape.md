@@ -23,7 +23,7 @@ A slice MAY produce more than one format (e.g. a JSON Schema for payload shapes 
 
 ## Validation rules synthesis must surface
 
-The merge gate runs `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` against the merged baseline. The tool enforces rules the contract authors have to design around; `design.md` should reflect them so a slice's contract artifacts ship merge-ready:
+The merge gate runs `specrun tool run contract -- "$PROJECT_ROOT/contracts" --format json` against the merged baseline. The tool enforces rules the contract authors have to design around; `design.md` should reflect them so a slice's contract artifacts ship merge-ready:
 
 - **SemVer `info.version`.** Every top-level OpenAPI / AsyncAPI document under `contracts/` must set `info.version` to a value that parses as SemVer (per [semver.org](https://semver.org)), including optional prerelease labels. New contracts pick an initial version (typically `0.1.0` or `1.0.0`); revisions bump major / minor / patch per the consumer-impact rules under `references/cross-project-compatibility.md`.
 - **Kebab-case `info.x-specify-id`.** When a top-level contract document carries `info.x-specify-id`, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters. It is a rename-stable hint that survives file moves and version bumps. New contracts SHOULD set it (typically to the file stem); imports preserve any source-supplied value verbatim.

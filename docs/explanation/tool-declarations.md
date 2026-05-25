@@ -1,6 +1,6 @@
 # Tool Declarations
 
-Specify tools are WASI components that a project or adapter declares for deterministic helper work. The `specify` binary resolves, caches, and runs them with explicit permissions through `specify tool`.
+Specify tools are WASI components that a project or adapter declares for deterministic helper work. The `specify` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
 
 ## Declaration sites
 
@@ -52,7 +52,7 @@ Use adapter scope when the helper is part of the adapter's promised behavior, su
 
 ## Precedence
 
-`specify tool` resolves the current project, loads both declaration sites, and merges by `name`.
+`specrun tool` resolves the current project, loads both declaration sites, and merges by `name`.
 
 Project scope wins on collision. This lets an operator redirect a adapter-shipped tool to a local build or a pinned internal mirror without editing the adapter. The CLI emits a `tool-name-collision` warning and keeps going.
 
@@ -91,11 +91,11 @@ The global cache is segmented by declaration scope:
 
 Project and adapter entries stay isolated even when the name, version, and source are identical. This keeps ownership explicit and prevents one declarer from silently changing another declarer's cached bytes.
 
-The cache root follows the `specify tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
+The cache root follows the `specrun tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
 
 ## Package Sources and SHA-256 Pins
 
-First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specify tool fetch` and `specify tool run`; they do not install `wkg`.
+First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specrun tool fetch` and `specrun tool run`; they do not install `wkg`.
 
 `sha256` pins object-declared component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose sidecar digest no longer matches the live declaration.
 
@@ -105,14 +105,14 @@ The `oci.reference` written into `meta.yaml` is derived best-effort from the res
 
 ## Registry configuration
 
-`specify tool fetch` and `specify tool run` resolve registries through wasm-pkg with a layered config (last write wins per key):
+`specrun tool fetch` and `specrun tool run` resolve registries through wasm-pkg with a layered config (last write wins per key):
 
 1. The wasm-pkg global defaults (`~/.config/wasm-pkg/config.toml`).
 2. The project-local `.specify/wasm-pkg.toml`, when present.
 3. The `WKG_CONFIG` override, when the env var is set.
 4. An embedded `specify -> augentic.io` namespace fallback, applied only when no earlier layer mapped the `specify` namespace.
 
-`specify init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
+`specrun init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
 
 ```toml
 default_registry = "augentic.io"
@@ -137,7 +137,7 @@ Choose project scope when:
 Choose adapter scope when:
 
 - The tool is part of the adapter's documented behavior.
-- Briefs or skills in the adapter call `specify tool run <name>`.
+- Briefs or skills in the adapter call `specrun tool run <name>`.
 - The adapter author owns updates, digest pins, and distribution.
 - `$ADAPTER_DIR` is needed for read-only templates or bundled resources.
 
@@ -188,8 +188,8 @@ tools:
 Invocation:
 
 ```bash
-specify tool fetch contract
-specify tool run contract -- "$PROJECT_DIR/contracts" --format json
+specrun tool fetch contract
+specrun tool run contract -- "$PROJECT_DIR/contracts" --format json
 ```
 
 ## Future lints
@@ -200,9 +200,9 @@ The framework linter reserves rule ids for this surface:
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
 - `skill.invokes-host-binary-with-declared-tool-equivalent` will warn when a brief or skill shells out to a host helper after an equivalent declared tool exists.
 
-The current CLI already validates tool declaration structure during `specify tool` commands. The framework checks also scan active first-party briefs and skills for retired helper invocations covered by the [Declared Tool Helper Inventory](../reference/declared-tool-helper-inventory.md).
+The current CLI already validates tool declaration structure during `specrun tool` commands. The framework checks also scan active first-party briefs and skills for retired helper invocations covered by the [Declared Tool Helper Inventory](../reference/declared-tool-helper-inventory.md).
 
 ## See also
 
-- [specify tool](../reference/cli/tool.md) -- command reference
+- [specrun tool](../reference/cli/tool.md) -- command reference
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter sidecar conventions

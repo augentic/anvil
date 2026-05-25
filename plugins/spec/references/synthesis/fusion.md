@@ -4,7 +4,7 @@ The audit-only index per slice of every `REQ-*` id and the contributing `(source
 
 ## When the skill writes it
 
-`/spec:refine` step 5 (between the `tasks.md` write and `specify slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `fusion.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specify slice fusion write` verb. After the atomic rename succeeds, emit the `slice.fusion.written` journal event.
+`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `fusion.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice fusion write` verb. After the atomic rename succeeds, emit the `slice.fusion.written` journal event.
 
 ## Block grammar
 
@@ -165,26 +165,26 @@ Boolean, optional:
 | `per-evidence-authority-override` | A contributing Evidence document's `authority-overrides.<kind>` resolved a strictly-greater authority class than the other contributors' effective class for this kind. Paired with `resolution: authority-resolved`. |
 | `document-authority-ordering` | Fallback to the document-level `authority:` enum (`intent > documentation > behaviour`); highest class won. Paired with `resolution: authority-resolved`. |
 
-The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `fusion.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specify slice validate` will not refuse it.
+The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `fusion.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specrun slice validate` will not refuse it.
 
 ## Audit posture
 
 `fusion.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same posture RFC-22's `mapping` field and RFC-24's `surfaces[]` follow.
 
-Operator hand-edits to `fusion.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specify plan amend`.
+Operator hand-edits to `fusion.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
 
 ## Drift detection
 
-`specify slice validate` refuses with structured error `slice-fusion-drift` (exit 2) on either of two drift conditions:
+`specrun slice validate` refuses with structured error `slice-fusion-drift` (exit 2) on either of two drift conditions:
 
 1. **REQ-id parity drift.** The set of `REQ-*` ids in `spec.md` MUST equal the set of `requirements[].id` in `fusion.yaml`, with order preserved.
 2. **Contributing-claim → evidence drift.** Every `requirements[].contributing-claims[]` entry's `(source, claim-id)` MUST resolve to a real claim in the per-source `evidence/<source-key>.yaml`. A stale `claim-id` (the source's Evidence rewrote the id) or a stale `source` (the slice's `sources[]` binding was removed) both surface as drift.
 
-Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `fusion.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `fusion.yaml` re-aligns; running `specify slice validate` alone will not regenerate the index.
+Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `fusion.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `fusion.yaml` re-aligns; running `specrun slice validate` alone will not regenerate the index.
 
 ## Worked example
 
-A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specify plan amend identity-revamp identity-password-reset --authority-override criterion=runtime`. Three requirements illustrate the common shapes:
+A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specrun plan amend identity-revamp identity-password-reset --authority-override criterion=runtime`. Three requirements illustrate the common shapes:
 
 ```yaml
 version: 1

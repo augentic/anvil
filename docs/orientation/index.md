@@ -22,7 +22,7 @@ Specify is a plugin system that orchestrates **spec-driven software development*
 Every change flows through one rhythm:
 
 1. **Plan** — `/spec:plan` enumerates sources and writes `plan.yaml`. Exits at `pending`.
-2. **Operator review (Gate 1)** — you stamp `reviewed`: `specify plan transition <name> reviewed`.
+2. **Operator review (Gate 1)** — you stamp `reviewed`: `specrun plan transition <name> reviewed`.
 3. **Execute** — `/spec:execute` loops per slice: refine → build → merge.
 4. **Finalize** — `/spec:finalize` pushes branches, observes PRs, archives the plan.
 

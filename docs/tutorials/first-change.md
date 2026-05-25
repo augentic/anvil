@@ -62,8 +62,8 @@ Before stamping `reviewed`, read:
 Amend if needed:
 
 ```bash
-specify plan amend account-revamp --add-source ...
-specify plan transition account-revamp reviewed
+specrun plan amend account-revamp --add-source ...
+specrun plan transition account-revamp reviewed
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
@@ -76,7 +76,7 @@ See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 
 Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.
 
-Only one entry is `in-progress` at a time. `specify plan next` picks the next eligible slice. Each slice gets its own directory under `.specify/slices/<name>/`.
+Only one entry is `in-progress` at a time. `specrun plan next` picks the next eligible slice. Each slice gets its own directory under `.specify/slices/<name>/`.
 
 If you need to run one phase by hand (a **breakout**), cancel execute and invoke `/spec:refine`, `/spec:build`, or `/spec:merge` directly. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 

@@ -17,7 +17,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`augentic/specify-cli/tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-### `specify plan create`
+### `specrun plan create`
 
 Scaffolds an empty plan and emits its first entry.
 
@@ -40,7 +40,7 @@ Scaffolds an empty plan and emits its first entry.
 }
 ```
 
-### `specify plan amend`
+### `specrun plan amend`
 
 Replaces a field on an existing plan entry. The `entry` body mirrors the post-amend state; absent fields surface as `null` or `[]` so consumers can rely on the shape regardless of which field was touched.
 
@@ -62,7 +62,7 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 }
 ```
 
-### `specify plan next`
+### `specrun plan next`
 
 Returns the next entry the executor should pick up, or a `reason` describing why nothing is eligible. Success carries `next: "<entry>"`; drained / blocked / in-progress states carry `next: null` and a populated `reason` (`drained`, `in-progress`, etc.).
 
@@ -78,7 +78,7 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
-### `specify plan transition`
+### `specrun plan transition`
 
 Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.
 
@@ -95,7 +95,7 @@ Used for both entry transitions (`kind: "entry"`) and the plan-level review stam
 }
 ```
 
-### `specify plan status`
+### `specrun plan status`
 
 Dashboard view over a plan. `counts` summarises per-status totals; `entries` carries the full topologically-sorted entry list with per-entry status and depends-on edges; `in-progress` and `next-eligible` are convenience pointers into `entries`.
 
@@ -132,7 +132,7 @@ Dashboard view over a plan. `counts` summarises per-status totals; `entries` car
 }
 ```
 
-### `specify plan validate`
+### `specrun plan validate`
 
 Runs the plan-shape diagnostics. The `passed` payload field is a result indicator, not an envelope discriminant — both the clean and failed bodies have the same top-level shape, with `results` either empty or populated.
 
@@ -149,7 +149,7 @@ Runs the plan-shape diagnostics. The `passed` payload field is a result indicato
 
 A failed run carries one entry per finding in `results`, each with `code` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `entry` (the entry name or `null` for plan-wide findings), `message`, and `severity` (`error` or `warning`).
 
-### `specify plan archive`
+### `specrun plan archive`
 
 Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
@@ -163,7 +163,7 @@ Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the
 }
 ```
 
-### `specify slice merge run`
+### `specrun slice merge run`
 
 Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one entry per spec file touched, each listing the requirement-level operations applied (`added`, `modified`, `removed`).
 
@@ -185,7 +185,7 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 }
 ```
 
-### `specify slice task mark`
+### `specrun slice task mark`
 
 Marks one task complete. `idempotent: true` indicates the task was already complete and the call was a no-op; the `new-content-path` always points at the updated `tasks.md` regardless.
 
@@ -197,7 +197,7 @@ Marks one task complete. `idempotent: true` indicates the task was already compl
 }
 ```
 
-### `specify slice task progress`
+### `specrun slice task progress`
 
 Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pending` are the headline counts; `tasks[]` carries each parsed task with its parent `group`, `number` (`X.Y`), free-form `description`, and optional `skill-directive` (the embedded `<!-- skill: plugin:skill-name -->` reference, if any).
 
@@ -218,7 +218,7 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
-### `specify slice validate`
+### `specrun slice validate`
 
 Runs the slice-shape brief and cross-check predicates. Like `plan validate`, `passed` is a payload indicator and the envelope shape is identical for clean and failed runs.
 

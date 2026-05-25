@@ -14,7 +14,7 @@ Runtime capture for migration workflows. Source-code enumeration lives in the [`
 git clone "$URL" "$DEST"    --> bootstrap the legacy repo (inlined snippet in wiretapper)
 /capture:wiretapper         --> instrument and capture runtime data
 /spec:plan                  --> bind captures source: runtime=./captures/replays
-specify plan transition ... reviewed
+specrun plan transition ... reviewed
 /spec:execute               --> refine/build/merge; Omnia build/test.md + build/replay.md consume replays
 ```
 

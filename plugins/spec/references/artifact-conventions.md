@@ -47,7 +47,7 @@ Every generated task **must** be executable and verifiable by an agent using cod
 
 If a requirement appears to call for human validation, encode the equivalent code-based test or scripted verification task instead.
 
-After writing `tasks.md`, complete the **Self-Review** step in the adapter's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
+After writing `tasks.md`, complete the **Self-Review** step in the adapter's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specrun slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
 
 ### Skill directives (optional)
 

@@ -42,7 +42,7 @@ Build order: core first, shells second. When `composition.yaml` is present, the 
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus adapter-owned post-merge validation through `specify tool run vectis -- validate composition`) |
+| `merge.md` | -- (drives `specrun slice merge {preview, conflict-check, run}` plus adapter-owned post-merge validation through `specrun tool run vectis -- validate composition`) |
 
 The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; the merge brief at [`adapters/targets/vectis/briefs/merge.md`](../../../adapters/targets/vectis/briefs/merge.md) owns those platform workflow steps.
 

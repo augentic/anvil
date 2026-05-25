@@ -81,7 +81,7 @@ run.
 - **Suite:** cross-repo.
 - **Project shape:** one temporary registry-only hub plus two temporary
   registered projects.
-- **Hub adapter:** none; initialize the hub with `specify init --hub`.
+- **Hub adapter:** none; initialize the hub with `specrun init --hub`.
 - **Backend project adapter:** `omnia@v1`.
 - **Mobile project adapter:** `vectis@v1`.
 - **Registry shape:** the hub registry contains exactly the backend and mobile
@@ -175,13 +175,13 @@ Initialize them:
 
 ```bash
 cd cross-repo-shop-platform
-specify init --hub
+specrun init --hub
 
 cd ../cross-repo-shop-backend
-specify init omnia@v1
+specrun init omnia@v1
 
 cd ../cross-repo-shop-mobile
-specify init vectis@v1
+specrun init vectis@v1
 ```
 
 Return to the hub and register the implementation projects. Use descriptions
@@ -189,9 +189,9 @@ that make routing unambiguous:
 
 ```bash
 cd ../cross-repo-shop-platform
-specify registry add shop-backend --url ../cross-repo-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
-specify registry add shop-mobile --url ../cross-repo-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
-specify registry validate
+specrun registry add shop-backend --url ../cross-repo-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
+specrun registry add shop-mobile --url ../cross-repo-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+specrun registry validate
 ```
 
 Create `docs/oauth-login.md` from the **Inputs** section.
@@ -215,7 +215,7 @@ Keep the plan small and happy-path only.
 ```
 
 The draft skill writes `change.md` and `plan.yaml`, runs the brief pipeline,
-runs `specify plan validate`, and stops at the hand-off summary. It must not
+runs `specrun plan validate`, and stops at the hand-off summary. It must not
 proceed into execution. After the hand-off, the operator drives the next stage.
 
 ### 3. Review the draft (operator pause)
@@ -224,14 +224,14 @@ This is the explicit human seam introduced by RFC-23. Inspect the draft plan
 without modifying it:
 
 ```bash
-specify plan validate
+specrun plan validate
 inspect plan.yaml
 ```
 
 The review step is a no-op for parity with the retired umbrella: the operator
 observes `plan.yaml`, confirms the slice shape matches the draft hand-off
 summary, and proceeds. If the operator needs to edit the plan, they would run
-`specify plan amend` here; for the parity scenario the plan is accepted as
+`specrun plan amend` here; for the parity scenario the plan is accepted as
 authored.
 
 ### 4. Execute the plan
@@ -268,7 +268,7 @@ The skill executes:
 
 1. Pre-flight (`<change-name>` kebab-case, `plan.yaml` present).
 2. Plan terminality (every entry `done`).
-3. `specify workspace push` — pushes the prepared `specify/oauth-login`
+3. `specrun workspace push` — pushes the prepared `specify/oauth-login`
    branches to backend and mobile remotes; surfaces the per-project status
    table verbatim.
 4. `gh pr list --head specify/oauth-login --state all --json
@@ -296,9 +296,9 @@ Re-run `/spec:finalize` from the hub:
 /spec:finalize oauth-login
 ```
 
-The second invocation re-runs every step. `specify workspace push` reports
+The second invocation re-runs every step. `specrun workspace push` reports
 `up-to-date` for both projects (idempotent re-entry). `gh pr list` reports
-every PR as `MERGED`. The skill then runs `specify plan finalize`, which
+every PR as `MERGED`. The skill then runs `specrun plan finalize`, which
 archives `plan.yaml` and `change.md` together under
 `.specify/archive/plans/oauth-login-<date>/` (or the equivalent dated archive
 path the verb produces). The wrap-up summary prints the merged-PR list and the
@@ -310,7 +310,7 @@ Run `/spec:finalize` a third time:
 /spec:finalize oauth-login
 ```
 
-This re-entry should report `plan-not-found` from `specify plan finalize` and
+This re-entry should report `plan-not-found` from `specrun plan finalize` and
 exit 0 — the change is already archived.
 
 ## Expected Artifacts
@@ -330,7 +330,7 @@ The run should leave these artifacts or states for inspection:
   exist after sync or execution preparation.
 - Prepared project branches use `specify/oauth-login`.
 - The execute loop reaches `all-done`.
-- The first `/spec:finalize oauth-login` invocation runs `specify workspace
+- The first `/spec:finalize oauth-login` invocation runs `specrun workspace
   push` (creating or updating PRs/MRs for both routed projects, or the local
   equivalent documented by the operator) and halts with `pr-not-merged`.
 - The second `/spec:finalize oauth-login` invocation, after external merges,
@@ -344,7 +344,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly after the draft
+- `plan-validates`: `specrun plan validate` exits cleanly after the draft
   hand-off and again during the operator review.
 - `contract-slice-first`: the dependency graph makes the contract slice the
   first executable slice.
@@ -356,7 +356,7 @@ The run should leave these artifacts or states for inspection:
   without invoking `/spec:execute`, pushing branches, or finalizing the
   change.
 - `review-step-no-op`: `inspect plan.yaml` between draft and execute reports
-  the plan as authored; the operator does not run `specify plan amend` for the
+  the plan as authored; the operator does not run `specrun plan amend` for the
   parity scenario.
 - `execute-loop-all-done`: `/spec:execute loop` exits because the plan is
   complete, not because it is stuck, failed, or interrupted.
@@ -367,7 +367,7 @@ The run should leave these artifacts or states for inspection:
   PR URLs.
 - `finalize-archives-plan`: after external merges, the second
   `/spec:finalize oauth-login` invocation archives the plan via
-  `specify plan finalize`.
+  `specrun plan finalize`.
 - `archived-plan-path-recorded`: the wrap-up summary names the archived plan
   path under `.specify/archive/plans/`, matching the umbrella's archive shape.
 - `archived-change-md-present`: the archived directory next to the archived

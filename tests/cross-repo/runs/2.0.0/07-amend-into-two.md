@@ -6,7 +6,7 @@
 
 > Operator amends a one-slice plan into two slices at Gate 1.
 
-**Stress-tests:** Plan amendment via `specify plan amend`; re-entry to Gate 1 after amend.
+**Stress-tests:** Plan amendment via `specrun plan amend`; re-entry to Gate 1 after amend.
 
 ## Run-summary
 

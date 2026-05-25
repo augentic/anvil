@@ -35,7 +35,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 ## Behavior
 
 1. Checks whether `.specify/` already exists. If so, warns and offers to reconfigure.
-2. Runs `specify init <adapter>` (regular) or `specify init --hub` (hub); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
+2. Runs `specrun init <adapter>` (regular) or `specrun init --hub` (hub); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
 3. The CLI scaffolds the directory structure, writes `project.yaml`, and generates `AGENTS.md` plus `.specify/context.lock` when root `AGENTS.md` is absent.
 4. Existing root `AGENTS.md` files are preserved byte-for-byte; init reports the skip instead of overwriting them.
 5. Detects existing source code in the project. If found, the operator can bind it as a `code-typescript` (or future-language) source on the first `/spec:plan` invocation.
@@ -49,7 +49,7 @@ None -- init creates the project scaffold, not a slice.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Adapter resolution failure | Invalid identifier or URL, network error, or missing `@ref` | Check identifier / URL and connectivity |
-| Clap parse error (exit 2) | `specify init` invoked with neither a adapter positional nor `--hub`, or with both | Pass exactly one of the two |
+| Clap parse error (exit 2) | `specrun init` invoked with neither a adapter positional nor `--hub`, or with both | Pass exactly one of the two |
 | `.specify/` already exists | Re-running init on an initialised project | Confirm reconfiguration or delete `.specify/` |
 
 ## Examples

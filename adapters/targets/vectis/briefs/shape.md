@@ -95,7 +95,7 @@ When folding Evidence into `design.md`'s `## Adapters` table, the following cues
 - Platform detection (iOS vs Android vs Web) — `Platform` adapter (`crux_platform`).
 - Rendering (always) — `Render` adapter.
 
-State the capability set explicitly in `design.md`; the `build` brief feeds this directly into `specify tool run vectis -- scaffold core --caps <csv>` and into the per-shell `Effect` switch generation.
+State the capability set explicitly in `design.md`; the `build` brief feeds this directly into `specrun tool run vectis -- scaffold core --caps <csv>` and into the per-shell `Effect` switch generation.
 
 ## Source-adapter contract (what the synthesiser may encounter)
 

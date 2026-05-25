@@ -53,7 +53,7 @@ Run once per project:
 /spec:init omnia
 ```
 
-The skill runs `specify init omnia`, which scaffolds:
+The skill runs `specrun init omnia`, which scaffolds:
 
 ```text
 .specify/
@@ -129,7 +129,7 @@ Sources: 1. Candidates: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `specrun plan transition fix-typo reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
@@ -137,7 +137,7 @@ Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo reviewed`
 Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `reviewed` itself; you do:
 
 ```bash
-specify plan transition fix-typo reviewed
+specrun plan transition fix-typo reviewed
 ```
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).

@@ -6,17 +6,17 @@ The registry is a first-party Specify component — it owns project topology and
 
 The registry owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default target adapter — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
 
-Target adapters own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The plan (`/spec:plan`, `specify plan *`) coordinates *when* — sequencing slices across one or more registered projects.
+Target adapters own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The plan (`/spec:plan`, `specrun plan *`) coordinates *when* — sequencing slices across one or more registered projects.
 
 ## Files and state
 
 | Path                          | Owner    | Purpose |
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Topology ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
-| `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
+| `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specrun workspace sync`. |
 | `.specify/.cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `adapters/sources/` and `adapters/targets/` subdirectories). |
 
-`.specify/workspace/` and `.specify/.cache/` are framework-managed scratch and must never be checked in. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
+`.specify/workspace/` and `.specify/.cache/` are framework-managed scratch and must never be checked in. `specrun init` and `specrun workspace sync` append the matching `.gitignore` lines idempotently.
 
 ## Topology shape
 
@@ -51,7 +51,7 @@ The registry is hand-curated YAML — operators edit `registry.yaml` directly; f
 
 | Caller                          | Validation timing |
 | ------------------------------- | ----------------- |
-| `specify workspace sync`        | Validates the registry before materialising any slot; refuses to operate on a malformed registry. |
+| `specrun workspace sync`        | Validates the registry before materialising any slot; refuses to operate on a malformed registry. |
 | `/spec:plan`                    | Validates the registry before propose; refuses to write a plan against a malformed registry. |
 
 None of these go through the per-slice loop. The registry is substrate: it is what the slice loop runs *over*, not something the slice loop produces.
@@ -64,15 +64,15 @@ The registry crate owns the materialiser and workspace verbs:
 
 | Verb                                                | Purpose |
 | --------------------------------------------------- | ------- |
-| `specify workspace sync [<project>...]`              | Materialise selected workspace slots. With no selectors, materialises every registry project; with selectors, materialises only those slots. Unknown selectors fail before filesystem or Git side effects. |
-| `specify workspace prepare <project>`         | Prepare the selected slot on `specify/<change-name>` from `origin/HEAD` before mutation. |
-| `specify workspace push [<project>...]`              | Transport-only publication for selected slots already on `specify/<change-name>`. Creates or updates PRs; never creates local branches, commits files, pushes default branches, or merges PRs. |
+| `specrun workspace sync [<project>...]`              | Materialise selected workspace slots. With no selectors, materialises every registry project; with selectors, materialises only those slots. Unknown selectors fail before filesystem or Git side effects. |
+| `specrun workspace prepare <project>`         | Prepare the selected slot on `specify/<change-name>` from `origin/HEAD` before mutation. |
+| `specrun workspace push [<project>...]`              | Transport-only publication for selected slots already on `specify/<change-name>`. Creates or updates PRs; never creates local branches, commits files, pushes default branches, or merges PRs. |
 
 Selection is resolved once, before side effects. A human-invoked `workspace sync` with no selectors refreshes every registered project. `/spec:execute` uses selected sync behavior to materialise only the next plan entry's target slot before execution.
 
 Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. The `workspace merge` verb was removed pre-2.0 — landing is an explicit operator action outside Specify.
 
-After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` invokes `specify plan finalize` to verify that every required per-project PR is merged, check workspace cleanliness, archive the plan, and (with `specify plan finalize --clean`) optionally remove clean workspace clones; it never merges PRs.
+After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` invokes `specrun plan finalize` to verify that every required per-project PR is merged, check workspace cleanliness, archive the plan, and (with `specrun plan finalize --clean`) optionally remove clean workspace clones; it never merges PRs.
 
 ## Dependency direction
 
@@ -90,7 +90,7 @@ The invariant: the slice and plan layers MAY depend on the registry because work
 
 The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata:
 
-- Plan or slice status — owned by `specify plan *` and `specify slice *`.
+- Plan or slice status — owned by `specrun plan *` and `specrun slice *`.
 - Contract relationships beyond the per-project role declarations — owned by the `contracts` target adapter.
 - Validation findings — owned by adapter skills and helper binaries.
 - Synthesis output — owned by core (`/spec:refine`).
@@ -100,4 +100,4 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 
 - [Target Adapters](targets/index.md) — target adapter manifest protocol.
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — the source/target split.
-- [`specify registry`](cli/registry.md) and [`specify workspace`](cli/workspace.md) — current CLI command reference.
+- [`specrun registry`](cli/registry.md) and [`specrun workspace`](cli/workspace.md) — current CLI command reference.

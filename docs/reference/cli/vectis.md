@@ -1,6 +1,6 @@
 # Vectis WASI tools
 
-Vectis deterministic helpers are declared adapter tools and are run through [`specify tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
+Vectis deterministic helpers are declared adapter tools and are run through [`specrun tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
 
 ## Tools
 
@@ -9,7 +9,7 @@ Vectis deterministic helpers are declared adapter tools and are run through [`sp
 Run deterministic validation for Vectis UI input artifacts:
 
 ```bash
-specify tool run vectis -- validate <mode> [path]
+specrun tool run vectis -- validate <mode> [path]
 ```
 
 | Mode | Validates |
@@ -28,16 +28,16 @@ Exit semantics:
 - **Warnings only** -- exit zero and print the warning report.
 - **Clean** -- exit zero silently.
 
-Skills consume the report rather than reimplementing the checks. Layout inferers run `specify tool run vectis -- validate layout <output-path>.tmp` and, when sibling token or asset manifests exist, `specify tool run vectis -- validate composition <output-path>.tmp` before atomically renaming staged output into place.
+Skills consume the report rather than reimplementing the checks. Layout inferers run `specrun tool run vectis -- validate layout <output-path>.tmp` and, when sibling token or asset manifests exist, `specrun tool run vectis -- validate composition <output-path>.tmp` before atomically renaming staged output into place.
 
 ### vectis scaffold
 
 Render Vectis project scaffolds from embedded templates and explicit inputs:
 
 ```bash
-specify tool run vectis -- scaffold core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
-specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-file <path>]
-specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specrun tool run vectis -- scaffold core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specrun tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-file <path>]
+specrun tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
 `vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by [`adapters/targets/vectis/adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml) (`tools[]`); it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis target's [`build`](../../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../../adapters/targets/vectis/briefs/merge.md) briefs.
@@ -46,6 +46,6 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 
 ## See also
 
-- [specify tool](tool.md) -- declared WASI tool runner surface
+- [specrun tool](tool.md) -- declared WASI tool runner surface
 - [Vectis Target](../targets/vectis.md) -- target adapter reference for cross-platform Crux projects
 - [`adapters/targets/vectis/adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml) (`tools[]`) -- Vectis target adapter tool declarations

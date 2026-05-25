@@ -19,7 +19,7 @@ hint: Fix the failure, then re-run /spec:execute (or /spec:build to retry the
       lifecycle stays where /spec:build left it.
 ```
 
-Re-entry contract: the next `/spec:execute` calls `specify plan next`, sees the entry still `in-progress`, runs the snippet from [`plan-lock.md`](plan-lock.md), dispatches phase work based on the slice lifecycle. If the slice is `built` it skips straight to `/spec:merge`; if it is `refined`, it re-runs `/spec:build`.
+Re-entry contract: the next `/spec:execute` calls `specrun plan next`, sees the entry still `in-progress`, runs the snippet from [`plan-lock.md`](plan-lock.md), dispatches phase work based on the slice lifecycle. If the slice is `built` it skips straight to `/spec:merge`; if it is `refined`, it re-runs `/spec:build`.
 
 ## 2. Merge baseline conflict
 
@@ -37,7 +37,7 @@ hint: Resolve the baseline conflict by editing the slice's delta specs (or
       /spec:execute. The plan entry stays in-progress until the merge lands.
 ```
 
-Re-entry contract: the next `/spec:execute` resumes at `/spec:merge` (slice lifecycle is still `built`). If the operator chose to drop the slice instead, they run `/spec:drop <slice> reason "<rationale>"`, amend the plan entry via `specify plan amend <plan> <slice> ...` as needed to unblock the queue, then re-run `specify plan next` (or `/spec:execute`) — not `specify plan transition <slice> done`, which is reserved for successful merges.
+Re-entry contract: the next `/spec:execute` resumes at `/spec:merge` (slice lifecycle is still `built`). If the operator chose to drop the slice instead, they run `/spec:drop <slice> reason "<rationale>"`, amend the plan entry via `specrun plan amend <plan> <slice> ...` as needed to unblock the queue, then re-run `specrun plan next` (or `/spec:execute`) — not `specrun plan transition <slice> done`, which is reserved for successful merges.
 
 ## 3. Drained
 
@@ -47,7 +47,7 @@ No `pending` or `in-progress` entries remain. This is the only clean exit. The c
 drained — run /spec:finalize <name>
 ```
 
-`<name>` is the plan name from the drained envelope. `/spec:finalize` is the next operator step: it re-validates every per-entry `done`, pushes branches, observes PRs to `MERGED`, then runs `specify plan finalize` to archive. `/spec:execute` itself never pushes, never opens a PR, and never archives — those are finalize's responsibility.
+`<name>` is the plan name from the drained envelope. `/spec:finalize` is the next operator step: it re-validates every per-entry `done`, pushes branches, observes PRs to `MERGED`, then runs `specrun plan finalize` to archive. `/spec:execute` itself never pushes, never opens a PR, and never archives — those are finalize's responsibility.
 
 ## What is NOT a stop
 
@@ -57,7 +57,7 @@ The following return cleanly into the next iteration:
 |---|---|
 | `/spec:refine` success | Continue to `/spec:build` for the same entry. |
 | `/spec:build` success | Continue to `/spec:merge` for the same entry. |
-| `/spec:merge` success | `specify plan transition <slice> done` (by `/spec:merge`), then continue to the next `specify plan next`. |
+| `/spec:merge` success | `specrun plan transition <slice> done` (by `/spec:merge`), then continue to the next `specrun plan next`. |
 | `/spec:refine` surfaces `[unknown]` / `[conflict]` / `[divergence]` tags | Tags are review signals; lifecycle still reaches `refined`; loop continues to `/spec:build`. RFC-25 D2/D4. |
 | Workspace residue commit succeeded | Continue. |
 

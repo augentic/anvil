@@ -1,6 +1,6 @@
 # Vectis target — `merge`
 
-`/spec:merge` reads this brief when the slice it is merging declares `target: vectis`. The core merge work — deterministic spec-delta promotion, baseline coherence validation, lifecycle transition, and archive move — runs through `specify slice merge` per the shared `/spec:merge` skill. This brief adds the Vectis-specific adoption gates that run before the CLI invocation (preview confirmation), alongside it (the broader landing surface), and after it (host cap-matrix re-verification).
+`/spec:merge` reads this brief when the slice it is merging declares `target: vectis`. The core merge work — deterministic spec-delta promotion, baseline coherence validation, lifecycle transition, and archive move — runs through `specrun slice merge` per the shared `/spec:merge` skill. This brief adds the Vectis-specific adoption gates that run before the CLI invocation (preview confirmation), alongside it (the broader landing surface), and after it (host cap-matrix re-verification).
 
 Two things make the Vectis `merge` brief different from the bare slice merge:
 
@@ -14,16 +14,16 @@ Before merging, confirm:
 - All task checkboxes in `${SLICE_DIR}/tasks.md` are complete.
 - The slice lifecycle is `built` (the `build` phase returned `success`).
 - The `build` phase regenerated `${SLICE_DIR}/composition.yaml` (or the slice is core-only and intentionally has none).
-- `specify slice validate <SLICE_ID>` reports no unmet merge-phase needs.
+- `specrun slice validate <SLICE_ID>` reports no unmet merge-phase needs.
 
 Delta-spec merging, baseline coherence validation, lifecycle transition, and the archive move are delegated to the `specify` CLI. Follow the [`/spec:merge`](../../../../plugins/spec/skills/merge/SKILL.md) skill body for the driver-side flow: slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The Vectis adapter adds the two adapter-specific gates described below.
 
 ## Pre-merge — composition validation
 
-Before invoking `specify slice merge`, re-run the deterministic validator against the staged slice contents so an invalid `composition.yaml` blocks the merge:
+Before invoking `specrun slice merge`, re-run the deterministic validator against the staged slice contents so an invalid `composition.yaml` blocks the merge:
 
 ```bash
-specify tool run vectis -- validate composition
+specrun tool run vectis -- validate composition
 ```
 
 The validator discovers `${SLICE_DIR}/composition.yaml` first (slice-local takes precedence) and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml`. Errors are blocking — surface the report verbatim and stop. Warnings forward into the operator-facing summary but do not block. When the slice is core-only (no `composition.yaml` in `${SLICE_DIR}`), the validator exits cleanly without performing the wired-mode checks.
@@ -32,24 +32,24 @@ A WASI tool invocation failure (missing sidecar, bad arguments, unreadable preop
 
 ## Merge invocation — broader landing surface
 
-The merge surface is broader than spec / design / task deltas. In addition to the markdown deltas, `specify slice merge` promotes:
+The merge surface is broader than spec / design / task deltas. In addition to the markdown deltas, `specrun slice merge` promotes:
 
 - `composition.yaml` from the slice — lands as the baseline UI input set for downstream shell generations (`.specify/specs/composition.yaml` or the platform-equivalent baseline path the project uses).
 - `tokens.yaml`, `assets.yaml`, and any referenced asset files under `design-system/assets/**` (or slice-local `assets/`) when the slice carried operator-curated updates to those manifests. Token updates merge into `design-system/tokens.yaml`; asset updates merge into `design-system/assets.yaml` and `design-system/assets/**`.
 
-Review every UI input delta alongside the spec / design / task changes in the `specify slice merge preview` output before confirming, so reviewers can see which downstream shell generations will be affected.
+Review every UI input delta alongside the spec / design / task changes in the `specrun slice merge preview` output before confirming, so reviewers can see which downstream shell generations will be affected.
 
-After `specify slice merge` exits zero, re-run the deterministic validator against the merged baseline:
+After `specrun slice merge` exits zero, re-run the deterministic validator against the merged baseline:
 
 ```bash
-specify tool run vectis -- validate composition
+specrun tool run vectis -- validate composition
 ```
 
 The validator discovers the now-merged baseline `composition.yaml` and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml`. Run this even when the current slice did not generate any platform code, because later shell work will consume the merged baseline input set. Validation findings trigger a stop hint with `failure-kind: post-merge-validator`; warnings flow into the operator-facing summary; clean runs are silent.
 
 ## Post-merge — host cap-matrix re-verification
 
-After `specify slice merge` exits zero (the slice's deltas have been promoted into the baseline and the lifecycle has transitioned to `merged`), verify the now-updated project root with host commands that match the assemblies present in the merged tree:
+After `specrun slice merge` exits zero (the slice's deltas have been promoted into the baseline and the lifecycle has transitioned to `merged`), verify the now-updated project root with host commands that match the assemblies present in the merged tree:
 
 ```bash
 # core, when ${PROJECT_DIR}/shared exists
@@ -91,12 +91,12 @@ The post-merge gate intentionally validates the merged baseline, not the staged 
 
 When the pre-merge gate, the CLI delta merge, or the post-merge hook fails, emit a structured stop hint as the body's final output:
 
-- `slice` — slice name from `specify plan next`.
+- `slice` — slice name from `specrun plan next`.
 - `phase` — `merge`.
 - `failure-kind` — one of `pre-merge-gate`, `baseline-conflict`, `lifecycle-refused`, `post-merge-validator`.
-- `paths` — for `baseline-conflict`: the conflicting baseline files reported by `specify slice merge`. For `pre-merge-gate` / `post-merge-validator`: the captured validator report, structured host step list, or stderr log path.
-- `next-action` — `resolve and re-run /spec:merge $SLICE` for conflicts; `re-run /spec:build $SLICE` for gate failures classified as build regressions; `queue repair slice` for `post-merge-validator` drift (composition validation or cap-matrix failure after a successful `specify slice merge`).
+- `paths` — for `baseline-conflict`: the conflicting baseline files reported by `specrun slice merge`. For `pre-merge-gate` / `post-merge-validator`: the captured validator report, structured host step list, or stderr log path.
+- `next-action` — `resolve and re-run /spec:merge $SLICE` for conflicts; `re-run /spec:build $SLICE` for gate failures classified as build regressions; `queue repair slice` for `post-merge-validator` drift (composition validation or cap-matrix failure after a successful `specrun slice merge`).
 
-Lifecycle invariants: `pre-merge-gate` and `baseline-conflict` leave the slice at `built` and the plan entry at `in-progress`. `post-merge-validator` runs after `specify slice merge` succeeded, so the slice is already `merged` and the plan entry is already `done` — the hint is observability, not a park. The brief MUST NOT attempt to roll back the merge on a post-merge failure.
+Lifecycle invariants: `pre-merge-gate` and `baseline-conflict` leave the slice at `built` and the plan entry at `in-progress`. `post-merge-validator` runs after `specrun slice merge` succeeded, so the slice is already `merged` and the plan entry is already `done` — the hint is observability, not a park. The brief MUST NOT attempt to roll back the merge on a post-merge failure.
 
 For cap-matrix failures that look like version-pin drift (AGP / Gradle / uniffi mismatch surfaced after pins changed in this slice), the matching repair flow is the template-updater host workflow against `specify-cli` (see [build.md](build.md) § Template / version-pin drift handling; symptom triage table: [`../references/known-drift.md`](../references/known-drift.md)). Record the failure in the stop hint and surface it; the operator decides whether the next step is a template fix in the CLI repo, a pin rollback, or a follow-up slice.

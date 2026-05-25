@@ -39,7 +39,7 @@ Prove that `/spec:plan` can turn a simple documentation input into a reviewable 
 feature brief
   -> /spec:plan
   -> local slice entries
-  -> specify plan validate
+  -> specrun plan validate
 ```
 
 The scenario checks durable plan structure only. It should not fail because the generated proposal prose or slice descriptions differ from a previous run.
@@ -95,7 +95,7 @@ Initialize it:
 
 ```bash
 cd plan-inventory-service
-specify init omnia@v1
+specrun init omnia@v1
 ```
 
 Create `docs/inventory-adjustments.md` from the **Inputs** section.
@@ -121,7 +121,7 @@ Keep the plan small and happy-path only.
 After planning, validate and inspect the plan:
 
 ```bash
-specify plan validate
+specrun plan validate
 inspect plan.yaml
 ```
 
@@ -140,7 +140,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly.
+- `plan-validates`: `specrun plan validate` exits cleanly.
 - `slices-match-expected-shape`: entries are named, scoped, and ordered consistently with the inventory adjustment brief.
 - `no-project-routing-required`: entries do not include project routing fields or registry-derived assignments.
 
@@ -162,5 +162,5 @@ Use a disposable directory and remove it when the run is complete unless a failu
 - `docs/inventory-adjustments.md`
 - `plan.yaml`
 - `.specify/plans/inventory-adjustments/`
-- `specify plan validate` output
+- `specrun plan validate` output
 - `inspect plan.yaml` output

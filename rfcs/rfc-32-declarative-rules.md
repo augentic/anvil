@@ -1,4 +1,4 @@
-# RFC-31: WorkspaceModel and Declarative Rule Execution
+# RFC-31: Declarative Rule Execution
 
 > Status: Draft · Depends: [RFC-28](rfc-28-codex-rules.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-specify-review), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence (Phase 3)
 
@@ -10,7 +10,7 @@ This RFC defines the **execution layer** that consumes that contract:
 
 1. **WorkspaceModel** — a deterministic, versioned snapshot of project facts extracted once per scan (files, frontmatter, links, skills, adapters, symlinks, manifest edges).
 2. **Hint interpreter** — a closed evaluator for codex `deterministic_hints` against the model and raw artifact bytes.
-3. **`specify review` deterministic core** — the first consumer-project scanner that resolves applicable rules via RFC-28 export, evaluates hints, and emits RFC-28 review findings.
+3. `**specify review` deterministic core** — the first consumer-project scanner that resolves applicable rules via RFC-28 export, evaluates hints, and emits RFC-28 review findings.
 4. **Optional Phase 3** — converge framework-repo `tooling check` toward the same finding shape and, where worthwhile, the same declarative rule format; imperative checks may remain indefinitely.
 
 The design separates **extraction** (imperative, shared library code) from **policy** (declarative codex rules and hint kinds). Cross-file invariants become graph queries over WorkspaceModel rather than bespoke walks in every check module.
@@ -19,11 +19,13 @@ The design separates **extraction** (imperative, shared library code) from **pol
 
 Today enforcement is split across three shapes:
 
-| Surface | Input | Rule form | Output |
-| --- | --- | --- | --- |
-| `tooling check` | Framework repo (`plugins/`, `adapters/`, `docs/`) | ~30 imperative Rust `Check` predicates | Ad hoc `Finding { rule_id, message, location }` |
-| Codex markdown | Adapter trees + shared universal rules | Human prose + frontmatter hints (shape-only in RFC-28) | None until a scanner exists |
-| Target review briefs | Generated artifacts | Agent judgment + optional `rule_id` in `REVIEW.md` | Human markdown |
+
+| Surface              | Input                                             | Rule form                                              | Output                                          |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| `tooling check`      | Framework repo (`plugins/`, `adapters/`, `docs/`) | ~30 imperative Rust `Check` predicates                 | Ad hoc `Finding { rule_id, message, location }` |
+| Codex markdown       | Adapter trees + shared universal rules            | Human prose + frontmatter hints (shape-only in RFC-28) | None until a scanner exists                     |
+| Target review briefs | Generated artifacts                               | Agent judgment + optional `rule_id` in `REVIEW.md`     | Human markdown                                  |
+
 
 Each surface re-implements walking, parsing, and linking. Cross-file rules — duplicate skill names, marketplace drift, unresolved directives, variable coverage — embed graph logic inside individual modules. [RFC-5](done/rfc-5-tooling.md) accepted that split as the right day-one tradeoff; RFC-28 adds the finding contract without fixing the duplication.
 
@@ -79,11 +81,13 @@ RM-10 (`specify review`) needs a scanner substrate. Without WorkspaceModel, ever
 
 ### Phasing
 
-| Phase | Owner | Scope | Required? |
-| --- | --- | --- | --- |
-| **1** | RFC-28 | Finding schema, `specify codex export`, shared codex parser, hint shape validation | Yes — prerequisite |
-| **2** | RFC-31 | WorkspaceModel, hint interpreter, `specify review` deterministic MVP | Yes — this RFC |
+
+| Phase | Owner  | Scope                                                                                         | Required?            |
+| ----- | ------ | --------------------------------------------------------------------------------------------- | -------------------- |
+| **1** | RFC-28 | Finding schema, `specify codex export`, shared codex parser, hint shape validation            | Yes — prerequisite   |
+| **2** | RFC-31 | WorkspaceModel, hint interpreter, `specify review` deterministic MVP                          | Yes — this RFC       |
 | **3** | RFC-31 | Framework `tooling check` convergence: shared finding output, selective declarative migration | No — operator choice |
+
 
 Phase 2 must not block on Phase 3. Phase 3 must not block RM-10.
 
@@ -93,29 +97,33 @@ The model is a deterministic JSON document produced by the indexer. It is an int
 
 #### Extraction inputs
 
-| Field | Meaning |
-| --- | --- |
-| `project_dir` | Scan root (consumer project or framework repo) |
-| `scan_profile` | `consumer` or `framework` — controls which extractors run |
+
+| Field              | Meaning                                                     |
+| ------------------ | ----------------------------------------------------------- |
+| `project_dir`      | Scan root (consumer project or framework repo)              |
+| `scan_profile`     | `consumer` or `framework` — controls which extractors run   |
 | `artifact_paths[]` | Optional narrow list; default is profile-specific full scan |
-| `languages[]` | Optional tokens supplied by caller or inferred from paths |
+| `languages[]`      | Optional tokens supplied by caller or inferred from paths   |
+
 
 #### Core entity families (v1)
 
 Facts are normalized relations, not nested domain objects. Examples:
 
-| Family | Fact shape | Source extractors |
-| --- | --- | --- |
-| `file` | `{ path, kind, language?, sha256? }` | Filesystem walk with profile globs |
-| `frontmatter` | `{ path, schema_id?, fields }` | Markdown `---` extraction + YAML parse |
-| `markdown_section` | `{ path, level, title, line_start, line_end, body_line_count }` | Markdown structure pass |
-| `markdown_link` | `{ from_path, to_raw, line, resolves? }` | Link scan with fence/comment stripping |
-| `symlink` | `{ path, target, broken }` | Filesystem metadata |
-| `skill` | `{ name, path, plugin, frontmatter_ref }` | `plugins/**/SKILL.md` |
-| `adapter_manifest` | `{ axis, name, path, version }` | `adapters/{sources,targets}/**/adapter.yaml` |
-| `marketplace_entry` | `{ plugin, path_in_manifest }` | `.cursor-plugin/marketplace.json` |
-| `codex_rule` | `{ rule_id, path, origin, frontmatter_ref }` | Codex trees (reuse RFC-28 parser) |
-| `text_match` | `{ path, line, column, pattern_id }` | Precomputed regex index (optional optimization) |
+
+| Family              | Fact shape                                                      | Source extractors                               |
+| ------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
+| `file`              | `{ path, kind, language?, sha256? }`                            | Filesystem walk with profile globs              |
+| `frontmatter`       | `{ path, schema_id?, fields }`                                  | Markdown `---` extraction + YAML parse          |
+| `markdown_section`  | `{ path, level, title, line_start, line_end, body_line_count }` | Markdown structure pass                         |
+| `markdown_link`     | `{ from_path, to_raw, line, resolves? }`                        | Link scan with fence/comment stripping          |
+| `symlink`           | `{ path, target, broken }`                                      | Filesystem metadata                             |
+| `skill`             | `{ name, path, plugin, frontmatter_ref }`                       | `plugins/**/SKILL.md`                           |
+| `adapter_manifest`  | `{ axis, name, path, version }`                                 | `adapters/{sources,targets}/**/adapter.yaml`    |
+| `marketplace_entry` | `{ plugin, path_in_manifest }`                                  | `.cursor-plugin/marketplace.json`               |
+| `codex_rule`        | `{ rule_id, path, origin, frontmatter_ref }`                    | Codex trees (reuse RFC-28 parser)               |
+| `text_match`        | `{ path, line, column, pattern_id }`                            | Precomputed regex index (optional optimization) |
+
 
 Extractors may run only under `scan_profile: framework` (marketplace, skill graph, brief size) or under both profiles (files, frontmatter, links).
 
@@ -144,25 +152,29 @@ RFC-31 extends the **closed** `kind` enum for execution. RFC-28 validates shape 
 
 #### Hint kinds — Phase 2 (implement)
 
-| Kind | Evaluates against | Purpose |
-| --- | --- | --- |
-| `regex` | Raw file bytes (per applicability path filter) | Line/column findings for pattern hits |
-| `path-pattern` | `file.path` glob | Narrow scan targets before other hints |
-| `schema` | Parsed JSON/YAML value or extracted frontmatter | Structural validation via JSON Schema ref |
-| `tool` | External command | Delegate to declared WASI/host tool (`specify tool run …`) |
+
+| Kind           | Evaluates against                               | Purpose                                                    |
+| -------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| `regex`        | Raw file bytes (per applicability path filter)  | Line/column findings for pattern hits                      |
+| `path-pattern` | `file.path` glob                                | Narrow scan targets before other hints                     |
+| `schema`       | Parsed JSON/YAML value or extracted frontmatter | Structural validation via JSON Schema ref                  |
+| `tool`         | External command                                | Delegate to declared WASI/host tool (`specify tool run …`) |
+
 
 #### Hint kinds — reserved (schema may list; interpreter returns `unsupported` until implemented)
 
-| Kind | Evaluates against | Maps from today's `tooling check` |
-| --- | --- | --- |
-| `unique` | WorkspaceModel collection + field | `skill.duplicate-name`, `codex.duplicate-rule-id` |
-| `reference-resolves` | `markdown_link.resolves == false` | `links.unresolved`, `links.broken-reference` |
-| `set-coverage` | defined vs used symbol sets | `skill.variable-coverage` |
-| `cardinality` | counted collection size | `skill.invalid-critical-path` (5–7 steps) |
-| `constant-eq` | cross-artifact constant paths | `prose.numeric-cap-exceeded` cap sync |
-| `set-eq` | two model collections | `plugins.marketplace-drift` |
-| `content-digest-eq` | file sha256 vs expected | `agent_teams` canonical SHA check |
-| `namespace-owner` | codex id prefix vs tree owner | `codex.namespace-ownership-violation` |
+
+| Kind                 | Evaluates against                 | Maps from today's `tooling check`                 |
+| -------------------- | --------------------------------- | ------------------------------------------------- |
+| `unique`             | WorkspaceModel collection + field | `skill.duplicate-name`, `codex.duplicate-rule-id` |
+| `reference-resolves` | `markdown_link.resolves == false` | `links.unresolved`, `links.broken-reference`      |
+| `set-coverage`       | defined vs used symbol sets       | `skill.variable-coverage`                         |
+| `cardinality`        | counted collection size           | `skill.invalid-critical-path` (5–7 steps)         |
+| `constant-eq`        | cross-artifact constant paths     | `prose.numeric-cap-exceeded` cap sync             |
+| `set-eq`             | two model collections             | `plugins.marketplace-drift`                       |
+| `content-digest-eq`  | file sha256 vs expected           | `agent_teams` canonical SHA check                 |
+| `namespace-owner`    | codex id prefix vs tree owner     | `codex.namespace-ownership-violation`             |
+
 
 Reserved kinds are documented in the schema with `"x-rfc31-status": "reserved"` so RFC-28 exporters and tooling validators accept files that declare future hints without executing them.
 
@@ -203,14 +215,16 @@ Exit codes follow the operator CLI table: validation/findings failure → `2`; i
 
 ### Relationship to RFC-28
 
-| Concern | RFC-28 | RFC-31 |
-| --- | --- | --- |
-| `rule-id` namespaces | Defines and exports | Consumes; does not mint new consumer-facing namespaces |
-| Finding JSON schema | Defines | Produces |
-| `deterministic_hints` shape | Validates | Executes |
-| `specify codex export` | Implements | Calls |
-| `specify review` | Non-goal | Implements deterministic core |
-| Shared codex parser | Implements in `specify-domain` | Reuses in indexer |
+
+| Concern                     | RFC-28                         | RFC-31                                                 |
+| --------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `rule-id` namespaces        | Defines and exports            | Consumes; does not mint new consumer-facing namespaces |
+| Finding JSON schema         | Defines                        | Produces                                               |
+| `deterministic_hints` shape | Validates                      | Executes                                               |
+| `specify codex export`      | Implements                     | Calls                                                  |
+| `specify review`            | Non-goal                       | Implements deterministic core                          |
+| Shared codex parser         | Implements in `specify-domain` | Reuses in indexer                                      |
+
 
 RFC-28 should reserve extensibility in the codex authoring schema for additional hint kinds without implementing them. See [RFC-28 §Deterministic hints extensibility](rfc-28-codex-rules.md#deterministic-hints-extensibility).
 
@@ -226,9 +240,11 @@ Keep imperative `tooling check` predicates. Add a mapper from today's `Finding` 
 
 Introduce first-party framework policy files under `tooling/rules/` using the same codex markdown shape but a dedicated namespace:
 
-| Namespace | Owner |
-| --- | --- |
-| `FRAME-*` | Framework-repo checks not tied to a consumer target adapter |
+
+| Namespace | Owner                                                       |
+| --------- | ----------------------------------------------------------- |
+| `FRAME-`* | Framework-repo checks not tied to a consumer target adapter |
+
 
 `FRAME-*` rules use the same hint interpreter and WorkspaceModel with `scan_profile: framework`. Imperative checks retire only when a declarative rule plus extractor coverage replaces them. Until then, both may run; duplicate coverage is a migration smell, not a CI failure.
 
@@ -242,17 +258,19 @@ Leave `tooling check` unchanged. RM-10 and framework CI remain separate surfaces
 
 Reference mapping from current `tooling/src/check/` predicates to declarative kinds. Not a commitment to migrate every row.
 
-| Current rule id prefix | Declarative kind(s) | Phase 3 priority |
-| --- | --- | --- |
-| `adapter.*` | `schema` | High — already schema-shaped |
-| `skill.*` (frontmatter) | `schema`, `unique`, grammar as `regex` | High |
-| `skill.*` (body) | `cardinality`, `regex`, `set-coverage` | Medium |
-| `links.*` | `reference-resolves` | High |
-| `codex.*` | `schema`, `namespace-owner`, `unique` | Medium — shape checks may stay in tooling |
-| `plugins.*` | `set-eq`, symlink facts | Medium |
-| `prose.*` | `regex`, `constant-eq` | Medium |
-| `scenarios.*` | `schema`, custom trace freshness | Low — may stay imperative |
-| `tools.*` | `tool`, `constant-eq` | Low |
+
+| Current rule id prefix  | Declarative kind(s)                    | Phase 3 priority                          |
+| ----------------------- | -------------------------------------- | ----------------------------------------- |
+| `adapter.`*             | `schema`                               | High — already schema-shaped              |
+| `skill.*` (frontmatter) | `schema`, `unique`, grammar as `regex` | High                                      |
+| `skill.*` (body)        | `cardinality`, `regex`, `set-coverage` | Medium                                    |
+| `links.*`               | `reference-resolves`                   | High                                      |
+| `codex.*`               | `schema`, `namespace-owner`, `unique`  | Medium — shape checks may stay in tooling |
+| `plugins.*`             | `set-eq`, symlink facts                | Medium                                    |
+| `prose.*`               | `regex`, `constant-eq`                 | Medium                                    |
+| `scenarios.*`           | `schema`, custom trace freshness       | Low — may stay imperative                 |
+| `tools.*`               | `tool`, `constant-eq`                  | Low                                       |
+
 
 Predicates invoking subprocesses (`specify source resolve`, declared-tool equivalence) remain `kind: tool` or imperative orchestration.
 
@@ -279,7 +297,7 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 1. **Schemas.** Add `workspace-model.schema.json`; extend codex authoring schema with reserved hint kinds (documented, not executed in RFC-28).
 2. **Indexer.** Implement `scan_profile: consumer` extractors: files, frontmatter, markdown links, basic sections. Reuse RFC-28 codex parser for any codex paths in consumer overlays.
 3. **Hint interpreter.** Implement `regex`, `path-pattern`, `schema`, `tool` with golden fixtures per kind.
-4. **`specify review`.** Wire export → index → eval → envelope; add `--dump-model` for debugging.
+4. `**specify review`.** Wire export → index → eval → envelope; add `--dump-model` for debugging.
 5. **Acceptance.** Golden tests: resolved rules + sample crate tree → stable findings JSON; fingerprint stability; evidence size cap enforcement from RFC-28.
 6. **Roadmap RM-10.** Update review briefs to reference deterministic findings alongside human `REVIEW.md`.
 
@@ -324,7 +342,7 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 
 ## Open Questions
 
-1. Should `FRAME-*` live in `tooling/rules/` or `adapters/shared/codex/framework/`? Current preference: `tooling/rules/` to keep consumer codex trees clean; export treats them as `origin: framework`.
+1. Should `FRAME-`* live in `tooling/rules/` or `adapters/shared/codex/framework/`? Current preference: `tooling/rules/` to keep consumer codex trees clean; export treats them as `origin: framework`.
 2. Should the indexer run extractors in parallel (rayon) from day one? Current preference: yes for file walks; sequential is acceptable for v1 if fixture runtime stays under RFC-5's full-scan budget on CI.
 3. Should `specify review` evaluate reserved hints as no-ops or hard-fail? Current preference: no-op with a single summary warning when `--verbose`; hard-fail only with `--strict-hints`.
 4. Where should shared diagnostic formatters live — `specify-domain`, a new `specify-diagnostics` crate, or duplicated thin wrappers? Current preference: `specify-domain` until formatters pull in heavy deps.
@@ -339,3 +357,4 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 - [docs/contributing/checks.md](../docs/contributing/checks.md)
 - [tooling/src/check/mod.rs](../tooling/src/check/mod.rs) — current imperative predicate registry
 - [augentic/lints](https://github.com/augentic/lints) — reference for diagnostics UX in Phase 3
+

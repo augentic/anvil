@@ -8,9 +8,9 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 
 | Layer | What it automates | Manual fallback |
 | ----- | ----------------- | --------------- |
-| Layer 2 | `/spec:plan`, `/spec:execute`, `/spec:finalize` | Individual skills + `specify plan *` / `specify slice *` |
+| Layer 2 | `/spec:plan`, `/spec:execute`, `/spec:finalize` | Individual skills + `specrun plan *` / `specrun slice *` |
 | Layer 1 | Per-slice refine → build → merge inside execute | Run `/spec:refine`, `/spec:build`, `/spec:merge` by hand |
-| Layer 0 | Project and adapter configuration | `specify init`, `specify source resolve`, `specify target resolve` |
+| Layer 0 | Project and adapter configuration | `specrun init`, `specrun source resolve`, `specrun target resolve` |
 
 ## When execute fails
 
@@ -23,25 +23,25 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 Drive one slice without the execute loop:
 
 ```bash
-specify plan transition <name> reviewed
-specify plan next
+specrun plan transition <name> reviewed
+specrun plan next
 /spec:refine <slice>
 /spec:build <slice>
 /spec:merge <slice>
 ```
 
-Repeat `specify plan next` between slices when the plan has multiple entries.
+Repeat `specrun plan next` between slices when the plan has multiple entries.
 
 ## When finalize is blocked
 
 If push or PR observation fails, use CLI verbs directly:
 
 ```bash
-specify workspace push
-specify plan archive <name>
+specrun workspace push
+specrun plan archive <name>
 ```
 
-See [specify plan](../reference/cli/plan.md) and [specify workspace](../reference/cli/workspace.md).
+See [specrun plan](../reference/cli/plan.md) and [specrun workspace](../reference/cli/workspace.md).
 
 ## See also
 

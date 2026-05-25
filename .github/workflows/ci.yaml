@@ -43,20 +43,16 @@ jobs:
           path: specify-cli
           ref: ${{ steps.specify-cli-ref.outputs.ref }}
           fetch-depth: 1
-          sparse-checkout: schemas
-          sparse-checkout-cone-mode: false
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: tooling
+          workspaces: specify-cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
           
       - name: Verify framework
         run: |
-          cargo test --locked --manifest-path tooling/Cargo.toml
-          cargo run --locked --manifest-path tooling/Cargo.toml -- check
-        env:
-          SPECIFY_CLI_DIR: specify-cli
+          cargo test --locked --manifest-path specify-cli/Cargo.toml -p specify-authoring
+          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specdev -- check --framework-root .

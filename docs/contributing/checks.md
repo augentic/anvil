@@ -1,17 +1,17 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `tooling/`. `make check` forwards to `tooling check`; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is checked by the `specdev` authoring binary from `augentic/specify-cli`. `make check` forwards to `specdev check`; CI runs the same binary in release mode. Run checks before every pull request.
 
-## Editor-first vs tooling check
+## Editor-first vs specdev check
 
 Framework validation splits into two surfaces:
 
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`tooling check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … -- check` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specdev check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- check --framework-root .` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in [`tooling/schemas/`](../../tooling/schemas/). [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing symlinks to those files so Cursor's JSON/YAML language servers resolve the same contract.
+**Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -19,9 +19,9 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `tooling/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `tooling check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `tooling/schemas/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
 
 ## Running checks
 
@@ -29,7 +29,7 @@ Use the same pattern for other plain YAML files when a framework or runtime sche
 make check
 ```
 
-This runs `cargo run --release --manifest-path tooling/Cargo.toml -- check`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
 Tooling contributors run the full local CI subset with:
 
@@ -37,18 +37,18 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `check` + `test`. When a sparse `specify-cli/` checkout exists at the repo root (CI layout), the Makefile sets `SPECIFY_CLI_DIR=specify-cli` automatically; otherwise it defaults to `../specify-cli`.
+`make ci` runs `check` + `test`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout.
 
 Tooling contributors can also invoke the binary and acceptance tests directly:
 
 ```bash
-cargo run --release --manifest-path tooling/Cargo.toml -- check
-cargo test --manifest-path tooling/Cargo.toml
+cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .
+cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
 ```
 
 The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
 
-Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter manifest validation needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` prints an actionable hint naming the resolved path.
+Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
 
 ### Diagnostic format
 
@@ -69,7 +69,7 @@ FAIL: <rule-id>: <message>
 | `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
 | `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
 
-See [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs) for the full predicate list.
+See the `specify-authoring` crate's `check` module for the full predicate list.
 
 ## What the checks enforce
 
@@ -81,7 +81,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by [`tooling/src/check/adapter.rs`](../../tooling/src/check/adapter.rs) through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with `specify-cli` under `schemas/` and are loaded by the `specify-authoring` crate.
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -99,7 +99,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against [`tooling/schemas/skill.schema.json`](../../tooling/schemas/skill.schema.json) (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
+Every `SKILL.md` under `plugins/` is validated against the `specify-authoring` skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Name match** -- the `name` field must match the parent directory name
@@ -145,7 +145,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against [`tooling/schemas/scenario.schema.json`](../../tooling/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Acceptance scenario files are validated against [`crates/authoring/schemas/scenario.schema.json`](../../crates/authoring/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
@@ -224,7 +224,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`tooling/schemas/codex-rule.schema.json`](../../tooling/schemas/codex-rule.schema.json).
+  conforms to [`crates/authoring/schemas/codex-rule.schema.json`](../../crates/authoring/schemas/codex-rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
@@ -257,9 +257,9 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 To add a new check:
 
-1. Add a module under [`tooling/src/check/`](../../tooling/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
-2. Register the check in the `checks` array in [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs).
-3. Add a fixture-based integration test under [`tooling/tests/`](../../tooling/tests/) when the predicate needs regression coverage.
+1. Add a module under [`crates/authoring/src/check/`](../../crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
+2. Register the check in the `checks` array in [`crates/authoring/src/check/mod.rs`](../../crates/authoring/src/check/mod.rs).
+3. Add a fixture-based integration test under [`crates/authoring/tests/`](../../crates/authoring/tests/) when the predicate needs regression coverage.
 4. Run `make check` to verify the new check works.
 
 Checks are numbered 1–13 contiguously in this document. New checks should use the next available number (currently 14).

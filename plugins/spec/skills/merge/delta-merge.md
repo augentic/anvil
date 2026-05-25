@@ -4,7 +4,7 @@ This document describes the merge algorithm used when archiving a slice to merge
 
 ## Merge Algorithm
 
-The `specify` CLI implements this algorithm — `specify slice merge run` for the commit path, `specify slice merge preview` for the dry-run variant, and `specify slice validate` for the baseline coherence check. The description is kept here as a reference for authors who want to understand what the CLI is doing under the hood.
+The `specify` CLI implements this algorithm — `specrun slice merge run` for the commit path, `specrun slice merge preview` for the dry-run variant, and `specrun slice validate` for the baseline coherence check. The description is kept here as a reference for authors who want to understand what the CLI is doing under the hood.
 
 **What is a requirement block?** A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
