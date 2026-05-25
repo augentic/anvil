@@ -337,7 +337,7 @@ components:
     first-seen-slice: onboarding-screens
     first-seen-at: 2026-05-25T12:00:00Z
     confirmed-at: 2026-05-30T09:00:00Z
-    skeleton:                      # serialised container/leaf shape from claims
+    skeleton:                      # authoritative structural shape from claims
       kind: container
       container: group
       direction: row
@@ -351,6 +351,7 @@ components:
         - kind: leaf
           leaf: icon-button
           role: tab
+    skeleton-digest: sha256:a7f3…  # derived from normalised skeleton per structural-identity.md
     variants:                      # asset-family variants (RFC-31 + screenshots stage 5b)
       - id: home
         assets: [nav-home-default, nav-home-active]
@@ -626,8 +627,8 @@ Design choices that explicitly support these futures:
 
 ## Open questions
 
-1. **Catalog skeleton serialisation.** The catalog needs a serialised skeleton that the CLI can structurally diff against new claims. Two options: (a) embed the claim subtree verbatim, (b) compute a content-addressable digest of the normalised skeleton. Current preference: (a) for human reviewability; (b) as a sidecar `skeleton-digest:` field for fast lookup.
-2. **Catalog scope vs Vectis-target specificity.** The catalog as drafted is Vectis-shaped (regions / containers / leaves). Should it generalise (catalog `<kind>` becomes adapter-extensible) or stay Vectis-only with a hard-coded schema? Current preference: Vectis-only in v1; generalise when a second target needs cross-cutting components. Mitigated: the structural-identity rules are extracted into `docs/reference/structural-identity.md` (C.11) so future visual adapters (Figma, legacy-code) have a clear contract for the claim shapes catalog reconciliation accepts.
+1. ~~**Catalog skeleton serialisation.** The catalog needs a serialised skeleton that the CLI can structurally diff against new claims. Two options: (a) embed the claim subtree verbatim, (b) compute a content-addressable digest of the normalised skeleton.~~ Resolved: both. The embedded `skeleton:` subtree is **authoritative** and human-reviewable; a sibling `skeleton-digest:` field (sha256 of the skeleton normalised per `docs/reference/structural-identity.md`) is a CLI-maintained derived cache for O(1) reconciliation lookup. The CLI recomputes the digest on every catalog write. If an operator hand-edits the skeleton tree, `specify slice validate` catches digest drift and the CLI rewrites the digest on the next reconciliation pass. No additional normalisation spec is required — the structural-identity rules (C.11) already define the canonical form that feeds the hash.
+2. ~~**Catalog scope vs Vectis-target specificity.** The catalog as drafted is Vectis-shaped (regions / containers / leaves). Should it generalise (catalog `<kind>` becomes adapter-extensible) or stay Vectis-only with a hard-coded schema?~~ Resolved: keep it Vectis-shaped (regions / containers / leaves) without generalising. The entire process targets Vectis for now, and the vocabulary — regions, containers, leaves — describes user-interface construction at a level that is naturally generic enough to support other UI target frameworks when they arrive. Adding adapter-extensible `<kind>` indirection now would be premature abstraction with no second consumer to validate the design. The structural-identity rules extracted into `docs/reference/structural-identity.md` (C.11) already give future visual adapters (Figma, legacy-code) a clear contract for the claim shapes catalog reconciliation accepts; generalisation can follow when a second target actually needs it.
 3. ~~**Single-instance candidates.** Today the adapter emits `notes.candidate_component: <slug>` on single-instance skeletons. Should the catalog record those as `candidate` entries proactively (so a later slice's second instance auto-promotes), or wait until ≥2 instances exist within one run?~~ Resolved: record proactively. The noise concern does not hold — `candidate` entries are inert metadata with no downstream effects (no `component:` rewrites, no shared-component generation, no refactor proposals). Only `confirmed` entries trigger downstream work. The cost of a false positive (`specify component reject`) is far lower than the cost of a false negative (operator manually discovering cross-slice duplication or never discovering it). Without proactive recording, N sequential single-screen slices that each carry one instance of a shared structure never bootstrap the catalog at all — the exact scenario the catalog was designed to solve.
 4. **Preview verb scope beyond screenshots.** `specify source preview` is useful for any source adapter, not just `screenshots`. Should `documentation` and `code-typescript` ship `briefs/preview.md` too in this RFC? Current preference: defer — the verb is generic, but only `screenshots` needs the visual render path in v1.
 5. **`specify tool schema` discovery.** Should the verb list available schemas when called as `specify tool schema vectis` (no `<name>`)? Current preference: yes, print the kebab-case schema names and their canonical URLs.
