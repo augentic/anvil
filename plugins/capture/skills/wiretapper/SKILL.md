@@ -59,25 +59,10 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
 1. From `$LEGACY_DIR`, run the project build (e.g. `npm run build` or `npx tsc --noEmit`). Use the script the project defines; if both exist, prefer `npm run build`.
 2. If the build fails, report the compiler errors and **fail the step**. Do not leave the repo in a broken state without failing.
 
-### Step 6 (Optional): Integration Doc
-
-Optionally add `$LEGACY_DIR/src/wiretap/README.md` documenting that wiretap is enabled with `WIRETAP_ENABLED=true` and listing which adapters were registered.
-
 ## Reference Documentation
-
 - **[references/design.md](references/design.md)** — Detection table, file structure, and constraints. The authoritative source for generated code structure.
 - **[references/adapters/](references/adapters/)** — Full TypeScript code for each adapter; generate code that matches these references exactly.
 - **[Capture output format](../../../../adapters/sources/captures/references/capture-format.md)** — directory layout wiretap output must satisfy for `captures` source binding (`tests/data/replays/<handler>/<scenario>.json`).
-
-## Error Handling
-
-| Issue | Cause | Resolution |
-|-------|--------|------------|
-| Invalid or missing legacy path | Bad argument or path not a directory | Fail with "Error: legacy-dir is required and must be an existing directory." (or similar) |
-| No package.json | Not a Node project | Fail with clear message; do not generate. |
-| Entrypoint not found | Unusual layout | Fail with message listing paths checked. |
-| Build fails after wiring | Syntax/import errors in generated or patched code | Report compiler output and fail the step. |
-| Wiretap capture throws | Bug in generated adapter | All adapters must wrap capture in try/catch (design guardrail). |
 
 ## Verification Checklist
 

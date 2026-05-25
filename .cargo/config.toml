@@ -1,0 +1,2 @@
+[alias]
+fcheck = "run --release --manifest-path tooling/Cargo.toml -- check"

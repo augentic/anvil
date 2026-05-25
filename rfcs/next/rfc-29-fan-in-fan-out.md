@@ -1,6 +1,6 @@
 # RFC-29: Fan-In/Fan-Out Code Generation Contract
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), RFC-28 - Enables: provable multi-source, multi-target Specify generation
+> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../rfc-28-codex-rules.md) - Enables: provable multi-source, multi-target Specify generation
 
 ## Abstract
 
@@ -603,6 +603,7 @@ Rejected for v1. It would move too much judgment into the framework. Exact ids a
 - [RFC-25: Workflow](../done/rfc-25-workflow.md)
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
 - RFC-28: Codex Resolution and Structured Review Findings
+- RFC-31: WorkspaceModel and Declarative Rule Execution
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim fusion](../../plugins/spec/references/synthesis/claim-fusion.md)

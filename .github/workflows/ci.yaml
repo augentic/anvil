@@ -2,32 +2,29 @@ name: CI
 
 on:
   push:
-    paths:
-      - "plugins/**"
-      - "schemas/**"
-      - "scripts/**"
-      - "docs/**"
-      - ".cursor/rules/**"
-      - ".cursor-plugin/**"
-      - ".github/workflows/ci.yaml"
-      - "AGENTS.md"
-      - "Makefile"
-  pull_request:
-    branches: [main]
-  workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
   checks:
-    name: Documentation and consistency checks
+    name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
 
       - name: Choose specify-cli ref
         id: specify-cli-ref
@@ -40,20 +37,26 @@ jobs:
             echo "ref=main" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout specify-cli schemas
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           repository: augentic/specify-cli
           path: specify-cli
           ref: ${{ steps.specify-cli-ref.outputs.ref }}
-          sparse-checkout: |
-            schemas
+          fetch-depth: 1
+          sparse-checkout: schemas
           sparse-checkout-cone-mode: false
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Run checks
-        run: make check
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tooling
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
+          
+      - name: Verify framework
+        run: |
+          cargo test --locked --manifest-path tooling/Cargo.toml
+          cargo run --locked --manifest-path tooling/Cargo.toml -- check
         env:
           SPECIFY_CLI_DIR: specify-cli

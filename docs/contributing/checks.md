@@ -1,6 +1,27 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `scripts/check.ts` that validates documentation, skills, adapter manifests, and the marketplace manifest. Run it before every pull request.
+The `specify` repo includes an automated consistency checker at `tooling/`. `make check` forwards to `tooling check`; CI runs the same binary in release mode. Run checks before every pull request.
+
+## Editor-first vs tooling check
+
+Framework validation splits into two surfaces:
+
+| Surface | When it runs | What it covers |
+| --- | --- | --- |
+| **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
+| **`tooling check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … -- check` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+
+**Authoritative schemas** live in [`tooling/schemas/`](../../tooling/schemas/). [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing symlinks to those files so Cursor's JSON/YAML language servers resolve the same contract.
+
+**Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
+```
+
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `tooling/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `tooling check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `tooling/schemas/`.
 
 ## Running checks
 
@@ -8,13 +29,47 @@ The `specify` repo includes an automated consistency checker at `scripts/check.t
 make check
 ```
 
-This runs `scripts/check.ts` via [Deno](https://deno.land):
+This runs `cargo run --release --manifest-path tooling/Cargo.toml -- check`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+
+Tooling contributors run the full local CI subset with:
 
 ```bash
-deno run --allow-read --allow-env scripts/check.ts
+make ci
 ```
 
-Exit code `0` means all checks pass. Any failure prints `FAIL: <description>` and exits non-zero with a count of failures.
+`make ci` runs `check` + `test`. When a sparse `specify-cli/` checkout exists at the repo root (CI layout), the Makefile sets `SPECIFY_CLI_DIR=specify-cli` automatically; otherwise it defaults to `../specify-cli`.
+
+Tooling contributors can also invoke the binary and acceptance tests directly:
+
+```bash
+cargo run --release --manifest-path tooling/Cargo.toml -- check
+cargo test --manifest-path tooling/Cargo.toml
+```
+
+The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
+
+Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter manifest validation needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` prints an actionable hint naming the resolved path.
+
+### Diagnostic format
+
+Each finding prints on stderr as:
+
+```text
+FAIL: <rule-id>: <message>
+  at <repo-relative-path>:<line>
+```
+
+`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `codex.namespace-ownership-violation`). The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
+
+| Rule id prefix | Check module | Topic |
+| --- | --- | --- |
+| `adapter.*` | `check::adapter` | Adapter manifest schema and missing manifests |
+| `links.*` | `check::links` | Markdown links, skill references, skill directives |
+| `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
+| `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
+| `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
+
+See [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs) for the full predicate list.
 
 ## What the checks enforce
 
@@ -26,7 +81,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by `scripts/checks/adapter.ts` through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with the `specify-cli` binary under `schemas/` and are loaded by [`tooling/src/check/adapter.rs`](../../tooling/src/check/adapter.rs) through the `SPECIFY_CLI_DIR` resolver (defaults to `../specify-cli`).
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -44,7 +99,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.schema.json`:
+Every `SKILL.md` under `plugins/` is validated against [`tooling/schemas/skill.schema.json`](../../tooling/schemas/skill.schema.json) (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Name match** -- the `name` field must match the parent directory name
@@ -90,7 +145,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Acceptance scenario files are validated against [`tooling/schemas/scenario.schema.json`](../../tooling/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
@@ -131,7 +186,7 @@ Scenario ID: `contracts-describe`
 The check enforces:
 
 - **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `adapter` is required when `kind` is `adapter` or `adapter-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `adapter-boundary`. `kind` is an open enum (`adapter`, `adapter-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `adapter` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
-- **Stages prefix** — `stages` must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`. `[define, build, merge]` is valid; `[build, define]`, `[define, merge]`, `[merge]` are not.
+- **Stages prefix** — `stages` must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element. `[plan, refine, build]` is valid; `[build, plan]`, `[plan, merge]`, `[merge]` are not.
 - **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
 - **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-adapter prefix (e.g. `contracts/`) so future adapters are not over-constrained.
 - **Cross-file id uniqueness** — every opted-in scenario `id` is unique across the repo; duplicates are reported with both file paths.
@@ -141,14 +196,18 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
+FAIL: scenarios.schema-violation: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.body-id-mismatch: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
 ```
 
-Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
 
 ### 12. Recorded trace freshness
 
@@ -165,7 +224,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to `.cursor/schemas/codex-rule.schema.json`.
+  conforms to [`tooling/schemas/codex-rule.schema.json`](../../tooling/schemas/codex-rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
@@ -176,11 +235,15 @@ invoke any external validator. It validates:
 **Example failure messages:**
 
 ```text
-FAIL: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
-FAIL: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-FAIL: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
-FAIL: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
-FAIL: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
+FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.schema-violation: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.duplicate-rule-id: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -194,12 +257,12 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 To add a new check:
 
-1. Write an `async function` in `scripts/check.ts` following the existing pattern.
-2. Call `fail(msg)` for each violation -- this increments the error counter and prints the failure.
-3. Add the function to one of the `Promise.all` groups at the bottom of the file. Independent checks can run in the same group; checks that depend on earlier results go in a later group.
+1. Add a module under [`tooling/src/check/`](../../tooling/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
+2. Register the check in the `checks` array in [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs).
+3. Add a fixture-based integration test under [`tooling/tests/`](../../tooling/tests/) when the predicate needs regression coverage.
 4. Run `make check` to verify the new check works.
 
-Checks are numbered 1–13 contiguously. New checks should use the next available number (currently 14).
+Checks are numbered 1–13 contiguously in this document. New checks should use the next available number (currently 14).
 
 ## CLI checks
 

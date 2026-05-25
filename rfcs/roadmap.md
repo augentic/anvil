@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `framework-check` validator and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo tooling and consumer-project review. The planned `tooling check` validator and `specify review` reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-31](rfc-31-workspace-model.md) adds the shared execution substrate for consumer review, with optional framework convergence in Phase 3.
 
 ## Sequenced Roadmap
 
@@ -41,7 +41,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 #### RM-07: RFC-4 Option 1: typed skill expression
 
-**Goal:** Add deterministic structural validation for skill authoring inside `framework-check`.  
+**Goal:** Add deterministic structural validation for skill authoring inside `tooling check`.  
 **Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.  
 **Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
 
@@ -52,7 +52,8 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
+**Depends:** [RFC-28](rfc-28-codex-rules.md) (contract + export) then [RFC-31](rfc-31-workspace-model.md) Phase 2 (WorkspaceModel + hint interpreter + `specify review`).
+**Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-31's deterministic scanner.
 **Target surface:**
 
 ```bash
@@ -65,6 +66,8 @@ specify review --format json
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
+
+**Optional follow-on:** [RFC-31](rfc-31-workspace-model.md) Phase 3 — framework `tooling check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
 
 #### RM-11: Dependency-aware compatibility gates
 
@@ -117,9 +120,9 @@ specify events export
 
 #### RM-16: RFC-5: framework developer tooling workspace
 
-**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a `framework-rules` library crate, a `framework-check` binary for CI and local use, an `accept` crate that replaces `tests/cross_repo.ts`, a `docgen` binary that replaces `scripts/gen-envelope-doc.ts`, and full Deno retirement.
+**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](done/rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a single `tooling` binary with `check` and `docgen` subcommands for CI and local use, integration tests that replace `tests/cross_repo.ts`, and full Deno retirement.
 **Why now:** Removes Deno from CI and contributor prerequisites, kills the parser duplication between `tests/lib/spec_provenance.ts` and `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner — without bloating the operator `specify` binary with dev-only surfaces.
-**Codex follow-up:** First-party codex shape validation lives in `framework-rules::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
+**Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize

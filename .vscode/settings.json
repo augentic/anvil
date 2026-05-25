@@ -2,5 +2,22 @@
     "[markdown]": {
         "editor.wordWrap": "wordWrapColumn",
         "editor.wordWrapColumn": 100
+    },
+    "json.schemas": [
+        {
+            "fileMatch": [".cursor-plugin/marketplace.json"],
+            "url": "./tooling/schemas/marketplace.schema.json"
+        }
+    ],
+    "yaml.schemas": {
+        "https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json": [
+            "adapters/sources/*/adapter.yaml"
+        ],
+        "https://github.com/augentic/specify-cli/raw/main/schemas/target.schema.json": [
+            "adapters/targets/*/adapter.yaml"
+        ],
+        "./tooling/schemas/skill.schema.json": [],
+        "./tooling/schemas/scenario.schema.json": [],
+        "./tooling/schemas/codex-rule.schema.json": []
     }
 }
