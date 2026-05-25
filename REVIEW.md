@@ -495,3 +495,10 @@ $ rg --files -g 'SKILL.md' | xargs wc -l | sort -nr
 ## Post-mortem
 
 <!-- One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress. -->
+- F1 (validate raw plan schema): actual ΔLOC +64 vs predicted +8; done when clean; regressions none.
+- F2 (fix stale Ord contract): actual ΔLOC -4 vs predicted -4; done when clean; regressions none.
+- F3 (delete duplicate project gate): actual ΔLOC -103 vs predicted -65; done when clean; regressions none.
+- F4 (derive ClaimKind parsing): actual ΔLOC -21 vs predicted -27; done when clean; regressions none.
+- T1 (delete dead TargetRef accessors): actual ΔLOC -16 vs predicted -14; done when clean; regressions none.
+- T2 (fix retired workflow terms): actual ΔLOC 0 vs predicted 0; done when clean; regressions none.
+- T3 (trim wiretapper repetition): actual ΔLOC -15 vs predicted -15; done when clean; regressions none.
