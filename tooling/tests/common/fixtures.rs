@@ -1,8 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use tooling::Context;
+
 use super::fixtures_dir;
-use crate::Context;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceFixture {

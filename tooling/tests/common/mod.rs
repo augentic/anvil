@@ -1,9 +1,22 @@
 //! Shared helpers for cross-repo acceptance tests (`tooling/tests/*`).
+//!
+//! Cargo treats every `tooling/tests/*.rs` file as a separate integration-test
+//! binary, but skips subdirectories. The canonical pattern for sharing code
+//! between those binaries is `tests/<helper>/mod.rs` — see
+//! `docs/standards/coding-standards.md` (Module layout) for the local rule.
+//!
+//! Each integration test that uses these helpers declares `mod common;` at
+//! crate root. Items marked `pub` are visible to that one test binary only,
+//! so `#![allow(dead_code)]` here avoids per-binary unused-symbol warnings.
 
-mod fixtures;
-mod golden;
-mod schema;
-mod specify;
+// Each `tests/<name>.rs` mounts this module independently and only consumes
+// part of the toolbox. Suppress per-binary unused warnings for the rest.
+#![allow(dead_code, unused_imports)]
+
+pub mod fixtures;
+pub mod golden;
+pub mod schema;
+pub mod specify;
 
 pub use fixtures::{
     walk_skill_fixtures, walk_source_fixtures, walk_target_fixtures, SkillFixture, SourceFixture,
@@ -15,7 +28,7 @@ pub use specify::{resolve_specify_bin, skip_unless_specify_bin, with_specify_bin
 
 use std::path::Path;
 
-use crate::Context;
+use tooling::Context;
 
 /// Framework context resolved from the tooling crate manifest directory.
 pub fn framework_context() -> Context {

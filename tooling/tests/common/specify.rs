@@ -76,7 +76,6 @@ pub fn with_specify_bin(body: impl FnOnce()) {
 }
 
 /// Execute the resolved `specify` binary with `args`.
-#[allow(dead_code)]
 pub fn run_specify(args: &[&str], cwd: Option<&Path>) -> Result<SpecifyResult, String> {
     let bin = resolve_specify_bin().ok_or_else(|| {
         "specify binary not resolvable; set SPECIFY_BIN or install `specify` on PATH".to_string()

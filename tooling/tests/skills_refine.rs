@@ -2,7 +2,9 @@
 
 use specify_domain::spec::provenance::parse_spec_md;
 
-use tooling::test_support::{
+mod common;
+
+use common::{
     assert_non_empty_markdown, framework_context, read_text, validate_yaml_file_or_skip,
     walk_skill_fixtures, walk_yaml, CliSchemaId,
 };

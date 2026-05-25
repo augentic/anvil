@@ -6,7 +6,9 @@ use std::collections::BTreeSet;
 use serde_json::Value as JsonValue;
 use specify_domain::spec::provenance::{parse_spec_md, validate};
 
-use tooling::test_support::{framework_context, read_text, walk_target_fixtures};
+mod common;
+
+use common::{framework_context, read_text, walk_target_fixtures};
 
 fn ctx() -> tooling::Context {
     framework_context()

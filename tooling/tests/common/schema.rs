@@ -2,8 +2,8 @@ use std::path::Path;
 
 use serde_json::Value as JsonValue;
 
-use crate::context::Context;
-use crate::schema::collect_errors_for_test;
+use tooling::schema::collect_errors_for_test;
+use tooling::Context;
 
 /// CLI-distributed JSON Schema basenames under `specify-cli/schemas/`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

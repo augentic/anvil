@@ -2,7 +2,9 @@
 
 use serde_json::Value as JsonValue;
 
-use tooling::test_support::{
+mod common;
+
+use common::{
     assert_non_empty_markdown, assert_yaml_mapping, framework_context, walk_skill_fixtures,
 };
 

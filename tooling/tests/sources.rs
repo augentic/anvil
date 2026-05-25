@@ -7,7 +7,9 @@ use regex::Regex;
 use serde_json::Value as JsonValue;
 use walkdir::WalkDir;
 
-use tooling::test_support::{
+mod common;
+
+use common::{
     framework_context, read_text, read_yaml, validate_cli_schema_or_skip, validate_yaml_file_or_skip,
     walk_source_fixtures, walk_yaml, CliSchemaId,
 };
