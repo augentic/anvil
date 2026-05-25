@@ -1,6 +1,5 @@
 pub mod check;
 pub mod context;
-pub mod docgen;
 pub mod error;
 pub mod exit;
 pub mod finding;

@@ -8,11 +8,7 @@ else
 endif
 export SPECIFY_CLI_DIR
 
-.PHONY: check test doc-envelopes-check ci use-local-plugins use-team-plugins
-
-# Regenerate CLI envelope docs: cargo docgen-envelopes
-# Verify drift (CI):             cargo docgen-envelopes --verify
-# (Aliases live in .cargo/config.toml; the bare cargo invocations still work.)
+.PHONY: check test ci use-local-plugins use-team-plugins
 
 check:
 	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- check
@@ -20,10 +16,7 @@ check:
 test:
 	cargo test --manifest-path $(TOOLING_MANIFEST)
 
-doc-envelopes-check:
-	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes --verify
-
-ci: check test doc-envelopes-check
+ci: check test
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

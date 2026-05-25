@@ -43,7 +43,7 @@ jobs:
             echo "ref=main" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout specify-cli schemas and fixtures
+      - name: Checkout specify-cli schemas
         uses: actions/checkout@v6
         with:
           repository: augentic/specify-cli
@@ -51,8 +51,6 @@ jobs:
           ref: ${{ steps.specify-cli-ref.outputs.ref }}
           sparse-checkout: |
             schemas
-            tests/fixtures/plan
-            tests/fixtures/e2e/goldens
           sparse-checkout-cone-mode: false
 
       - name: Install Rust stable
@@ -70,10 +68,5 @@ jobs:
 
       - name: Run framework checks
         run: cargo run --release --manifest-path tooling/Cargo.toml -- check
-        env:
-          SPECIFY_CLI_DIR: specify-cli
-
-      - name: Verify envelope docs
-        run: cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --verify
         env:
           SPECIFY_CLI_DIR: specify-cli

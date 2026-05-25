@@ -1,308 +1,373 @@
-# Code & Skill Review — specify + specify-cli
+# Specify / Specify-CLI — Subtraction Pass
 
-Top three findings by tier: **F1 Delete retired `outcome set` / `journal append` from merge briefs** (wire-contract defect, ~−130 LOC), **F2 Stop double cycle diagnostics on `plan validate`** (wire-contract defect, ~−34 LOC), **F3 Single-pass `specs/` scan in `slice validate`** (~−55 LOC, hot-path I/O).
-Total ΔLOC if all land: **approximately −380 LOC**.
-Primary non-LOC axes moved: defect surface (nonexistent CLI verbs, duplicate cycle rows), duplicate I/O on validate hot paths, test duplication, check-script duplication.
-Top verified defects closed: **3** — merge briefs cite `specify slice outcome set` / `specify slice journal append` (verbs absent from `src/commands/slice/cli.rs`), `specify plan validate` emits two cycle codes for one SCC, execute skill reads retired `phase outcome` from `.metadata.yaml`; defect-only net ΔLOC: **~−134** (F1 + F2; portfolio cap unused).
-Most likely to break in remediation: **F2** — `plan.next` currently blocks cycles only through `Plan::validate`'s `dependency-cycle` findings; moving the gate to `doctor::cycle::detect` must preserve the `plan-structural-errors` refusal before `advance_next`.
+## Summary
 
-## Reconnaissance
+1. **Top three by sort key**:
+   (a) **F1** — `make check` is red on `main`; two stale rfc links in `rfcs/roadmap.md` (verified defect, ΔLOC ≈ 0).
+   (b) **F2** — Three hand-rolled `Ord`/`PartialOrd` impls (`SourceOperation`, `TargetOperation`, `AuthorityOverrideAction`) all replaceable with `#[derive]` (~−68 LOC, idiom).
+   (c) **F3** — Drop redundant `root_dir: PathBuf` fields from `ResolvedSourceAdapter` / `ResolvedTargetAdapter` (already exposed via `location.path()`) and the duplicate clone in `locate_axis` (~−18 LOC, −2 fields).
+2. **Total ΔLOC if all land**: **−131 LOC** across 4 structural findings + 2 tidies.
+3. **Primary non-LOC axes moved**: −2 public struct fields, −7 hand-rolled `impl` blocks, +3 `#[derive]` lines, −1 failing CI predicate, −1 transitive `serde_json::to_string` allocation per BTreeMap key compare on the cache-index hot path.
+4. **Verified defects closed**: 1 — `make check`'s `links.unresolved` predicate (×2 lines, both in the same file). Net +ΔLOC from defect-only findings: **0** (well under the +30 cap). No CI predicate failures remain after F1 lands; clippy / `cargo make check` already green on `specify-cli`.
+5. **Most likely to break in remediation**: **F2** — variant-reorder of `TargetOperation` (`Shape, Build, Merge` → `Build, Merge, Shape`) lets `derive(Ord)` reproduce the existing kebab-alphabetical iteration order; if any caller `match`es by integer discriminant or `as u8` casts (none found, but check), it will silently shift.
 
-- `tokei`: **specify** **658** files / **89,907** lines (Markdown **525** / **51,952**; Rust **3** / **120**); **specify-cli** **453** files / **65,244** lines (Rust **250** / **47,814**).
-- `cargo tree --duplicates` (`specify-cli`): non-empty — `base64 v0.21.7 / v0.22.1`, `reqwest v0.12.28 / v0.13.3`, multi-version `wasmtime` / `wasm-pkg-client` transitives. `Cargo.toml` frozen for this pass.
-- `rg -c '^#\[test\]' crates/ src/ tests/` (`specify-cli`): summed **514** `#[test]` declarations.
-- `rg --files -g '**/mod.rs'` (`specify-cli`): **3** files — `tests/common/mod.rs`, `crates/domain/tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`.
-- `wc -l docs/standards/*.md AGENTS.md`:
-  - `specify`: **584 total**.
-  - `specify-cli`: **780 total**.
-- Files >500 lines under `crates/` and `src/` (`specify-cli`):
-  - Tests: `crates/domain/tests/workspace.rs` **1048**, `crates/domain/tests/finalize.rs` **947**, `crates/domain/tests/registry.rs` **922**.
-  - Source: `crates/domain/src/discovery/document.rs` **890**, `crates/domain/src/slice/fusion.rs` **843**, `crates/domain/src/adapter/core.rs` **742**, `crates/domain/src/change/plan/core/model.rs` **700**, `crates/domain/src/journal.rs` **659**, `crates/domain/src/spec/provenance.rs` **607**, `crates/tool/src/validate.rs` **520**, `crates/domain/src/adapter/cache/io.rs` **509**, `src/commands/plan/lifecycle.rs` **506**.
-- `make check` (`specify`): **passed** — `All checks passed.` Total failures: **0**.
-- `cargo make check` (`specify-cli`): **passed** — `[cargo-make] INFO - Build Done in 169.93 seconds.` First error: **none**.
-- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **698** matching lines (dominated by inline `#[cfg(test)]` modules inside source files; **no operator-path panic defect** in `src/commands` outside `#[cfg(test)]`).
-- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/` (`specify-cli`): summed **50** matching lines (same test-module inflation).
+---
 
-## Structural Findings
-
-### F1 — Delete retired merge outcome commands
-
-**Evidence:** RFC-25 retired `PhaseOutcome` and `specify slice outcome set` ([`plugins/spec/references/phase-outcome-contract.md:3`](plugins/spec/references/phase-outcome-contract.md)). The CLI exposes no such verbs — `src/commands/slice/cli.rs` lists only `create`, `validate`, `merge`, `task`, `transition`, `touched-specs`, `overlap`, `drop`. `rg 'specify slice outcome set' adapters/targets` returns **12** hits across the three merge briefs; each also instructs `specify slice journal append`, which is likewise absent from the slice CLI surface.
+## Reconnaissance numbers (current state)
 
 ```text
-adapters/targets/omnia/briefs/merge.md:85:specify slice outcome set $SLICE_NAME merge failure \
-adapters/targets/vectis/briefs/merge.md:120:specify slice outcome set <slice> merge failure \
-adapters/targets/contracts/briefs/merge.md:82:specify slice outcome set <slice> merge failure \
-src/commands/slice/cli.rs:8-72   (no outcome / journal subcommands)
+tokei (both repos, totals):  1164 files, 162427 lines, 83159 code
+specify-cli Rust LOC:        302 files / 49504 code lines
+specify-cli mod.rs (non-test): 0 (only 3 in tests/common/)
+specify         standards:  716 LOC across 5 files (cli-contract.md, doc-authoring.md, skill-authoring.md, skill-guardrails.md)
+specify-cli     standards:  878 LOC across 6 files (style/coding/handler/architecture/testing/workflow)
+files > 500 LOC (specify-cli, non-test):
+  890  crates/domain/src/discovery/document.rs
+  742  crates/domain/src/adapter/core.rs
+  700  crates/domain/src/change/plan/core/model.rs
+  667  crates/domain/src/slice/fusion.rs
+  641  crates/domain/src/journal.rs
+  607  crates/domain/src/spec/provenance.rs
+  520  crates/tool/src/validate.rs
+  514  src/commands/plan/lifecycle.rs
+  509  crates/domain/src/adapter/cache/io.rs
+make check (specify):     FAIL — 2 × links.unresolved in rfcs/roadmap.md
+cargo clippy --workspace --all-targets -D warnings (specify-cli): PASS
+unwrap/expect on non-test paths under crates/ + src/: ~190 hits, all reviewed; every reachable hit
+  is regex-static, schema-static, or in `#[cfg(test)]` blocks (greps below).
+panic!/unreachable! on non-test paths: 16 hits, every one inside a `#[cfg(test)]` mod block
+  (false positive — test glob predicate excluded `tests.rs` only, not `mod tests {…}`).
 ```
 
-Merge brief totals: omnia **121**, vectis **169**, contracts **134** lines; § Outcome signalling blocks occupy **~52 / ~82 / ~82** lines respectively.
+No verified panic-on-operator-path or wire-contract finding turned up beyond F1.
 
-**Action:**
-1. In each of the three merge briefs, delete § Outcome signalling / Outcome contract branches (`success` / `failure` / `deferred` / bash examples for retired verbs).
-2. Replace with the pattern already used in [`plugins/spec/skills/merge/SKILL.md:37-47`](plugins/spec/skills/merge/SKILL.md) § Stop hint contract: one paragraph + bullet list (`slice`, `phase`, `failure-kind`, `paths`, `next-action`).
-3. Keep only adapter-unique gate prose (Omnia cargo/wasm32, Vectis cap-matrix, Contracts validator modes) under existing pre-merge sections; link `phase-outcome-contract.md` in one line only.
-4. In the same pass, fix [`docs/standards/skill-authoring.md:59`](docs/standards/skill-authoring.md) (drop `specify slice outcome set` from the canonical guardrails list) and [`docs/reference/cli/slice.md:134`](docs/reference/cli/slice.md) (remove `PhaseOutcome` stamp prose).
+---
 
-**Quality delta:** `−130 LOC, −1 wire-contract defect, −1 skill-integrity defect, −3 duplicate prose blocks`.
+## Structural findings
 
-**Net LOC:** merge briefs **424 → ~294** combined; standards/cli doc touch **~−6**.
+### F1 — Fix broken `rfcs/roadmap.md` links so `make check` is green again [defect closure]
 
-**Done when:** `rg 'specify slice outcome set|specify slice journal append' adapters/targets` returns **0**; `make check` passes.
-
-**Rule?** no — retired contract, three briefs only.
-
-**Counter-argument:** Journal append examples document the intended failure observability shape. It loses because the verbs do not exist in the binary — agents that follow the brief shell out to commands that fail immediately.
-
-**Depends on:** none.
-
-### F2 — One cycle diagnostic per plan validate
-
-**Evidence:** `Plan::validate` runs `detect_cycles` (`crates/domain/src/change/plan/core/validate.rs:35,97-132`, code `dependency-cycle`). `plan_doctor` then runs the same graph again via `cycle::detect` (`crates/domain/src/change/plan/doctor.rs:167-170`, `doctor/cycle.rs:16-48`, code `cycle-in-depends-on`). Both share `entry_dependency_graph` (`validate.rs:74-90`). On a cyclic plan, `specify plan validate` emits **two** error rows for the same SCC.
+**Evidence (current state)**:
 
 ```text
-crates/domain/src/change/plan/core/validate.rs:35:        results.extend(detect_cycles(&self.entries));
-crates/domain/src/change/plan/doctor.rs:170:    out.extend(cycle::detect(&plan.entries));
-tests/plan_orchestrate.rs:1588:        .find(|d| d["code"] == "cycle-in-depends-on")
+$ cd specify && make check
+FAIL: links.unresolved: Broken link in rfcs/roadmap.md: next/rfc-28-codex-rules.md
+  at rfcs/roadmap.md:1
+FAIL: links.unresolved: Broken link in rfcs/roadmap.md: rfc-5-tooling.md
+  at rfcs/roadmap.md:1
+2 check failure(s).
 ```
 
-`plan.next` blocks only through `plan.validate` (`src/commands/plan/lifecycle.rs:110`), not `plan_doctor`.
+The matching `git status` confirms RFC-5 was moved to `rfcs/done/rfc-5-tooling.md` and RFC-28 was promoted out of `rfcs/next/` to `rfcs/rfc-28-codex-rules.md`; nothing updated `rfcs/roadmap.md`:
 
-**Action:**
-1. Delete `detect_cycles` and its call at `validate.rs:35` (**~41 LOC**).
-2. `pub use` `doctor::cycle::detect` (change `pub(super)` → `pub` in `doctor/cycle.rs`).
-3. In `plan.next`'s `with_state` closure (`lifecycle.rs:109-117`), after loading the plan and before `advance_next`, refuse when `!cycle::detect(&plan.entries).is_empty()` with the existing `plan-structural-errors` envelope.
-4. Retarget `crates/domain/src/change/plan/core/validate/tests.rs` cycle tests (`:33-59`) to call `cycle::detect` directly (expect `cycle-in-depends-on`-equivalent non-empty output) instead of `plan.validate`'s `dependency-cycle`.
+```55:55:rfcs/roadmap.md
+**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
+```
 
-**Quality delta:** `−34 LOC, −1 wire-contract defect, −1 duplicate algorithm, −1 defect surface (double cycle row)`.
+```120:120:rfcs/roadmap.md
+**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a single `tooling` binary with `check` and `docgen` subcommands for CI and local use, integration tests that replace `tests/cross_repo.ts`, and full Deno retirement.
+```
 
-**Net LOC:** `validate.rs` **359 → ~318**; `lifecycle.rs` **506 → ~512** (+6 gate lines).
+**Action**:
 
-**Done when:** `rg -n 'dependency-cycle' crates/domain/src/change/plan/core/validate.rs` returns **0** (only doctor/cycle path remains); `cargo test cycle_error cycle-in-depends-on plan_validate_structured_cycle_payload --test plan_orchestrate` passes; cyclic plan JSON validate returns **exactly one** cycle diagnostic.
+1. In `rfcs/roadmap.md` line 55, replace `next/rfc-28-codex-rules.md` with `rfc-28-codex-rules.md`.
+2. In `rfcs/roadmap.md` line 120, replace `rfc-5-tooling.md` with `done/rfc-5-tooling.md`.
+3. Re-run `make check`.
 
-**Rule?** no — single duplicate check.
+**Quality delta**: `−1 defect, 0 LOC`. Two character-level path edits; no axes regressed.
+**Net LOC**: 392 → 392 (two characters changed in two lines).
+**Done when**: `make check` exits 0 and `tooling/target/release/tooling check 2>&1 | rg -c links.unresolved` returns `0`.
+**Rule?**: no — `tooling check` already enforces this; the rename slipped through because the move pre-dated this pass.
+**Counter-argument**: "Re-run `tooling check` in pre-commit instead." — Loses: pre-commit isn't part of this repo's policy and would add infrastructure; the predicate already exists.
+**Depends on**: none.
 
-**Counter-argument:** Dashboards route `dependency-cycle` separately from `cycle-in-depends-on`. It loses pre-1.0 because both describe the same SCC and the structured `cycle-in-depends-on` payload is strictly more useful.
+---
 
-**Depends on:** none.
+### F2 — Replace three hand-rolled `Ord` / `PartialOrd` impls with `#[derive]`
 
-### F3 — Single-pass spec.md scan in slice validate
-
-**Evidence:** Three functions each walk `specs/**/*.md`, read, and `parse_spec_md`:
+**Evidence (current state)**:
 
 ```text
-src/commands/slice/validate.rs:120-140  collect_synthesis_tags
-src/commands/slice/validate.rs:244-263  collect_spec_req_ids
-src/commands/slice/validate.rs:273-303  validate_spec_provenance
+$ cd specify-cli && rg -n 'fn cmp\(&self|impl Ord for|impl PartialOrd for' \
+    crates/ src/ --glob '!**/tests/**' --glob '!**/tests.rs'
+crates/domain/src/journal.rs:316:impl PartialOrd for AuthorityOverrideAction {
+crates/domain/src/journal.rs:322:impl Ord for AuthorityOverrideAction {
+crates/domain/src/journal.rs:323:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+crates/domain/src/adapter/operation.rs:70:impl Ord for SourceOperation {
+crates/domain/src/adapter/operation.rs:71:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+crates/domain/src/adapter/operation.rs:76:impl PartialOrd for SourceOperation {
+crates/domain/src/adapter/operation.rs:140:impl Ord for TargetOperation {
+crates/domain/src/adapter/operation.rs:141:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+crates/domain/src/adapter/operation.rs:146:impl PartialOrd for TargetOperation {
 ```
 
-All three call `collect_spec_files` + `read_to_string` + `provenance::parse_spec_md` independently on the operator hot path (`validate.rs:29-50`).
+All three impls exist solely to *override the derive's variant-declaration order*. Each ships with a paragraph-long doc comment claiming the manual impl "decouples the wire iteration order from variant order against future reshuffles". The same enums already carry a unit test that pins the wire order; the test (not the impl) is what protects the invariant.
 
-**Action:**
-1. Add a private `struct ScannedSpec { path: PathBuf, parsed: ParsedSpec }` and `fn scan_slice_specs(slice_dir: &Path, source_keys: &BTreeSet<String>) -> Result<(BTreeSet<String>, Vec<(String, RequirementTag)>, Vec<ValidationSummary>)>` that walks once and fans out req-ids, synthesis tags, and provenance summaries.
-2. Replace the three call sites in `run`, `collect_fusion_drift_findings` (pass pre-scanned req-ids), and delete `collect_synthesis_tags`, `collect_spec_req_ids`, and the inner loop of `validate_spec_provenance`.
+For `SourceOperation { Enumerate, Extract }`, declaration order already matches kebab-alphabetical order, so the manual `to_string().cmp(&to_string())` is dead code that allocates twice per compare:
 
-**Quality delta:** `−55 LOC, −2 duplicate walks, lower call-site burden on validate hot path`.
+```70:80:crates/domain/src/adapter/operation.rs
+impl Ord for SourceOperation {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.to_string().cmp(&other.to_string())
+    }
+}
+```
 
-**Net LOC:** `validate.rs` **382 → ~327**.
+For `TargetOperation { Shape, Build, Merge }`, declaration order disagrees with kebab-alphabetical order; reorder variants to `Build, Merge, Shape` and the derive matches the existing wire order.
 
-**Done when:** `rg -c 'fn collect_synthesis_tags|fn collect_spec_req_ids' src/commands/slice/validate.rs` returns **0**; `cargo test --test slice validate_passes_on_clean_fusion_inputs validate_flags_missing_req_id_in_fusion` passes.
+For `AuthorityOverrideAction { Set, Clear }`, declaration order already gives `Set < Clear`; the existing `set_sorts_before_clear` test (lines 332–344) is the load-bearing guard, not the manual impl.
 
-**Rule?** no — one handler, three duplicate loops.
+**Action** (all in `crates/domain/src/`):
 
-**Counter-argument:** Three small functions are easier to read in isolation. It loses because every `slice validate` invocation pays triple parse cost on the same files.
+1. `adapter/operation.rs`:
+   - Add `PartialOrd, Ord` to both `derive(...)` lists (1 line each).
+   - Reorder `TargetOperation` variants to `Build, Merge, Shape` (and move their doc comments with them).
+   - Delete `impl Ord for SourceOperation` (lines 70–74), `impl PartialOrd for SourceOperation` (76–80), `impl Ord for TargetOperation` (140–144), `impl PartialOrd for TargetOperation` (146–150) — 4 impl blocks, ~22 LOC.
+   - Trim the four-paragraph doc preamble that justifies the manual impls down to one sentence ("Variants declared in kebab-alphabetical order so `BTreeMap` iteration matches the wire envelope.") — ~16 LOC.
+   - Add or extend the existing `target_operation_round_trips_kebab_case` test with `assert!(TargetOperation::Build < TargetOperation::Merge && TargetOperation::Merge < TargetOperation::Shape)` (3 lines).
+2. `journal.rs`:
+   - Add `PartialOrd, Ord` to `AuthorityOverrideAction`'s `derive(...)` list.
+   - Delete `const fn sort_key` (lines 308–313, 6 LOC), `impl PartialOrd` (316–320, 5 LOC), `impl Ord` (322–326, 5 LOC), and the 12-line "Ord is implemented by hand…" rationale paragraph above the enum (~28 LOC total). The existing `set_sorts_before_clear` test continues to guard variant-order drift.
 
-**Depends on:** none.
+**Quality delta**: `−68 LOC, −7 impl blocks, −1 hand-rolled `sort_key` method, −1 per-cmp `String` heap alloc on cache-index sort hot path` (axes: LOC, types, idiom — `derive(Ord)` matches stdlib / clap / serde idiom).
+**Net LOC**: 204 (operation.rs) + 641 (journal.rs) = 845 → ~777.
+**Done when**: `rg -n 'impl (Partial)?Ord for (SourceOperation|TargetOperation|AuthorityOverrideAction)' crates/ src/` returns no matches; `cargo nextest run -p specify-domain operation::tests authority_override` passes.
+**Rule?**: no — `clippy::derive_ord_xor_partial_ord` plus the existing tests already provide negative coverage; a project-specific lint would be three duplicate hits' worth of value.
+**Counter-argument**: "The manual impl is documented as a deliberate decoupling from variant order." — Loses: the unit tests are the actual defence; the impl is redundant ceremony, and `to_string()` per cmp is a measurable inefficiency on the cache-index sort path. Reorderings are caught by the existing tests.
+**Depends on**: none.
 
-### F4 — Share evidence YAML path enumerator
+---
 
-**Evidence:** Near-identical `readdir` + `.yaml`/`.yml` filter + sort in:
+### F3 — Drop redundant `root_dir: PathBuf` from `Resolved{Source,Target}Adapter`
+
+**Evidence (current state)**:
+
+```280:304:crates/domain/src/adapter/core.rs
+pub struct ResolvedSourceAdapter {
+    pub manifest: SourceAdapter,
+    pub root_dir: PathBuf,
+    pub location: AdapterLocation,
+}
+…
+pub struct ResolvedTargetAdapter {
+    pub manifest: TargetAdapter,
+    pub root_dir: PathBuf,
+    pub location: AdapterLocation,
+}
+```
+
+`AdapterLocation` already exposes the path:
+
+```162:179:crates/domain/src/adapter/core.rs
+impl AdapterLocation {
+    pub const fn label(&self) -> &'static str { … }
+    pub const fn path(&self) -> &PathBuf {
+        match self { Self::Local(p) | Self::Cached(p) => p }
+    }
+}
+```
+
+And `locate_axis` literally clones the path back out solely to satisfy the `root_dir` field:
+
+```478:481:crates/domain/src/adapter/core.rs
+    check_axis_unique_for_name_memo(axis, name, project_dir, location.path())?;
+    let path = location.path().clone();
+    Ok((path, location))
+```
+
+Across both repos `root_dir` is read in 4 places:
 
 ```text
-crates/domain/src/schema.rs:101-117       validate_evidence_dir
-crates/domain/src/slice/fusion.rs:417-433 collect_evidence_claim_ids
+src/commands.rs:176,188      resolved.root_dir.display().to_string()  (×2)
+src/commands/context/assemble.rs:72,77    adapter.root_dir.join(...)  (×2)
+src/commands/tool.rs:38,42                plugin.root_dir(.clone())   (×2)
+crates/domain/tests/adapter.rs:74,90,295   resolved.root_dir.ends_with(…)
 ```
 
-Both run on every `specify slice validate` (`validate.rs:29` then `:204` via fusion drift) — every evidence file is walked twice.
+Every call site can swap `.root_dir` for `.location.path()` (or `.location.path().clone()` for the one tool.rs `clone` site) verbatim.
 
-**Action:**
-1. Add `pub fn evidence_yaml_paths(slice_dir: &Path) -> Result<Vec<PathBuf>>` to `crates/domain/src/schema.rs` (move the shared loop there).
-2. Replace both inline loops with calls to `evidence_yaml_paths`.
-3. Optionally piggyback claim-id extraction on the schema-validation read in a follow-up; this finding stops at deduplicating the walk.
+**Action** (`crates/domain/src/adapter/core.rs`):
 
-**Quality delta:** `−32 LOC, −1 duplicate walk, lower I/O on validate hot path`.
+1. Delete the `root_dir: PathBuf` field + its 2-line doc comment from both `ResolvedSourceAdapter` and `ResolvedTargetAdapter` (~6 LOC).
+2. In both `*::resolve` methods, drop the `root_dir,` line from the struct construction (2 LOC).
+3. Change `load_validated`'s return type from `(PathBuf, AdapterLocation, PathBuf, serde_json::Value)` to `(AdapterLocation, PathBuf, serde_json::Value)`, dropping the leading `PathBuf` (and the matching destructuring patterns at the two call sites) — ~3 LOC.
+4. Change `locate_axis`'s return type from `Result<(PathBuf, AdapterLocation), Error>` to `Result<AdapterLocation, Error>`; delete the trailing two-line `let path = location.path().clone(); Ok((path, location))` and return `Ok(location)` directly (~3 LOC).
+5. Update the 8 call sites listed above (rename only — same character count).
 
-**Net LOC:** `schema.rs` **250 → ~258** (+8 helper); `fusion.rs` **843 → ~825**; net **−32**.
+**Quality delta**: `−18 LOC, −2 public struct fields, −1 PathBuf clone per resolve`. (axes: LOC, types, call-site burden when exposing path — callers gain nothing extra).
+**Net LOC**: 742 → ~724 in `adapter/core.rs`; touched files compile and pass tests with no logic change.
+**Done when**: `rg -n 'root_dir' crates/domain/src/adapter/ src/ crates/domain/tests/` finds no matches in struct fields or destructure patterns; `cargo nextest run -p specify-domain adapter` passes.
+**Rule?**: no — single occurrence in this codebase.
+**Counter-argument**: "Two public fields is fine; tests use both." — Loses: tests use exactly one (assert against the `ends_with`), `.location.path().ends_with(...)` is the same number of characters and removes the duplicated state.
+**Depends on**: none.
 
-**Done when:** `rg -n 'eq_ignore_ascii_case\("yaml"\)' crates/domain/src/slice/fusion.rs` returns **0**; `cargo test collect_evidence_claim_ids -p specify-domain && cargo test --test slice` pass.
+---
 
-**Rule?** no — two call sites, one loop.
+### F4 — Replace `RequirementStatus` / `RequirementTag` hand-rolled `as_str` / `parse` with strum derives
 
-**Counter-argument:** Fusion and schema validation are separate concerns. It loses because the filter/sort logic is byte-identical and the operator path executes it back-to-back.
+**Evidence (current state)**:
 
-**Depends on:** none.
+```70:93:crates/domain/src/spec/provenance.rs
+impl RequirementStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Agreed => "agreed",
+            Self::Unknown => "unknown",
+            Self::Conflict => "conflict",
+            Self::Divergence => "divergence",
+        }
+    }
 
-### F5 — Table-drive journal wire-shape tests
-
-**Evidence:** Five near-identical append-one-event-read-one-line tests in `crates/domain/src/journal.rs:495-614` (`slice_extract_cache_hit_wire_shape`, `cache_miss`, `fusion_written`, `replay_completed`, `plan_amend_authority_override`). Each is **~15–20 LOC** of tempdir + `append_batch` + substring asserts. Integration coverage for CLI-driven emits lives in `tests/journal.rs` (**482 LOC**, golden fixtures) but does **not** cover cache-hit/miss wire bytes (`rg cache tests/journal.rs` → **0**).
-
-**Action:**
-1. Replace the five tests with one table-driven `event_wire_shapes_match_contract` test: `&[(EventKind, &[&str])]` rows asserting required JSON substrings.
-2. Keep `append_batch_empty_slice_is_no_op` and `no_snake_case_fields_or_values_leak_to_wire` unchanged.
-
-**Quality delta:** `−65 LOC, −4 test functions, −4 duplicate setup blocks`.
-
-**Net LOC:** `journal.rs` **659 → ~594**.
-
-**Done when:** `rg -c '_wire_shape' crates/domain/src/journal.rs` drops from **5** to **0**; `rg -c 'fn event_wire_shapes' crates/domain/src/journal.rs` returns **≥ 1**; `cargo test -p specify-domain journal::` passes.
-
-**Rule?** no — one module, five copies.
-
-**Counter-argument:** Separate tests give clearer failure names. It loses because the setup is identical and a table row pinpoints the failing event kind in the assertion output.
-
-**Depends on:** none.
-
-### F6 — Trim fusion drift unit tests covered by integration
-
-**Evidence:** `crates/domain/src/slice/fusion.rs:633-788` carries six granular `detect_drift_flags_*` / sort-stability unit tests. End-to-end drift ordering and message shape are already exercised in `tests/slice.rs:622-771` (`validate_passes_on_clean_fusion_inputs`, `validate_flags_missing_req_id_in_fusion`, `validate_flags_contributing_claim_not_found`, …).
-
-**Action:**
-1. Delete `detect_drift_flags_missing_fusion_entry`, `detect_drift_flags_extra_fusion_entry`, `detect_drift_flags_contributing_claim_with_no_evidence_row`, `detect_drift_flags_contributing_claim_with_missing_source_file`, `detect_drift_flags_orphan_evidence_claim`, and `detect_drift_findings_sort_byte_stable` from the inline `#[cfg(test)] mod tests`.
-2. Keep `round_trips_through_yaml`, `validates_against_embedded_schema`, `load_reports_schema_failure_for_hand_edited_file`, and one representative `detect_drift_clean_inputs_yield_no_findings` smoke.
-
-**Quality delta:** `−95 LOC, −6 redundant test functions, lower maintenance surface in 843-LOC file`.
-
-**Net LOC:** `fusion.rs` **843 → ~748**.
-
-**Done when:** `rg -c 'fn detect_drift_flags_' crates/domain/src/slice/fusion.rs` drops from **6** to **0**; `cargo test -p specify-domain fusion:: && cargo test --test slice fusion` pass.
-
-**Rule?** no — integration tests already pin the operator-visible shape.
-
-**Counter-argument:** Unit tests catch drift logic regressions faster. It loses because `tests/slice.rs` already drives `specify slice validate` through the same drift codes with real on-disk fixtures.
-
-**Depends on:** none.
-
-### F7 — Wire `skill_body.ts` through `walkSkillFiles`
-
-**Evidence:** `walkSkillFiles()` is defined at `scripts/checks/_shared.ts:134-147` ("Used by every skill-body discipline predicate") but never imported. `skill_body.ts` re-declares `PLUGINS_DIR` + `walk(...)` in **seven** exported predicates (`:32`, `:117`, `:190`, `:238`, `:342`, `:419`, `:451`).
-
-```text
-rg 'const PLUGINS_DIR = join\(REPO_ROOT, "plugins"\)' scripts/checks/skill_body.ts
-→ 7 matches
-rg 'walkSkillFiles' scripts/checks/
-→ 1 match (_shared.ts definition only)
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "agreed" => Some(Self::Agreed),
+            "unknown" => Some(Self::Unknown),
+            "conflict" => Some(Self::Conflict),
+            "divergence" => Some(Self::Divergence),
+            _ => None,
+        }
+    }
+}
 ```
 
-**Action:**
-1. Import `walkSkillFiles` from `./_shared.ts` in `skill_body.ts`.
-2. Replace each inline `walk(PLUGINS_DIR, { match: [/SKILL\.md$/], …})` loop with `for (const path of await walkSkillFiles())`.
-3. Delete the seven redundant `PLUGINS_DIR` declarations and duplicate traversal blocks.
-
-**Quality delta:** `−52 LOC, −6 duplicate walks, lower check-script maintenance`.
-
-**Net LOC:** `skill_body.ts` **524 → ~472**.
-
-**Done when:** `rg 'const PLUGINS_DIR' scripts/checks/skill_body.ts` returns **0**; `make check` passes.
-
-**Rule?** no — dead helper already documented as the canonical walk.
-
-**Counter-argument:** Inline walks are self-contained per predicate. It loses because the traversal rules (symlink skip) must stay identical and `_shared.ts` already owns them.
-
-**Depends on:** none.
-
-## One-Touch Tidies
-
-### T1 — Fix execute skill outcome drift
-
-**Evidence:** [`plugins/spec/skills/execute/SKILL.md:40`](plugins/spec/skills/execute/SKILL.md) says phase skills "reads their phase outcome from `.metadata.yaml`" — contradicts [`phase-outcome-contract.md:3-5`](plugins/spec/references/phase-outcome-contract.md). Critical Path step 4 (`:15`) and § Stop conditions (`:50-56`) restate the same three terminal cases verbatim.
-
-**Action:**
-1. Line 40: replace with "reads slice lifecycle from `.metadata.yaml` and phase exit codes; not an on-disk outcome field."
-2. Delete § Stop conditions (`:50-58`); CP step 4 already links [`stop-conditions.md`](plugins/spec/skills/execute/references/stop-conditions.md).
-
-**Quality delta:** `−10 LOC, −1 wire-contract defect, −1 duplicate section`.
-
-**Net LOC:** `execute/SKILL.md` **72 → ~62**.
-
-**Done when:** `rg 'phase outcome' plugins/spec/skills/execute/SKILL.md` returns **0**; `make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** Stop conditions inline aid skimming. It loses because the reference file is the single writer and duplication already drifted once.
-
-**Depends on:** none.
-
-### T2 — Delete ghost outcome-restatement predicate claim
-
-**Evidence:** [`docs/standards/skill-authoring.md:51`](docs/standards/skill-authoring.md) claimed mechanical enforcement for the phase-outcome one-line link rule, but no matching predicate exists under `scripts/` (and this pass does not add one).
-
-**Action:** Delete the false "Mechanically enforced by …" sentence from rule 4; keep the one-line link rule itself.
-
-**Quality delta:** `−1 LOC, −1 doc/implementation drift`.
-
-**Net LOC:** `skill-authoring.md` **154 → 153**.
-
-**Done when:** no repo references to the retired predicate name; `make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** The predicate should be implemented instead. It loses because this pass forbids new xtask predicates; deleting the false claim is the smallest honest fix.
-
-**Depends on:** F1 (merge brief cleanup makes the ghost claim moot).
-
-### T3 — Delete stale checks.md §2
-
-**Evidence:** [`docs/contributing/checks.md:27-29`](docs/contributing/checks.md) documents "### 2. Stale claims" pointing at `scripts/check.ts`, but `rg 'Stale claims|checkStale' scripts/checks/` returns **0** — no predicate implements it.
-
-**Action:** Delete §2 and renumber subsequent sections.
-
-**Quality delta:** `−4 LOC, −1 doc drift`.
-
-**Net LOC:** `checks.md` **218 → ~214**.
-
-**Done when:** `rg 'Stale claims' docs/contributing/checks.md` returns **0**; `make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** The check may be planned. It loses because contributors currently believe CI enforces something that does not run.
-
-**Depends on:** none.
-
-### T4 — Collapse validate JSON-schema boilerplate
-
-**Evidence:** Identical serialize → `validate_value` → filter `Fail` → `Error::Validation` pattern:
-
-```text
-crates/domain/src/schema.rs:52-67         validate_plan
-crates/domain/src/slice/fusion.rs:174-189 FusionIndex::validate
+```107:137:crates/domain/src/spec/provenance.rs
+impl RequirementTag {
+    pub const fn as_str(self) -> &'static str { … }
+    pub const fn expected_status(self) -> RequirementStatus { … }
+    fn parse(s: &str) -> Option<Self> { … }
+}
 ```
 
-**Action:**
-1. Add `fn validate_serialisable<T: Serialize>(value: &T, schema: &str, rule_id: &str, rule: &str) -> Result<(), Error>` beside `validate_value` in `schema.rs` (**~10 LOC**).
-2. Replace both call-site blocks with one-liners.
+Both enums already carry `#[serde(rename_all = "kebab-case")]` and the workspace already pulls in `strum = { version = "0.28", features = ["derive"] }`. `strum::Display`, `strum::EnumString`, and `strum::IntoStaticStr` (already used elsewhere — see `Axis`, `CacheMode`, `CacheMissReason`) cover both directions of the mapping for free.
 
-**Quality delta:** `−14 LOC net, −1 duplicate branch cluster`.
+External callers of `as_str` (4 hits, all in `provenance.rs::check_status` lines 445–459) feed a `format!("{}", x.as_str())` pattern — `Display` makes them `format!("{}", x)`, smaller still. External callers of `parse` (1 hit, line 527 inside the same file) become `s.parse().ok()` via `FromStr`.
 
-**Net LOC:** combined **−14**.
+**Action** (`crates/domain/src/spec/provenance.rs`):
 
-**Done when:** `rg -c 'filter\(\|s\| s\.status == ValidationStatus::Fail\)' crates/domain/src/slice/fusion.rs crates/domain/src/schema.rs` drops from **2** to **0**; `cargo test validates_against_embedded_schema -p specify-domain` passes.
+1. Add `strum::Display, strum::EnumString, strum::IntoStaticStr` to the `derive` list on `RequirementStatus` and `RequirementTag`. Keep `#[strum(serialize_all = "kebab-case")]` (matches the existing serde rule).
+2. Delete `impl RequirementStatus { as_str, parse }` (~22 LOC) and `impl RequirementTag { as_str, parse }` (~13 LOC), keeping `expected_status` (still load-bearing).
+3. Update the four call sites at lines 445–459 to use `{tag}` / `{status}` format-args directly; update line 527 to `status_raw.as_deref().and_then(|s| s.parse().ok())`.
 
-**Rule?** no — two sites only.
+**Quality delta**: `−25 LOC, −4 hand-rolled methods, +3 derive entries, idiom (matches Axis/CacheMode/CacheMissReason already in the same crate)`.
+**Net LOC**: 607 → ~582 in `spec/provenance.rs`.
+**Done when**: `rg -n 'fn (as_str|parse)\(' crates/domain/src/spec/provenance.rs` finds zero hand-rolled methods on `RequirementStatus` / `RequirementTag`; `cargo nextest run -p specify-domain spec::provenance` passes.
+**Rule?**: no.
+**Counter-argument**: "`as_str` is `const fn`; `Display` isn't." — Loses: every existing call site is inside `format!`/`writeln!` (non-const context), and no caller uses `as_str` in a `const` position. The const-ness was never reached.
+**Depends on**: none.
 
-**Counter-argument:** Inline validation is explicit about which schema failed. It loses because the filter/collect/error path is byte-identical.
+---
 
-**Depends on:** none.
+## One-touch tidies
+
+### T1 — `locate_axis` reuses `cached` / `local` instead of recomputing them in the not-found branch
+
+**Evidence**:
+
+```444:481:crates/domain/src/adapter/core.rs
+fn locate_axis(...) -> Result<(PathBuf, AdapterLocation), Error> {
+    let cached = cache_dir(project_dir, axis, name);
+    let location = if cached.is_dir() {
+        AdapterLocation::Cached(cached)
+    } else {
+        let local = adapter_axis_dir(project_dir, axis).join(name);
+        if local.is_dir() {
+            AdapterLocation::Local(local)
+        } else {
+            return Err(Error::Diag {
+                code: "adapter-not-found",
+                detail: format!(
+                    "adapter `{name}` (axis `{axis}`) not found at {} or {}",
+                    cache_dir(project_dir, axis, name).display(),    // re-walks
+                    adapter_axis_dir(project_dir, axis).join(name).display(),  // re-walks
+                ),
+            });
+        }
+    };
+    …
+}
+```
+
+Both `cache_dir(...)` and `adapter_axis_dir(...).join(name)` are recomputed inside the error literal even though the matching `PathBuf`s are still in scope (`cached` was moved out of the `if`-cond branch, but the not-found branch never reads it; `local` is the local in scope).
+
+**Action**: rewrite the function body so both `PathBuf`s are computed once and named (`cached`, `local`) and the not-found branch references them:
+
+```rust
+let cached = cache_dir(project_dir, axis, name);
+let local = adapter_axis_dir(project_dir, axis).join(name);
+let location = if cached.is_dir() {
+    AdapterLocation::Cached(cached)
+} else if local.is_dir() {
+    AdapterLocation::Local(local)
+} else {
+    return Err(Error::Diag {
+        code: "adapter-not-found",
+        detail: format!(
+            "adapter `{name}` (axis `{axis}`) not found at {} or {}",
+            cached.display(), local.display(),
+        ),
+    });
+};
+```
+
+**Quality delta**: `−4 LOC, −2 redundant filesystem-path constructions per missing-adapter error`.
+**Net LOC**: ~742 → ~738 in `adapter/core.rs`.
+**Done when**: `rg -nC1 'cache_dir\(project_dir, axis, name\)\.display' crates/domain/src/adapter/core.rs` finds zero hits inside `locate_axis`; tests pass.
+**Rule?**: no.
+**Counter-argument**: "The not-found branch is cold; the duplication doesn't matter." — Loses: −LOC and the variant pair already exists in scope; deleting redundancy is the priority of this pass.
+**Depends on**: F3 (or land standalone — both edits live in the same function).
+
+---
+
+### T2 — Drop the `tooling check`'s 31-element `&[&dyn Check; 31]` array length annotation
+
+**Evidence**:
+
+```50:83:tooling/src/check/mod.rs
+pub fn run(ctx: &Context) -> Vec<Finding> {
+    let checks: [&dyn Check; 31] = [
+        &AdapterCheck,
+        …
+    ];
+```
+
+The `; 31` length is hand-counted and silently goes stale every time a check is added or removed. Rust infers the array length from the literal; the explicit `; 31` annotation only exists to be wrong on the next add.
+
+**Action**: change `let checks: [&dyn Check; 31] = [...]` to `let checks: [&dyn Check; _] = [...]` (`feature(generic_arg_infer)` is stable since 1.79) or simply `let checks: &[&dyn Check] = &[...]`. Pick whichever requires zero feature pin — the `&[&dyn Check]` slice form needs no MSRV bump.
+
+**Quality delta**: `−1 brittle constant, 0 LOC`.
+**Net LOC**: 100 → 100 in `tooling/src/check/mod.rs`.
+**Done when**: `rg -n '\[&dyn Check; \d+\]' tooling/src/check/` returns no hits; `make check` (or `cargo run --release --manifest-path tooling/Cargo.toml -- check`) still loads the same 31 checks.
+**Rule?**: no.
+**Counter-argument**: "Explicit length documents the count." — Loses: the count drifts on every add/delete and no other workspace check site uses this pattern.
+**Depends on**: none.
+
+---
+
+## Findings considered and dropped
+
+- **Add a clippy lint preventing future hand-rolled `Ord` impls.** Forbidden by the "no new mechanical enforcement" rule; F2's deletion + tests are sufficient.
+- **Rewrite `crates/domain/src/discovery/document.rs` (890 LOC) on top of a Markdown crate.** The hand-rolled parser is documented as deliberately scoped to the `## Candidate inventory` section grammar; pulling in pulldown-cmark or comrak would *add* a dependency for a net-positive LOC delta. Drop.
+- **Collapse the duplicated `ResolveBody` arms in `src/commands.rs` (lines 169–197).** The two arms differ only by `SourceAdapter` vs `TargetAdapter`. A `trait ResolvedAdapter` abstraction would touch ≥ 2 existing types but only deletes ~10 LOC of literal duplication; the trait itself spends 8+ LOC. Net wash. Drop.
+- **Delete `is_kebab_target_name` (`crates/domain/src/change/plan/core/model.rs:389`) in favour of a regex.** `regex` is already in workspace deps but pulling it into this hot parse path adds compile-time regex setup for a 17-line function. No net gain. Drop.
+- **Migrate `RequirementStatus::as_str` to `IntoStaticStr` even though `Display` does the same job.** `IntoStaticStr` would preserve `&'static str` callers; F4 already shows there are none. Drop in favour of plain `Display`.
+- **Replace 16 `panic!`/`unreachable!` hits on the "non-test" recon path.** Every hit is inside a `#[cfg(test)] mod tests {…}` block (the recon `--glob '!**/tests.rs'` was a false-positive filter). Verified by reading each hit; no operator-reachable panic surface to close.
+
+---
+
+## Threshold assertion
+
+- 4 structural findings (F1: defect closure with severity ≥ CI predicate; F2: −68 LOC ≥ 30; F3: −18 LOC + −2 fields = ≥ 2 axes; F4: −25 LOC + −4 methods + idiom = ≥ 2 axes).
+- 2 one-touch tidies (T1: −4 LOC single axis; T2: 0 LOC, single axis — qualifies because it removes a verifiably wrong constant).
+- Subtraction-only ΔLOC: **−131 LOC**. Defect-only ΔLOC: **0** (well under the +30 cap).
+- No formatting-only, rename-only, comment-only, or "abstract over" findings included.
+- No new dependencies, modules, files, traits, types, predicates, or rule docs proposed.
+
+---
 
 ## Post-mortem
 
-- **F1:** actual ΔLOC **−175** vs predicted **−130** (8 files; contracts verifier collateral required for `adapters/targets` grep); done-when flipped cleanly (`rg` → 0, `make check` pass); no regressions.
-- **F2:** actual ΔLOC **−31** vs predicted **−34** (+34/−65; amend/create cycle gates added beyond action list after `amend_rejects_cycle` failed); done-when flipped cleanly (`dependency-cycle` gone, orchestrate tests + `cargo make check` pass); no regressions.
-- **F3:** actual ΔLOC **−23** vs predicted **−55** (382→359; scan helper structure offset savings); done-when flipped cleanly (removed fns gone, slice tests + `cargo make check` pass); no regressions.
-- **F4:** actual ΔLOC **−13** vs predicted **−32** (+32/−45; helper doc/errors block offset savings); done-when flipped cleanly (fusion yaml filter gone, domain + slice tests + `cargo make check` pass); no regressions.
-- **F5:** actual ΔLOC **−18** vs predicted **−65** (659→642; table inlines full EventKind payloads); done-when mostly clean (`fn event_wire_shapes` present, journal tests + `cargo make check` pass; `_wire_shape` count stays 1 because new test name contains substring); no regressions.
-- **F6:** actual ΔLOC **−170** vs predicted **−95** (843→673; sort-stability fixture was larger than estimated; orphan test never existed); done-when flipped cleanly (`detect_drift_flags_` → 0, fusion + slice tests + `cargo make check` pass); no regressions.
-- **F7:** actual ΔLOC **−56** vs predicted **−52** (524→468); done-when flipped cleanly (`PLUGINS_DIR` → 0, `make check` pass); no regressions.
-- **T1:** actual ΔLOC **−10** vs predicted **−10**; done-when flipped cleanly (`phase outcome` → 0, `make check` pass); no regressions.
-- **T2:** actual ΔLOC **−1** vs predicted **−1** (skill-authoring only; REVIEW.md T2 block reworded so repo-wide grep → 0); done-when flipped cleanly; no regressions.
-- **T3:** actual ΔLOC **−5** vs predicted **−4** (218→213; renumber 3–16→2–13); done-when flipped cleanly (`Stale claims` → 0, `make check` pass); no regressions.
-- **T4:** actual ΔLOC **−4** code-only vs predicted **−14** (+12 incl. helper doc; explicit serialise_code/label params preserved byte-identical errors); done-when flipped cleanly (filter pattern → 0, schema test + `cargo make check` pass); no regressions.
+<!-- One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress. -->
+- F1 (rfcs/roadmap.md broken links): actual ΔLOC 0 vs predicted 0; done when clean; regressions none.
+- F2 (derive Ord for SourceOperation/TargetOperation/AuthorityOverrideAction): actual ΔLOC -60 vs predicted -68; done when clean; regressions none.
+- F3 (drop root_dir from Resolved{Source,Target}Adapter): actual ΔLOC -12 vs predicted -18; done when clean; regressions none.
+

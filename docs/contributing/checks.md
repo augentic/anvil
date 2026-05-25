@@ -37,26 +37,18 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `check`, `test`, and `docgen envelopes --verify` (envelope doc drift). When a sparse `specify-cli/` checkout exists at the repo root (CI layout), the Makefile sets `SPECIFY_CLI_DIR=specify-cli` automatically; otherwise it defaults to `../specify-cli`.
+`make ci` runs `check` + `test`. When a sparse `specify-cli/` checkout exists at the repo root (CI layout), the Makefile sets `SPECIFY_CLI_DIR=specify-cli` automatically; otherwise it defaults to `../specify-cli`.
 
 Tooling contributors can also invoke the binary and acceptance tests directly:
 
 ```bash
 cargo run --release --manifest-path tooling/Cargo.toml -- check
 cargo test --manifest-path tooling/Cargo.toml
-cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --verify
 ```
 
-The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) for envelope doc generation, so you can drop the `--manifest-path` boilerplate from any directory at or below the framework root:
+The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo check` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
 
-```bash
-cargo docgen-envelopes               # regenerate docs/reference/cli-output-shapes.md
-cargo docgen-envelopes --verify      # CI-mode drift check (exit 2 on drift; --check is a back-compat alias)
-```
-
-The alias is a convenience over the same release-mode `tooling` binary the Makefile already drives — no install step, no version-drift surface between local and CI.
-
-Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation or envelope docgen needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` and `tooling docgen` print an actionable hint naming the resolved path.
+Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter manifest validation needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` prints an actionable hint naming the resolved path.
 
 ### Diagnostic format
 

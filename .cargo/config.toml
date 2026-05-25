@@ -1,3 +1,2 @@
 [alias]
 check = "run --release --manifest-path tooling/Cargo.toml -- check"
-docgen-envelopes = "run --release --manifest-path tooling/Cargo.toml -- docgen envelopes"

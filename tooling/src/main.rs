@@ -13,7 +13,7 @@ use tooling::finding::{Finding, Location};
     name = "tooling",
     about = "Framework developer tooling for augentic/specify",
     version,
-    after_help = "Common entry points:\n  make check                       # runs `tooling check` in release mode\n  make ci                          # check + tests + envelope drift\n  cargo docgen-envelopes --verify  # CI drift check for cli-output-shapes.md"
+    after_help = "Common entry points:\n  make check  # runs `tooling check` in release mode\n  make ci     # check + tests"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -24,30 +24,12 @@ struct Cli {
 enum Command {
     /// Run framework consistency checks over the repo root.
     Check,
-    /// Generate or verify generated documentation.
-    Docgen {
-        #[command(subcommand)]
-        target: DocgenTarget,
-    },
-}
-
-#[derive(Debug, Subcommand)]
-enum DocgenTarget {
-    /// Regenerate CLI output-shape docs from specify-cli fixtures.
-    Envelopes {
-        /// Exit 2 when generated output would drift instead of rewriting the doc.
-        #[arg(long, alias = "check")]
-        verify: bool,
-    },
 }
 
 fn main() {
     let cli = Cli::parse();
     let code = match cli.command {
         Command::Check => run_check(),
-        Command::Docgen {
-            target: DocgenTarget::Envelopes { verify },
-        } => run_docgen_envelopes(verify),
     };
     process::exit(i32::from(code.code()));
 }
@@ -93,23 +75,5 @@ fn format_location(framework_root: &Path, location: &Location) -> String {
     match location.column {
         Some(column) => format!("{path}:{}:{column}", location.line),
         None => format!("{path}:{}", location.line),
-    }
-}
-
-fn run_docgen_envelopes(verify: bool) -> Exit {
-    let result = (|| -> Result<Exit, ToolingError> {
-        let ctx = Context::discover()?;
-        tooling::docgen::run_envelopes(ctx.framework_root(), &ctx.specify_cli_dir(), verify)
-    })();
-
-    match &result {
-        Ok(_) => {}
-        Err(error) => eprintln!("error: {error}"),
-    }
-
-    match result {
-        Ok(exit) => exit,
-        Err(ToolingError::Validation(_)) => Exit::ValidationFailed,
-        Err(ToolingError::Infrastructure(_)) => Exit::GenericFailure,
     }
 }

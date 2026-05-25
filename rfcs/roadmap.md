@@ -52,7 +52,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
+**Consumes:** [RFC-28](rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
 **Target surface:**
 
 ```bash
@@ -117,7 +117,7 @@ specify events export
 
 #### RM-16: RFC-5: framework developer tooling workspace
 
-**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a single `tooling` binary with `check` and `docgen` subcommands for CI and local use, integration tests that replace `tests/cross_repo.ts`, and full Deno retirement.
+**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](done/rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a single `tooling` binary with `check` and `docgen` subcommands for CI and local use, integration tests that replace `tests/cross_repo.ts`, and full Deno retirement.
 **Why now:** Removes Deno from CI and contributor prerequisites, kills the parser duplication between `tests/lib/spec_provenance.ts` and `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner — without bloating the operator `specify` binary with dev-only surfaces.
 **Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
