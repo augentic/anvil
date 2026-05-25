@@ -12,15 +12,9 @@ The Vectis target's `shape` brief carries idiom guidance — Crux app structure 
 
 These fixtures pin the *output* shape: what synthesised `spec.md` / `design.md` / `tasks.md` look like once the `shape` brief has been consumed, plus the `composition.yaml` that `build` reconstructs from them.
 
-## How the harness consumes these
-
-- **`/spec:refine` synthesis** — `tests/cross_repo/targets_test.ts` parses each fixture's `input/spec.md` with the W1.3 provenance parser, asserts every requirement carries `ID:` / `Sources:` / a closed `Status:` value, and structurally checks `expected/shape-evidence.md` for bullet content.
-- **`/spec:build` regeneration** — the harness parses each `expected/composition.yaml`, asserts it is a YAML mapping with top-level `version` and `screens` keys, and (when `SPECIFY_BIN` is on PATH) the targets-side test can be extended to call `specify tool run vectis -- validate composition` against the expected file.
-- **End-to-end source ↔ target chain** — the source-side fixture under [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) is intentionally shape-aligned with each fixture's `input/evidence/screens.yaml` so a future executable harness can chain the two without reshaping.
-
 ## Status
 
-The deterministic boundary the harness covers runs green on every `make test`. Byte-exact synthesis-replay against the LLM-driven `/spec:refine` and `/spec:build` skill bodies is out of scope and tracked separately.
+These fixtures are documentation pins for the target adapter. `make test` no longer walks target fixtures; executable replay of `/spec:refine`, `/spec:build`, and the end-to-end source ↔ target chain remains deferred to a future agent/CLI harness.
 
 ## See also
 

@@ -78,10 +78,10 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 All commands are run from the repository root:
 
 - `make check` — forwards to `tooling check` (`cargo run --release --manifest-path tooling/Cargo.toml -- check`) for documentation and workflow consistency checks.
-- `make test` — runs integration tests under `tooling/tests/` via Cargo (`cargo test --manifest-path tooling/Cargo.toml`).
+- `make test` — runs the compact Rust regression suite under `tooling/tests/` via Cargo (`cargo test --manifest-path tooling/Cargo.toml`).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
-The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the test will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
+Full acceptance guidance, including the manual cross-repo scenario, lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ## Skill authoring
 

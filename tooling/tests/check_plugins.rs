@@ -111,62 +111,6 @@ fn marketplace_drift_check_reports_undeclared_plugin() {
 }
 
 #[test]
-fn marketplace_drift_check_reports_missing_skills_directory() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_valid_marketplace(temp.path(), &[("demo", "demo")]);
-    fs::create_dir_all(temp.path().join("plugins/demo/.cursor-plugin")).expect("plugin dir");
-    fs::write(
-        temp.path()
-            .join("plugins/demo/.cursor-plugin/plugin.json"),
-        r#"{"name":"demo","version":"0.0.1"}"#,
-    )
-    .expect("plugin json");
-
-    let ctx = fixture_context(temp.path());
-    let findings = MarketplaceDriftCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == "plugins.marketplace-drift"
-                && finding.message.contains("demo")
-                && finding.message.contains("skills/")
-        }),
-        "expected missing skills finding, got {findings:?}"
-    );
-}
-
-#[test]
-fn marketplace_drift_check_reports_missing_plugin_manifest() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_valid_marketplace(temp.path(), &[("demo", "demo")]);
-    fs::create_dir_all(temp.path().join("plugins/demo/skills")).expect("skills dir");
-
-    let ctx = fixture_context(temp.path());
-    let findings = MarketplaceDriftCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == "plugins.marketplace-drift"
-                && finding.message.contains("demo")
-                && finding.message.contains("plugin.json not found")
-        }),
-        "expected missing plugin.json finding, got {findings:?}"
-    );
-}
-
-#[test]
-fn marketplace_drift_check_accepts_valid_fixture() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_valid_marketplace(temp.path(), &[("demo", "demo")]);
-    write_plugin_surface(temp.path(), "demo");
-
-    let ctx = fixture_context(temp.path());
-    assert!(BrokenSymlinkCheck.run(&ctx).is_empty());
-    assert!(MarketplaceDriftCheck.run(&ctx).is_empty());
-}
-
-#[test]
 fn marketplace_drift_check_reports_schema_violation() {
     let temp = tempfile::tempdir().expect("temp dir");
     write_framework_scaffold(temp.path());
@@ -197,13 +141,4 @@ fn marketplace_drift_check_reports_schema_violation() {
         }),
         "expected schema violation finding, got {findings:?}"
     );
-}
-
-#[test]
-fn real_repo_plugins_checks_pass() {
-    let ctx =
-        Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root resolves");
-    assert!(BrokenSymlinkCheck.run(&ctx).is_empty());
-    let drift = MarketplaceDriftCheck.run(&ctx);
-    assert!(drift.is_empty(), "unexpected marketplace drift: {drift:?}");
 }

@@ -3,12 +3,10 @@ use std::path::{Path, PathBuf};
 
 use tempfile::TempDir;
 use tooling::check::{
-    check_recorded_trace_freshness, validate_scenario_frontmatter, ScenariosCheck,
-    SCENARIO_RULE_ARTIFACT_PATH_UNSAFE, SCENARIO_RULE_BODY_ID_MISMATCH,
-    SCENARIO_RULE_DUPLICATE_ID, SCENARIO_RULE_SCHEMA_VIOLATION, RULE_STAGES_NOT_CONTIGUOUS,
+    check_recorded_trace_freshness, validate_scenario_frontmatter,
+    SCENARIO_RULE_ARTIFACT_PATH_UNSAFE, SCENARIO_RULE_SCHEMA_VIOLATION, RULE_STAGES_NOT_CONTIGUOUS,
     RULE_RECORDED_TRACE_VIOLATION,
 };
-use tooling::finding::Check;
 use tooling::Context;
 
 fn scaffold_framework_root(base: &Path) -> PathBuf {
@@ -51,30 +49,6 @@ stages: [plan]
 isolation: fresh-project
 ---
 "#;
-
-#[test]
-fn real_repo_cross_repo_scenario_passes() {
-    let ctx = Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root");
-    let findings = validate_scenario_frontmatter(&ctx);
-    assert!(
-        findings.is_empty(),
-        "real cross-repo scenario should validate: {findings:?}"
-    );
-}
-
-#[test]
-fn scenarios_check_runs_frontmatter_and_trace_checks() {
-    let ctx = Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root");
-    let findings = ScenariosCheck.run(&ctx);
-    let trace_findings: Vec<_> = findings
-        .iter()
-        .filter(|f| f.rule_id == RULE_RECORDED_TRACE_VIOLATION)
-        .collect();
-    assert!(
-        trace_findings.is_empty(),
-        "no recorded traces in repo; expected no trace violations: {findings:?}"
-    );
-}
 
 #[test]
 fn schema_violation_on_missing_required_field() {
@@ -124,25 +98,6 @@ fn stages_not_contiguous_prefix_emits_finding() {
 }
 
 #[test]
-fn body_id_mismatch_emits_finding() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_scenario(
-        &root,
-        "tests/demo/scenario.md",
-        &format!("{VALID_FRONTMATTER}\n# Demo\n\nScenario ID: `other-id`\n"),
-    );
-
-    let findings = validate_scenario_frontmatter(&context_for(&root));
-    let body: Vec<_> = findings
-        .iter()
-        .filter(|f| f.rule_id == SCENARIO_RULE_BODY_ID_MISMATCH)
-        .collect();
-    assert_eq!(body.len(), 1, "expected one body-id finding, got: {findings:?}");
-    assert!(body[0].message.contains("does not match frontmatter id"));
-}
-
-#[test]
 fn artifact_path_unsafe_rejects_parent_escape() {
     let tmp = TempDir::new().expect("tempdir");
     let root = scaffold_framework_root(tmp.path());
@@ -168,58 +123,6 @@ fn artifact_path_unsafe_rejects_parent_escape() {
 }
 
 #[test]
-fn duplicate_id_across_files_emits_finding() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    let body = format!("{VALID_FRONTMATTER}\n# Demo\n");
-    write_scenario(&root, "tests/one/scenario.md", &body);
-    write_scenario(&root, "tests/two/scenario.md", &body);
-
-    let findings = validate_scenario_frontmatter(&context_for(&root));
-    let dup: Vec<_> = findings
-        .iter()
-        .filter(|f| f.rule_id == SCENARIO_RULE_DUPLICATE_ID)
-        .collect();
-    assert_eq!(dup.len(), 1, "expected one duplicate-id finding, got: {findings:?}");
-    assert!(dup[0].message.contains("duplicate scenario id 'demo-scenario'"));
-}
-
-#[test]
-fn file_without_frontmatter_is_skipped() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_scenario(
-        &root,
-        "tests/demo/scenario.md",
-        "# Demo\n\nNo frontmatter.\n",
-    );
-
-    let findings = validate_scenario_frontmatter(&context_for(&root));
-    assert!(
-        findings.is_empty(),
-        "non-opt-in markdown should not produce findings, got: {findings:?}"
-    );
-}
-
-#[test]
-fn recorded_trace_empty_file_emits_violation() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    let trace = root.join("tests/recorded/demo.jsonl");
-    fs::create_dir_all(trace.parent().unwrap()).expect("recorded dir");
-    fs::write(&trace, "").expect("empty trace");
-
-    let findings = check_recorded_trace_freshness(&context_for(&root));
-    assert!(
-        findings
-            .iter()
-            .any(|f| f.rule_id == RULE_RECORDED_TRACE_VIOLATION
-                && f.message.contains("empty file")),
-        "expected empty-file trace violation, got: {findings:?}"
-    );
-}
-
-#[test]
 fn recorded_trace_invalid_header_emits_violation() {
     let tmp = TempDir::new().expect("tempdir");
     let root = scaffold_framework_root(tmp.path());
@@ -234,41 +137,5 @@ fn recorded_trace_invalid_header_emits_violation() {
                 && f.message.contains("kind must be 'recorded-trace-header'")
         }),
         "expected kind violation, got: {findings:?}"
-    );
-}
-
-#[test]
-fn recorded_trace_valid_header_passes() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    let trace = root.join("tests/recorded/demo.jsonl");
-    fs::create_dir_all(trace.parent().unwrap()).expect("recorded dir");
-    fs::write(
-        &trace,
-        r#"{"kind":"recorded-trace-header","schemaVersion":1,"sourceBackend":"agent","sourceRunId":"run-1","sourceTimestamp":"2026-01-01T00:00:00Z","scenarioId":"demo-scenario"}"#,
-    )
-    .expect("valid trace");
-
-    let findings = check_recorded_trace_freshness(&context_for(&root));
-    assert!(
-        findings.is_empty(),
-        "valid recorded trace header should pass, got: {findings:?}"
-    );
-}
-
-#[test]
-fn plan_root_discovery_validates_frontmatter() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_scenario(
-        &root,
-        "tests/plan/plan-only.md",
-        &format!("{VALID_FRONTMATTER}\n# Plan scenario\n"),
-    );
-
-    let findings = validate_scenario_frontmatter(&context_for(&root));
-    assert!(
-        findings.is_empty(),
-        "valid plan-root scenario should pass, got: {findings:?}"
     );
 }

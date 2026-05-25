@@ -1,6 +1,6 @@
 # Discovery — fixture extract
 
-> Only the `## Candidate inventory` section is asserted by the acceptance harness; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `code-typescript` enumerate brief appends candidate blocks under `## Candidate inventory`; it never writes the heading itself.
+> Only the `## Candidate inventory` section belongs to the source adapter; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `code-typescript` enumerate brief appends candidate blocks under `## Candidate inventory`; it never writes the heading itself.
 
 ## Summary
 

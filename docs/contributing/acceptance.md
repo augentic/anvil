@@ -2,7 +2,7 @@
 
 The acceptance surface has two layers:
 
-1. **Deterministic boundary harness** — `make test` runs the Rust acceptance tests under [`tooling/tests/`](../../tooling/tests/). They schema-validate every fixture under `tests/fixtures/{sources,targets,skills}/`, parse every `expected/spec.md` with the W1.3 provenance parser, and structurally validate the synthesised goldens (`expected/composition.yaml`, `expected/crate/`, `expected-trace.md`, transcript files). When `SPECIFY_BIN` is set or `specify` is on `PATH`, the harness can additionally drive `specify source resolve`, `specify target resolve`, and the slice-loop verbs against the same fixtures.
+1. **Deterministic boundary harness** — `make test` runs a compact Rust regression suite under [`tooling/tests/`](../../tooling/tests/). It exercises the checker code with targeted broken fixtures plus one real-repo smoke test that runs the registered `tooling check` predicates. It does not replay source/target/skill fixtures or invoke the live `specify` binary.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; the deterministic-boundary harness above does **not** pin synthesised bytes.
 
 ## Running the harness locally
@@ -11,7 +11,7 @@ The acceptance surface has two layers:
 cargo test --manifest-path tooling/Cargo.toml
 ```
 
-Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation needs runtime schemas (defaults to `../specify-cli`). Set `SPECIFY_BIN` to a built `specify` binary when you want the harness to drive CLI verbs against fixtures; otherwise those tests skip.
+Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation needs runtime schemas (defaults to `../specify-cli`).
 
 ## Targets
 
@@ -23,7 +23,7 @@ Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.c
 
 ## Synthesis byte-replay (deferred)
 
-The harness in `tooling/tests/` covers every deterministic surface — schema validation, provenance parsing, fixture-shape goldens — but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+The harness in `tooling/tests/` covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
 
 - a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
 - a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.

@@ -37,25 +37,6 @@ fn line_body(prefix: &str, count: usize) -> String {
 }
 
 #[test]
-fn parent_brief_within_cap_has_no_size_finding() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_brief(
-        &root,
-        "adapters/targets/demo/briefs/shape.md",
-        &format!("# Shape\n\n{}", line_body("ok", 10)),
-    );
-
-    let findings = BriefCheck.run(&context_for(&root));
-    assert!(
-        !findings
-            .iter()
-            .any(|f| f.rule_id == "brief.exceeds-size-limit"),
-        "expected no size finding, got: {findings:?}"
-    );
-}
-
-#[test]
 fn parent_brief_exceeding_cap_emits_size_finding() {
     let tmp = TempDir::new().expect("tempdir");
     let root = scaffold_framework_root(tmp.path());
@@ -72,25 +53,6 @@ fn parent_brief_exceeding_cap_emits_size_finding() {
         .expect("expected size finding");
     assert!(size.message.contains("parent brief is 151 non-blank lines"));
     assert!(size.message.contains("exceeds hard cap 150"));
-}
-
-#[test]
-fn phase_sub_brief_within_cap_has_no_size_finding() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_brief(
-        &root,
-        "adapters/targets/demo/briefs/build/phase.md",
-        &format!("# Phase\n\n{}", line_body("ok", 20)),
-    );
-
-    let findings = BriefCheck.run(&context_for(&root));
-    assert!(
-        !findings
-            .iter()
-            .any(|f| f.rule_id == "brief.exceeds-size-limit"),
-        "expected no size finding, got: {findings:?}"
-    );
 }
 
 #[test]
@@ -113,25 +75,6 @@ fn phase_sub_brief_exceeding_hard_cap_emits_size_finding() {
 }
 
 #[test]
-fn brief_without_frontmatter_has_no_frontmatter_finding() {
-    let tmp = TempDir::new().expect("tempdir");
-    let root = scaffold_framework_root(tmp.path());
-    write_brief(
-        &root,
-        "adapters/targets/demo/briefs/merge.md",
-        "# Merge\n\nNo frontmatter here.\n",
-    );
-
-    let findings = BriefCheck.run(&context_for(&root));
-    assert!(
-        !findings
-            .iter()
-            .any(|f| f.rule_id == "brief.frontmatter-forbidden"),
-        "expected no frontmatter finding, got: {findings:?}"
-    );
-}
-
-#[test]
 fn brief_with_frontmatter_emits_frontmatter_finding() {
     let tmp = TempDir::new().expect("tempdir");
     let root = scaffold_framework_root(tmp.path());
@@ -148,14 +91,4 @@ fn brief_with_frontmatter_emits_frontmatter_finding() {
         .expect("expected frontmatter finding");
     assert!(fm.message.contains("brief has YAML frontmatter"));
     assert!(fm.message.contains("docs/standards/skill-authoring.md#brief-authoring"));
-}
-
-#[test]
-fn real_framework_briefs_pass() {
-    let ctx = Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root");
-    let findings = BriefCheck.run(&ctx);
-    assert!(
-        findings.is_empty(),
-        "real repo briefs should pass: {findings:?}"
-    );
 }

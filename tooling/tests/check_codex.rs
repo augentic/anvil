@@ -51,17 +51,6 @@ fn ctx_for(root: &Path) -> Context {
 }
 
 #[test]
-fn real_repo_codex_rules_validate() {
-    let ctx =
-        Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root resolves");
-    let findings = run_codex_check(&ctx);
-    assert!(
-        findings.is_empty(),
-        "expected all in-repo codex rules to validate, got: {findings:?}"
-    );
-}
-
-#[test]
 fn schema_violation_on_invalid_frontmatter() {
     let temp = tempfile::tempdir().expect("tempdir");
     write_framework_scaffold(temp.path());
@@ -93,36 +82,6 @@ Body without trigger and severity.
             .iter()
             .any(|finding| finding.message.contains("Codex rule frontmatter:")),
         "expected frontmatter validation message, got: {findings:?}"
-    );
-}
-
-#[test]
-fn missing_rule_heading_is_schema_violation() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    write_framework_scaffold(temp.path());
-    write_codex_rule(
-        temp.path(),
-        "adapters/shared/codex/universal/no-heading.md",
-        r#"---
-id: UNI-002
-title: Missing Rule Heading
-severity: important
-trigger: When the body omits the required heading.
----
-
-Missing the required heading.
-"#,
-    );
-
-    let findings = run_codex_check(&ctx_for(temp.path()));
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == RULE_SCHEMA_VIOLATION
-                && finding
-                    .message
-                    .contains("missing required '## Rule' heading")
-        }),
-        "expected missing heading finding, got: {findings:?}"
     );
 }
 

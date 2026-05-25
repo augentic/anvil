@@ -27,14 +27,9 @@ tests/fixtures/targets/omnia/
             └── handlers.rs
 ```
 
-## How the harness consumes this
-
-- **`/spec:refine` synthesis** — `tests/cross_repo/targets_test.ts` parses `input/spec.md` with the W1.3 provenance parser (closed `Status:` enum + `Sources:` line + `ID:` block) and structurally validates that `expected/shape-evidence.md` is non-empty and bullet-headed.
-- **`/spec:build` regeneration** — the harness asserts `expected/crate/Cargo.toml` declares `[package]` and that `expected/crate/src/lib.rs` is present alongside it. End-to-end byte-replay of the synthesised crate would require an LLM in the loop and is deferred to a follow-up RFC (see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md)).
-
 ## Status
 
-The deterministic boundary the harness covers — provenance shape on `spec.md`, expected-crate structural shape, and the shape-evidence checklist — runs green on every `make test`. Byte-exact synthesis-replay against the LLM-driven skill bodies is intentionally out of scope and tracked separately.
+This fixture is a documentation pin for the target adapter. `make test` no longer walks these target fixtures; executable replay of `/spec:refine` and `/spec:build` remains deferred to a future agent/CLI harness.
 
 ## See also
 

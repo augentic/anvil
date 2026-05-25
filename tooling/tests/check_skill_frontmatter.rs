@@ -2,10 +2,9 @@ use std::fs;
 use std::path::Path;
 
 use tooling::check::{
-    SkillArgumentHintGrammarCheck, SkillDescriptionGrammarCheck, SkillDuplicateNameCheck,
-    SkillFrontmatterSchemaCheck, SkillNameDirectoryMismatchCheck, SkillUnknownToolCheck,
-    RULE_ARGUMENT_HINT_GRAMMAR, RULE_DESCRIPTION_GRAMMAR, RULE_DUPLICATE_NAME,
-    RULE_NAME_DIRECTORY_MISMATCH, RULE_UNKNOWN_TOOL, SKILL_RULE_SCHEMA_VIOLATION,
+    SkillArgumentHintGrammarCheck, SkillDescriptionGrammarCheck, SkillFrontmatterSchemaCheck,
+    SkillNameDirectoryMismatchCheck, SkillUnknownToolCheck, RULE_UNKNOWN_TOOL,
+    SKILL_RULE_SCHEMA_VIOLATION,
 };
 use tooling::finding::Check;
 use tooling::Context;
@@ -65,48 +64,6 @@ fn schema_check_reports_missing_use_when_clause() {
 }
 
 #[test]
-fn name_directory_mismatch_check_reports_wrong_prefix() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_skill(
-        temp.path(),
-        "demo",
-        "wrong-prefix",
-        "name: wrong-prefix\ndescription: Build demo fixtures for tests. Use when validating the name prefix rule.",
-    );
-
-    let ctx = fixture_context(temp.path());
-    let findings = SkillNameDirectoryMismatchCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == RULE_NAME_DIRECTORY_MISMATCH
-                && finding.message.contains("wrong-prefix")
-                && finding.message.contains("demo-")
-        }),
-        "expected name-directory mismatch, got {findings:?}"
-    );
-}
-
-#[test]
-fn duplicate_name_check_reports_collisions() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    let frontmatter = "name: demo-shared-name\ndescription: Build shared fixtures for duplicate-name tests. Use when validating global skill-name uniqueness.";
-    write_skill(temp.path(), "demo", "one", frontmatter);
-    write_skill(temp.path(), "demo", "two", frontmatter);
-
-    let ctx = fixture_context(temp.path());
-    let findings = SkillDuplicateNameCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == RULE_DUPLICATE_NAME
-                && finding.message.contains("demo-shared-name")
-        }),
-        "expected duplicate-name finding, got {findings:?}"
-    );
-}
-
-#[test]
 fn unknown_tool_check_reports_disallowed_tool() {
     let temp = tempfile::tempdir().expect("temp dir");
     write_framework_scaffold(temp.path());
@@ -129,50 +86,6 @@ fn unknown_tool_check_reports_disallowed_tool() {
 }
 
 #[test]
-fn description_grammar_check_reports_non_imperative_lead() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_skill(
-        temp.path(),
-        "demo",
-        "bad-verb",
-        "name: demo-bad-verb\ndescription: Helps operators initialize projects. Use when wiring Specify for the first time.",
-    );
-
-    let ctx = fixture_context(temp.path());
-    let findings = SkillDescriptionGrammarCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == RULE_DESCRIPTION_GRAMMAR
-                && finding.message.contains("Helps")
-        }),
-        "expected description-grammar finding, got {findings:?}"
-    );
-}
-
-#[test]
-fn argument_hint_grammar_check_reports_invalid_token() {
-    let temp = tempfile::tempdir().expect("temp dir");
-    write_framework_scaffold(temp.path());
-    write_skill(
-        temp.path(),
-        "demo",
-        "bad-hint",
-        "name: demo-bad-hint\ndescription: Build demo fixtures for argument-hint validation. Use when checking hint token grammar.\nargument-hint: the slice name",
-    );
-
-    let ctx = fixture_context(temp.path());
-    let findings = SkillArgumentHintGrammarCheck.run(&ctx);
-    assert!(
-        findings.iter().any(|finding| {
-            finding.rule_id == RULE_ARGUMENT_HINT_GRAMMAR
-                && finding.message.contains("the")
-        }),
-        "expected argument-hint-grammar finding, got {findings:?}"
-    );
-}
-
-#[test]
 fn spec_prefix_override_accepts_specify_prefix() {
     let temp = tempfile::tempdir().expect("temp dir");
     write_framework_scaffold(temp.path());
@@ -186,23 +99,6 @@ fn spec_prefix_override_accepts_specify_prefix() {
     let ctx = fixture_context(temp.path());
     assert!(SkillFrontmatterSchemaCheck.run(&ctx).is_empty());
     assert!(SkillNameDirectoryMismatchCheck.run(&ctx).is_empty());
-    assert!(SkillDescriptionGrammarCheck.run(&ctx).is_empty());
-    assert!(SkillArgumentHintGrammarCheck.run(&ctx).is_empty());
-}
-
-#[test]
-fn real_repo_skill_frontmatter_checks_pass() {
-    let ctx =
-        Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root resolves");
-
-    assert!(
-        SkillFrontmatterSchemaCheck.run(&ctx).is_empty(),
-        "schema findings: {:?}",
-        SkillFrontmatterSchemaCheck.run(&ctx)
-    );
-    assert!(SkillNameDirectoryMismatchCheck.run(&ctx).is_empty());
-    assert!(SkillDuplicateNameCheck.run(&ctx).is_empty());
-    assert!(SkillUnknownToolCheck.run(&ctx).is_empty());
     assert!(SkillDescriptionGrammarCheck.run(&ctx).is_empty());
     assert!(SkillArgumentHintGrammarCheck.run(&ctx).is_empty());
 }

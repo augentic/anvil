@@ -23,7 +23,7 @@ tests/fixtures/targets/vectis/task-list/
 
 ## Status
 
-The acceptance harness (`make test`) parses `input/spec.md` for provenance shape, structurally validates `expected/composition.yaml`, and verifies `expected/shape-evidence.md` is well-formed. `input/evidence/screens.yaml` remains a hand-authored stand-in for what `sources/screenshots/extract` would emit; replacing it with live extractor output is a follow-up bound to the source ↔ target chain end-to-end story.
+This fixture is a documentation pin for the Vectis target. `make test` no longer walks target fixtures. `input/evidence/screens.yaml` remains a hand-authored stand-in for what `sources/screenshots/extract` would emit; replacing it with live extractor output is a follow-up bound to the source ↔ target chain end-to-end story.
 
 ## See also
 

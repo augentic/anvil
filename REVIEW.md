@@ -1,376 +1,497 @@
-# Specify / Specify-CLI — Subtraction Pass
+# Code & Skill Review — subtraction pass
 
-## Summary
+1. **Top three findings by tier**: **F1** raw `plan.yaml` schema is skipped by `plan validate` (verified wire-contract defect); **F2** `DECISIONS.md` still forbids the derived `Ord` code now in-tree (verified contract/doc drift); **F3** `project-missing-multi-repo` duplicates the generic project-or-target gate (subtraction).
+2. **Total ΔLOC if all land**: about **−100 LOC** net, depending on the exact raw-schema helper shape chosen for F1.
+3. **Primary non-LOC axes moved**: `−1` wire-contract defect, `−1` stale contract warning, `−1` duplicate validation branch, `−1` hand-written parser, fewer stale workflow terms in operator-facing CLI text.
+4. **Top verified defects closed**: F1 and F2 qualify; T2 is a small defect-surface cleanup, not a verified defect under the strict definition. Defect-only net ΔLOC: **≤ +8** because F1 pairs the small helper with deletion in the same validation flow.
+5. **Most likely to break in remediation**: **F1** — raw schema validation must preserve the existing JSON error envelope and exit code `2`, not turn schema failures into generic YAML or diagnostic errors.
 
-1. **Top three by sort key**:
-   (a) **F1** — `make check` is red on `main`; two stale rfc links in `rfcs/roadmap.md` (verified defect, ΔLOC ≈ 0).
-   (b) **F2** — Three hand-rolled `Ord`/`PartialOrd` impls (`SourceOperation`, `TargetOperation`, `AuthorityOverrideAction`) all replaceable with `#[derive]` (~−68 LOC, idiom).
-   (c) **F3** — Drop redundant `root_dir: PathBuf` fields from `ResolvedSourceAdapter` / `ResolvedTargetAdapter` (already exposed via `location.path()`) and the duplicate clone in `locate_axis` (~−18 LOC, −2 fields).
-2. **Total ΔLOC if all land**: **−131 LOC** across 4 structural findings + 2 tidies.
-3. **Primary non-LOC axes moved**: −2 public struct fields, −7 hand-rolled `impl` blocks, +3 `#[derive]` lines, −1 failing CI predicate, −1 transitive `serde_json::to_string` allocation per BTreeMap key compare on the cache-index hot path.
-4. **Verified defects closed**: 1 — `make check`'s `links.unresolved` predicate (×2 lines, both in the same file). Net +ΔLOC from defect-only findings: **0** (well under the +30 cap). No CI predicate failures remain after F1 lands; clippy / `cargo make check` already green on `specify-cli`.
-5. **Most likely to break in remediation**: **F2** — variant-reorder of `TargetOperation` (`Shape, Build, Merge` → `Build, Merge, Shape`) lets `derive(Ord)` reproduce the existing kebab-alphabetical iteration order; if any caller `match`es by integer discriminant or `as u8` casts (none found, but check), it will silently shift.
-
----
-
-## Reconnaissance numbers (current state)
+## Reconnaissance Numbers
 
 ```text
-tokei (both repos, totals):  1164 files, 162427 lines, 83159 code
-specify-cli Rust LOC:        302 files / 49504 code lines
-specify-cli mod.rs (non-test): 0 (only 3 in tests/common/)
-specify         standards:  716 LOC across 5 files (cli-contract.md, doc-authoring.md, skill-authoring.md, skill-guardrails.md)
-specify-cli     standards:  878 LOC across 6 files (style/coding/handler/architecture/testing/workflow)
-files > 500 LOC (specify-cli, non-test):
-  890  crates/domain/src/discovery/document.rs
-  742  crates/domain/src/adapter/core.rs
-  700  crates/domain/src/change/plan/core/model.rs
-  667  crates/domain/src/slice/fusion.rs
-  641  crates/domain/src/journal.rs
-  607  crates/domain/src/spec/provenance.rs
-  520  crates/tool/src/validate.rs
-  514  src/commands/plan/lifecycle.rs
-  509  crates/domain/src/adapter/cache/io.rs
-make check (specify):     FAIL — 2 × links.unresolved in rfcs/roadmap.md
-cargo clippy --workspace --all-targets -D warnings (specify-cli): PASS
-unwrap/expect on non-test paths under crates/ + src/: ~190 hits, all reviewed; every reachable hit
-  is regex-static, schema-static, or in `#[cfg(test)]` blocks (greps below).
-panic!/unreachable! on non-test paths: 16 hits, every one inside a `#[cfg(test)]` mod block
-  (false positive — test glob predicate excluded `tests.rs` only, not `mod tests {…}`).
+tokei /Users/andrewweston/github.com/augentic/specify /Users/andrewweston/github.com/augentic/specify-cli
+Total: 1161 files, 161385 lines, 82242 code, 49874 comments, 29269 blanks
+Rust: 300 files, 56082 lines, 48959 code
+
+cargo tree --duplicates (specify-cli)
+top-level duplicate package groups: 94
+
+rg -c '^#\[test\]' crates/ src/ tests/ (specify-cli)
+test_attr_total 514
+
+rg --files -g '**/mod.rs' (specify-cli)
+3 files: tests/common/mod.rs, wasi-tools/vectis/tests/engine_support/mod.rs, crates/domain/tests/common/mod.rs
+
+wc -l docs/standards/*.md AGENTS.md (both repos)
+1496 total
+  specify: 716 lines across docs/standards/*.md + AGENTS.md
+  specify-cli: 780 lines across docs/standards/*.md + AGENTS.md
+
+files > 500 lines under crates/ and src/ (specify-cli)
+1048 crates/domain/tests/workspace.rs
+ 947 crates/domain/tests/finalize.rs
+ 922 crates/domain/tests/registry.rs
+ 890 crates/domain/src/discovery/document.rs
+ 728 crates/domain/src/adapter/core.rs
+ 700 crates/domain/src/change/plan/core/model.rs
+ 667 crates/domain/src/slice/fusion.rs
+ 611 crates/domain/src/journal.rs
+ 574 crates/domain/src/spec/provenance.rs
+ 520 crates/tool/src/validate.rs
+ 514 src/commands/plan/lifecycle.rs
+ 509 crates/domain/src/adapter/cache/io.rs
+
+make checks (specify)
+make: *** No rule to make target `checks'.  Stop.
+
+make check (specify)
+All checks passed.
+
+cargo make check (specify-cli)
+Build Done in 178.71 seconds.
+
+rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/ (specify-cli)
+unwrap_expect_total 687
+
+rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/ (specify-cli)
+panic_unreachable_total 50
 ```
 
-No verified panic-on-operator-path or wire-contract finding turned up beyond F1.
+## Structural Findings
 
----
+### F1 — Validate Raw Plan Schema
 
-## Structural findings
+**Evidence**:
 
-### F1 — Fix broken `rfcs/roadmap.md` links so `make check` is green again [defect closure]
+`schemas/plan/plan.schema.json` says unknown top-level and per-slice fields are rejected:
 
-**Evidence (current state)**:
+```1:11:/Users/andrewweston/github.com/augentic/specify-cli/schemas/plan/plan.schema.json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/plan/plan.schema.json",
+  "title": "Specify plan.yaml",
+  "description": "Validates the structure of `plan.yaml` (at the repo root): the change name, the optional plan-level `lifecycle` (`pending | reviewed` per the workflow contract §Workflow vocabulary), the optional named-sources map, and the ordered list of plan slices with their dependencies, status, and (per the workflow contract) structured source bindings plus the optional `divergence` enum. Strict schema — unknown top-level and per-slice fields are rejected.
+```
+
+But `Plan::load` deserializes directly and never validates the raw YAML value against the embedded schema:
+
+```57:66:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/io.rs
+    pub fn load(path: &Path) -> Result<Self, Error> {
+        if !path.exists() {
+            return Err(Error::ArtifactNotFound {
+                kind: "plan.yaml",
+                path: path.to_path_buf(),
+            });
+        }
+        let content = std::fs::read_to_string(path)?;
+        let plan: Self = serde_saphyr::from_str(&content)?;
+        Ok(plan)
+```
+
+Current-state reproduction:
 
 ```text
-$ cd specify && make check
-FAIL: links.unresolved: Broken link in rfcs/roadmap.md: next/rfc-28-codex-rules.md
-  at rfcs/roadmap.md:1
-FAIL: links.unresolved: Broken link in rfcs/roadmap.md: rfc-5-tooling.md
-  at rfcs/roadmap.md:1
-2 check failure(s).
-```
-
-The matching `git status` confirms RFC-5 was moved to `rfcs/done/rfc-5-tooling.md` and RFC-28 was promoted out of `rfcs/next/` to `rfcs/rfc-28-codex-rules.md`; nothing updated `rfcs/roadmap.md`:
-
-```55:55:rfcs/roadmap.md
-**Consumes:** [RFC-28](next/rfc-28-codex-rules.md)'s resolved codex export and structured finding schema.
-```
-
-```120:120:rfcs/roadmap.md
-**Goal:** Land the framework dev-tooling workspace at `augentic/specify/tooling/` per [RFC-5](rfc-5-tooling.md) — schema-first authoring feedback in Cursor, a single `tooling` binary with `check` and `docgen` subcommands for CI and local use, integration tests that replace `tests/cross_repo.ts`, and full Deno retirement.
+$ tmp=$(mktemp -d); mkdir "$tmp/.specify"; printf 'name: demo\nadapter: omnia\n' > "$tmp/.specify/project.yaml"; printf 'name: bad\nrogue: true\nslices:\n  - name: only\n    target: omnia@v1\n    status: pending\n' > "$tmp/plan.yaml"; (cd "$tmp" && SPECIFY_FORMAT=json /Users/andrewweston/github.com/augentic/specify-cli/target/debug/specify plan validate); code=$?; printf 'exit_code=%s\n' "$code"; rm -rf "$tmp"
+{
+  "plan": {
+    "name": "bad",
+    "path": "/private/var/folders/2p/3jz_1c9n0hd6ydkjhlnjgmh00000gn/T/tmp.cDYpa5yNct/plan.yaml"
+  },
+  "results": [],
+  "passed": true
+}
+exit_code=0
 ```
 
 **Action**:
 
-1. In `rfcs/roadmap.md` line 55, replace `next/rfc-28-codex-rules.md` with `rfc-28-codex-rules.md`.
-2. In `rfcs/roadmap.md` line 120, replace `rfc-5-tooling.md` with `done/rfc-5-tooling.md`.
-3. Re-run `make check`.
+1. In `crates/domain/src/schema.rs`, expose the existing raw-YAML path as a small `validate_plan_file(path: &Path) -> Result<()>` wrapper around `read_yaml_as_json` + `validate_value(... PLAN_JSON_SCHEMA ...)`.
+2. In `crates/domain/src/change/plan/core/io.rs`, call `validate_plan_file(path)?` before `serde_saphyr::from_str`.
+3. Delete the duplicate multi-repo branch in F3 in the same change if the helper lands above the +8 defect-only budget.
+4. Add one focused test using a rogue top-level field; no broad schema fixture expansion.
 
-**Quality delta**: `−1 defect, 0 LOC`. Two character-level path edits; no axes regressed.
-**Net LOC**: 392 → 392 (two characters changed in two lines).
-**Done when**: `make check` exits 0 and `tooling/target/release/tooling check 2>&1 | rg -c links.unresolved` returns `0`.
-**Rule?**: no — `tooling check` already enforces this; the rename slipped through because the move pre-dated this pass.
-**Counter-argument**: "Re-run `tooling check` in pre-commit instead." — Loses: pre-commit isn't part of this repo's policy and would add infrastructure; the predicate already exists.
+**Quality delta**: `−1 verified wire-contract defect, −1 duplicate validation branch if paired with F3, net LOC ≤ current +8 before paired deletion`.
+
+**Net LOC**: about `89 → ≤97` for the raw-schema helper alone; `≈169 → ≈145` if paired with F3’s deletion in the same remediation.
+
+**Done when**: the reproduction command exits `2` and its JSON body contains one `plan-schema` failure mentioning `/rogue`.
+
+**Rule?**: no — the schema exists; the bug is that this read path bypasses it.
+
+**Counter-argument**: `Plan::validate` already checks semantic consistency; it loses because schema-only fields are silently discarded before semantic validation can see them.
+
 **Depends on**: none.
 
----
-
-### F2 — Replace three hand-rolled `Ord` / `PartialOrd` impls with `#[derive]`
-
-**Evidence (current state)**:
-
-```text
-$ cd specify-cli && rg -n 'fn cmp\(&self|impl Ord for|impl PartialOrd for' \
-    crates/ src/ --glob '!**/tests/**' --glob '!**/tests.rs'
-crates/domain/src/journal.rs:316:impl PartialOrd for AuthorityOverrideAction {
-crates/domain/src/journal.rs:322:impl Ord for AuthorityOverrideAction {
-crates/domain/src/journal.rs:323:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-crates/domain/src/adapter/operation.rs:70:impl Ord for SourceOperation {
-crates/domain/src/adapter/operation.rs:71:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-crates/domain/src/adapter/operation.rs:76:impl PartialOrd for SourceOperation {
-crates/domain/src/adapter/operation.rs:140:impl Ord for TargetOperation {
-crates/domain/src/adapter/operation.rs:141:    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-crates/domain/src/adapter/operation.rs:146:impl PartialOrd for TargetOperation {
-```
-
-All three impls exist solely to *override the derive's variant-declaration order*. Each ships with a paragraph-long doc comment claiming the manual impl "decouples the wire iteration order from variant order against future reshuffles". The same enums already carry a unit test that pins the wire order; the test (not the impl) is what protects the invariant.
-
-For `SourceOperation { Enumerate, Extract }`, declaration order already matches kebab-alphabetical order, so the manual `to_string().cmp(&to_string())` is dead code that allocates twice per compare:
-
-```70:80:crates/domain/src/adapter/operation.rs
-impl Ord for SourceOperation {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.to_string().cmp(&other.to_string())
-    }
-}
-```
-
-For `TargetOperation { Shape, Build, Merge }`, declaration order disagrees with kebab-alphabetical order; reorder variants to `Build, Merge, Shape` and the derive matches the existing wire order.
-
-For `AuthorityOverrideAction { Set, Clear }`, declaration order already gives `Set < Clear`; the existing `set_sorts_before_clear` test (lines 332–344) is the load-bearing guard, not the manual impl.
-
-**Action** (all in `crates/domain/src/`):
-
-1. `adapter/operation.rs`:
-   - Add `PartialOrd, Ord` to both `derive(...)` lists (1 line each).
-   - Reorder `TargetOperation` variants to `Build, Merge, Shape` (and move their doc comments with them).
-   - Delete `impl Ord for SourceOperation` (lines 70–74), `impl PartialOrd for SourceOperation` (76–80), `impl Ord for TargetOperation` (140–144), `impl PartialOrd for TargetOperation` (146–150) — 4 impl blocks, ~22 LOC.
-   - Trim the four-paragraph doc preamble that justifies the manual impls down to one sentence ("Variants declared in kebab-alphabetical order so `BTreeMap` iteration matches the wire envelope.") — ~16 LOC.
-   - Add or extend the existing `target_operation_round_trips_kebab_case` test with `assert!(TargetOperation::Build < TargetOperation::Merge && TargetOperation::Merge < TargetOperation::Shape)` (3 lines).
-2. `journal.rs`:
-   - Add `PartialOrd, Ord` to `AuthorityOverrideAction`'s `derive(...)` list.
-   - Delete `const fn sort_key` (lines 308–313, 6 LOC), `impl PartialOrd` (316–320, 5 LOC), `impl Ord` (322–326, 5 LOC), and the 12-line "Ord is implemented by hand…" rationale paragraph above the enum (~28 LOC total). The existing `set_sorts_before_clear` test continues to guard variant-order drift.
-
-**Quality delta**: `−68 LOC, −7 impl blocks, −1 hand-rolled `sort_key` method, −1 per-cmp `String` heap alloc on cache-index sort hot path` (axes: LOC, types, idiom — `derive(Ord)` matches stdlib / clap / serde idiom).
-**Net LOC**: 204 (operation.rs) + 641 (journal.rs) = 845 → ~777.
-**Done when**: `rg -n 'impl (Partial)?Ord for (SourceOperation|TargetOperation|AuthorityOverrideAction)' crates/ src/` returns no matches; `cargo nextest run -p specify-domain operation::tests authority_override` passes.
-**Rule?**: no — `clippy::derive_ord_xor_partial_ord` plus the existing tests already provide negative coverage; a project-specific lint would be three duplicate hits' worth of value.
-**Counter-argument**: "The manual impl is documented as a deliberate decoupling from variant order." — Loses: the unit tests are the actual defence; the impl is redundant ceremony, and `to_string()` per cmp is a measurable inefficiency on the cache-index sort path. Reorderings are caught by the existing tests.
-**Depends on**: none.
-
----
-
-### F3 — Drop redundant `root_dir: PathBuf` from `Resolved{Source,Target}Adapter`
-
-**Evidence (current state)**:
-
-```280:304:crates/domain/src/adapter/core.rs
-pub struct ResolvedSourceAdapter {
-    pub manifest: SourceAdapter,
-    pub root_dir: PathBuf,
-    pub location: AdapterLocation,
-}
-…
-pub struct ResolvedTargetAdapter {
-    pub manifest: TargetAdapter,
-    pub root_dir: PathBuf,
-    pub location: AdapterLocation,
-}
-```
-
-`AdapterLocation` already exposes the path:
-
-```162:179:crates/domain/src/adapter/core.rs
-impl AdapterLocation {
-    pub const fn label(&self) -> &'static str { … }
-    pub const fn path(&self) -> &PathBuf {
-        match self { Self::Local(p) | Self::Cached(p) => p }
-    }
-}
-```
-
-And `locate_axis` literally clones the path back out solely to satisfy the `root_dir` field:
-
-```478:481:crates/domain/src/adapter/core.rs
-    check_axis_unique_for_name_memo(axis, name, project_dir, location.path())?;
-    let path = location.path().clone();
-    Ok((path, location))
-```
-
-Across both repos `root_dir` is read in 4 places:
-
-```text
-src/commands.rs:176,188      resolved.root_dir.display().to_string()  (×2)
-src/commands/context/assemble.rs:72,77    adapter.root_dir.join(...)  (×2)
-src/commands/tool.rs:38,42                plugin.root_dir(.clone())   (×2)
-crates/domain/tests/adapter.rs:74,90,295   resolved.root_dir.ends_with(…)
-```
-
-Every call site can swap `.root_dir` for `.location.path()` (or `.location.path().clone()` for the one tool.rs `clone` site) verbatim.
-
-**Action** (`crates/domain/src/adapter/core.rs`):
-
-1. Delete the `root_dir: PathBuf` field + its 2-line doc comment from both `ResolvedSourceAdapter` and `ResolvedTargetAdapter` (~6 LOC).
-2. In both `*::resolve` methods, drop the `root_dir,` line from the struct construction (2 LOC).
-3. Change `load_validated`'s return type from `(PathBuf, AdapterLocation, PathBuf, serde_json::Value)` to `(AdapterLocation, PathBuf, serde_json::Value)`, dropping the leading `PathBuf` (and the matching destructuring patterns at the two call sites) — ~3 LOC.
-4. Change `locate_axis`'s return type from `Result<(PathBuf, AdapterLocation), Error>` to `Result<AdapterLocation, Error>`; delete the trailing two-line `let path = location.path().clone(); Ok((path, location))` and return `Ok(location)` directly (~3 LOC).
-5. Update the 8 call sites listed above (rename only — same character count).
-
-**Quality delta**: `−18 LOC, −2 public struct fields, −1 PathBuf clone per resolve`. (axes: LOC, types, call-site burden when exposing path — callers gain nothing extra).
-**Net LOC**: 742 → ~724 in `adapter/core.rs`; touched files compile and pass tests with no logic change.
-**Done when**: `rg -n 'root_dir' crates/domain/src/adapter/ src/ crates/domain/tests/` finds no matches in struct fields or destructure patterns; `cargo nextest run -p specify-domain adapter` passes.
-**Rule?**: no — single occurrence in this codebase.
-**Counter-argument**: "Two public fields is fine; tests use both." — Loses: tests use exactly one (assert against the `ends_with`), `.location.path().ends_with(...)` is the same number of characters and removes the duplicated state.
-**Depends on**: none.
-
----
-
-### F4 — Replace `RequirementStatus` / `RequirementTag` hand-rolled `as_str` / `parse` with strum derives
-
-**Evidence (current state)**:
-
-```70:93:crates/domain/src/spec/provenance.rs
-impl RequirementStatus {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Agreed => "agreed",
-            Self::Unknown => "unknown",
-            Self::Conflict => "conflict",
-            Self::Divergence => "divergence",
-        }
-    }
-
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "agreed" => Some(Self::Agreed),
-            "unknown" => Some(Self::Unknown),
-            "conflict" => Some(Self::Conflict),
-            "divergence" => Some(Self::Divergence),
-            _ => None,
-        }
-    }
-}
-```
-
-```107:137:crates/domain/src/spec/provenance.rs
-impl RequirementTag {
-    pub const fn as_str(self) -> &'static str { … }
-    pub const fn expected_status(self) -> RequirementStatus { … }
-    fn parse(s: &str) -> Option<Self> { … }
-}
-```
-
-Both enums already carry `#[serde(rename_all = "kebab-case")]` and the workspace already pulls in `strum = { version = "0.28", features = ["derive"] }`. `strum::Display`, `strum::EnumString`, and `strum::IntoStaticStr` (already used elsewhere — see `Axis`, `CacheMode`, `CacheMissReason`) cover both directions of the mapping for free.
-
-External callers of `as_str` (4 hits, all in `provenance.rs::check_status` lines 445–459) feed a `format!("{}", x.as_str())` pattern — `Display` makes them `format!("{}", x)`, smaller still. External callers of `parse` (1 hit, line 527 inside the same file) become `s.parse().ok()` via `FromStr`.
-
-**Action** (`crates/domain/src/spec/provenance.rs`):
-
-1. Add `strum::Display, strum::EnumString, strum::IntoStaticStr` to the `derive` list on `RequirementStatus` and `RequirementTag`. Keep `#[strum(serialize_all = "kebab-case")]` (matches the existing serde rule).
-2. Delete `impl RequirementStatus { as_str, parse }` (~22 LOC) and `impl RequirementTag { as_str, parse }` (~13 LOC), keeping `expected_status` (still load-bearing).
-3. Update the four call sites at lines 445–459 to use `{tag}` / `{status}` format-args directly; update line 527 to `status_raw.as_deref().and_then(|s| s.parse().ok())`.
-
-**Quality delta**: `−25 LOC, −4 hand-rolled methods, +3 derive entries, idiom (matches Axis/CacheMode/CacheMissReason already in the same crate)`.
-**Net LOC**: 607 → ~582 in `spec/provenance.rs`.
-**Done when**: `rg -n 'fn (as_str|parse)\(' crates/domain/src/spec/provenance.rs` finds zero hand-rolled methods on `RequirementStatus` / `RequirementTag`; `cargo nextest run -p specify-domain spec::provenance` passes.
-**Rule?**: no.
-**Counter-argument**: "`as_str` is `const fn`; `Display` isn't." — Loses: every existing call site is inside `format!`/`writeln!` (non-const context), and no caller uses `as_str` in a `const` position. The const-ness was never reached.
-**Depends on**: none.
-
----
-
-## One-touch tidies
-
-### T1 — `locate_axis` reuses `cached` / `local` instead of recomputing them in the not-found branch
+### F2 — Fix Stale Ord Contract
 
 **Evidence**:
 
-```444:481:crates/domain/src/adapter/core.rs
-fn locate_axis(...) -> Result<(PathBuf, AdapterLocation), Error> {
-    let cached = cache_dir(project_dir, axis, name);
-    let location = if cached.is_dir() {
-        AdapterLocation::Cached(cached)
-    } else {
-        let local = adapter_axis_dir(project_dir, axis).join(name);
-        if local.is_dir() {
-            AdapterLocation::Local(local)
-        } else {
-            return Err(Error::Diag {
-                code: "adapter-not-found",
-                detail: format!(
-                    "adapter `{name}` (axis `{axis}`) not found at {} or {}",
-                    cache_dir(project_dir, axis, name).display(),    // re-walks
-                    adapter_axis_dir(project_dir, axis).join(name).display(),  // re-walks
+`DECISIONS.md` still says the adapter operation enums use manual ordering and warns against deriving `Ord`:
+
+```619:628:/Users/andrewweston/github.com/augentic/specify-cli/DECISIONS.md
+- **Wire invariant.** The `specify source resolve` and
+  `specify target resolve` JSON envelopes' `operations: [...]` arrays
+  iterate in kebab-alphabetical order (e.g. `["enumerate", "extract"]`,
+  `["build", "merge", "shape"]`). `BTreeMap` ordering combined with
+  manual `Ord` / `PartialOrd` impls on `{Source,Target}Operation`
+  (sorting by kebab string, not by Rust variant declaration order)
+  preserves this contract end-to-end. Future refactors must not
+  re-derive `Ord` on these enums without preserving the kebab-string
+  sort — derived `Ord` follows declaration order and would silently
+```
+
+Current code derives `PartialOrd` and `Ord` on both enums, with variants declared in kebab order:
+
+```40:56:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/adapter/operation.rs
+/// Variants declared in kebab-alphabetical order so `BTreeMap`
+/// iteration matches the wire envelope.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+```
+
+Current-state grep:
+
+```text
+$ rg -n 'manual `Ord`|PartialOrd,\n\s*Ord' DECISIONS.md crates/domain/src/adapter/operation.rs
+DECISIONS.md:623:  manual `Ord` / `PartialOrd` impls on `{Source,Target}Operation`
+crates/domain/src/adapter/operation.rs:48:    PartialOrd,
+crates/domain/src/adapter/operation.rs:49:    Ord,
+crates/domain/src/adapter/operation.rs:100:    PartialOrd,
+crates/domain/src/adapter/operation.rs:101:    Ord,
+```
+
+**Action**:
+
+1. In `DECISIONS.md`, replace lines 623–628 with one shorter sentence: derived `Ord` is intentional because enum variants are declared in kebab-alphabetical wire order.
+2. Keep the examples `["enumerate", "extract"]` and `["build", "merge", "shape"]`; those are still the contract.
+
+**Quality delta**: `−1 verified contract/doc drift, −4 LOC`.
+
+**Net LOC**: `52 → 48` in the `Target adapter suffix policy` / operations decision area.
+
+**Done when**: `rg -n 'manual `Ord`|must not\s+re-derive `Ord`' DECISIONS.md` returns no matches, while `cargo make check` still passes.
+
+**Rule?**: no — this is one stale decision paragraph after a completed simplification.
+
+**Counter-argument**: keeping the warning may prevent a future reorder; it loses because it now describes code that no longer exists and tells agents to undo the smaller implementation.
+
+**Depends on**: none.
+
+### F3 — Delete Duplicate Project Gate
+
+**Evidence**:
+
+`Plan::validate` appends two findings for the same predicate when a multi-repo plan entry has neither `project` nor `target`:
+
+```37:42:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/validate.rs
+        results.extend(missing_project_or_target(&self.entries));
+        results.extend(check_context_paths(&self.entries));
+        results.extend(authority_override_orphan_source_keys(&self.entries));
+        if let Some(reg) = registry {
+            results.extend(check_project_in_registry(&self.entries, reg));
+            results.extend(check_project_required_multi_repo(&self.entries, reg));
+```
+
+Both checks use the same condition:
+
+```164:190:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/validate.rs
+fn check_project_required_multi_repo(changes: &[Entry], registry: &Registry) -> Vec<Finding> {
+    if registry.projects.len() <= 1 {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for entry in changes {
+        if entry.project.is_none() && entry.target.is_none() {
+            out.push(Finding {
+                level: Severity::Error,
+                code: "project-missing-multi-repo",
+                message: format!(
+                    "slice '{}' has no project or target; multi-repo implementation slices must specify a project",
+                    entry.name
                 ),
-            });
-        }
-    };
-    …
-}
 ```
 
-Both `cache_dir(...)` and `adapter_axis_dir(...).join(name)` are recomputed inside the error literal even though the matching `PathBuf`s are still in scope (`cached` was moved out of the `if`-cond branch, but the not-found branch never reads it; `local` is the local in scope).
-
-**Action**: rewrite the function body so both `PathBuf`s are computed once and named (`cached`, `local`) and the not-found branch references them:
-
-```rust
-let cached = cache_dir(project_dir, axis, name);
-let local = adapter_axis_dir(project_dir, axis).join(name);
-let location = if cached.is_dir() {
-    AdapterLocation::Cached(cached)
-} else if local.is_dir() {
-    AdapterLocation::Local(local)
-} else {
-    return Err(Error::Diag {
-        code: "adapter-not-found",
-        detail: format!(
-            "adapter `{name}` (axis `{axis}`) not found at {} or {}",
-            cached.display(), local.display(),
-        ),
-    });
-};
+```185:199:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/validate.rs
+fn missing_project_or_target(changes: &[Entry]) -> Vec<Finding> {
+    let mut out = Vec::new();
+    for entry in changes {
+        if entry.project.is_none() && entry.target.is_none() {
+            out.push(Finding {
+                level: Severity::Error,
+                code: "plan.entry-needs-project-or-target",
+                message: format!(
+                    "entry '{}' has neither 'project' nor 'target'; at least one is required",
 ```
 
-**Quality delta**: `−4 LOC, −2 redundant filesystem-path constructions per missing-adapter error`.
-**Net LOC**: ~742 → ~738 in `adapter/core.rs`.
-**Done when**: `rg -nC1 'cache_dir\(project_dir, axis, name\)\.display' crates/domain/src/adapter/core.rs` finds zero hits inside `locate_axis`; tests pass.
-**Rule?**: no.
-**Counter-argument**: "The not-found branch is cold; the duplication doesn't matter." — Loses: −LOC and the variant pair already exists in scope; deleting redundancy is the priority of this pass.
-**Depends on**: F3 (or land standalone — both edits live in the same function).
+The only production references to `project-missing-multi-repo` are the branch and its tests:
 
----
+```text
+$ rg -n 'project-missing-multi-repo|check_project_required_multi_repo' crates/domain/src tests src --glob '*.rs'
+crates/domain/src/change/plan/core/validate.rs:19:    /// checks (`project-not-in-registry`, `project-missing-multi-repo`).
+crates/domain/src/change/plan/core/validate.rs:42:            results.extend(check_project_required_multi_repo(&self.entries, reg));
+crates/domain/src/change/plan/core/validate.rs:164:fn check_project_required_multi_repo(changes: &[Entry], registry: &Registry) -> Vec<Finding> {
+crates/domain/src/change/plan/core/validate.rs:173:                code: "project-missing-multi-repo",
+crates/domain/src/change/plan/core/validate/tests.rs:227:    assert!(results.iter().any(|r| r.code == "project-missing-multi-repo"));
+crates/domain/src/change/plan/core/validate/tests.rs:257:        !results.iter().any(|r| r.code == "project-missing-multi-repo"),
+crates/domain/src/change/plan/core/validate/tests.rs:279:    assert!(!results.iter().any(|r| r.code == "project-missing-multi-repo"));
+```
 
-### T2 — Drop the `tooling check`'s 31-element `&[&dyn Check; 31]` array length annotation
+**Action**:
+
+1. Delete `check_project_required_multi_repo`.
+2. Remove its call from `Plan::validate`.
+3. Delete `project_missing_multi_repo`, `target_only_entry_valid_multi_repo`, and `project_valid_single_repo`; keep the generic `neither_project_nor_target_error`, `target_only_passes`, and `project_and_target_passes` tests.
+4. Remove `project-missing-multi-repo` from the doc comment at the top of `validate.rs`.
+
+**Quality delta**: `−65 LOC, −1 branch, −1 diagnostic variant on the plan-validation path`.
+
+**Net LOC**: `validate.rs + validate/tests.rs 809 → about 744`.
+
+**Done when**: `rg -n 'project-missing-multi-repo|check_project_required_multi_repo' crates/domain/src/change/plan/core` returns no matches and `cargo make check` passes.
+
+**Rule?**: no — one duplicate branch.
+
+**Counter-argument**: a multi-repo-specific message might be friendlier; it loses because target-only coordinator entries are explicitly valid and the branch no longer expresses a distinct rule.
+
+**Depends on**: none.
+
+### F4 — Derive ClaimKind Parsing
 
 **Evidence**:
 
-```50:83:tooling/src/check/mod.rs
-pub fn run(ctx: &Context) -> Vec<Finding> {
-    let checks: [&dyn Check; 31] = [
-        &AdapterCheck,
-        …
-    ];
+`ClaimKind` already derives `Display` and `ValueEnum`, but hand-writes a 15-arm parser:
+
+```44:60:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/evidence/authority.rs
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    clap::ValueEnum,
+)]
 ```
 
-The `; 31` length is hand-counted and silently goes stale every time a check is added or removed. Rust infers the array length from the literal; the explicit `; 31` annotation only exists to be wrong on the next add.
+```92:121:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/evidence/authority.rs
+impl FromStr for ClaimKind {
+    type Err = String;
 
-**Action**: change `let checks: [&dyn Check; 31] = [...]` to `let checks: [&dyn Check; _] = [...]` (`feature(generic_arg_infer)` is stable since 1.79) or simply `let checks: &[&dyn Check] = &[...]`. Pick whichever requires zero feature pin — the `&[&dyn Check]` slice form needs no MSRV bump.
+    /// Parse the closed kebab-case wire form (e.g. `requirement`,
+    /// `criterion`). Mirrors the schema enum byte-for-byte so the
+    /// CLI parser and `evidence.schema.json` reject the same set of
+    /// values.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "intent" => Ok(Self::Intent),
+```
 
-**Quality delta**: `−1 brittle constant, 0 LOC`.
-**Net LOC**: 100 → 100 in `tooling/src/check/mod.rs`.
-**Done when**: `rg -n '\[&dyn Check; \d+\]' tooling/src/check/` returns no hits; `make check` (or `cargo run --release --manifest-path tooling/Cargo.toml -- check`) still loads the same 31 checks.
-**Rule?**: no.
-**Counter-argument**: "Explicit length documents the count." — Loses: the count drifts on every add/delete and no other workspace check site uses this pattern.
+The repo already uses `strum::EnumString` for identical kebab-case enum parsing:
+
+```51:58:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/adapter/operation.rs
+    Serialize,
+    Deserialize,
+    EnumString,
+    strum::Display,
+    ValueEnum,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+```
+
+Current-state grep:
+
+```text
+$ rg -n 'impl FromStr for ClaimKind|EnumString' crates/domain/src/evidence/authority.rs crates/domain/src/adapter/operation.rs crates/domain/src/spec/provenance.rs
+crates/domain/src/evidence/authority.rs:92:impl FromStr for ClaimKind {
+crates/domain/src/adapter/operation.rs:27:use strum::EnumString;
+crates/domain/src/adapter/operation.rs:53:    EnumString,
+crates/domain/src/adapter/operation.rs:105:    EnumString,
+crates/domain/src/spec/provenance.rs:66:    strum::EnumString,
+crates/domain/src/spec/provenance.rs:85:    Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::IntoStaticStr,
+```
+
+**Action**:
+
+1. Remove `use std::str::FromStr;` from `authority.rs`.
+2. Add `strum::EnumString` to `ClaimKind`'s derive list.
+3. Delete the manual `impl FromStr for ClaimKind`.
+4. Adjust `claim_kind_from_str_rejects_unknown` to assert the generated error mentions the bad token, or delete the test if it only pins the custom prose.
+
+**Quality delta**: `−27 LOC, −1 hand-written parser, −15 match arms`. Idiom: same derive-based enum parsing already used locally; `clap`/derive-driven CLI parsing is also the direction cargo-style CLIs take.
+
+**Net LOC**: `authority.rs 303 → about 276`.
+
+**Done when**: `rg -n 'impl FromStr for ClaimKind|use std::str::FromStr' crates/domain/src/evidence/authority.rs` returns no matches and `cargo make check` passes.
+
+**Rule?**: no — only one enum still hand-writes a parser while using `strum`.
+
+**Counter-argument**: the custom parser has a nicer expected-values string; it loses because `clap::ValueEnum` already owns operator-facing CLI suggestions, and schema validation owns file-facing diagnostics.
+
 **Depends on**: none.
 
----
+## One-Touch Tidies
 
-## Findings considered and dropped
+### T1 — Delete Dead TargetRef Accessors
 
-- **Add a clippy lint preventing future hand-rolled `Ord` impls.** Forbidden by the "no new mechanical enforcement" rule; F2's deletion + tests are sufficient.
-- **Rewrite `crates/domain/src/discovery/document.rs` (890 LOC) on top of a Markdown crate.** The hand-rolled parser is documented as deliberately scoped to the `## Candidate inventory` section grammar; pulling in pulldown-cmark or comrak would *add* a dependency for a net-positive LOC delta. Drop.
-- **Collapse the duplicated `ResolveBody` arms in `src/commands.rs` (lines 169–197).** The two arms differ only by `SourceAdapter` vs `TargetAdapter`. A `trait ResolvedAdapter` abstraction would touch ≥ 2 existing types but only deletes ~10 LOC of literal duplication; the trait itself spends 8+ LOC. Net wash. Drop.
-- **Delete `is_kebab_target_name` (`crates/domain/src/change/plan/core/model.rs:389`) in favour of a regex.** `regex` is already in workspace deps but pulling it into this hot parse path adds compile-time regex setup for a 17-line function. No net gain. Drop.
-- **Migrate `RequirementStatus::as_str` to `IntoStaticStr` even though `Display` does the same job.** `IntoStaticStr` would preserve `&'static str` callers; F4 already shows there are none. Drop in favour of plain `Display`.
-- **Replace 16 `panic!`/`unreachable!` hits on the "non-test" recon path.** Every hit is inside a `#[cfg(test)] mod tests {…}` block (the recon `--glob '!**/tests.rs'` was a false-positive filter). Verified by reading each hit; no operator-reachable panic surface to close.
+**Evidence**:
 
----
+`TargetRef::name()` and `TargetRef::version()` are only used by tests:
 
-## Threshold assertion
+```353:363:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/model.rs
+    /// Kebab-case adapter name (before the `@v` suffix).
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
-- 4 structural findings (F1: defect closure with severity ≥ CI predicate; F2: −68 LOC ≥ 30; F3: −18 LOC + −2 fields = ≥ 2 axes; F4: −25 LOC + −4 methods + idiom = ≥ 2 axes).
-- 2 one-touch tidies (T1: −4 LOC single axis; T2: 0 LOC, single axis — qualifies because it removes a verifiably wrong constant).
-- Subtraction-only ΔLOC: **−131 LOC**. Defect-only ΔLOC: **0** (well under the +30 cap).
-- No formatting-only, rename-only, comment-only, or "abstract over" findings included.
-- No new dependencies, modules, files, traits, types, predicates, or rule docs proposed.
+    /// Integer version (after the `@v` suffix).
+    #[must_use]
+    pub const fn version(&self) -> u32 {
+        self.version
+```
 
----
+```text
+$ rg -n 'TargetRef::name|TargetRef::version|\.name\(\)|\.version\(\)' crates/domain/src/change/plan src tests --glob '*.rs'
+crates/domain/src/change/plan/core/model/tests.rs:154:    assert_eq!(zero_target.name(), "contracts");
+crates/domain/src/change/plan/core/model/tests.rs:155:    assert_eq!(zero_target.version(), 1);
+crates/domain/src/change/plan/core/model/tests.rs:158:    assert_eq!(one_target.name(), "omnia");
+crates/domain/src/change/plan/core/model/tests.rs:159:    assert_eq!(one_target.version(), 1);
+```
+
+**Action**:
+
+1. Delete both accessors.
+2. Delete the four test assertions that exist only to call them; keep the serialize/round-trip assertion.
+
+**Quality delta**: `−14 LOC, −2 public methods, −4 test-only call sites`.
+
+**Net LOC**: `model.rs + model/tests.rs 1109 → about 1095`.
+
+**Done when**: `rg -n 'pub (const )?fn (name|version)\(|\.name\(\)|\.version\(\)' crates/domain/src/change/plan/core/model.rs crates/domain/src/change/plan/core/model/tests.rs` returns no matches.
+
+**Rule?**: no.
+
+**Counter-argument**: future version reconciliation may need them; it loses because future code can add the one accessor it actually uses.
+
+**Depends on**: none.
+
+### T2 — Fix Retired Workflow Terms
+
+**Evidence**:
+
+Current CLI help still exposes the retired `define` loop:
+
+```95:99:/Users/andrewweston/github.com/augentic/specify-cli/src/cli.rs
+    },
+
+    /// Slice lifecycle operations — one `define → build → merge` loop.
+    Slice {
+        #[command(subcommand)]
+```
+
+Code comments still reference `/change:execute`, which the current workflow replaced with `/spec:execute`:
+
+```3:5:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/slice/metadata.rs
+//! [`SliceMetadata`] is the document, [`Outcome`] is the latest phase return
+//! surface read by `/change:execute`, and [`TouchedSpec`] lists the specs
+//! the slice mutates.
+```
+
+Current-state count outside test directories:
+
+```text
+$ rg -n 'define → build|/change:execute' crates/domain/src src --glob '*.rs' | wc -l
+5
+```
+
+**Action**:
+
+1. Replace `define → build → merge` with `refine → build → merge` in `src/cli.rs`.
+2. Replace `/change:execute` with `/spec:execute` in `crates/domain/src/slice/metadata.rs`, `crates/domain/src/slice/outcome.rs`, and `crates/domain/src/merge/slice.rs`.
+
+**Quality delta**: `−5 stale workflow references, 0 LOC`.
+
+**Net LOC**: unchanged.
+
+**Done when**: `rg -n 'define → build|/change:execute' crates/domain/src src --glob '*.rs'` returns no matches and `cargo make check` passes.
+
+**Rule?**: yes, barely — there are 5 live-source hits and a simple `rg`-based docs check could reject retired command names, but do not add it in this pass.
+
+**Counter-argument**: comments are harmless; it loses because one occurrence is user-facing CLI help.
+
+**Depends on**: none.
+
+### T3 — Trim Wiretapper Repetition
+
+**Evidence**:
+
+The shipped skills are small overall, but `wiretapper` repeats failure and verification criteria in three places:
+
+```57:64:/Users/andrewweston/github.com/augentic/specify/plugins/capture/skills/wiretapper/SKILL.md
+### Step 5: Verify Compile
+
+1. From `$LEGACY_DIR`, run the project build (e.g. `npm run build` or `npx tsc --noEmit`). Use the script the project defines; if both exist, prefer `npm run build`.
+2. If the build fails, report the compiler errors and **fail the step**. Do not leave the repo in a broken state without failing.
+
+### Step 6 (Optional): Integration Doc
+
+Optionally add `$LEGACY_DIR/src/wiretap/README.md` documenting that wiretap is enabled with `WIRETAP_ENABLED=true` and listing which adapters were registered.
+```
+
+```72:87:/Users/andrewweston/github.com/augentic/specify/plugins/capture/skills/wiretapper/SKILL.md
+## Error Handling
+
+| Issue | Cause | Resolution |
+|-------|--------|------------|
+| Invalid or missing legacy path | Bad argument or path not a directory | Fail with "Error: legacy-dir is required and must be an existing directory." (or similar) |
+| No package.json | Not a Node project | Fail with clear message; do not generate. |
+| Entrypoint not found | Unusual layout | Fail with message listing paths checked. |
+| Build fails after wiring | Syntax/import errors in generated or patched code | Report compiler output and fail the step. |
+| Wiretap capture throws | Bug in generated adapter | All adapters must wrap capture in try/catch (design guardrail). |
+
+## Verification Checklist
+```
+
+Current-state skill lengths:
+
+```text
+$ rg --files -g 'SKILL.md' | xargs wc -l | sort -nr
+96 plugins/capture/skills/wiretapper/SKILL.md
+85 plugins/spec/skills/drop/SKILL.md
+72 plugins/spec/skills/plan/SKILL.md
+...
+```
+
+**Action**:
+
+1. Delete the `## Error Handling` table; every row repeats a process step or a guardrail.
+2. Delete `### Step 6 (Optional): Integration Doc`; optional README generation is not necessary for replay-ready captures and adds an output surface.
+3. Keep the verification checklist and guardrails.
+
+**Quality delta**: `−15 LOC, −1 optional output branch`.
+
+**Net LOC**: `96 → about 81`.
+
+**Done when**: `wc -l plugins/capture/skills/wiretapper/SKILL.md` is `≤ 81` and `make check` still passes.
+
+**Rule?**: no.
+
+**Counter-argument**: the table helps failures read predictably; it loses because the process steps already prescribe those exact failures and the skill predicate suite is green without the duplicate prose.
+
+**Depends on**: none.
 
 ## Post-mortem
 
 <!-- One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress. -->
-- F1 (rfcs/roadmap.md broken links): actual ΔLOC 0 vs predicted 0; done when clean; regressions none.
-- F2 (derive Ord for SourceOperation/TargetOperation/AuthorityOverrideAction): actual ΔLOC -60 vs predicted -68; done when clean; regressions none.
-- F3 (drop root_dir from Resolved{Source,Target}Adapter): actual ΔLOC -12 vs predicted -18; done when clean; regressions none.
-- F4 (strum derives for RequirementStatus/RequirementTag): actual ΔLOC -33 vs predicted -25; done when clean; regressions none.
-- T1 (locate_axis cached/local dedup): actual ΔLOC -2 vs predicted -4; done when clean; regressions none.
-- T2 (drop [&dyn Check; 31] length annotation): actual ΔLOC 0 vs predicted 0; done when clean; regressions none.
-

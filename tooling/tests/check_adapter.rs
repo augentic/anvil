@@ -23,17 +23,6 @@ fn sibling_specify_cli_dir() -> PathBuf {
 }
 
 #[test]
-fn real_repo_adapter_manifests_validate() {
-    let ctx =
-        Context::from_manifest_dir(env!("CARGO_MANIFEST_DIR")).expect("framework root resolves");
-    let findings = run_adapter_check(&ctx);
-    assert!(
-        findings.is_empty(),
-        "expected all in-repo adapter manifests to validate, got: {findings:?}"
-    );
-}
-
-#[test]
 fn schema_violation_on_invalid_source_manifest() {
     let temp = tempfile::tempdir().expect("tempdir");
     scaffold_framework(temp.path());
