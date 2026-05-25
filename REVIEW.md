@@ -372,4 +372,5 @@ The `; 31` length is hand-counted and silently goes stale every time a check is 
 - F3 (drop root_dir from Resolved{Source,Target}Adapter): actual ΔLOC -12 vs predicted -18; done when clean; regressions none.
 - F4 (strum derives for RequirementStatus/RequirementTag): actual ΔLOC -33 vs predicted -25; done when clean; regressions none.
 - T1 (locate_axis cached/local dedup): actual ΔLOC -2 vs predicted -4; done when clean; regressions none.
+- T2 (drop [&dyn Check; 31] length annotation): actual ΔLOC 0 vs predicted 0; done when clean; regressions none.
 
