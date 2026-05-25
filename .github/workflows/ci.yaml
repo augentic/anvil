@@ -18,7 +18,7 @@ env:
 
 jobs:
   checks:
-    name: Consistency checks
+    name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
