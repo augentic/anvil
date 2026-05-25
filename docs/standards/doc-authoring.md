@@ -152,7 +152,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```html
 <div class="synopsis">
-Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
 </div>
 
 <div class="see-also">
@@ -212,7 +212,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```markdown
 \{{#template templates/synopsis-open.md}}
-Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
 \{{#template templates/synopsis-close.md}}
 ```
 

@@ -24,9 +24,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify adapter`.
-2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specify slice *` verbs they wrap.
-3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specrun init`, `specify adapter`.
+2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specrun slice *` verbs they wrap.
+3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specrun plan *` / `specrun registry *` / `specrun workspace *` verbs they wrap.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
@@ -82,7 +82,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Workspace-centric execution with explicit push
 
-**Decision:** All multi-repo execution happens inside workspace clones under the initiating repo's `.specify/workspace/`. Local commits from merge accumulate in the clones. Changes are published to remotes only when the operator explicitly runs `specify workspace push`.
+**Decision:** All multi-repo execution happens inside workspace clones under the initiating repo's `.specify/workspace/`. Local commits from merge accumulate in the clones. Changes are published to remotes only when the operator explicitly runs `specrun workspace push`.
 
 **Rationale:** Automatic pushes during execution would make the driver non-idempotent and create a rollback problem -- a failed change that was already pushed cannot be cleanly undone. Keeping pushes explicit gives the operator a review gate between "execution produced artifacts" and "artifacts are published." The workspace is the staging area; `workspace push` is the release gate.
 
@@ -140,7 +140,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Contract files use opaque file replacement during merge -- the entire file is replaced rather than delta-merged. Unlike spec files (which use ADDED/MODIFIED/REMOVED sections), contract files are replaced wholesale.
 
-**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specify slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
+**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specrun slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
 
 **Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/done/rfc-8-api-contracts.md)
 
@@ -166,7 +166,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Adapter vs `--hub` is mutually exclusive at init
 
-**Decision:** `specify init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
+**Decision:** `specrun init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
@@ -182,7 +182,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Operator owns PR merge; Specify prepares and publishes
 
-**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specify workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specify workspace merge` is removed.
+**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specrun workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specrun workspace merge` is removed.
 
 **Rationale:** Automated PR merge couples the framework to forge APIs, check-suite semantics, and team-specific review rules that vary across operators. Holding the framework at "prepare and publish" lets every team layer its own merge policy — checks, reviewers, merge queue, manual approval — without the framework modelling any of it. The split also gives a natural rollback surface: an unmerged PR can be closed or rebased without rewinding any framework state.
 
@@ -190,7 +190,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Declared WASI adapter tools
 
-**Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
+**Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specrun tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
 
 **Rationale:** Adapters used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a adapter can ship behavior without growing the host.
 
@@ -230,13 +230,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Several CLI verb groups were renamed during the RFC-9 → RFC-13 cutover so the top-level surface matches the operator-facing nouns (slice / change / registry / workspace / adapter):
 
-- `specify change *` (per-slice verbs) → `specify slice *` (RFC-13 §3.2).
+- `specify change *` (per-slice verbs) → `specrun slice *` (RFC-13 §3.2).
 - `specify change *` (umbrella verbs) → `specify change *` (RFC-13 §3.5); `specify change create` was renamed from the v1 `specify change init`.
 - `specify schema {resolve, check, pipeline}` → `specify adapter {resolve, check, pipeline}` (RFC-13 §Migration).
-- `specify registry {add, remove}` were added by RFC-9 §2A and both validate the resulting shape after the write.
-- The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specify tool run contract` as the post-merge baseline gate (RFC-15).
-- `specify init --hub` (RFC-9 §1D) is the mutually exclusive alternative to `specify init <adapter>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
-- `specify workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
+- `specrun registry {add, remove}` were added by RFC-9 §2A and both validate the resulting shape after the write.
+- The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specrun tool run contract` as the post-merge baseline gate (RFC-15).
+- `specrun init --hub` (RFC-9 §1D) is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
+- `specrun workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from … by RFC-N" parentheticals while preserving the trail for anyone tracing a stale call site.
 
@@ -292,7 +292,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Gate 1 only (RFC-25 D6)
 
-**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == reviewed`. The operator runs `specify plan transition <name> reviewed` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `reviewed` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
+**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == reviewed`. The operator runs `specrun plan transition <name> reviewed` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `reviewed` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
 
 **Rationale:** Multiple gates compound operator cost and incentivise skipping. One observable gate written by the operator at one observable moment makes the review pause unambiguous and unbypassable. Synthesis-time disagreements use tag-and-proceed; the `slices[].divergence` field carries the Gate-1 acknowledgement signal a future Gate 2 would consume, so the park can be wired in later without a schema change.
 
@@ -332,7 +332,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Automated propose (RFC-25 D11)
 
-**Decision:** `/spec:plan`'s `propose` sub-step fuses `Candidate[]` from each source's `enumerate` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing candidate blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specify plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — fusion runs on candidate headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
+**Decision:** `/spec:plan`'s `propose` sub-step fuses `Candidate[]` from each source's `enumerate` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing candidate blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — fusion runs on candidate headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
 
 **Rationale:** Operator-driven candidate fusion at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 

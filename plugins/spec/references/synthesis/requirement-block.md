@@ -1,6 +1,6 @@
 # Requirement block
 
-Every requirement in `spec.md` is one H3 block with three required provenance lines plus a body. The provenance parser (consumed by `specify slice validate`) enforces this shape exactly — any deviation fails the slice in `refining`.
+Every requirement in `spec.md` is one H3 block with three required provenance lines plus a body. The provenance parser (consumed by `specrun slice validate`) enforces this shape exactly — any deviation fails the slice in `refining`.
 
 ## Canonical template
 

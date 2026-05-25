@@ -30,13 +30,13 @@ This matches RFC-25 posture on `[conflict]` and `[divergence]` tags — review s
 
 ### v1 recorder: journal event
 
-Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo) via `specify slice journal append`. Payload shape: [`journal-payload.md`](journal-payload.md).
+Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo) via `specrun slice journal append`. Payload shape: [`journal-payload.md`](journal-payload.md).
 
 The implementing target's runner sub-brief supplies the `runner` string (e.g. `omnia-target@1 (cargo nextest)`).
 
 ### Do not hand-edit `.metadata.yaml`
 
-Agents must not write slice metadata by hand. RFC-25 retired `specify slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
+Agents must not write slice metadata by hand. RFC-25 retired `specrun slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
 
 A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (workflow §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
@@ -53,7 +53,7 @@ Rules:
 - **Missing block** → omit the line; absence is not an error.
 - **`failed > 0`** → `merge` does **not** auto-refuse in v1; the operator decides whether to land.
 
-Capture the block before archival if present — `specify slice merge` moves the slice directory.
+Capture the block before archival if present — `specrun slice merge` moves the slice directory.
 
 ## See also
 

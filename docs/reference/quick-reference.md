@@ -21,7 +21,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/spec:init`             | One-time project setup; run `specify init --hub` for a registry-only platform hub               |
+| `/spec:init`             | One-time project setup; run `specrun init --hub` for a registry-only platform hub               |
 | `/spec:plan`             | Enumerate sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
 | `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
@@ -69,32 +69,32 @@ refining --> refined --> built --> merged
 
 ```bash
 # Project setup
-specify init <target>                                    # single-project scaffold (positional target adapter)
-specify init --hub                                       # registry-only platform hub
-specify source resolve <name>                            # validate a source adapter manifest
-specify target resolve <value>                           # validate a target adapter (name, path, or URL)
+specrun init <target>                                    # single-project scaffold (positional target adapter)
+specrun init --hub                                       # registry-only platform hub
+specrun source resolve <name>                            # validate a source adapter manifest
+specrun target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specify plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specify plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
-specify plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
-specify plan transition <name> reviewed                  # Gate 1; operator-only
-specify plan next                                        # active in-progress, or pick next pending
-specify plan finalize <name> --clean
+specrun plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
+specrun plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
+specrun plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
+specrun plan transition <name> reviewed                  # Gate 1; operator-only
+specrun plan next                                        # active in-progress, or pick next pending
+specrun plan finalize <name> --clean
 
 # Slice management
-specify slice create <name> --target <target>
-specify slice transition <name> <refining|refined|built|dropped> [--reason "..."]
-specify slice validate <name>
-specify slice merge <name> [--dry-run|--check-only]
+specrun slice create <name> --target <target>
+specrun slice transition <name> <refining|refined|built|dropped> [--reason "..."]
+specrun slice validate <name>
+specrun slice merge <name> [--dry-run|--check-only]
 
 # Workspace (multi-repo)
-specify workspace sync [<project>...]                    # materialise slots from registry.yaml
-specify workspace prepare <project> --change <name>
-specify workspace push [<project>...]                    # publish specify/<name> branch as PR
+specrun workspace sync [<project>...]                    # materialise slots from registry.yaml
+specrun workspace prepare <project> --change <name>
+specrun workspace push [<project>...]                    # publish specify/<name> branch as PR
 
 # Tools
-specify tool run <name> [args...]                        # run a declared WASI tool
+specrun tool run <name> [args...]                        # run a declared WASI tool
 ```
 
 ## Adapters

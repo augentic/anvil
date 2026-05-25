@@ -8,10 +8,10 @@ Canonical definitions for terms used throughout Specify 2.0.
 A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `enumerate` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
-The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
+The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specrun plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
 **API contract**
-A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify tool run contract`).
+A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specrun tool run contract`).
 
 **Archive**
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
@@ -42,7 +42,7 @@ A slice-sized unit emitted by a source adapter's `enumerate`. One block per cand
 The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary in 2.0, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
 
 **Change branch**
-The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
+The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specrun workspace push` publishes them.
 
 **Claim**
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `claim-id` for deterministic fusion across sources.
@@ -62,7 +62,7 @@ The plan-time discovery artifact at `.specify/discovery.md` (workspace mode: at 
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
 
 **Drop**
-The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specify slice transition <name> dropped --reason "..."`.
+The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specrun slice transition <name> dropped --reason "..."`.
 
 ## E
 
@@ -73,7 +73,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
 
 **Execute**
-The supervised driver skill (`/spec:execute`) that loops per slice: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `reviewed`. Resumes from on-disk state — no `--continue` flag.
+The supervised driver skill (`/spec:execute`) that loops per slice: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `reviewed`. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Candidate` plus the bound source and returns `Evidence` content the CLI persists.
@@ -81,12 +81,12 @@ The slice-time operation declared by a source adapter. Reads one `Candidate` plu
 ## F
 
 **Finalize**
-The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr list` (read-only), and runs `specify plan finalize` once every PR is `MERGED`. Never merges PRs itself.
+The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr list` (read-only), and runs `specrun plan finalize` once every PR is `MERGED`. Never merges PRs itself.
 
 ## G
 
 **Gate 1**
-The operator-stamped lifecycle transition `plan.lifecycle: pending → reviewed`. The only review gate Specify 2.0 ships in v1. Written by `specify plan transition <name> reviewed`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
+The operator-stamped lifecycle transition `plan.lifecycle: pending → reviewed`. The only review gate Specify 2.0 ships in v1. Written by `specrun plan transition <name> reviewed`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 ## I
 
@@ -109,7 +109,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 ## P
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, finalize}` only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, finalize}` only.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/domain/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
@@ -126,7 +126,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
+The breakout skill (`/spec:refine`) that runs per slice: `specrun slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
 
 **Registry**
 `registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry has a name, URL, target adapter identifier, and domain description.
@@ -165,7 +165,7 @@ A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 d
 ## W
 
 **Workspace**
-The directory under `.specify/workspace/` holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specify workspace sync` from `registry.yaml`. Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
+The directory under `.specify/workspace/` holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specrun workspace sync` from `registry.yaml`. Local commits are published through `specrun workspace push`; PR merge remains an operator action outside Specify.
 
 **Workspace mode**
 The project topology declared by `project.yaml: workspace: true`. The repository holds `registry.yaml`, plan artifacts at the repository root, and project slots under `.specify/workspace/<project>/`. Contrast with single-repo mode (`workspace: false`).

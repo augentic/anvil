@@ -13,10 +13,10 @@ Specify 2.0 uses several YAML and Markdown files for configuration. All are mana
 ## project.yaml
 
 **Location:** `.specify/project.yaml`
-**Created by:** `/spec:init` (via `specify init`)
+**Created by:** `/spec:init` (via `specrun init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the hub shape (`specify init --hub`).
+Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the hub shape (`specrun init --hub`).
 
 ### Regular project shape
 
@@ -34,10 +34,10 @@ domain: |
 
 | Field             | Required               | Description |
 | ----------------- | ---------------------- | ----------- |
-| `name`            | Yes                    | Project name (set by `specify init --name`) |
+| `name`            | Yes                    | Project name (set by `specrun init --name`) |
 | `target`          | Yes (regular projects) | Target adapter identifier or URL (with optional `@ref` suffix). Accepts a bare name, an `https://…` URL, or a `file:///…` URI. Omitted on workspaces. |
 | `sources`         | No                     | List of source adapters available for `/spec:plan` to bind. Defaults to the first-party set when omitted. |
-| `specify-version` | Yes                    | Minimum CLI version required (set by `specify init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
+| `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `domain`          | No                     | Free-form domain description available to briefs. |
 
@@ -61,8 +61,8 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 ## plan.yaml
 
 **Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
-**Created by:** `/spec:plan` (via `specify plan create`)
-**Modified by:** `specify plan add`, `specify plan amend`, `specify plan transition`, `specify plan next`, `specify plan finalize`
+**Created by:** `/spec:plan` (via `specrun plan create`)
+**Modified by:** `specrun plan add`, `specrun plan amend`, `specrun plan transition`, `specrun plan next`, `specrun plan finalize`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 
@@ -103,7 +103,7 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `reviewed`. Written by `specify plan transition`; `/spec:plan` exits at `pending`. |
+| `lifecycle`              | Yes      | `pending` or `reviewed`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
 | `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].key`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
@@ -123,7 +123,7 @@ slices:
 
 **Location:** `registry.yaml`
 **Created by:** Operator (directly)
-**Validated by:** First-use validators (`specify workspace sync`, `/spec:plan`)
+**Validated by:** First-use validators (`specrun workspace sync`, `/spec:plan`)
 
 Workspace catalogue for multi-repo changes. Optional — not needed for single-repo projects.
 
@@ -186,8 +186,8 @@ into Omnia. Priority: user registration, password reset.
 ## .metadata.yaml
 
 **Location:** `.specify/slices/<name>/.metadata.yaml`
-**Created by:** `specify slice create`
-**Modified by:** `specify slice transition`, `specify slice merge`
+**Created by:** `specrun slice create`
+**Modified by:** `specrun slice transition`, `specrun slice merge`
 
 Per-slice lifecycle metadata. **Never hand-edit this file.**
 

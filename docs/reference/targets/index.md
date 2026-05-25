@@ -75,7 +75,7 @@ Shared material used by multiple adapters lives outside the adapter roots under 
 
 ## Validation
 
-The wire-level schema is `schemas/target.schema.json` (distributed with the binary). It enforces the field set and shape described above. `specify target resolve <value>` loads and validates the manifest on first use.
+The wire-level schema is `schemas/target.schema.json` (distributed with the binary). It enforces the field set and shape described above. `specrun target resolve <value>` loads and validates the manifest on first use.
 
 ## See also
 

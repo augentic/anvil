@@ -47,7 +47,7 @@ iOS/
             └── <asset-id>.imageset/ (or .symbolset/, etc.)
 ```
 
-The `specify tool run vectis -- scaffold ios <AppName>` render step produces `<App>/`, the
+The `specrun tool run vectis -- scaffold ios <AppName>` render step produces `<App>/`, the
 entry point, `Core.swift`, `ContentView.swift`, and the starter `Views/`
 directory. The iOS writer adds `Components/`, `Theme/`, and
 `Resources/Assets.xcassets/` on first generation when the corresponding input
@@ -139,7 +139,7 @@ When `tokens.yaml` defines an `opacity.disabled` token, prefer
 
 The deterministic check that every token reference in `composition.yaml`
 resolves to a `tokens.yaml` entry lives in
-`specify tool run vectis -- validate composition`: when sibling
+`specrun tool run vectis -- validate composition`: when sibling
 `tokens.yaml` exists, the validator auto-invokes `tokens` mode and reports
 unresolved references as errors before the iOS writer is called. The writer
 does not need to re-validate references at generation time; it consumes the
@@ -168,7 +168,7 @@ others absent), shell writers MAY use the same platform default for the
 **absent** categories. Shell writers MUST NOT silently substitute defaults
 for a token name that is referenced from `composition.yaml` but missing from
 `tokens.yaml` — that condition is an error reported by
-`specify tool run vectis -- validate composition` and halts shell generation for the
+`specrun tool run vectis -- validate composition` and halts shell generation for the
 affected screen. The writer surfaces the validator output verbatim and
 declines to emit code that papers over the missing token.
 
@@ -193,7 +193,7 @@ The iOS writer's primary asset input is `assets.yaml`. Resolution order:
 
 The deterministic check that every asset reference in `composition.yaml`
 resolves to an `assets.yaml` entry lives in
-`specify tool run vectis -- validate composition` (auto-invokes `assets` mode when
+`specrun tool run vectis -- validate composition` (auto-invokes `assets` mode when
 present). Missing files are errors; missing optional densities are warnings.
 The writer consumes the already-validated input set.
 
@@ -267,7 +267,7 @@ Props are inferred from variation observed across instances of the slug:
   body.
 
 The structural-identity rule is enforced by
-`specify tool run vectis -- validate composition` before the iOS writer runs, so the
+`specrun tool run vectis -- validate composition` before the iOS writer runs, so the
 writer can trust that every instance of the slug shares the same skeleton
 and only the wiring varies.
 

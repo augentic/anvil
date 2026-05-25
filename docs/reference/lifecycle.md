@@ -21,9 +21,9 @@ Two stored states. The plan lifecycle does not move further during execution —
 
 Each row under `plan.yaml.slices[]` carries its own status:
 
-- `pending` is written by `specify plan add` and `specify plan amend`.
-- `in-progress` is written only by `specify plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
-- `done` is written only by `specify slice merge` after a successful merge.
+- `pending` is written by `specrun plan add` and `specrun plan amend`.
+- `in-progress` is written only by `specrun plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
+- `done` is written only by `specrun slice merge` after a successful merge.
 - Build failures and merge conflicts leave the active entry `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
 
 A plan is **drained** when no entry is `pending` or `in-progress`; `/spec:finalize` becomes legal at that point.
@@ -40,20 +40,20 @@ Each slice's `.metadata.yaml` tracks an independent lifecycle:
 | `merged`   | Specs applied to baseline; slice archived                               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specify plan amend --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
+`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specrun plan amend --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
 
 ## Transitions
 
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
-| `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specify plan create`                            |
-| Operator stamps Gate 1                            | plan: `pending → reviewed`        | `specify plan transition <name> reviewed`        |
-| `specify plan next` picks next pending row       | per-entry: `pending → in-progress` | `specify plan next`                              |
-| `/spec:refine` creates slice                      | slice: (none) → `refining`         | `specify slice create`                           |
-| `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specify slice transition <name> refined`        |
-| `/spec:build` completes tasks                     | slice: `refined → built`           | `specify slice transition <name> built`          |
-| `/spec:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `specify slice merge`                            |
-| `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice transition <name> dropped --reason "..."` |
+| `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specrun plan create`                            |
+| Operator stamps Gate 1                            | plan: `pending → reviewed`        | `specrun plan transition <name> reviewed`        |
+| `specrun plan next` picks next pending row       | per-entry: `pending → in-progress` | `specrun plan next`                              |
+| `/spec:refine` creates slice                      | slice: (none) → `refining`         | `specrun slice create`                           |
+| `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specrun slice transition <name> refined`        |
+| `/spec:build` completes tasks                     | slice: `refined → built`           | `specrun slice transition <name> built`          |
+| `/spec:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `specrun slice merge`                            |
+| `/spec:drop` invoked                              | slice: `* → dropped`               | `specrun slice transition <name> dropped --reason "..."` |
 
 ## `.metadata.yaml`
 
@@ -76,4 +76,4 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 
 The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This provides an audit trail of every slice the project has been through.
 
-For plans, `specify plan finalize <name>` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+For plans, `specrun plan finalize <name>` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

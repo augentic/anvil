@@ -38,7 +38,7 @@ Next steps:
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
 2. Run `/spec:plan initial-baseline source code-typescript=.` (or whichever `code-*` source matches the codebase) to enumerate candidates
-3. Stamp Gate 1 with `specify plan transition initial-baseline reviewed`, then run `/spec:execute` to drive `refine -> build -> merge`
+3. Stamp Gate 1 with `specrun plan transition initial-baseline reviewed`, then run `/spec:execute` to drive `refine -> build -> merge`
 4. Run `/spec:plan <name> ...` for future changes
 ```
 
@@ -54,7 +54,7 @@ Next steps:
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
 
 Next steps:
-1. Add registered projects with `specify registry add`
+1. Add registered projects with `specrun registry add`
 2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
-3. Stamp Gate 1 with `specify plan transition <name> reviewed`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+3. Stamp Gate 1 with `specrun plan transition <name> reviewed`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
 ```

@@ -12,7 +12,7 @@ Operational detail for `/spec:init`. The SKILL.md keeps only the orientation sur
 $PROFILE     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init <adapter>` (regular) or `specify init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
+I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specrun init <adapter>` (regular) or `specrun init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
 
 ## Input
 
@@ -20,8 +20,8 @@ None required. Optionally a adapter identifier (a bare name like `omnia`, an `ht
 
 **Adapter vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with clap's standard parse-error diagnostic and exit code `2`:
 
-- `specify init` (no positional, no `--hub`) → exits `2` with a missing-required-argument diagnostic.
-- `specify init <adapter> --hub` (both supplied) → exits `2` with an argument-conflict diagnostic.
+- `specrun init` (no positional, no `--hub`) → exits `2` with a missing-required-argument diagnostic.
+- `specrun init <adapter> --hub` (both supplied) → exits `2` with an argument-conflict diagnostic.
 
 A regular project must declare a adapter; a hub must declare `--hub` and never carries a `adapter:`.
 
@@ -88,16 +88,16 @@ https://github.com/augentic/specify/adapters/targets/omnia
 
 For local development in this repository, a local target directory such as `./adapters/targets/omnia` is also valid. If multiple targets are plausible, use the **AskQuestion tool** to let the user select which one.
 
-Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specify init <adapter>`.
+Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specrun init <adapter>`.
 
-### 5. Collect project metadata and invoke `specify init`
+### 5. Collect project metadata and invoke `specrun init`
 
 Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
 
 **Regular invocation** (adapter is the required first positional):
 
 ```bash
-specify init "$PROFILE" \
+specrun init "$PROFILE" \
   --name "$PROJECT_NAME" \
   ${DOMAIN:+--domain "$DOMAIN"}
 ```
@@ -105,19 +105,19 @@ specify init "$PROFILE" \
 **Hub invocation** (when `$HUB_MODE=true` — no positional, `--hub` is the discriminator):
 
 ```bash
-specify init --hub \
+specrun init --hub \
   --name "$PROJECT_NAME" \
   ${DOMAIN:+--domain "$DOMAIN"}
 ```
 
-Never combine the two: `specify init "$PROFILE" --hub` exits `2` with clap's argument-conflict diagnostic. `specify init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
+Never combine the two: `specrun init "$PROFILE" --hub` exits `2` with clap's argument-conflict diagnostic. `specrun init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
 
 The CLI writes:
 
 - **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/.cache/manifests/targets/<adapter>/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
 - **Hub** — `.specify/project.yaml` with `hub: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; generated hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
-If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
+If root `AGENTS.md` already exists, `specrun init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
 
 For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `hub`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
 
@@ -163,7 +163,7 @@ Options:
 If the user chooses **yes**, create the slice via the CLI:
 
 ```bash
-specify slice create initial-baseline --format json
+specrun slice create initial-baseline --format json
 ```
 
 The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
@@ -176,10 +176,10 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 `/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
 
-- **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
-- **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
-- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
-- **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
+- **CLI-only scaffolding.** Never hand-roll `.specify/` when `specrun init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
+- **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specrun init` owns adapter fetch and copy when invoked with the adapter positional.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specrun slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
+- **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specrun registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
 - **Adapter vs `--hub` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.
 

@@ -62,4 +62,4 @@ When two source adapters surface the same unit of work, both candidate blocks sh
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 
-When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them, invokes `specify plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. The candidate block itself keeps the consensus or last-written summary; pair-level detail lives in `change.md`.
+When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them, invokes `specrun plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. The candidate block itself keeps the consensus or last-written summary; pair-level detail lives in `change.md`.

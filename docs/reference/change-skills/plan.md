@@ -25,7 +25,7 @@ Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and
 /spec:plan <name> [source <key>=<adapter>:<binding> ...]
 ```
 
-Agent-driven orchestrator. Deterministic work delegates to `specify plan *` and `specify source resolve`. Never writes `reviewed`.
+Agent-driven orchestrator. Deterministic work delegates to `specrun plan *` and `specrun source resolve`. Never writes `reviewed`.
 
 </div>
 
@@ -66,20 +66,20 @@ Not for continuing an already-reviewed plan into execution — use [/spec:execut
 ## Behavior
 
 1. **Pre-flight** — validate `<name>` as kebab-case; read `.specify/project.yaml`.
-2. **Scaffold** — `specify plan create <name> --source <key>=<adapter>:<binding> …` writes `change.md` and `plan.yaml` atomically.
-3. **Workspace sync** (workspace plans only) — `specify workspace sync` before enumerate.
+2. **Scaffold** — `specrun plan create <name> --source <key>=<adapter>:<binding> …` writes `change.md` and `plan.yaml` atomically.
+3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before enumerate.
 4. **Enumerate each source** — run each source adapter's `enumerate` brief; append candidate blocks to `discovery.md`.
 5. **Write `discovery.md`** — three sections: Summary, Source inventory, Candidate inventory.
-6. **Propose** — fuse candidates into `slices[]` via `specify plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
-7. **Validate** — `specify plan validate --format json` when multi-slice or workspace plans need doctor output.
-8. **Exit at `pending`** — print the closing hint; never call `specify plan transition`.
+6. **Propose** — fuse candidates into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
+7. **Validate** — `specrun plan validate --format json` when multi-slice or workspace plans need doctor output.
+8. **Exit at `pending`** — print the closing hint; never call `specrun plan transition`.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.enumerate` produces one candidate and one slice row.
 
 ### Closing hint
 
 ```text
-Plan `<name>` is at `pending`. Run `specify plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
 The skill never auto-stamps `reviewed`. The operator runs the literal transition command after inspecting the plan.
@@ -88,10 +88,10 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 
 | Operation | CLI verb |
 | --------- | -------- |
-| Scaffold plan | `specify plan create` |
-| Add slice row | `specify plan add` |
-| Amend entries | `specify plan amend` |
-| Validate plan | `specify plan validate` |
+| Scaffold plan | `specrun plan create` |
+| Add slice row | `specrun plan add` |
+| Amend entries | `specrun plan amend` |
+| Validate plan | `specrun plan validate` |
 
 ## Error modes
 
@@ -119,7 +119,7 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 
 - [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `reviewed`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
-- [specify plan](../cli/plan.md) — CLI reference
+- [specrun plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change
 </div>
 

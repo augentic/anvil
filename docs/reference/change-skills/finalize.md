@@ -27,20 +27,20 @@ The skill writes nothing under `.specify/` directly. Every state mutation is a C
 
 | Step | CLI / tool | Effect |
 | ---- | ---------- | ------ |
-| Drain check | `specify plan next` | Confirms `reason: drained` |
-| Push | `specify workspace push` | Publishes `specify/<name>` branches as PRs |
+| Drain check | `specrun plan next` | Confirms `reason: drained` |
+| Push | `specrun workspace push` | Publishes `specify/<name>` branches as PRs |
 | Observe | `gh pr view` | Polls until each PR is `MERGED` |
-| Archive | `specify plan archive` | Moves plan to `.specify/archive/plans/` |
+| Archive | `specrun plan archive` | Moves plan to `.specify/archive/plans/` |
 
 PR merges stay operator-owned — finalize observes state; it does not call `gh pr merge`.
 
 ## Behavior
 
 1. **Pre-flight** — validate `<name>`; verify active `plan.yaml`.
-2. **Drainage** — `specify plan next --format json`; only `reason: drained` may continue.
-3. **Push** — `specify workspace push`; surface per-project status table.
+2. **Drainage** — `specrun plan next --format json`; only `reason: drained` may continue.
+3. **Push** — `specrun workspace push`; surface per-project status table.
 4. **Observe PRs** — poll each pushed PR until state is `MERGED`.
-5. **Archive** — `specify plan archive`; print merged PRs, archive path, and post-merge tidy-ups.
+5. **Archive** — `specrun plan archive`; print merged PRs, archive path, and post-merge tidy-ups.
 
 ### Closing message
 
@@ -69,5 +69,5 @@ Single-repo projects skip workspace push when no registry slots are involved; ar
 
 - [/spec:execute](execute.md) — drives slices until drain
 - [Cross-repo changes tutorial](../../tutorials/cross-repo-change.md) — workspace push and PR flow
-- [specify plan](../cli/plan.md) — `plan archive` and `plan finalize`
+- [specrun plan](../cli/plan.md) — `plan archive` and `plan finalize`
 - [Registry](../registry.md) — multi-repo platform setup

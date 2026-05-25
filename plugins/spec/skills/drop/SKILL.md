@@ -12,7 +12,7 @@ Deterministic bookkeeping — slice selection, lifecycle transition, archive mov
 
 ## Non-interactive mode
 
-When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure. Non-interactive mode forwards `--reason` to `specify slice drop`.
+When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure. Non-interactive mode forwards `--reason` to `specrun slice drop`.
 
 ## Phase outcome contract
 
@@ -57,7 +57,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    Run:
 
    ```bash
-   specify slice drop <name> --reason "<user-supplied rationale>" --format json
+   specrun slice drop <name> --reason "<user-supplied rationale>" --format json
    ```
 
    The CLI performs the lifecycle transition (enforcing the legal non-terminal → `dropped` edge), stamps `dropped-at`, records the optional reason in `.metadata.yaml.drop-reason`, and moves the directory under `.specify/archive/YYYY-MM-DD-<name>/`. The `archive-path` field in the JSON response names the final location.
@@ -82,4 +82,4 @@ The baseline remains unchanged.
 - Do not merge or rewrite any files under `.specify/specs/`.
 - Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
-- `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- `specrun slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).

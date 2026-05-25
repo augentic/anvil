@@ -1,6 +1,6 @@
 # multi-project-workspace — `/spec:finalize` archives a workspace-driven change across two projects
 
-End-to-end variant of acceptance scenario #10. A workspace plan named `dark-mode` has two slices, one routed to `project-a`, one to `project-b`. Both per-entry statuses are `done` after `/spec:execute` drained the loop. `specify workspace push` reports both projects as `up-to-date` (the PRs were opened on a prior `/spec:finalize` run that halted at step 4 for operator merge). `gh pr view` reports both PRs as `MERGED`. `specify plan finalize` archives the change cleanly. This is the success terminator for the workspace-driven path.
+End-to-end variant of acceptance scenario #10. A workspace plan named `dark-mode` has two slices, one routed to `project-a`, one to `project-b`. Both per-entry statuses are `done` after `/spec:execute` drained the loop. `specrun workspace push` reports both projects as `up-to-date` (the PRs were opened on a prior `/spec:finalize` run that halted at step 4 for operator merge). `gh pr view` reports both PRs as `MERGED`. `specrun plan finalize` archives the change cleanly. This is the success terminator for the workspace-driven path.
 
 The PR-observation mock used by this fixture returns canned `state: MERGED` for `https://github.com/org/project-a/pull/57` and `https://github.com/org/project-b/pull/29`. No live `gh` invocation is performed.
 
@@ -20,7 +20,7 @@ Step 1 — Pre-flight
 
 Step 2 — Drained check
 
-  $ specify plan next --format json
+  $ specrun plan next --format json
   {
     "active":  null,
     "next":    null,
@@ -41,7 +41,7 @@ ok: plan drained (2 entries done).
 
 Step 3 — Push
 
-  $ specify workspace push
+  $ specrun workspace push
   specify: workspace push — dark-mode
 
     project-a   up-to-date
@@ -67,7 +67,7 @@ ok: every PR MERGED (2/2).
 
 Step 5 — Finalize
 
-  $ specify plan finalize dark-mode
+  $ specrun plan finalize dark-mode
   specify: plan finalize — dark-mode (specify/dark-mode)
 
     project-a           merged                   PR #57   https://github.com/org/project-a/pull/57
@@ -91,19 +91,19 @@ Step 6 — Wrap-up summary
   Change dark-mode finalized. Plan archived at .specify/archive/plans/dark-mode-20260521/.
 
   Re-running /spec:finalize dark-mode will report plan-not-found
-  from `specify plan finalize` and exit 0.
+  from `specrun plan finalize` and exit 0.
 
 Exit 0
 ```
 
 ## Invariants pinned
 
-1. **Workspace root is the working directory throughout.** `/spec:finalize` is invoked from the workspace root; `specify workspace push` and `specify plan finalize` both operate against the workspace `plan.yaml` (single-`plan.yaml` invariant preserved at the workspace root).
+1. **Workspace root is the working directory throughout.** `/spec:finalize` is invoked from the workspace root; `specrun workspace push` and `specrun plan finalize` both operate against the workspace `plan.yaml` (single-`plan.yaml` invariant preserved at the workspace root).
 2. **Every step runs in order across both projects.** Pre-flight → drained → push (one verb, per-project status table) → PR observation (per-project `gh pr view`, all `MERGED`) → finalize (per-project status table) → wrap-up. No project is dropped.
-3. **`specify workspace push` is the sole push verb.** The skill does not loop `gh push` itself; per-project routing is owned by the CLI verb.
+3. **`specrun workspace push` is the sole push verb.** The skill does not loop `gh push` itself; per-project routing is owned by the CLI verb.
 4. **PR observation is per-project but the halt classification is plan-wide.** Both PRs must reach `MERGED` before step 5 runs; one open PR halts the entire finalize.
 5. **The skill never merges PRs.** Both PRs were merged externally by the operator between runs.
-6. **`specify plan finalize` is the sole archive writer.** No hand-`mv` into `.specify/archive/`; the per-project status table and archive paths come from the CLI verb.
+6. **`specrun plan finalize` is the sole archive writer.** No hand-`mv` into `.specify/archive/`; the per-project status table and archive paths come from the CLI verb.
 7. **Closing message matches the canonical wording.** The skill prints `Change dark-mode finalized. Plan archived at <path>` regardless of project count.
 8. **Re-running after a successful finalize exits zero with `plan-not-found`.** The verb's "already finalized" signal is forwarded by the skill.
 9. **Exit 0.** Successful workspace-driven finalize.

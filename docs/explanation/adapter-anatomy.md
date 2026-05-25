@@ -93,7 +93,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | `$SCRATCH_DIR`    | write-only | `.specify/.cache/extractions/<adapter>/<slice>/` — per-slice scratch under the per-source extraction tree. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
-Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
+Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
 
 ## Target adapter contract
 
@@ -116,11 +116,11 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
-CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add` / `specify plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
+CLI entry points: `specrun source resolve <name>` and `specrun target resolve <value>` load and validate the manifest on first use. `specrun plan add` / `specrun plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specify plan amend --authority-override <slice> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend --authority-override <slice> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>
@@ -180,7 +180,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
 3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `enumerate` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`.
-6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make check` runs the documentation predicates and the schema validators.
+6. **Validate.** `specrun source resolve <name>` / `specrun target resolve <name>` exercises manifest loading; `make check` runs the documentation predicates and the schema validators.
 
 ## Adapter manifests vs Cursor plugin manifests
 

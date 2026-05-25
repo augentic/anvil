@@ -6,7 +6,7 @@
 
 > Two adapters surface the same candidate; the `/spec:plan` agent merges them automatically at `propose`.
 
-**Stress-tests:** `specify plan add` writes one slice with combined `sources:` without operator ceremony; uncertain merges annotated `tentative: true` and surfaced in `change.md`; operator overrides via `specify plan amend` at Gate 1 if the merge is wrong; downstream `extract` runs against every contributing source.
+**Stress-tests:** `specrun plan add` writes one slice with combined `sources:` without operator ceremony; uncertain merges annotated `tentative: true` and surfaced in `change.md`; operator overrides via `specrun plan amend` at Gate 1 if the merge is wrong; downstream `extract` runs against every contributing source.
 
 ## Run-summary
 

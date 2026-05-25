@@ -1,20 +1,16 @@
-TOOLING_MANIFEST := tooling/Cargo.toml
-
-# In-repo sparse checkout (CI layout) when present; else sibling default.
-ifeq ($(wildcard specify-cli/schemas/source.schema.json),)
-  SPECIFY_CLI_DIR ?= ../specify-cli
+ifeq ($(wildcard specify-cli/Cargo.toml),)
+  SPECDEV_MANIFEST ?= ../specify-cli/Cargo.toml
 else
-  SPECIFY_CLI_DIR := specify-cli
+  SPECDEV_MANIFEST := specify-cli/Cargo.toml
 endif
-export SPECIFY_CLI_DIR
 
 .PHONY: check test ci use-local-plugins use-team-plugins
 
 check:
-	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- check
+	cargo run --release --manifest-path $(SPECDEV_MANIFEST) --bin specdev -- check --framework-root .
 
 test:
-	cargo test --manifest-path $(TOOLING_MANIFEST)
+	cargo test --manifest-path $(SPECDEV_MANIFEST) -p specify-authoring
 
 ci: check test
 

@@ -1,12 +1,12 @@
-# specify init
+# specrun init
 
 Scaffold the `.specify/` project structure and starter agent context.
 
 ## Synopsis
 
 ```bash
-specify init <adapter> [--name <project-name>] [--domain "<description>"]
-specify init --hub [--name <project-name>] [--domain "<description>"]
+specrun init <adapter> [--name <project-name>] [--domain "<description>"]
+specrun init --hub [--name <project-name>] [--domain "<description>"]
 ```
 
 ## Description
@@ -14,13 +14,13 @@ specify init --hub [--name <project-name>] [--domain "<description>"]
 Two modes, picked by the presence of `--hub`:
 
 - **Regular** (positional `<adapter>`): scaffolds a single-project workspace. Creates `.specify/{slices,specs,archive,.cache}/`, resolves the adapter identifier into `.specify/.cache/`, writes `.specify/project.yaml` with `adapter:` set and a `rules:` entry per `pipeline.define` brief, records the running binary's version as `specify-version`, and generates root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent.
-- **Hub** (with `--hub`): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { hub: true, … }` (the `adapter:` field is omitted — its absence is what disables adapter resolution), creates an empty `registry.yaml { version: 1, projects: [] }` at the repo root, and generates hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent. No adapter identifier is needed, no cache is needed, and phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. `change.md` and `plan.yaml` are operator artifacts minted later by `/spec:plan` (via `specify plan create`) (which scaffolds both files together). Refuses to run when `.specify/` already exists.
+- **Hub** (with `--hub`): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { hub: true, … }` (the `adapter:` field is omitted — its absence is what disables adapter resolution), creates an empty `registry.yaml { version: 1, projects: [] }` at the repo root, and generates hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent. No adapter identifier is needed, no cache is needed, and phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. `change.md` and `plan.yaml` are operator artifacts minted later by `/spec:plan` (via `specrun plan create`) (which scaffolds both files together). Refuses to run when `.specify/` already exists.
 
-The two modes are mutually exclusive: `specify init` with neither a adapter positional nor `--hub`, or with both, exits `2` with clap's standard parse-error diagnostic.
+The two modes are mutually exclusive: `specrun init` with neither a adapter positional nor `--hub`, or with both, exits `2` with clap's standard parse-error diagnostic.
 
 In both modes the command upserts `.specify/.cache/` and `.specify/workspace/` into the project `.gitignore`.
 
-If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and skips context generation. Init inside `.specify/workspace/<peer>/` also skips nested `AGENTS.md` generation; workspace clones inherit context from their owning project.
+If root `AGENTS.md` already exists, `specrun init` preserves it byte-for-byte and skips context generation. Init inside `.specify/workspace/<peer>/` also skips nested `AGENTS.md` generation; workspace clones inherit context from their owning project.
 
 This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/init/SKILL.md). The skill adds interactive prompts (including the regular-vs-hub topology question) and project detection on top.
 
@@ -55,6 +55,6 @@ When `--format json` is provided, returns:
 
 - [Configuration files](../../reference/configuration.md#projectyaml) and [Registry](../../reference/registry.md) -- when to choose hub vs platform-as-project
 - [Configuration Files](../configuration.md) -- project.yaml and metadata format
-- `AGENTS.md` context is generated during `specify init`; later inspection is direct file review.
+- `AGENTS.md` context is generated during `specrun init`; later inspection is direct file review.
 - [Prerequisites](../../orientation/prerequisites.md) -- setup before first init
-- [`specify registry`](registry.md) -- manage the hub's registry catalogue
+- [`specrun registry`](registry.md) -- manage the hub's registry catalogue

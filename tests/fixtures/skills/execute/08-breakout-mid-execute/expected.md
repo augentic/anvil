@@ -13,22 +13,22 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 
 1. **Operator runs `/spec:execute`.**
    - Acquires `.specify/plan.lock` via the snippet in [`../../../../../plugins/spec/skills/execute/references/plan-lock.md`](../../../../../plugins/spec/skills/execute/references/plan-lock.md).
-   - `specify plan next` returns slice 2 (already `in-progress`).
+   - `specrun plan next` returns slice 2 (already `in-progress`).
    - Slice lifecycle is `refined`; loop skips `/spec:refine` and dispatches `/spec:build`.
    - Operator interrupts mid-build with Ctrl-C. The shell holding `flock` exits; the lock auto-releases. The plan entry stays `in-progress`; the slice lifecycle stays `refined`.
 
 2. **Operator runs `/spec:build group-list-search-filter` standalone.**
    - The breakout body re-acquires the plan lock via the same snippet.
-   - Resolves the active slice via `specify plan next`; confirms slice 2 is `in-progress`.
+   - Resolves the active slice via `specrun plan next`; confirms slice 2 is `in-progress`.
    - Runs the build phase to completion against the slice; `/spec:build` transitions the slice lifecycle from `refined` to `built` on success.
    - Releases the lock on shell exit.
 
 3. **Operator re-runs `/spec:execute`.**
    - Acquires the plan lock.
-   - `specify plan next` returns slice 2 (still `in-progress`).
+   - `specrun plan next` returns slice 2 (still `in-progress`).
    - Slice lifecycle is `built`; loop skips both `/spec:refine` and `/spec:build` and dispatches `/spec:merge` directly.
-   - On merge success, `/spec:merge` runs `specify plan transition group-list-search-filter done`.
-   - Next iteration: `specify plan next` returns slice 3; loop runs `/spec:refine` → `/spec:build` → `/spec:merge` end-to-end.
+   - On merge success, `/spec:merge` runs `specrun plan transition group-list-search-filter done`.
+   - Next iteration: `specrun plan next` returns slice 3; loop runs `/spec:refine` → `/spec:build` → `/spec:merge` end-to-end.
    - Next iteration: drained.
 
 ## Terminal state

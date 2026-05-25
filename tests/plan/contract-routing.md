@@ -44,7 +44,7 @@ feature brief
   -> /spec:plan
   -> contract slice
   -> routed backend and mobile implementation slices
-  -> specify plan validate
+  -> specrun plan validate
 ```
 
 The scenario checks durable plan structure only. It should not fail because the generated proposal prose or slice descriptions differ from a previous run.
@@ -53,7 +53,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 
 - **Suite:** plan.
 - **Project shape:** one temporary registry-only hub plus two temporary registered projects.
-- **Hub adapter:** none; initialize the hub with `specify init --hub`.
+- **Hub adapter:** none; initialize the hub with `specrun init --hub`.
 - **Backend project adapter:** `omnia@v1`.
 - **Mobile project adapter:** `vectis@v1`.
 - **Registry shape:** the hub registry contains exactly the backend and mobile projects for this run.
@@ -64,7 +64,7 @@ Prerequisites:
 
 - A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
 - The `contracts@v1`, `omnia@v1`, and `vectis@v1` adapters are resolvable in the local development environment.
-- Git is available if the local `specify workspace sync` path needs repository metadata. Do not add fake `gh` or fake forge behavior for this scenario.
+- Git is available if the local `specrun workspace sync` path needs repository metadata. Do not add fake `gh` or fake forge behavior for this scenario.
 
 ## Inputs
 
@@ -135,13 +135,13 @@ Initialize them:
 
 ```bash
 cd plan-shop-platform
-specify init --hub
+specrun init --hub
 
 cd ../plan-shop-backend
-specify init omnia@v1
+specrun init omnia@v1
 
 cd ../plan-shop-mobile
-specify init vectis@v1
+specrun init vectis@v1
 ```
 
 Return to the hub and register the implementation projects. Use descriptions
@@ -149,9 +149,9 @@ that make routing unambiguous:
 
 ```bash
 cd ../plan-shop-platform
-specify registry add shop-backend --url ../plan-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
-specify registry add shop-mobile --url ../plan-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
-specify registry validate
+specrun registry add shop-backend --url ../plan-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
+specrun registry add shop-mobile --url ../plan-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+specrun registry validate
 ```
 
 Create `docs/oauth-login.md` from the **Inputs** section.
@@ -177,12 +177,12 @@ Keep the plan small and happy-path only.
 After planning, validate and inspect the plan:
 
 ```bash
-specify plan validate
+specrun plan validate
 inspect plan.yaml
-specify registry validate
+specrun registry validate
 ```
 
-Do not run `/spec:execute`, `specify workspace push`, or `specify plan finalize`. This scenario ends after plan validation and inspection.
+Do not run `/spec:execute`, `specrun workspace push`, or `specrun plan finalize`. This scenario ends after plan validation and inspection.
 
 ## Expected Artifacts
 
@@ -201,7 +201,7 @@ The run should leave these artifacts or states for inspection:
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly.
+- `plan-validates`: `specrun plan validate` exits cleanly.
 - `contract-slice-present`: the plan includes a contract slice before implementation work begins.
 - `implementation-slices-routed`: implementation slices route to the expected projects, `shop-backend` and `shop-mobile`.
 - `dependencies-correct`: each implementation slice depends on the contract slice.
@@ -226,6 +226,6 @@ Use disposable directories and remove them when the run is complete unless a fai
 - `registry.yaml`
 - `plan.yaml`
 - `.specify/plans/oauth-login-plan/`
-- `specify plan validate` output
+- `specrun plan validate` output
 - `inspect plan.yaml` output
-- `specify registry validate` output
+- `specrun registry validate` output

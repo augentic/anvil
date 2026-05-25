@@ -22,24 +22,24 @@ Use CLI amend verbs — never hand-edit `plan.yaml`:
 
 ```bash
 # Add a source binding to an existing slice
-specify plan amend <name> <slice> --add-source <key>=<candidate-id>
+specrun plan amend <name> <slice> --add-source <key>=<candidate-id>
 
 # Remove a source
-specify plan amend <name> <slice> --remove-source <key>
+specrun plan amend <name> <slice> --remove-source <key>
 
 # Mark likely divergence for Gate 1 acknowledgement
-specify plan amend <name> <slice> --divergence likely
+specrun plan amend <name> <slice> --divergence likely
 
 # Override authority for a claim kind (per-slice)
-specify plan amend <name> --authority-override <slice> <kind>=<source-key>
+specrun plan amend <name> --authority-override <slice> <kind>=<source-key>
 ```
 
-See [specify plan](../reference/cli/plan.md) for the full amend surface.
+See [specrun plan](../reference/cli/plan.md) for the full amend surface.
 
 ## Step 3 — Validate (optional)
 
 ```bash
-specify plan validate --format json
+specrun plan validate --format json
 ```
 
 Surface Error-level findings before stamping reviewed.
@@ -47,14 +47,14 @@ Surface Error-level findings before stamping reviewed.
 ## Step 4 — Stamp reviewed
 
 ```bash
-specify plan transition <name> reviewed
+specrun plan transition <name> reviewed
 ```
 
 Only after this transition will `/spec:execute` start.
 
 ## Splitting one slice into two
 
-When Gate 1 review shows a slice should split, amend the plan to add a second slice row (scenario covered in acceptance scenario #7). Each new row gets its own `specify plan add` invocation.
+When Gate 1 review shows a slice should split, amend the plan to add a second slice row (scenario covered in acceptance scenario #7). Each new row gets its own `specrun plan add` invocation.
 
 ## See also
 
