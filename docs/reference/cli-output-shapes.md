@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The per-command sections below are **generated** from the canonical fixtures in `augentic/specify-cli` (`tests/fixtures/plan/*.json` and `tests/fixtures/e2e/goldens/*.json`). To refresh after a fixture change, run `make doc-envelopes` from the repo root. CI runs the same generator with `--check` to ensure the document and fixtures cannot drift.
+The per-command sections below are **generated** from the canonical fixtures in `augentic/specify-cli` (`tests/fixtures/plan/*.json` and `tests/fixtures/e2e/goldens/*.json`). To refresh after a fixture change, run `cargo docgen-envelopes` from the repo root. CI runs the same generator with `--verify` to ensure the document and fixtures cannot drift.
 
 <!-- generated:begin -->
 
@@ -693,4 +693,4 @@ Source fixture: `tests/fixtures/e2e/goldens/validate-bad.json`
 
 ---
 
-When migrating a new dispatcher to `Render`, append its body under a stable H3 heading and link from the corresponding `SKILL.md` instead of inlining the JSON example. If the new command also lands a fixture under `tests/fixtures/plan/` or `tests/fixtures/e2e/goldens/`, prefer regenerating this file via `make doc-envelopes` so the example stays bit-for-bit identical to the test data.
+When migrating a new dispatcher to `Render`, append its body under a stable H3 heading and link from the corresponding `SKILL.md` instead of inlining the JSON example. If the new command also lands a fixture under `tests/fixtures/plan/` or `tests/fixtures/e2e/goldens/`, prefer regenerating this file via `cargo docgen-envelopes` so the example stays bit-for-bit identical to the test data.

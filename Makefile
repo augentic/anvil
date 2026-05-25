@@ -1,9 +1,17 @@
 TOOLING_MANIFEST := tooling/Cargo.toml
 
-.PHONY: check test ci use-local-plugins use-team-plugins
+# In-repo sparse checkout (CI layout) when present; else sibling default.
+ifeq ($(wildcard specify-cli/schemas/source.schema.json),)
+  SPECIFY_CLI_DIR ?= ../specify-cli
+else
+  SPECIFY_CLI_DIR := specify-cli
+endif
+export SPECIFY_CLI_DIR
 
-# Regenerate CLI envelope docs: cargo specify-docgen-envelopes
-# Verify drift (CI):             cargo specify-docgen-envelopes --check
+.PHONY: check test doc-envelopes-check ci use-local-plugins use-team-plugins
+
+# Regenerate CLI envelope docs: cargo docgen-envelopes
+# Verify drift (CI):             cargo docgen-envelopes --verify
 # (Aliases live in .cargo/config.toml; the bare cargo invocations still work.)
 
 check:
@@ -12,7 +20,10 @@ check:
 test:
 	cargo test --manifest-path $(TOOLING_MANIFEST)
 
-ci: check test
+doc-envelopes-check:
+	cargo run --release --manifest-path $(TOOLING_MANIFEST) -- docgen envelopes --verify
+
+ci: check test doc-envelopes-check
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

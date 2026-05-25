@@ -36,10 +36,6 @@ static CODEX_PROFILE_NAMESPACES: LazyLock<HashMap<&'static str, HashSet<&'static
 pub struct CodexCheck;
 
 impl Check for CodexCheck {
-    fn id(&self) -> &'static str {
-        "codex"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run_codex_check(ctx)
     }

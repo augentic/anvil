@@ -35,10 +35,6 @@ const TRACE_REQUIRED_FIELDS: [&str; 6] = [
 pub struct ScenariosCheck;
 
 impl Check for ScenariosCheck {
-    fn id(&self) -> &'static str {
-        "scenarios"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         let mut findings = validate_scenario_frontmatter(ctx);
         findings.extend(check_recorded_trace_freshness(ctx));

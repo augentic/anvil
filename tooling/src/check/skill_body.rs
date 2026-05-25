@@ -53,10 +53,6 @@ pub struct SkillVariableCoverage;
 macro_rules! impl_skill_body_check {
     ($ty:ty, $rule:expr, $body:expr) => {
         impl Check for $ty {
-            fn id(&self) -> &'static str {
-                $rule
-            }
-
             fn run(&self, ctx: &Context) -> Vec<Finding> {
                 $body(ctx).unwrap_or_else(|error| {
                     vec![infrastructure_finding($rule, error)]
@@ -736,7 +732,7 @@ fn finding(rule_id: &'static str, message: String, path: Option<std::path::PathB
         message,
         location: path.map(|path| Location {
             path,
-            line: 0,
+            line: 1,
             column: None,
         }),
     }

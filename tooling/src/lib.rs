@@ -8,7 +8,7 @@ pub mod helpers;
 pub mod schema;
 pub mod test_support;
 
-pub use context::Context;
+pub use context::{specify_cli_schemas_available, specify_cli_setup_hint, Context};
 pub use error::ToolingError;
 pub use exit::Exit;
 pub use finding::{Check, Finding, Location};

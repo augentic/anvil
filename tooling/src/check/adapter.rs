@@ -4,7 +4,7 @@ use std::path::Path;
 use jsonschema::ValidationError;
 use serde_json::Value as JsonValue;
 
-use crate::context::Context;
+use crate::context::{specify_cli_schemas_available, specify_cli_setup_hint, Context};
 use crate::finding::{Check, Finding, Location};
 use crate::helpers::{under_symlink, walk_matching_files};
 
@@ -16,10 +16,6 @@ const ADAPTER_FILENAME: &str = "adapter.yaml";
 pub struct AdapterCheck;
 
 impl Check for AdapterCheck {
-    fn id(&self) -> &'static str {
-        "adapter"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run_adapter_check(ctx)
     }
@@ -159,6 +155,15 @@ fn load_runtime_validator(
     ctx: &Context,
     schema_file: &str,
 ) -> Result<std::sync::Arc<jsonschema::Validator>, Finding> {
+    let specify_cli_dir = ctx.specify_cli_dir();
+    if !specify_cli_schemas_available(&specify_cli_dir) {
+        return Err(Finding {
+            rule_id: RULE_SCHEMA_VIOLATION,
+            message: specify_cli_setup_hint(&specify_cli_dir),
+            location: None,
+        });
+    }
+
     let path = ctx.specify_cli_schemas_dir().join(schema_file);
     ctx.schema(&path).map_err(|error| Finding {
         rule_id: RULE_SCHEMA_VIOLATION,

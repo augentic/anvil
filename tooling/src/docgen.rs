@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use crate::context::specify_cli_setup_hint;
 use crate::error::ToolingError;
 use crate::exit::Exit;
 
@@ -38,7 +39,12 @@ struct Group {
 }
 
 /// Regenerate or verify `docs/reference/cli-output-shapes.md` from CLI fixtures.
-pub fn run_envelopes(framework_root: &Path, specify_cli_dir: &Path, check: bool) -> Result<Exit, ToolingError> {
+pub fn run_envelopes(
+    framework_root: &Path,
+    specify_cli_dir: &Path,
+    verify: bool,
+) -> Result<Exit, ToolingError> {
+    ensure_specify_cli_fixtures(specify_cli_dir)?;
     let doc_path = framework_root.join(DOC_REL_PATH);
     let generated = render_generated(specify_cli_dir)?;
     let current = fs::read_to_string(&doc_path).map_err(|source| {
@@ -46,11 +52,14 @@ pub fn run_envelopes(framework_root: &Path, specify_cli_dir: &Path, check: bool)
     })?;
     let next = splice_generated(&current, &generated)?;
 
-    if check {
+    if verify {
         if next != current {
             eprintln!(
-                "{DOC_REL_PATH} is out of date with the CLI fixtures; run 'make doc-envelopes' to regenerate."
+                "{DOC_REL_PATH} is out of date with the CLI fixtures; run 'cargo docgen-envelopes' to regenerate."
             );
+            if let Some(hint) = first_difference(&current, &next) {
+                eprintln!("{hint}");
+            }
             return Ok(Exit::ValidationFailed);
         }
         return Ok(Exit::Success);
@@ -69,6 +78,7 @@ pub fn run_envelopes(framework_root: &Path, specify_cli_dir: &Path, check: bool)
 }
 
 pub fn render_generated(specify_cli_dir: &Path) -> Result<String, ToolingError> {
+    ensure_specify_cli_fixtures(specify_cli_dir)?;
     let mut all_groups = load_plan_groups(specify_cli_dir)?;
     all_groups.extend(load_e2e_groups(specify_cli_dir)?);
     all_groups.sort_by(|a, b| a.command.cmp(&b.command));
@@ -150,6 +160,52 @@ fn relative_path(base: &Path, path: &Path) -> String {
         .unwrap_or(path)
         .to_string_lossy()
         .replace('\\', "/")
+}
+
+/// Report the first line where `current` and `next` diverge, framed for an operator
+/// reading a CI log. Returns `None` when the files are byte-identical.
+fn first_difference(current: &str, next: &str) -> Option<String> {
+    let current_lines: Vec<&str> = current.lines().collect();
+    let next_lines: Vec<&str> = next.lines().collect();
+    for (idx, (cur, nxt)) in current_lines.iter().zip(next_lines.iter()).enumerate() {
+        if cur != nxt {
+            let line = idx + 1;
+            return Some(format!(
+                "first diff at {DOC_REL_PATH}:{line}\n  - {cur}\n  + {nxt}"
+            ));
+        }
+    }
+    match current_lines.len().cmp(&next_lines.len()) {
+        std::cmp::Ordering::Less => {
+            let line = current_lines.len() + 1;
+            let added = next_lines.get(current_lines.len()).copied().unwrap_or("");
+            Some(format!(
+                "first diff at {DOC_REL_PATH}:{line}\n  + {added}\n  (regenerated output adds {} more line(s))",
+                next_lines.len() - current_lines.len()
+            ))
+        }
+        std::cmp::Ordering::Greater => {
+            let line = next_lines.len() + 1;
+            let removed = current_lines.get(next_lines.len()).copied().unwrap_or("");
+            Some(format!(
+                "first diff at {DOC_REL_PATH}:{line}\n  - {removed}\n  (regenerated output drops {} trailing line(s))",
+                current_lines.len() - next_lines.len()
+            ))
+        }
+        std::cmp::Ordering::Equal => None,
+    }
+}
+
+fn ensure_specify_cli_fixtures(specify_cli_dir: &Path) -> Result<(), ToolingError> {
+    let plan_dir = specify_cli_dir.join("tests/fixtures/plan");
+    if plan_dir.is_dir() {
+        return Ok(());
+    }
+    Err(ToolingError::Infrastructure(format!(
+        "specify-cli fixture tree not found at {}; {}",
+        plan_dir.display(),
+        specify_cli_setup_hint(specify_cli_dir)
+    )))
 }
 
 fn load_plan_groups(specify_cli_dir: &Path) -> Result<Vec<Group>, ToolingError> {
@@ -315,6 +371,36 @@ mod tests {
         let rendered = render_group(&group);
         assert!(rendered.contains("#### `success`"));
         assert!(rendered.contains("#### `default`"));
+    }
+
+    #[test]
+    fn first_difference_returns_none_on_identical_input() {
+        assert_eq!(first_difference("a\nb\n", "a\nb\n"), None);
+    }
+
+    #[test]
+    fn first_difference_points_at_changed_line() {
+        let hint = first_difference("alpha\nbeta\ngamma\n", "alpha\nBETA\ngamma\n")
+            .expect("difference reported");
+        assert!(hint.contains(":2"));
+        assert!(hint.contains("- beta"));
+        assert!(hint.contains("+ BETA"));
+    }
+
+    #[test]
+    fn first_difference_handles_added_trailing_lines() {
+        let hint = first_difference("alpha\n", "alpha\nbeta\n").expect("difference reported");
+        assert!(hint.contains(":2"));
+        assert!(hint.contains("+ beta"));
+        assert!(hint.contains("adds 1 more line"));
+    }
+
+    #[test]
+    fn first_difference_handles_removed_trailing_lines() {
+        let hint = first_difference("alpha\nbeta\n", "alpha\n").expect("difference reported");
+        assert!(hint.contains(":2"));
+        assert!(hint.contains("- beta"));
+        assert!(hint.contains("drops 1 trailing line"));
     }
 
     #[test]

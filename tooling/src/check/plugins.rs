@@ -18,20 +18,12 @@ pub struct BrokenSymlinkCheck;
 pub struct MarketplaceDriftCheck;
 
 impl Check for BrokenSymlinkCheck {
-    fn id(&self) -> &'static str {
-        RULE_BROKEN_SYMLINK
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_symlinks(ctx)
     }
 }
 
 impl Check for MarketplaceDriftCheck {
-    fn id(&self) -> &'static str {
-        RULE_MARKETPLACE_DRIFT
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_marketplace_consistency(ctx)
     }

@@ -98,6 +98,11 @@ impl Context {
         self.specify_cli_dir().join("schemas")
     }
 
+    /// Whether runtime adapter schemas are present under [`Self::specify_cli_dir`].
+    pub fn specify_cli_schemas_available(&self) -> bool {
+        specify_cli_schemas_available(&self.specify_cli_dir())
+    }
+
     /// Lazily compile and cache a JSON Schema loaded from `path`.
     pub fn schema(&self, path: impl AsRef<Path>) -> Result<Arc<Validator>, ToolingError> {
         let path = path.as_ref().to_path_buf();
@@ -168,4 +173,20 @@ fn is_framework_root(path: &Path) -> bool {
     path.join("tooling").join("Cargo.toml").is_file()
         && path.join("plugins").is_dir()
         && path.join("adapters").is_dir()
+}
+
+/// Whether `specify-cli` runtime adapter schemas are present under `specify_cli_dir`.
+pub fn specify_cli_schemas_available(specify_cli_dir: &Path) -> bool {
+    specify_cli_dir
+        .join("schemas")
+        .join("source.schema.json")
+        .is_file()
+}
+
+/// Actionable setup hint when [`specify_cli_schemas_available`] is false or fixture trees are missing.
+pub fn specify_cli_setup_hint(resolved_dir: &Path) -> String {
+    format!(
+        "specify-cli checkout not found at {} — clone https://github.com/augentic/specify-cli to ../specify-cli (sibling of this repo) or set SPECIFY_CLI_DIR to an existing checkout",
+        resolved_dir.display()
+    )
 }

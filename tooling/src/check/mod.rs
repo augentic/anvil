@@ -87,5 +87,14 @@ pub fn run(ctx: &Context) -> Vec<Finding> {
         findings.extend(check.run(ctx));
     }
 
+    findings.sort_by(|a, b| {
+        let a_path = a.location.as_ref().map(|l| l.path.as_path());
+        let b_path = b.location.as_ref().map(|l| l.path.as_path());
+        let a_line = a.location.as_ref().map(|l| l.line);
+        let b_line = b.location.as_ref().map(|l| l.line);
+        (a.rule_id, a_path, a_line, &a.message)
+            .cmp(&(b.rule_id, b_path, b_line, &b.message))
+    });
+
     findings
 }

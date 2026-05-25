@@ -13,7 +13,7 @@ Framework validation splits into two surfaces:
 
 **Authoritative schemas** live in [`tooling/schemas/`](../../tooling/schemas/). [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing symlinks to those files so Cursor's JSON/YAML language servers resolve the same contract.
 
-**Plain YAML/JSON wiring.** Adapter manifests already carry a first-line schema directive:
+**Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
@@ -31,25 +31,53 @@ make check
 
 This runs `cargo run --release --manifest-path tooling/Cargo.toml -- check`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-Tooling contributors can invoke the binary and acceptance tests directly:
+Tooling contributors run the full local CI subset with:
+
+```bash
+make ci
+```
+
+`make ci` runs `check`, `test`, and `docgen envelopes --verify` (envelope doc drift). When a sparse `specify-cli/` checkout exists at the repo root (CI layout), the Makefile sets `SPECIFY_CLI_DIR=specify-cli` automatically; otherwise it defaults to `../specify-cli`.
+
+Tooling contributors can also invoke the binary and acceptance tests directly:
 
 ```bash
 cargo run --release --manifest-path tooling/Cargo.toml -- check
 cargo test --manifest-path tooling/Cargo.toml
-cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --check
+cargo run --release --manifest-path tooling/Cargo.toml -- docgen envelopes --verify
 ```
 
-The repo also ships a pair of workspace `[alias]` shortcuts in [`.cargo/config.toml`](../../.cargo/config.toml) for the same two binary entry points, so you can drop the `--manifest-path` boilerplate from any directory at or below the framework root:
+The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) for envelope doc generation, so you can drop the `--manifest-path` boilerplate from any directory at or below the framework root:
 
 ```bash
-cargo specify-check                          # equivalent to `make check`
-cargo specify-docgen-envelopes               # regenerate docs/reference/cli-output-shapes.md
-cargo specify-docgen-envelopes --check       # CI-mode drift check (exit 2 on drift)
+cargo docgen-envelopes               # regenerate docs/reference/cli-output-shapes.md
+cargo docgen-envelopes --verify      # CI-mode drift check (exit 2 on drift; --check is a back-compat alias)
 ```
 
-The aliases are deliberately namespaced `specify-*` rather than bare `check` / `docgen` so they do not shadow `cargo check` and stay distinct from the operator `specify` CLI in [`augentic/specify-cli`](https://github.com/augentic/specify-cli). They are a convenience over the same release-mode `tooling` binary the Makefile already drives — no install step, no version-drift surface between local and CI.
+The alias is a convenience over the same release-mode `tooling` binary the Makefile already drives — no install step, no version-drift surface between local and CI.
 
-Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation or envelope docgen needs runtime schemas (defaults to `../specify-cli`).
+Set `SPECIFY_CLI_DIR` to a checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when adapter schema validation or envelope docgen needs runtime schemas (defaults to `../specify-cli`). When the checkout is missing, `tooling check` and `tooling docgen` print an actionable hint naming the resolved path.
+
+### Diagnostic format
+
+Each finding prints on stderr as:
+
+```text
+FAIL: <rule-id>: <message>
+  at <repo-relative-path>:<line>
+```
+
+`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `codex.namespace-ownership-violation`). The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
+
+| Rule id prefix | Check module | Topic |
+| --- | --- | --- |
+| `adapter.*` | `check::adapter` | Adapter manifest schema and missing manifests |
+| `links.*` | `check::links` | Markdown links, skill references, skill directives |
+| `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
+| `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
+| `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
+
+See [`tooling/src/check/mod.rs`](../../tooling/src/check/mod.rs) for the full predicate list.
 
 ## What the checks enforce
 
@@ -166,7 +194,7 @@ Scenario ID: `contracts-describe`
 The check enforces:
 
 - **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `adapter` is required when `kind` is `adapter` or `adapter-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `adapter-boundary`. `kind` is an open enum (`adapter`, `adapter-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `adapter` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
-- **Stages prefix** — `stages` must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`. `[define, build, merge]` is valid; `[build, define]`, `[define, merge]`, `[merge]` are not.
+- **Stages prefix** — `stages` must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element. `[plan, refine, build]` is valid; `[build, plan]`, `[plan, merge]`, `[merge]` are not.
 - **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
 - **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-adapter prefix (e.g. `contracts/`) so future adapters are not over-constrained.
 - **Cross-file id uniqueness** — every opted-in scenario `id` is unique across the repo; duplicates are reported with both file paths.
@@ -176,14 +204,18 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-FAIL: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
+FAIL: scenarios.schema-violation: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.body-id-mismatch: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+  at adapters/targets/contracts/tests/_probe.md:1
+FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
 ```
 
-Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
 
 ### 12. Recorded trace freshness
 
@@ -211,11 +243,15 @@ invoke any external validator. It validates:
 **Example failure messages:**
 
 ```text
-FAIL: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
-FAIL: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-FAIL: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
-FAIL: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
-FAIL: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
+FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.schema-violation: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/shared/codex/universal/example.md:1
+FAIL: codex.duplicate-rule-id: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`

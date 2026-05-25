@@ -14,10 +14,6 @@ const RULE_MISSING_CANONICAL: &str = "agent-teams.missing-canonical";
 pub struct AgentTeamsCheck;
 
 impl Check for AgentTeamsCheck {
-    fn id(&self) -> &'static str {
-        "agent_teams"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run(ctx)
     }

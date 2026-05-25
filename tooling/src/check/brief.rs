@@ -27,10 +27,6 @@ static PARENT_BRIEF_NAMES: &[&str] = &[
 pub struct BriefCheck;
 
 impl Check for BriefCheck {
-    fn id(&self) -> &'static str {
-        "brief"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run(ctx)
     }

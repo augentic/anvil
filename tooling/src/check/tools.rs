@@ -107,10 +107,6 @@ fn retired_helper_regexes() -> &'static [(&'static RetiredHelperPattern, Regex)]
 pub struct FirstPartyToolDeclarations;
 
 impl Check for FirstPartyToolDeclarations {
-    fn id(&self) -> &'static str {
-        RULE_INVALID_DECLARATION
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run_first_party_tool_declarations(ctx)
     }
@@ -120,10 +116,6 @@ impl Check for FirstPartyToolDeclarations {
 pub struct DeclaredToolEquivalentInvocations;
 
 impl Check for DeclaredToolEquivalentInvocations {
-    fn id(&self) -> &'static str {
-        RULE_INVOCATION_NOT_EQUIVALENT
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run_declared_tool_equivalent_invocations(ctx)
     }

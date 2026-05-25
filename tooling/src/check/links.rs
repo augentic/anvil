@@ -18,10 +18,6 @@ const RULE_UNRESOLVED_DIRECTIVE: &str = "links.unresolved-directive";
 pub struct LinksCheck;
 
 impl Check for LinksCheck {
-    fn id(&self) -> &'static str {
-        "links"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         run(ctx)
     }

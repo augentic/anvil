@@ -1,6 +1,6 @@
 # RFC-5: Framework Developer Tooling
 
-> Status: Draft · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-framework-developer-tooling-workspace) · Enables: [RFC-4](future/rfc-4-dsl.md) · Preserves contract with: [RFC-28](next/rfc-28-codex-rules.md)
+> Status: Implemented · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-framework-developer-tooling-workspace) · Enables: [RFC-4](future/rfc-4-dsl.md) · Preserves contract with: [RFC-28](next/rfc-28-codex-rules.md)
 
 ## Abstract
 
@@ -93,6 +93,7 @@ The current Deno surface is ~4,027 LOC across `scripts/check.ts`, `scripts/check
 
 The implementation PR deletes each Deno module only after the Rust equivalent has module-level fixtures that prove the same invariant class is still covered. Diagnostic wording may change; rule coverage and stable locations may not. Every ported rule lands with at least one positive and one negative fixture.
 
+
 | Current Deno surface                                                                       | Rust home                                            | Schema-backed where possible?             |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------- | ----------------------------------------- |
 | `scripts/checks/adapter.ts`                                                                | `check::adapter`                                     | Yes, via `specify-domain` runtime schemas |
@@ -108,6 +109,7 @@ The implementation PR deletes each Deno module only after the Rust equivalent ha
 | `scripts/checks/skill_frontmatter.ts`                                                      | `check::skill_frontmatter`                           | Yes                                       |
 | `scripts/checks/tools.ts`                                                                  | `check::tools`                                       | No                                        |
 | `scripts/check.ts`, `scripts/gen-envelope-doc.ts`, `tests/cross_repo.ts`, `tests/lib/*.ts` | `tooling check`, `tooling docgen`, integration tests | Mixed                                     |
+
 
 ### Crate layout
 
@@ -284,10 +286,12 @@ Framework tooling must **disappear into the background** for day-to-day skill an
 
 #### Contract
 
+
 | Audience                          | What they run                                                                      | Rust required locally?                     |
 | --------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------ |
 | Skill / adapter authors (default) | Cursor schemas while editing where available; `make check` before a PR; CI on push | Optional — schemas and CI cover most needs |
 | Tooling contributors              | `cd tooling && cargo test`, `cargo run -- check`, …                                | Yes                                        |
+
 
 Authors never run `cargo build` as a separate step before `make check`. Cargo's incremental build keeps repeat invocations fast.
 
@@ -386,12 +390,13 @@ The RFC lands as a **single PR** in this rough order:
 
 ## References
 
-- [`scripts/check.ts`](../scripts/check.ts) + [`scripts/checks/`](../scripts/checks/) — the framework linter being replaced.
-- [`scripts/gen-envelope-doc.ts`](../scripts/gen-envelope-doc.ts) — the doc generator being replaced.
-- [`tests/cross_repo.ts`](../tests/cross_repo.ts) + [`tests/lib/`](../tests/lib/) — the acceptance harness being replaced.
-- [`docs/standards/skill-authoring.md`](../docs/standards/skill-authoring.md) — invariants the skill-discipline modules enforce.
-- [`docs/explanation/adapter-anatomy.md`](../docs/explanation/adapter-anatomy.md) — the adapter model the `adapter` and `brief` modules validate.
-- [`docs/contributing/acceptance.md`](../docs/contributing/acceptance.md) — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
-- [`Specify CLI AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — crate graph this workspace consumes via `specify-domain`.
+- `[scripts/check.ts](../scripts/check.ts)` + `[scripts/checks/](../scripts/checks/)` — the framework linter being replaced.
+- `[scripts/gen-envelope-doc.ts](../scripts/gen-envelope-doc.ts)` — the doc generator being replaced.
+- `[tests/cross_repo.ts](../tests/cross_repo.ts)` + `[tests/lib/](../tests/lib/)` — the acceptance harness being replaced.
+- `[docs/standards/skill-authoring.md](../docs/standards/skill-authoring.md)` — invariants the skill-discipline modules enforce.
+- `[docs/explanation/adapter-anatomy.md](../docs/explanation/adapter-anatomy.md)` — the adapter model the `adapter` and `brief` modules validate.
+- `[docs/contributing/acceptance.md](../docs/contributing/acceptance.md)` — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
+- `[Specify CLI AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md)` — crate graph this workspace consumes via `specify-domain`.
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md) — Option 1 is satisfied by the schema-first pass plus the skill-discipline modules.
 - [RFC-28: Codex Resolution and Structured Review Findings](next/rfc-28-codex-rules.md) — namespace-ownership contract preserved by `check::codex`.
+

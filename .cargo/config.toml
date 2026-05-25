@@ -1,3 +1,3 @@
 [alias]
-specify-check = "run --release --manifest-path tooling/Cargo.toml -- check"
-specify-docgen-envelopes = "run --release --manifest-path tooling/Cargo.toml -- docgen envelopes"
+check = "run --release --manifest-path tooling/Cargo.toml -- check"
+docgen-envelopes = "run --release --manifest-path tooling/Cargo.toml -- docgen envelopes"

@@ -27,10 +27,6 @@ const TEXT_FENCE_ALLOWLIST: &[&str] = &[];
 pub struct RfcCitationInDocs;
 
 impl Check for RfcCitationInDocs {
-    fn id(&self) -> &'static str {
-        RULE_RFC_CITATION
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         let root = ctx.framework_root().join("docs");
         if !root.is_dir() {
@@ -85,10 +81,6 @@ impl Check for RfcCitationInDocs {
 pub struct MissingDiagramAsset;
 
 impl Check for MissingDiagramAsset {
-    fn id(&self) -> &'static str {
-        RULE_MISSING_DIAGRAM
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         let root = ctx.framework_root().join("docs");
         if !root.is_dir() {
@@ -145,10 +137,6 @@ impl Check for MissingDiagramAsset {
 pub struct TextPipelineDiagram;
 
 impl Check for TextPipelineDiagram {
-    fn id(&self) -> &'static str {
-        RULE_TEXT_PIPELINE
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         let mut findings = Vec::new();
 

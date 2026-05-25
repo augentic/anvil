@@ -43,10 +43,6 @@ pub struct SkillDescriptionGrammarCheck;
 pub struct SkillArgumentHintGrammarCheck;
 
 impl Check for SkillFrontmatterSchemaCheck {
-    fn id(&self) -> &'static str {
-        "skill.frontmatter-schema"
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_schema(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_SCHEMA_VIOLATION, error)]
@@ -55,10 +51,6 @@ impl Check for SkillFrontmatterSchemaCheck {
 }
 
 impl Check for SkillNameDirectoryMismatchCheck {
-    fn id(&self) -> &'static str {
-        RULE_NAME_DIRECTORY_MISMATCH
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_name_directory_mismatch(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_NAME_DIRECTORY_MISMATCH, error)]
@@ -67,10 +59,6 @@ impl Check for SkillNameDirectoryMismatchCheck {
 }
 
 impl Check for SkillDuplicateNameCheck {
-    fn id(&self) -> &'static str {
-        RULE_DUPLICATE_NAME
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_duplicate_names(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_DUPLICATE_NAME, error)]
@@ -79,10 +67,6 @@ impl Check for SkillDuplicateNameCheck {
 }
 
 impl Check for SkillUnknownToolCheck {
-    fn id(&self) -> &'static str {
-        RULE_UNKNOWN_TOOL
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_unknown_tools(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_UNKNOWN_TOOL, error)]
@@ -91,10 +75,6 @@ impl Check for SkillUnknownToolCheck {
 }
 
 impl Check for SkillDescriptionGrammarCheck {
-    fn id(&self) -> &'static str {
-        RULE_DESCRIPTION_GRAMMAR
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_description_grammar(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_DESCRIPTION_GRAMMAR, error)]
@@ -103,10 +83,6 @@ impl Check for SkillDescriptionGrammarCheck {
 }
 
 impl Check for SkillArgumentHintGrammarCheck {
-    fn id(&self) -> &'static str {
-        RULE_ARGUMENT_HINT_GRAMMAR
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_argument_hint_grammar(ctx).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_ARGUMENT_HINT_GRAMMAR, error)]

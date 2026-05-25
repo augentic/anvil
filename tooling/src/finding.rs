@@ -18,6 +18,5 @@ pub struct Location {
 
 /// A check predicate that scans the framework repo and returns findings.
 pub trait Check {
-    fn id(&self) -> &'static str;
     fn run(&self, ctx: &crate::context::Context) -> Vec<Finding>;
 }

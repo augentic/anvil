@@ -31,10 +31,6 @@ pub struct OperationalVocabulary;
 pub struct SkillNumericCaps;
 
 impl Check for InvocationPositional {
-    fn id(&self) -> &'static str {
-        RULE_INVOCATION_POSITIONAL
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_invocation_positionals(ctx.framework_root()).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_INVOCATION_POSITIONAL, error)]
@@ -43,10 +39,6 @@ impl Check for InvocationPositional {
 }
 
 impl Check for OperationalVocabulary {
-    fn id(&self) -> &'static str {
-        RULE_OPERATIONAL_VOCABULARY
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_operational_vocabulary(ctx.framework_root()).unwrap_or_else(|error| {
             vec![infrastructure_finding(RULE_OPERATIONAL_VOCABULARY, error)]
@@ -55,10 +47,6 @@ impl Check for OperationalVocabulary {
 }
 
 impl Check for SkillNumericCaps {
-    fn id(&self) -> &'static str {
-        RULE_NUMERIC_CAP_EXCEEDED
-    }
-
     fn run(&self, ctx: &Context) -> Vec<Finding> {
         check_skill_numeric_caps(ctx.framework_root())
     }
