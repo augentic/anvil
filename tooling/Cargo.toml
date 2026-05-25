@@ -21,17 +21,7 @@ serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.6"
 serde_json = "1"
 sha2 = "0.10"
-# v0.1.0 predates specify-domain; bump with `cargo add specify-domain --git https://github.com/augentic/specify-cli.git --tag <v> --manifest-path tooling/Cargo.toml` (and the same for specify-error) when retagged.
-specify-domain = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
-specify-error = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
 walkdir = "2"
 
 [dev-dependencies]
 tempfile = "3"
-
-# Optional local-development override. Leave commented in committed code.
-# Uncomment only when testing framework tooling against a sibling specify-cli checkout.
-#
-# [patch."https://github.com/augentic/specify-cli.git"]
-# specify-domain = { path = "../../specify-cli/crates/domain" }
-# specify-error  = { path = "../../specify-cli/crates/error" }

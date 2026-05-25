@@ -2,35 +2,30 @@ name: CI
 
 on:
   push:
-    paths:
-      - "plugins/**"
-      - "adapters/**"
-      - "schemas/**"
-      - "scripts/**"
-      - "docs/**"
-      - "tests/**"
-      - "tooling/**"
-      - ".cursor/rules/**"
-      - ".cursor-plugin/**"
-      - ".github/workflows/ci.yaml"
-      - "AGENTS.md"
-      - "Makefile"
-  pull_request:
-    branches: [main]
-  workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
   checks:
     name: Documentation and consistency checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
 
       - name: Choose specify-cli ref
         id: specify-cli-ref
@@ -49,8 +44,8 @@ jobs:
           repository: augentic/specify-cli
           path: specify-cli
           ref: ${{ steps.specify-cli-ref.outputs.ref }}
-          sparse-checkout: |
-            schemas
+          fetch-depth: 1
+          sparse-checkout: schemas
           sparse-checkout-cone-mode: false
 
       - name: Install Rust stable
@@ -60,13 +55,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: tooling
-
-      - name: Run acceptance tests
-        run: cargo test --manifest-path tooling/Cargo.toml
-        env:
-          SPECIFY_CLI_DIR: specify-cli
-
-      - name: Run framework checks
-        run: cargo run --release --manifest-path tooling/Cargo.toml -- check
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
+          
+      - name: Run acceptance tests and framework checks
+        run: |
+          cargo test --locked --manifest-path tooling/Cargo.toml
+          cargo run --locked --manifest-path tooling/Cargo.toml -- check
         env:
           SPECIFY_CLI_DIR: specify-cli
