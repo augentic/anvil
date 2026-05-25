@@ -18,12 +18,11 @@ env:
 
 jobs:
   checks:
-    name: Documentation and consistency checks
+    name: Consistency checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
