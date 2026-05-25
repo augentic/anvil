@@ -48,7 +48,7 @@ pub use tools::{DeclaredToolEquivalentInvocations, FirstPartyToolDeclarations};
 
 /// Run every registered check predicate sequentially.
 pub fn run(ctx: &Context) -> Vec<Finding> {
-    let checks: [&dyn Check; 31] = [
+    let checks: &[&dyn Check] = &[
         &AdapterCheck,
         &AgentTeamsCheck,
         &BriefCheck,

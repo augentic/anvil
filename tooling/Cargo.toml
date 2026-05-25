@@ -21,7 +21,7 @@ serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.6"
 serde_json = "1"
 sha2 = "0.10"
-# tag = "v0.1.0" — v0.1.0 predates specify-domain; bump via scripts/bump-specify-cli when retagged.
+# v0.1.0 predates specify-domain; bump with `cargo add specify-domain --git https://github.com/augentic/specify-cli.git --tag <v> --manifest-path tooling/Cargo.toml` (and the same for specify-error) when retagged.
 specify-domain = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
 specify-error = { git = "https://github.com/augentic/specify-cli.git", rev = "c99b12679128eac822fe0f78dc708181fc7fb437" }
 walkdir = "2"
