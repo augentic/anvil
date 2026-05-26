@@ -347,6 +347,7 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 3. Should `specify review` evaluate reserved hints as no-ops or hard-fail? Current preference: no-op with a single summary warning when `--verbose`; hard-fail only with `--strict-hints`.
 4. Where should shared diagnostic formatters live — `specify-domain`, a new `specify-diagnostics` crate, or duplicated thin wrappers? Current preference: `specify-domain` until formatters pull in heavy deps.
 5. Is Phase 3 Option B worth automating from existing `Check` impls, or hand-authored FRAME rules only? Current preference: hand-authored only; migration is deliberate.
+6. Should `specdev check::codex` warn (or error) when an authored rule under `adapters/{sources,targets}/<name>/codex/` redundantly declares `applicability.adapters` for the directory's owning adapter? RFC-28 §Applicability notes no first-party rule populates `applicability` today, so there is nothing to lint yet. Current preference: defer the predicate until the first redundant declaration appears; the inference rule is "file-location implies adapter, so omit `applicability.adapters` unless narrowing further (e.g. to a specific version)." Belongs in `specify-authoring`, not the runtime resolver.
 
 ## References
 

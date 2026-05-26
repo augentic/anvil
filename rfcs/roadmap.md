@@ -69,10 +69,13 @@ specrun review --format json
 
 **Optional follow-on:** [RFC-31](rfc-32-declarative-rules.md) Phase 3 — framework `specdev check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
 
+**Distribution follow-up:** RFC-28 v1 requires operators to pass `--codex-root` to `specrun codex export` when their tree does not contain `adapters/shared/codex/universal/`. Before CI-native review is broadly usable, `specrun init` or plugin distribution should carry the shared codex tree into the consumer project (e.g. as an extension of the existing manifest cache) so `UNI-*` rules resolve without a co-located framework checkout. Tracked here rather than in RFC-28 to keep the contract layer narrow; the change is additive — a new probe step in the closed resolution order in RFC-28 §"Codex root resolution (v1)" — and does not alter wire output for callers that already pass `--codex-root`.
+
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
+**Consumes:** RFC-28's `ReviewFinding` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings (producer project, consumer project, operation id, schema pointer, channel, message, classification, `change-kind`) via `schemas/review/finding/contracts-evidence.schema.json`; RFC-28 defines the `evidence.kind: structured` union but deliberately leaves the inner `data` shape to the consumer roadmap item so contracts-specific decisions land alongside the gate that needs them.
 **Target surface:**
 
 ```bash
