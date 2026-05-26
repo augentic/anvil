@@ -602,8 +602,8 @@ Rejected for v1. It would move too much judgment into the framework. Exact ids a
 
 - [RFC-25: Workflow](../done/rfc-25-workflow.md)
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
-- RFC-28: Codex Resolution and Structured Review Findings
-- RFC-31: WorkspaceModel and Declarative Rule Execution
+- RFC-28: Engineering Standards — Codex Contract and Findings
+- RFC-32: Engineering Standards — Deterministic Enforcement
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim fusion](../../plugins/spec/references/synthesis/claim-fusion.md)

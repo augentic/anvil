@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo authoring checks and consumer-project review. The planned `specdev check` validator and `specrun review` reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-31](rfc-32-declarative-rules.md) adds the shared execution substrate for consumer review, with optional framework convergence in Phase 3.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check`) and consumer-project **engineering standards** (`specrun review`). The planned validator and reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-32](rfc-32-declarative-rules.md) adds the shared execution substrate for consumer standards enforcement, with optional framework convergence in Phase 3. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 
 ## Sequenced Roadmap
 
@@ -49,11 +49,11 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 ### Mid Term
 
-#### RM-10: CI-native `specify review`
+#### RM-10: CI-native standards enforcement
 
-**Goal:** Continuously review consumer projects.
-**Depends:** [RFC-28](rfc-28-codex-rules.md) (contract + export) then [RFC-31](rfc-32-declarative-rules.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
-**Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-31's deterministic scanner.
+**Goal:** Continuously enforce engineering standards on consumer projects (not a workflow phase — findings may block CI but never transition plan or slice lifecycle).
+**Depends:** [RFC-28](rfc-28-codex-rules.md) (standards contract + export) then [RFC-32](rfc-32-declarative-rules.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
+**Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-32's deterministic standards scanner.
 **Target surface:**
 
 ```bash
@@ -67,9 +67,9 @@ specrun review --format json
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
 
-**Optional follow-on:** [RFC-31](rfc-32-declarative-rules.md) Phase 3 — framework `specdev check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
+**Optional follow-on:** [RFC-32](rfc-32-declarative-rules.md) Phase 3 — framework `specdev check` may emit the same finding shape or migrate select predicates to declarative `FRAME-*` rules; not required for RM-10.
 
-**Distribution follow-up:** RFC-28 v1 requires operators to pass `--codex-root` to `specrun codex export` when their tree does not contain `adapters/shared/codex/universal/`. Before CI-native review is broadly usable, `specrun init` or plugin distribution should carry the shared codex tree into the consumer project (e.g. as an extension of the existing manifest cache) so `UNI-*` rules resolve without a co-located framework checkout. Tracked here rather than in RFC-28 to keep the contract layer narrow; the change is additive — a new probe step in the closed resolution order in RFC-28 §"Codex root resolution (v1)" — and does not alter wire output for callers that already pass `--codex-root`.
+**Distribution follow-up:** RFC-28 v1 requires operators to pass `--codex-root` to `specrun codex export` when their tree does not contain `adapters/shared/codex/universal/`. Before CI-native standards enforcement is broadly usable, `specrun init` or plugin distribution should carry the shared codex tree into the consumer project (e.g. as an extension of the existing manifest cache) so `UNI-*` rules resolve without a co-located framework checkout. Tracked here rather than in RFC-28 to keep the contract layer narrow; the change is additive — a new probe step in the closed resolution order in RFC-28 §"Codex root resolution (v1)" — and does not alter wire output for callers that already pass `--codex-root`.
 
 #### RM-11: Dependency-aware compatibility gates
 
@@ -125,7 +125,7 @@ specrun events export
 
 **Goal:** Maintain the framework authoring checker now hosted by `specify-cli`'s `specdev` binary — schema-first authoring feedback in Cursor, `specdev check` for CI and local use, and integration tests in the publish-disabled `specify-authoring` crate.
 **Why now:** Keeps Deno out of CI and contributor prerequisites, avoids parser duplication with `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner without bloating the `specrun` runtime binary with dev-only surfaces.
-**Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; project-resolved review behavior stays under future `specrun review`.
+**Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; consumer-project **engineering standards** enforcement stays under future `specrun review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize

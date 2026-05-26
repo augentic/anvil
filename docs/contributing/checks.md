@@ -23,6 +23,18 @@ Use the same pattern for other plain YAML files when a framework or runtime sche
 
 **Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
 
+## Enforcement surfaces (authoring vs engineering standards)
+
+Framework and consumer validation are intentionally separate. See [Standards layer](../explanation/standards-layer.md).
+
+| Surface | Command | Audience | Enforces |
+| --- | --- | --- | --- |
+| **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, codex rule *shape*, links, marketplace consistency |
+| **Engineering standards** | `specrun review` (planned) | Consumer projects with `.specify/` | Applicable codex rules with `deterministic_hints`; structured findings for CI |
+| **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
+
+Codex rule *content* lives under `adapters/**/codex/` (engineering standards). `docs/standards/` is **authoring** house style only.
+
 ## Running checks
 
 ```bash

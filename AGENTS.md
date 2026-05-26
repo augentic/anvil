@@ -29,6 +29,20 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
 
+### Workflow, standards, and artifacts
+
+Specify separates three concerns. Use the terms verbatim; see [docs/explanation/standards-layer.md](docs/explanation/standards-layer.md) for the full picture.
+
+| Layer | Role | Examples |
+| --- | --- | --- |
+| **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specrun slice transition` |
+| **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
+| **Engineering standards** | Durable policy that outlives any slice | Codex rules under `adapters/**/codex/`; future `specrun codex export` and `specrun review` |
+
+**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (codex, enforced per [RFC-28](rfcs/rfc-28-codex-rules.md) / [RFC-32](rfcs/rfc-32-declarative-rules.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
+
+`specrun review` (planned, RM-10) is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `reviewed` are separate surfaces.
+
 ### Authority and fusion mechanics
 
 The full mechanics — per-kind authority overrides, per-slice operator overrides, fusion-index shape, cache-fingerprint inputs, extraction-cache layout — live in the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). The headline rules:

@@ -1,12 +1,14 @@
-# RFC-28: Codex Rules
+# RFC-28: Engineering Standards — Codex Contract and Findings
 
-> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-declarative-rules.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-specify-review), [RFC-18](future/rfc-18-slm.md)
+> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-declarative-rules.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
 
 ## Abstract
 
-Define the durable rule-resolution and finding-output contract for Specify's review layer.
+Define the **engineering standards** contract for Specify: how durable policy is stored, resolved, cited, and reported — without mutating workflow state.
 
-Specify already has first-party codex rule files under shared and per-target directories, plus target adapter review briefs that cite those rules in `REVIEW.md`. The missing piece is a structured bridge from "agent-readable policy files on disk" to "resolved rule context and review findings a CLI, CI job, PR comment, scorer, dashboard, or reviewing agent can consume." This RFC adds that bridge without implementing the full `specrun review` scanner.
+Specify separates **workflow** (phase skills and lifecycle CLI), **artifacts** (slice and baseline intent), and **engineering standards** (codex policy). Codex is the on-disk rule format under `adapters/**/codex/`; this RFC defines the resolution and finding wire shape, not the workflow loop. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+
+Specify already has first-party codex rule files under shared and per-target directories, plus target adapter review briefs that cite those rules in `REVIEW.md`. The missing piece is a structured bridge from "agent-readable policy files on disk" to "resolved rule context and review findings a CLI, CI job, PR comment, scorer, dashboard, or reviewing agent can consume." This RFC adds that bridge without implementing the full `specrun review` standards scanner.
 
 This RFC adds:
 
@@ -15,7 +17,7 @@ This RFC adds:
 3. **Codex resolution rules** - namespace ownership, overlay precedence, applicability filters, deprecation handling, and stable ordering.
 4. **Reviewer report alignment** - target adapter review briefs continue to write human `REVIEW.md`, but every machine-readable finding maps to the same schema.
 
-The scanner that produces deterministic findings (`specrun review`) is a follow-up surface defined by [RFC-32](rfc-32-declarative-rules.md). This RFC defines the rule and finding contract that scanner consumes, but codex rules remain agent-readable Markdown policy first; deterministic hints are optional metadata for mechanically observable subsets.
+The scanner that produces deterministic findings (`specrun review` — CI-native **standards enforcement**, not a workflow phase) is a follow-up surface defined by [RFC-32](rfc-32-declarative-rules.md). This RFC defines the rule and finding contract that scanner consumes, but codex rules remain agent-readable Markdown policy first; deterministic hints are optional metadata for mechanically observable subsets.
 
 ## Motivation
 
@@ -34,13 +36,23 @@ Today those pieces exist only partially:
 - target adapter review briefs instruct reviewers to add `rule_id` fields in `REVIEW.md`;
 - contract rules already mention consumer-impact classifications that future cross-project review needs.
 
-What is missing is the contract that joins them. Without it, every reviewer, scorer, CI integration, agent prompt pack, or dashboard would invent its own rule context and finding shape. That would make rule ids hard to aggregate and would blur the current 2.0 boundary between workflow control (`specrun`), target adapter guidance, and agent-authored prose.
+What is missing is the contract that joins them. Without it, every reviewer, scorer, CI integration, agent prompt pack, or dashboard would invent its own rule context and finding shape. That would make rule ids hard to aggregate and would blur the current 2.0 boundary between workflow control (`specrun`), engineering standards (codex), target adapter guidance, and agent-authored prose.
 
 ## Design
 
+### Standards layer (workflow / artifacts / standards)
+
+| Layer | Owns | Must not |
+| --- | --- | --- |
+| Workflow | Phase skills; `specrun plan` / `slice` / `workspace` lifecycle verbs | Encode durable engineering policy in lifecycle files |
+| Artifacts | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs | Substitute for codex policy or auto-enforce standards |
+| Engineering standards | Codex rules; `specrun codex export`; future `specrun review` | Transition plans, slices, or changes; mutate `.specify/` lifecycle fields |
+
+**Authoring standards** (`docs/standards/` in the plugin repo, enforced by `specdev check`) govern how contributors write skills and docs. **Engineering standards** (this RFC) govern what generated and hand-written code must satisfy in consumer projects. The words overlap; the enforcement surfaces do not.
+
 ### Principles
 
-1. **Codex rules are policy, not workflow state.** Rule files live with adapters and shared references. They do not mutate `plan.yaml`, slice artifacts, `sources.yaml`, or `targets.yaml`.
+1. **Codex rules are engineering standards, not workflow state.** Rule files live with adapters and shared references. They do not mutate `plan.yaml`, slice artifacts, `sources.yaml`, or `targets.yaml`.
 2. **Rules are authored for agent judgment first.** The Markdown body is the canonical policy explanation for reviewing agents and humans; frontmatter makes that policy resolvable, filterable, and citeable.
 3. **Deterministic hints are advisory and partial.** Hints help scanners catch mechanically observable subsets of a rule, but absence of a hint never means the rule is unenforceable by an agent or reviewer.
 4. **The CLI owns resolution, not judgment.** The CLI can resolve, validate, and export rule sets. A scanner, model, or human decides whether a rule is violated.
@@ -578,7 +590,8 @@ Questions originally raised as Open Questions and resolved in this RFC:
 
 - [Specify Roadmap](roadmap.md)
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md)
-- [RFC-32: Declarative Rule Execution](rfc-32-declarative-rules.md)
+- [RFC-32: Engineering Standards — Deterministic Enforcement](rfc-32-declarative-rules.md)
+- [Standards layer (explanation)](../docs/explanation/standards-layer.md)
 - [RFC-18: Specialized SLM Code Generation](future/rfc-18-slm.md)
 - [RFC-25: Workflow](done/rfc-25-workflow.md)
 - [RFC-27: Synthesis Sharpening](done/rfc-27-synthesis.md)

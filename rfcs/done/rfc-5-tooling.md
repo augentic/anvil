@@ -1,6 +1,6 @@
 # RFC-5: Framework Developer Tooling
 
-> Status: Implemented · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-framework-developer-tooling-workspace) · Enables: [RFC-4](future/rfc-4-dsl.md) · Preserves contract with: [RFC-28](rfc-28-codex-rules.md), [RFC-31](rfc-31-workspace-model.md)
+> Status: Implemented · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-framework-developer-tooling-workspace) · Enables: [RFC-4](future/rfc-4-dsl.md) · Preserves contract with: [RFC-28](rfc-28-codex-rules.md), [RFC-32](rfc-32-declarative-rules.md)
 
 ## Abstract
 
@@ -398,6 +398,6 @@ The RFC lands as a **single PR** in this rough order:
 - `[docs/contributing/acceptance.md](../docs/contributing/acceptance.md)` — the acceptance surface split between deterministic harness (this RFC) and manual scenario packs (out of scope).
 - `[Specify CLI AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md)` — crate graph this workspace consumes via `specify-domain`.
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md) — Option 1 is satisfied by the schema-first pass plus the skill-discipline modules.
-- [RFC-28: Codex Resolution and Structured Review Findings](../rfc-28-codex-rules.md) — namespace-ownership contract preserved by `check::codex`.
-- [RFC-31: WorkspaceModel and Declarative Rule Execution](../rfc-31-workspace-model.md) — optional Phase 3 framework convergence; does not replace RFC-5 check modules by default.
+- [RFC-28: Engineering Standards — Codex Contract and Findings](../rfc-28-codex-rules.md) — namespace-ownership contract preserved by `check::codex`.
+- [RFC-32: Engineering Standards — Deterministic Enforcement](../rfc-32-declarative-rules.md) — optional Phase 3 framework convergence; does not replace RFC-5 check modules by default.
 
