@@ -1,6 +1,6 @@
 # RFC-31: Vectis / Screenshots Loop Hardening
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](rfc-29-fan-in-fan-out.md), [RFC-30](rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
+> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-5](../done/rfc-5-tooling.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](rfc-29-fan-in-fan-out.md), [RFC-30](rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
 
 ## Abstract
 
@@ -129,15 +129,15 @@ https://schemas.specify.dev/<tool>/<name>.schema.json
 
 The `$id` is hardcoded in each schema file. The existing disagreement between `adapters/vectis/...` and `targets/vectis/...` is resolved by settling on the `<tool>/` convention. The URL is a logical identifier; it does not need to resolve to a hosted copy to be useful as a stable reference.
 
-Plugin-repo CI gains a standalone test (outside the retiring `scripts/checks/` Deno surface — see RFC-5):
+The invariant lands in the unified framework checker shipped by [RFC-5](../done/rfc-5-tooling.md) — `specdev check` in `specify-cli`'s `specify-authoring` crate, invoked locally and in CI via `make check`:
 
 ```text
-brief-schema-link-resolves: every URL matching schemas.specify.dev/<tool>/...
-                            in any brief or reference must round-trip through
-                            `specify tool schema <tool> <name>` byte-for-byte.
+links.brief-schema-link-resolve: every URL matching schemas.specify.dev/<tool>/...
+                                 in any brief or reference must round-trip through
+                                 `specrun tool schema <tool> <name>` byte-for-byte.
 ```
 
-The test lives in `tests/schema_links.ts` (or its RFC-5 Rust equivalent when the `rules` crate lands). It is not added to `scripts/check.ts` because that harness is being retired by RFC-5; the invariant migrates to `rules::schema_links` when the Rust rule engine is ready.
+Implementation lives in `crates/authoring/src/check/schema_links.rs` as `check::schema_links`, registered alongside the other predicates in `check/mod.rs`. The check scans adapter briefs and `references/` trees for tool-owned schema URLs, invokes the operator CLI's schema registry, and emits a `links.brief-schema-link-resolve` finding when a cited URL does not resolve or its body disagrees with the tool-embedded copy. Fixture coverage follows the same pattern as `check::links` and `check::tools` under `crates/authoring/tests/`. Extend [`docs/contributing/checks.md`](../docs/contributing/checks.md) with check 14 when the predicate lands.
 
 ### Migration
 
@@ -147,7 +147,7 @@ The test lives in `tests/schema_links.ts` (or its RFC-5 Rust equivalent when the
 | 2 | Fix the `$id` in each tool's embedded schemas to use the stable convention. |
 | 3 | Update every plugin-repo brief that cites a local schema path to cite the canonical `$id` URL instead. |
 | 4 | Delete `adapters/targets/vectis/schemas/*.schema.json`; replace `adapters/targets/vectis/schemas/README.md` with the URL list and a `specify tool schema` quickstart. |
-| 5 | Add the `brief-schema-link-resolves` invariant as a standalone CI test (`tests/schema_links.ts`); deferred to RFC-5's `rules` crate for `make check` integration. |
+| 5 | Add `check::schema_links` to `specify-authoring` with rule id `links.brief-schema-link-resolve`; register it in `specdev check` so `make check` and CI enforce the invariant. |
 | 6 | Remove the "byte-identity discipline" comment block from `wasi-tools/vectis/src/validate/engine/shared.rs`; the schemas are now first-class CLI assets. |
 
 After migration, the plugin repo carries zero `.schema.json` files for tool-owned artifacts. Framework-level schemas (adapter, source, target, evidence, plan, slice/fusion) stay where they are — they are CLI-owned and already follow this pattern.
@@ -320,7 +320,7 @@ A.1 — Land `Tool::schemas()` accessor and `specify tool schema` verb on the CL
 A.2 — Fix the `$id` in each tool's embedded schemas to use the stable convention.
 A.3 — Update every plugin-repo brief that cites a local schema path to cite the canonical `$id` URL instead.
 A.4 — Delete `adapters/targets/vectis/schemas/*.schema.json`; rewrite the README.
-A.5 — Add the `brief-schema-link-resolves` invariant as a standalone CI test (`tests/schema_links.ts`); deferred to RFC-5's `rules` crate for `make check` integration.
+A.5 — Add `check::schema_links` to `specify-authoring` (`links.brief-schema-link-resolve`); register it in `specdev check` alongside the RFC-5 predicate set.
 A.6 — Land `specify source preview` with stdout summary and Evidence output.
 
 Steps A.1–A.5 are independent of A.6. A.6 depends on RFC-29 wave A (executable `specify source enumerate` / `specify source extract`).
@@ -339,7 +339,7 @@ Independent of wave A in principle. No new journal events, no new CLI verbs for 
 
 | Concern | Migration path |
 | --- | --- |
-| Existing plugin-repo schema copies | Mechanical delete after wave A; CI predicate catches any brief still citing the old path. |
+| Existing plugin-repo schema copies | Mechanical delete after wave A; `specdev check` (`links.brief-schema-link-resolve`) catches any brief still citing the old path. |
 | Existing slices without a catalog | Continue to work. The catalog is opt-in and operator-authored. |
 | Workspace mode | No coordinator-root catalog. Each materialised slot owns `.specify/design-system/components.yaml` beside its other project-local design-system files. |
 | Existing baseline screens with inlined equivalents | The catalog does not retroactively rewrite baseline `composition.yaml`. The operator schedules a refactor slice when ready. |
@@ -374,7 +374,7 @@ Independent of wave A in principle. No new journal events, no new CLI verbs for 
 RFC-31 is complete when:
 
 1. The plugin-repo `adapters/targets/vectis/schemas/` directory contains only the README.
-2. CI fails when a brief cites a non-canonical schema URL (standalone `tests/schema_links.ts` test; migrates to `make check` via RFC-5's `rules` crate).
+2. `make check` fails with `links.brief-schema-link-resolve` when a brief or reference cites a non-canonical or non-round-tripping `schemas.specify.dev/<tool>/...` URL.
 3. `specify tool schema vectis tokens` round-trips byte-identical against the CLI-embedded copy.
 4. `specify source preview screenshots --source <dir>` produces Evidence at `${--out}/evidence/screens.yaml` that is byte-equal to what `/spec:refine` would persist for the same input.
 5. The preview verb leaves no residue under `.specify/` and no journal event fires.
@@ -388,6 +388,7 @@ RFC-31 is complete when:
 - [RFC-11 (archived): UI Specification Workflow](../done/rfc-11-ui-spec.md) — §A unwired-subset; §G component-directive emission and structural-identity; §H validate modes.
 - [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — executable `specify source enumerate` / `specify source extract`; required for the `specify source preview` plumbing.
 - [RFC-30: Init bootstrap](rfc-30-init.md) — `specify tool` family discipline; cross-repo schema migration precedent.
+- [RFC-5: Framework Developer Tooling](../done/rfc-5-tooling.md) — unified `specdev check` predicate engine; home for `check::schema_links`.
 - [Layout inferer contract](../../adapters/targets/vectis/references/layout-inferer-contract.md) — pre-2.0 producer contract; component directive emission policy reused here.
 - [Screenshots `extract/pipeline.md`](../../adapters/sources/screenshots/briefs/extract/pipeline.md) — stage-6 component detection.
 - [Vectis schemas README](../../adapters/targets/vectis/schemas/README.md) — directory targeted for retirement in wave A.
