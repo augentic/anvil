@@ -1,376 +1,386 @@
-# Code & Skill Review — subtraction pass
+# Code & Skill Review — May 2026
 
-1. **Top three findings by tier**: **F1** purge stale `plan validate` wire docs (verified wire-contract drift — retired/missing codes still documented); **F2** collapse plan schema validation + single read in `Plan::load` (subtraction); **F3** trim `/spec:execute` skill sections that repeat the Critical Path (subtraction).
-2. **Total ΔLOC if all land**: about **−70 LOC** net across `specify-cli` Rust/docs and shipped phase skills.
-3. **Primary non-LOC axes moved**: `−2` wire-contract doc defects, `−1` redundant disk read on plan load, `−1` duplicated validation filter branch, `−2` skill instruction surfaces repeating the same gate/lock rules.
-4. **Top verified defects closed**: **F1** (wire-contract/doc drift for `unreachable-entry`, `project-missing-multi-repo`, and wrong example codes in the validate-output schema). **None** beyond F1 qualify under strict CI/predicate/panic definitions — CI is green on both repos. Defect-only net ΔLOC from F1: **−18** (pure deletion).
-5. **Most likely to break in remediation**: **F2** — `validate_plan_yaml` must preserve the existing `plan-schema` rule id, JSON-pointer detail shape, and exit code `2`; a sloppy merge that routes YAML parse failures through `Error::YamlDe` instead of `Error::Validation` would regress the F1-era load contract.
+## Summary
 
-## Reconnaissance Numbers
+1. **Top three:** (1) Delete test-only `change::finalize` domain module (−1527 LOC); (2) fix stale vectis WASM breaking `cargo make check` (2 failing tests); (3) replace phantom `specrun plan finalize` docs with the shipped `specrun plan archive` verb (wire-contract drift, ~28 live references).
+2. **Total ΔLOC if all land:** approximately **−1560** net (−1527 finalize module, −~35 CLI/skill/doc tidies, +~5 Makefile/test precondition lines for vectis).
+3. **Primary non-LOC axes:** module/crate edges (−1 dead domain subtree), defect surface (−2 CI failures, −1 wire-contract mismatch class), branches (−1 duplicate CLI exit handler).
+4. **Verified defects closed:** 2 CI test failures (`schema_vectis_*`); 1 wire-contract class (`specrun plan finalize` documented but not registered in clap). Defect-only ΔLOC: **+5** (vectis rebuild precondition only; doc fixes are neutral).
+5. **Most likely to break in remediation:** deleting `crates/domain/src/change/finalize/` — probe/classification logic is well-tested but never wired; confirm `/spec:finalize` skill runbook stays the canonical orchestrator before removal.
 
-```text
-tokei (specify + specify-cli combined)
-Total: 1161 files, 161385 lines, 82242 code, 49874 comments, 29269 blanks
-Rust: 300 files, 56082 lines, 48959 code
+---
 
-cargo tree --duplicates (specify-cli)
-duplicate package groups at top level: 94
+## Reconnaissance
 
-rg -c '^#\[test\]' crates/ src/ tests/ (specify-cli)
-test_attr_total: 511
+| Signal | specify-cli | specify (plugins/docs) |
+|--------|-------------|------------------------|
+| **tokei Rust LOC** | 52,844 code lines (69,306 incl. markdown in `.rs`) | 19,510 code lines (80,003 incl. embedded langs in `.md`) |
+| **cargo tree --duplicates** | `base64` 0.21.7 / 0.22.1; `bitflags` via `ron`/`rustix`; transitive via `wasm-pkg-client` → `specify-tool` | — |
+| **`#[test]` count** | 467 matches across `crates/` `src/` `tests/` (per-file `rg -c`) | — |
+| **`mod.rs` files** | 4 (`tests/common`, `crates/domain/tests/common`, `crates/authoring/src/check`, `wasi-tools/vectis/tests/engine_support`) | — |
+| **docs/standards + AGENTS.md** | 790 lines | 731 lines |
+| **Rust files >500 LOC** | 19 under `crates/` + `src/` (largest: `crates/domain/tests/workspace.rs` 1048) | — |
+| **CI** | `cargo make check` **FAIL** — 1078/1080 pass; 2 fail in `specify::tool_schema` | `make check` **PASS** — "All checks passed." |
+| **First CI failure** | `schema_vectis_unknown_name_exits_nonzero` — stdout not JSON; guest stderr: `error: unrecognized subcommand 'schema'` | — |
+| **unwrap/expect (non-test hot path)** | 907 total matches under `crates/` + `src/` excluding `tests/`; **0** on CLI handler paths outside `#[cfg(test)]` | — |
+| **panic!/unreachable!** | 76 matches (non-test `crates/` + `src/`) | — |
 
-rg --files -g '**/mod.rs' (specify-cli)
-3 files: tests/common/mod.rs, wasi-tools/vectis/tests/engine_support/mod.rs, crates/domain/tests/common/mod.rs
+---
 
-wc -l docs/standards/*.md AGENTS.md (both repos)
-1496 total
-  specify: 716 lines
-  specify-cli: 780 lines
+## Structural findings
 
-files > 500 lines under crates/ and src/ (specify-cli)
-1048 crates/domain/tests/workspace.rs
- 947 crates/domain/tests/finalize.rs
- 922 crates/domain/tests/registry.rs
- 890 crates/domain/src/discovery/document.rs
- 728 crates/domain/src/adapter/core.rs
- 688 crates/domain/src/change/plan/core/model.rs
- 667 crates/domain/src/slice/fusion.rs
- 611 crates/domain/src/journal.rs
- 574 crates/domain/src/spec/provenance.rs
- 520 crates/tool/src/validate.rs
- 514 src/commands/plan/lifecycle.rs
- 509 crates/domain/src/adapter/cache/io.rs
+### F1 — Delete unshipped `change::finalize` module
 
-make check (specify)
-All checks passed.
+**Evidence:** `crates/domain/src/change/finalize.rs` (279) + submodules (301) + `crates/domain/tests/finalize.rs` (947) = **1527 LOC**. `rg 'change::finalize' crates/ src/ tests/` → hits **only** `crates/domain/tests/finalize.rs`. CLI exposes `PlanAction::Archive` only (`src/runtime/commands/plan/cli.rs:277–283`); no `Finalize` variant. `/spec:finalize` skill runbook already orchestrates `workspace push` → `gh pr view` → `specrun plan archive` (`plugins/spec/skills/finalize/references/runbook.md:14–15`).
 
-cargo make check (specify-cli)
-Build Done in 181.39 seconds.
+**Action:**
+1. Delete `crates/domain/src/change/finalize.rs`, `crates/domain/src/change/finalize/`, `crates/domain/tests/finalize.rs`.
+2. Remove `pub mod finalize;` from `crates/domain/src/change.rs`.
+3. `rg 'change::finalize|specify change finalize' crates/ docs/ DECISIONS.md` → zero hits outside archived RFCs.
 
-rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/ (specify-cli)
-unwrap_expect_total: 687 (513 excluding inline #[cfg(test)] modules in the same files)
+**Quality delta:** −1527 LOC, −4 module files, −1 crate edge, −947 lines of test-only harness.
 
-rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/ (specify-cli)
-panic_unreachable_total: 51
+**Net LOC:** 1527 → 0.
 
-production-only unwrap/expect outside test modules: 1 (crates/tool/src/hash.rs write! to String — infallible)
-```
+**Done when:** `rg 'mod finalize|change::finalize' crates/domain/` → no matches; `cargo make check` passes without `specify-domain::finalize` test binary.
 
-## Structural Findings
+**Rule?** no — one-off dead subtree, not a repeated pattern.
 
-### F1 — Purge Stale Validate Wire Docs
+**Counter-argument:** "Future `specrun plan finalize` will wire this." Loses: pre-1.0, skill already owns orchestration, and `plan archive` is the only shipped archive writer — keeping both paths guarantees drift (already present in docs).
 
-**Evidence**:
+**Depends on:** F3 (doc verb alignment) should land in the same PR if finalize module prose is deleted from `DECISIONS.md`.
 
-`plan validate` documents codes the binary no longer emits.
+---
 
-Retired diagnostic — commented in tests, absent from `DiagnosticPayload`:
+### F2 — Rebuild vectis WASM before schema integration tests
 
-```1401:1405:/Users/andrewweston/github.com/augentic/specify-cli/tests/plan_orchestrate.rs
-// `plan validate` carries the three surviving health diagnostics
-// (`cycle-in-depends-on`, `orphan-source-key`,
-// `stale-workspace-clone`) alongside its base shape rules. The
-// `unreachable-entry` diagnostic retired in RFC-25 alongside the
-// per-entry `failed`/`skipped` states it relied on.
-```
+**Evidence:** `cargo make check` summary: `FAIL specify::tool_schema schema_vectis_tokens_returns_valid_json` and `schema_vectis_unknown_name_exits_nonzero`. stderr: `error: unrecognized subcommand 'schema'` from guest vectis. Test reads stale artifact at `wasi-tools/target/wasm32-wasip2/release/vectis.wasm` (`tests/tool_schema.rs:15–17`); `cargo build` there does **not** run `scripts/build-vectis-local.sh`. Fresh build writes `target/vectis-wasi-tools/release/vectis.wasm` (`scripts/build-vectis-local.sh:19–26`). Skip guard only checks `is_file()` — stale file exists, skip never fires.
 
-`DiagnosticPayload` has three variants only (`Cycle`, `OrphanSource`, `StaleClone`) — no `unreachable-entry`:
+**Action:**
+1. In `Makefile.toml`, add `vectis-wasm` to `[tasks.test] dependencies` (mirror comment block for `contract-wasm` at lines 112–115).
+2. Point `vectis_wasm()` at `repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")`.
+3. Keep early-return skip when that path is absent (local dev without WASI target installed).
 
-```68:97:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/doctor.rs
-pub enum DiagnosticPayload {
-    Cycle { cycle: Vec<String> },
-    OrphanSource { key: String },
-    StaleClone { project: String, reason: StaleReason, ... },
+**Before:**
+```rust
+fn vectis_wasm() -> PathBuf {
+    repo_root().join("wasi-tools/target/wasm32-wasip2/release/vectis.wasm")
 }
 ```
 
-Removed validate code still listed in the wire README:
-
-```41:41:/Users/andrewweston/github.com/augentic/specify-cli/schemas/plan-validate-output/README.md
-- `project-missing-multi-repo` (error): when the registry has multiple projects, a slice is missing the required `project` field.
-```
-
-Production grep — code gone, doc remains:
-
-```text
-$ rg -n 'project-missing-multi-repo|unreachable-entry' crates/ src/ schemas/plan-validate-output/
-schemas/plan-validate-output/README.md:41:...project-missing-multi-repo...
-schemas/plan-validate-output/README.md:50:...unreachable-entry...
-schemas/plan-validate-output/schema.json:30:...unreachable-entry...
-schemas/plan-validate-output/schema.json:53:...dependency-cycle...missing-change-dir-for-in-progress...unreachable-entry...
-src/commands/plan/cli.rs:69:...unreachable-entry...
-```
-
-Live codes use `cycle-in-depends-on` and `missing-slice-dir-for-in-progress`, not the schema.json examples `dependency-cycle` / `missing-change-dir-for-in-progress`:
-
-```135:135:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/validate.rs
-            code: "multiple-in-progress",
-```
-
-```277:277:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/validate.rs
-                    code: "missing-slice-dir-for-in-progress",
-```
-
-**Action**:
-
-1. Delete the `project-missing-multi-repo` and `unreachable-entry` bullets from `schemas/plan-validate-output/README.md`; fix the producer example on line 21 to drop `unreachable-entry` from the `data.kind` union.
-2. In `schemas/plan-validate-output/schema.json`, replace stale example codes in the three `description` strings: drop `unreachable-entry`; rename `dependency-cycle` → `cycle-in-depends-on`; rename `missing-change-dir-for-in-progress` → `missing-slice-dir-for-in-progress`; change “four supplementary doctor checks” → “three”.
-3. In `src/commands/plan/cli.rs` `Validate` doc comment, list the three doctor diagnostics only (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`); drop `unreachable-entry`.
-
-**Quality delta**: `−2 wire-contract doc defects, −18 LOC, −4 stale code names in operator-facing schema text`.
-
-**Net LOC**: `schemas/plan-validate-output/* + cli.rs 152 → ~134`.
-
-**Done when**: `rg -n 'project-missing-multi-repo|unreachable-entry|dependency-cycle|missing-change-dir-for-in-progress' schemas/plan-validate-output/ src/commands/plan/cli.rs` returns no matches.
-
-**Rule?**: no — one-off doc drift after F3’s duplicate-gate deletion and RFC-25 retirement.
-
-**Counter-argument**: stale docs are harmless if nobody pattern-matches; it loses because skills and JSON-schema consumers treat `schemas/plan-validate-output/` as canonical wire contract.
-
-**Depends on**: none.
-
-### F2 — Collapse Plan Schema Validation
-
-**Evidence**:
-
-`Plan::load` reads `plan.yaml` twice — once for content, again inside `validate_plan_file`:
-
-```59:68:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/change/plan/core/io.rs
-    pub fn load(path: &Path) -> Result<Self, Error> {
-        ...
-        let content = std::fs::read_to_string(path)?;
-        validate_plan_file(path)?;
-        let plan: Self = serde_saphyr::from_str(&content)?;
-```
-
-`validate_plan_file` re-reads the path:
-
-```70:87:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/schema.rs
-pub fn validate_plan_file(path: &Path) -> Result<()> {
-    let instance = read_yaml_as_json(path).map_err(|err| { ... })?;
-    let results = validate_value(...).into_iter().filter(|summary| summary.status == ValidationStatus::Fail).collect::<Vec<_>>();
-    if results.is_empty() { Ok(()) } else { Err(Error::Validation { results }) }
+**After:**
+```rust
+fn vectis_wasm() -> PathBuf {
+    repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")
 }
 ```
 
-The same filter/collect tail is duplicated in `validate_serialisable`:
+**Quality delta:** −2 defects, +0 branches (CI green).
 
-```216:222:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/schema.rs
-    for summary in validate_value(&instance, schema_source, rule_id, rule) {
-        if summary.status == ValidationStatus::Fail {
-            results.push(summary);
-        }
+**Net LOC:** tests 180 → 180; Makefile 130 → 131 (+1 dependency line).
+
+**Done when:** `cargo make check` summary shows 1080/1080 pass (0 failed in `specify::tool_schema`).
+
+**Rule?** no.
+
+**Counter-argument:** "Developers can run `cargo make vectis-wasm` manually." Loses: CI currently red on clean machines with an old cached wasm present — exactly the failure mode observed.
+
+**Depends on:** none.
+
+---
+
+### F3 — Retire phantom `specrun plan finalize` verb in live docs
+
+**Evidence:** `rg 'specrun plan finalize' --glob '!rfcs/**' specify/` → **28** hits (`AGENTS.md:69`, `docs/standards/cli-contract.md`, `plugins/spec/skills/execute/references/stop-conditions.md:50`, test fixtures, etc.). `src/runtime/commands/plan/cli.rs` registers **`Archive` only** — `rg 'plan finalize|PlanAction::Finalize' specify-cli/src` → **0**. Skill body correctly uses `specrun plan archive` (`plugins/spec/skills/finalize/SKILL.md:17`). DECISIONS.md still says `specify plan finalize` (`specify-cli/DECISIONS.md:333–334`).
+
+**Action:**
+1. Replace `specrun plan finalize` → `specrun plan archive` in every live doc/skill/fixture under `specify/` and `specify-cli/{AGENTS.md,DECISIONS.md,docs/}` (exclude `rfcs/`).
+2. Where prose conflates skill and verb, use: "`/spec:finalize` skill" vs "`specrun plan archive` CLI".
+3. Update `tests/fixtures/skills/finalize/*/transcript.md` command lines to `specrun plan archive <name>`.
+
+**Quality delta:** −1 wire-contract defect class, −0 LOC (mostly 1:1 substitution).
+
+**Net LOC:** ~28 edited lines, ΔLOC ≈ 0.
+
+**Done when:** `rg 'specrun plan finalize' --glob '!rfcs/**' /Users/andrewweston/github.com/augentic/specify /Users/andrewweston/github.com/augentic/specify-cli` → 0; `specrun plan --help` still lists `archive` only.
+
+**Rule?** no — one-time vocabulary alignment.
+
+**Counter-argument:** "Add `plan finalize` as a clap alias." Loses: +handler +tests +duplicate noun; skill already composes smaller verbs (jj-style thin commands).
+
+**Depends on:** none (orthogonal to F1; land together if F1 deletes finalize module docs).
+
+---
+
+### F4 — Collapse duplicate tool exit handlers
+
+**Evidence:** `run_tool` and `run_tool_schema` in `src/runtime/commands.rs:167–191` are byte-identical except the `tool::run` vs `tool::schema` call — duplicate `Ctx::load` + `Exit::Code` mapping (cargo/clap pattern: one helper, ripgrep-style).
+
+**Action:**
+1. Replace both with:
+```rust
+fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
+    let ctx = match Ctx::load(format) {
+        Ok(ctx) => ctx,
+        Err(err) => return report(format, &err),
+    };
+    match tool::run(&ctx, name, args) {
+        Ok(0) => Exit::Success,
+        Ok(code) => Exit::Code(code),
+        Err(err) => report(format, &err),
     }
-    if results.is_empty() { Ok(()) } else { Err(Error::Validation { results }) }
-```
-
-**Action**:
-
-1. In `crates/domain/src/schema.rs`, add `fn validation_failures(...)` + `fn err_from_failures(...)`; route both `validate_serialisable` and a new `pub fn validate_plan_yaml(content: &str) -> Result<()>` through them.
-2. Make `validate_plan_file` a thin `read_to_string` → `validate_plan_yaml` wrapper (keep for external callers/tests).
-3. In `Plan::load`, call `validate_plan_yaml(&content)?` instead of `validate_plan_file(path)?`.
-
-**Quality delta**: `−12 LOC, −1 redundant disk read, −1 duplicated filter branch, −1 call-site ceremony`.
-
-**Net LOC**: `schema.rs + io.rs 356 → ~344`.
-
-**Done when**: `rg -n 'validate_plan_file\(path\)' crates/domain/src/change/plan/core/io.rs` returns no matches; `Plan::load` contains exactly one `read_to_string` for the plan body; `cargo make check` passes.
-
-**Rule?**: no.
-
-**Counter-argument**: the double read is cheap for small plans; it loses because the duplication already bit once (schema helper landed without threading the loaded buffer) and the shared tail removes a second copy of the same four-line filter.
-
-**Depends on**: none.
-
-### F3 — Trim Execute Skill Duplication
-
-**Evidence**:
-
-`/spec:execute` states the Gate-1 refusal twice — Critical Path step 1 and the entire Refusal gate section:
-
-```12:12:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-1. Verify `plan.lifecycle == reviewed` via `specify plan next`; refuse with the literal `specify plan transition <name> reviewed` hint when the plan is still `pending`.
-```
-
-```19:26:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-## Refusal gate
-...
-- `error` with discriminant `plan-not-reviewed` — print `specify plan transition <name> reviewed` verbatim and exit non-zero.
-```
-
-Plan lock prose repeats Critical Path step 2 and [`references/plan-lock.md`](plugins/spec/skills/execute/references/plan-lock.md):
-
-```13:13:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-2. Acquire the exclusive lock on `.specify/plan.lock` ... using the `flock`-based shell snippet in [`references/plan-lock.md`](references/plan-lock.md)
-```
-
-```28:32:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-## Plan lock
-The lock is an exclusive non-blocking advisory file lock on `.specify/plan.lock` ...
-The full shell snippet ... lives in [`references/plan-lock.md`](references/plan-lock.md).
-```
-
-Guardrails repeat intro/critical-path constraints already stated in lines 8 and 15–16:
-
-```8:8:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-No automation flags exist — no `--continue`, no `--one`, ...
-```
-
-```56:60:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/execute/SKILL.md
-- **No automation flags.** `--continue`, `--one`, ...
-- **Never write `reviewed`.** ...
-- **Stop on the first failure.** ...
-```
-
-Current line count: `wc -l plugins/spec/skills/execute/SKILL.md` → **62**.
-
-**Action**:
-
-1. Delete the entire `## Refusal gate` section; fold the `drained` early-exit case into Critical Path step 5 (one bullet: when `plan next` returns drained before lock acquisition, print the finalize hint and exit).
-2. Replace `## Plan lock` body with two sentences: reuse the snippet from `references/plan-lock.md`; on `plan-lock-busy`, exit with holder pid. Delete the macOS fallback prose (it already lives in the reference).
-3. Delete guardrail bullets **No automation flags**, **Never write `reviewed`**, and **Stop on the first failure**; keep lock/finalize/CLI-writer bullets that add constraints not already in the Critical Path.
-
-**Quality delta**: `−22 LOC, −2 skill instruction surfaces, −3 duplicated branches in agent routing`.
-
-**Net LOC**: `62 → ~40`.
-
-**Done when**: `wc -l plugins/spec/skills/execute/SKILL.md` is `≤ 42`; `rg -n '^## Refusal gate' plugins/spec/skills/execute/SKILL.md` returns no match; `make check` passes.
-
-**Rule?**: no.
-
-**Counter-argument**: repetition helps models on long skills; it loses here because the skill is only 62 lines and the duplicate sections restate the same exit branches verbatim.
-
-**Depends on**: none.
-
-### F4 — Trim Plan Skill Guardrails
-
-**Evidence**:
-
-Gate-1 “never write `reviewed`” appears three times in a 72-line skill:
-
-```9:9:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/plan/SKILL.md
-... exits at `pending`. The operator stamps Gate 1 ... — the skill never writes `reviewed` itself.
-```
-
-```57:57:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/plan/SKILL.md
-`/spec:plan` never auto-stamps `reviewed`. Re-running ...
-```
-
-```63:63:/Users/andrewweston/github.com/augentic/specify/plugins/spec/skills/plan/SKILL.md
-- **Never auto-stamp `reviewed`.** The closing hint is the only place ...
-```
-
-**Action**:
-
-1. Delete line 57 (closing-hint paragraph duplicate).
-2. Delete the **Never auto-stamp `reviewed`** guardrail bullet; keep **Single-writer**, workspace-mode, verb, and sandbox bullets.
-
-**Quality delta**: `−8 LOC, −1 duplicated skill instruction surface`.
-
-**Net LOC**: `72 → ~64`.
-
-**Done when**: `rg -n 'never auto-stamp|never writes `reviewed`' plugins/spec/skills/plan/SKILL.md | wc -l` prints `1`; `make check` passes.
-
-**Rule?**: no.
-
-**Counter-argument**: Gate 1 is load-bearing; it loses because the overview and closing-hint sections already state the rule once each — a third copy adds no new constraint.
-
-**Depends on**: none.
-
-## One-Touch Tidies
-
-### T1 — Delete Fusion Schema Wrapper
-
-**Evidence**:
-
-`fusion_schema_source()` is a pass-through const fn over a private `include_str!`:
-
-```34:37:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/schema.rs
-pub const fn fusion_schema_source() -> &'static str {
-    FUSION_JSON_SCHEMA
 }
 ```
+2. Dispatch: `ToolAction::Run { name, args }` → `run_tool_with(format, &name, args)`; `ToolAction::Schema { name, schema }` → `run_tool_with(format, &name, vec!["schema".into(), schema.into()])`.
+3. Delete `src/runtime/commands/tool/schema.rs`; export `run` only from `tool.rs`; remove `mod schema` and `pub(super) use schema::schema`.
 
-Single call site in `fusion.rs` line 177.
+**Quality delta:** −~20 LOC, −1 module file, −1 branch duplicate, −1 call-site type (`schema` handler).
 
-**Action**:
+**Net LOC:** `commands.rs` 255 → ~245; delete `schema.rs` 13 lines.
 
-1. Delete `fusion_schema_source`.
-2. In `fusion.rs`, call `validate_serialisable(..., crate::schema::FUSION_JSON_SCHEMA, ...)` — expose `FUSION_JSON_SCHEMA` as `pub(crate) const FUSION_JSON_SCHEMA` (rename from private const) or inline one `include_str!` at the call site. Prefer `pub(crate) const` to avoid a second `include_str!`.
+**Done when:** `rg 'run_tool_schema|mod schema' specify-cli/src` → 0; `specrun tool schema vectis tokens` still exits 0 with JSON when F2 precondition met.
 
-**Quality delta**: `−5 LOC, −1 public function, −1 module edge`.
+**Rule?** no.
 
-**Net LOC**: `schema.rs + fusion.rs 384 → ~379`.
+**Counter-argument:** "Separate handlers document schema passthrough intent." Loses: comment on `run_tool_with` suffices; DECISIONS already documents `Exit::Code` passthrough once.
 
-**Done when**: `rg -n 'fusion_schema_source' crates/domain/src` returns no matches.
+**Depends on:** F2 (for green integration test).
 
-**Rule?**: no.
+---
 
-**Counter-argument**: the wrapper documents intent; it loses because the call site already cites the schema path in module docs.
+### F5 — Delete retired change-skills stub page
 
-**Depends on**: none.
+**Evidence:** `docs/reference/change-skills/draft.md` is 3 lines ("`/change:draft` (retired)"). RFC-26 step 5 removed `plugins/change/`; marketplace registers only `spec` plugin. Page adds navigation dead-end; index already documents `/spec:plan`.
 
-### T2 — Delete Stale Rollout Comments
+**Action:**
+1. Delete `docs/reference/change-skills/draft.md`.
+2. Remove any link to `draft.md` from `docs/reference/change-skills/index.md` or `docs/SUMMARY.md` if present (`rg 'change-skills/draft'`).
 
-**Evidence**:
+**Quality delta:** −3 LOC, −1 doc file.
 
-Comments describe work that already landed:
+**Net LOC:** 3 → 0.
 
-```28:33:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/schema.rs
-/// Exposed as a `&'static str` so domain modules can validate
-/// in-memory `FusionIndex` values (Phase 1) without re-reading the
-/// schema from disk. The fusion validator wiring lands in Change 1.1
-/// alongside the new `slice/fusion.rs` module.
+**Done when:** `test ! -f docs/reference/change-skills/draft.md`.
+
+**Rule?** no.
+
+**Counter-argument:** "Stub helps operators migrating from 1.x." Loses: pre-1.0 hard cut per AGENTS; release-notes already state `/change:*` retires.
+
+**Depends on:** none.
+
+---
+
+## One-touch tidies
+
+### T1 — One-line SHA-256 in codex schema drift check
+
+**Evidence:** Hand-rolled loop `crates/authoring/src/check/codex_schema_drift.rs:108–115` (8 lines). Same crate already depends on `sha2`. std-style: `format!("{:x}", Sha256::digest(bytes))` (used elsewhere via `specify_tool::sha256_hex` in runtime; authoring stays dependency-light).
+
+**Action:** Replace `sha256_hex` body with `format!("{:x}", Sha256::digest(bytes))`; delete loop.
+
+**Quality delta:** −5 LOC, −1 hand-rolled helper pattern.
+
+**Net LOC:** 128 → 123.
+
+**Done when:** `wc -l crates/authoring/src/check/codex_schema_drift.rs` ≤ 123; `make check` pass.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+### T2 — Remove orphan `Phase outcome contract` section in drop skill
+
+**Evidence:** Only `plugins/spec/skills/drop/SKILL.md` carries `## Phase outcome contract` linking `phase-outcome-contract.md` (lines 17–19). Merge/build/refine link guardrails inline; drop is the outlier. Section adds 3 lines the model reads from shared guardrails anyway.
+
+**Action:** Delete lines 17–19 (heading + blockquote). Keep guardrails bullet at line 85.
+
+**Quality delta:** −3 LOC, −1 skill section.
+
+**Net LOC:** 85 → 82 body lines.
+
+**Done when:** `rg 'Phase outcome contract' plugins/spec/skills/drop/SKILL.md` → 0; `make check` pass.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+### T3 — Drop skill empty step 5 header
+
+**Evidence:** `plugins/spec/skills/drop/SKILL.md:65–67` — `5. **Display summary**` immediately followed by `## Output On Success` with no step body (structural gap / frontmatter-body drift risk).
+
+**Action:** Renumber: merge step 5 into `## Output On Success` (delete standalone step 5 header).
+
+**Quality delta:** −2 LOC, −1 empty section.
+
+**Net LOC:** 85 → 83.
+
+**Done when:** no `5. **Display summary**` line in drop SKILL; section flows step 4 → Output.
+
+**Rule?** no.
+
+**Depends on:** T2 (same file; batch edit).
+
+---
+
+### T4 — Inline `prefixed_sha256` wrapper in agents fingerprint
+
+**Evidence:** `src/runtime/commands/agents/fingerprint.rs:124–130` — `sha256_hex` is a one-line forward to `specify_tool::sha256_hex`; only used by `prefixed_sha256`.
+
+**Action:** In `prefixed_sha256`, call `specify_tool::sha256_hex(bytes)` directly; delete local `sha256_hex` fn.
+
+**Quality delta:** −4 LOC, −1 function.
+
+**Net LOC:** 207 → 203.
+
+**Done when:** `rg 'fn sha256_hex' src/runtime/commands/agents/fingerprint.rs` → 0.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+### T5 — Fix broken plan-lock link target in build/merge skills
+
+**Evidence:** Build/merge SKILL.md cite `[plan-lock.md](../../references/plan-lock.md)` but canonical file lives at `plugins/spec/skills/execute/references/plan-lock.md` (78 lines). Shared `plugins/spec/references/plan-lock.md` **does not exist** (`ls plugins/spec/references/plan-lock.md` → missing). Execute skill references work via `execute/references/plan-lock.md`.
+
+**Action:** Point build + merge skills at `../execute/references/plan-lock.md` (same relative depth as execute loop uses).
+
+**Quality delta:** −1 skill integrity broken-link class (manual verify; not yet a specdev predicate on this path).
+
+**Net LOC:** 0 (path fix only).
+
+**Done when:** `test -f` resolved target from `plugins/spec/skills/build/SKILL.md` link; link preview opens existing file.
+
+**Rule?** yes — extend existing `links.*` predicate to resolve `../../references/plan-lock.md` from shipped skills (≤30 lines in link walker).
+
+**Depends on:** none.
+
+---
+
+### T6 — Deduplicate `scaffold_project_with_tool` vs contract fixture
+
+**Evidence:** `tests/tool_schema.rs:27–75` (49 lines) duplicates adapter scaffold pattern from `tests/contract_tool.rs:22–67` (adapter yaml, briefs, tools.yaml wiring). Only used by `tool_schema.rs`.
+
+**Action:** Hoist generic `scaffold_tool_project(tmp, tool_name, wasm_path) -> (project, cache)` into `tests/common/mod.rs`; delete local struct/fixture in `tool_schema.rs`.
+
+**Quality delta:** −~25 LOC net (after common helper), −1 duplicate scaffold.
+
+**Net LOC:** tool_schema 180 → ~130; common +55.
+
+**Done when:** `rg 'scaffold_project_with_tool|SchemaFixture' tests/` → hits only `common/mod.rs`.
+
+**Rule?** no.
+
+**Depends on:** F2.
+
+---
+
+### T7 — Trim finalize runbook duplicate overview table
+
+**Evidence:** `plugins/spec/skills/finalize/references/runbook.md` lines 7–16 restate SKILL.md critical path as a table; SKILL.md lines 11–17 already list the same five steps. 10 lines of restatement (skill.frontmatter-restatement pattern at section level).
+
+**Action:** Delete `## Overview` table (lines 5–18); open runbook at `## Invocation`.
+
+**Quality delta:** −13 LOC, −1 duplicated section.
+
+**Net LOC:** 227 → 214.
+
+**Done when:** `wc -l plugins/spec/skills/finalize/references/runbook.md` = 214.
+
+**Rule?** no.
+
+**Depends on:** F3 (verb names in runbook already correct).
+
+---
+
+### T8 — Remove `CacheKey` type alias
+
+**Evidence:** `src/runtime/commands/tool/dto.rs:10` — `type CacheKey = (String, String, String);` used once in `tool.rs:97–105`. Alias adds indirection without semantic weight.
+
+**Action:** Inline `(String, String, String)` at `kept_by_scope`; delete alias line.
+
+**Quality delta:** −1 type alias, −1 LOC.
+
+**Net LOC:** dto 137 → 136.
+
+**Done when:** `rg 'CacheKey' specify-cli/` → 0.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+### T9 — DECISIONS exit-code comment points at wrong path
+
+**Evidence:** `src/runtime/output.rs:21` cites `../../DECISIONS.md#exit-codes` from `src/runtime/` — resolves outside repo root. DECISIONS lives at repo root (`specify-cli/DECISIONS.md`).
+
+**Action:** Fix comment to `../../../DECISIONS.md#exit-codes` (or repo-relative doc link used elsewhere in `src/runtime/commands.rs:163`).
+
+**Quality delta:** −1 broken doc reference (comment-only; wrong comment misleads agents).
+
+**Net LOC:** 0.
+
+**Done when:** comment path resolves to existing file from `src/runtime/output.rs` location.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+### T10 — Plan skill closing-hint duplication in body
+
+**Evidence:** `plugins/spec/skills/plan/SKILL.md` lines 49–55 (`## Closing hint`) repeat step 8 from Critical Path line 22 almost verbatim (same literal `specrun plan transition` command). Predicate `skill.step-body-duplicates-critical-path` may not fire on cross-section duplication.
+
+**Action:** Replace `## Closing hint` section with one line: "Emit the closing hint from step 8 verbatim."
+
+**Quality delta:** −6 LOC, −1 duplicated prose block.
+
+**Net LOC:** 69 → 63 body lines.
+
+**Done when:** `rg '## Closing hint' plugins/spec/skills/plan/SKILL.md` → 0; step 8 still contains full hint block.
+
+**Rule?** no.
+
+**Depends on:** none.
+
+---
+
+## Findings not promoted
+
+| Candidate | Why dropped |
+|-----------|-------------|
+| Delete `plugins/change/` | Directory already removed on disk; glob index was stale |
+| Dedupe `plugins/spec/skills/*/references/` trees | Symlinks to `plugins/spec/references/` — not copies |
+| Add `specrun plan finalize` CLI verb | Adds LOC/types; contradicts subtraction default |
+| Delete vectis schema integration tests | Loses host→WASI envelope coverage; F2 fixes root cause |
+| Collapse `Ctx::slices_dir` / `archive_dir` | Net +LOC at call sites for −8 lines in `context.rs` |
+| Update `decision-log.md` 1.x verb history | Historical decision record; not operator-facing contract |
+
+---
+
+## Verification checklist (post-remediation)
+
+```bash
+# specify plugins/docs
+cd specify && make check
+
+# specify-cli
+cd specify-cli && cargo make check
+
+# Wire contract
+rg 'specrun plan finalize' --glob '!rfcs/**' ../specify ../specify-cli
+specrun plan --help | rg 'archive'
+
+# Dead finalize module
+rg 'change::finalize' specify-cli/crates specify-cli/tests
+
+# Schema tests
+cd specify-cli && cargo nextest run -p specify --test tool_schema
 ```
-
-```13:17:/Users/andrewweston/github.com/augentic/specify-cli/crates/domain/src/slice/fusion.rs
-//! Change 2.6 wires up the YAML read and validation envelope
-//! ([`FusionIndex::load`]) and drift detection
-//! ([`FusionIndex::detect_drift`]) consumed by `specify slice
-//! validate`. Agent-side authoring of `fusion.yaml` itself lands in
-//! Change 3.2; the CLI half owns validation and inspection only.
-```
-
-**Action**: delete both stale rollout blocks; keep the workflow §D4 audit-only sentence in `fusion.rs` module docs.
-
-**Quality delta**: `−9 LOC, −2 misleading comment blocks`.
-
-**Net LOC**: `schema.rs + fusion.rs 384 → ~375` ( stacks with T1).
-
-**Done when**: `rg -n 'Change [0-9]|Phase 1' crates/domain/src/schema.rs crates/domain/src/slice/fusion.rs` returns no matches.
-
-**Rule?**: no — comments are actively wrong, not merely verbose.
-
-**Counter-argument**: historical context aids archaeology; it loses because `DECISIONS.md` and `fusion.rs` public API docs already capture the shipped behaviour.
-
-**Depends on**: none.
-
-### T3 — Deduplicate Plan Load Test Read
-
-**Evidence**:
-
-After F2 lands, `io.rs` tests that write rogue fields still call `Plan::load`; no new test needed for the single-read path — but `load_rejects_unknown_top_level_field` (line ~178) already asserts `/rogue` in schema detail. Keep that test; delete nothing unless F2 introduces a separate `validate_plan_yaml` test duplicating it.
-
-**Action**: when implementing F2, extend the existing rogue-field test to assert one `read_to_string` path (optional: spy via temp file mtime only if a duplicate read reappears — otherwise no test change).
-
-**Quality delta**: `0 LOC` — guardrail for F2 implementer only.
-
-**Net LOC**: unchanged.
-
-**Done when**: F2 lands without adding a second rogue-field test.
-
-**Rule?**: no.
-
-**Counter-argument**: n/a — tidy is a constraint on F2, not standalone work.
-
-**Depends on**: F2.
-
-## Post-mortem
-
-<!-- One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress. -->
-- F1 (purge stale validate wire docs): actual ΔLOC -2 vs predicted -18; done when clean; regressions none.
-- F2 (collapse plan schema validation): actual ΔLOC +19 vs predicted -12; done when clean; regressions none.
-- F3 (trim execute skill duplication): actual ΔLOC -20 vs predicted -22; done when clean; regressions none.
-- F4 (trim plan skill guardrails): actual ΔLOC -3 vs predicted -8; done when clean; regressions none.
-- T1 (delete fusion schema wrapper): actual ΔLOC -9 vs predicted -5; done when clean; regressions none.
-- T2 (delete stale rollout comments): actual ΔLOC -6 vs predicted -9; done when clean; regressions none.

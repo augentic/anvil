@@ -1,6 +1,6 @@
 # RFC-28: Engineering Standards — Codex Contract and Findings
 
-> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
+> Status: Implemented - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
 
 ## Abstract
 
@@ -43,11 +43,13 @@ What is missing is the contract that joins them. Without it, every reviewer, sco
 
 ### Standards layer (workflow / artifacts / standards)
 
-| Layer | Owns | Must not |
-| --- | --- | --- |
-| Workflow | Phase skills; `specrun plan` / `slice` / `workspace` lifecycle verbs | Encode durable engineering policy in lifecycle files |
-| Artifacts | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs | Substitute for codex policy or auto-enforce standards |
-| Engineering standards | Codex rules; `specrun codex export`; future `specrun review` | Transition plans, slices, or changes; mutate `.specify/` lifecycle fields |
+
+| Layer                 | Owns                                                                 | Must not                                                                  |
+| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Workflow              | Phase skills; `specrun plan` / `slice` / `workspace` lifecycle verbs | Encode durable engineering policy in lifecycle files                      |
+| Artifacts             | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs    | Substitute for codex policy or auto-enforce standards                     |
+| Engineering standards | Codex rules; `specrun codex export`; future `specrun review`         | Transition plans, slices, or changes; mutate `.specify/` lifecycle fields |
+
 
 **Authoring standards** (`docs/standards/` in the plugin repo, enforced by `specdev check`) govern how contributors write skills and docs. **Engineering standards** (this RFC) govern what generated and hand-written code must satisfy in consumer projects. The words overlap; the enforcement surfaces do not.
 
@@ -67,10 +69,12 @@ What is missing is the contract that joins them. Without it, every reviewer, sco
 
 [RFC-5](done/rfc-5-tooling.md) ports framework checks into the `specify-authoring` crate behind the `specdev` binary. Workflow operations live in `specrun`. RFC-28 preserves that split:
 
-| Binary | Crate | Audience | RFC-28 role |
-| ------ | ----- | -------- | ----------- |
+
+| Binary    | Crate                                                | Audience                                | RFC-28 role                                                                                         |
+| --------- | ---------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `specdev` | `specify-authoring` (+ Phase 3 mapper in the binary) | Contributors editing `augentic/specify` | Codex **authoring** validation; Phase 3 adds optional `ReviewFinding` JSON export (`--format json`) |
-| `specrun` | `specify-domain` + runtime handlers | Operators on consumer projects | Codex **resolution**, export, and the `ReviewFinding` wire contract |
+| `specrun` | `specify-domain` + runtime handlers                  | Operators on consumer projects          | Codex **resolution**, export, and the `ReviewFinding` wire contract                                 |
+
 
 Framework validation does not move into `specrun`. Runtime export does not replace `specdev check`. Both binaries ship from `augentic/specify-cli`; `make check` in the plugin repo forwards to `specdev check --codex-root .`.
 
@@ -100,7 +104,7 @@ deterministic_hints:
 Configuration values that vary between deployments must not be hardcoded in generated code.
 ```
 
-[RFC-5](done/rfc-5-tooling.md) defines the framework authoring checks now implemented as `specdev check`: `check::codex` enforces the rule-id schema, namespace ownership, and frontmatter discipline. RFC-28 adds runtime resolution and export semantics to `specrun`; it does not replace the markdown authoring format or move framework validation into the runtime binary. [RFC-32](rfc-32-standards-enforcement.md) adds hint execution and the WorkspaceModel indexer that `specrun review` uses for deterministic subsets on consumer projects; RFC-28 **Phase 3** converges framework `specdev check` toward the same finding shape (Option A). Declarative `FRAME-*` migration (RFC-32 Phase 3 Option B) stays optional in RFC-32.
+[RFC-5](done/rfc-5-tooling.md) defines the framework authoring checks now implemented as `specdev check`: `check::codex` enforces the rule-id schema, namespace ownership, and frontmatter discipline. RFC-28 adds runtime resolution and export semantics to `specrun`; it does not replace the markdown authoring format or move framework validation into the runtime binary. [RFC-32](rfc-32-standards-enforcement.md) adds hint execution and the WorkspaceModel indexer that `specrun review` uses for deterministic subsets on consumer projects; RFC-28 **Phase 3** converges framework `specdev check` toward the same finding shape (Option A). Declarative `FRAME-`* migration (RFC-32 Phase 3 Option B) stays optional in RFC-32.
 
 **Body conventions.** Rule bodies SHOULD open with `## Rule` (required by `check::codex`) and MAY add `## Look For` and `## Spec Guidance` sections to scope reviewer attention. RFC-28 exports `body` as verbatim markdown; a future RFC may surface named sections as parsed fields without breaking the wire shape, so authors are encouraged to use these section names rather than ad hoc alternatives.
 
@@ -109,20 +113,20 @@ Configuration values that vary between deployments must not be hardcoded in gene
 Rule ids stay closed over the first-party namespaces already used by the repository:
 
 
-| Namespace  | Owner                                                                                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `UNI-*`    | Shared target-agnostic rules under `adapters/shared/codex/universal/`.                                                             |
-| `SRC-*`    | Shared source-axis rules owned jointly by source adapter authors under `adapters/sources/<name>/codex/`.                           |
-| `OMNIA-*`  | Omnia target adapter overlay under `adapters/targets/omnia/codex/`.                                                                |
-| `RUST-*`   | Rust rules owned by the Omnia target adapter until a shared Rust codex exists.                                                     |
-| `SEC-*`    | Security rules owned by the Omnia target adapter until a shared security codex exists.                                             |
-| `VECTIS-*` | Vectis target adapter overlay under `adapters/targets/vectis/codex/`.                                                              |
-| `IFACE-*`  | Contracts target adapter overlay under `adapters/targets/contracts/codex/`.                                                        |
-| `ORG-*`    | Organization-local rules outside the first-party repository.                                                                       |
+| Namespace  | Owner                                                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `UNI-`*    | Shared target-agnostic rules under `adapters/shared/codex/universal/`.                                                                   |
+| `SRC-*`    | Shared source-axis rules owned jointly by source adapter authors under `adapters/sources/<name>/codex/`.                                 |
+| `OMNIA-*`  | Omnia target adapter overlay under `adapters/targets/omnia/codex/`.                                                                      |
+| `RUST-*`   | Rust rules owned by the Omnia target adapter until a shared Rust codex exists.                                                           |
+| `SEC-*`    | Security rules owned by the Omnia target adapter until a shared security codex exists.                                                   |
+| `VECTIS-*` | Vectis target adapter overlay under `adapters/targets/vectis/codex/`.                                                                    |
+| `IFACE-*`  | Contracts target adapter overlay under `adapters/targets/contracts/codex/`.                                                              |
+| `ORG-*`    | Organization-local rules outside the first-party repository.                                                                             |
 | `FRAME-*`  | Reserved by [RFC-32](rfc-32-standards-enforcement.md) for optional framework-repo declarative checks; not used in consumer codex export. |
 
 
-Framework authoring keeps enforcing namespace ownership for first-party files via `specdev check`. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it. `FRAME-*` is reserved for RFC-32 Phase 3 framework convergence and must not appear under `adapters/*/codex/`. `SRC-*` is the single shared namespace for **every** source-adapter overlay in v1 — each owner under `adapters/sources/<name>/codex/` may use `SRC-*` only (mirroring how target owners map to their closed namespaces). Per-source-adapter namespaces (e.g. `TS-*`, `DOC-*`) MAY be introduced in a follow-up RFC if any source adapter accumulates more than five `SRC-*` rules of its own. Adding both `SRC` and `FRAME` to the closed `ruleId` regex (`^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`) so RFC-32 Phase 3 declarative framework rules do not require a second schema bump, mapping every discovered source-adapter owner in `crates/authoring/src/check/codex.rs::CODEX_PROFILE_NAMESPACES` to `{"SRC"}` (same owner-discovery rule as today — first path segment under `adapters/sources/<name>/codex/`), and enforcing `FRAME-*` placement via the existing namespace-ownership predicate (reject any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`) is the schema and authoring change required for first-party source overlays to land (Phase 1). Regex membership alone never grants placement — placement remains an explicit `check::codex` predicate so adding future namespaces to the regex never silently allows them under adapter trees.
+Framework authoring keeps enforcing namespace ownership for first-party files via `specdev check`. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it. `FRAME-*` is reserved for RFC-32 Phase 3 framework convergence and must not appear under `adapters/*/codex/`. `SRC-*` is the single shared namespace for **every** source-adapter overlay in v1 — each owner under `adapters/sources/<name>/codex/` may use `SRC-`* only (mirroring how target owners map to their closed namespaces). Per-source-adapter namespaces (e.g. `TS-*`, `DOC-*`) MAY be introduced in a follow-up RFC if any source adapter accumulates more than five `SRC-*` rules of its own. Adding both `SRC` and `FRAME` to the closed `ruleId` regex (`^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`) so RFC-32 Phase 3 declarative framework rules do not require a second schema bump, mapping every discovered source-adapter owner in `crates/authoring/src/check/codex.rs::CODEX_PROFILE_NAMESPACES` to `{"SRC"}` (same owner-discovery rule as today — first path segment under `adapters/sources/<name>/codex/`), and enforcing `FRAME-*` placement via the existing namespace-ownership predicate (reject any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`) is the schema and authoring change required for first-party source overlays to land (Phase 1). Regex membership alone never grants placement — placement remains an explicit `check::codex` predicate so adding future namespaces to the regex never silently allows them under adapter trees.
 
 ### Resolution roots
 
@@ -147,11 +151,11 @@ This keeps standalone export useful for agent prompt assembly and golden tests w
 
 #### Codex root resolution (v1)
 
-Shared `UNI-*` inclusion uses this closed probe order:
+Shared `UNI-`* inclusion uses this closed probe order:
 
-1. **`--codex-root` when supplied** — use for root 1 and fallback overlays.
+1. `**--codex-root` when supplied** — use for root 1 and fallback overlays.
 2. **Else if `{project_dir}/adapters/shared/codex/universal/` exists** — treat `project_dir` as the codex root (monorepo or full checkout co-located with the consumer project).
-3. **Else** — fail with `codex-root-required` and a message that shared `UNI-*` rules require `--codex-root` pointing at a tree containing `adapters/shared/codex/universal/`.
+3. **Else** — fail with `codex-root-required` and a message that shared `UNI-`* rules require `--codex-root` pointing at a tree containing `adapters/shared/codex/universal/`.
 
 Auto-derivation from `project.yaml:adapter` is deferred until init cache or project config explicitly carries a full codex tree.
 
@@ -160,16 +164,16 @@ Auto-derivation from `project.yaml:adapter` is deferred until init cache or proj
 The resolver accepts a narrow context:
 
 
-| Input                | Meaning                                                                       |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `project_dir`        | Project root used for adapter resolution and optional project-local overlays. |
+| Input                | Meaning                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `project_dir`        | Project root used for adapter resolution and optional project-local overlays.                                                                                |
 | `codex_root`         | Root containing first-party codex content for shared rules and fallback overlays. Resolved per §"Codex root resolution (v1)"; omit only when step 2 applies. |
-| `target_adapter`     | Target adapter name, optionally versioned as `<name>@v<major>`.              |
-| `source_adapters[]`  | Source adapter names bound by the active plan entry or supplied explicitly.   |
-| `artifact_paths[]`   | Optional project-relative paths to narrow applicability.                      |
-| `languages[]`        | Optional language tokens inferred by a scanner or supplied by a caller.       |
-| `include_deprecated` | Whether deprecated rules appear in the export. Defaults to false.             |
-| `include_unmatched`  | Whether rules with populated applicability dimensions the caller did not satisfy are included. Defaults to false. |
+| `target_adapter`     | Target adapter name, optionally versioned as `<name>@v<major>`.                                                                                              |
+| `source_adapters[]`  | Source adapter names bound by the active plan entry or supplied explicitly.                                                                                  |
+| `artifact_paths[]`   | Optional project-relative paths to narrow applicability.                                                                                                     |
+| `languages[]`        | Optional language tokens inferred by a scanner or supplied by a caller.                                                                                      |
+| `include_deprecated` | Whether deprecated rules appear in the export. Defaults to false.                                                                                            |
+| `include_unmatched`  | Whether rules with populated applicability dimensions the caller did not satisfy are included. Defaults to false.                                            |
 
 
 The resolver may be called without a slice. Slice awareness belongs to the scanner; codex resolution is adapter- and artifact-aware, not lifecycle-aware.
@@ -190,10 +194,10 @@ Applicability filters are inclusive narrowing hints. No first-party codex file u
 
 #### Path glob semantics (`applicability.paths`)
 
-Patterns follow the same constraints as the authoring schema (project-relative, no leading `/`, no `..`, no URI schemes). Matching uses the Rust [`glob`](https://docs.rs/glob) crate with case-sensitive path segments and `/` as the only separator in patterns:
+Patterns follow the same constraints as the authoring schema (project-relative, no leading `/`, no `..`, no URI schemes). Matching uses the Rust `[glob](https://docs.rs/glob)` crate with case-sensitive path segments and `/` as the only separator in patterns:
 
 - `*` matches within one path segment.
-- `**` matches across segments (e.g. `crates/**/src/**/*.rs` matches `crates/billing/src/lib.rs`).
+- `*`* matches across segments (e.g. `crates/**/src/**/*.rs` matches `crates/billing/src/lib.rs`).
 
 When `--artifact` is omitted, `applicability.paths` is treated as an unsatisfied caller input (exclude unless `--include-unmatched`). The matcher compares against the single supplied artifact path, not a directory walk.
 
@@ -290,7 +294,7 @@ The closed v1 authoring enum is:
 
 | Kind                                                                                                                           | RFC-28 validation                         | Execution owner                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------ |
-| `regex`                                                                                                                        | shape                                     | [RFC-32](rfc-32-standards-enforcement.md) Phase 2                        |
+| `regex`                                                                                                                        | shape                                     | [RFC-32](rfc-32-standards-enforcement.md) Phase 2                  |
 | `path-pattern`                                                                                                                 | shape                                     | RFC-32 Phase 2                                                     |
 | `schema`                                                                                                                       | shape                                     | RFC-32 Phase 2                                                     |
 | `tool`                                                                                                                         | shape                                     | RFC-32 Phase 2                                                     |
@@ -322,7 +326,7 @@ Field names are kebab-case on the wire:
 | `change`           | no       | Change name when known.                                                                                    |
 | `artifact`         | yes      | `code`, `tests`, `contracts`, `specs`, `design`, `tasks`, `assets`, `tokens`, `composition`, or `unknown`. |
 | `location`         | no       | File path plus optional line, column, and end positions.                                                   |
-| `evidence`         | yes      | Bounded verbatim evidence, digest summary, or structured evidence; see union below.                         |
+| `evidence`         | yes      | Bounded verbatim evidence, digest summary, or structured evidence; see union below.                        |
 | `impact`           | yes      | Operator-facing risk.                                                                                      |
 | `remediation`      | yes      | Concrete action to clear the finding.                                                                      |
 | `confidence`       | no       | `high`, `medium`, or `low`; required for model-assisted findings.                                          |
@@ -361,11 +365,13 @@ Evidence payloads have a 16 KiB cap after UTF-8 serialization. Longer evidence i
 
 **Evidence union (v1).** `evidence.kind` is closed:
 
-| Kind | Required fields | Notes |
-| ---- | --------------- | ----- |
-| `snippet` | `value` | Bounded verbatim excerpt. Use for local code/prose evidence a reviewer can inspect directly. |
-| `digest` | `sha256`, `summary` | Used when the underlying evidence is too large or sensitive to include. `locations[]` may point at contributing files. |
-| `structured` | `summary`, `data` | Used for domain evidence such as contract compatibility metadata. `data` is a JSON object; producers must keep it bounded and secret-free. |
+
+| Kind         | Required fields     | Notes                                                                                                                                      |
+| ------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snippet`    | `value`             | Bounded verbatim excerpt. Use for local code/prose evidence a reviewer can inspect directly.                                               |
+| `digest`     | `sha256`, `summary` | Used when the underlying evidence is too large or sensitive to include. `locations[]` may point at contributing files.                     |
+| `structured` | `summary`, `data`   | Used for domain evidence such as contract compatibility metadata. `data` is a JSON object; producers must keep it bounded and secret-free. |
+
 
 The schema encodes this union with `oneOf` so each `kind` has one legal field set. It rejects additional top-level evidence fields except `locations` on `digest` and `structured`. `locations[]`, when present, uses the same location object shape as `location`.
 
@@ -463,14 +469,14 @@ RFC-28 lands as **three sequenced phases** merged to main in a **single PR** acr
 **Goal:** Extend the codex authoring contract and align review docs before runtime export ships.
 
 1. **Authoring schema** — `crates/authoring/schemas/codex-rule.schema.json`. Add both `SRC` and `FRAME` to the closed `ruleId` regex (`FRAME` is reserved for RFC-32 Phase 3 and rejected under `adapters/{sources,targets}/<name>/codex/` via the namespace-ownership predicate in step 2; landing the regex entry now avoids a second schema bump when RFC-32 Phase 3 lands); extend `deterministic_hints.kind` with RFC-32 reserved kinds (documented, not executed) only where the schema needs to accept already-authored policy. Do not make deterministic hints required for any rule.
-2. **`check::codex`** — `crates/authoring/src/check/codex.rs`. Map every source-adapter owner discovered under `adapters/sources/<name>/codex/` to `{"SRC"}` in `CODEX_PROFILE_NAMESPACES` (not a single hardcoded adapter name). Add a placement predicate that rejects any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`; `FRAME-*` is reserved for RFC-32 Phase 3 placement (current preference: `tooling/rules/` per RFC-32 Open Question 1).
+2. `**check::codex`** — `crates/authoring/src/check/codex.rs`. Map every source-adapter owner discovered under `adapters/sources/<name>/codex/` to `{"SRC"}` in `CODEX_PROFILE_NAMESPACES` (not a single hardcoded adapter name). Add a placement predicate that rejects any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`; `FRAME-*` is reserved for RFC-32 Phase 3 placement (current preference: `tooling/rules/` per RFC-32 Open Question 1).
 3. **Editor copies** — `.cursor/schemas/codex-rule.schema.json` in `augentic/specify` stays aligned with the authoring schema.
 4. **Source-overlay smoke fixture** — one `SRC-*` rule under `adapters/sources/documentation/codex/` to exercise resolution root 3 and future export `origin: source`.
 5. **Review brief alignment** — rewrite severity vocabulary (`CRITICAL → critical`, `HIGH → important`, `MEDIUM → suggestion`, `LOW → optional`), `rule_id` examples, and finding-shape callouts in:
-   - Omnia: `adapters/targets/omnia/references/{review-output-template,review-categories,review-team-protocol}.md` and `adapters/targets/omnia/briefs/build/review.md`.
-   - Vectis: `adapters/targets/vectis/briefs/build/{core,ios,android}/review.md` and `adapters/targets/vectis/references/review/{team-protocol-core,team-protocol-ios,team-protocol-android,iteration-report}.md`. Vectis `rule_id` examples MUST use the valid `VECTIS-NNN` form; the current `VECTIS-CORE-001` placeholder fails the codex `ruleId` regex.
-   - Contracts: `adapters/targets/contracts/briefs/merge.md` and the per-format verifier references under `adapters/targets/contracts/references/`.
-   - Shared codex README: `adapters/shared/codex/universal/README.md` — schema link points at `crates/authoring/schemas/codex-rule.schema.json` (documented via [docs/contributing/checks.md](../docs/contributing/checks.md)), not retired `tooling/` paths.
+  - Omnia: `adapters/targets/omnia/references/{review-output-template,review-categories,review-team-protocol}.md` and `adapters/targets/omnia/briefs/build/review.md`.
+  - Vectis: `adapters/targets/vectis/briefs/build/{core,ios,android}/review.md` and `adapters/targets/vectis/references/review/{team-protocol-core,team-protocol-ios,team-protocol-android,iteration-report}.md`. Vectis `rule_id` examples MUST use the valid `VECTIS-NNN` form; the current `VECTIS-CORE-001` placeholder fails the codex `ruleId` regex.
+  - Contracts: `adapters/targets/contracts/briefs/merge.md` and the per-format verifier references under `adapters/targets/contracts/references/`.
+  - Shared codex README: `adapters/shared/codex/universal/README.md` — schema link points at `crates/authoring/schemas/codex-rule.schema.json` (documented via [docs/contributing/checks.md](../docs/contributing/checks.md)), not retired `tooling/` paths.
 6. **Acceptance** — `make check` passes in `augentic/specify`; `cargo make check` passes in `specify-cli`; `specdev check` fixtures cover `SRC-*` namespace ownership and reserved hint kind shape.
 
 **Done when:** authoring schema and review docs are settled; no stale `tooling/` references remain in **codex contributor paths** (primarily `adapters/shared/codex/universal/README.md` and related codex docs).
@@ -487,7 +493,7 @@ RFC-28 lands as **three sequenced phases** merged to main in a **single PR** acr
 2. **Schema drift predicate** — `codex.schema-drift` in `specdev check` asserts SHA-256 parity between `crates/authoring/schemas/codex-rule.schema.json` and `schemas/codex/codex-rule.schema.json`; fails with a single "regenerate via `scripts/sync-codex-schema.sh`" hint. The sync script is a deterministic byte-for-byte copy from the authoring schema to the vendored runtime schema (no `jq` pipeline, no reformatting); contributors run it after touching the authoring schema, and CI uses the predicate — not the script — to gate parity.
 3. **Domain types** — `CodexRule`, `ResolvedCodex`, `ReviewFinding`, `FindingLocation`, and `FindingEvidence` in `crates/domain/src/codex/` (or `codex.rs` module tree). Frontmatter parsing and resolution live here (same `include_str!` pattern as adapter schemas in `crates/domain/src/adapter/core.rs`).
 4. **Resolver** — roots, applicability, deprecation filtering, and stable ordering per §Design; shared universal rules from `--codex-root`.
-5. **`specrun codex export`** — read-only subcommand under `specrun codex`. Flags: `--codex-root`, `--target`, `--source` (repeatable), `--artifact`, `--language`, `--include-deprecated`, `--include-unmatched`. Output is JSON only (`--format json`, default). Does not require `.specify/` when `--codex-root` and `--target` are supplied; uses project adapter resolution when available and codex-root overlay fallback when not. Codex-root resolution follows §"Codex root resolution (v1)"; golden test: cached consumer + `--target omnia` without shared tree → `codex-root-required`; with `--codex-root` → stable output including `UNI-*`, target overlay rules, `body`, `references`, `path-root`, and `path`.
+5. `**specrun codex export`** — read-only subcommand under `specrun codex`. Flags: `--codex-root`, `--target`, `--source` (repeatable), `--artifact`, `--language`, `--include-deprecated`, `--include-unmatched`. Output is JSON only (`--format json`, default). Does not require `.specify/` when `--codex-root` and `--target` are supplied; uses project adapter resolution when available and codex-root overlay fallback when not. Codex-root resolution follows §"Codex root resolution (v1)"; golden test: cached consumer + `--target omnia` without shared tree → `codex-root-required`; with `--codex-root` → stable output including `UNI-*`, target overlay rules, `body`, `references`, `path-root`, and `path`.
 6. **Finding validation** — helper and fixtures for valid findings, missing required fields, invalid severities, oversize evidence, invalid fingerprints, invalid rule ids, and strict `oneOf` evidence variants. Fingerprint fixtures MUST cover: identical inputs → identical fingerprint; changing only producer-side excluded fields (`id`, `title`, `severity`, `confidence`, `status`, `change`, `slice`, `target-adapter`, `source-adapter`) → identical fingerprint; changing `rule-id`, `location`, or `evidence-payload` → different fingerprint.
 7. **Acceptance** — golden tests export codex for `omnia`, `vectis`, and `contracts` with shared-rule inclusion, overlay inclusion, deprecation filtering, stable ordering, applicability pass-through (rules without `applicability` always export), and the Phase 1 `SRC-*` smoke fixture (`origin: source`). At least one golden asserts the export is agent-consumable: `body` contains the markdown `## Rule` section, `references` survive frontmatter parsing, `deprecated.replaced_by` exports as `deprecated.replaced-by`, and `path-root` + `path` resolve to the source file without absolute paths in the JSON.
 8. **Roadmap alignment** — point RM-10 review and compatibility items at this RFC as the rule export and finding-schema source.
@@ -503,14 +509,14 @@ RFC-28 lands as **three sequenced phases** merged to main in a **single PR** acr
 **Goal:** Emit RFC-28 findings from framework authoring checks without migrating predicates or merging binaries (RFC-32 Phase 3 Option A).
 
 1. **Mapper** — `Finding` → `ReviewFinding` in the `specdev` command path (`src/authoring/` or `crates/authoring/src/` module imported only from the binary). Map `rule_id` from today's imperative ids (`skill.duplicate-name`, `codex.namespace-owner`, …) into `rule-id` unchanged; set `source: deterministic`; derive `location` and `evidence` from existing `Finding` fields; compute `fingerprint` per §"Structured review finding schema". Do not add `specify-authoring` → `specify-domain` as a crate dependency — keep the mapper at the binary boundary.
-2. **`specdev check --format`** — `json` emits a versioned envelope of `ReviewFinding` objects to stdout on success and on validation failure (findings present, exit `2` per existing validation semantics); default (omit flag) keeps today's human-oriented stderr/stdout. Document in `docs/contributing/checks.md` and `specdev` `--help`.
+2. `**specdev check --format`** — `json` emits a versioned envelope of `ReviewFinding` objects to stdout on success and on validation failure (findings present, exit `2` per existing validation semantics); default (omit flag) keeps today's human-oriented stderr/stdout. Document in `docs/contributing/checks.md` and `specdev` `--help`.
 3. **Severity mapping** — map authoring severities to the closed RFC-28 enum (`critical` | `important` | `suggestion` | `optional`); document the table in the mapper module and cover with fixtures.
 4. **Golden fixtures** — at least one fixture run: `specdev check --codex-root <fixture> --format json` with stable finding JSON (fingerprints, rule ids, locations). Assert schema validation against `schemas/review/finding.schema.json`.
 5. **Acceptance** — `cargo make ci` green; `make check` behavior unchanged without `--format json`; optional CI job or documented recipe may consume JSON for unified annotations (RM-10 prep).
 
-**Done when:** `specdev check --codex-root … --format json` produces stable golden `ReviewFinding` output for a representative framework tree; imperative checks are unchanged; no `FRAME-*` rules or hint interpreter shipped.
+**Done when:** `specdev check --codex-root … --format json` produces stable golden `ReviewFinding` output for a representative framework tree; imperative checks are unchanged; no `FRAME-`* rules or hint interpreter shipped.
 
-**Out of scope for Phase 3:** declarative `FRAME-*` rules, framework WorkspaceModel, retiring imperative `check::*` modules, shared pretty-print formatters (RFC-32 follow-on).
+**Out of scope for Phase 3:** declarative `FRAME-`* rules, framework WorkspaceModel, retiring imperative `check::*` modules, shared pretty-print formatters (RFC-32 follow-on).
 
 ### Rollout order
 
@@ -528,7 +534,7 @@ When this RFC moves to **Accepted**, run a lightweight editorial pass on sibling
 
 - `specrun review` scanner and hint interpreter
 - WorkspaceModel indexer
-- Declarative `FRAME-*` framework rules and framework `scan_profile` (RFC-32 Phase 3 Option B)
+- Declarative `FRAME-`* framework rules and framework `scan_profile` (RFC-32 Phase 3 Option B)
 - Retiring imperative `specify-authoring` predicates in favor of hints
 - Shared pretty-print / GitHub annotation formatters for findings
 - `--format text` human inventory for `specrun codex export`
@@ -576,7 +582,7 @@ For CLI maintainers:
 ## Non-Goals
 
 - Implementing `specrun review` (owned by [RFC-32](rfc-32-standards-enforcement.md)).
-- Declarative `FRAME-*` migration and framework WorkspaceModel (owned by RFC-32 Phase 3 Option B).
+- Declarative `FRAME-`* migration and framework WorkspaceModel (owned by RFC-32 Phase 3 Option B).
 - Executing `deterministic_hints` or building WorkspaceModel (owned by RFC-32).
 - Defining every deterministic scanner.
 - Requiring every codex rule to be deterministic or hint-backed.
@@ -599,9 +605,9 @@ Questions originally raised as Open Questions and resolved in this RFC:
 - **Codex root for shared rules.** v1 uses the closed probe in §"Codex root resolution (v1)": explicit `--codex-root`, else `{project_dir}/adapters/shared/codex/universal/`, else `codex-root-required`. Target and source overlays resolve from project-local adapter trees first, then manifest cache, then codex-root fallback when `--codex-root` is supplied. Init sparse-checkout does not include shared rules; inferring codex root from `project.yaml:adapter` is deferred.
 - **Export output format.** `specrun codex export` emits JSON only in v1; text inventory is deferred.
 - **Agent-readable export.** Resolved export includes the markdown `body` and `references`; frontmatter alone is not enough context for reviewing agents.
-- **`SRC-*` namespace ownership.** Every source adapter under `adapters/sources/<name>/codex/` owns `SRC-*` only; `check::codex` maps each discovered source owner to `{"SRC"}`.
+- `**SRC-`* namespace ownership.** Every source adapter under `adapters/sources/<name>/codex/` owns `SRC-`* only; `check::codex` maps each discovered source owner to `{"SRC"}`.
 - **Applicability in v1.** Filter logic ships even though no first-party rule populates `applicability` yet; missing block means pass-through; populated dimension + missing caller input means exclude unless `--include-unmatched`.
-- **Path globs.** `applicability.paths` uses `glob` crate semantics with `*` / `**` as documented in §Applicability; matches the single `--artifact` path when supplied.
+- **Path globs.** `applicability.paths` uses `glob` crate semantics with `*` / `*`* as documented in §Applicability; matches the single `--artifact` path when supplied.
 - **Export vs overlay precedence.** Resolved export includes every applicability-matching rule; overlay precedence guides finding producers only.
 - **Regex-syntax validation.** RFC-28 validates `deterministic_hints` shape only. Regex compilation and the choice of regex flavor belong to RFC-32's hint interpreter; the runtime resolver MUST NOT compile a regex it never executes.
 - **Deterministic hints.** Hints are optional metadata for mechanically observable subsets. Codex policy remains valid without hints and is primarily consumed by agents and human reviewers.
@@ -609,7 +615,7 @@ Questions originally raised as Open Questions and resolved in this RFC:
 
 ## Open Questions
 
-1. Should organization-local `ORG-*` rules live in `.specify/codex/`, a registry projection, or both? Current preference: reserve both, implement neither until a downstream project needs it.
+1. Should organization-local `ORG-`* rules live in `.specify/codex/`, a registry projection, or both? Current preference: reserve both, implement neither until a downstream project needs it.
 2. Should the finding schema include `autofix` fields in v1? Current preference: no. Autofix belongs to a later command that consumes findings.
 3. Should review results include model metadata? Current preference: no for v1; RFC-19 observability can log bounded model/tool metadata later without putting it into the finding contract.
 
