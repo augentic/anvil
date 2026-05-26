@@ -53,6 +53,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 **Goal:** Continuously enforce engineering standards on consumer projects (not a workflow phase — findings may block CI but never transition plan or slice lifecycle).
 **Depends:** [RFC-28](rfc-28-standards-contract.md) (standards contract + export) then [RFC-32](rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
+**Source of truth:** [RFC-28](rfc-28-standards-contract.md) is canonical for the resolved codex rule export wire shape (`schemas/codex/resolved.schema.json`, `specrun codex export`), the structured review finding schema (`schemas/review/finding.schema.json`, the `ReviewFinding` envelope), the fingerprint algorithm, the closed severity enum (`critical` / `important` / `suggestion` / `optional`), and the evidence union; [RFC-32](rfc-32-standards-enforcement.md) owns `specrun review`, hint execution, and the WorkspaceModel that consumes those shapes — RM-10 should not redefine any of them.
 **Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-32's deterministic standards scanner.
 **Target surface:**
 
@@ -67,7 +68,7 @@ specrun review --format json
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
 
-**Framework finding export:** [RFC-28](rfc-28-standards-contract.md) Phase 3 — `specdev check --format json` emits the same `ReviewFinding` shape as `specrun review` (RFC-32 Phase 3a). **Optional follow-on:** [RFC-32](rfc-32-standards-enforcement.md) Phase 3b — declarative `FRAME-*` rules; not required for RM-10.
+**Framework finding export:** [RFC-28](rfc-28-standards-contract.md) Phase 3 — `specdev check --format json` emits the same `ReviewFinding` shape as `specrun review` (RFC-32 Phase 3 Option A); this convergence lands as part of the RFC-28 contract before any RFC-32 enforcement work begins. **Optional follow-on:** [RFC-32](rfc-32-standards-enforcement.md) Phase 3b — declarative `FRAME-*` rules; not required for RM-10.
 
 **Distribution follow-up:** RFC-28 v1 requires operators to pass `--codex-root` to `specrun codex export` when their tree does not contain `adapters/shared/codex/universal/`. Before CI-native standards enforcement is broadly usable, `specrun init` or plugin distribution should carry the shared codex tree into the consumer project (e.g. as an extension of the existing manifest cache) so `UNI-*` rules resolve without a co-located framework checkout. Tracked here rather than in RFC-28 to keep the contract layer narrow; the change is additive — a new probe step in the closed resolution order in RFC-28 §"Codex root resolution (v1)" — and does not alter wire output for callers that already pass `--codex-root`.
 

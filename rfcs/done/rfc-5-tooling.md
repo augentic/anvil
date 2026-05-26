@@ -2,6 +2,8 @@
 
 > Status: Implemented · Tracked by [roadmap RM-16](roadmap.md#rm-16-rfc-5-framework-developer-tooling-workspace) · Enables: [RFC-4](future/rfc-4-dsl.md) · Preserves contract with: [RFC-28](rfc-28-standards-contract.md), [RFC-32](rfc-32-standards-enforcement.md)
 
+> Implementation status note: current `specdev check` flags, JSON output, and codex authoring paths are documented in [docs/contributing/checks.md](../../docs/contributing/checks.md). This RFC's historical text predates the binary-name finalization to `specdev` and `specrun`.
+
 ## Abstract
 
 Replace this repo's Deno tooling (`scripts/check.ts`, `scripts/gen-envelope-doc.ts`, `tests/cross_repo.ts`) with a single Rust binary crate at `augentic/specify/tooling/`, landed as one atomic implementation PR.

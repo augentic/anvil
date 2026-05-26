@@ -83,6 +83,36 @@ FAIL: <rule-id>: <message>
 
 See the `specify-authoring` crate's `check` module for the full predicate list.
 
+### JSON output (RFC-28)
+
+`specdev check` also speaks the [RFC-28](../../rfcs/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun review`](../../rfcs/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `ReviewFinding` objects.
+
+```bash
+specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+```
+
+Envelope shape:
+
+```json
+{
+  "version": 1,
+  "summary": { "critical": 0, "important": 0, "suggestion": 0, "optional": 0 },
+  "findings": []
+}
+```
+
+The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/rfc-28-standards-contract.md#review-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
+
+Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
+
+**Severity mapping.** Authoring imperative rule ids map to RFC-28 severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs) (CH-20):
+
+- `codex.schema-violation` → `critical` — a malformed codex rule breaks every downstream consumer of the resolved codex.
+- every other authoring family (`adapter.*`, `codex.duplicate-rule-id`, `codex.namespace-ownership-violation`, `codex.schema-drift`, `links.*`, `scenarios.*`, `skill.*`, …) → `important`.
+- unclassified rule ids fall through to the `important` default.
+
+**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `codex.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[codex.schema-violation] Codex rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
+
 ## What the checks enforce
 
 ### 1. Markdown link resolution

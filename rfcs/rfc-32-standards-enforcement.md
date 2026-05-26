@@ -22,14 +22,14 @@ Today enforcement is split across three shapes:
 
 | Surface              | Input                                             | Rule form                                              | Output                                          |
 | -------------------- | ------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
-| `tooling check`      | Framework repo (`plugins/`, `adapters/`, `docs/`) | ~30 imperative Rust `Check` predicates                 | Ad hoc `Finding { rule_id, message, location }` |
+| `specdev check`      | Framework repo (`plugins/`, `adapters/`, `docs/`) | ~30 imperative Rust `Check` predicates                 | Ad hoc `Finding { rule_id, message, location }` |
 | Codex markdown       | Adapter trees + shared universal rules            | Human prose + frontmatter hints (shape-only in RFC-28) | None until a scanner exists                     |
 | Target review briefs | Generated artifacts                               | Agent judgment + optional `rule_id` in `REVIEW.md`     | Human markdown                                  |
 
 
 Each surface re-implements walking, parsing, and linking. Cross-file rules — duplicate skill names, marketplace drift, unresolved directives, variable coverage — embed graph logic inside individual modules. [RFC-5](done/rfc-5-tooling.md) accepted that split as the right day-one tradeoff; RFC-28 adds the finding contract without fixing the duplication.
 
-RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner substrate. Without WorkspaceModel, every deterministic codex rule would require a one-off Rust predicate, recreating the `tooling check` sprawl on consumer projects. Without a shared finding shape at the framework boundary, CI annotations and dashboards would continue to treat framework checks and review findings as unrelated formats.
+RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner substrate. Without WorkspaceModel, every deterministic codex rule would require a one-off Rust predicate, recreating the `specdev check` sprawl on consumer projects. Without a shared finding shape at the framework boundary, CI annotations and dashboards would continue to treat framework checks and review findings as unrelated formats.
 
 ### What this RFC does not repeat
 
@@ -44,7 +44,7 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
 3. **Hint kinds stay closed.** New kinds require schema and interpreter changes; no arbitrary embedded scripts in rule files.
 4. **Scanner ≠ resolver.** `specrun codex export` answers which standards apply; `specrun review` answers which hints fire.
 5. **Framework and consumer scans share libraries, not commands.** `specdev check` and `specrun review` keep separate CLIs, inputs, and failure semantics per RFC-28.
-6. **Phase 3 is optional.** Imperative `tooling check` may remain the framework gate indefinitely if migration cost outweighs benefit.
+6. **Phase 3 is optional.** Imperative `specdev check` may remain the framework gate indefinitely if migration cost outweighs benefit.
 7. **No lifecycle authority in review.** Findings may block CI; they never transition plan entries, slices, or changes.
 
 ## Design
@@ -165,7 +165,7 @@ RFC-32 extends the **closed** `kind` enum for execution. RFC-28 validates shape 
 #### Hint kinds — reserved (schema may list; interpreter returns `unsupported` until implemented)
 
 
-| Kind                 | Evaluates against                 | Maps from today's `tooling check`                 |
+| Kind                 | Evaluates against                 | Maps from today's `specdev check`                 |
 | -------------------- | --------------------------------- | ------------------------------------------------- |
 | `unique`             | WorkspaceModel collection + field | `skill.duplicate-name`, `codex.duplicate-rule-id` |
 | `reference-resolves` | `markdown_link.resolves == false` | `links.unresolved`, `links.broken-reference`      |
@@ -251,7 +251,7 @@ Introduce first-party framework policy files under `tooling/rules/` using the sa
 
 #### Option C — defer indefinitely
 
-Leave `tooling check` unchanged. RM-10 and framework CI remain separate surfaces sharing only `specify-domain` parsers. This is valid if Phase 3 cost exceeds benefit.
+Leave `specdev check` unchanged. RM-10 and framework CI remain separate surfaces sharing only `specify-domain` parsers. This is valid if Phase 3 cost exceeds benefit.
 
 **Recommendation:** ship RFC-28 Phases 1–2, then RFC-32 Phase 2 (`specrun review`); RFC-28 Phase 3 ships in the same PR as Phases 1–2 when unified CI annotations for framework checks are needed; adopt Option B only for predicates that clearly map to reserved hint kinds.
 
