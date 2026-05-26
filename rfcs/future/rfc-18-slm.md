@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: [RFC-28](../rfc-28-standards-contract.md), [RFC-32](../rfc-32-standards-enforcement.md), [RFC-10](../done/rfc-10-skills.md), [RFC-13](../done/rfc-13-extensibility.md)
+> Status: Draft - Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../rfc-32-standards-enforcement.md), [RFC-10](../done/rfc-10-skills.md), [RFC-13](../done/rfc-13-extensibility.md)
 
 ## Abstract
 
@@ -177,7 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- [RFC-28: Engineering Standards — Codex Contract and Findings](../rfc-28-standards-contract.md)
+- [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
 - [RFC-32: Engineering Standards — Deterministic Enforcement](../rfc-32-standards-enforcement.md)
 - [RFC-10: Skills](archive/rfc-10-skills.md)
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)

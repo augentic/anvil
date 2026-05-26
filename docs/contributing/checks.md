@@ -85,7 +85,7 @@ See the `specify-authoring` crate's `check` module for the full predicate list.
 
 ### JSON output (RFC-28)
 
-`specdev check` also speaks the [RFC-28](../../rfcs/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun review`](../../rfcs/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `ReviewFinding` objects.
+`specdev check` also speaks the [RFC-28](../../rfcs/done/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun review`](../../rfcs/done/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `ReviewFinding` objects.
 
 ```bash
 specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
@@ -101,7 +101,7 @@ Envelope shape:
 }
 ```
 
-The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/rfc-28-standards-contract.md#review-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
+The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#review-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
