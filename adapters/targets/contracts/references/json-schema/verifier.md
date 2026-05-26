@@ -8,10 +8,10 @@ The verifier is **read-only**. It MUST NOT generate, modify, or delete any files
 
 The verifier accepts a `--mode {single, cross-project}` flag. The mode determines the report shape and the exit semantics.
 
-| Mode | Caller | Trigger | Scope | Output |
-|---|---|---|---|---|
-| `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
-| `cross-project` | contracts adapter merge brief | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specrun tool run contract` |
+| Mode               | Caller                                         | Trigger                                                   | Scope                                                                                                           | Output                                                |
+| ------------------ | ---------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import                                | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop            |
+| `cross-project`    | contracts adapter merge brief                  | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation                                               | JSON envelope produced by `specrun tool run contract` |
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specrun tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
@@ -90,13 +90,13 @@ WARN: contracts/schemas/legacy.yaml — $ref "https://example.com/schemas/foo" i
 
 Every JSON Schema file in `$CHANGE_SCHEMAS` must have the required metadata fields defined in [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md).
 
-| Field | Rule |
-|---|---|
-| `$schema` | Present and equal to `"https://json-schema.org/draft/2020-12/schema"`. Older drafts emit `WARN` (importer should have upgraded). |
-| `$id` | Present, well-formed URN of the shape `urn:specify:schemas/<segment>` where `<segment>` matches the kebab-case filename. |
-| `title` | Present, non-empty, PascalCase, and corresponds to the filename (kebab-case → PascalCase round-trips). |
+| Field         | Rule                                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `$schema`     | Present and equal to `"https://json-schema.org/draft/2020-12/schema"`. Older drafts emit `WARN` (importer should have upgraded).                                                     |
+| `$id`         | Present, well-formed URN of the shape `urn:specify:schemas/<segment>` where `<segment>` matches the kebab-case filename.                                                             |
+| `title`       | Present, non-empty, PascalCase, and corresponds to the filename (kebab-case → PascalCase round-trips).                                                                               |
 | `description` | Present, non-empty. The placeholder `"[imported — description pending review]"` counts as present but **emits a `WARN`** to surface the gap for the verify-repair loop before merge. |
-| `type` | Present (almost always `object`; primitives are rare). |
+| `type`        | Present (almost always `object`; primitives are rare).                                                                                                                               |
 
 Report format (one entry per failure):
 
@@ -119,11 +119,11 @@ Algorithm:
 2. Group by `$id`. Any group with more than one entry is a collision.
 3. Classify each collision:
 
-| Collision kind | Severity | Description |
-|---|---|---|
-| Two delta files share `$id` | `FAIL` | The slice is internally inconsistent. |
-| Delta file shares `$id` with a baseline file but the **filenames** differ | `FAIL` | The author / importer reassigned a baseline `$id` (forbidden by the `$id` stability rule). |
-| Delta file shares `$id` with a baseline file and the filenames match | `INFO` | Expected — the delta replaces the baseline file at merge time. |
+| Collision kind                                                            | Severity | Description                                                                                |
+| ------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| Two delta files share `$id`                                               | `FAIL`   | The slice is internally inconsistent.                                                      |
+| Delta file shares `$id` with a baseline file but the **filenames** differ | `FAIL`   | The author / importer reassigned a baseline `$id` (forbidden by the `$id` stability rule). |
+| Delta file shares `$id` with a baseline file and the filenames match      | `INFO`   | Expected — the delta replaces the baseline file at merge time.                             |
 
 Report format:
 
@@ -147,18 +147,20 @@ Algorithm:
 1. **Build the consumer graph.** For each schema file `<name>.yaml` in `$CHANGE_SCHEMAS`, scan baseline and change-local bindings for `$ref` values that resolve to it. Record the list of consumers per schema.
 2. **For each schema with at least one baseline consumer**, diff the delta schema against the baseline schema (both at `<name>.yaml`) and classify each property-level change:
 
-| `change-kind` | Severity | Description |
-|---|---|---|
-| `removed-field` | `WARN` | A property the baseline schema defined is absent in the delta. Every binding that exposes this field will produce smaller payloads; consumer code reading it will see `undefined`. |
-| `required-field-added` | `WARN` | A property became `required` in the delta. Every binding accepting this schema as a request body will reject prior consumer requests. |
-| `type-narrowed` | `WARN` | A property's `type`, `format`, `enum`, `pattern`, or numeric range narrowed. Consumer values that were valid before may now be rejected. |
-| `enum-value-removed` | `WARN` | A value disappeared from a property's `enum` array. Consumers emitting that value will be rejected. |
-| `additional-properties-tightened` | `WARN` | The schema flipped from `additionalProperties: true` (or absent) to `additionalProperties: false`. Consumers passing extra fields will be rejected. |
-| `optional-field-added` | (no warning) | Backwards-compatible additive change. |
-| `enum-value-added` | (no warning) | Backwards-compatible additive change. |
-| `description-changed` | (no warning) | Behavioural docstring drift; not a wire change. |
+| `change-kind`                     | Severity     | Description                                                                                                                                                                        |
+| --------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `removed-field`                   | `WARN`       | A property the baseline schema defined is absent in the delta. Every binding that exposes this field will produce smaller payloads; consumer code reading it will see `undefined`. |
+| `required-field-added`            | `WARN`       | A property became `required` in the delta. Every binding accepting this schema as a request body will reject prior consumer requests.                                              |
+| `type-narrowed`                   | `WARN`       | A property's `type`, `format`, `enum`, `pattern`, or numeric range narrowed. Consumer values that were valid before may now be rejected.                                           |
+| `enum-value-removed`              | `WARN`       | A value disappeared from a property's `enum` array. Consumers emitting that value will be rejected.                                                                                |
+| `additional-properties-tightened` | `WARN`       | The schema flipped from `additionalProperties: true` (or absent) to `additionalProperties: false`. Consumers passing extra fields will be rejected.                                |
+| `optional-field-added`            | (no warning) | Backwards-compatible additive change.                                                                                                                                              |
+| `enum-value-added`                | (no warning) | Backwards-compatible additive change.                                                                                                                                              |
+| `description-changed`             | (no warning) | Behavioural docstring drift; not a wire change.                                                                                                                                    |
 
 3. **For each schema with no consumers**, skip Check 4 — there is no binding-side risk surface inside the slice. The compatibility risk lives entirely in `cross-project` mode (downstream projects may have their own consumers).
+
+The `change-kind` enum above is a contract-domain classification — not the RFC-28 severity enum. The Severity column gives the markdown-report ladder for the verify-repair loop; if a Check 4 finding is later surfaced as an RFC-28 `ReviewFinding`, the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) sits on the envelope while `change-kind` and the per-property contract context (schema pointer, property name, baseline binding paths) travel inside `evidence.kind: structured` under `evidence.data` (RFC-28 §"Relationship to contracts and compatibility").
 
 Report format:
 
@@ -274,13 +276,15 @@ Field semantics:
 
 Callers that surface post-merge validator failures (the merge brief on a blocking finding) parse `findings[]` and include `{ rule-id, path, detail }` triples in the stop hint's `paths` field. The load-bearing finding is typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`; the full envelope is captured at the log path referenced in the stop hint.
 
+When a caller re-surfaces an envelope finding as an RFC-28 `ReviewFinding` (see [RFC-28 §Structured review finding schema](../../../../../rfcs/rfc-28-standards-contract.md#structured-review-finding-schema)), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. Schema-side contract metadata (schema pointer, `$id`, plus any single-mode Check 4 `change-kind` such as `removed-field` / `required-field-added` / `type-narrowed` / `enum-value-removed` / `additional-properties-tightened`) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
+
 ### Exit semantics
 
-| Exit code | Meaning | Caller action |
-|---|---|---|
-| `0` | Clean — no findings. | Proceed to the next merge-brief step (e.g. `specrun slice merge run`). |
-| `1` | One or more findings. | Record `failure`; halt the merge brief. The slice's deltas remain unmerged. |
-| `2` | The tool could not run (resolver, permission, runtime, path missing, not a directory, internal error). | Record `failure`; journal the stderr line or JSON error message. The slice's deltas remain unmerged. |
+| Exit code | Meaning                                                                                                | Caller action                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `0`       | Clean — no findings.                                                                                   | Proceed to the next merge-brief step (e.g. `specrun slice merge run`).                               |
+| `1`       | One or more findings.                                                                                  | Record `failure`; halt the merge brief. The slice's deltas remain unmerged.                          |
+| `2`       | The tool could not run (resolver, permission, runtime, path missing, not a directory, internal error). | Record `failure`; journal the stderr line or JSON error message. The slice's deltas remain unmerged. |
 
 The mode is **deterministic**: the WASI tool is a thin shell over `specify_validate::validate_baseline_contracts` (in the `specify-cli` workspace). Repeated invocations against the same baseline produce identical findings.
 
@@ -294,29 +298,29 @@ Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format c
 
 ### `single` mode
 
-| Scenario | Behavior |
-|---|---|
-| Change directory has no `contracts/schemas/` | Pass — nothing to verify. |
-| Baseline has schemas but change does not | Pass — verifier only checks change-level artefacts. |
-| `$ref` target exists in baseline but not in change | Pass — baseline is a valid resolution target. |
-| `$ref` target exists in change but not in baseline | Pass — change-level schemas are valid resolution targets. |
-| Change adds a schema with no consumers in either change or baseline bindings | Skip Check 4 for that schema (no consumer surface inside the slice). |
-| Schema declares `additionalProperties` neither true nor false | Pass — the field is genuinely optional. Authors default to `false`; importers preserve absence. |
-| File-local `$defs` entry referenced only inside its parent | Pass — file-local sub-types are valid. |
-| File contains a `$schema` URI for an older draft | Emit `WARN` recommending importer normalisation; do not fail. |
+| Scenario                                                                     | Behavior                                                                                        |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Change directory has no `contracts/schemas/`                                 | Pass — nothing to verify.                                                                       |
+| Baseline has schemas but change does not                                     | Pass — verifier only checks change-level artefacts.                                             |
+| `$ref` target exists in baseline but not in change                           | Pass — baseline is a valid resolution target.                                                   |
+| `$ref` target exists in change but not in baseline                           | Pass — change-level schemas are valid resolution targets.                                       |
+| Change adds a schema with no consumers in either change or baseline bindings | Skip Check 4 for that schema (no consumer surface inside the slice).                            |
+| Schema declares `additionalProperties` neither true nor false                | Pass — the field is genuinely optional. Authors default to `false`; importers preserve absence. |
+| File-local `$defs` entry referenced only inside its parent                   | Pass — file-local sub-types are valid.                                                          |
+| File contains a `$schema` URI for an older draft                             | Emit `WARN` recommending importer normalisation; do not fail.                                   |
 
 ### `cross-project` mode
 
-| Scenario | Behavior |
-|---|---|
-| `$BASELINE_CONTRACTS` is absent | `specrun tool run` exits `2` because the declared read preopen is missing or because the validator reports the missing directory. Caller records `failure`. |
-| `$BASELINE_CONTRACTS` is empty (no top-level contracts) | Tool exits `0` with `findings: []`. Treated as clean. |
-| Top-level contract has non-SemVer `info.version` | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`. |
-| Top-level contract has malformed `info.x-specify-id` | Finding `contract.id-format`; exit `1`. |
-| Two top-level contracts share the same `info.x-specify-id` | Finding `contract.id-unique` against each colliding path; exit `1`. |
+| Scenario                                                                         | Behavior                                                                                                                                                                        |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$BASELINE_CONTRACTS` is absent                                                  | `specrun tool run` exits `2` because the declared read preopen is missing or because the validator reports the missing directory. Caller records `failure`.                     |
+| `$BASELINE_CONTRACTS` is empty (no top-level contracts)                          | Tool exits `0` with `findings: []`. Treated as clean.                                                                                                                           |
+| Top-level contract has non-SemVer `info.version`                                 | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`.                                                                                                       |
+| Top-level contract has malformed `info.x-specify-id`                             | Finding `contract.id-format`; exit `1`.                                                                                                                                         |
+| Two top-level contracts share the same `info.x-specify-id`                       | Finding `contract.id-unique` against each colliding path; exit `1`.                                                                                                             |
 | Standalone JSON Schema under `$BASELINE_CONTRACTS/schemas/` has missing metadata | **Not** a `cross-project` concern — schema-only files are skipped by the binary's `openapi:` / `asyncapi:` filter. Schema-side issues are caught in `single` mode (Checks 1–4). |
-| YAML file under `$BASELINE_CONTRACTS` is malformed | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding. |
-| `specify` is not on `$PATH` | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`. |
+| YAML file under `$BASELINE_CONTRACTS` is malformed                               | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding.                                             |
+| `specify` is not on `$PATH`                                                      | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`.                                                              |
 
 ## Guardrails
 

@@ -6,17 +6,17 @@
 
 Every finding in `REVIEW.md` carries a review-local prefix so the originating reviewer (or pass) is preserved through synthesis and auto-fix:
 
-| Prefix | Origin | Categories | Default severities |
-|--------|--------|------------|--------------------|
-| `SEC-` | Security Reviewer | Security, WASM Constraints | CRITICAL |
-| `COR-` | Correctness Reviewer | Error Handling, Validation Logic, Provider Misuse | CRITICAL (errors) / HIGH (validation, provider) |
-| `QUA-` | Quality Reviewer | Performance, Code Quality | MEDIUM (perf) / LOW (quality) |
-| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA | Per [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) |
-| `NEW-` | Antagonist counter-scan | Anything missed by the four passes above | As supplied by antagonist |
+| Prefix | Origin                     | Categories                                        | Default severities                                                         |
+| ------ | -------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------- |
+| `SEC-` | Security Reviewer          | Security, WASM Constraints                        | critical                                                                   |
+| `COR-` | Correctness Reviewer       | Error Handling, Validation Logic, Provider Misuse | critical (errors) / important (validation, provider)                       |
+| `QUA-` | Quality Reviewer           | Performance, Code Quality                         | suggestion (perf) / optional (quality)                                     |
+| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA                   | Per [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) |
+| `NEW-` | Antagonist counter-scan    | Anything missed by the four passes above          | As supplied by antagonist                                                  |
 
-Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the antagonist upgrades or downgrades a finding, the original prefix is preserved and the severity change is recorded in the **Adversarial Review** section.
+Severity values use the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the antagonist upgrades or downgrades a finding, the original prefix is preserved and the severity change is recorded in the **Adversarial Review** section.
 
-The report-local finding ID is not the codex rule ID. When a finding maps to a stable codex rule, add a separate `rule_id` field with the canonical value (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`, or a `UNI-###` rule). Leave the field out for genuinely unmapped findings; do not invent a rule ID. This is a reviewer report convention for RM-03 citations, not the final RM-04 finding schema.
+`SEC-1`, `COR-1`, `UNI-3` and similar are **report-local occurrence ids** — the `id` field on a structured `ReviewFinding` (the RFC-28 schema illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They are distinct from the codex `rule-id`. When a finding maps to a stable codex rule, add a separate `rule_id` line with the canonical three-digit value (e.g. `OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`, or a `UNI-NNN` rule). Markdown reports render this as `rule_id:` or `Rule:` prose; the structured `ReviewFinding` wire shape uses the kebab-case `rule-id` field per RFC-28. Leave the field out for genuinely unmapped findings; do not invent a rule ID.
 
 ## REVIEW.md template
 
@@ -27,22 +27,22 @@ The report-local finding ID is not the codex rule ID. When a finding maps to a s
 **Crate**: [name]
 **Review Team**: 3 specialists + 1 antagonist
 **Auto-fix**: [enabled/disabled]
-**Confidence Level**: [HIGH | MEDIUM | LOW]
+**Confidence Level**: [high | medium | low]
 
 ---
 
 ## Summary
 
-- 🔴 Critical Issues: [count]
-- 🟠 High Severity: [count]
-- 🟡 Medium Severity: [count]
-- 🔵 Low Severity: [count]
+- 🔴 critical: [count]
+- 🟠 important: [count]
+- 🟡 suggestion: [count]
+- 🔵 optional: [count]
 
 **Overall Assessment**: [Excellent | Good | Fair | Poor]
 
 ---
 
-## 🔴 Critical Issues (MUST FIX)
+## 🔴 Critical (MUST FIX)
 
 ### SEC-1: WASM Constraint Violation
 
@@ -73,23 +73,23 @@ let api_url = ctx.config.get("API_URL")?;
 **rule_id**: RUST-001
 **Category**: Error Handling
 **Reviewer**: Correctness Reviewer
-**Antagonist**: ⬆️ Upgraded from HIGH to CRITICAL (untrusted input path)
+**Antagonist**: ⬆️ Upgraded from important to critical (untrusted input path)
 
 [... finding details ...]
 
 ---
 
-## 🟠 High Severity Issues
+## 🟠 Important
 
-[... high severity findings ...]
+[... important findings ...]
 
-## 🟡 Medium Severity Issues
+## 🟡 Suggestion
 
-[... medium severity findings ...]
+[... suggestion findings ...]
 
-## 🔵 Low Severity Issues
+## 🔵 Optional
 
-[... low severity findings ...]
+[... optional findings ...]
 
 ---
 
@@ -109,23 +109,23 @@ let api_url = ctx.config.get("API_URL")?;
 
 ### Downgraded Findings
 
-- [COR-3] HIGH → MEDIUM: Missing length validation on description field
+- [COR-3] important → suggestion: Missing length validation on description field
   **Rationale**: Field is bounded by serde max_length attribute at deserialization
 
 ### Upgraded Findings
 
-- [COR-1] HIGH → CRITICAL: unwrap() on untrusted input path
+- [COR-1] important → critical: unwrap() on untrusted input path
   **Rationale**: Input comes directly from HTTP request body; attacker-controlled
 
 ### Disputed Findings
 
-- [SEC-5] Reported as CRITICAL: "potential SQL injection"
+- [SEC-5] Reported as critical: "potential SQL injection"
   **Dispute**: No SQL database used; query passed to HttpRequest provider
   **Lead Decision**: Excluded (antagonist rationale accepted)
 
 ### New Findings (Missed by Specialists)
 
-- [NEW-1] CRITICAL: Missing error propagation in retry loop (src/handlers.rs:112)
+- [NEW-1] critical: Missing error propagation in retry loop (src/handlers.rs:112)
   **Evidence**: errors.push(e) swallows errors; Ok(()) returned when all retries fail
 
 ---

@@ -5,11 +5,16 @@
   "description": "Validates the YAML frontmatter block at the top of a codex rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specdev check`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "title", "severity", "trigger"],
+  "required": [
+    "id",
+    "title",
+    "severity",
+    "trigger"
+  ],
   "properties": {
     "id": {
       "$ref": "#/$defs/ruleId",
-      "description": "Stable codex rule identifier. V1 reserves UNI, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes."
+      "description": "Stable codex rule identifier. V1 reserves UNI, SRC, FRAME, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes. SRC namespaces shared source-adapter overlays; FRAME is reserved for RFC-32 framework declarative checks and is not used in consumer adapter codex."
     },
     "title": {
       "type": "string",
@@ -19,7 +24,12 @@
     },
     "severity": {
       "type": "string",
-      "enum": ["critical", "important", "suggestion", "optional"],
+      "enum": [
+        "critical",
+        "important",
+        "suggestion",
+        "optional"
+      ],
       "description": "Default review severity for findings associated with this rule."
     },
     "trigger": {
@@ -38,35 +48,47 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/adapterRef" },
+          "items": {
+            "$ref": "#/$defs/adapterRef"
+          },
           "description": "Adapter identifiers, optionally versioned as `<name>@v<major>`."
         },
         "languages": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/languageToken" },
+          "items": {
+            "$ref": "#/$defs/languageToken"
+          },
           "description": "Lowercase language or format tokens such as `rust`, `typescript`, or `json-schema`."
         },
         "artifacts": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebabToken" },
+          "items": {
+            "$ref": "#/$defs/kebabToken"
+          },
           "description": "Lowercase artifact category tokens such as `code`, `tests`, `contracts`, or `specs`."
         },
         "paths": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/relativePathPattern" },
+          "items": {
+            "$ref": "#/$defs/relativePathPattern"
+          },
           "description": "Relative path or glob patterns. Absolute paths, URI strings, and `..` segments are rejected."
         }
       }
     },
     "review_mode": {
       "type": "string",
-      "enum": ["deterministic", "model-assisted", "hybrid"],
+      "enum": [
+        "deterministic",
+        "model-assisted",
+        "hybrid"
+      ],
       "default": "model-assisted",
       "description": "How this rule is expected to be reviewed. The review runner decides execution; this field only classifies the rule."
     },
@@ -78,12 +100,28 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "value"],
+        "required": [
+          "kind",
+          "value"
+        ],
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["path-pattern", "regex", "schema", "tool"],
-            "description": "Kind of deterministic signal the hint describes."
+            "enum": [
+              "path-pattern",
+              "regex",
+              "schema",
+              "tool",
+              "unique",
+              "reference-resolves",
+              "set-coverage",
+              "cardinality",
+              "constant-eq",
+              "set-eq",
+              "content-digest-eq",
+              "namespace-owner"
+            ],
+            "description": "Kind of deterministic signal the hint describes. The kinds `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner` are reserved for RFC-32 declarative framework checks and are shape-validated only at this layer; no execution semantics are implied."
           },
           "value": {
             "type": "string",
@@ -106,8 +144,21 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["label"],
-        "anyOf": [{ "required": ["url"] }, { "required": ["path"] }],
+        "required": [
+          "label"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "url"
+            ]
+          },
+          {
+            "required": [
+              "path"
+            ]
+          }
+        ],
         "properties": {
           "label": {
             "type": "string",
@@ -129,7 +180,9 @@
     "deprecated": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason"],
+      "required": [
+        "reason"
+      ],
       "description": "When present, marks this rule as deprecated while preserving the stable id for historical citations.",
       "properties": {
         "reason": {
@@ -147,7 +200,7 @@
   "$defs": {
     "ruleId": {
       "type": "string",
-      "pattern": "^(UNI|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
+      "pattern": "^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
     },
     "adapterRef": {
       "type": "string",

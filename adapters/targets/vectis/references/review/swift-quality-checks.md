@@ -4,7 +4,7 @@ Language-level quality checks for Swift/SwiftUI code in Crux iOS shells.
 
 ## SWF-001: Force Unwrap in Production Code
 
-**Severity**: Warning
+**Severity**: important
 
 No `!` force unwraps or `try!` force tries outside of test files and preview blocks.
 
@@ -21,7 +21,7 @@ In `init()`, view deserialization falls back to `.loading` (no prior state exist
 
 ## SWF-002: Debug Output
 
-**Severity**: Warning
+**Severity**: important
 
 No `print()`, `debugPrint()`, or `dump()` calls in production code.
 
@@ -31,7 +31,7 @@ No `print()`, `debugPrint()`, or `dump()` calls in production code.
 
 ## SWF-003: Concurrency Safety
 
-**Severity**: Warning
+**Severity**: important
 
 With Swift 6 strict concurrency:
 - `Core` must be `@MainActor`.
@@ -48,7 +48,7 @@ With Swift 6 strict concurrency:
 
 ## SWF-004: State Management
 
-**Severity**: Warning
+**Severity**: important
 
 SwiftUI state management must follow these rules:
 - `Core` is owned by the app entry point as `@StateObject`.
@@ -65,7 +65,7 @@ SwiftUI state management must follow these rules:
 
 ## SWF-005: View Body Complexity
 
-**Severity**: Info
+**Severity**: suggestion
 
 A view's `body` computed property should not exceed 50 lines. Complex views should be split into extracted sub-views or helper methods.
 
@@ -75,7 +75,7 @@ A view's `body` computed property should not exceed 50 lines. Complex views shou
 
 ## SWF-007: Deprecated API Usage
 
-**Severity**: Info
+**Severity**: suggestion
 
 Avoid deprecated SwiftUI APIs:
 - `NavigationView` → use `NavigationStack` (iOS 16+)
@@ -88,7 +88,7 @@ Avoid deprecated SwiftUI APIs:
 
 ## SWF-008: Missing Content Transition
 
-**Severity**: Info
+**Severity**: suggestion
 
 Text that updates frequently (counters, status labels) benefits from `.contentTransition(.numericText())` for smooth animations.
 
@@ -98,7 +98,7 @@ Text that updates frequently (counters, status labels) benefits from `.contentTr
 
 ## SWF-009: Hardcoded Strings
 
-**Severity**: Info
+**Severity**: suggestion
 
 User-facing strings should be localizable. For apps intended for internationalization, use `String(localized:)` or `LocalizedStringKey`.
 
@@ -108,7 +108,7 @@ User-facing strings should be localizable. For apps intended for internationaliz
 
 ## SWF-010: Event Callback Naming
 
-**Severity**: Info
+**Severity**: suggestion
 
 Event callback closures should be named `onEvent` consistently across all screen views for uniformity.
 

@@ -19,7 +19,9 @@ Carries the body of the retired `vectis-android-reviewer` skill. The Android-spe
 
 ## Finding-ID conventions
 
-- Report-local occurrence IDs: `AND-1`, `KTL-1`, `INT-1`, `UNI-1`, `NEW-1`.
-- Stable codex citations: `rule_id: VECTIS-AND-001` (for example) appears alongside each mapped finding. Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
+- Report-local occurrence IDs: `AND-1`, `KTL-1`, `INT-1`, `UNI-1`, `NEW-1`. These are **report-local** counters — the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this review uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
+- Stable codex citations: `rule_id: VECTIS-201` (for example) appears alongside each mapped finding. Codex ids must match `^VECTIS-[0-9]{3}$`. Markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape (likewise `target-adapter`, `source-adapter`, `related-rule-ids`, `confidence`). Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
+
+Severity values in finding output use the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`.
 
 See [iteration-report.md](../../../references/review/iteration-report.md) § Finding-ID conventions for severity and `file:line` rules.

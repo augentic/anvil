@@ -44,7 +44,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** CI-native standards enforcement (`specrun review`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun review` from being mistaken for a phase skill.
 
-**Source:** [Specify roadmap §Principles](https://github.com/augentic/specify/blob/main/rfcs/roadmap.md#principles), [RFC-28: Engineering Standards — Codex Contract and Findings](https://github.com/augentic/specify/blob/main/rfcs/rfc-28-codex-rules.md), [RFC-32: Engineering Standards — Deterministic Enforcement](https://github.com/augentic/specify/blob/main/rfcs/rfc-32-declarative-rules.md)
+**Source:** [Specify roadmap §Principles](https://github.com/augentic/specify/blob/main/rfcs/roadmap.md#principles), [RFC-28: Engineering Standards — Codex Contract and Findings](https://github.com/augentic/specify/blob/main/rfcs/rfc-28-standards-contract.md), [RFC-32: Engineering Standards — Deterministic Enforcement](https://github.com/augentic/specify/blob/main/rfcs/rfc-32-standards-enforcement.md)
 
 ## Plan as a data file, not a configuration
 

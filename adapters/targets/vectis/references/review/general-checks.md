@@ -6,7 +6,7 @@ Language-level and framework-agnostic quality checks for Rust code. These apply 
 
 ## GEN-001: No unwrap(), expect(), or panic!() in production code
 
-**Severity**: Warning
+**Severity**: important
 
 `unwrap()`, `expect()`, and `panic!()` all terminate the process on failure. In a Crux core, a panic crashes the shell (iOS app, browser tab) and is unrecoverable. Use `?` with error propagation, `if let`, `match`, `unwrap_or_default()` (with care -- see LOG-005), or `unwrap_or_else(|| ...)`.
 
@@ -43,7 +43,7 @@ Ok(effects)
 
 ## GEN-002: No debug output in production code
 
-**Severity**: Info
+**Severity**: suggestion
 
 `println!`, `dbg!`, and `eprintln!` should not appear in production code. Use `log::debug!`, `log::info!`, or `tracing` macros instead. These integrate with the shell's logging infrastructure and can be filtered by level.
 
@@ -53,7 +53,7 @@ Ok(effects)
 
 ## GEN-003: No hardcoded secrets or credentials
 
-**Severity**: Critical
+**Severity**: critical
 
 API keys, passwords, tokens, and other secrets must not appear in source code. Use configuration, environment variables, or the shell's secure storage.
 
@@ -68,7 +68,7 @@ API keys, passwords, tokens, and other secrets must not appear in source code. U
 
 ## GEN-004: Public types and functions have doc comments
 
-**Severity**: Info
+**Severity**: suggestion
 
 All `pub` items (structs, enums, functions, type aliases) should have a doc comment (`///`) explaining their purpose. This is especially important for types that cross the FFI bridge, as shell developers rely on these docs.
 
@@ -80,7 +80,7 @@ All `pub` items (structs, enums, functions, type aliases) should have a doc comm
 
 ## GEN-005: Error paths propagate errors, not silently swallow them
 
-**Severity**: Warning
+**Severity**: important
 
 When an operation can fail, the error must be handled explicitly: propagated, logged, or converted to a user-visible error state. Silently ignoring errors (empty `Err(_) => {}`, `let _ = fallible_call()`, or `ok()`) hides bugs and makes debugging impossible.
 
@@ -96,7 +96,7 @@ When an operation can fail, the error must be handled explicitly: propagated, lo
 
 ## GEN-006: Unnecessary .clone()
 
-**Severity**: Info
+**Severity**: suggestion
 
 `.clone()` should only be used when ownership transfer is genuinely needed. Cloning large structures (vectors, strings) in hot paths wastes memory and CPU. Check if a borrow (`&`) would suffice.
 
@@ -111,7 +111,7 @@ When an operation can fail, the error must be handled explicitly: propagated, lo
 
 ## GEN-007: Integer arithmetic overflow
 
-**Severity**: Warning
+**Severity**: important
 
 Rust integer arithmetic panics on overflow in debug builds and wraps in release. For counters, indices, or IDs derived from arithmetic, verify that overflow is either impossible (e.g., bounded by a small collection size) or explicitly handled with `checked_add`, `saturating_add`, or `wrapping_add`.
 
@@ -123,7 +123,7 @@ Rust integer arithmetic panics on overflow in debug builds and wraps in release.
 
 ## GEN-008: Non-exhaustive match arms hiding new variants
 
-**Severity**: Warning
+**Severity**: important
 
 Catch-all `_ =>` or `.. =>` patterns in `match` statements can silently swallow new enum variants added during updates. Prefer listing all variants explicitly so the compiler flags missing arms when variants are added.
 
@@ -135,7 +135,7 @@ Catch-all `_ =>` or `.. =>` patterns in `match` statements can silently swallow 
 
 ## GEN-009: Serialization round-trip completeness
 
-**Severity**: Warning
+**Severity**: important
 
 Types stored in `KeyValue` (persistence) must derive both `Serialize` and `Deserialize` to support save and load. Types sent through effects (Event payloads, ViewModel) must derive both to cross the FFI bridge.
 
@@ -147,7 +147,7 @@ See also CRX-005 for the Crux-specific bridge variant of this check.
 
 ## GEN-010: No unsafe blocks
 
-**Severity**: Critical
+**Severity**: critical
 
 `unsafe` blocks should never appear in a Crux shared crate. The core runs in a sandboxed environment and has no need for unsafe operations. If unsafe code is present, it indicates a design problem.
 
@@ -157,7 +157,7 @@ See also CRX-005 for the Crux-specific bridge variant of this check.
 
 ## GEN-011: Functions under 50 lines
 
-**Severity**: Info
+**Severity**: suggestion
 
 Functions longer than 50 lines are harder to review, test, and maintain. Extract helper functions for logical sub-tasks within `update()`, `view()`, or standalone functions.
 
@@ -169,7 +169,7 @@ Functions longer than 50 lines are harder to review, test, and maintain. Extract
 
 ## GEN-012: Option/Result handling covers all cases
 
-**Severity**: Warning
+**Severity**: important
 
 Every `if let Some(x) = ...` should have an `else` branch (or the absence should be justified). Every `match` on `Option` or `Result` should explicitly handle `None`/`Err` rather than silently doing nothing.
 

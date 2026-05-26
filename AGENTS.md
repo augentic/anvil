@@ -40,7 +40,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
 | **Engineering standards** | Durable policy that outlives any slice | Codex rules under `adapters/**/codex/`; future `specrun codex export` and `specrun review` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (codex, enforced per [RFC-28](rfcs/rfc-28-codex-rules.md) / [RFC-32](rfcs/rfc-32-declarative-rules.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (codex, enforced per [RFC-28](rfcs/rfc-28-standards-contract.md) / [RFC-32](rfcs/rfc-32-standards-enforcement.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 `specrun review` (planned, RM-10) is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `reviewed` are separate surfaces.
 

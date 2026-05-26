@@ -1,10 +1,10 @@
 # RFC-32: Engineering Standards — Deterministic Enforcement
 
-> Status: Draft · Depends: [RFC-28](rfc-28-codex-rules.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence (Phase 3)
+> Status: Draft · Depends: [RFC-28](rfc-28-standards-contract.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence (Phase 3)
 
 ## Abstract
 
-[RFC-28](rfc-28-codex-rules.md) defines the **standards contract layer**: resolved codex export, stable `rule-id`s, structured review findings, and `deterministic_hints` as declarative metadata. It deliberately does not implement scanners, hint execution, or a unified extraction pipeline.
+[RFC-28](rfc-28-standards-contract.md) defines the **standards contract layer**: resolved codex export, stable `rule-id`s, structured review findings, and `deterministic_hints` as declarative metadata. It deliberately does not implement scanners, hint execution, or a unified extraction pipeline.
 
 This RFC defines the **standards enforcement layer** that consumes that contract:
 
@@ -227,7 +227,7 @@ Exit codes follow the operator CLI table: validation/findings failure → `2`; i
 | Shared codex parser         | Implements in `specify-domain` | Reuses in indexer                                      |
 
 
-RFC-28 should reserve extensibility in the codex authoring schema for additional hint kinds without implementing them. See [RFC-28 §Deterministic hints extensibility](rfc-28-codex-rules.md#deterministic-hints-extensibility).
+RFC-28 should reserve extensibility in the codex authoring schema for additional hint kinds without implementing them. See [RFC-28 §Deterministic hints extensibility](rfc-28-standards-contract.md#deterministic-hints-extensibility).
 
 ### Relationship to framework tooling (Phase 3 — split)
 
@@ -353,7 +353,7 @@ Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](r
 
 ## References
 
-- [RFC-28: Engineering Standards — Codex Contract and Findings](rfc-28-codex-rules.md)
+- [RFC-28: Engineering Standards — Codex Contract and Findings](rfc-28-standards-contract.md)
 - [Standards layer (explanation)](../docs/explanation/standards-layer.md)
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md)
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md)

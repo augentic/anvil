@@ -6,7 +6,7 @@ Pattern-based checks for common Crux framework issues. Each check includes a det
 
 ## CRX-001: Missing render() after state mutation
 
-**Severity**: Critical
+**Severity**: critical
 
 Every assignment to `model.page`, `model.sync_status`, `model.sse_state`, or any other field that the `view()` function reads must be accompanied by a `render()` call in the same `Command` chain. Without it, the shell continues displaying stale state until the next unrelated event triggers a render.
 
@@ -39,7 +39,7 @@ Also check: `Event::SseDisconnected`, `Event::Navigate(Route::...)` from Error p
 
 ## CRX-002: User-supplied text input not validated
 
-**Severity**: Critical
+**Severity**: critical
 
 Any Event variant that carries user-typed text (titles, names, descriptions) must trim whitespace and reject empty strings before mutating the model. Accepting empty or whitespace-only values leads to invisible list items, empty database records, or confusing UI state.
 
@@ -73,7 +73,7 @@ Event::EditTitle(id, new_title, timestamp) => {
 
 ## CRX-003: PendingOp variants missing conflict-resolution data
 
-**Severity**: Critical
+**Severity**: critical
 
 Every `PendingOp` variant must carry enough information to resolve conflicts with the server. For destructive operations like `Delete`, this means storing a `deleted_at` timestamp so the conflict-resolution logic can compare it against the server's `updated_at`.
 
@@ -101,7 +101,7 @@ pub enum PendingOp {
 
 ## CRX-004: PendingOp coalescing missing on destructive operations
 
-**Severity**: Critical
+**Severity**: critical
 
 When deleting an item (via `DeleteTodo` or `ClearCompleted`), the handler must check whether the item only exists as a pending `Create`. If so, the `Create` should be removed from the queue and no `Delete` sent to the server -- the server has never seen the item.
 
@@ -154,7 +154,7 @@ for id in completed {
 
 ## CRX-005: Domain types crossing FFI bridge missing serde derives
 
-**Severity**: Warning
+**Severity**: important
 
 All types that are part of `ViewModel`, `Event`, or `Effect` (or nested within them) must derive both `Serialize` and `Deserialize` to cross the FFI bridge between core and shell. Types used in `StateStore` (KeyValue) persistence also need both.
 
@@ -194,7 +194,7 @@ pub enum SyncStatus { ... }
 
 ## CRX-006: Ordering fields as Option weakening conflict resolution
 
-**Severity**: Warning
+**Severity**: important
 
 Fields used for ordering or conflict resolution (`updated_at`, `created_at`, `version`) should not be `Option` unless the domain genuinely allows missing values. An `Option` field forces fallback logic (typically "server wins") that can silently discard valid local edits.
 
@@ -224,7 +224,7 @@ pub struct TodoItem {
 
 ## CRX-007: IDs/timestamps generated inside update() instead of received from shell
 
-**Severity**: Warning
+**Severity**: important
 
 User-facing Event variants should receive IDs and timestamps as parameters from the shell, not generate them inside `update()`. This keeps the core deterministic and testable -- tests can supply known values without mocking random number generators or clocks.
 
@@ -250,7 +250,7 @@ Event::AddTodo(id, timestamp) => {
 
 ## CRX-008: ViewModel fields using pre-formatted strings
 
-**Severity**: Info
+**Severity**: suggestion
 
 ViewModel fields should use typed values (`usize`, `bool`, enums) rather than pre-formatted strings. The shell is responsible for presentation; the core should provide raw data.
 
@@ -276,7 +276,7 @@ pub struct TodoListView {
 
 ## CRX-009: Missing test coverage for critical scenarios
 
-**Severity**: Warning
+**Severity**: important
 
 The test module must include tests for the following scenarios at minimum. Absence of any is a finding.
 
@@ -290,13 +290,13 @@ The test module must include tests for the following scenarios at minimum. Absen
 7. `ClearCompleted` correctly coalesces pending Creates (no server delete)
 8. Toggling an item during an in-flight sync for the same item
 
-**Detection**: Search the `#[cfg(test)]` module for test function names or assertions that cover each scenario. Missing coverage is a Warning finding.
+**Detection**: Search the `#[cfg(test)]` module for test function names or assertions that cover each scenario. Missing coverage is an `important` finding.
 
 ---
 
 ## CRX-010: Unused dependencies in Cargo.toml
 
-**Severity**: Info
+**Severity**: suggestion
 
 Every dependency listed in `[dependencies]` in `shared/Cargo.toml` must be referenced by at least one `use` statement in the source code. Unused dependencies increase compile time and binary size.
 
@@ -308,7 +308,7 @@ Every dependency listed in `[dependencies]` in `shared/Cargo.toml` must be refer
 
 ## CRX-011: Panic in CoreFFI methods
 
-**Severity**: Critical
+**Severity**: critical
 
 `CoreFFI` methods (`update`, `resolve`, `view`) must return `Result<Vec<u8>, CoreError>` instead of panicking on `BridgeError`. A panic in the FFI layer crashes the host process (iOS app, browser tab) with no recovery path. The Crux `Bridge` already returns `Result<(), BridgeError>`, so errors should be propagated through a `CoreError` wrapper type.
 

@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check`) and consumer-project **engineering standards** (`specrun review`). The planned validator and reviewer share rule ids and finding shape via [RFC-28](rfc-28-codex-rules.md); [RFC-32](rfc-32-declarative-rules.md) adds the shared execution substrate for consumer standards enforcement, with framework finding export in RFC-28 Phase 3 and optional declarative convergence in RFC-32 Phase 3b. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check`) and consumer-project **engineering standards** (`specrun review`). The planned validator and reviewer share rule ids and finding shape via [RFC-28](rfc-28-standards-contract.md); [RFC-32](rfc-32-standards-enforcement.md) adds the shared execution substrate for consumer standards enforcement, with framework finding export in RFC-28 Phase 3 and optional declarative convergence in RFC-32 Phase 3b. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 
 ## Sequenced Roadmap
 
@@ -52,7 +52,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-10: CI-native standards enforcement
 
 **Goal:** Continuously enforce engineering standards on consumer projects (not a workflow phase — findings may block CI but never transition plan or slice lifecycle).
-**Depends:** [RFC-28](rfc-28-codex-rules.md) (standards contract + export) then [RFC-32](rfc-32-declarative-rules.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
+**Depends:** [RFC-28](rfc-28-standards-contract.md) (standards contract + export) then [RFC-32](rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter + `specrun review`).
 **Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-32's deterministic standards scanner.
 **Target surface:**
 

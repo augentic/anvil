@@ -8,10 +8,10 @@ The verifier is **read-only**. It MUST NOT generate, modify, or delete any files
 
 The verifier accepts a `--mode {single, cross-project}` flag. The mode determines the report shape and the exit semantics.
 
-| Mode | Caller | Trigger | Scope | Output |
-|---|---|---|---|---|
-| `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/messages/` inside one project | Markdown report for the verify-repair loop |
-| `cross-project` | contracts adapter merge brief | Producer-side merge of an AsyncAPI contract change | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specrun tool run contract` |
+| Mode               | Caller                                         | Trigger                                            | Scope                                                             | Output                                                |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
+| `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import                         | One slice's `contracts/messages/` inside one project              | Markdown report for the verify-repair loop            |
+| `cross-project`    | contracts adapter merge brief                  | Producer-side merge of an AsyncAPI contract change | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specrun tool run contract` |
 
 `single` mode feeds the brief's verify-repair loop. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specrun tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
@@ -88,20 +88,20 @@ Every message in `components/messages` and every JSON Schema file referenced by 
 
 #### Message metadata
 
-| Field | Rule |
-|---|---|
-| `name` | Present and PascalCase, matching the message key. |
+| Field         | Rule                                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | Present and PascalCase, matching the message key.                                                                                                   |
 | `contentType` | Present. Default to `application/json` when the spec does not require otherwise; flag any other value for human review unless explicitly justified. |
-| `payload` | Present and either an inline schema (flagged for normalisation) or a `$ref` to `../schemas/`. |
+| `payload`     | Present and either an inline schema (flagged for normalisation) or a `$ref` to `../schemas/`.                                                       |
 
 #### Payload schema metadata
 
 For every JSON Schema file in `$CHANGE_CONTRACTS/schemas/` referenced by a message payload:
 
-| Field | Rule |
-|---|---|
-| `$id` | Present and a valid URI (URN format: `urn:specify:schemas/<name>`). |
-| `title` | Present and non-empty, matching the type name. |
+| Field         | Rule                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$id`         | Present and a valid URI (URN format: `urn:specify:schemas/<name>`).                                                                                                        |
+| `title`       | Present and non-empty, matching the type name.                                                                                                                             |
 | `description` | Present and non-empty. The placeholder `"[imported — description pending review]"` counts as present but **emits a `WARN`** to surface the gap for the verify-repair loop. |
 
 Report format (one entry per failure):
@@ -269,13 +269,15 @@ Field semantics:
 
 Callers that surface post-merge validator failures (the merge brief on a blocking finding) parse `findings[]` and include `{ rule-id, path, detail }` triples in the stop hint's `paths` field. The load-bearing finding is typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`; the full envelope is captured at the log path referenced in the stop hint.
 
+When a caller re-surfaces an envelope finding as an RFC-28 `ReviewFinding` (see [RFC-28 §Structured review finding schema](../../../../../rfcs/rfc-28-standards-contract.md#structured-review-finding-schema)), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. The contract-domain payload (`findings[].rule-id`, `path`, `detail`, plus any compatibility classification such as `additive` / `breaking` / `ambiguous` / `unverifiable`, channel id, message id) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
+
 ### Exit semantics
 
-| Exit code | Meaning | Caller action |
-|---|---|---|
-| `0` | Clean — no findings. | Proceed to the next merge-brief step (e.g. `specrun slice merge run`). |
-| `1` | One or more findings. | Record `failure`; halt the merge brief. The slice's deltas remain unmerged. |
-| `2` | The tool could not run (resolver, permission, runtime, path missing, not a directory, internal error). | Record `failure`; journal the stderr line or JSON error message. The slice's deltas remain unmerged. |
+| Exit code | Meaning                                                                                                | Caller action                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `0`       | Clean — no findings.                                                                                   | Proceed to the next merge-brief step (e.g. `specrun slice merge run`).                               |
+| `1`       | One or more findings.                                                                                  | Record `failure`; halt the merge brief. The slice's deltas remain unmerged.                          |
+| `2`       | The tool could not run (resolver, permission, runtime, path missing, not a directory, internal error). | Record `failure`; journal the stderr line or JSON error message. The slice's deltas remain unmerged. |
 
 The mode is **deterministic**: the WASI tool is a thin shell over `specify_validate::validate_baseline_contracts` (in the `specify-cli` workspace). Repeated invocations against the same baseline produce identical findings.
 
@@ -289,29 +291,29 @@ The deterministic baseline check is the canonical post-merge gate.
 
 ### `single` mode
 
-| Scenario | Behavior |
-|---|---|
-| Change directory has no `contracts/messages/` | Pass — nothing to verify. |
-| Baseline has messaging contracts but change does not | Pass — verifier only checks change-level artefacts. |
-| `$ref` target exists in baseline but not in change | Pass — baseline is a valid resolution target. |
-| `$ref` target exists in change but not in baseline | Pass — change-level schemas are valid resolution targets. |
-| Mixed resolution: some targets in baseline, some in change | Pass — both directories are valid resolution scope. |
-| No spec files in the slice | Skip Check 3; record the skip in the report. |
-| Schema referenced only via `$ref` from other schemas | Exempt from Check 3 (shared vocabulary). |
-| Channel uses inline payload (legacy from a manual import) | `$ref` resolution still verified inside the document; emit `WARN` recommending importer normalisation. |
-| Channel declared with no operations | Emit `FAIL` — every channel must have at least one `send` or `receive` operation. |
+| Scenario                                                   | Behavior                                                                                               |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Change directory has no `contracts/messages/`              | Pass — nothing to verify.                                                                              |
+| Baseline has messaging contracts but change does not       | Pass — verifier only checks change-level artefacts.                                                    |
+| `$ref` target exists in baseline but not in change         | Pass — baseline is a valid resolution target.                                                          |
+| `$ref` target exists in change but not in baseline         | Pass — change-level schemas are valid resolution targets.                                              |
+| Mixed resolution: some targets in baseline, some in change | Pass — both directories are valid resolution scope.                                                    |
+| No spec files in the slice                                 | Skip Check 3; record the skip in the report.                                                           |
+| Schema referenced only via `$ref` from other schemas       | Exempt from Check 3 (shared vocabulary).                                                               |
+| Channel uses inline payload (legacy from a manual import)  | `$ref` resolution still verified inside the document; emit `WARN` recommending importer normalisation. |
+| Channel declared with no operations                        | Emit `FAIL` — every channel must have at least one `send` or `receive` operation.                      |
 
 ### `cross-project` mode
 
-| Scenario | Behavior |
-|---|---|
-| `$BASELINE_CONTRACTS` is absent | `specrun tool run` exits `2` because the declared read preopen is missing or because the validator reports the missing directory. Caller records `failure`. |
-| `$BASELINE_CONTRACTS` is empty (no top-level contracts) | Tool exits `0` with `findings: []`. Treated as clean. |
-| Top-level contract has non-SemVer `info.version` | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`. |
-| Top-level contract has malformed `info.x-specify-id` | Finding `contract.id-format`; exit `1`. |
-| Two top-level contracts share the same `info.x-specify-id` | Finding `contract.id-unique` against each colliding path; exit `1`. |
-| YAML file under `$BASELINE_CONTRACTS` is malformed | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding. |
-| `specify` is not on `$PATH` | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`. |
+| Scenario                                                   | Behavior                                                                                                                                                    |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$BASELINE_CONTRACTS` is absent                            | `specrun tool run` exits `2` because the declared read preopen is missing or because the validator reports the missing directory. Caller records `failure`. |
+| `$BASELINE_CONTRACTS` is empty (no top-level contracts)    | Tool exits `0` with `findings: []`. Treated as clean.                                                                                                       |
+| Top-level contract has non-SemVer `info.version`           | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`.                                                                                   |
+| Top-level contract has malformed `info.x-specify-id`       | Finding `contract.id-format`; exit `1`.                                                                                                                     |
+| Two top-level contracts share the same `info.x-specify-id` | Finding `contract.id-unique` against each colliding path; exit `1`.                                                                                         |
+| YAML file under `$BASELINE_CONTRACTS` is malformed         | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding.                         |
+| `specify` is not on `$PATH`                                | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`.                                          |
 
 ## Guardrails
 

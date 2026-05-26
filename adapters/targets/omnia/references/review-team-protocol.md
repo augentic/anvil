@@ -33,14 +33,18 @@ WASM CONSTRAINTS: Scan every .rs file in src/ for:
 - unsafe code blocks
 - Blocking operations (synchronous I/O)
 
-For each finding, report: file:line, code snippet, severity (CRITICAL for all
-in these categories), risk description, suggested fix, and whether it is
-auto-fixable. When the issue maps to a codex rule, include `rule_id` separately
-from the finding ID (for example, `OMNIA-002`, `SEC-001`, `UNI-019`, or
-`UNI-021`).
+For each finding, report: file:line, code snippet, severity (`critical` for
+all in these categories — the RFC-28 closed enum is `critical` / `important`
+/ `suggestion` / `optional`), risk description, suggested fix, and whether
+it is auto-fixable. When the issue maps to a codex rule, include `rule_id`
+separately from the report-local finding ID (for example, `OMNIA-002`,
+`SEC-001`, `UNI-019`, or `UNI-021` — three-digit codex ids matching
+`^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
-with "SEC-" (e.g., SEC-1, SEC-2).
+with "SEC-" (e.g., SEC-1, SEC-2). These prefixed counters are the report-local
+occurrence ids (the `id` field on a `ReviewFinding`); `rule_id` is the codex
+citation (the kebab-case `rule-id` field on the wire).
 ```
 
 **Spawn Correctness Reviewer**:
@@ -69,11 +73,11 @@ PROVIDER MISUSE: Check handler functions for:
 - Provider methods called incorrectly
 - Missing error handling on provider calls
 
-For each finding, report: file:line, code snippet, severity (CRITICAL for
-error handling panics, HIGH for validation/provider issues), risk, suggested
-fix, auto-fixable status, and a separate `rule_id` when the issue maps to a
-codex rule (for example, `RUST-001`, `OMNIA-001`, `UNI-002`, `UNI-004`, or
-`UNI-016`).
+For each finding, report: file:line, code snippet, severity (`critical` for
+error handling panics, `important` for validation/provider issues), risk,
+suggested fix, auto-fixable status, and a separate `rule_id` when the issue
+maps to a codex rule (for example, `RUST-001`, `OMNIA-001`, `UNI-002`,
+`UNI-004`, or `UNI-016`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "COR-" (e.g., COR-1, COR-2).
@@ -102,10 +106,10 @@ CODE QUALITY: Check all .rs files in src/ for:
 - Dead code or unused variables
 - Magic numbers (should be named constants)
 
-For each finding, report: file:line, code snippet, severity (MEDIUM for
-performance, LOW for code quality), impact description, suggested fix,
-auto-fixable status, and a separate `rule_id` when the issue maps to a codex
-rule (for example, `UNI-005`, `UNI-007`, `UNI-013`, `UNI-014`, or
+For each finding, report: file:line, code snippet, severity (`suggestion`
+for performance, `optional` for code quality), impact description, suggested
+fix, auto-fixable status, and a separate `rule_id` when the issue maps to a
+codex rule (for example, `UNI-005`, `UNI-007`, `UNI-013`, `UNI-014`, or
 `OMNIA-002`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
@@ -123,7 +127,9 @@ Your job is to challenge every finding and find what they missed.
 
 For EACH finding (SEC-, COR-, QUA-, and UNI- prefixed):
 1. Validate evidence: Is there a real file:line reference and code snippet?
-2. Challenge severity: Is CRITICAL really critical? Is LOW actually higher?
+2. Challenge severity: Is `critical` really critical? Is `optional` actually
+   higher? Severities come from the closed RFC-28 enum
+   (`critical` / `important` / `suggestion` / `optional`).
 3. Check for false positives: Could this be a non-issue or acceptable pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
 5. Check `rule_id` mapping when present: does the cited codex rule match the
@@ -147,7 +153,8 @@ Output format:
 
 You MUST provide evidence for every challenge. Opinion alone is insufficient.
 You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level (CRITICAL to HIGH, not to LOW).
+Severity downgrades move at most one level along the closed RFC-28 enum
+(`critical` → `important`, not `critical` → `optional`).
 ```
 
 ## Step 2: Specialist Analysis (Concurrent)

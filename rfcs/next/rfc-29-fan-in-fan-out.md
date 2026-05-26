@@ -1,6 +1,6 @@
 # RFC-29: Fan-In/Fan-Out Code Generation Contract
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../rfc-28-codex-rules.md) - Enables: provable multi-source, multi-target Specify generation
+> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../rfc-28-standards-contract.md) - Enables: provable multi-source, multi-target Specify generation
 
 ## Abstract
 
