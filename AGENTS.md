@@ -21,6 +21,7 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 - **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
 - **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [DECISIONS.md §"workflow §D4 — `fusion.yaml` is audit-only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d4--fusionyaml-is-audit-only).
 - **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, candidate id). See [DECISIONS.md §"workflow §D8 — cache fingerprint inputs"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#rfc-27-d8--cache-fingerprint-inputs).
+- **component catalog** — operator-curated file at `.specify/design-system/components.yaml` declaring shared UI components (`status: confirmed | rejected`). The Vectis target reads the catalog at build time and factors shared component code per shell tree. Follows the same pattern as `tokens.yaml` and `assets.yaml`. Opt-in; absent catalog means no component factoring. Validated by `specrun slice validate` (`slice-catalog-drift`) and `specrun tool run vectis -- validate composition` (catalog cross-reference check). See [docs/explanation/components.md](docs/explanation/components.md).
 
 ### Workflow nouns
 

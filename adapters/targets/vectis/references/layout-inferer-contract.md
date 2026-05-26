@@ -36,7 +36,7 @@ Arguments deliberately excluded from the common surface:
 
 ## Output rules
 
-- Inferers MUST emit `layout.yaml` documents using the **unwired subset** of [`adapters/targets/vectis/schemas/composition.schema.json`](../schemas/composition.schema.json). Allowed structure is a full `screens` document with screen names, regions, groups, the item vocabulary, token references, asset references, the optional `component: <slug>` directive on groups (see [Component directive emission](#component-directive-emission)), states, overlays without `trigger`, and `platforms.*` overrides.
+- Inferers MUST emit `layout.yaml` documents using the **unwired subset** of [`composition.schema.json`](https://schemas.specify.dev/vectis/composition.schema.json). Allowed structure is a full `screens` document with screen names, regions, groups, the item vocabulary, token references, asset references, the optional `component: <slug>` directive on groups (see [Component directive emission](#component-directive-emission)), states, overlays without `trigger`, and `platforms.*` overrides.
 - A layout document MUST NOT use the change-local `delta` shape. `delta` is reserved for the wired `composition.yaml` lifecycle artifact.
 - The unwired subset forbids define-owned wiring. Inferers MUST NOT emit any of:
   - `maps_to`
@@ -113,8 +113,8 @@ The full per-mode surface every inferer can call:
 |---|---|
 | `specrun tool run vectis -- validate layout [path]` | `layout.yaml` against the unwired subset (composition schema + structural identity + no define-owned wiring keys + no `delta`). |
 | `specrun tool run vectis -- validate composition [path]` | Wired or unwired composition; auto-invokes `tokens` and `assets` when siblings exist. |
-| `specrun tool run vectis -- validate tokens [path]` | `tokens.yaml` against the published [token schema](../schemas/tokens.schema.json). |
-| `specrun tool run vectis -- validate assets [path]` | `assets.yaml` against the published [asset schema](../schemas/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
+| `specrun tool run vectis -- validate tokens [path]` | `tokens.yaml` against the published [`tokens.schema.json`](https://schemas.specify.dev/vectis/tokens.schema.json). |
+| `specrun tool run vectis -- validate assets [path]` | `assets.yaml` against the published [`assets.schema.json`](https://schemas.specify.dev/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
 | `specrun tool run vectis -- validate all` | Runs all four against the active slice and baseline. Convenience mode. |
 
 Exit semantics for every mode:
@@ -142,5 +142,5 @@ Source-specific skills MAY add additional sections (e.g. the image inferer repor
 ## See also
 
 - [RFC-11: UI Specification Workflow](../../../../rfcs/done/rfc-11-ui-spec.md) — normative source for §A (this contract), §G (component directive), §H (CLI validation modes).
-- [`adapters/targets/vectis/schemas/composition.schema.json`](../schemas/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
-- [`adapters/targets/vectis/schemas/tokens.schema.json`](../schemas/tokens.schema.json) and [`adapters/targets/vectis/schemas/assets.schema.json`](../schemas/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.
+- [`composition.schema.json`](https://schemas.specify.dev/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against. Retrieve with `specrun tool schema vectis composition`.
+- [`tokens.schema.json`](https://schemas.specify.dev/vectis/tokens.schema.json) and [`assets.schema.json`](https://schemas.specify.dev/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.
