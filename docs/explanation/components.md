@@ -71,7 +71,7 @@ Component slugs must be kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
 
    - **Core:** `shared/src/components/<slug>.rs` — a shared view-model helper module.
    - **iOS:** `iOS/<AppName>/Components/<Slug>View.swift` — a named SwiftUI view.
-   - **Android:** `android/.../components/<Slug>Component.kt` — a named Composable.
+   - **Android:** `Android/.../components/<Slug>Component.kt` — a named Composable.
 
    Per-screen rendering invokes the shared component instead of inlining.
 

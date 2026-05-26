@@ -273,7 +273,7 @@ This mirrors how operators already work with `tokens.yaml` (observe design patte
 
 The Vectis target's `build` brief gains one new responsibility:
 
-> Before regenerating `composition.yaml`, read `.specify/design-system/components.yaml`. For every claim in `spec.md` / `design.md` that resolves to a confirmed catalog entry, emit the `component: <slug>` directive on the corresponding group in `composition.yaml`. For every confirmed entry, generate one shared component file per in-scope shell tree (`shared/src/components/<slug>.rs` for core view-helpers; `iOS/.../Components/<slug>.swift` for the iOS shell; `android/.../components/<slug>.kt` for the Android shell). Per-screen rendering invokes the shared component instead of inlining.
+> Before regenerating `composition.yaml`, read `.specify/design-system/components.yaml`. For every claim in `spec.md` / `design.md` that resolves to a confirmed catalog entry, emit the `component: <slug>` directive on the corresponding group in `composition.yaml`. For every confirmed entry, generate one shared component file per in-scope shell tree (`shared/src/components/<slug>.rs` for core view-helpers; `iOS/.../Components/<slug>.swift` for the iOS shell; `Android/.../components/<slug>.kt` for the Android shell). Per-screen rendering invokes the shared component instead of inlining.
 
 The Vectis WASI tool's `validate composition` mode gains a check: every claim carrying `component: <slug>` MUST resolve to a confirmed catalog entry, and every confirmed catalog entry MUST have ≥1 generated shared-component file in each in-scope shell tree.
 
