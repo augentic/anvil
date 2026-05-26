@@ -30,7 +30,7 @@ specrun tool fetch [<name>] [--format json]
 
 ### specrun tool schema
 
-Print a tool-owned JSON Schema to stdout (RFC-31 D2).
+Print a tool-owned JSON Schema to stdout.
 
 ```bash
 specrun tool schema <tool> <name>
