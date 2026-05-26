@@ -19,7 +19,7 @@ hint: Fix the failure, then re-run /spec:execute (or /spec:build to retry the
       lifecycle stays where /spec:build left it.
 ```
 
-Re-entry contract: the next `/spec:execute` calls `specrun plan next`, sees the entry still `in-progress`, runs the snippet from [`plan-lock.md`](plan-lock.md), dispatches phase work based on the slice lifecycle. If the slice is `built` it skips straight to `/spec:merge`; if it is `refined`, it re-runs `/spec:build`.
+Re-entry contract: the next `/spec:execute` calls `specrun plan next`, sees the entry still `in-progress`, runs the snippet from [`../../../references/plan-lock.md`](../../../references/plan-lock.md), dispatches phase work based on the slice lifecycle. If the slice is `built` it skips straight to `/spec:merge`; if it is `refined`, it re-runs `/spec:build`.
 
 ## 2. Merge baseline conflict
 

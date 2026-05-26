@@ -10,14 +10,14 @@ description: Drive a reviewed plan through refine → build → merge per entry 
 ## Critical Path
 
 1. Verify `plan.lifecycle == reviewed` via `specrun plan next`; refuse with the literal `specrun plan transition <name> reviewed` hint when the plan is still `pending`.
-2. Acquire the exclusive lock on `.specify/plan.lock` (workspace root in workspace mode) using the `flock`-based shell snippet in [`references/plan-lock.md`](references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
+2. Acquire the exclusive lock on `.specify/plan.lock` (workspace root in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
 3. For each `specrun plan next` result, route the active slice into its workspace slot when `project` is set, then invoke `/spec:refine` (when the slice is fresh), `/spec:build`, and `/spec:merge` — the only writer of per-entry `done`.
 4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`references/stop-conditions.md`](references/stop-conditions.md).
 5. On `drained`, print `drained — run /spec:finalize <name>` and exit — without acquiring the lock when the first `specrun plan next` returns drained; otherwise release the lock after the loop.
 6. Re-entry is implicit: re-running `/spec:execute` after any stop reads `plan.yaml` + slice `.metadata.yaml`, picks up the active `in-progress` entry, and resumes mid-loop — no flags, no resume tokens.
 
 ## Plan lock
-Every skill that touches plan state from outside the loop reuses the shell snippet in [`references/plan-lock.md`](references/plan-lock.md) verbatim. On `plan-lock-busy`, exit immediately with the holder pid read from the lockfile body.
+Every skill that touches plan state from outside the loop reuses the shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md) verbatim. On `plan-lock-busy`, exit immediately with the holder pid read from the lockfile body.
 
 ## Workspace routing
 
@@ -37,6 +37,6 @@ When the slice is already past a phase on re-entry (e.g. `refined` after a build
 ## Guardrails
 
 - **Never write per-entry `done` directly.** `/spec:merge` is the sole writer of per-entry `done`; this skill only sequences the phase skills.
-- **Never skip the lock.** Every shell that runs `specrun plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`references/plan-lock.md`](references/plan-lock.md).
+- **Never skip the lock.** Every shell that runs `specrun plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md).
 - **No `gh pr merge`, no branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
 - Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).

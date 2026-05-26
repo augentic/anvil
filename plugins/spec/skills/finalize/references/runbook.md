@@ -2,21 +2,6 @@
 
 Operational detail for `/spec:finalize`. The SKILL.md keeps only the orientation surface, critical path, closing message, and links; everything procedural lives here.
 
-## Overview
-
-`/spec:finalize` is the third operator step of the default rhythm (`/spec:plan` → `/spec:execute` → `/spec:finalize`). It owns the post-execute tail of a change — drainage check, push, PR observation, and the canonical archive. The body of work is composition only:
-
-| Step | CLI verb | Owner |
-|---|---|---|
-| Pre-flight | none (kebab-case + project-root walk + `plan.yaml` presence) | this skill |
-| Drained check | `specrun plan next` | CLI |
-| Push | `specrun workspace push` | CLI |
-| PR observation | `gh pr view <url> --json state,url,number` | CLI / forge |
-| Finalize | `specrun plan archive` | CLI |
-| Wrap-up summary | none (renders the CLI's outputs) | this skill |
-
-The skill writes nothing to `.specify/` directly. Every state mutation is a shell-out, and PR merges stay operator-owned.
-
 ## Invocation
 
 ```text

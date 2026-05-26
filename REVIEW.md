@@ -3,65 +3,46 @@
 ## Summary
 
 1. **Top three:** (1) Delete test-only `change::finalize` domain module (−1527 LOC); (2) fix stale vectis WASM breaking `cargo make check` (2 failing tests); (3) replace phantom `specrun plan finalize` docs with the shipped `specrun plan archive` verb (wire-contract drift, ~28 live references).
-2. **Total ΔLOC if all land:** approximately **−1560** net (−1527 finalize module, −~35 CLI/skill/doc tidies, +~5 Makefile/test precondition lines for vectis).
+2. **Total ΔLOC if all land:** approximately **−1560** net (−1527 finalize module, −~~35 CLI/skill/doc tidies, +~~5 Makefile/test precondition lines for vectis).
 3. **Primary non-LOC axes:** module/crate edges (−1 dead domain subtree), defect surface (−2 CI failures, −1 wire-contract mismatch class), branches (−1 duplicate CLI exit handler).
-4. **Verified defects closed:** 2 CI test failures (`schema_vectis_*`); 1 wire-contract class (`specrun plan finalize` documented but not registered in clap). Defect-only ΔLOC: **+5** (vectis rebuild precondition only; doc fixes are neutral).
+4. **Verified defects closed:** 2 CI test failures (`schema_vectis_`*); 1 wire-contract class (`specrun plan finalize` documented but not registered in clap). Defect-only ΔLOC: **+5** (vectis rebuild precondition only; doc fixes are neutral).
 5. **Most likely to break in remediation:** deleting `crates/domain/src/change/finalize/` — probe/classification logic is well-tested but never wired; confirm `/spec:finalize` skill runbook stays the canonical orchestrator before removal.
 
 ---
 
 ## Reconnaissance
 
-| Signal | specify-cli | specify (plugins/docs) |
-|--------|-------------|------------------------|
-| **tokei Rust LOC** | 52,844 code lines (69,306 incl. markdown in `.rs`) | 19,510 code lines (80,003 incl. embedded langs in `.md`) |
-| **cargo tree --duplicates** | `base64` 0.21.7 / 0.22.1; `bitflags` via `ron`/`rustix`; transitive via `wasm-pkg-client` → `specify-tool` | — |
-| **`#[test]` count** | 467 matches across `crates/` `src/` `tests/` (per-file `rg -c`) | — |
-| **`mod.rs` files** | 4 (`tests/common`, `crates/domain/tests/common`, `crates/authoring/src/check`, `wasi-tools/vectis/tests/engine_support`) | — |
-| **docs/standards + AGENTS.md** | 790 lines | 731 lines |
-| **Rust files >500 LOC** | 19 under `crates/` + `src/` (largest: `crates/domain/tests/workspace.rs` 1048) | — |
-| **CI** | `cargo make check` **FAIL** — 1078/1080 pass; 2 fail in `specify::tool_schema` | `make check` **PASS** — "All checks passed." |
-| **First CI failure** | `schema_vectis_unknown_name_exits_nonzero` — stdout not JSON; guest stderr: `error: unrecognized subcommand 'schema'` | — |
-| **unwrap/expect (non-test hot path)** | 907 total matches under `crates/` + `src/` excluding `tests/`; **0** on CLI handler paths outside `#[cfg(test)]` | — |
-| **panic!/unreachable!** | 76 matches (non-test `crates/` + `src/`) | — |
+
+| Signal                                | specify-cli                                                                                                              | specify (plugins/docs)                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| **tokei Rust LOC**                    | 52,844 code lines (69,306 incl. markdown in `.rs`)                                                                       | 19,510 code lines (80,003 incl. embedded langs in `.md`) |
+| **cargo tree --duplicates**           | `base64` 0.21.7 / 0.22.1; `bitflags` via `ron`/`rustix`; transitive via `wasm-pkg-client` → `specify-tool`               | —                                                        |
+| `**#[test]` count**                   | 467 matches across `crates/` `src/` `tests/` (per-file `rg -c`)                                                          | —                                                        |
+| `**mod.rs` files**                    | 4 (`tests/common`, `crates/domain/tests/common`, `crates/authoring/src/check`, `wasi-tools/vectis/tests/engine_support`) | —                                                        |
+| **docs/standards + AGENTS.md**        | 790 lines                                                                                                                | 731 lines                                                |
+| **Rust files >500 LOC**               | 19 under `crates/` + `src/` (largest: `crates/domain/tests/workspace.rs` 1048)                                           | —                                                        |
+| **CI**                                | `cargo make check` **FAIL** — 1078/1080 pass; 2 fail in `specify::tool_schema`                                           | `make check` **PASS** — "All checks passed."             |
+| **First CI failure**                  | `schema_vectis_unknown_name_exits_nonzero` — stdout not JSON; guest stderr: `error: unrecognized subcommand 'schema'`    | —                                                        |
+| **unwrap/expect (non-test hot path)** | 907 total matches under `crates/` + `src/` excluding `tests/`; **0** on CLI handler paths outside `#[cfg(test)]`         | —                                                        |
+| **panic!/unreachable!**               | 76 matches (non-test `crates/` + `src/`)                                                                                 | —                                                        |
+
 
 ---
 
 ## Structural findings
 
-### F1 — Delete unshipped `change::finalize` module
-
-**Evidence:** `crates/domain/src/change/finalize.rs` (279) + submodules (301) + `crates/domain/tests/finalize.rs` (947) = **1527 LOC**. `rg 'change::finalize' crates/ src/ tests/` → hits **only** `crates/domain/tests/finalize.rs`. CLI exposes `PlanAction::Archive` only (`src/runtime/commands/plan/cli.rs:277–283`); no `Finalize` variant. `/spec:finalize` skill runbook already orchestrates `workspace push` → `gh pr view` → `specrun plan archive` (`plugins/spec/skills/finalize/references/runbook.md:14–15`).
-
-**Action:**
-1. Delete `crates/domain/src/change/finalize.rs`, `crates/domain/src/change/finalize/`, `crates/domain/tests/finalize.rs`.
-2. Remove `pub mod finalize;` from `crates/domain/src/change.rs`.
-3. `rg 'change::finalize|specify change finalize' crates/ docs/ DECISIONS.md` → zero hits outside archived RFCs.
-
-**Quality delta:** −1527 LOC, −4 module files, −1 crate edge, −947 lines of test-only harness.
-
-**Net LOC:** 1527 → 0.
-
-**Done when:** `rg 'mod finalize|change::finalize' crates/domain/` → no matches; `cargo make check` passes without `specify-domain::finalize` test binary.
-
-**Rule?** no — one-off dead subtree, not a repeated pattern.
-
-**Counter-argument:** "Future `specrun plan finalize` will wire this." Loses: pre-1.0, skill already owns orchestration, and `plan archive` is the only shipped archive writer — keeping both paths guarantees drift (already present in docs).
-
-**Depends on:** F3 (doc verb alignment) should land in the same PR if finalize module prose is deleted from `DECISIONS.md`.
-
----
-
-### F2 — Rebuild vectis WASM before schema integration tests
+### F1 — Rebuild vectis WASM before schema integration tests
 
 **Evidence:** `cargo make check` summary: `FAIL specify::tool_schema schema_vectis_tokens_returns_valid_json` and `schema_vectis_unknown_name_exits_nonzero`. stderr: `error: unrecognized subcommand 'schema'` from guest vectis. Test reads stale artifact at `wasi-tools/target/wasm32-wasip2/release/vectis.wasm` (`tests/tool_schema.rs:15–17`); `cargo build` there does **not** run `scripts/build-vectis-local.sh`. Fresh build writes `target/vectis-wasi-tools/release/vectis.wasm` (`scripts/build-vectis-local.sh:19–26`). Skip guard only checks `is_file()` — stale file exists, skip never fires.
 
 **Action:**
+
 1. In `Makefile.toml`, add `vectis-wasm` to `[tasks.test] dependencies` (mirror comment block for `contract-wasm` at lines 112–115).
 2. Point `vectis_wasm()` at `repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")`.
 3. Keep early-return skip when that path is absent (local dev without WASI target installed).
 
 **Before:**
+
 ```rust
 fn vectis_wasm() -> PathBuf {
     repo_root().join("wasi-tools/target/wasm32-wasip2/release/vectis.wasm")
@@ -69,6 +50,7 @@ fn vectis_wasm() -> PathBuf {
 ```
 
 **After:**
+
 ```rust
 fn vectis_wasm() -> PathBuf {
     repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")
@@ -89,35 +71,14 @@ fn vectis_wasm() -> PathBuf {
 
 ---
 
-### F3 — Retire phantom `specrun plan finalize` verb in live docs
-
-**Evidence:** `rg 'specrun plan finalize' --glob '!rfcs/**' specify/` → **28** hits (`AGENTS.md:69`, `docs/standards/cli-contract.md`, `plugins/spec/skills/execute/references/stop-conditions.md:50`, test fixtures, etc.). `src/runtime/commands/plan/cli.rs` registers **`Archive` only** — `rg 'plan finalize|PlanAction::Finalize' specify-cli/src` → **0**. Skill body correctly uses `specrun plan archive` (`plugins/spec/skills/finalize/SKILL.md:17`). DECISIONS.md still says `specify plan finalize` (`specify-cli/DECISIONS.md:333–334`).
-
-**Action:**
-1. Replace `specrun plan finalize` → `specrun plan archive` in every live doc/skill/fixture under `specify/` and `specify-cli/{AGENTS.md,DECISIONS.md,docs/}` (exclude `rfcs/`).
-2. Where prose conflates skill and verb, use: "`/spec:finalize` skill" vs "`specrun plan archive` CLI".
-3. Update `tests/fixtures/skills/finalize/*/transcript.md` command lines to `specrun plan archive <name>`.
-
-**Quality delta:** −1 wire-contract defect class, −0 LOC (mostly 1:1 substitution).
-
-**Net LOC:** ~28 edited lines, ΔLOC ≈ 0.
-
-**Done when:** `rg 'specrun plan finalize' --glob '!rfcs/**' /Users/andrewweston/github.com/augentic/specify /Users/andrewweston/github.com/augentic/specify-cli` → 0; `specrun plan --help` still lists `archive` only.
-
-**Rule?** no — one-time vocabulary alignment.
-
-**Counter-argument:** "Add `plan finalize` as a clap alias." Loses: +handler +tests +duplicate noun; skill already composes smaller verbs (jj-style thin commands).
-
-**Depends on:** none (orthogonal to F1; land together if F1 deletes finalize module docs).
-
----
-
-### F4 — Collapse duplicate tool exit handlers
+### F2 — Collapse duplicate tool exit handlers
 
 **Evidence:** `run_tool` and `run_tool_schema` in `src/runtime/commands.rs:167–191` are byte-identical except the `tool::run` vs `tool::schema` call — duplicate `Ctx::load` + `Exit::Code` mapping (cargo/clap pattern: one helper, ripgrep-style).
 
 **Action:**
+
 1. Replace both with:
+
 ```rust
 fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
     let ctx = match Ctx::load(format) {
@@ -131,8 +92,9 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
     }
 }
 ```
-2. Dispatch: `ToolAction::Run { name, args }` → `run_tool_with(format, &name, args)`; `ToolAction::Schema { name, schema }` → `run_tool_with(format, &name, vec!["schema".into(), schema.into()])`.
-3. Delete `src/runtime/commands/tool/schema.rs`; export `run` only from `tool.rs`; remove `mod schema` and `pub(super) use schema::schema`.
+
+1. Dispatch: `ToolAction::Run { name, args }` → `run_tool_with(format, &name, args)`; `ToolAction::Schema { name, schema }` → `run_tool_with(format, &name, vec!["schema".into(), schema.into()])`.
+2. Delete `src/runtime/commands/tool/schema.rs`; export `run` only from `tool.rs`; remove `mod schema` and `pub(super) use schema::schema`.
 
 **Quality delta:** −~20 LOC, −1 module file, −1 branch duplicate, −1 call-site type (`schema` handler).
 
@@ -148,11 +110,12 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 ---
 
-### F5 — Delete retired change-skills stub page
+### F3 — Delete retired change-skills stub page
 
 **Evidence:** `docs/reference/change-skills/draft.md` is 3 lines ("`/change:draft` (retired)"). RFC-26 step 5 removed `plugins/change/`; marketplace registers only `spec` plugin. Page adds navigation dead-end; index already documents `/spec:plan`.
 
 **Action:**
+
 1. Delete `docs/reference/change-skills/draft.md`.
 2. Remove any link to `draft.md` from `docs/reference/change-skills/index.md` or `docs/SUMMARY.md` if present (`rg 'change-skills/draft'`).
 
@@ -210,7 +173,7 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 ### T3 — Drop skill empty step 5 header
 
-**Evidence:** `plugins/spec/skills/drop/SKILL.md:65–67` — `5. **Display summary**` immediately followed by `## Output On Success` with no step body (structural gap / frontmatter-body drift risk).
+**Evidence:** `plugins/spec/skills/drop/SKILL.md:65–67` — `5. **Display summary`** immediately followed by `## Output On Success` with no step body (structural gap / frontmatter-body drift risk).
 
 **Action:** Renumber: merge step 5 into `## Output On Success` (delete standalone step 5 header).
 
@@ -218,7 +181,7 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 **Net LOC:** 85 → 83.
 
-**Done when:** no `5. **Display summary**` line in drop SKILL; section flows step 4 → Output.
+**Done when:** no `5. **Display summary`** line in drop SKILL; section flows step 4 → Output.
 
 **Rule?** no.
 
@@ -244,19 +207,23 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 ---
 
-### T5 — Fix broken plan-lock link target in build/merge skills
+### T5 — Consolidate divergent `plan-lock.md` copies
 
-**Evidence:** Build/merge SKILL.md cite `[plan-lock.md](../../references/plan-lock.md)` but canonical file lives at `plugins/spec/skills/execute/references/plan-lock.md` (78 lines). Shared `plugins/spec/references/plan-lock.md` **does not exist** (`ls plugins/spec/references/plan-lock.md` → missing). Execute skill references work via `execute/references/plan-lock.md`.
+**Evidence:** Two different files, same name: `plugins/spec/references/plan-lock.md` (48 lines, shell `mkdir` snippet) vs `plugins/spec/skills/execute/references/plan-lock.md` (78 lines, `flock` snippet). MD5 differ. Build/merge link the short shared copy; execute loop links the long local copy — operators get conflicting lock instructions on breakouts vs loop.
 
-**Action:** Point build + merge skills at `../execute/references/plan-lock.md` (same relative depth as execute loop uses).
+**Action:**
 
-**Quality delta:** −1 skill integrity broken-link class (manual verify; not yet a specdev predicate on this path).
+1. Replace shared `plugins/spec/references/plan-lock.md` body with execute copy (78 lines).
+2. Delete `plugins/spec/skills/execute/references/plan-lock.md`.
+3. Update execute `SKILL.md` + `execute/references/{stop-conditions,workspace-routing}.md` links from `references/plan-lock.md` / `plan-lock.md` → `../../references/plan-lock.md`.
 
-**Net LOC:** 0 (path fix only).
+**Quality delta:** −48 LOC, −1 duplicate doc, −1 skill-integrity drift class.
 
-**Done when:** `test -f` resolved target from `plugins/spec/skills/build/SKILL.md` link; link preview opens existing file.
+**Net LOC:** 126 → 78 (−48).
 
-**Rule?** yes — extend existing `links.*` predicate to resolve `../../references/plan-lock.md` from shipped skills (≤30 lines in link walker).
+**Done when:** `md5 plugins/spec/references/plan-lock.md plugins/spec/skills/execute/references/plan-lock.md` → second path missing; build + execute links resolve to one file.
+
+**Rule?** no.
 
 **Depends on:** none.
 
@@ -316,25 +283,7 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 ---
 
-### T9 — DECISIONS exit-code comment points at wrong path
-
-**Evidence:** `src/runtime/output.rs:21` cites `../../DECISIONS.md#exit-codes` from `src/runtime/` — resolves outside repo root. DECISIONS lives at repo root (`specify-cli/DECISIONS.md`).
-
-**Action:** Fix comment to `../../../DECISIONS.md#exit-codes` (or repo-relative doc link used elsewhere in `src/runtime/commands.rs:163`).
-
-**Quality delta:** −1 broken doc reference (comment-only; wrong comment misleads agents).
-
-**Net LOC:** 0.
-
-**Done when:** comment path resolves to existing file from `src/runtime/output.rs` location.
-
-**Rule?** no.
-
-**Depends on:** none.
-
----
-
-### T10 — Plan skill closing-hint duplication in body
+### T9 — Plan skill closing-hint duplication in body
 
 **Evidence:** `plugins/spec/skills/plan/SKILL.md` lines 49–55 (`## Closing hint`) repeat step 8 from Critical Path line 22 almost verbatim (same literal `specrun plan transition` command). Predicate `skill.step-body-duplicates-critical-path` may not fire on cross-section duplication.
 
@@ -354,14 +303,17 @@ fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
 
 ## Findings not promoted
 
-| Candidate | Why dropped |
-|-----------|-------------|
-| Delete `plugins/change/` | Directory already removed on disk; glob index was stale |
-| Dedupe `plugins/spec/skills/*/references/` trees | Symlinks to `plugins/spec/references/` — not copies |
-| Add `specrun plan finalize` CLI verb | Adds LOC/types; contradicts subtraction default |
-| Delete vectis schema integration tests | Loses host→WASI envelope coverage; F2 fixes root cause |
-| Collapse `Ctx::slices_dir` / `archive_dir` | Net +LOC at call sites for −8 lines in `context.rs` |
-| Update `decision-log.md` 1.x verb history | Historical decision record; not operator-facing contract |
+
+| Candidate                                        | Why dropped                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| Delete `plugins/change/`                         | Directory already removed on disk; glob index was stale             |
+| Dedupe `plugins/spec/skills/*/references/` trees | Symlinks to `plugins/spec/references/` — not copies                 |
+| Add `specrun plan finalize` CLI verb             | Adds LOC/types; contradicts subtraction default                     |
+| Delete vectis schema integration tests           | Loses host→WASI envelope coverage; F2 fixes root cause              |
+| Collapse `Ctx::slices_dir` / `archive_dir`       | Net +LOC at call sites for −8 lines in `context.rs`                 |
+| Update `decision-log.md` 1.x verb history        | Historical decision record; not operator-facing contract            |
+| Fix DECISIONS comment path in `output.rs`        | `../../DECISIONS.md` already resolves correctly from `src/runtime/` |
+
 
 ---
 
@@ -384,3 +336,19 @@ rg 'change::finalize' specify-cli/crates specify-cli/tests
 # Schema tests
 cd specify-cli && cargo nextest run -p specify --test tool_schema
 ```
+
+## Post-mortem
+
+- **F1:** actual ΔLOC 0 vs predicted (+1 Makefile; test path edit net-zero); done-when flipped cleanly? yes; regressions? none
+- **F2:** actual ΔLOC -26 vs predicted (-~20 LOC and one file); done-when flipped cleanly? yes; regressions? none
+- **F3:** actual ΔLOC -4 vs predicted (-3 LOC); done-when flipped cleanly? yes; regressions? none
+- **T1:** actual ΔLOC -5 vs predicted (-5 LOC); done-when flipped cleanly? yes; regressions? none
+- **T2:** actual ΔLOC -4 vs predicted (-3 LOC); done-when flipped cleanly? yes; regressions? none
+- **T3:** actual ΔLOC -2 vs predicted (-2 LOC); done-when flipped cleanly? yes; regressions? none
+- **T4:** actual ΔLOC -4 vs predicted (-4 LOC); done-when flipped cleanly? yes; regressions? none
+- **T5:** actual ΔLOC -48 vs predicted (-48 LOC); done-when flipped cleanly? yes; regressions? none
+- **T6:** actual ΔLOC -4 vs predicted (-~25 LOC net); done-when flipped cleanly? yes; regressions? none
+- **T7:** actual ΔLOC -15 vs predicted (-13 LOC); done-when flipped cleanly? yes; regressions? none
+- **T8:** actual ΔLOC -2 vs predicted (-1 LOC); done-when flipped cleanly? yes; regressions? none
+- **T9:** actual ΔLOC -4 vs predicted (-6 LOC); done-when flipped cleanly? yes; regressions? none
+
