@@ -64,7 +64,7 @@ FAIL: <rule-id>: <message>
 | Rule id prefix | Check module | Topic |
 | --- | --- | --- |
 | `adapter.*` | `check::adapter` | Adapter manifest schema and missing manifests |
-| `links.*` | `check::links` | Markdown links, skill references, skill directives |
+| `links.*` | `check::links`, `check::schema_links` | Markdown links, skill references, skill directives, tool-owned schema URLs |
 | `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
 | `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
 | `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
@@ -253,6 +253,14 @@ frontmatter fields; use canonical severity values (`critical`, `important`,
 shape such as `UNI-001`; add the `## Rule` heading; and coordinate with content
 subagents before reusing or moving ids between adapter-owned namespaces.
 
+### 14. Tool-owned schema link resolution
+
+Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under `adapters/` must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
+
+This enforces RFC-31 D1 (tool-owned schemas): plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
+
+**Common fix:** verify the tool name and schema name in the URL. Use `specrun tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
+
 ## Extending the checks
 
 To add a new check:
@@ -262,7 +270,7 @@ To add a new check:
 3. Add a fixture-based integration test under [`crates/authoring/tests/`](../../crates/authoring/tests/) when the predicate needs regression coverage.
 4. Run `make check` to verify the new check works.
 
-Checks are numbered 1–13 contiguously in this document. New checks should use the next available number (currently 14).
+Checks are numbered 1–14 contiguously in this document. New checks should use the next available number (currently 15).
 
 ## CLI checks
 

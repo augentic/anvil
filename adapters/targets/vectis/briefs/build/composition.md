@@ -9,7 +9,8 @@ Priority order:
 1. `${SLICE_DIR}/specs/<feature>/spec.md` — screen titles, platform-specific behaviour, observable token / asset references.
 2. `${SLICE_DIR}/design.md` — ViewModel variants, per-page view struct fields, `Event` variants, `Route` variants, capability matrix.
 3. Sibling UI inputs (operator-curated, read-only): `${SLICE_DIR}/tokens.yaml` and `${SLICE_DIR}/assets.yaml` when present; otherwise `${PROJECT_DIR}/design-system/tokens.yaml` and `${PROJECT_DIR}/design-system/assets.yaml`. Used to validate token / asset references; never to author requirements.
-4. Optional prior `${SLICE_DIR}/composition.yaml` from a prior `/spec:build` run on the same slice (refining iteration). When present, preserve any operator-applied `# GAP` comments and re-validate against the updated artifacts.
+4. Component catalog (operator-curated, read-only): `${PROJECT_DIR}/.specify/design-system/components.yaml` when present. Each `confirmed` entry names a shared component the build must factor; `rejected` entries are intentionally declined and ignored. When absent, skip all component-factoring logic.
+5. Optional prior `${SLICE_DIR}/composition.yaml` from a prior `/spec:build` run on the same slice (refining iteration). When present, preserve any operator-applied `# GAP` comments and re-validate against the updated artifacts.
 
 ## Regeneration steps
 
@@ -23,9 +24,10 @@ Priority order:
    - `error` on `field` items when `design.md` describes validation for the input.
    - `*-when` conditional keys when the spec describes conditional visual states (`completed items show strikethrough` → `strikethrough-when: completed`).
 5. **States and overlays.** For each screen, identify alternate states from the spec (loading, empty, error, saving) and add entries under `states` with `when:` predicates and replacement `body` content. Identify dialogs / sheets / snackbars and add entries under `overlays` with `kind`, `trigger` (the `Event` name that opens the overlay), optional `title`, and `content`.
-6. **Per-platform overrides.** When `spec.md` platform-specific sections describe materially different layouts (not just behavioural differences), add a `platforms` map with per-platform region overrides on the affected screens.
-7. **Naming proposals.** The names this step proposes — screen slugs, ViewModel variants, field names, event names — must match what `design.md` already documents. When `design.md` is silent, prefer the `design.md` conventions (snake_case fields, PascalCase ViewModel / Event names, kebab-case screen slugs). Never invent names that contradict `design.md`.
-8. **Surface gaps.** Emit YAML comments (`# GAP: ...`) for any of: a spec-described data element with no natural visual representation; a spec-described interaction with no interactive item to wire; structurally recurring groups that look like a missing `component: <slug>` directive; a `bind` value that has no matching field on the per-page view struct described in `design.md`; an `event` value that has no matching variant in `design.md`.
+6. **Apply component catalog.** When `${PROJECT_DIR}/.specify/design-system/components.yaml` is present, read every `confirmed` entry. For each confirmed slug, apply `component: <slug>` on every composition group whose structural skeleton matches the catalog entry's usage in prior slices (baseline `composition.yaml`) or in the current slice's Evidence `component:` directives. When multiple screens share a structurally identical group that matches a confirmed catalog entry, every instance receives the same `component: <slug>` directive — this is the signal downstream shell writers use to emit a shared component file instead of inlining. Ignore `rejected` entries. When the catalog is absent, skip this step entirely (no component factoring).
+7. **Per-platform overrides.** When `spec.md` platform-specific sections describe materially different layouts (not just behavioural differences), add a `platforms` map with per-platform region overrides on the affected screens.
+8. **Naming proposals.** The names this step proposes — screen slugs, ViewModel variants, field names, event names — must match what `design.md` already documents. When `design.md` is silent, prefer the `design.md` conventions (snake_case fields, PascalCase ViewModel / Event names, kebab-case screen slugs). Never invent names that contradict `design.md`.
+9. **Surface gaps.** Emit YAML comments (`# GAP: ...`) for any of: a spec-described data element with no natural visual representation; a spec-described interaction with no interactive item to wire; structurally recurring groups that look like a missing `component: <slug>` directive; a `bind` value that has no matching field on the per-page view struct described in `design.md`; an `event` value that has no matching variant in `design.md`.
 
 Write via the stage → validate → rename sequence used by every Vectis producer:
 
@@ -55,6 +57,7 @@ That single call covers:
 3. **Structural identity** — every `component: <slug>` reused across screens has a structurally identical skeleton (with allowed `*-when`-gated sub-groups, state-replaced bodies, and per-instance `platforms.*` overrides).
 4. **Auto-invoked `tokens` mode** — when a sibling `tokens.yaml` is present, every token reference in `composition.yaml` (and in `assets.yaml` when present) resolves against it.
 5. **Auto-invoked `assets` mode** — when a sibling `assets.yaml` is present, every `image:` / `icon:` / `icon-button:` / `fab:` reference resolves to a declared asset id, every declared asset file exists on disk, and per-platform raster densities / vector exports cover the targeted shell platforms.
+6. **Catalog cross-reference** — when `components.yaml` is discoverable, every `component: <slug>` in `composition.yaml` must resolve to a `confirmed` catalog entry (a `rejected` or missing entry is an error), and every `confirmed` catalog entry should have at least one `component: <slug>` reference in `composition.yaml` (warning, not error).
 
 Validation errors halt shell generation for the affected screens. Warnings are logged and reported but do not block generation. A tool invocation failure (missing sidecar, bad arguments, unreadable preopen) is a WASI tool failure; report separately from host prerequisite failures.
 

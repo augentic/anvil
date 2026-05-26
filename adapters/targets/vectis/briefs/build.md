@@ -4,7 +4,7 @@
 
 1. **`composition.yaml` regeneration.** Synthesis does not write `composition.yaml`. This brief regenerates it from `spec.md` + `design.md` (which already carry every upstream spatial / structural claim synthesis folded in from source adapters) at the start of each build, alongside the code it accompanies. `merge` lands the regenerated file together with the implementation code.
 2. **Inline phase sub-briefs.** The legacy `/vectis:core-writer`, `/vectis:test-writer`, `/vectis:ios-writer`, `/vectis:android-writer`, `/vectis:core-reviewer`, `/vectis:ios-reviewer`, `/vectis:android-reviewer` are retired as separate skills; their bodies now live in phase sub-briefs under [`build/`](build/).
-3. **Operator-curated inputs are read, never authored.** `tokens.yaml` and `assets.yaml` are operator-curated and consumed as build inputs; the brief never invents or restates their contents.
+3. **Operator-curated inputs are read, never authored.** `tokens.yaml`, `assets.yaml`, and `components.yaml` are operator-curated and consumed as build inputs; the brief never invents or restates their contents. The component catalog (`.specify/design-system/components.yaml`) is the third design-system input, joining `tokens.yaml` and `assets.yaml`. When present, the build reads confirmed entries and factors shared component code per in-scope shell tree; when absent, no component factoring occurs.
 
 The Vectis target stays three-capability (`shape` / `build` / `merge`) — there is **no** fourth `refine` slot. Composition regeneration is part of `build`.
 
@@ -21,6 +21,7 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 | `IOS_SHELL_DIR` | `${PROJECT_DIR}/iOS` (only when `ios` is in scope). |
 | `ANDROID_SHELL_DIR` | `${PROJECT_DIR}/Android` (only when `android` is in scope). |
 | `APP_NAME` | The Xcode target / Swift source folder name (derived from `design.md`'s `App` struct name). |
+| `CATALOG_PATH` | `${PROJECT_DIR}/.specify/design-system/components.yaml` when present. Optional — absent means no component factoring. |
 
 ## Platform detection
 
@@ -47,7 +48,7 @@ If the proposal lists `core` only, skip the iOS and Android phase sub-briefs who
 
 Each writer / verifier / reviewer phase sub-brief runs in its **own sub-agent** with a clean context window. `/spec:build` coordinates the sequence but does not execute phase bodies inline.
 
-**Inputs (orchestrator → sub-agent):** `task` (one of `core-writer`, `test-writer`, `ios-writer`, `android-writer`, `core-reviewer`, `ios-reviewer`, `android-reviewer`), `arguments` (standard arguments above), `mode` (`create`, `update`, or `repair` — decided by the orchestrator from on-disk inspection), `skip_verification` (true for shell writers; verification runs in a dedicated sub-agent afterward), `artifact_paths` (paths to `spec.md`, `design.md`, `proposal.md`, regenerated `composition.yaml`, and sibling `tokens.yaml` / `assets.yaml` when present), `orchestrated` (reviewer sub-agents only; signals that the reviewer is running inside a build phase so its `design_findings` should flow into § Consolidate review findings — reviewers always return `design_findings` for the parent to consolidate, never auto-spawn follow-up slices), `extra_context` (phase-specific: error output for `repair` mode, baseline test log for regression checks, prior phase warnings).
+**Inputs (orchestrator → sub-agent):** `task` (one of `core-writer`, `test-writer`, `ios-writer`, `android-writer`, `core-reviewer`, `ios-reviewer`, `android-reviewer`), `arguments` (standard arguments above), `mode` (`create`, `update`, or `repair` — decided by the orchestrator from on-disk inspection), `skip_verification` (true for shell writers; verification runs in a dedicated sub-agent afterward), `artifact_paths` (paths to `spec.md`, `design.md`, `proposal.md`, regenerated `composition.yaml`, sibling `tokens.yaml` / `assets.yaml` when present, and `components.yaml` when `CATALOG_PATH` exists), `orchestrated` (reviewer sub-agents only; signals that the reviewer is running inside a build phase so its `design_findings` should flow into § Consolidate review findings — reviewers always return `design_findings` for the parent to consolidate, never auto-spawn follow-up slices), `extra_context` (phase-specific: error output for `repair` mode, baseline test log for regression checks, prior phase warnings).
 
 **Outputs (sub-agent → orchestrator):** `status` (`success` / `failure` / `pending`), `files_modified`, `verification` (inline result when the sub-agent ran one), `errors`, `warnings`, `design_findings` (reviewers only; empty list when nothing surfaced).
 
@@ -84,4 +85,4 @@ The `build` phase concludes with exactly one of `success` / `failure` / `deferre
 
 - **`composition.yaml` is a build output.** It lives at `${SLICE_DIR}/composition.yaml` after this brief succeeds; the merge brief lands it into the baseline alongside the code. Operator-curated `tokens.yaml` / `assets.yaml` are also read by `merge`; the merge brief re-runs `specrun tool run vectis -- validate composition` against the merged baseline so cross-artifact regressions are caught even when the current slice only touched code.
 - **Do not write `composition.yaml` into `.specify/specs/`.** That is `specrun slice merge`'s job, atomically, alongside the spec / design deltas.
-- **Operator-curated inputs.** `tokens.yaml` and `assets.yaml` updates accompany the slice when the operator edits them; the merge brief promotes those edits into `design-system/tokens.yaml` / `design-system/assets.yaml` (or slice-local equivalents) using the same delta merge path as the spec deltas.
+- **Operator-curated inputs.** `tokens.yaml` and `assets.yaml` updates accompany the slice when the operator edits them; the merge brief promotes those edits into `design-system/tokens.yaml` / `design-system/assets.yaml` (or slice-local equivalents) using the same delta merge path as the spec deltas. The component catalog (`CATALOG_PATH`) is project-level and not slice-local; it is read as-is at build time and does not participate in the merge delta path.
