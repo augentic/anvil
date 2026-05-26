@@ -1,6 +1,6 @@
 # RFC-31: Vectis / Screenshots Loop Hardening
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-5](../done/rfc-5-tooling.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](rfc-29-fan-in-fan-out.md), [RFC-30](rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
+> Status: Accepted - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-5](../done/rfc-5-tooling.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](rfc-29-fan-in-fan-out.md), [RFC-30](rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
 
 ## Abstract
 
