@@ -4,10 +4,10 @@ Output formats for the contracts build format verifiers (`openapi`, `asyncapi`, 
 
 The verifier runs in two modes:
 
-| Surface | Output format | Caller | Trigger |
-|---|---|---|---|
-| Format verifier `single` (default) | Markdown | contracts adapter build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
-| Format verifier `cross-project` | JSON envelope from `specrun tool run contract` | contracts adapter merge brief | Post-merge baseline validation gate |
+| Surface                            | Output format                                  | Caller                                         | Trigger                                        |
+| ---------------------------------- | ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| Format verifier `single` (default) | Markdown                                       | contracts adapter build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
+| Format verifier `cross-project`    | JSON envelope from `specrun tool run contract` | contracts adapter merge brief                  | Post-merge baseline validation gate            |
 
 `single` mode is human-readable; the contracts adapter build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope.
 
@@ -17,13 +17,19 @@ Both modes share the **read-only** contract — the verifier MUST NOT generate, 
 
 The severity vocabulary is shared across formats and modes:
 
-| Severity | Markdown glyph | Meaning |
-|---|---|---|
-| `FAIL` (`error` in YAML) | `✗` | A hard failure. The artefact does not conform; the verify-repair loop must repair before the brief proceeds. |
-| `WARN` (`warning` in YAML) | `⚠` | A finding that requires human review. Common in cross-format compatibility checks where the conservative output is "the wire shape changed in a backwards-incompatible direction; the operator should triage." |
-| `INFO` (`info` in YAML) | `ℹ` | A neutral observation. Common when the consumer's view matches the producer's update or when the consumer has no prior view. |
+| Severity                   | Markdown glyph | Meaning                                                                                                                                                                                                        |
+| -------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FAIL` (`error` in YAML)   | `✗`            | A hard failure. The artefact does not conform; the verify-repair loop must repair before the brief proceeds.                                                                                                   |
+| `WARN` (`warning` in YAML) | `⚠`            | A finding that requires human review. Common in cross-format compatibility checks where the conservative output is "the wire shape changed in a backwards-incompatible direction; the operator should triage." |
+| `INFO` (`info` in YAML)    | `ℹ`            | A neutral observation. Common when the consumer's view matches the producer's update or when the consumer has no prior view.                                                                                   |
 
 Single-mode markdown reports use `FAIL` / `WARN` / `INFO` words plus the corresponding glyph in summary tables. Future consumer-impact reports may use a separate classification vocabulary when a real workflow needs it.
+
+### Relationship to RFC-28 `ReviewFinding`
+
+The verifier's `FAIL` / `WARN` / `INFO` ladder is the report-local severity vocabulary for the markdown surface and is distinct from the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) used by the structured `ReviewFinding` schema (see [RFC-28 §Structured review finding schema](../../../../rfcs/done/rfc-28-standards-contract.md#structured-review-finding-schema)). When a caller re-surfaces a verifier finding as an RFC-28 `ReviewFinding`, the contracts-specific evidence (operation id, schema pointer, channel, message, compatibility classification, `change-kind`, the raw `findings[].detail`) lives inside the structured-finding payload as `evidence.kind: structured` with the contract data under `evidence.data`; the RFC-28 `rule-id`, `target-adapter`, `source-adapter`, `evidence`, `confidence`, and `related-rule-ids` fields use kebab-case on the wire, with `target-adapter: contracts`.
+
+Compatibility classifications like `additive`, `breaking`, `ambiguous`, and `unverifiable` (see [`cross-project-compatibility.md`](./cross-project-compatibility.md)) are **not** the RFC-28 severity enum — they remain contract-domain evidence fields and travel inside `evidence.data` alongside the same closed severity enum on the envelope (RFC-28 §"Relationship to contracts and compatibility").
 
 ## Single-mode output (markdown)
 

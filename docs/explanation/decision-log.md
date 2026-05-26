@@ -32,6 +32,20 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** [RFC-2: Execution](https://github.com/augentic/specify/blob/main/rfcs/done/rfc-2-execution.md), [RFC-9 §2C: Change umbrella](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md)
 
+## Workflow, standards, and artifacts
+
+**Decision:** Specify separates three concerns that must not collapse into one surface:
+
+1. **Workflow** — phase skills and lifecycle CLI verbs (`/spec:plan` … `/spec:finalize`, `specrun slice *`, `specrun plan *`). Mutates `.specify/` state through a closed verb set.
+2. **Artifacts** — slice-local and baseline product intent (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs). Records what to build; does not encode durable engineering policy.
+3. **Engineering standards** — codex rules under `adapters/**/codex/` plus future `specrun codex export` and `specrun review`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
+
+**Authoring standards** (`docs/standards/`, enforced by `specdev check` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
+
+**Rationale:** CI-native standards enforcement (`specrun review`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun review` from being mistaken for a phase skill.
+
+**Source:** [Specify roadmap §Principles](https://github.com/augentic/specify/blob/main/rfcs/roadmap.md#principles), [RFC-28: Engineering Standards — Codex Contract and Findings](https://github.com/augentic/specify/blob/main/rfcs/done/rfc-28-standards-contract.md), [RFC-32: Engineering Standards — Deterministic Enforcement](https://github.com/augentic/specify/blob/main/rfcs/rfc-32-standards-enforcement.md)
+
 ## Plan as a data file, not a configuration
 
 **Decision:** The plan (`plan.yaml`) is an ordered list of changes with status, not a pipeline configuration. There is no planning configuration file. The internal flow of `/change:plan` is fixed.

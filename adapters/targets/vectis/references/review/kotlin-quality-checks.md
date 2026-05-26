@@ -4,7 +4,7 @@ Language-level quality checks for Kotlin/Jetpack Compose code in Crux Android sh
 
 ## KTL-001: Force Unwrap / Non-Null Assertion in Production Code
 
-**Severity**: Warning
+**Severity**: important
 
 No `!!` non-null assertions outside of test files and preview composables. A `!!` on a null value throws `NullPointerException`, crashing the app with no recovery path.
 
@@ -21,7 +21,7 @@ In `initialView()`, view deserialization falls back to `ViewModel.Loading` (no p
 
 ## KTL-002: Debug Output
 
-**Severity**: Warning
+**Severity**: important
 
 No `println()`, `System.out.println()`, or `e.printStackTrace()` calls in production code. Use `android.util.Log` or a structured logging framework.
 
@@ -31,7 +31,7 @@ No `println()`, `System.out.println()`, or `e.printStackTrace()` calls in produc
 
 ## KTL-003: Concurrency Safety
 
-**Severity**: Warning
+**Severity**: important
 
 Kotlin coroutine best practices for Crux Android shells:
 
@@ -50,7 +50,7 @@ Kotlin coroutine best practices for Crux Android shells:
 
 ## KTL-004: State Management
 
-**Severity**: Warning
+**Severity**: important
 
 Compose state management must follow the Crux shell patterns:
 
@@ -70,7 +70,7 @@ Compose state management must follow the Crux shell patterns:
 
 ## KTL-005: Composable Body Complexity
 
-**Severity**: Info
+**Severity**: suggestion
 
 A composable function body should not exceed 60 lines. Complex composables should be decomposed into smaller extracted composables or private helper functions.
 
@@ -80,7 +80,7 @@ A composable function body should not exceed 60 lines. Complex composables shoul
 
 ## KTL-007: Deprecated Compose API Usage
 
-**Severity**: Info
+**Severity**: suggestion
 
 Avoid deprecated Jetpack Compose APIs:
 
@@ -94,7 +94,7 @@ Avoid deprecated Jetpack Compose APIs:
 
 ## KTL-008: Missing Content Description on Icons
 
-**Severity**: Warning
+**Severity**: important
 
 Decorative icons may use `contentDescription = null`, but interactive icons (inside `IconButton`, `FloatingActionButton`, or `Button`) MUST have a non-null `contentDescription` for accessibility.
 
@@ -104,7 +104,7 @@ Decorative icons may use `contentDescription = null`, but interactive icons (ins
 
 ## KTL-009: Hardcoded Strings in UI
 
-**Severity**: Info
+**Severity**: suggestion
 
 User-facing strings should be extracted to string resources for internationalization. For apps intended for localization, use `stringResource(R.string.key)`.
 
@@ -114,7 +114,7 @@ User-facing strings should be extracted to string resources for internationaliza
 
 ## KTL-010: Event Callback Naming
 
-**Severity**: Info
+**Severity**: suggestion
 
 Event callback parameters should be named `onEvent` consistently across all screen composables for uniformity.
 

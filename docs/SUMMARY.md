@@ -35,6 +35,7 @@
 # Understanding Specify
 
 - [Core concepts](explanation/concepts.md)
+- [Workflow, standards, and artifacts](explanation/standards-layer.md)
 - [The layered stack](explanation/layered-stack.md)
 - [Artifacts in depth](explanation/artifacts.md)
 - [Anatomy of an adapter](explanation/adapter-anatomy.md)

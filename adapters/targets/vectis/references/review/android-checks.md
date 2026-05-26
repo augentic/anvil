@@ -4,7 +4,7 @@ Structural and integration checks for Crux Android shells (Kotlin/Jetpack Compos
 
 ## AND-001: Missing Screen Composable for ViewModel Variant
 
-**Severity**: Critical
+**Severity**: critical
 
 Every variant in the Rust `enum ViewModel` that carries a per-page view struct must have a corresponding Kotlin screen composable file in `ui/screens/`.
 
@@ -14,7 +14,7 @@ Every variant in the Rust `enum ViewModel` that carries a per-page view struct m
 
 ## AND-002: Missing Root Composable Branch
 
-**Severity**: Critical
+**Severity**: critical
 
 The root composable `when` expression (in `MainActivity.kt` or `AppView`) must have one branch per ViewModel variant. A missing branch means the shell cannot render that view.
 
@@ -24,7 +24,7 @@ The root composable `when` expression (in `MainActivity.kt` or `AppView`) must h
 
 ## AND-003: Missing Effect Handler
 
-**Severity**: Critical
+**Severity**: critical
 
 Every variant in the Rust `enum Effect` must have a corresponding branch in the `processRequest` `when` expression in `Core.kt`. A missing handler means the core's side-effect request will be silently dropped.
 
@@ -34,7 +34,7 @@ Every variant in the Rust `enum Effect` must have a corresponding branch in the 
 
 ## AND-004: Undispatched Shell-Facing Event
 
-**Severity**: Warning
+**Severity**: important
 
 Every shell-facing Event variant (those without `#[serde(skip)]` or `#[facet(skip)]`) should be dispatched by at least one composable. An undispatched event means a user action described in the spec has no UI trigger.
 
@@ -44,7 +44,7 @@ Every shell-facing Event variant (those without `#[serde(skip)]` or `#[facet(ski
 
 ## AND-005: Hardcoded Color
 
-**Severity**: Warning
+**Severity**: important
 
 Composables should use design system color tokens when available, not hardcoded `Color(...)`, `Color.Red`, or hex values.
 
@@ -61,7 +61,7 @@ Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
 
 ## AND-006: Hardcoded Typography
 
-**Severity**: Warning
+**Severity**: important
 
 Composables should use design system typography tokens or `MaterialTheme.typography` rather than inline `TextStyle(fontSize = ...)`.
 
@@ -73,7 +73,7 @@ Exclude icon sizing in `Icon` composables. Exclude generated theme files under `
 
 ## AND-007: Hardcoded Spacing
 
-**Severity**: Warning
+**Severity**: important
 
 Padding and spacing values should use design system spacing tokens, not magic numbers.
 
@@ -83,7 +83,7 @@ Padding and spacing values should use design system spacing tokens, not magic nu
 
 ## AND-008: Missing Preview
 
-**Severity**: Info
+**Severity**: suggestion
 
 Every screen composable should have a `@Preview` annotated composable with sample data for development and visual testing.
 
@@ -93,7 +93,7 @@ Every screen composable should have a `@Preview` annotated composable with sampl
 
 ## AND-009: Missing Accessibility Description
 
-**Severity**: Warning
+**Severity**: important
 
 Interactive icons (buttons with only an `Icon` composable, no `Text`) must have a `contentDescription` that is not `null`.
 
@@ -103,7 +103,7 @@ Interactive icons (buttons with only an `Icon` composable, no `Text`) must have 
 
 ## AND-010: Route/Navigation Mismatch
 
-**Severity**: Warning
+**Severity**: important
 
 If the Rust core defines a `Route` enum, the Android shell should implement navigation that covers all Route variants.
 
@@ -113,7 +113,7 @@ If the Rust core defines a `Route` enum, the Android shell should implement navi
 
 ## AND-011: Missing UniFFI Library Override
 
-**Severity**: Critical
+**Severity**: critical
 
 An `Application` class is required in **all** Android shells -- not just those using Koin. Its `onCreate()` must set the JNA library override property BEFORE any UniFFI class is loaded. Without this, JNA tries to load `libuniffi_shared.so` but Cargo produces `libshared.so`, causing an `UnsatisfiedLinkError` crash on launch.
 
@@ -123,7 +123,7 @@ An `Application` class is required in **all** Android shells -- not just those u
 
 ## AND-012: Core Missing StateFlow / mutableStateOf
 
-**Severity**: Critical
+**Severity**: critical
 
 The `Core` class must expose the ViewModel via either `mutableStateOf` (simple pattern) or `StateFlow` (full pattern with Koin). Without proper state exposure, Compose cannot observe changes and the UI will not update.
 
@@ -135,7 +135,7 @@ The `Core` class must expose the ViewModel via either `mutableStateOf` (simple p
 
 ## AND-013: Missing Generated Type Imports
 
-**Severity**: Critical
+**Severity**: critical
 
 All hand-written `.kt` files that reference generated types (`Event`, `ViewModel`, `Effect`, `Request`, etc.) MUST have explicit imports from `com.example.app.*`. The generated types live in a different package than the hand-written code.
 
@@ -145,7 +145,7 @@ All hand-written `.kt` files that reference generated types (`Event`, `ViewModel
 
 ## AND-014: Enum Pattern Match Style Mismatch
 
-**Severity**: Warning
+**Severity**: important
 
 Simple Rust enums (no payloads) are generated as Kotlin `enum class` with `UPPER_CASE` values and must be matched with `==` equality. Sealed interface variants (with payloads) must be matched with `is`. Using the wrong pattern causes compile errors or incorrect matching.
 
@@ -155,7 +155,7 @@ Simple Rust enums (no payloads) are generated as Kotlin `enum class` with `UPPER
 
 ## AND-015: Async Effect Handler Missing try/catch or Missing Fallback Resolve
 
-**Severity**: Critical
+**Severity**: critical
 
 All async effect handlers (SSE, Time) that run inside `scope.launch` blocks MUST wrap their body in `try/catch` to prevent unhandled exceptions from crashing the app. The catch block MUST rethrow `CancellationException` to preserve coroutine cancellation semantics. The catch block MUST also call `resolveAndHandleEffects` with a fallback response so the core request ID is never left unresolved (e.g., `SseResponse.Done` for SSE, `TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers). A catch block that only logs leaves the core stalled in a loading or pending state.
 
@@ -174,7 +174,7 @@ catch (e: Exception) {
 
 ## AND-016: Missing SupervisorJob in CoroutineScope
 
-**Severity**: Warning
+**Severity**: important
 
 The `Core` class `CoroutineScope` must use `SupervisorJob()` for fault isolation. Without it, one failing coroutine cancels all sibling coroutines, including unrelated effect handlers.
 
@@ -184,7 +184,7 @@ The `Core` class `CoroutineScope` must use `SupervisorJob()` for fault isolation
 
 ## AND-017: Missing themes.xml Resource
 
-**Severity**: Critical
+**Severity**: critical
 
 `AndroidManifest.xml` references a theme resource (`@style/Theme.{AppName}`). The `res/values/themes.xml` file MUST exist or the build fails with `resource style/Theme.{AppName} not found`.
 
@@ -194,7 +194,7 @@ The `Core` class `CoroutineScope` must use `SupervisorJob()` for fault isolation
 
 ## AND-018: Missing Network Security Config
 
-**Severity**: Warning
+**Severity**: important
 
 Apps with HTTP or SSE effects must include a `network_security_config.xml` referenced in `AndroidManifest.xml`. Without it, Android 9+ blocks cleartext HTTP traffic and the app crashes with `CLEARTEXT communication not permitted` when connecting to development servers.
 
@@ -206,7 +206,7 @@ Apps with HTTP or SSE effects must include a `network_security_config.xml` refer
 
 ## AND-019: ULong Displayed Without Conversion
 
-**Severity**: Warning
+**Severity**: important
 
 `ULong` values from generated types (e.g., count fields mapped from `usize`) must be cast to `Long` when displayed in Compose `Text` composables. Passing `ULong` directly to string interpolation may produce unexpected output.
 
@@ -216,7 +216,7 @@ Apps with HTTP or SSE effects must include a `network_security_config.xml` refer
 
 ## AND-020: Missing @OptIn for Unsigned Types
 
-**Severity**: Warning
+**Severity**: important
 
 Classes that call `.toUByteArray()` require the `@OptIn(ExperimentalUnsignedTypes::class)` annotation. Without it, the build emits warnings or errors depending on compiler settings.
 
@@ -226,7 +226,7 @@ Classes that call `.toUByteArray()` require the `@OptIn(ExperimentalUnsignedType
 
 ## AND-021: Namespace Collision Between Modules
 
-**Severity**: Warning
+**Severity**: important
 
 The `app` module and `shared` module MUST have different `namespace` values in their `build.gradle.kts` files. If they collide, the build emits confusing warnings or fails.
 
@@ -236,7 +236,7 @@ The `app` module and `shared` module MUST have different `namespace` values in t
 
 ## AND-022: Time Effect Clear Handler Missing Job Cancellation
 
-**Severity**: Critical
+**Severity**: critical
 
 If the app handles `Effect.Time`, the `TimeRequest.Clear` branch must actually cancel the coroutine job for any previously scheduled `NotifyAfter` or `NotifyAt` timer. Without job tracking and cancellation, cleared timers continue to fire stale `DurationElapsed` or `InstantArrived` events into the core, producing incorrect state transitions.
 
@@ -252,7 +252,7 @@ Also verify that `NotifyAfter` and `NotifyAt` coroutines clean up their map entr
 
 ## AND-023: CoreFFI Errors Not Surfaced
 
-**Severity**: Critical
+**Severity**: critical
 
 `CoreFfi` methods (`view()`, `update()`, `resolve()`) return `Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Kotlin functions that throw `CoreException`. The exception contains a meaningful `Bridge` error message from the Rust core (deserialization failure, invalid effect ID, etc.). Calling these without `try/catch` lets the exception propagate unhandled and crash the app. Using a generic catch that discards `e.message` loses the diagnostic information needed to debug type mismatches after core regeneration.
 
@@ -279,7 +279,7 @@ In `initialView()` (called during construction), fall back to `ViewModel.Loading
 
 ## AND-024: Render Effect Overwrites View with Loading Fallback
 
-**Severity**: Warning
+**Severity**: important
 
 The `Effect.Render` handler must not fall back to `ViewModel.Loading` (or any other default ViewModel) on deserialization failure. This would overwrite the user's current view (e.g., a task list, a form with entered data) with a loading screen on any transient serialization error. The `initialView()` helper is the only place where a `ViewModel.Loading` fallback is safe, because no prior state exists at construction time.
 
@@ -313,7 +313,7 @@ See the android-writer skill step 8 for the full Core.kt pattern.
 
 ## AND-025: Fill-Max-Size Component Inside Unbounded Scrollable Container
 
-**Severity**: Critical
+**Severity**: critical
 
 Components that internally expand to fill available space (Material 3 `SearchBar` in expanded mode, `BottomSheet` modal content, or any composable applying `fillMaxSize()` / `fillMaxHeight()`) must not be placed inside a `verticalScroll` or `horizontalScroll` container. The scrollable container provides infinite max constraints; the fill-sizing component cannot resolve against infinity, and Compose throws `IllegalStateException` at runtime.
 
@@ -323,7 +323,7 @@ Components that internally expand to fill available space (Material 3 `SearchBar
 
 ## AND-026: Missing Crash Recovery Handler
 
-**Severity**: Warning
+**Severity**: important
 
 The Application class should install a global `Thread.setDefaultUncaughtExceptionHandler` that persists crash info and schedules a restart via `PendingIntent` / `AlarmManager`, then delegates to the previous default handler so crash reporters (e.g. Crashlytics) still run and the system handles process termination normally. The handler must include a crash-loop guard (cooldown window persisted in SharedPreferences) to avoid rapid restart loops when the crash occurs during startup. For Crux apps, the core manages state independently of the shell, so an Activity restart re-creates the Core and re-renders the current ViewModel with minimal user disruption.
 
@@ -333,7 +333,7 @@ The Application class should install a global `Thread.setDefaultUncaughtExceptio
 
 ## AND-027: Recurring Composition Group Without Component Directive
 
-**Severity**: Info
+**Severity**: suggestion
 
 Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the Android shell ends up with parallel inline copies of the same Compose subtree across `ui/screens/*.kt` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `Android/app/src/main/java/com/vectis/<appname>/ui/components/<Slug>.kt` file via `vectis:android-writer`).
 
@@ -342,7 +342,7 @@ Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape
 1. Walk the composition tree collecting every `group` node.
 2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specrun tool run vectis -- validate composition` uses for the §G structural-identity rule).
 3. Group instances by skeleton equality. For any skeleton that appears in ≥2 instances **without** a sibling `component:` directive on any of those instances, flag the recurrence as a candidate component.
-4. Cross-check the Android shell: if the recurring composition group already corresponds to an extracted `@Composable` under `ui/components/`, downgrade severity to **Info** and note the existing extraction; otherwise emit at the canonical Info severity (the operator will promote both surfaces in lockstep).
+4. Cross-check the Android shell: if the recurring composition group already corresponds to an extracted `@Composable` under `ui/components/`, downgrade severity to `optional` and note the existing extraction; otherwise emit at the canonical `suggestion` severity (the operator will promote both surfaces in lockstep).
 
 When `composition.yaml` is absent (composition-less change, or a change that only touches `app.rs` types), skip this check entirely — there is no source-of-truth recurrence signal in shell code alone.
 

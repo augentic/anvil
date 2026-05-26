@@ -15,6 +15,8 @@ See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
+Workflow skills orchestrate phases; **engineering standards** live in codex rules (`adapters/**/codex/`); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
+
 ## Main Inputs
 
 1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
@@ -26,7 +28,7 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **docs/reference/**, **docs/standards/**, and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 

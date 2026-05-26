@@ -9,7 +9,7 @@ The reviewer team divides work across four finding-ID prefixes:
 - `QUA-` — Quality Reviewer (Performance + Code Quality)
 - `UNI-` — Lead's universal-checks pass (gaps not covered by SEC/COR/QUA)
 
-These prefixes are review-local occurrence IDs. They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex IDs. When a finding maps cleanly to a codex rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014`; do not replace the occurrence ID.
+These prefixes are **report-local occurrence ids** — the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex ids. When a finding maps cleanly to a codex rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014` — three-digit codex ids matching `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape. Do not replace the occurrence id with the codex id.
 
 Stable codex sources for this reviewer:
 
@@ -20,7 +20,7 @@ Prefer the most specific matching rule. For example, direct `std::env` access fo
 
 ## Specialist categories
 
-### 1. Security (CRITICAL)
+### 1. Security (critical)
 
 Issues that could lead to data breaches, unauthorized access, or system compromise.
 
@@ -34,9 +34,9 @@ Issues that could lead to data breaches, unauthorized access, or system compromi
 - Unsafe deserialization (`rule_id: UNI-020`)
 - Missing authentication checks (`rule_id: UNI-021`)
 
-**Severity**: CRITICAL (must fix before deployment)
+**Severity**: critical (must fix before deployment)
 
-### 2. Error Handling (CRITICAL)
+### 2. Error Handling (critical)
 
 Missing error handling leads to panics and service outages.
 
@@ -49,9 +49,9 @@ Missing error handling leads to panics and service outages.
 - Generic error messages or unclassified SDK errors (`rule_id: RUST-001`, with `UNI-016` for generic message quality outside SDK classification)
 - Swallowed errors (caught but not logged or returned) (`rule_id: RUST-001`)
 
-**Severity**: CRITICAL (causes runtime panics)
+**Severity**: critical (causes runtime panics)
 
-### 3. WASM Constraints (CRITICAL)
+### 3. WASM Constraints (critical)
 
 Violations prevent compilation or cause runtime errors in WASM.
 
@@ -66,9 +66,9 @@ Violations prevent compilation or cause runtime errors in WASM.
 - Direct blob/document client crates (`mongodb`, `azure_storage_blobs`, `aws-sdk-s3`) -- must use Blobstore/DocumentStore provider (`rule_id: OMNIA-001`)
 - Blocking operations (synchronous I/O) (`rule_id: OMNIA-002`)
 
-**Severity**: CRITICAL (build failure or runtime crash)
+**Severity**: critical (build failure or runtime crash)
 
-### 4. Provider Misuse (HIGH)
+### 4. Provider Misuse (important)
 
 Incorrect use of Omnia SDK providers.
 
@@ -79,9 +79,9 @@ Incorrect use of Omnia SDK providers.
 - Provider methods called incorrectly (`rule_id: OMNIA-001`)
 - Missing error handling on provider calls (`rule_id: RUST-001`)
 
-**Severity**: HIGH (functional bugs)
+**Severity**: important (functional bugs)
 
-### 5. Validation Logic (HIGH)
+### 5. Validation Logic (important)
 
 Missing or misplaced validation causes incorrect behavior.
 
@@ -94,9 +94,9 @@ Missing or misplaced validation causes incorrect behavior.
 - Missing range checks (amount > 0, length <= 1000) (`rule_id: UNI-002`)
 - No business rule validation (`rule_id: UNI-004`)
 
-**Severity**: HIGH (accepts invalid data)
+**Severity**: important (accepts invalid data)
 
-### 6. Performance (MEDIUM)
+### 6. Performance (suggestion)
 
 Inefficient patterns that cause slow response times.
 
@@ -109,9 +109,9 @@ Inefficient patterns that cause slow response times.
 - Unnecessary cloning
 - Synchronous operations in async context (`rule_id: OMNIA-002`)
 
-**Severity**: MEDIUM (performance degradation)
+**Severity**: suggestion (performance degradation)
 
-### 7. Code Quality (LOW)
+### 7. Code Quality (optional)
 
 Readability and maintainability issues.
 
@@ -124,24 +124,24 @@ Readability and maintainability issues.
 - Dead code or unused variables (`rule_id: UNI-013`)
 - Magic numbers (should be named constants) (`rule_id: UNI-014` when they are configuration values)
 
-**Severity**: LOW (technical debt)
+**Severity**: optional (technical debt)
 
 ## Universal checks (`UNI-` prefix)
 
 After all three specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
-| Universal check | Already covered by | Action |
-|---|---|---|
-| UNI-002 Unvalidated input | Validation Logic (COR) | Skip |
-| UNI-003 Serialization failures | Error Handling (COR) | Skip |
-| UNI-006 Race conditions | WASM Constraints (SEC) -- no threads in WASM | Skip |
-| UNI-010 Panics/crashes | Error Handling: unwrap/expect (COR) | Skip |
-| UNI-013 Dead code | Code Quality (QUA) | Skip |
-| UNI-014 Hardcoded config (partial) | Provider Misuse: std::env (COR) | Apply beyond env vars |
-| UNI-018 Hardcoded secrets | Security: hardcoded secrets (SEC) | Skip |
-| UNI-019 Injection vulnerabilities | Security: SQL/command/XSS injection (SEC) | Skip |
-| UNI-020 Unsafe deserialization | Security: unsafe deserialization (SEC) | Skip |
-| UNI-021 Missing auth checks | Security: missing authentication (SEC) | Skip |
+| Universal check                    | Already covered by                           | Action                |
+| ---------------------------------- | -------------------------------------------- | --------------------- |
+| UNI-002 Unvalidated input          | Validation Logic (COR)                       | Skip                  |
+| UNI-003 Serialization failures     | Error Handling (COR)                         | Skip                  |
+| UNI-006 Race conditions            | WASM Constraints (SEC) -- no threads in WASM | Skip                  |
+| UNI-010 Panics/crashes             | Error Handling: unwrap/expect (COR)          | Skip                  |
+| UNI-013 Dead code                  | Code Quality (QUA)                           | Skip                  |
+| UNI-014 Hardcoded config (partial) | Provider Misuse: std::env (COR)              | Apply beyond env vars |
+| UNI-018 Hardcoded secrets          | Security: hardcoded secrets (SEC)            | Skip                  |
+| UNI-019 Injection vulnerabilities  | Security: SQL/command/XSS injection (SEC)    | Skip                  |
+| UNI-020 Unsafe deserialization     | Security: unsafe deserialization (SEC)       | Skip                  |
+| UNI-021 Missing auth checks        | Security: missing authentication (SEC)       | Skip                  |
 
 Apply the remaining checks with these Omnia/WASM-specific heuristics:
 

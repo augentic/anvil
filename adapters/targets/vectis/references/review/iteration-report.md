@@ -6,17 +6,18 @@ Output format for `2g. Produce iteration report`. Use the full template on the f
 ## Code Review Report: {app-name} (iteration {N})
 
 **Review Team**: 3 specialists + 1 antagonist
-**Confidence Level**: [HIGH | MEDIUM | LOW]
+**Confidence Level**: [high | medium | low]
 
 ### Summary
-- Critical: N findings
-- Warning: N findings
-- Info: N findings
+- critical: N findings
+- important: N findings
+- suggestion: N findings
+- optional: N findings
 
-### Critical Findings
+### Critical findings
 
 #### [CRX-001-1] Missing render() after page transition
-- **Rule ID**: VECTIS-002
+- **rule_id**: VECTIS-002
 - **File**: shared/src/app.rs, lines 384-388
 - **Reviewer**: Structural Specialist
 - **Antagonist**: Confirmed
@@ -26,10 +27,13 @@ Output format for `2g. Produce iteration report`. Use the full template on the f
 
 ... (one block per finding, ordered by severity then file)
 
-### Warning Findings
+### Important findings
 ...
 
-### Info Findings
+### Suggestion findings
+...
+
+### Optional findings
 ...
 
 ### Adversarial Review
@@ -70,5 +74,8 @@ Classify each finding as **mechanical** (auto-fixable) or **design-level** (requ
 
 ## Finding-ID conventions
 
-- Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence ID.
+- Occurrence prefixes (`CRX-1`, `LOG-1`, `IOS-1`, `AND-1`, `SWF-1`, `KTL-1`, `INT-1`, `GEN-1`, `UNI-1`, `NEW-1`) are **report-local** counters — the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
+- Codex citations carry a separate `rule_id` field (markdown prose) that maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape. Vectis codex ids match `^VECTIS-[0-9]{3}$` (e.g. `VECTIS-001`, `VECTIS-101`, `VECTIS-201`); shared ids match `^UNI-[0-9]{3}$`. Leave the field out for genuinely unmapped findings rather than inventing a rule id.
+- Severity uses the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence id.
+- Confidence uses the closed RFC-28 enum: `high`, `medium`, `low`. Required when `source: model-assisted`.
 - Every finding carries a `file:line` reference and a verbatim code snippet.

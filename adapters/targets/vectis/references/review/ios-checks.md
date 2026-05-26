@@ -4,7 +4,7 @@ Structural and integration checks for Crux iOS shells. Each check has an ID, des
 
 ## IOS-001: Missing Screen View for ViewModel Variant
 
-**Severity**: Critical
+**Severity**: critical
 
 Every variant in the Rust `enum ViewModel` that carries a per-page view struct must have a corresponding SwiftUI screen view file in `Views/`.
 
@@ -14,7 +14,7 @@ Every variant in the Rust `enum ViewModel` that carries a per-page view struct m
 
 ## IOS-002: Missing ContentView Switch Case
 
-**Severity**: Critical
+**Severity**: critical
 
 The `ContentView` switch on `core.view` must have one case per ViewModel variant. A missing case means the shell cannot render that view.
 
@@ -24,7 +24,7 @@ The `ContentView` switch on `core.view` must have one case per ViewModel variant
 
 ## IOS-003: Missing Effect Handler
 
-**Severity**: Critical
+**Severity**: critical
 
 Every variant in the Rust `enum Effect` must have a corresponding case in the `processEffect` switch in `Core.swift`. A missing handler means the core's side-effect request will be silently dropped.
 
@@ -34,7 +34,7 @@ Every variant in the Rust `enum Effect` must have a corresponding case in the `p
 
 ## IOS-004: Undispatched Shell-Facing Event
 
-**Severity**: Warning
+**Severity**: important
 
 Every shell-facing Event variant (those without `#[serde(skip)]`) should be dispatched by at least one view. An undispatched event means a user action described in the spec has no UI trigger.
 
@@ -44,7 +44,7 @@ Every shell-facing Event variant (those without `#[serde(skip)]`) should be disp
 
 ## IOS-005: Hardcoded Color
 
-**Severity**: Warning
+**Severity**: important
 
 Views should use `VectisColors` tokens, not hardcoded `Color(...)`, `Color.red`, `Color("name")`, or hex values.
 
@@ -60,7 +60,7 @@ Exclude system-provided styles (`.tint`, `.accentColor`) and SF Symbol rendering
 
 ## IOS-006: Hardcoded Typography
 
-**Severity**: Warning
+**Severity**: important
 
 Views should use `VectisTypography` tokens, not inline `.font(.system(size:))`.
 
@@ -72,7 +72,7 @@ Exclude icon sizing (`.font(.system(size:` on `Image` views) which is acceptable
 
 ## IOS-007: Hardcoded Spacing
 
-**Severity**: Warning
+**Severity**: important
 
 Padding and spacing values should use `VectisSpacing` tokens, not magic numbers.
 
@@ -82,7 +82,7 @@ Padding and spacing values should use `VectisSpacing` tokens, not magic numbers.
 
 ## IOS-008: Missing Preview
 
-**Severity**: Info
+**Severity**: suggestion
 
 Every screen view should have a `#Preview` block with sample data for development and visual testing.
 
@@ -92,7 +92,7 @@ Every screen view should have a `#Preview` block with sample data for developmen
 
 ## IOS-009: Missing Accessibility Label
 
-**Severity**: Warning
+**Severity**: important
 
 Interactive icons (buttons with only an `Image` label, no `Text`) must have an `accessibilityLabel`.
 
@@ -102,7 +102,7 @@ Interactive icons (buttons with only an `Image` label, no `Text`) must have an `
 
 ## IOS-010: Route/Navigation Mismatch
 
-**Severity**: Warning
+**Severity**: important
 
 If the Rust core defines a `Route` enum, the iOS shell should implement navigation that covers all Route variants.
 
@@ -112,7 +112,7 @@ If the Rust core defines a `Route` enum, the iOS shell should implement navigati
 
 ## IOS-011: Core Not @MainActor
 
-**Severity**: Critical
+**Severity**: critical
 
 The `Core` class must be annotated with `@MainActor` to ensure all UI updates happen on the main thread.
 
@@ -122,7 +122,7 @@ The `Core` class must be annotated with `@MainActor` to ensure all UI updates ha
 
 ## IOS-012: Core Not ObservableObject
 
-**Severity**: Critical
+**Severity**: critical
 
 The `Core` class must conform to `ObservableObject` and publish the view model via `@Published var view: ViewModel`.
 
@@ -132,7 +132,7 @@ The `Core` class must conform to `ObservableObject` and publish the view model v
 
 ## IOS-013: Force Try in Core.swift
 
-**Severity**: Warning
+**Severity**: important
 
 `Core.swift` must not use `try!` for bincode serialization. FFI type mismatches (e.g., after regenerating the core without updating Swift types) should degrade gracefully rather than crash the app.
 
@@ -142,7 +142,7 @@ The `Core` class must conform to `ObservableObject` and publish the view model v
 
 ## IOS-014: Bare Task in Core.swift
 
-**Severity**: Warning
+**Severity**: important
 
 Async effect handlers in `Core.swift` must use `Task { @MainActor in ... }`, not bare `Task { ... }`. While Swift 6 inherits actor isolation for `Task.init` in `@MainActor` context, the explicit annotation is required for clarity, cross-version safety, and resilience to refactoring.
 
@@ -152,7 +152,7 @@ Async effect handlers in `Core.swift` must use `Task { @MainActor in ... }`, not
 
 ## IOS-015: CoreFFI Errors Not Surfaced
 
-**Severity**: Critical
+**Severity**: critical
 
 `CoreFFI` methods (`view()`, `update()`, `resolve()`) return `Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Swift `throws`. Calling these without `try` is a compile error. Unlike bincode serialization (IOS-013), CoreFFI calls throw `CoreError` which contains a meaningful `Bridge` message from the Rust core. Using `try?` discards this message. All CoreFFI calls must use `do/catch` with `\(error)` interpolated into `assertionFailure` so the underlying reason (deserialization failure, invalid effect ID, etc.) is visible in debug builds.
 
@@ -162,7 +162,7 @@ Async effect handlers in `Core.swift` must use `Task { @MainActor in ... }`, not
 
 ## IOS-016: Render Effect Overwrites View with Loading Fallback
 
-**Severity**: Warning
+**Severity**: important
 
 The `.render` effect handler must not use `deserializeView` or any pattern that falls back to `.loading` on failure. This would overwrite the user's current view (e.g., a task list) with a loading screen on any transient serialization error. The `deserializeView` helper is only appropriate in `init()` where no prior state exists.
 
@@ -188,7 +188,7 @@ See `references/crux-ios-shell-pattern.md`.
 
 ## IOS-017: Interactive Controls Inside ScrollView in NavigationStack
 
-**Severity**: Warning
+**Severity**: important
 
 `TextField` and small `Button` elements inside a `ScrollView` that sits within a `NavigationStack` suffer from tap suppression. The underlying `UIScrollView` sets `delaysContentTouches = true`, which delays touch delivery to non-`UIButton` views. Users experience this as controls requiring a long press or double tap to activate.
 
@@ -198,7 +198,7 @@ See `references/crux-ios-shell-pattern.md`.
 
 ## IOS-018: Nested ScrollViews with Tappable Content
 
-**Severity**: Warning
+**Severity**: important
 
 A horizontal `ScrollView` (e.g. a chip row or filter bar) nested inside a vertical `ScrollView` creates compound gesture recognizer conflicts. The inner and outer `UIScrollView` pan gestures compete, causing missed taps on elements within the inner scroll and erratic scroll behavior.
 
@@ -208,7 +208,7 @@ A horizontal `ScrollView` (e.g. a chip row or filter bar) nested inside a vertic
 
 ## IOS-019: Recurring Composition Group Without Component Directive
 
-**Severity**: Info
+**Severity**: suggestion
 
 Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the iOS shell ends up with parallel inline copies of the same SwiftUI subtree across `Views/*.swift` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `iOS/<App>/Components/<Slug>.swift` file via `vectis:ios-writer`).
 
@@ -217,7 +217,7 @@ Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape
 1. Walk the composition tree collecting every `group` node.
 2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specrun tool run vectis -- validate composition` uses for the §G structural-identity rule).
 3. Group instances by skeleton equality. For any skeleton that appears in ≥2 instances **without** a sibling `component:` directive on any of those instances, flag the recurrence as a candidate component.
-4. Cross-check the iOS shell: if the recurring composition group already corresponds to an extracted SwiftUI sub-view under `iOS/<App>/Components/`, downgrade severity to **Info** and note the existing extraction; otherwise emit at the canonical Info severity (the operator will promote both surfaces in lockstep).
+4. Cross-check the iOS shell: if the recurring composition group already corresponds to an extracted SwiftUI sub-view under `iOS/<App>/Components/`, downgrade severity to `optional` and note the existing extraction; otherwise emit at the canonical `suggestion` severity (the operator will promote both surfaces in lockstep).
 
 When `composition.yaml` is absent (composition-less change, or a change that only touches `app.rs` types), skip this check entirely — there is no source-of-truth recurrence signal in shell code alone.
 

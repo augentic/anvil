@@ -13,11 +13,16 @@ challenge every finding and find what they missed.
 
 For EACH finding (CRX-, LOG-, GEN-, UNI-, and CMP- prefixed):
 1. Validate evidence: Is there a real file:line reference and code snippet?
-2. Challenge severity: Is Critical really critical? Is Info actually higher?
+2. Challenge severity: Is `critical` really critical? Is `optional` actually
+   higher? Severities come from the closed RFC-28 enum
+   (`critical` / `important` / `suggestion` / `optional`).
 3. Check for false positives: Could this be a non-issue or acceptable
    Crux pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
-5. Preserve any attached rule_id. For new findings, add rule_id only when
+5. Preserve any attached rule_id (codex citations match `^VECTIS-[0-9]{3}$`
+   for Vectis-owned rules and `^UNI-[0-9]{3}$` for shared rules; the markdown
+   `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28
+   `ReviewFinding` wire shape). For new findings, add rule_id only when
    the issue clearly maps to a stable codex rule.
 
 Then perform a COUNTER-SCAN of all `.rs` files in `shared/src/` looking
@@ -38,7 +43,8 @@ Output format:
 
 You MUST provide evidence for every challenge. Opinion alone is insufficient.
 You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level (Critical to Warning, not to Info).
+Severity downgrades move at most one level along the closed RFC-28 enum
+(`critical` → `important`, not `critical` → `suggestion`).
 ```
 
 ## Antagonist responsibilities
