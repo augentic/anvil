@@ -138,6 +138,26 @@ Extractors may run only under `scan_profile: framework` (marketplace, skill grap
 
 Add `specify-cli/schemas/review/workspace-model.schema.json` and matching DTOs in `specify-domain` (or a small `specify-review` crate if dependency direction requires it). The schema documents v1 fact families; it does not attempt to encode every future extractor.
 
+#### Persistence and query (v1 decision)
+
+WorkspaceModel is an internal execution artifact in v1: produced fresh per `specrun review` invocation, kept in memory, optionally dumped to stdout via `--dump-model` for debugging. It is **not** persisted under `.specify/` by default and is **not** an operator-facing Specify artifact.
+
+Two adjacent surfaces are deliberately *reserved* (not implemented) so the public surface does not have to widen when consumers downstream of `specrun review` need the same extract:
+
+1. **Persistent cache path.** `.specify/cache/workspace-model.v1.json` is reserved as the future v2 persistence location. v1 does not write it. The `version: 1` discriminant on WorkspaceModel pins the model shape exactly as it pins persisted-file shapes elsewhere in Specify; promoting v1 to a persisted cache is a separate RFC, not a re-architecture.
+2. **Read-only query verb.** `specrun model query <selector>` is reserved as a future read-only CLI verb so [roadmap RM-13](roadmap.md#rm-13-read-oriented-specify-mcp-server) (read-oriented MCP) and [roadmap RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (catalogue ecosystem) consumers do not fork a second extractor a year from now. v1 ships `--dump-model` only; the named query verb lands when one of those consumers needs it.
+
+Both reservations are shape-level: the cache filename and the CLI verb appear in the v1 schema and `specrun --help` documentation as "reserved" entries with no implementation behind them. Persistence and query land together or not at all, in their own RFC.
+
+#### Performance — parallelism and incrementality
+
+The indexer is the hot path: every `specrun review` invocation walks a consumer project tree, parses frontmatter, scans links, and (eventually) hashes files. v1 makes two related decisions:
+
+- **Parallelism.** File walks and per-file extractors (frontmatter, markdown sections, regex scans) run in parallel via `rayon` from day one. Order-dependent steps (cross-file edges, marketplace graph, codex-rule discovery) run sequentially after the parallel pass. Output ordering is byte-stable regardless of thread scheduling because entity and edge collections are sorted before envelope emission per §"Stability".
+- **Incrementality (reserved).** v1 re-extracts the full WorkspaceModel on every invocation. `.specify/cache/index.v1.json` is reserved for a per-file content-hash cache (path → sha256 → cached facts) so v2 can skip unchanged files. v1 does not write the file; consumers MUST NOT depend on it existing. The cache and the WorkspaceModel-persistence cache above share the same `version` discriminant and land together in their follow-on RFC, because invalidating one without the other produces silent drift.
+
+Sequential v1 is acceptable as a fallback only if the parallel implementation cannot meet RFC-5's full-scan budget on CI fixtures; in that case it is a v1 implementation choice, not a contract.
+
 ### Deterministic hints
 
 RFC-28 defines the authoring surface:
@@ -281,15 +301,27 @@ Prefer `specify-domain` for shared types and parsers already used by RFC-28. Add
 
 ```text
 specify-domain (or specify-review)
-├── codex/          # RFC-28: parse, resolve, export DTOs
+├── codex/              # RFC-28: parse, resolve, export DTOs
 ├── review/
-│   ├── finding.rs  # RFC-28: ReviewFinding, envelope
-│   ├── model.rs    # RFC-32: WorkspaceModel DTOs
-│   ├── index/      # RFC-32: profile-specific extractors
-│   └── eval/       # RFC-32: hint interpreter
+│   ├── finding.rs      # RFC-28: ReviewFinding, envelope
+│   ├── model.rs        # RFC-32: WorkspaceModel DTOs
+│   ├── index/          # RFC-32: profile-specific extractors
+│   ├── eval/           # RFC-32: hint interpreter
+│   └── diagnostics/    # RFC-32: shared formatters (pretty, github, compact, json)
 ```
 
 Framework repo `tooling/` depends on `specify-domain` for parsers (already true per RFC-5). Phase 3 Option B may add a thin `tooling` subcommand `tooling review` that runs the framework profile locally — **not** required for Phase 2.
+
+#### Diagnostic formatters
+
+`ReviewFinding` rendering lives in `specify-domain::review::diagnostics` so `specrun review` (Phase 2) and `specdev check --format json` (RFC-28 Phase 3) share one set of formatters and cannot drift. v1 implements:
+
+- `pretty` — terminal output with severity colour and source location;
+- `github` — `::error file=…,line=…,title=…::…` workflow annotation format;
+- `compact` — one finding per line, suitable for `grep` and PR-bot consumption;
+- `json` — the envelope shape RFC-28 defines verbatim.
+
+Heavy presentation dependencies (e.g. syntax highlighting, full markdown rendering) do not belong in `specify-domain` and are out of scope for v1; if they land later they live behind a feature flag or in a separate `specify-diagnostics` crate that depends on `specify-domain`, not the other way around. The `specdev` binary imports `diagnostics` directly for Phase 3; it does not duplicate formatter code at the binary boundary.
 
 ## Implementation Plan
 
@@ -345,11 +377,11 @@ Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](d
 ## Open Questions
 
 1. Should `FRAME-`* live in `tooling/rules/` or `adapters/shared/codex/framework/`? Current preference: `tooling/rules/` to keep consumer codex trees clean; export treats them as `origin: framework`.
-2. Should the indexer run extractors in parallel (rayon) from day one? Current preference: yes for file walks; sequential is acceptable for v1 if fixture runtime stays under RFC-5's full-scan budget on CI.
-3. Should `specrun review` evaluate reserved hints as no-ops or hard-fail? Current preference: no-op with a single summary warning when `--verbose`; hard-fail only with `--strict-hints`.
-4. Where should shared diagnostic formatters live — `specify-domain`, a new `specify-diagnostics` crate, or duplicated thin wrappers? Current preference: `specify-domain` until formatters pull in heavy deps.
-5. Is Phase 3 Option B worth automating from existing `Check` impls, or hand-authored FRAME rules only? Current preference: hand-authored only; migration is deliberate.
-6. Should `specdev check::codex` warn (or error) when an authored rule under `adapters/{sources,targets}/<name>/codex/` redundantly declares `applicability.adapters` for the directory's owning adapter? RFC-28 §Applicability notes no first-party rule populates `applicability` today, so there is nothing to lint yet. Current preference: defer the predicate until the first redundant declaration appears; the inference rule is "file-location implies adapter, so omit `applicability.adapters` unless narrowing further (e.g. to a specific version)." Belongs in `specify-authoring`, not the runtime resolver.
+2. Should `specrun review` evaluate reserved hints as no-ops or hard-fail? Current preference: no-op with a single summary warning when `--verbose`; hard-fail only with `--strict-hints`.
+3. Is Phase 3 Option B worth automating from existing `Check` impls, or hand-authored FRAME rules only? Current preference: hand-authored only; migration is deliberate.
+4. Should `specdev check::codex` warn (or error) when an authored rule under `adapters/{sources,targets}/<name>/codex/` redundantly declares `applicability.adapters` for the directory's owning adapter? RFC-28 §Applicability notes no first-party rule populates `applicability` today, so there is nothing to lint yet. Current preference: defer the predicate until the first redundant declaration appears; the inference rule is "file-location implies adapter, so omit `applicability.adapters` unless narrowing further (e.g. to a specific version)." Belongs in `specify-authoring`, not the runtime resolver.
+
+> Resolved during drafting and moved into the body: indexer parallelism + incrementality (§"Performance — parallelism and incrementality"); shared diagnostic formatter location (§"Diagnostic formatters"); WorkspaceModel persistence and query surface (§"Persistence and query (v1 decision)").
 
 ## References
 

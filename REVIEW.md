@@ -1,284 +1,79 @@
-# Code & Skill Review - May 2026
+# Code & Skill Review - May 2026 (pass 2)
 
-1. Top three: F1 delete the retired `change finalize` domain island; F2 delete the ignored retired cross-repo integration test; F3 replace the phantom `specrun plan finalize` contract with shipped `specrun plan archive`.
-2. Total delta if all land: about -2,150 LOC.
-3. Primary non-LOC axes moved: fewer dead module edges, fewer stale CLI-contract references, fewer branches/types in the first-party tool check, and fewer operator-path panic sites.
-4. Top verified defects closed: `plan finalize` wire-contract drift; finalize runbook claims guards `plan archive` does not implement; two operator-path panic sites. Defect-only positive LOC: +0.
-5. Most likely to break in remediation: F3, because fixture transcripts and reference docs must be updated together or `make check` will catch link/golden drift.
+1. Top three: F1 move `crates/authoring/src/check/mod.rs` to `check.rs` (closes documented-standard violation); F2 revert the freshly-expanded hand-rolled hex encoder in `codex_schema_drift.rs`; F3 drop the `cargo make file-size` claims that name a task no `Makefile.toml` declares.
+2. Total delta if all land: about -19 LOC.
+3. Primary non-LOC axes moved: -1 forbidden `mod.rs`, -1 wire-contract doc drift, -1 operator-path `unreachable!`, -2 single-call wrapper functions, -1 hand-rolled formatting idiom.
+4. Top verified defects closed: `crates/authoring/src/check/mod.rs` violates `docs/standards/coding-standards.md` "no `mod.rs` outside `tests/`"; `AGENTS.md` and `coding-standards.md` advertise a non-existent `cargo make file-size` task; `unreachable!` on the `specrun codex export` handler path. Net ΔLOC from defect-only findings: about -1.
+5. Most likely to break in remediation: F4, because `collect_errors_for_test` is `pub` and the rename has to land in `crates/authoring/src/check/scenarios.rs` and the wrapper deletion in `schema.rs` in the same commit or one branch fails to compile.
 
 ## Reconnaissance
 
-- `tokei`: `specify` has 87,127 total lines, including 53,635 Markdown lines; `specify-cli` has 83,648 total lines, including 60,412 Rust lines.
-- `cargo tree --duplicates` in `specify-cli`: duplicates exist, led by transitive `base64` 0.21.7 / 0.22.1, multiple `wasmparser` lines, `thiserror` 1.0.69 / 2.0.18, and `reqwest` 0.12.28 / 0.13.3. No Cargo-edge finding qualified because the duplicates are upstream through `wasm-pkg-client` / Wasmtime.
-- `rg -c '^#\[test\]' crates/ src/ tests/`: 467 total matches by summing per-file counts; `tests/cross_repo.rs:1` is ignored and retired.
-- `rg --files -g '**/mod.rs'`: 4 files: `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/authoring/src/check/mod.rs`, `crates/domain/tests/common/mod.rs`.
-- `wc -l docs/standards/*.md AGENTS.md` across both repos: 1,521 total lines (`specify`: 731; `specify-cli`: 790).
-- Files over 500 lines under `crates/` and `src/`: 21, largest are `crates/domain/tests/workspace.rs` 1048, `crates/domain/tests/finalize.rs` 947, `crates/domain/src/discovery/document.rs` 890, `crates/domain/src/codex/resolve.rs` 829.
-- `make checks` in `specify`: no such target (`make: *** No rule to make target 'checks'. Stop.`). Nearest real target `make check`: pass, `All checks passed.`
-- `cargo make check` in `specify-cli`: pass, `Build Done in 279.53 seconds.`
-- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/`: hot files include `crates/tool/src/hash.rs:1`, `crates/authoring/src/check/tools.rs:1`, and many `#[cfg(test)]` modules inside `src/` files.
-- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/`: hot files include `crates/authoring/src/check/tools.rs:1`; most other hits are in `#[cfg(test)]` modules or integration tests.
+- `tokei` (this repo): 605 files, 87,103 lines, 53,605 Markdown lines, 39,892 comment lines. `tokei` (`specify-cli`): 588 files, 81,505 lines, 51,050 Rust code lines, 1,270 Rust comment lines.
+- `cargo tree --duplicates` (`specify-cli`): duplicates exist (`base64` 0.21.7 + 0.22.1, `bitflags` 1.x + 2.11.1, `thiserror` 1 + 2 implied via transitive crates), all reachable only through `wasmtime` / `warg-*` / `wasm-pkg-client` / `oci-client`. No Cargo-edge finding qualified.
+- `rg -c '^#\[test\]' crates/ src/ tests/`: 326 matches (sum of per-file counts), largest test files `tests/plan_orchestrate.rs:72`, `crates/domain/src/change/plan/core/transitions.rs`, `crates/domain/src/codex/resolve/sort.rs`.
+- `rg --files -g '**/mod.rs'` (`specify-cli`): 4 hits — `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/domain/tests/common/mod.rs` (all test helpers, allowed) and `crates/authoring/src/check/mod.rs` (forbidden — see F1).
+- `wc -l docs/standards/*.md AGENTS.md` across both repos: 1,521 total (`specify`: 731; `specify-cli`: 790).
+- Files over 500 lines under `crates/` and `src/` (`specify-cli`): 21. Largest non-test: `crates/domain/src/discovery/document.rs` 890, `crates/domain/src/codex/resolve.rs` 829, `crates/domain/src/codex.rs` 795, `crates/domain/src/adapter/core.rs` 728, `crates/authoring/src/check/skill_body.rs` 702.
+- `make check` (`specify`): `All checks passed.` — no skill-integrity predicate currently fails.
+- `cargo clippy --workspace --all-targets -- -D warnings` (`specify-cli`): clean — workspace builds with `-D warnings`.
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' --glob '!**/tests.rs' crates/ src/`: 905 hits in total, but virtually all are inside `#[cfg(test)]` modules; non-test hot spots after manual triage are limited to four sites flagged in the findings below.
+- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' --glob '!**/tests.rs' crates/ src/`: 76 total. Non-test sites: `src/runtime/commands/codex/export.rs:55` (`unreachable!` on a CLI handler path — see T1) and `crates/authoring/src/check/tools.rs:92` (regex compile panic on a `specdev check` path; static patterns, unreachable in practice).
+- `cargo make file-size`: `Task "file-size" not found, exit code 404` (see F3).
 
 ## Structural Findings
 
-### F1 - Delete Dead Finalize Module
+### F1 - Move check/mod.rs to check.rs
 
-**Evidence:** `wc -l crates/domain/src/change/finalize.rs crates/domain/src/change/finalize/*.rs crates/domain/tests/finalize.rs` reports 1,527 lines. `src/runtime/cli.rs` has no `Commands::Change`; `src/runtime/commands/plan/cli.rs` exposes `PlanAction::Archive`, not `Finalize`. Current Rust refs are only the module export and its own tests:
+**Evidence:** `crates/authoring/src/check/mod.rs` is the only non-`tests/` `mod.rs` in either workspace:
 
 ```text
-rg -n 'change::finalize|change finalize|mod finalize|pub mod finalize|tests/finalize' crates src tests --glob '*.rs' | wc -l
-       9
+$ find . -name 'mod.rs' -path '*/src/*' -not -path './target/*'
+./crates/authoring/src/check/mod.rs
 ```
+
+`docs/standards/coding-standards.md:203` is normative:
+
+```text
+**Do not add `mod.rs` files** — `<module>/mod.rs` is the legacy 2018-edition pattern and is forbidden in workspace crates. The single allowed exception is `tests/<helper>/mod.rs`...
+```
+
+`AGENTS.md:52` repeats the rule in the documentation map (`module layout (<module>.rs + <module>/, no mod.rs outside tests/)`). The previous review (`REVIEW.md` "Findings Not Promoted") observed the file but treated it as "the established authoring check module"; the standard is explicit that there is no per-file grandfathering.
 
 **Action:**
-1. Delete `crates/domain/src/change/finalize.rs`.
-2. Delete `crates/domain/src/change/finalize/{archive,probe,summary}.rs`.
-3. Delete `crates/domain/tests/finalize.rs`.
-4. In `crates/domain/src/change.rs`, delete `pub mod finalize;` and trim the module doc from "closure verb" to the plan-driven change model.
 
-Before:
+1. `git mv crates/authoring/src/check/mod.rs crates/authoring/src/check.rs`.
+2. No content changes — `pub mod check;` in `crates/authoring/src/lib.rs` resolves `check.rs` and the submodules (`adapter.rs`, `agent_teams.rs`, …) continue to live under `crates/authoring/src/check/`.
 
-```rust
-pub mod finalize;
-mod plan;
-```
+**Quality delta:** ΔLOC 0, -1 forbidden module-layout violation, -1 standing exception the previous reviewer parked.
 
-After:
+**Net LOC:** 105 current → 105 proposed (file relocated, no content change).
 
-```rust
-mod plan;
-```
+**Done when:** `find crates src -name 'mod.rs'` returns no results and `cargo make check` passes in `specify-cli`.
 
-**Quality delta:** -1,528 LOC, -1 module subtree, -many public DTOs/enums, -many branch paths, -28 tests for an unwired verb.
+**Rule?** no — the standard is already documented; no new predicate is justified for a one-off site.
 
-**Net LOC:** 1,528 current -> 0 proposed.
-
-**Done when:** `test ! -e crates/domain/src/change/finalize.rs && test ! -d crates/domain/src/change/finalize && test ! -f crates/domain/tests/finalize.rs && rg 'pub mod finalize|change::finalize' crates src tests` returns no matches.
-
-**Rule?** no.
-
-**Counter-argument:** The module may be useful when `plan finalize` returns. It loses because pre-1.0 code should track shipped surface, and this one is not reachable from clap.
+**Counter-argument:** Moving the file makes `git blame` for a 105-line module pay one indirection. It loses because the documented standard is unconditional and `check/mod.rs` is the only outlier; the documented exception is `tests/`, full stop.
 
 **Depends on:** none.
 
-### F2 - Delete Ignored Retired Cross-Repo Test
+### F2 - Revert Hand-Rolled Hex Encoder
 
-**Evidence:** `wc -l tests/cross_repo.rs` reports 586 lines. The sole test is ignored with a retired-verb reason and still shells out to a nonexistent `change finalize` command:
-
-```text
-310:#[ignore = "Wave 1.1: drives the retired `change draft` + `change finalize` verbs; \
-560:        envs.command().args(["--format", "json", "change", "finalize"]).assert().success();
-583:    let second = envs.command().args(["--format", "json", "change", "finalize"]).assert().failure();
-```
-
-**Action:** Delete `tests/cross_repo.rs`. Keep the manual scenario pack under `specify/tests/cross-repo/`; it is the live acceptance surface.
-
-**Quality delta:** -586 LOC, -1 ignored test, -1 stale CLI branch surface, -1 false signal in the test count.
-
-**Net LOC:** 586 current -> 0 proposed.
-
-**Done when:** `test ! -f tests/cross_repo.rs && rg 'change\", \"finalize|rm01_replays_cross_repo' tests crates src` returns no matches.
-
-**Rule?** no.
-
-**Counter-argument:** Ignored tests can document intended future behavior. It loses because this one documents a retired command, while the manual scenario pack already documents the current workflow.
-
-**Depends on:** none.
-
-### F3 - Replace Phantom Plan Finalize
-
-**Evidence:** Current non-RFC docs still advertise `plan finalize` 38 times:
-
-```text
-rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md' | wc -l
-      38
-```
-
-The shipped clap surface has `PlanAction::Archive` only:
+**Evidence:** `crates/authoring/src/check/codex_schema_drift.rs:108-117`:
 
 ```rust
-Archive {
-    #[arg(long)]
-    force: bool,
+fn sha256_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    Sha256::digest(bytes)
+        .iter()
+        .copied()
+        .flat_map(|byte| [HEX[usize::from(byte >> 4)], HEX[usize::from(byte & 0x0f)]])
+        .map(char::from)
+        .collect()
 }
 ```
 
-`DECISIONS.md` also names the wrong verb at lines 333-336: "`specify plan finalize` moves `change.md` + `plan.yaml`...".
-
-**Action:**
-1. In live docs, standards, fixtures, and `DECISIONS.md`, replace `specrun plan finalize` / `specify plan finalize` with `specrun plan archive` / `specify plan archive`.
-2. Where text says finalize verifies PR state, assign that behavior to `/spec:finalize` and `gh pr view`, not the archive verb.
-3. Leave historical RFC references alone.
-
-Before:
-
-```md
-specrun plan finalize
-```
-
-After:
-
-```md
-specrun plan archive
-```
-
-**Quality delta:** -1 wire-contract defect, -38 stale references, -call-site confusion. LOC is expected to stay flat; defect closure justifies the trade.
-
-**Net LOC:** 38 stale refs current -> 0 stale refs proposed; about 0 LOC delta.
-
-**Done when:** `rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md'` returns no matches.
-
-**Rule?** yes, only if the existing link checker can be extended in under 30 lines to compare documented `specrun <group> <verb>` forms against clap help. Otherwise no new predicate.
-
-**Counter-argument:** A future `plan finalize` verb may return. It loses because pre-1.0 docs should describe the binary that ships today.
-
-**Depends on:** none.
-
-### F4 - Trim Archive Guard Claims
-
-**Evidence:** `plugins/spec/skills/finalize/references/runbook.md` claims `specrun plan archive` runs PR and workspace guards:
-
-```text
-111:The verb runs four guards in order: plan presence, plan terminal-state (drained), per-project PR-state (`MERGED` on remote), and workspace-cleanliness (`git status --porcelain` empty).
-153:| finalize CLI guard refusal — dirty workspace | step 5 (`specrun plan archive`) | commit / stash the dirty residue, re-run finalize |
-154:| finalize CLI guard refusal — unmerged PR | step 5 (`specrun plan archive`) | merge the named PRs externally, re-run finalize |
-```
-
-The code path only checks plan presence, terminal entries, target collisions, and moves files:
-
-```rust
-pub(super) fn archive(ctx: &Ctx, force: bool) -> Result<()> {
-    let layout = ctx.layout();
-    let plan_path = layout.plan_path();
-    if !plan_path.exists() {
-        return Err(Error::ArtifactNotFound {
-```
-
-**Action:**
-1. In `plugins/spec/skills/finalize/references/runbook.md`, rewrite Step 5 to say `plan archive` performs archive preflight only.
-2. Delete the dirty-workspace and unmerged-PR rows from the Step 5 guard-refusal table; those belong to Step 3 / Step 4.
-3. Replace the "idempotent `plan-not-found`" claim with the actual re-entry rule: absence means the plan is already archived only after checking the archive path or prior transcript.
-
-**Quality delta:** -1 skill/runtime contract defect, -about 8 LOC, -2 impossible halt branches.
-
-**Net LOC:** 212 current -> about 204 proposed.
-
-**Done when:** `rg -n 'per-project PR-state|workspace-cleanliness|finalize CLI guard refusal — dirty workspace|finalize CLI guard refusal — unmerged PR|plan-not-found' plugins/spec/skills/finalize/references/runbook.md` returns no matches.
-
-**Rule?** no.
-
-**Counter-argument:** Redundant guard language reminds agents to be cautious. It loses because false redundancy makes agents route errors to a CLI branch that cannot produce them.
-
-**Depends on:** F3.
-
-### F5 - Delete First-Party Version Regex
-
-**Evidence:** The first-party tool check already compares exact package pins:
-
-```text
-27:        package: "specify:contract@0.3.0",
-32:        package: "specify:vectis@0.3.0",
-```
-
-It also carries a separate regex and operator-path panic:
-
-```text
-86:fn version_re() -> &'static Regex {
-88:    RE.get_or_init(|| Regex::new(r"^(\d+\.\d+\.\d+)$").expect("version regex"))
-261:        if !version_re().is_match(version) {
-```
-
-The shared adapter schema already owns tool-version shape (`schemas/adapter.schema.json:65-68`).
-
-**Action:**
-1. Delete `version_re()`.
-2. Delete the `if !version_re().is_match(version)` branch in `resolve_adapter_declarations`.
-3. Delete `version_re_accepts_semver_triple`.
-4. In `crates/authoring/tests/check_tools.rs`, replace the prerelease-message assertion with the existing package-mismatch assertion or remove it if the count still proves the case.
-
-Before:
-
-```rust
-if !version_re().is_match(version) {
-    shape_findings.push(invalid_declaration(...));
-    continue;
-}
-```
-
-After:
-
-```rust
-declarations.insert(name.to_string(), format!("specify:{name}@{version}"));
-```
-
-**Quality delta:** -about 20 LOC, -1 branch, -1 helper, -1 operator-path `expect`, -1 duplicate validation owner.
-
-**Net LOC:** 360 current -> about 340 proposed.
-
-**Done when:** `rg -n 'version_re|without prerelease metadata|version regex' crates/authoring/src/check/tools.rs crates/authoring/tests/check_tools.rs` returns no matches and `make check` still passes.
-
-**Rule?** no.
-
-**Counter-argument:** The custom message is nicer for prerelease pins. It loses because exact first-party package pins already reject the value, and the schema owns version grammar.
-
-**Depends on:** none.
-
-### F6 - Remove Hex Formatting Panic
-
-**Evidence:** `crates/tool/src/hash.rs` has an operator-path `expect`:
-
-```text
-15:pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
-18:    for byte in bytes {
-19:        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
-```
-
-The panic-adjacent reconnaissance includes this exact file:
-
-```text
-crates/tool/src/hash.rs:19:        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
-```
-
-**Action:** Replace the manual loop with the digest type's standard lower-hex formatting, the same idiom used by `sha2` examples and common cargo/ripgrep-style digest code.
-
-Before:
-
-```rust
-pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
-    let bytes = digest.as_ref();
-    let mut hex = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
-    }
-    hex
-}
-```
-
-After:
-
-```rust
-pub fn sha256_output_hex(digest: impl std::fmt::LowerHex) -> String {
-    format!("{digest:x}")
-}
-```
-
-**Quality delta:** -5 LOC, -1 panic surface, -1 hand-rolled formatting loop.
-
-**Net LOC:** 22 current -> 17 proposed.
-
-**Done when:** `rg -n 'String accepts formatted hex|for byte in bytes' crates/tool/src/hash.rs` returns no matches and `cargo make check` passes.
-
-**Rule?** no.
-
-**Counter-argument:** The current code cannot really fail because formatting into `String` is infallible. It loses because `format!` expresses that invariant without a runtime panic call.
-
-**Depends on:** none.
-
-## One-Touch Tidies
-
-### T1 - Use Digest LowerHex
-
-**Evidence:** `crates/authoring/src/check/codex_schema_drift.rs:108-110` hand-rolls lowercase hex:
+`git log -p` shows this function regressed in the prior review's pass (`fba208c`, "code review"): the prior commit (`d54b6be`) had already simplified the body to the one-liner
 
 ```rust
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -286,67 +81,214 @@ fn sha256_hex(bytes: &[u8]) -> String {
 }
 ```
 
-**Action:** Replace the body with `format!("{:x}", Sha256::digest(bytes))`.
+The schema-drift predicate runs once per `make check` against a roughly 5 KiB schema; throughput is not a concern, and `crates/authoring/Cargo.toml` does not depend on `base16ct` (so the `crates/tool/src/hash.rs` idiom is not portable without adding a workspace edge).
 
-**Quality delta:** LOC flat, -1 hand-rolled formatting loop. LOC-flat trade is justified because `sha2` exposes the lower-hex idiom directly.
+**Action:**
 
-**Net LOC:** 123 current -> 123 proposed.
+1. Replace the nine-line body in `sha256_hex` with the single-line `Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect()`.
+2. Drop the `const HEX` constant.
 
-**Done when:** `rg -n 'iter\\(\\).*format!\\(\"\\{byte:02x\\}\"' crates/authoring/src/check/codex_schema_drift.rs` returns no matches.
+**Quality delta:** -7 LOC, -1 hand-rolled formatting idiom (axis 9), -1 constant lookup table that exists only to avoid a `format!` call.
+
+**Net LOC:** 129 current → about 122 proposed.
+
+**Done when:** `rg -n 'HEX: &\[u8; 16\]|flat_map\(\|byte\| \[HEX' crates/authoring/src/check/codex_schema_drift.rs` returns no matches and `cargo make check` still passes.
 
 **Rule?** no.
 
-**Counter-argument:** The current helper is explicit. It loses because the crate already depends on `sha2`, whose digest output formats as lowercase hex directly.
+**Counter-argument:** The byte-pair lookup avoids one `String` allocation per byte. It loses because this code runs at most once per `specdev check` over a ~5 KiB schema; an extra 32 short-lived `String`s per run is not a measurable cost and the loop is more code than the call site warrants.
 
 **Depends on:** none.
 
-### T2 - Inline Resolver Digest Shim
+### F3 - Drop `cargo make file-size` Doc Claims
 
-**Evidence:** `crates/tool/src/resolver/digest.rs:10-12` is a one-line wrapper around `crate::hash::sha256_hex`, while `crates/tool/src/resolver.rs` calls it only to compute acquired-byte sidecars:
+**Evidence:** `AGENTS.md:71` documents the `cargo make ci` target as:
 
-```rust
-pub(super) fn sha256_hex(bytes: &[u8]) -> String {
-    hash::sha256_hex(bytes)
-}
+```text
+cargo make ci             # lint + file-size + test + test-docs + doc + vet + outdated + deny + fmt
 ```
 
-**Action:** Import `crate::hash::sha256_hex` where needed and delete the wrapper.
+`docs/standards/coding-standards.md:213` names the same task as a tripwire:
 
-**Quality delta:** -3 LOC, -1 helper function, -1 module edge.
+```text
+**Module length cap** — keep new modules ≤ 400 lines; the workspace tripwire (`cargo make file-size`) fails any source file that grows past 600.
+```
 
-**Net LOC:** 122 current -> about 119 proposed.
+`Makefile.toml` declares no `file-size` task:
 
-**Done when:** `rg -n 'pub\\(super\\) fn sha256_hex|digest::sha256_hex' crates/tool/src/resolver.rs crates/tool/src/resolver/digest.rs` returns no matches.
+```toml
+[tasks.ci]
+dependencies = ["fmt", "lint", "test", "test-docs", "doc", "vet", "outdated", "deny"]
+```
+
+Live invocation:
+
+```text
+$ cargo make file-size
+[cargo-make] INFO - Task: file-size
+Task "file-size" not found
+exit code 404
+```
+
+Eleven non-test files already sit above the documented 600-line "tripwire" (largest non-test: `crates/domain/src/discovery/document.rs` 890); CI is green because no such task runs. Documented CLI surface and actual `Makefile.toml` disagree — wire-contract drift.
+
+**Action:**
+
+1. In `AGENTS.md:71`, drop `file-size + ` from the `cargo make ci` annotation so the comment matches the real `[tasks.ci]` dependency list.
+2. In `docs/standards/coding-standards.md:213`, delete the parenthetical `` (`cargo make file-size`) `` and the "fails any source file that grows past 600" clause; keep the "≤ 400 lines" guideline as authorial advice rather than a phantom tripwire.
+
+Before (`AGENTS.md`):
+
+```text
+cargo make ci             # lint + file-size + test + test-docs + doc + vet + outdated + deny + fmt
+```
+
+After (`AGENTS.md`):
+
+```text
+cargo make ci             # lint + test + test-docs + doc + vet + outdated + deny + fmt
+```
+
+Before (`coding-standards.md`):
+
+```text
+**Module length cap** — keep new modules ≤ 400 lines; the workspace tripwire (`cargo make file-size`) fails any source file that grows past 600. When a file outgrows that, split by concern…
+```
+
+After (`coding-standards.md`):
+
+```text
+**Module length cap** — keep new modules ≤ 400 lines. When a file outgrows that, split by concern…
+```
+
+**Quality delta:** ΔLOC about -1, -1 wire-contract / doc-CLI drift defect, -1 false signal for new contributors who would otherwise try to run a missing task.
+
+**Net LOC:** about 2 current claims → 0 proposed.
+
+**Done when:** `rg -n 'file-size' AGENTS.md docs/standards/` in `specify-cli` returns no matches.
 
 **Rule?** no.
 
-**Counter-argument:** Keeping digest names under `resolver::digest` localizes resolver code. It loses because the local name only forwards to the public helper and adds no policy.
+**Counter-argument:** The text could be motivation to add a `file-size` task in the future. It loses because eleven existing files already exceed the "tripwire" without anyone noticing, which proves the prevention narrative is fiction; the doc should describe shipped behaviour and the `≤ 400 lines` guidance survives as authorial advice.
+
+**Depends on:** none.
+
+### F4 - Inline Single-Use Helpers in authoring schema.rs
+
+**Evidence:** `crates/authoring/src/schema.rs` carries two helpers that each fold to one line and have one caller:
+
+```rust
+// schema.rs:96-98 — single-use helper.
+fn frontmatter_to_json(frontmatter: BTreeMap<String, JsonValue>) -> JsonValue {
+    JsonValue::Object(frontmatter.into_iter().collect())
+}
+
+// schema.rs:100-102 — pure delegation wrapper.
+fn collect_errors(compiled: &Validator, value: &JsonValue) -> Result<(), Vec<ValidationError>> {
+    collect_errors_for_test(compiled, value)
+}
+```
+
+`rg collect_errors_for_test --type rust crates src tests` shows two production call sites for `collect_errors_for_test` plus the wrapper above:
+
+```text
+crates/authoring/src/schema.rs:101:    collect_errors_for_test(compiled, value)
+crates/authoring/src/schema.rs:105:pub fn collect_errors_for_test(
+crates/authoring/src/check/scenarios.rs:13:use crate::schema::{SchemaId, collect_errors_for_test};
+crates/authoring/src/check/scenarios.rs:95:        if let Err(errors) = collect_errors_for_test(&validator, &value) {
+```
+
+The `_for_test` suffix is misleading — the function is the production validator used by `ScenariosCheck`.
+
+**Action:**
+
+1. Rename `collect_errors_for_test` to `collect_errors` (the only `pub fn collect_errors` symbol is the private wrapper this finding also deletes).
+2. Delete the three-line private wrapper at `schema.rs:100-102` and call the renamed function directly from `validate_value` at line 70.
+3. Delete `frontmatter_to_json` and inline `JsonValue::Object(frontmatter.into_iter().collect())` at the single call site (`validate_frontmatter`, line 92).
+4. Update the two imports/calls in `crates/authoring/src/check/scenarios.rs` to use the new name.
+
+**Quality delta:** -6 LOC, -2 single-use helper functions, -1 misleading `_for_test` suffix on a production symbol.
+
+**Net LOC:** 167 current → about 161 proposed in `schema.rs` (plus a mechanical rename in `scenarios.rs`).
+
+**Done when:** `rg -n 'fn frontmatter_to_json|fn collect_errors\b|collect_errors_for_test' crates/authoring/src` returns only the renamed `pub fn collect_errors(` definition and its two production callers; `cargo make check` passes.
+
+**Rule?** no — the predicate-effort floor (≥ 3× repeated and < 30 lines of script) is not met.
+
+**Counter-argument:** The `_for_test` suffix kept reviewers from importing the function in production code. It loses because two of its three call sites already are production code, and the wrapper achieves nothing the rename does not.
+
+**Depends on:** none.
+
+## One-Touch Tidies
+
+### T1 - Drop Unreachable! In Codex Export
+
+**Evidence:** `src/runtime/commands/codex/export.rs:54-56` calls `output::emit` with an `unreachable!` text-renderer:
+
+```rust
+output::emit(Box::new(std::io::stdout().lock()), Format::Json, &resolved, |_w, _body| {
+    unreachable!("codex export rejects --format text before emit")
+})?;
+```
+
+The guard at line 39 is `require_json(format)?`, so the closure is never invoked, but the panic site is still on the live `specrun codex export` handler stack and counts under the "operator panic surface" axis. The sibling handler in `src/authoring/commands/check.rs:47` already demonstrates the no-op pattern:
+
+```rust
+output::emit(Box::new(std::io::stdout().lock()), format, &body, |_, _| Ok(()))
+```
+
+**Action:** Replace the four-line closure body with the same `|_, _| Ok(())` no-op the authoring check handler uses. Keep `require_json(format)?` so the argument-shape failure mode is unchanged.
+
+Before:
+
+```rust
+output::emit(Box::new(std::io::stdout().lock()), Format::Json, &resolved, |_w, _body| {
+    unreachable!("codex export rejects --format text before emit")
+})?;
+```
+
+After:
+
+```rust
+output::emit(Box::new(std::io::stdout().lock()), Format::Json, &resolved, |_, _| Ok(()))?;
+```
+
+**Quality delta:** -2 LOC, -1 operator-path `unreachable!`, -1 inconsistency with the existing `Ok(())` precedent in the authoring handler.
+
+**Net LOC:** 4 current → 1 proposed for this block (the surrounding handler stays the same).
+
+**Done when:** `rg -n 'unreachable!\(' src/runtime/commands/codex/export.rs` returns no matches and `tests/codex_export.rs` still passes.
+
+**Rule?** no.
+
+**Counter-argument:** The panic message documents the `require_json` invariant. It loses because the sibling handler in `src/authoring/commands/check.rs` already proves the no-op closure documents the same invariant without a runtime panic call.
 
 **Depends on:** none.
 
 ## Findings Not Promoted
 
-- No dependency-removal finding qualified from `cargo tree --duplicates`; the duplicate versions are transitive through Wasmtime, Warg, and `wasm-pkg-client`.
-- No `mod.rs` finding qualified; the four hits are test support or the established authoring check module.
-- No broad skill-body shortening qualified after `make check` passed; the remaining opportunities were mostly taste or would blur critical-path instructions.
-- No new predicate or clippy enforcement is recommended.
+- **`SourceAdapter` / `TargetAdapter` near-duplication in `crates/domain/src/adapter/core.rs`** (≈70 lines repeated between two structs and two `resolve` methods) is intentional per workflow §"Operations typed at parse boundary" — collapsing the pair would re-introduce the kebab-string `briefs.keys()` boundary the 2.0 refactor was built to remove. No subtraction without regression.
+- **`CodexRule` vs `ResolvedRule` (`crates/domain/src/codex.rs`)** likewise carry 9 shared fields plus a distinct wire-form `id` vs `rule-id` rename per RFC-28; collapsing them would break the resolved-export wire contract.
+- **`RESOLVED_CODEX_JSON_SCHEMA` / `CODEX_RULE_JSON_SCHEMA` dead-code gates in `crates/domain/src/schema.rs:36-53`** are explicitly held for CH-17 (`specrun codex export` runtime validation) per RFC-28; deleting them just to drop two `include_str!` lines would lose a planned test surface.
+- **`crates/authoring/src/check/tools.rs:92-94` regex-compile panic** is reachable from `specdev check` in principle, but the patterns are eight static `&str` constants exercised by `make check` on every run; the only sub-`+8` fix is rewriting all eight `\b...\b` patterns to literal scans, which adds branches and loses the `\b` boundary. Defect leaves open.
+- **Test fixture WASM under `tests/fixtures/tools-test-project/`** (3.8 MB) is `.gitignore`d (`target/`) so no commit-history weight to subtract.
+- **No skill-body subtraction qualified** after re-walking the eight `spec` skills (35-79 lines each); `drop/SKILL.md` at 79 is already the largest and every line drives a documented decision. The recent `runbook.md` fixes in commit `6ad6404` already trimmed the finalize references the prior review flagged.
 
 ## Verification Checklist
 
 ```bash
-cd /Users/andrewweston/github.com/augentic/specify && make check
-cd /Users/andrewweston/github.com/augentic/specify-cli && cargo make check
-cd /Users/andrewweston/github.com/augentic && rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md'
-cd /Users/andrewweston/github.com/augentic/specify-cli && rg 'pub mod finalize|change::finalize|version_re|String accepts formatted hex' crates src tests
+cd /Users/andrewweston/github.com/augentic/specify       && make check
+cd /Users/andrewweston/github.com/augentic/specify-cli   && cargo make check
+cd /Users/andrewweston/github.com/augentic/specify-cli   && find crates src -name 'mod.rs'
+cd /Users/andrewweston/github.com/augentic/specify-cli   && rg -n 'file-size' AGENTS.md docs/standards/
+cd /Users/andrewweston/github.com/augentic/specify-cli   && rg -n 'HEX: &\[u8; 16\]|flat_map\(\|byte\| \[HEX|collect_errors_for_test|fn frontmatter_to_json|unreachable!\(' crates src
 ```
 
 ## Post-mortem
 
-- F1: actual ΔLOC -1529 vs predicted -1528; done-when flipped cleanly: yes; regressions: none.
-- F2: actual ΔLOC -586 vs predicted -586; done-when flipped cleanly: yes; regressions: none.
-- F3: actual ΔLOC -22 vs predicted 0; done-when flipped cleanly: yes; regressions: none.
-- F4: actual ΔLOC -2 vs predicted -8; done-when flipped cleanly: yes; regressions: none.
-- F5: actual ΔLOC -27 vs predicted -20; done-when flipped cleanly: yes; regressions: none.
-- F6: actual ΔLOC -4 vs predicted -5; done-when flipped cleanly: yes; regressions: none.
-- T1: actual ΔLOC +7 vs predicted 0; done-when flipped cleanly: yes; regressions: none.
-- T2: actual ΔLOC -3 vs predicted -3; done-when flipped cleanly: yes; regressions: none.
+- F1: actual ΔLOC 0 vs predicted 0; done-when flipped cleanly: yes (`find crates src -name 'mod.rs'` returns only the allowed `crates/domain/tests/common/mod.rs`); regressions: none.
+- F2: actual ΔLOC -7 vs predicted -7; done-when flipped cleanly: yes (regex returns zero matches); regressions: none.
+- F3: actual ΔLOC 0 vs predicted -1 (in-place line edits, no net line delta); done-when flipped cleanly: yes (`rg -n 'file-size' AGENTS.md docs/standards/` returns zero matches); regressions: none.
+- F4: actual ΔLOC -12 vs predicted -6 (extra savings from unused `BTreeMap` import drop + rustfmt collapsing the shorter signature); done-when flipped cleanly: yes (only the renamed `pub fn collect_errors` definition remains); regressions: none.
+- T1: actual ΔLOC -2 vs predicted -2; done-when flipped cleanly: yes (`rg -n 'unreachable!\(' src/runtime/commands/codex/export.rs` returns zero matches); regressions: none.
+
