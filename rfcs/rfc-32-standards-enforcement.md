@@ -11,7 +11,7 @@ This RFC defines the **standards enforcement layer** that consumes that contract
 1. **WorkspaceModel** — a deterministic, versioned snapshot of project facts extracted once per scan (files, frontmatter, links, skills, adapters, symlinks, manifest edges).
 2. **Hint interpreter** — a closed evaluator for codex `deterministic_hints` against the model and raw artifact bytes.
 3. **`specrun review` deterministic core** — the first consumer-project **standards scanner** that resolves applicable rules via RFC-28 export, evaluates hints, and emits RFC-28 review findings.
-4. **Optional Phase 3** — converge framework-repo `tooling check` toward the same finding shape and, where worthwhile, the same declarative rule format; imperative checks may remain indefinitely.
+4. **Optional Phase 3 (split)** — [RFC-28](rfc-28-standards-contract.md) **Phase 3** converges `specdev check` to the same `ReviewFinding` shape (Option A); this RFC retains optional declarative `FRAME-*` migration (Option B); imperative checks may remain indefinitely.
 
 The design separates **extraction** (imperative, shared library code) from **policy** (declarative codex rules and hint kinds). Cross-file invariants become graph queries over WorkspaceModel rather than bespoke walks in every check module.
 
@@ -74,8 +74,8 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
                               │
                               ▼ (optional)
 ┌─────────────────────────────────────────────────────────────────┐
-│ Phase 3 — framework convergence (optional)                      │
-│   tooling check → same ReviewFinding mapper and/or FRAME rules  │
+│ Phase 3a — RFC-28 Phase 3: specdev check --format json             │
+│ Phase 3b (optional) — FRAME rules + framework WorkspaceModel    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,12 +84,13 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
 
 | Phase | Owner  | Scope                                                                                         | Required?            |
 | ----- | ------ | --------------------------------------------------------------------------------------------- | -------------------- |
-| **1** | RFC-28 | Finding schema, `specrun codex export`, shared codex parser, hint shape validation            | Yes — prerequisite   |
-| **2** | RFC-32 | WorkspaceModel, hint interpreter, `specrun review` deterministic MVP                          | Yes — this RFC       |
-| **3** | RFC-32 | Framework `specdev check` convergence: shared finding output, selective declarative migration | No — operator choice |
+| **1** | RFC-28 Phases 1–2 | Finding schema, `specrun codex export`, shared codex parser, hint shape validation            | Yes — prerequisite   |
+| **2** | RFC-32        | WorkspaceModel, hint interpreter, `specrun review` deterministic MVP                          | Yes — this RFC       |
+| **3a** | RFC-28 Phase 3  | Framework `specdev check --format json` → `ReviewFinding` (Option A)                          | Yes — same train     |
+| **3b** | RFC-32       | Declarative `FRAME-*` rules + framework profile (Option B)                                    | No — operator choice |
 
 
-Phase 2 must not block on Phase 3. Phase 3 must not block RM-10.
+Phase 2 must not block on Phase 3a or 3b. Phase 3a (RFC-28 Phase 3) must not block Phase 2 or RM-10. Phase 3b must not block RM-10.
 
 ### WorkspaceModel
 
@@ -228,13 +229,13 @@ Exit codes follow the operator CLI table: validation/findings failure → `2`; i
 
 RFC-28 should reserve extensibility in the codex authoring schema for additional hint kinds without implementing them. See [RFC-28 §Deterministic hints extensibility](rfc-28-codex-rules.md#deterministic-hints-extensibility).
 
-### Relationship to framework tooling (Phase 3 — optional)
+### Relationship to framework tooling (Phase 3 — split)
 
 Phase 3 converges framework enforcement toward the same substrate without merging commands.
 
-#### Option A — finding shape only (lowest cost)
+#### Option A — finding shape only (RFC-28 Phase 3)
 
-Keep imperative `tooling check` predicates. Add a mapper from today's `Finding` to RFC-28 `ReviewFinding` and optional `tooling check --format json`. Rule ids stay as today (`skill.duplicate-name`, `links.unresolved`, …). No codex migration.
+Owned by [RFC-28](rfc-28-standards-contract.md) Phase 3, not this RFC. Keep imperative `specdev check` predicates. Add a mapper from today's `Finding` to RFC-28 `ReviewFinding` and `specdev check --format json`. Rule ids stay as today (`skill.duplicate-name`, `links.unresolved`, …). No codex migration.
 
 #### Option B — declarative framework rules (higher cost)
 
@@ -252,7 +253,7 @@ Introduce first-party framework policy files under `tooling/rules/` using the sa
 
 Leave `tooling check` unchanged. RM-10 and framework CI remain separate surfaces sharing only `specify-domain` parsers. This is valid if Phase 3 cost exceeds benefit.
 
-**Recommendation:** ship Phase 2 first; adopt Option A when RM-10 needs unified CI annotations; adopt Option B only for predicates that clearly map to reserved hint kinds.
+**Recommendation:** ship RFC-28 Phases 1–2, then RFC-32 Phase 2 (`specrun review`); RFC-28 Phase 3 ships in the same PR as Phases 1–2 when unified CI annotations for framework checks are needed; adopt Option B only for predicates that clearly map to reserved hint kinds.
 
 ### Predicate migration map (Phase 3 reference)
 
@@ -301,12 +302,13 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 5. **Acceptance.** Golden tests: resolved rules + sample crate tree → stable findings JSON; fingerprint stability; evidence size cap enforcement from RFC-28.
 6. **Roadmap RM-10.** Update review briefs to reference deterministic standards findings alongside human `REVIEW.md`.
 
-### Phase 3 (optional)
+### Phase 3b (optional — this RFC)
 
-1. **Finding mapper.** `tooling check --format json` emitting RFC-28 findings (Option A).
-2. **Framework profile.** Extend indexer for marketplace, skills, briefs, agent-teams (Option B).
-3. **FRAME rules.** Port high-priority predicates from the migration map; delete imperative code only when fixture parity is proven.
-4. **Diagnostics UX.** Pretty, GitHub, and compact formatters shared between `specrun review` and `specdev check` (optional; may follow [augentic/lints](https://github.com/augentic/lints) patterns without coupling repos).
+Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](rfc-28-standards-contract.md#phase-3--framework-finding-export-specdev)**.
+
+1. **Framework profile.** Extend indexer for marketplace, skills, briefs, agent-teams (Option B).
+2. **FRAME rules.** Port high-priority predicates from the migration map; delete imperative code only when fixture parity is proven.
+3. **Diagnostics UX.** Pretty, GitHub, and compact formatters shared between `specrun review` and `specdev check` (optional; may follow [augentic/lints](https://github.com/augentic/lints) patterns without coupling repos).
 
 ## Migration
 
@@ -314,7 +316,7 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 
 **For adapter authors:** Add `deterministic_hints` to codex rules that should fire in CI without waiting for custom Rust scanners. Hints must use Phase 2 kinds only until reserved kinds are implemented.
 
-**For framework contributors:** No change until Phase 3. `make check` continues to run imperative predicates.
+**For framework contributors:** No change until RFC-28 Phase 3. `make check` continues to run imperative predicates; after Phase 3, optional `--format json` exposes the same finding shape as `specrun review`.
 
 **For CLI maintainers:** Keep indexer and interpreter free of lifecycle transitions. Do not persist WorkspaceModel under `.specify/` without a separate RFC.
 
@@ -334,7 +336,7 @@ Framework repo `tooling/` depends on `specify-domain` for parsers (already true 
 
 - Model-assisted or hybrid review execution (agents remain in target adapter briefs for Phase 2).
 - Implementing every reserved hint kind in the first Phase 2 PR.
-- Mandatory Phase 3 migration of `tooling check`.
+- Mandatory Phase 3b migration of imperative `specdev check` to `FRAME-*` rules.
 - SARIF output (may follow as an export adapter).
 - Persisting WorkspaceModel as a Specify artifact.
 - Auto-opening slices or mutating lifecycle state from findings.

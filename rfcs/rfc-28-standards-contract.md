@@ -1,6 +1,6 @@
 # RFC-28: Engineering Standards — Codex Contract and Findings
 
-> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-declarative-rules.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
+> Status: Draft - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
 
 ## Abstract
 
@@ -16,8 +16,9 @@ This RFC adds:
 2. **Structured review finding schema** - a stable JSON shape for deterministic and model-assisted findings.
 3. **Codex resolution rules** - namespace ownership, overlay precedence, applicability filters, deprecation handling, and stable ordering.
 4. **Reviewer report alignment** - target adapter review briefs continue to write human `REVIEW.md`, but every machine-readable finding maps to the same schema.
+5. **Framework finding export (Phase 3)** - `specdev check --format json` maps imperative authoring findings to the same `ReviewFinding` envelope (RFC-32 Phase 3 Option A); imperative predicates remain the framework gate.
 
-The scanner that produces deterministic findings (`specrun review` — CI-native **standards enforcement**, not a workflow phase) is a follow-up surface defined by [RFC-32](rfc-32-declarative-rules.md). This RFC defines the rule and finding contract that scanner consumes, but codex rules remain agent-readable Markdown policy first; deterministic hints are optional metadata for mechanically observable subsets.
+The scanner that produces deterministic findings (`specrun review` — CI-native **standards enforcement**, not a workflow phase) is a follow-up surface defined by [RFC-32](rfc-32-standards-enforcement.md). This RFC defines the rule and finding contract that scanner consumes, but codex rules remain agent-readable Markdown policy first; deterministic hints are optional metadata for mechanically observable subsets.
 
 ## Motivation
 
@@ -68,10 +69,10 @@ What is missing is the contract that joins them. Without it, every reviewer, sco
 
 | Binary | Crate | Audience | RFC-28 role |
 | ------ | ----- | -------- | ----------- |
-| `specdev` | `specify-authoring` | Contributors editing `augentic/specify` | Codex **authoring** validation — frontmatter shape, namespace ownership, duplicate ids |
+| `specdev` | `specify-authoring` (+ Phase 3 mapper in the binary) | Contributors editing `augentic/specify` | Codex **authoring** validation; Phase 3 adds optional `ReviewFinding` JSON export (`--format json`) |
 | `specrun` | `specify-domain` + runtime handlers | Operators on consumer projects | Codex **resolution**, export, and the `ReviewFinding` wire contract |
 
-Framework validation does not move into `specrun`. Runtime export does not replace `specdev check`. Both binaries ship from `augentic/specify-cli`; `make check` in the plugin repo forwards to `specdev check --framework-root .`.
+Framework validation does not move into `specrun`. Runtime export does not replace `specdev check`. Both binaries ship from `augentic/specify-cli`; `make check` in the plugin repo forwards to `specdev check --codex-root .`.
 
 ### Codex file shape
 
@@ -99,7 +100,7 @@ deterministic_hints:
 Configuration values that vary between deployments must not be hardcoded in generated code.
 ```
 
-[RFC-5](done/rfc-5-tooling.md) defines the framework authoring checks now implemented as `specdev check`: `check::codex` enforces the rule-id schema, namespace ownership, and frontmatter discipline. RFC-28 adds runtime resolution and export semantics to `specrun`; it does not replace the markdown authoring format or move framework validation into the runtime binary. [RFC-32](rfc-32-declarative-rules.md) adds hint execution and the WorkspaceModel indexer that `specrun review` uses for deterministic subsets; optional Phase 3 there may later converge `specdev check` toward the same finding shape.
+[RFC-5](done/rfc-5-tooling.md) defines the framework authoring checks now implemented as `specdev check`: `check::codex` enforces the rule-id schema, namespace ownership, and frontmatter discipline. RFC-28 adds runtime resolution and export semantics to `specrun`; it does not replace the markdown authoring format or move framework validation into the runtime binary. [RFC-32](rfc-32-standards-enforcement.md) adds hint execution and the WorkspaceModel indexer that `specrun review` uses for deterministic subsets on consumer projects; RFC-28 **Phase 3** converges framework `specdev check` toward the same finding shape (Option A). Declarative `FRAME-*` migration (RFC-32 Phase 3 Option B) stays optional in RFC-32.
 
 **Body conventions.** Rule bodies SHOULD open with `## Rule` (required by `check::codex`) and MAY add `## Look For` and `## Spec Guidance` sections to scope reviewer attention. RFC-28 exports `body` as verbatim markdown; a future RFC may surface named sections as parsed fields without breaking the wire shape, so authors are encouraged to use these section names rather than ad hoc alternatives.
 
@@ -118,10 +119,10 @@ Rule ids stay closed over the first-party namespaces already used by the reposit
 | `VECTIS-*` | Vectis target adapter overlay under `adapters/targets/vectis/codex/`.                                                              |
 | `IFACE-*`  | Contracts target adapter overlay under `adapters/targets/contracts/codex/`.                                                        |
 | `ORG-*`    | Organization-local rules outside the first-party repository.                                                                       |
-| `FRAME-*`  | Reserved by [RFC-32](rfc-32-declarative-rules.md) for optional framework-repo declarative checks; not used in consumer codex export. |
+| `FRAME-*`  | Reserved by [RFC-32](rfc-32-standards-enforcement.md) for optional framework-repo declarative checks; not used in consumer codex export. |
 
 
-Framework authoring keeps enforcing namespace ownership for first-party files via `specdev check`. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it. `FRAME-*` is reserved for Phase 3 framework convergence and must not appear under `adapters/*/codex/`. `SRC-*` is the single shared namespace for **every** source-adapter overlay in v1 — each owner under `adapters/sources/<name>/codex/` may use `SRC-*` only (mirroring how target owners map to their closed namespaces). Per-source-adapter namespaces (e.g. `TS-*`, `DOC-*`) MAY be introduced in a follow-up RFC if any source adapter accumulates more than five `SRC-*` rules of its own. Adding both `SRC` and `FRAME` to the closed `ruleId` regex (`^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`) so RFC-32 Phase 3 declarative framework rules do not require a second schema bump, mapping every discovered source-adapter owner in `crates/authoring/src/check/codex.rs::CODEX_PROFILE_NAMESPACES` to `{"SRC"}` (same owner-discovery rule as today — first path segment under `adapters/sources/<name>/codex/`), and enforcing `FRAME-*` placement via the existing namespace-ownership predicate (reject any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`) is the schema and authoring change required for first-party source overlays to land (PR 1). Regex membership alone never grants placement — placement remains an explicit `check::codex` predicate so adding future namespaces to the regex never silently allows them under adapter trees.
+Framework authoring keeps enforcing namespace ownership for first-party files via `specdev check`. `ORG-*` is reserved for downstream projects and catalog imports; first-party adapters must not use it. `FRAME-*` is reserved for RFC-32 Phase 3 framework convergence and must not appear under `adapters/*/codex/`. `SRC-*` is the single shared namespace for **every** source-adapter overlay in v1 — each owner under `adapters/sources/<name>/codex/` may use `SRC-*` only (mirroring how target owners map to their closed namespaces). Per-source-adapter namespaces (e.g. `TS-*`, `DOC-*`) MAY be introduced in a follow-up RFC if any source adapter accumulates more than five `SRC-*` rules of its own. Adding both `SRC` and `FRAME` to the closed `ruleId` regex (`^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`) so RFC-32 Phase 3 declarative framework rules do not require a second schema bump, mapping every discovered source-adapter owner in `crates/authoring/src/check/codex.rs::CODEX_PROFILE_NAMESPACES` to `{"SRC"}` (same owner-discovery rule as today — first path segment under `adapters/sources/<name>/codex/`), and enforcing `FRAME-*` placement via the existing namespace-ownership predicate (reject any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`) is the schema and authoring change required for first-party source overlays to land (Phase 1). Regex membership alone never grants placement — placement remains an explicit `check::codex` predicate so adding future namespaces to the regex never silently allows them under adapter trees.
 
 ### Resolution roots
 
@@ -175,7 +176,7 @@ The resolver may be called without a slice. Slice awareness belongs to the scann
 
 ### Applicability
 
-Applicability filters are inclusive narrowing hints. No first-party codex file uses `applicability` today; v1 still implements the filter so [RFC-32](rfc-32-declarative-rules.md) can pass `--artifact` and `--language` without a resolver shape change.
+Applicability filters are inclusive narrowing hints. No first-party codex file uses `applicability` today; v1 still implements the filter so [RFC-32](rfc-32-standards-enforcement.md) can pass `--artifact` and `--language` without a resolver shape change.
 
 **V1 matching rules:**
 
@@ -227,7 +228,7 @@ When run from a consumer project whose tree contains `adapters/shared/codex/univ
 
 Exported entries carry every codex-frontmatter field that is part of the rule contract: `rule-id`, `title`, `severity`, `trigger`, `review-mode`, `applicability`, `deterministic-hints`, `references`, `deprecated`. They also carry the markdown policy body after frontmatter as `body`, plus resolver-only fields: `origin` (`shared` | `source` | `target` | `organization`), `path-root` (`codex-root` | `project-dir`), and `path`.
 
-`body` is the canonical agent-readable rule text, including headings such as `## Rule`; it is exported verbatim after the closing frontmatter delimiter. `references` are exported because reviewing agents need the same supporting links and local references a human would use. Frontmatter `snake_case` keys become kebab-case on the wire at every nesting level, so `review_mode`, `deterministic_hints`, and `deprecated.replaced_by` export as `review-mode`, `deterministic-hints`, and `deprecated.replaced-by`. `schemas/codex/resolved.schema.json` is the source of truth for exported field names, and PR 2 fixtures MUST cover `deprecated.replaced_by` → `deprecated.replaced-by`.
+`body` is the canonical agent-readable rule text, including headings such as `## Rule`; it is exported verbatim after the closing frontmatter delimiter. `references` are exported because reviewing agents need the same supporting links and local references a human would use. Frontmatter `snake_case` keys become kebab-case on the wire at every nesting level, so `review_mode`, `deterministic_hints`, and `deprecated.replaced_by` export as `review-mode`, `deterministic-hints`, and `deprecated.replaced-by`. `schemas/codex/resolved.schema.json` is the source of truth for exported field names, and Phase 2 fixtures MUST cover `deprecated.replaced_by` → `deprecated.replaced-by`.
 
 `path` is relative to `path-root`: shared rules and codex-root fallback overlays use `codex-root`; project-local and cached overlays use `project-dir` (including `.specify/.cache/manifests/...` when that is the resolved adapter location). `references[].path` resolves relative to the same `path-root` as the rule file unless a future schema explicitly adds a separate reference root. The export does not include absolute paths, so golden output remains stable across machines.
 
@@ -289,7 +290,7 @@ The closed v1 authoring enum is:
 
 | Kind                                                                                                                           | RFC-28 validation                         | Execution owner                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------ |
-| `regex`                                                                                                                        | shape                                     | [RFC-32](rfc-32-declarative-rules.md) Phase 2                        |
+| `regex`                                                                                                                        | shape                                     | [RFC-32](rfc-32-standards-enforcement.md) Phase 2                        |
 | `path-pattern`                                                                                                                 | shape                                     | RFC-32 Phase 2                                                     |
 | `schema`                                                                                                                       | shape                                     | RFC-32 Phase 2                                                     |
 | `tool`                                                                                                                         | shape                                     | RFC-32 Phase 2                                                     |
@@ -379,7 +380,7 @@ fingerprint = "sha256:" + hex(sha256(
 ))
 ```
 
-where `canonical(location)` is `path + ":" + line.unwrap_or(0) + ":" + column.unwrap_or(0)` when `location` is present and the empty string otherwise. `evidence-payload` is the bytes of `evidence.value` for `kind: snippet`, the bytes of `evidence.summary` for `kind: digest`, and the bytes of `evidence.summary + "\n" + canonical-json(evidence.data)` for `kind: structured`. `canonical-json` means objects sorted by key, no insignificant whitespace, and UTF-8 strings; PR 2 adds one shared helper in `specify-domain` for producers and validators rather than hand-rolling serializers at call sites. Producer-local `id`, `title`, `severity`, `confidence`, `status`, `change`, `slice`, `target-adapter`, and `source-adapter` are **excluded** so re-grading severity, attaching slice/change context after the fact, rephrasing a title between scanner runs, or migrating between producers does not duplicate findings for the same underlying issue. Distinguishing two genuinely-separate occurrences at the same `(rule-id, location)` is the job of `evidence` (which is in the hash via `evidence-payload`) and the `location` line/column, not of producer-controlled prose. The `v1` literal pins the algorithm; a future change requires a `v2` envelope.
+where `canonical(location)` is `path + ":" + line.unwrap_or(0) + ":" + column.unwrap_or(0)` when `location` is present and the empty string otherwise. `evidence-payload` is the bytes of `evidence.value` for `kind: snippet`, the bytes of `evidence.summary` for `kind: digest`, and the bytes of `evidence.summary + "\n" + canonical-json(evidence.data)` for `kind: structured`. `canonical-json` means objects sorted by key, no insignificant whitespace, and UTF-8 strings; Phase 2 adds one shared helper in `specify-domain` for producers and validators rather than hand-rolling serializers at call sites. Producer-local `id`, `title`, `severity`, `confidence`, `status`, `change`, `slice`, `target-adapter`, and `source-adapter` are **excluded** so re-grading severity, attaching slice/change context after the fact, rephrasing a title between scanner runs, or migrating between producers does not duplicate findings for the same underlying issue. Distinguishing two genuinely-separate occurrences at the same `(rule-id, location)` is the job of `evidence` (which is in the hash via `evidence-payload`) and the `location` line/column, not of producer-controlled prose. The `v1` literal pins the algorithm; a future change requires a `v2` envelope.
 
 ### Review result envelope
 
@@ -439,11 +440,11 @@ Human producers may use the same schema for triage decisions. Human-authored sta
 
 `specrun codex export` resolves rules for consumers.
 
-`specrun review` scans deterministic subsets of consumer projects and emits findings per [RFC-32](rfc-32-declarative-rules.md).
+`specrun review` scans deterministic subsets of consumer projects and emits findings per [RFC-32](rfc-32-standards-enforcement.md).
 
-Authoring checks and runtime resolution share the codex **authoring schema** (duplicated once, guarded by `codex.schema-drift` in `specdev check`). Frontmatter parsing and resolution logic live in `specify-domain` for `specrun`; `specify-authoring` does not depend on `specify-domain` today — the drift predicate is the coupling surface between PR 1 and PR 2.
+Authoring checks and runtime resolution share the codex **authoring schema** (duplicated once, guarded by `codex.schema-drift` in `specdev check`). Frontmatter parsing and resolution logic live in `specify-domain` for `specrun`; `specify-authoring` does not depend on `specify-domain` in Phases 1–2 — the drift predicate is the coupling surface between those phases. **Phase 3** adds a `Finding` → `ReviewFinding` mapper in the `specdev` binary layer (both crates are already dependencies of the root package) so `specify-authoring` stays free of `specify-domain`.
 
-**RFC-32 Phase 3 (optional).** Framework-repo checks may later emit the same `ReviewFinding` JSON or migrate select predicates to declarative `FRAME-`* rules. RFC-28 does not require that convergence; imperative `specdev check` may remain indefinitely.
+**Framework convergence (Phase 3).** Once Phase 2 defines the finding schema, Phase 3 maps today's imperative authoring rule ids (`skill.duplicate-name`, `links.unresolved`, …) into `ReviewFinding` JSON via `specdev check --format json`. Terminal output and non-zero exit semantics stay unchanged when `--format` is omitted. Declarative `FRAME-*` rules and framework WorkspaceModel (RFC-32 Phase 3 Option B) remain out of scope for this RFC; imperative predicates may remain indefinitely.
 
 ### Relationship to contracts and compatibility
 
@@ -453,9 +454,9 @@ The shared severity enum is not a compatibility classifier. Compatibility classi
 
 ## Implementation Plan
 
-RFC-28 lands as **two PRs** across `augentic/specify` and `augentic/specify-cli`. PR 1 extends authoring validation and plugin-repo docs; PR 2 adds runtime resolution and export on `specrun`. Both PRs keep `make check` and `cargo make ci` green at every commit. [RFC-32](rfc-32-declarative-rules.md) (`specrun review`, hint execution, WorkspaceModel) is out of scope except as the future deterministic consumer of this contract.
+RFC-28 lands as **three sequenced phases** merged to main in a **single PR** across `augentic/specify` and `augentic/specify-cli`. Phase 1 extends authoring validation and plugin-repo docs; Phase 2 adds runtime resolution and export on `specrun`; Phase 3 converges framework `specdev check` to the same `ReviewFinding` wire shape. Implement phases in order on one branch; keep `make check` and `cargo make ci` green after each phase commit. [RFC-32](rfc-32-standards-enforcement.md) (`specrun review`, hint execution, WorkspaceModel, and optional `FRAME-*` migration) is out of scope except as the consumer-project enforcement layer and follow-on for declarative framework rules.
 
-### PR 1 — Authoring validation and plugin-repo alignment
+### Phase 1 — Authoring validation and plugin-repo alignment
 
 **Repos:** `augentic/specify-cli` (primary), `augentic/specify` (docs, fixtures, editor schema copies)
 
@@ -474,9 +475,9 @@ RFC-28 lands as **two PRs** across `augentic/specify` and `augentic/specify-cli`
 
 **Done when:** authoring schema and review docs are settled; no stale `tooling/` references remain in **codex contributor paths** (primarily `adapters/shared/codex/universal/README.md` and related codex docs).
 
-**Editor hygiene (same release train, not blocking PR 2).** Retired `tooling/schemas/` paths in `.vscode/settings.json` and `.cursor-plugin/marketplace.json` should point at `.cursor/schemas/` or `specify-cli` authoring schemas in a separate small PR. Do not expand RFC-28 to delete the legacy `tooling/` tree or rewrite historical RFC-5 prose.
+**Editor hygiene (same release train, not blocking Phase 2).** Retired `tooling/schemas/` paths in `.vscode/settings.json` and `.cursor-plugin/marketplace.json` should point at `.cursor/schemas/` or `specify-cli` authoring schemas in a separate small PR. Do not expand RFC-28 to delete the legacy `tooling/` tree or rewrite historical RFC-5 prose.
 
-### PR 2 — Runtime resolution and export (`specrun`)
+### Phase 2 — Runtime resolution and export (`specrun`)
 
 **Repo:** `augentic/specify-cli` (primary); golden fixtures reference adapter trees from `augentic/specify` via fixture paths
 
@@ -488,28 +489,48 @@ RFC-28 lands as **two PRs** across `augentic/specify` and `augentic/specify-cli`
 4. **Resolver** — roots, applicability, deprecation filtering, and stable ordering per §Design; shared universal rules from `--codex-root`.
 5. **`specrun codex export`** — read-only subcommand under `specrun codex`. Flags: `--codex-root`, `--target`, `--source` (repeatable), `--artifact`, `--language`, `--include-deprecated`, `--include-unmatched`. Output is JSON only (`--format json`, default). Does not require `.specify/` when `--codex-root` and `--target` are supplied; uses project adapter resolution when available and codex-root overlay fallback when not. Codex-root resolution follows §"Codex root resolution (v1)"; golden test: cached consumer + `--target omnia` without shared tree → `codex-root-required`; with `--codex-root` → stable output including `UNI-*`, target overlay rules, `body`, `references`, `path-root`, and `path`.
 6. **Finding validation** — helper and fixtures for valid findings, missing required fields, invalid severities, oversize evidence, invalid fingerprints, invalid rule ids, and strict `oneOf` evidence variants. Fingerprint fixtures MUST cover: identical inputs → identical fingerprint; changing only producer-side excluded fields (`id`, `title`, `severity`, `confidence`, `status`, `change`, `slice`, `target-adapter`, `source-adapter`) → identical fingerprint; changing `rule-id`, `location`, or `evidence-payload` → different fingerprint.
-7. **Acceptance** — golden tests export codex for `omnia`, `vectis`, and `contracts` with shared-rule inclusion, overlay inclusion, deprecation filtering, stable ordering, applicability pass-through (rules without `applicability` always export), and the PR 1 `SRC-*` smoke fixture (`origin: source`). At least one golden asserts the export is agent-consumable: `body` contains the markdown `## Rule` section, `references` survive frontmatter parsing, `deprecated.replaced_by` exports as `deprecated.replaced-by`, and `path-root` + `path` resolve to the source file without absolute paths in the JSON.
+7. **Acceptance** — golden tests export codex for `omnia`, `vectis`, and `contracts` with shared-rule inclusion, overlay inclusion, deprecation filtering, stable ordering, applicability pass-through (rules without `applicability` always export), and the Phase 1 `SRC-*` smoke fixture (`origin: source`). At least one golden asserts the export is agent-consumable: `body` contains the markdown `## Rule` section, `references` survive frontmatter parsing, `deprecated.replaced_by` exports as `deprecated.replaced-by`, and `path-root` + `path` resolve to the source file without absolute paths in the JSON.
 8. **Roadmap alignment** — point RM-10 review and compatibility items at this RFC as the rule export and finding-schema source.
 
 **Done when:** `specrun codex export --codex-root … --target omnia --format json` produces stable golden output that can be used directly as reviewing-agent context; `codex.schema-drift` passes; `cargo make ci` green.
 
+### Phase 3 — Framework finding export (`specdev`)
+
+**Repo:** `augentic/specify-cli` (primary); golden fixtures may reference `augentic/specify` paths
+
+**Depends on:** Phase 2 (`ReviewFinding` types, `schemas/review/finding.schema.json`, validation helpers)
+
+**Goal:** Emit RFC-28 findings from framework authoring checks without migrating predicates or merging binaries (RFC-32 Phase 3 Option A).
+
+1. **Mapper** — `Finding` → `ReviewFinding` in the `specdev` command path (`src/authoring/` or `crates/authoring/src/` module imported only from the binary). Map `rule_id` from today's imperative ids (`skill.duplicate-name`, `codex.namespace-owner`, …) into `rule-id` unchanged; set `source: deterministic`; derive `location` and `evidence` from existing `Finding` fields; compute `fingerprint` per §"Structured review finding schema". Do not add `specify-authoring` → `specify-domain` as a crate dependency — keep the mapper at the binary boundary.
+2. **`specdev check --format`** — `json` emits a versioned envelope of `ReviewFinding` objects to stdout on success and on validation failure (findings present, exit `2` per existing validation semantics); default (omit flag) keeps today's human-oriented stderr/stdout. Document in `docs/contributing/checks.md` and `specdev` `--help`.
+3. **Severity mapping** — map authoring severities to the closed RFC-28 enum (`critical` | `important` | `suggestion` | `optional`); document the table in the mapper module and cover with fixtures.
+4. **Golden fixtures** — at least one fixture run: `specdev check --codex-root <fixture> --format json` with stable finding JSON (fingerprints, rule ids, locations). Assert schema validation against `schemas/review/finding.schema.json`.
+5. **Acceptance** — `cargo make ci` green; `make check` behavior unchanged without `--format json`; optional CI job or documented recipe may consume JSON for unified annotations (RM-10 prep).
+
+**Done when:** `specdev check --codex-root … --format json` produces stable golden `ReviewFinding` output for a representative framework tree; imperative checks are unchanged; no `FRAME-*` rules or hint interpreter shipped.
+
+**Out of scope for Phase 3:** declarative `FRAME-*` rules, framework WorkspaceModel, retiring imperative `check::*` modules, shared pretty-print formatters (RFC-32 follow-on).
+
 ### Rollout order
 
-Land **PR 1** first (authoring contract + plugin docs + smoke fixture). Land **PR 2** second (runtime export consumes the settled schema). The drift predicate in PR 2 is the byte-level coupling between the two PRs; neither PR needs a tagged plugin release between them unless external CI pins schema bytes out of band.
+Implement **Phase 1** first (authoring contract + plugin docs + smoke fixture), then **Phase 2** (runtime export consumes the settled schema), then **Phase 3** (framework JSON findings; requires Phase 2 finding types). Merge all three phases to main in one PR. The drift predicate in Phase 2 is the byte-level coupling between Phase 1 and Phase 2; Phase 3 couples only through `ReviewFinding` + schema validation.
 
 ### Cross-document alignment
 
-When this RFC moves to **Accepted**, run a lightweight editorial pass on sibling docs — not blocking PR 2 implementation if implementers treat RFC-28 as canonical:
+When this RFC moves to **Accepted**, run a lightweight editorial pass on sibling docs — not blocking Phase 2 implementation if implementers treat RFC-28 as canonical:
 
-- [RFC-32](rfc-32-declarative-rules.md): rename stale `specify codex export` / `tooling check` references to `specrun codex export` / `specdev check`, and describe RFC-32 as deterministic subset execution over agent-readable codex exports.
+- [RFC-32](rfc-32-standards-enforcement.md): rename stale `specify codex export` / `tooling check` references to `specrun codex export` / `specdev check`, note Phase 3 owns Option A finding export, and describe RFC-32 as consumer-project deterministic enforcement over agent-readable codex exports.
 - [roadmap.md](roadmap.md) RM-10 / RM-16: same renames.
 - [RFC-5](done/rfc-5-tooling.md): historical body may stay; add a one-line note at the top pointing to [docs/contributing/checks.md](../docs/contributing/checks.md) for current `specdev` paths if needed.
 
-### Out of scope (RFC-32)
+### Out of scope (RFC-32 and beyond Phase 3)
 
 - `specrun review` scanner and hint interpreter
 - WorkspaceModel indexer
-- Optional `specdev check` → `ReviewFinding` mapper (RFC-32 Phase 3)
+- Declarative `FRAME-*` framework rules and framework `scan_profile` (RFC-32 Phase 3 Option B)
+- Retiring imperative `specify-authoring` predicates in favor of hints
+- Shared pretty-print / GitHub annotation formatters for findings
 - `--format text` human inventory for `specrun codex export`
 - Auto-derivation of `--codex-root` from `project.yaml:adapter`
 
@@ -526,12 +547,17 @@ For adapter authors:
 - New rules should pick a stable namespace id, write the body as agent-usable review guidance, and avoid embedding scanner-specific instructions in the rule body.
 - Target adapter review briefs should emit `rule-id` separately from report-local ids.
 
+For framework contributors (after Phase 3):
+
+- `make check` behavior is unchanged. Use `specdev check --codex-root . --format json` when CI or dashboards need `ReviewFinding` JSON; imperative rule ids (`skill.*`, `links.*`, …) are unchanged.
+
 For CLI maintainers:
 
 - Keep `specrun codex export` read-only.
 - Keep scanner behavior out of the resolver.
 - Keep review findings separate from lifecycle transition logic.
 - Keep framework authoring validation on `specdev`; do not fold it into `specrun`.
+- Keep the Phase 3 mapper at the `specdev` binary boundary; do not require `specify-authoring` → `specify-domain`.
 
 ## Alternatives Considered
 
@@ -549,7 +575,8 @@ For CLI maintainers:
 
 ## Non-Goals
 
-- Implementing `specrun review` (owned by [RFC-32](rfc-32-declarative-rules.md)).
+- Implementing `specrun review` (owned by [RFC-32](rfc-32-standards-enforcement.md)).
+- Declarative `FRAME-*` migration and framework WorkspaceModel (owned by RFC-32 Phase 3 Option B).
 - Executing `deterministic_hints` or building WorkspaceModel (owned by RFC-32).
 - Defining every deterministic scanner.
 - Requiring every codex rule to be deterministic or hint-backed.
@@ -590,7 +617,7 @@ Questions originally raised as Open Questions and resolved in this RFC:
 
 - [Specify Roadmap](roadmap.md)
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md)
-- [RFC-32: Engineering Standards — Deterministic Enforcement](rfc-32-declarative-rules.md)
+- [RFC-32: Engineering Standards — Deterministic Enforcement](rfc-32-standards-enforcement.md)
 - [Standards layer (explanation)](../docs/explanation/standards-layer.md)
 - [RFC-18: Specialized SLM Code Generation](future/rfc-18-slm.md)
 - [RFC-25: Workflow](done/rfc-25-workflow.md)
