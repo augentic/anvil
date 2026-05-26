@@ -1,6 +1,6 @@
 # RFC-31: Vectis / Screenshots Loop Hardening
 
-> Status: Accepted - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-5](../done/rfc-5-tooling.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](rfc-29-fan-in-fan-out.md), [RFC-30](rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
+> Status: Accepted - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-5](../done/rfc-5-tooling.md), [RFC-16 (archived)](../done/rfc-16-wasi-vectis.md) - Compatible with [RFC-29](../next/rfc-29-fan-in-fan-out.md), [RFC-30](../next/rfc-30-init.md) - Enables: standalone screenshots inference review, cross-slice component reuse
 
 ## Abstract
 
@@ -386,8 +386,8 @@ RFC-31 is complete when:
 - [RFC-25: Workflow](../done/rfc-25-workflow.md) — source/target split; screenshots adapter; `screenshots` and `vectis` first-party plugins; spatial Evidence kinds.
 - [RFC-16 (archived): WASI Vectis tool](../done/rfc-16-wasi-vectis.md) — `vectis` WASI tool; embedded schema discipline.
 - [RFC-11 (archived): UI Specification Workflow](../done/rfc-11-ui-spec.md) — §A unwired-subset; §G component-directive emission and structural-identity; §H validate modes.
-- [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — executable `specify source enumerate` / `specify source extract`; required for the `specify source preview` plumbing.
-- [RFC-30: Init bootstrap](rfc-30-init.md) — `specify tool` family discipline; cross-repo schema migration precedent.
+- [RFC-29: Fan-In/Fan-Out](../next/rfc-29-fan-in-fan-out.md) — executable `specify source enumerate` / `specify source extract`; required for the `specify source preview` plumbing.
+- [RFC-30: Init bootstrap](../next/rfc-30-init.md) — `specify tool` family discipline; cross-repo schema migration precedent.
 - [RFC-5: Framework Developer Tooling](../done/rfc-5-tooling.md) — unified `specdev check` predicate engine; home for `check::schema_links`.
 - [Layout inferer contract](../../adapters/targets/vectis/references/layout-inferer-contract.md) — pre-2.0 producer contract; component directive emission policy reused here.
 - [Screenshots `extract/pipeline.md`](../../adapters/sources/screenshots/briefs/extract/pipeline.md) — stage-6 component detection.

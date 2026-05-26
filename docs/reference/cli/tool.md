@@ -28,6 +28,20 @@ specrun tool fetch [<name>] [--format json]
 
 `fetch` performs source resolution and digest verification, then stores the component bytes in the global tool cache. It does not instantiate or run the component.
 
+### specrun tool schema
+
+Print a tool-owned JSON Schema to stdout (RFC-31 D2).
+
+```bash
+specrun tool schema <tool> <name>
+```
+
+`<tool>` resolves through the same path as `specrun tool run` (declared `tools[]`). `<name>` is the kebab-case schema id advertised by the tool's embedded registry. Output is pretty-printed JSON with stable key ordering.
+
+Exits `0` on success, `2` for an unknown tool or unknown schema name.
+
+Currently the `vectis` tool advertises `tokens`, `assets`, and `composition`.
+
 ### specrun tool gc
 
 Remove cached versions that are no longer referenced by the current project's merged tool list.
