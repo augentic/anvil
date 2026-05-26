@@ -35,12 +35,12 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Change umbrella
 
-- `specrun plan {create, show, finalize, archive}` — operator brief at `change.md` plus the canonical closure verb. In 2.0 the umbrella collapsed into `specrun plan *`; `specrun plan finalize` confirms every per-project PR has merged before archiving.
+- `specrun plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specrun plan *`; PR-state confirmation belongs to `/spec:finalize` and its `gh pr view` observation loop before this verb runs.
 
 ### Registry and workspace
 
 - `specrun registry {add, remove, show, validate}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- `specrun workspace {sync, status, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specrun workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `specrun plan finalize` verifies remote PR state.
+- `specrun workspace {sync, status, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specrun workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specrun plan archive`.
 
 ### Adapter and declared tools
 
@@ -56,9 +56,9 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `enumerate` operation, fuses candidates across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specrun plan transition <change-name> reviewed` command is printed for the operator.
 2. **Gate 1.** Operator runs `specrun plan transition <change-name> reviewed` — the only writer of `reviewed`. `/spec:plan` never stamps `reviewed` itself.
 3. **Execute.** `/spec:execute` refuses unless the plan is `reviewed`; it repeatedly picks `specrun plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:refine → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
-4. **Finalize.** `/spec:finalize <change-name>` runs `specrun workspace push`, observes PR state via `gh pr list`, and runs `specrun plan finalize` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+4. **Finalize.** `/spec:finalize <change-name>` runs `specrun workspace push`, observes PR state via `gh pr view`, and runs `specrun plan archive` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specrun plan {create, add, amend}`, drive the loop yourself via `specrun plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specrun plan next`; per-entry `done` is written by `specrun slice merge`), and run `specrun workspace push` + `specrun plan finalize` by hand.
+Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specrun plan {create, add, amend}`, drive the loop yourself via `specrun plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specrun plan next`; per-entry `done` is written by `specrun slice merge`), then run `specrun workspace push`, verify PRs with `gh pr view`, and run `specrun plan archive` by hand.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are only ever written via `specrun plan add` / `specrun plan amend`; plan *status* is only ever written via `specrun plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specrun plan add` / `specrun plan amend` — the same commands humans run.
 

@@ -66,7 +66,7 @@ The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:exe
 - `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
 - `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
-- `/spec:finalize` — push branches, observe PR state, run `specrun plan finalize` once every PR is `MERGED`.
+- `/spec:finalize` — push branches, observe PR state, run `specrun plan archive` once every PR is `MERGED`.
 
 N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
@@ -74,7 +74,7 @@ N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the o
 
 Phase skills are agent-driven orchestrators. Every deterministic operation — manifest validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, baseline conflict detection, delta merge, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting operator intent, reading brief bodies, writing evidence and synthesized artifacts, invoking specialist skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
-The CLI surface skills depend on is documented in [`specify` `--help`](https://github.com/augentic/specify-cli). The headline groups: `specrun init`, `specrun source {resolve}`, `specrun target {resolve}`, `specrun slice {create, transition, validate, merge}`, `specrun plan {create, add, amend, transition, next, finalize}`, `specrun workspace {sync, push, prepare}`, and `specrun tool run` (WASI tool dispatch — `contract`, `vectis`, …).
+The CLI surface skills depend on is documented in [`specify` `--help`](https://github.com/augentic/specify-cli). The headline groups: `specrun init`, `specrun source {resolve}`, `specrun target {resolve}`, `specrun slice {create, transition, validate, merge}`, `specrun plan {create, add, amend, transition, next, archive}`, `specrun workspace {sync, push, prepare}`, and `specrun tool run` (WASI tool dispatch — `contract`, `vectis`, …).
 
 Never hand-edit `.metadata.yaml`, `project.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, or `targets.yaml`; never `mkdir -p .specify/...`; never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal lifecycle set and validates inputs in one place for humans, agents, and CI.
 

@@ -38,7 +38,7 @@ The manual scenario asks an operator to create a fresh temporary workspace with:
 - `shop-backend` and `shop-mobile` projects,
 - an OAuth login fixture brief.
 
-It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, Gate 1 stamping, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `specrun plan finalize`, archived plan state, and `plan-not-found` on a second finalize.
+It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, Gate 1 stamping, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `/spec:finalize` PR observation, `specrun plan archive`, archived plan state, and already-archived re-entry handling.
 
 This repository does not add an automated runner, fake forge, transcript replay, CI acceptance target, or golden output comparison for this scenario yet. The goal is to run the manual script a few times, learn which checks are stable, and automate only after the simple testing shape is clear.
 

@@ -297,8 +297,8 @@ Re-run `/spec:finalize` from the hub:
 ```
 
 The second invocation re-runs every step. `specrun workspace push` reports
-`up-to-date` for both projects (idempotent re-entry). `gh pr list` reports
-every PR as `MERGED`. The skill then runs `specrun plan finalize`, which
+`up-to-date` for both projects (idempotent re-entry). `gh pr view` reports
+every PR as `MERGED`. The skill then runs `specrun plan archive`, which
 archives `plan.yaml` and `change.md` together under
 `.specify/archive/plans/oauth-login-<date>/` (or the equivalent dated archive
 path the verb produces). The wrap-up summary prints the merged-PR list and the
@@ -310,8 +310,7 @@ Run `/spec:finalize` a third time:
 /spec:finalize oauth-login
 ```
 
-This re-entry should report `plan-not-found` from `specrun plan finalize` and
-exit 0 — the change is already archived.
+This re-entry should report that no active plan remains and exit 0 — the change is already archived.
 
 ## Expected Artifacts
 
@@ -339,7 +338,7 @@ The run should leave these artifacts or states for inspection:
   archived `change.md` for the change.
 - The wrap-up summary names every merged PR (one per routed project) with its
   URL.
-- A third `/spec:finalize oauth-login` invocation reports `plan-not-found`.
+- A third `/spec:finalize oauth-login` invocation reports that no active plan remains.
 
 ## Assertions
 
@@ -367,7 +366,7 @@ The run should leave these artifacts or states for inspection:
   PR URLs.
 - `finalize-archives-plan`: after external merges, the second
   `/spec:finalize oauth-login` invocation archives the plan via
-  `specrun plan finalize`.
+  `specrun plan archive`.
 - `archived-plan-path-recorded`: the wrap-up summary names the archived plan
   path under `.specify/archive/plans/`, matching the umbrella's archive shape.
 - `archived-change-md-present`: the archived directory next to the archived
@@ -375,8 +374,8 @@ The run should leave these artifacts or states for inspection:
 - `merged-pr-list-recorded`: the wrap-up summary lists exactly two merged PRs,
   one for `shop-backend` and one for `shop-mobile`, with their numbers and
   URLs.
-- `rerun-finalize-plan-not-found`: a third `/spec:finalize oauth-login`
-  reports `plan-not-found` and exits 0.
+- `rerun-finalize-already-archived`: a third `/spec:finalize oauth-login`
+  reports that no active plan remains and exits 0.
 
 ## Negative Expectations
 

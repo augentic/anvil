@@ -1,354 +1,352 @@
-# Code & Skill Review — May 2026
+# Code & Skill Review - May 2026
 
-## Summary
-
-1. **Top three:** (1) Delete test-only `change::finalize` domain module (−1527 LOC); (2) fix stale vectis WASM breaking `cargo make check` (2 failing tests); (3) replace phantom `specrun plan finalize` docs with the shipped `specrun plan archive` verb (wire-contract drift, ~28 live references).
-2. **Total ΔLOC if all land:** approximately **−1560** net (−1527 finalize module, −~~35 CLI/skill/doc tidies, +~~5 Makefile/test precondition lines for vectis).
-3. **Primary non-LOC axes:** module/crate edges (−1 dead domain subtree), defect surface (−2 CI failures, −1 wire-contract mismatch class), branches (−1 duplicate CLI exit handler).
-4. **Verified defects closed:** 2 CI test failures (`schema_vectis_`*); 1 wire-contract class (`specrun plan finalize` documented but not registered in clap). Defect-only ΔLOC: **+5** (vectis rebuild precondition only; doc fixes are neutral).
-5. **Most likely to break in remediation:** deleting `crates/domain/src/change/finalize/` — probe/classification logic is well-tested but never wired; confirm `/spec:finalize` skill runbook stays the canonical orchestrator before removal.
-
----
+1. Top three: F1 delete the retired `change finalize` domain island; F2 delete the ignored retired cross-repo integration test; F3 replace the phantom `specrun plan finalize` contract with shipped `specrun plan archive`.
+2. Total delta if all land: about -2,150 LOC.
+3. Primary non-LOC axes moved: fewer dead module edges, fewer stale CLI-contract references, fewer branches/types in the first-party tool check, and fewer operator-path panic sites.
+4. Top verified defects closed: `plan finalize` wire-contract drift; finalize runbook claims guards `plan archive` does not implement; two operator-path panic sites. Defect-only positive LOC: +0.
+5. Most likely to break in remediation: F3, because fixture transcripts and reference docs must be updated together or `make check` will catch link/golden drift.
 
 ## Reconnaissance
 
+- `tokei`: `specify` has 87,127 total lines, including 53,635 Markdown lines; `specify-cli` has 83,648 total lines, including 60,412 Rust lines.
+- `cargo tree --duplicates` in `specify-cli`: duplicates exist, led by transitive `base64` 0.21.7 / 0.22.1, multiple `wasmparser` lines, `thiserror` 1.0.69 / 2.0.18, and `reqwest` 0.12.28 / 0.13.3. No Cargo-edge finding qualified because the duplicates are upstream through `wasm-pkg-client` / Wasmtime.
+- `rg -c '^#\[test\]' crates/ src/ tests/`: 467 total matches by summing per-file counts; `tests/cross_repo.rs:1` is ignored and retired.
+- `rg --files -g '**/mod.rs'`: 4 files: `tests/common/mod.rs`, `wasi-tools/vectis/tests/engine_support/mod.rs`, `crates/authoring/src/check/mod.rs`, `crates/domain/tests/common/mod.rs`.
+- `wc -l docs/standards/*.md AGENTS.md` across both repos: 1,521 total lines (`specify`: 731; `specify-cli`: 790).
+- Files over 500 lines under `crates/` and `src/`: 21, largest are `crates/domain/tests/workspace.rs` 1048, `crates/domain/tests/finalize.rs` 947, `crates/domain/src/discovery/document.rs` 890, `crates/domain/src/codex/resolve.rs` 829.
+- `make checks` in `specify`: no such target (`make: *** No rule to make target 'checks'. Stop.`). Nearest real target `make check`: pass, `All checks passed.`
+- `cargo make check` in `specify-cli`: pass, `Build Done in 279.53 seconds.`
+- `rg -c '\.(unwrap|expect)\(' --glob '!**/tests/**' crates/ src/`: hot files include `crates/tool/src/hash.rs:1`, `crates/authoring/src/check/tools.rs:1`, and many `#[cfg(test)]` modules inside `src/` files.
+- `rg -c 'panic!|unreachable!' --glob '!**/tests/**' crates/ src/`: hot files include `crates/authoring/src/check/tools.rs:1`; most other hits are in `#[cfg(test)]` modules or integration tests.
 
-| Signal                                | specify-cli                                                                                                              | specify (plugins/docs)                                   |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| **tokei Rust LOC**                    | 52,844 code lines (69,306 incl. markdown in `.rs`)                                                                       | 19,510 code lines (80,003 incl. embedded langs in `.md`) |
-| **cargo tree --duplicates**           | `base64` 0.21.7 / 0.22.1; `bitflags` via `ron`/`rustix`; transitive via `wasm-pkg-client` → `specify-tool`               | —                                                        |
-| `**#[test]` count**                   | 467 matches across `crates/` `src/` `tests/` (per-file `rg -c`)                                                          | —                                                        |
-| `**mod.rs` files**                    | 4 (`tests/common`, `crates/domain/tests/common`, `crates/authoring/src/check`, `wasi-tools/vectis/tests/engine_support`) | —                                                        |
-| **docs/standards + AGENTS.md**        | 790 lines                                                                                                                | 731 lines                                                |
-| **Rust files >500 LOC**               | 19 under `crates/` + `src/` (largest: `crates/domain/tests/workspace.rs` 1048)                                           | —                                                        |
-| **CI**                                | `cargo make check` **FAIL** — 1078/1080 pass; 2 fail in `specify::tool_schema`                                           | `make check` **PASS** — "All checks passed."             |
-| **First CI failure**                  | `schema_vectis_unknown_name_exits_nonzero` — stdout not JSON; guest stderr: `error: unrecognized subcommand 'schema'`    | —                                                        |
-| **unwrap/expect (non-test hot path)** | 907 total matches under `crates/` + `src/` excluding `tests/`; **0** on CLI handler paths outside `#[cfg(test)]`         | —                                                        |
-| **panic!/unreachable!**               | 76 matches (non-test `crates/` + `src/`)                                                                                 | —                                                        |
+## Structural Findings
 
+### F1 - Delete Dead Finalize Module
 
----
+**Evidence:** `wc -l crates/domain/src/change/finalize.rs crates/domain/src/change/finalize/*.rs crates/domain/tests/finalize.rs` reports 1,527 lines. `src/runtime/cli.rs` has no `Commands::Change`; `src/runtime/commands/plan/cli.rs` exposes `PlanAction::Archive`, not `Finalize`. Current Rust refs are only the module export and its own tests:
 
-## Structural findings
-
-### F1 — Rebuild vectis WASM before schema integration tests
-
-**Evidence:** `cargo make check` summary: `FAIL specify::tool_schema schema_vectis_tokens_returns_valid_json` and `schema_vectis_unknown_name_exits_nonzero`. stderr: `error: unrecognized subcommand 'schema'` from guest vectis. Test reads stale artifact at `wasi-tools/target/wasm32-wasip2/release/vectis.wasm` (`tests/tool_schema.rs:15–17`); `cargo build` there does **not** run `scripts/build-vectis-local.sh`. Fresh build writes `target/vectis-wasi-tools/release/vectis.wasm` (`scripts/build-vectis-local.sh:19–26`). Skip guard only checks `is_file()` — stale file exists, skip never fires.
+```text
+rg -n 'change::finalize|change finalize|mod finalize|pub mod finalize|tests/finalize' crates src tests --glob '*.rs' | wc -l
+       9
+```
 
 **Action:**
+1. Delete `crates/domain/src/change/finalize.rs`.
+2. Delete `crates/domain/src/change/finalize/{archive,probe,summary}.rs`.
+3. Delete `crates/domain/tests/finalize.rs`.
+4. In `crates/domain/src/change.rs`, delete `pub mod finalize;` and trim the module doc from "closure verb" to the plan-driven change model.
 
-1. In `Makefile.toml`, add `vectis-wasm` to `[tasks.test] dependencies` (mirror comment block for `contract-wasm` at lines 112–115).
-2. Point `vectis_wasm()` at `repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")`.
-3. Keep early-return skip when that path is absent (local dev without WASI target installed).
-
-**Before:**
-
-```rust
-fn vectis_wasm() -> PathBuf {
-    repo_root().join("wasi-tools/target/wasm32-wasip2/release/vectis.wasm")
-}
-```
-
-**After:**
+Before:
 
 ```rust
-fn vectis_wasm() -> PathBuf {
-    repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")
-}
+pub mod finalize;
+mod plan;
 ```
 
-**Quality delta:** −2 defects, +0 branches (CI green).
+After:
 
-**Net LOC:** tests 180 → 180; Makefile 130 → 131 (+1 dependency line).
+```rust
+mod plan;
+```
 
-**Done when:** `cargo make check` summary shows 1080/1080 pass (0 failed in `specify::tool_schema`).
+**Quality delta:** -1,528 LOC, -1 module subtree, -many public DTOs/enums, -many branch paths, -28 tests for an unwired verb.
+
+**Net LOC:** 1,528 current -> 0 proposed.
+
+**Done when:** `test ! -e crates/domain/src/change/finalize.rs && test ! -d crates/domain/src/change/finalize && test ! -f crates/domain/tests/finalize.rs && rg 'pub mod finalize|change::finalize' crates src tests` returns no matches.
 
 **Rule?** no.
 
-**Counter-argument:** "Developers can run `cargo make vectis-wasm` manually." Loses: CI currently red on clean machines with an old cached wasm present — exactly the failure mode observed.
+**Counter-argument:** The module may be useful when `plan finalize` returns. It loses because pre-1.0 code should track shipped surface, and this one is not reachable from clap.
 
 **Depends on:** none.
 
----
+### F2 - Delete Ignored Retired Cross-Repo Test
 
-### F2 — Collapse duplicate tool exit handlers
+**Evidence:** `wc -l tests/cross_repo.rs` reports 586 lines. The sole test is ignored with a retired-verb reason and still shells out to a nonexistent `change finalize` command:
 
-**Evidence:** `run_tool` and `run_tool_schema` in `src/runtime/commands.rs:167–191` are byte-identical except the `tool::run` vs `tool::schema` call — duplicate `Ctx::load` + `Exit::Code` mapping (cargo/clap pattern: one helper, ripgrep-style).
+```text
+310:#[ignore = "Wave 1.1: drives the retired `change draft` + `change finalize` verbs; \
+560:        envs.command().args(["--format", "json", "change", "finalize"]).assert().success();
+583:    let second = envs.command().args(["--format", "json", "change", "finalize"]).assert().failure();
+```
 
-**Action:**
+**Action:** Delete `tests/cross_repo.rs`. Keep the manual scenario pack under `specify/tests/cross-repo/`; it is the live acceptance surface.
 
-1. Replace both with:
+**Quality delta:** -586 LOC, -1 ignored test, -1 stale CLI branch surface, -1 false signal in the test count.
+
+**Net LOC:** 586 current -> 0 proposed.
+
+**Done when:** `test ! -f tests/cross_repo.rs && rg 'change\", \"finalize|rm01_replays_cross_repo' tests crates src` returns no matches.
+
+**Rule?** no.
+
+**Counter-argument:** Ignored tests can document intended future behavior. It loses because this one documents a retired command, while the manual scenario pack already documents the current workflow.
+
+**Depends on:** none.
+
+### F3 - Replace Phantom Plan Finalize
+
+**Evidence:** Current non-RFC docs still advertise `plan finalize` 38 times:
+
+```text
+rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md' | wc -l
+      38
+```
+
+The shipped clap surface has `PlanAction::Archive` only:
 
 ```rust
-fn run_tool_with(format: Format, name: &str, args: Vec<String>) -> Exit {
-    let ctx = match Ctx::load(format) {
-        Ok(ctx) => ctx,
-        Err(err) => return report(format, &err),
-    };
-    match tool::run(&ctx, name, args) {
-        Ok(0) => Exit::Success,
-        Ok(code) => Exit::Code(code),
-        Err(err) => report(format, &err),
+Archive {
+    #[arg(long)]
+    force: bool,
+}
+```
+
+`DECISIONS.md` also names the wrong verb at lines 333-336: "`specify plan finalize` moves `change.md` + `plan.yaml`...".
+
+**Action:**
+1. In live docs, standards, fixtures, and `DECISIONS.md`, replace `specrun plan finalize` / `specify plan finalize` with `specrun plan archive` / `specify plan archive`.
+2. Where text says finalize verifies PR state, assign that behavior to `/spec:finalize` and `gh pr view`, not the archive verb.
+3. Leave historical RFC references alone.
+
+Before:
+
+```md
+specrun plan finalize
+```
+
+After:
+
+```md
+specrun plan archive
+```
+
+**Quality delta:** -1 wire-contract defect, -38 stale references, -call-site confusion. LOC is expected to stay flat; defect closure justifies the trade.
+
+**Net LOC:** 38 stale refs current -> 0 stale refs proposed; about 0 LOC delta.
+
+**Done when:** `rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md'` returns no matches.
+
+**Rule?** yes, only if the existing link checker can be extended in under 30 lines to compare documented `specrun <group> <verb>` forms against clap help. Otherwise no new predicate.
+
+**Counter-argument:** A future `plan finalize` verb may return. It loses because pre-1.0 docs should describe the binary that ships today.
+
+**Depends on:** none.
+
+### F4 - Trim Archive Guard Claims
+
+**Evidence:** `plugins/spec/skills/finalize/references/runbook.md` claims `specrun plan archive` runs PR and workspace guards:
+
+```text
+111:The verb runs four guards in order: plan presence, plan terminal-state (drained), per-project PR-state (`MERGED` on remote), and workspace-cleanliness (`git status --porcelain` empty).
+153:| finalize CLI guard refusal — dirty workspace | step 5 (`specrun plan archive`) | commit / stash the dirty residue, re-run finalize |
+154:| finalize CLI guard refusal — unmerged PR | step 5 (`specrun plan archive`) | merge the named PRs externally, re-run finalize |
+```
+
+The code path only checks plan presence, terminal entries, target collisions, and moves files:
+
+```rust
+pub(super) fn archive(ctx: &Ctx, force: bool) -> Result<()> {
+    let layout = ctx.layout();
+    let plan_path = layout.plan_path();
+    if !plan_path.exists() {
+        return Err(Error::ArtifactNotFound {
+```
+
+**Action:**
+1. In `plugins/spec/skills/finalize/references/runbook.md`, rewrite Step 5 to say `plan archive` performs archive preflight only.
+2. Delete the dirty-workspace and unmerged-PR rows from the Step 5 guard-refusal table; those belong to Step 3 / Step 4.
+3. Replace the "idempotent `plan-not-found`" claim with the actual re-entry rule: absence means the plan is already archived only after checking the archive path or prior transcript.
+
+**Quality delta:** -1 skill/runtime contract defect, -about 8 LOC, -2 impossible halt branches.
+
+**Net LOC:** 212 current -> about 204 proposed.
+
+**Done when:** `rg -n 'per-project PR-state|workspace-cleanliness|finalize CLI guard refusal — dirty workspace|finalize CLI guard refusal — unmerged PR|plan-not-found' plugins/spec/skills/finalize/references/runbook.md` returns no matches.
+
+**Rule?** no.
+
+**Counter-argument:** Redundant guard language reminds agents to be cautious. It loses because false redundancy makes agents route errors to a CLI branch that cannot produce them.
+
+**Depends on:** F3.
+
+### F5 - Delete First-Party Version Regex
+
+**Evidence:** The first-party tool check already compares exact package pins:
+
+```text
+27:        package: "specify:contract@0.3.0",
+32:        package: "specify:vectis@0.3.0",
+```
+
+It also carries a separate regex and operator-path panic:
+
+```text
+86:fn version_re() -> &'static Regex {
+88:    RE.get_or_init(|| Regex::new(r"^(\d+\.\d+\.\d+)$").expect("version regex"))
+261:        if !version_re().is_match(version) {
+```
+
+The shared adapter schema already owns tool-version shape (`schemas/adapter.schema.json:65-68`).
+
+**Action:**
+1. Delete `version_re()`.
+2. Delete the `if !version_re().is_match(version)` branch in `resolve_adapter_declarations`.
+3. Delete `version_re_accepts_semver_triple`.
+4. In `crates/authoring/tests/check_tools.rs`, replace the prerelease-message assertion with the existing package-mismatch assertion or remove it if the count still proves the case.
+
+Before:
+
+```rust
+if !version_re().is_match(version) {
+    shape_findings.push(invalid_declaration(...));
+    continue;
+}
+```
+
+After:
+
+```rust
+declarations.insert(name.to_string(), format!("specify:{name}@{version}"));
+```
+
+**Quality delta:** -about 20 LOC, -1 branch, -1 helper, -1 operator-path `expect`, -1 duplicate validation owner.
+
+**Net LOC:** 360 current -> about 340 proposed.
+
+**Done when:** `rg -n 'version_re|without prerelease metadata|version regex' crates/authoring/src/check/tools.rs crates/authoring/tests/check_tools.rs` returns no matches and `make check` still passes.
+
+**Rule?** no.
+
+**Counter-argument:** The custom message is nicer for prerelease pins. It loses because exact first-party package pins already reject the value, and the schema owns version grammar.
+
+**Depends on:** none.
+
+### F6 - Remove Hex Formatting Panic
+
+**Evidence:** `crates/tool/src/hash.rs` has an operator-path `expect`:
+
+```text
+15:pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
+18:    for byte in bytes {
+19:        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
+```
+
+The panic-adjacent reconnaissance includes this exact file:
+
+```text
+crates/tool/src/hash.rs:19:        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
+```
+
+**Action:** Replace the manual loop with the digest type's standard lower-hex formatting, the same idiom used by `sha2` examples and common cargo/ripgrep-style digest code.
+
+Before:
+
+```rust
+pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
+    let bytes = digest.as_ref();
+    let mut hex = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(hex, "{byte:02x}").expect("String accepts formatted hex");
     }
+    hex
 }
 ```
 
-1. Dispatch: `ToolAction::Run { name, args }` → `run_tool_with(format, &name, args)`; `ToolAction::Schema { name, schema }` → `run_tool_with(format, &name, vec!["schema".into(), schema.into()])`.
-2. Delete `src/runtime/commands/tool/schema.rs`; export `run` only from `tool.rs`; remove `mod schema` and `pub(super) use schema::schema`.
+After:
 
-**Quality delta:** −~20 LOC, −1 module file, −1 branch duplicate, −1 call-site type (`schema` handler).
+```rust
+pub fn sha256_output_hex(digest: impl std::fmt::LowerHex) -> String {
+    format!("{digest:x}")
+}
+```
 
-**Net LOC:** `commands.rs` 255 → ~245; delete `schema.rs` 13 lines.
+**Quality delta:** -5 LOC, -1 panic surface, -1 hand-rolled formatting loop.
 
-**Done when:** `rg 'run_tool_schema|mod schema' specify-cli/src` → 0; `specrun tool schema vectis tokens` still exits 0 with JSON when F2 precondition met.
+**Net LOC:** 22 current -> 17 proposed.
 
-**Rule?** no.
-
-**Counter-argument:** "Separate handlers document schema passthrough intent." Loses: comment on `run_tool_with` suffices; DECISIONS already documents `Exit::Code` passthrough once.
-
-**Depends on:** F2 (for green integration test).
-
----
-
-### F3 — Delete retired change-skills stub page
-
-**Evidence:** `docs/reference/change-skills/draft.md` is 3 lines ("`/change:draft` (retired)"). RFC-26 step 5 removed `plugins/change/`; marketplace registers only `spec` plugin. Page adds navigation dead-end; index already documents `/spec:plan`.
-
-**Action:**
-
-1. Delete `docs/reference/change-skills/draft.md`.
-2. Remove any link to `draft.md` from `docs/reference/change-skills/index.md` or `docs/SUMMARY.md` if present (`rg 'change-skills/draft'`).
-
-**Quality delta:** −3 LOC, −1 doc file.
-
-**Net LOC:** 3 → 0.
-
-**Done when:** `test ! -f docs/reference/change-skills/draft.md`.
+**Done when:** `rg -n 'String accepts formatted hex|for byte in bytes' crates/tool/src/hash.rs` returns no matches and `cargo make check` passes.
 
 **Rule?** no.
 
-**Counter-argument:** "Stub helps operators migrating from 1.x." Loses: pre-1.0 hard cut per AGENTS; release-notes already state `/change:*` retires.
+**Counter-argument:** The current code cannot really fail because formatting into `String` is infallible. It loses because `format!` expresses that invariant without a runtime panic call.
 
 **Depends on:** none.
 
----
+## One-Touch Tidies
 
-## One-touch tidies
+### T1 - Use Digest LowerHex
 
-### T1 — One-line SHA-256 in codex schema drift check
+**Evidence:** `crates/authoring/src/check/codex_schema_drift.rs:108-110` hand-rolls lowercase hex:
 
-**Evidence:** Hand-rolled loop `crates/authoring/src/check/codex_schema_drift.rs:108–115` (8 lines). Same crate already depends on `sha2`. std-style: `format!("{:x}", Sha256::digest(bytes))` (used elsewhere via `specify_tool::sha256_hex` in runtime; authoring stays dependency-light).
+```rust
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect()
+}
+```
 
-**Action:** Replace `sha256_hex` body with `format!("{:x}", Sha256::digest(bytes))`; delete loop.
+**Action:** Replace the body with `format!("{:x}", Sha256::digest(bytes))`.
 
-**Quality delta:** −5 LOC, −1 hand-rolled helper pattern.
+**Quality delta:** LOC flat, -1 hand-rolled formatting loop. LOC-flat trade is justified because `sha2` exposes the lower-hex idiom directly.
 
-**Net LOC:** 128 → 123.
+**Net LOC:** 123 current -> 123 proposed.
 
-**Done when:** `wc -l crates/authoring/src/check/codex_schema_drift.rs` ≤ 123; `make check` pass.
+**Done when:** `rg -n 'iter\\(\\).*format!\\(\"\\{byte:02x\\}\"' crates/authoring/src/check/codex_schema_drift.rs` returns no matches.
 
 **Rule?** no.
+
+**Counter-argument:** The current helper is explicit. It loses because the crate already depends on `sha2`, whose digest output formats as lowercase hex directly.
 
 **Depends on:** none.
 
----
+### T2 - Inline Resolver Digest Shim
 
-### T2 — Remove orphan `Phase outcome contract` section in drop skill
+**Evidence:** `crates/tool/src/resolver/digest.rs:10-12` is a one-line wrapper around `crate::hash::sha256_hex`, while `crates/tool/src/resolver.rs` calls it only to compute acquired-byte sidecars:
 
-**Evidence:** Only `plugins/spec/skills/drop/SKILL.md` carries `## Phase outcome contract` linking `phase-outcome-contract.md` (lines 17–19). Merge/build/refine link guardrails inline; drop is the outlier. Section adds 3 lines the model reads from shared guardrails anyway.
+```rust
+pub(super) fn sha256_hex(bytes: &[u8]) -> String {
+    hash::sha256_hex(bytes)
+}
+```
 
-**Action:** Delete lines 17–19 (heading + blockquote). Keep guardrails bullet at line 85.
+**Action:** Import `crate::hash::sha256_hex` where needed and delete the wrapper.
 
-**Quality delta:** −3 LOC, −1 skill section.
+**Quality delta:** -3 LOC, -1 helper function, -1 module edge.
 
-**Net LOC:** 85 → 82 body lines.
+**Net LOC:** 122 current -> about 119 proposed.
 
-**Done when:** `rg 'Phase outcome contract' plugins/spec/skills/drop/SKILL.md` → 0; `make check` pass.
+**Done when:** `rg -n 'pub\\(super\\) fn sha256_hex|digest::sha256_hex' crates/tool/src/resolver.rs crates/tool/src/resolver/digest.rs` returns no matches.
 
 **Rule?** no.
+
+**Counter-argument:** Keeping digest names under `resolver::digest` localizes resolver code. It loses because the local name only forwards to the public helper and adds no policy.
 
 **Depends on:** none.
 
----
+## Findings Not Promoted
 
-### T3 — Drop skill empty step 5 header
+- No dependency-removal finding qualified from `cargo tree --duplicates`; the duplicate versions are transitive through Wasmtime, Warg, and `wasm-pkg-client`.
+- No `mod.rs` finding qualified; the four hits are test support or the established authoring check module.
+- No broad skill-body shortening qualified after `make check` passed; the remaining opportunities were mostly taste or would blur critical-path instructions.
+- No new predicate or clippy enforcement is recommended.
 
-**Evidence:** `plugins/spec/skills/drop/SKILL.md:65–67` — `5. **Display summary`** immediately followed by `## Output On Success` with no step body (structural gap / frontmatter-body drift risk).
-
-**Action:** Renumber: merge step 5 into `## Output On Success` (delete standalone step 5 header).
-
-**Quality delta:** −2 LOC, −1 empty section.
-
-**Net LOC:** 85 → 83.
-
-**Done when:** no `5. **Display summary`** line in drop SKILL; section flows step 4 → Output.
-
-**Rule?** no.
-
-**Depends on:** T2 (same file; batch edit).
-
----
-
-### T4 — Inline `prefixed_sha256` wrapper in agents fingerprint
-
-**Evidence:** `src/runtime/commands/agents/fingerprint.rs:124–130` — `sha256_hex` is a one-line forward to `specify_tool::sha256_hex`; only used by `prefixed_sha256`.
-
-**Action:** In `prefixed_sha256`, call `specify_tool::sha256_hex(bytes)` directly; delete local `sha256_hex` fn.
-
-**Quality delta:** −4 LOC, −1 function.
-
-**Net LOC:** 207 → 203.
-
-**Done when:** `rg 'fn sha256_hex' src/runtime/commands/agents/fingerprint.rs` → 0.
-
-**Rule?** no.
-
-**Depends on:** none.
-
----
-
-### T5 — Consolidate divergent `plan-lock.md` copies
-
-**Evidence:** Two different files, same name: `plugins/spec/references/plan-lock.md` (48 lines, shell `mkdir` snippet) vs `plugins/spec/skills/execute/references/plan-lock.md` (78 lines, `flock` snippet). MD5 differ. Build/merge link the short shared copy; execute loop links the long local copy — operators get conflicting lock instructions on breakouts vs loop.
-
-**Action:**
-
-1. Replace shared `plugins/spec/references/plan-lock.md` body with execute copy (78 lines).
-2. Delete `plugins/spec/skills/execute/references/plan-lock.md`.
-3. Update execute `SKILL.md` + `execute/references/{stop-conditions,workspace-routing}.md` links from `references/plan-lock.md` / `plan-lock.md` → `../../references/plan-lock.md`.
-
-**Quality delta:** −48 LOC, −1 duplicate doc, −1 skill-integrity drift class.
-
-**Net LOC:** 126 → 78 (−48).
-
-**Done when:** `md5 plugins/spec/references/plan-lock.md plugins/spec/skills/execute/references/plan-lock.md` → second path missing; build + execute links resolve to one file.
-
-**Rule?** no.
-
-**Depends on:** none.
-
----
-
-### T6 — Deduplicate `scaffold_project_with_tool` vs contract fixture
-
-**Evidence:** `tests/tool_schema.rs:27–75` (49 lines) duplicates adapter scaffold pattern from `tests/contract_tool.rs:22–67` (adapter yaml, briefs, tools.yaml wiring). Only used by `tool_schema.rs`.
-
-**Action:** Hoist generic `scaffold_tool_project(tmp, tool_name, wasm_path) -> (project, cache)` into `tests/common/mod.rs`; delete local struct/fixture in `tool_schema.rs`.
-
-**Quality delta:** −~25 LOC net (after common helper), −1 duplicate scaffold.
-
-**Net LOC:** tool_schema 180 → ~130; common +55.
-
-**Done when:** `rg 'scaffold_project_with_tool|SchemaFixture' tests/` → hits only `common/mod.rs`.
-
-**Rule?** no.
-
-**Depends on:** F2.
-
----
-
-### T7 — Trim finalize runbook duplicate overview table
-
-**Evidence:** `plugins/spec/skills/finalize/references/runbook.md` lines 7–16 restate SKILL.md critical path as a table; SKILL.md lines 11–17 already list the same five steps. 10 lines of restatement (skill.frontmatter-restatement pattern at section level).
-
-**Action:** Delete `## Overview` table (lines 5–18); open runbook at `## Invocation`.
-
-**Quality delta:** −13 LOC, −1 duplicated section.
-
-**Net LOC:** 227 → 214.
-
-**Done when:** `wc -l plugins/spec/skills/finalize/references/runbook.md` = 214.
-
-**Rule?** no.
-
-**Depends on:** F3 (verb names in runbook already correct).
-
----
-
-### T8 — Remove `CacheKey` type alias
-
-**Evidence:** `src/runtime/commands/tool/dto.rs:10` — `type CacheKey = (String, String, String);` used once in `tool.rs:97–105`. Alias adds indirection without semantic weight.
-
-**Action:** Inline `(String, String, String)` at `kept_by_scope`; delete alias line.
-
-**Quality delta:** −1 type alias, −1 LOC.
-
-**Net LOC:** dto 137 → 136.
-
-**Done when:** `rg 'CacheKey' specify-cli/` → 0.
-
-**Rule?** no.
-
-**Depends on:** none.
-
----
-
-### T9 — Plan skill closing-hint duplication in body
-
-**Evidence:** `plugins/spec/skills/plan/SKILL.md` lines 49–55 (`## Closing hint`) repeat step 8 from Critical Path line 22 almost verbatim (same literal `specrun plan transition` command). Predicate `skill.step-body-duplicates-critical-path` may not fire on cross-section duplication.
-
-**Action:** Replace `## Closing hint` section with one line: "Emit the closing hint from step 8 verbatim."
-
-**Quality delta:** −6 LOC, −1 duplicated prose block.
-
-**Net LOC:** 69 → 63 body lines.
-
-**Done when:** `rg '## Closing hint' plugins/spec/skills/plan/SKILL.md` → 0; step 8 still contains full hint block.
-
-**Rule?** no.
-
-**Depends on:** none.
-
----
-
-## Findings not promoted
-
-
-| Candidate                                        | Why dropped                                                         |
-| ------------------------------------------------ | ------------------------------------------------------------------- |
-| Delete `plugins/change/`                         | Directory already removed on disk; glob index was stale             |
-| Dedupe `plugins/spec/skills/*/references/` trees | Symlinks to `plugins/spec/references/` — not copies                 |
-| Add `specrun plan finalize` CLI verb             | Adds LOC/types; contradicts subtraction default                     |
-| Delete vectis schema integration tests           | Loses host→WASI envelope coverage; F2 fixes root cause              |
-| Collapse `Ctx::slices_dir` / `archive_dir`       | Net +LOC at call sites for −8 lines in `context.rs`                 |
-| Update `decision-log.md` 1.x verb history        | Historical decision record; not operator-facing contract            |
-| Fix DECISIONS comment path in `output.rs`        | `../../DECISIONS.md` already resolves correctly from `src/runtime/` |
-
-
----
-
-## Verification checklist (post-remediation)
+## Verification Checklist
 
 ```bash
-# specify plugins/docs
-cd specify && make check
-
-# specify-cli
-cd specify-cli && cargo make check
-
-# Wire contract
-rg 'specrun plan finalize' --glob '!rfcs/**' ../specify ../specify-cli
-specrun plan --help | rg 'archive'
-
-# Dead finalize module
-rg 'change::finalize' specify-cli/crates specify-cli/tests
-
-# Schema tests
-cd specify-cli && cargo nextest run -p specify --test tool_schema
+cd /Users/andrewweston/github.com/augentic/specify && make check
+cd /Users/andrewweston/github.com/augentic/specify-cli && cargo make check
+cd /Users/andrewweston/github.com/augentic && rg -n 'specrun plan finalize|specify plan finalize|plan finalize' specify specify-cli --glob '*.md' --glob '!**/rfcs/**' --glob '!REVIEW.md'
+cd /Users/andrewweston/github.com/augentic/specify-cli && rg 'pub mod finalize|change::finalize|version_re|String accepts formatted hex' crates src tests
 ```
 
 ## Post-mortem
 
-- **F1:** actual ΔLOC 0 vs predicted (+1 Makefile; test path edit net-zero); done-when flipped cleanly? yes; regressions? none
-- **F2:** actual ΔLOC -26 vs predicted (-~20 LOC and one file); done-when flipped cleanly? yes; regressions? none
-- **F3:** actual ΔLOC -4 vs predicted (-3 LOC); done-when flipped cleanly? yes; regressions? none
-- **T1:** actual ΔLOC -5 vs predicted (-5 LOC); done-when flipped cleanly? yes; regressions? none
-- **T2:** actual ΔLOC -4 vs predicted (-3 LOC); done-when flipped cleanly? yes; regressions? none
-- **T3:** actual ΔLOC -2 vs predicted (-2 LOC); done-when flipped cleanly? yes; regressions? none
-- **T4:** actual ΔLOC -4 vs predicted (-4 LOC); done-when flipped cleanly? yes; regressions? none
-- **T5:** actual ΔLOC -48 vs predicted (-48 LOC); done-when flipped cleanly? yes; regressions? none
-- **T6:** actual ΔLOC -4 vs predicted (-~25 LOC net); done-when flipped cleanly? yes; regressions? none
-- **T7:** actual ΔLOC -15 vs predicted (-13 LOC); done-when flipped cleanly? yes; regressions? none
-- **T8:** actual ΔLOC -2 vs predicted (-1 LOC); done-when flipped cleanly? yes; regressions? none
-- **T9:** actual ΔLOC -4 vs predicted (-6 LOC); done-when flipped cleanly? yes; regressions? none
-
+- F1: actual ΔLOC -1529 vs predicted -1528; done-when flipped cleanly: yes; regressions: none.
+- F2: actual ΔLOC -586 vs predicted -586; done-when flipped cleanly: yes; regressions: none.
+- F3: actual ΔLOC -22 vs predicted 0; done-when flipped cleanly: yes; regressions: none.
+- F4: actual ΔLOC -2 vs predicted -8; done-when flipped cleanly: yes; regressions: none.
+- F5: actual ΔLOC -27 vs predicted -20; done-when flipped cleanly: yes; regressions: none.
+- F6: actual ΔLOC -4 vs predicted -5; done-when flipped cleanly: yes; regressions: none.
+- T1: actual ΔLOC +7 vs predicted 0; done-when flipped cleanly: yes; regressions: none.
+- T2: actual ΔLOC -3 vs predicted -3; done-when flipped cleanly: yes; regressions: none.

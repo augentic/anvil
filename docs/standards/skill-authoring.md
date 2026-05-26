@@ -58,7 +58,7 @@ The canonical "skills MUST NOT" list:
 
 - **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specrun slice transition` or `specrun plan transition`.
 - **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specrun slice create` / `specrun plan create`; the CLI owns directory shape.
-- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan finalize`.
+- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan archive`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with a stable anchor instead.
 

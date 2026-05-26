@@ -81,7 +81,7 @@ The slice-time operation declared by a source adapter. Reads one `Candidate` plu
 ## F
 
 **Finalize**
-The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr list` (read-only), and runs `specrun plan finalize` once every PR is `MERGED`. Never merges PRs itself.
+The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr view` (read-only), and runs `specrun plan archive` once every PR is `MERGED`. Never merges PRs itself.
 
 ## G
 
@@ -109,7 +109,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 ## P
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, finalize}` only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, archive}` only.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/domain/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.

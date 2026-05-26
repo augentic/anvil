@@ -76,4 +76,4 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 
 The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This provides an audit trail of every slice the project has been through.
 
-For plans, `specrun plan finalize <name>` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+For plans, `specrun plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

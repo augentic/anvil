@@ -47,7 +47,7 @@ No `pending` or `in-progress` entries remain. This is the only clean exit. The c
 drained — run /spec:finalize <name>
 ```
 
-`<name>` is the plan name from the drained envelope. `/spec:finalize` is the next operator step: it re-validates every per-entry `done`, pushes branches, observes PRs to `MERGED`, then runs `specrun plan finalize` to archive. `/spec:execute` itself never pushes, never opens a PR, and never archives — those are finalize's responsibility.
+`<name>` is the plan name from the drained envelope. `/spec:finalize` is the next operator step: it re-validates every per-entry `done`, pushes branches, observes PRs to `MERGED` with `gh pr view`, then runs `specrun plan archive` to archive. `/spec:execute` itself never pushes, never opens a PR, and never archives — those are finalize's responsibility.
 
 ## What is NOT a stop
 
