@@ -1,10 +1,10 @@
 # RFC-34: Framework Convergence — `FRAME-*` Rules and Framework Scan Profile
 
-> Status: Draft · Depends: [RFC-28](done/rfc-28-standards-contract.md) (codex contract + `Origin` enum amendment), [RFC-32](rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter) · Enables: optional follow-on to [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement)
+> Status: Draft · Depends: [RFC-28](done/rfc-28-standards-contract.md) (codex contract + `Origin` enum amendment), [RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter) · Enables: optional follow-on to [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement)
 
 ## Abstract
 
-[RFC-32](rfc-32-standards-enforcement.md) Phase 2 ships consumer-side deterministic enforcement: `specrun review` walks a consumer project, builds a [WorkspaceModel](rfc-32-standards-enforcement.md#workspacemodel), evaluates `deterministic_hints` against applicable codex rules from `specrun codex export`, and emits `ReviewFinding` JSON. Framework-repo enforcement (this repo's own `make check`) still runs through ~30 imperative Rust predicates in `crates/authoring/src/check/`. [RFC-28](done/rfc-28-standards-contract.md) Phase 3 made those predicates emit `ReviewFinding` JSON via `specdev check --format json` but did not move them into the codex layer.
+[RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 ships consumer-side deterministic enforcement: `specrun review` walks a consumer project, builds a [WorkspaceModel](done/rfc-32-standards-enforcement.md#workspacemodel), evaluates `deterministic_hints` against applicable codex rules from `specrun codex export`, and emits `ReviewFinding` JSON. Framework-repo enforcement (this repo's own `make check`) still runs through ~30 imperative Rust predicates in `crates/authoring/src/check/`. [RFC-28](done/rfc-28-standards-contract.md) Phase 3 made those predicates emit `ReviewFinding` JSON via `specdev check --format json` but did not move them into the codex layer.
 
 RFC-34 adds the optional **framework convergence** layer that lets new framework checks be authored as declarative codex rules instead of new Rust predicates:
 
@@ -86,7 +86,7 @@ A1, A2, and A3 are the only RFC-28 changes. The finding schema, fingerprint algo
 
 ### F1 — Framework scan scope
 
-Symmetric counterpart to [RFC-32 §D1](rfc-32-standards-enforcement.md#d1--consumer-scan-scope). `scan_profile: framework` walks the framework repository (`augentic/specify`) with the following defaults:
+Symmetric counterpart to [RFC-32 §D1](done/rfc-32-standards-enforcement.md#d1--consumer-scan-scope). `scan_profile: framework` walks the framework repository (`augentic/specify`) with the following defaults:
 
 - **Roots.** `project_dir` itself (always the framework-repo root for `specdev review` invocations), plus any path explicitly named in `artifact_paths[]`.
 - **Default include globs.** `adapters/**`, `plugins/**`, `docs/**`, `.cursor/**`, `rfcs/**`, `scripts/**`, `schemas/**`, `**/AGENTS.md`, `**/REVIEW.md`. Wider than the consumer profile because the framework repo's source of truth is markdown and YAML across many trees.
@@ -283,7 +283,7 @@ Every design question raised while drafting RFC-34 is resolved in the body. The 
 ## References
 
 - [RFC-28: Engineering Standards — Codex Contract and Findings](done/rfc-28-standards-contract.md) — finding shape, codex resolution, the `Origin` enum widened by §A1.
-- [RFC-32: Engineering Standards — Deterministic Enforcement](rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun review`).
+- [RFC-32: Engineering Standards — Deterministic Enforcement](done/rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun review`).
 - [RFC-33: Standards Finding Lifecycle](rfc-33-standards-finding-lifecycle.md) — baseline/suppression layer that applies equally to `specdev review` and `specrun review` envelopes.
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md) — `specdev` binary contract.
 - [Specify Roadmap — RM-10](roadmap.md#rm-10-ci-native-standards-enforcement) — CI-native standards enforcement; RFC-34 is optional relative to RM-10.

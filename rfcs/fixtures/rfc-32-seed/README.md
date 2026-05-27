@@ -2,7 +2,7 @@
 
 Minimal consumer-project tree that proves the seeded deterministic hints
 from RFC-32 Phase 2 step 6 produce non-empty findings. Wired up by Slice
-S10 of [`rfc-32-plan.md`](../../rfc-32-plan.md).
+S10 of [`rfc-32-standards-enforcement.md`](../../done/rfc-32-standards-enforcement.md).
 
 ## Layout
 

@@ -1,10 +1,10 @@
 # RFC-33: Standards Finding Lifecycle
 
-> Status: Draft · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../rfc-32-standards-enforcement.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Draft · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 
 ## Abstract
 
-[RFC-28](../done/rfc-28-standards-contract.md) defines the `ReviewFinding` wire shape, fingerprint algorithm, and severity enum. [RFC-32](../rfc-32-standards-enforcement.md) defines `WorkspaceModel`, the deterministic hint interpreter, and the `specrun review` scanner that emits findings for a single scan. Neither RFC defines the **cross-run** lifecycle: how findings are accepted as baseline debt, suppressed in source with rationale, diffed between scans, or summarised as journal events.
+[RFC-28](../done/rfc-28-standards-contract.md) defines the `ReviewFinding` wire shape, fingerprint algorithm, and severity enum. [RFC-32](../done/rfc-32-standards-enforcement.md) defines `WorkspaceModel`, the deterministic hint interpreter, and the `specrun review` scanner that emits findings for a single scan. Neither RFC defines the **cross-run** lifecycle: how findings are accepted as baseline debt, suppressed in source with rationale, diffed between scans, or summarised as journal events.
 
 Without that layer, the first scan on any non-trivial consumer project returns hundreds of legitimate findings, CI fails on noise, and the engine is disabled before it earns its keep. Every long-lived linter (Clippy, ESLint, Semgrep, GitHub code scanning) eventually grows the same two surfaces: a baseline acknowledgement file for mass debt, and an in-source suppression marker for intentional exceptions with rationale. This RFC ships those surfaces inside the Specify contracts.
 
@@ -28,7 +28,7 @@ The three pressure points after RFC-32 lands:
 - **Intentional exceptions need to live with the code.** Some findings are legitimately wrong for one file or one line and should be tolerated in place. A baseline file is too coarse for that — it survives across files but loses context. The industry-standard answer is an in-source comment marker; the open design choice is its grammar and what it carries.
 - **CI dashboards need diffs, not absolute counts.** "Project X has 412 findings" is not actionable. "PR Y introduced 3 new findings and fixed 1" is. Stable fingerprints are already there per RFC-28; what is missing is somewhere to compare them against.
 
-[RFC-32 §"Stability"](../rfc-32-standards-enforcement.md) deliberately stops at "one scan, byte-stable order." The cross-run concern is a different layer, and RFC-32's own principles (2: findings are wire format; 7: no lifecycle authority in review) hold this RFC to the same boundary.
+[RFC-32 §"Stability"](../done/rfc-32-standards-enforcement.md) deliberately stops at "one scan, byte-stable order." The cross-run concern is a different layer, and RFC-32's own principles (2: findings are wire format; 7: no lifecycle authority in review) hold this RFC to the same boundary.
 
 ### What this RFC does not repeat
 
@@ -290,7 +290,7 @@ Backwards compatibility:
 ## References
 
 - [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
-- [RFC-32: Engineering Standards — Deterministic Enforcement](../rfc-32-standards-enforcement.md)
+- [RFC-32: Engineering Standards — Deterministic Enforcement](../done/rfc-32-standards-enforcement.md)
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
 - [Specify Roadmap — RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
