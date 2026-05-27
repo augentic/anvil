@@ -1,6 +1,8 @@
 # RFC-28: Engineering Standards — Codex Contract and Findings
 
-> Status: Implemented - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
+> Status: Implemented - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [RFC-34](rfc-34-framework-convergence.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
+>
+> **Post-implementation note (RFC-34):** the declarative `FRAME-*` rules, framework scan profile, and `specdev review` verb originally attributed to "RFC-32 Phase 3 Option B" throughout this RFC's body were carved out as [RFC-34](rfc-34-framework-convergence.md) after RFC-28 was implemented. RFC-34 also normatively widens the closed `Origin` enum below by one value (`framework`) and amends the origin sort order (see [RFC-34 §A1–A2](rfc-34-framework-convergence.md#rfc-28-amendments)). Historical attributions to "RFC-32 Phase 3 Option B" in the body still resolve correctly via RFC-32's forward pointer to RFC-34; this note exists so a reader does not have to chase the chain.
 
 ## Abstract
 
@@ -469,7 +471,7 @@ RFC-28 lands as **three sequenced phases** merged to main in a **single PR** acr
 **Goal:** Extend the codex authoring contract and align review docs before runtime export ships.
 
 1. **Authoring schema** — `crates/authoring/schemas/codex-rule.schema.json`. Add both `SRC` and `FRAME` to the closed `ruleId` regex (`FRAME` is reserved for RFC-32 Phase 3 and rejected under `adapters/{sources,targets}/<name>/codex/` via the namespace-ownership predicate in step 2; landing the regex entry now avoids a second schema bump when RFC-32 Phase 3 lands); extend `deterministic_hints.kind` with RFC-32 reserved kinds (documented, not executed) only where the schema needs to accept already-authored policy. Do not make deterministic hints required for any rule.
-2. `**check::codex`** — `crates/authoring/src/check/codex.rs`. Map every source-adapter owner discovered under `adapters/sources/<name>/codex/` to `{"SRC"}` in `CODEX_PROFILE_NAMESPACES` (not a single hardcoded adapter name). Add a placement predicate that rejects any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`; `FRAME-*` is reserved for RFC-32 Phase 3 placement (current preference: `tooling/rules/` per RFC-32 Open Question 1).
+2. `**check::codex`** — `crates/authoring/src/check/codex.rs`. Map every source-adapter owner discovered under `adapters/sources/<name>/codex/` to `{"SRC"}` in `CODEX_PROFILE_NAMESPACES` (not a single hardcoded adapter name). Add a placement predicate that rejects any `FRAME-*` rule discovered under `adapters/{sources,targets}/<name>/codex/`; `FRAME-*` placement under `adapters/shared/codex/framework/` is owned by [RFC-34 §F3](rfc-34-framework-convergence.md#f3--check-codex-placement-and-resolution) and lands when RFC-34 ships.
 3. **Editor copies** — `.cursor/schemas/codex-rule.schema.json` in `augentic/specify` stays aligned with the authoring schema.
 4. **Source-overlay smoke fixture** — one `SRC-*` rule under `adapters/sources/documentation/codex/` to exercise resolution root 3 and future export `origin: source`.
 5. **Review brief alignment** — rewrite severity vocabulary (`CRITICAL → critical`, `HIGH → important`, `MEDIUM → suggestion`, `LOW → optional`), `rule_id` examples, and finding-shape callouts in:

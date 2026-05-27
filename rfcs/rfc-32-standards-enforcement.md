@@ -1,6 +1,6 @@
 # RFC-32: Engineering Standards — Deterministic Enforcement
 
-> Status: Draft · Depends: [RFC-28](done/rfc-28-standards-contract.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence (Phase 3)
+> Status: Accepted · Depends: [RFC-28](done/rfc-28-standards-contract.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence — see [RFC-34](rfc-34-framework-convergence.md)
 
 ## Abstract
 
@@ -55,7 +55,7 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
 ┌─────────────────────────────────────────────────────────────────┐
 │ RFC-28 (prerequisite)                                           │
 │   specrun codex export → ResolvedCodex + ReviewFinding schema   │
-│   shared CodexRule parser in specify-domain                     │
+│   shared CodexRule parser in specify-codex (see §Library layout)│
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -87,10 +87,10 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
 | **1** | RFC-28 Phases 1–2 | Finding schema, `specrun codex export`, shared codex parser, hint shape validation            | Yes — prerequisite   |
 | **2** | RFC-32        | WorkspaceModel, hint interpreter, `specrun review` deterministic MVP                          | Yes — this RFC       |
 | **3a** | RFC-28 Phase 3  | Framework `specdev check --format json` → `ReviewFinding` (Option A)                          | Yes — same train     |
-| **3b** | RFC-32       | Declarative `FRAME-*` rules + framework profile (Option B)                                    | No — operator choice |
+| **3b** | [RFC-34](rfc-34-framework-convergence.md) | Declarative `FRAME-*` rules + framework scan profile + `specdev review` (Option B) | No — operator choice |
 
 
-Phase 2 must not block on Phase 3a or 3b. Phase 3a (RFC-28 Phase 3) must not block Phase 2 or RM-10. Phase 3b must not block RM-10.
+Phase 2 must not block on Phase 3a or 3b. Phase 3a (RFC-28 Phase 3) must not block Phase 2 or RM-10. Phase 3b (RFC-34) must not block RM-10 and must not block RFC-32 acceptance.
 
 ### WorkspaceModel
 
@@ -136,7 +136,7 @@ Extractors may run only under `scan_profile: framework` (marketplace, skill grap
 
 #### Schema location
 
-Add `specify-cli/schemas/review/workspace-model.schema.json` and matching DTOs in `specify-domain` (or a small `specify-review` crate if dependency direction requires it). The schema documents v1 fact families; it does not attempt to encode every future extractor.
+Add `specify-cli/schemas/review/workspace-model.schema.json` (embedded by `specify-schema`) and matching DTOs in `specify-codex` (under `crates/codex/src/review/`, mirroring the existing codex precedent from RFC-28 — both modules co-locate in `specify-codex` per §"Library layout"). The schema documents v1 fact families; it does not attempt to encode every future extractor.
 
 #### Persistence and query (v1 decision)
 
@@ -179,7 +179,7 @@ RFC-32 extends the **closed** `kind` enum for execution. RFC-28 validates shape 
 | `regex`        | Raw file bytes (per applicability path filter)  | Line/column findings for pattern hits                      |
 | `path-pattern` | `file.path` glob                                | Narrow scan targets before other hints                     |
 | `schema`       | Parsed JSON/YAML value or extracted frontmatter | Structural validation via JSON Schema ref                  |
-| `tool`         | External command                                | Delegate to declared WASI/host tool (`specify tool run …`) |
+| `tool`         | Declared WASI tool                              | Delegate to a project-declared WASI tool via `specrun tool run` |
 
 
 #### Hint kinds — reserved (schema may list; interpreter returns `unsupported` until implemented)
@@ -197,7 +197,7 @@ RFC-32 extends the **closed** `kind` enum for execution. RFC-28 validates shape 
 | `namespace-owner`    | codex id prefix vs tree owner     | `codex.namespace-ownership-violation`             |
 
 
-Reserved kinds are documented in the schema with `"x-rfc31-status": "reserved"` so RFC-28 exporters and tooling validators accept files that declare future hints without executing them.
+Reserved kinds are documented in the schema with `"x-rfc32-status": "reserved"` (matching RFC-28's annotation) so RFC-28 exporters and tooling validators accept files that declare future hints without executing them.
 
 #### Evaluation algorithm
 
@@ -244,7 +244,7 @@ Exit codes follow the operator CLI table: validation/findings failure → `2`; i
 | `deterministic_hints` shape | Validates                      | Executes                                               |
 | `specrun codex export`      | Implements                     | Calls                                                  |
 | `specrun review`            | Non-goal                       | Implements deterministic core                          |
-| Shared codex parser         | Implements in `specify-domain` | Reuses in indexer                                      |
+| Shared codex parser         | Implements (relocates to `specify-codex` per RFC-32 §"Library layout") | Reuses in indexer                                      |
 
 
 RFC-28 should reserve extensibility in the codex authoring schema for additional hint kinds without implementing them. See [RFC-28 §Deterministic hints extensibility](done/rfc-28-standards-contract.md#deterministic-hints-extensibility).
@@ -259,7 +259,7 @@ Owned by [RFC-28](done/rfc-28-standards-contract.md) Phase 3, not this RFC. Keep
 
 #### Option B — declarative framework rules (higher cost)
 
-Introduce first-party framework policy files under `tooling/rules/` using the same codex markdown shape but a dedicated namespace:
+Introduce first-party framework policy files under `adapters/shared/codex/framework/` (sibling of `adapters/shared/codex/universal/`) using the same codex markdown shape but a dedicated namespace:
 
 
 | Namespace | Owner                                                       |
@@ -269,15 +269,17 @@ Introduce first-party framework policy files under `tooling/rules/` using the sa
 
 `FRAME-*` rules use the same hint interpreter and WorkspaceModel with `scan_profile: framework`. Imperative checks retire only when a declarative rule plus extractor coverage replaces them. Until then, both may run; duplicate coverage is a migration smell, not a CI failure.
 
+Full normative contract for Option B (framework scan-scope, the `specdev review` verb, the `Origin::Framework` amendment to RFC-28, the `--include-framework` consumer opt-in, and the migration cadence) lives in [RFC-34](rfc-34-framework-convergence.md). This RFC stops at acknowledging Option B as the long-term direction; nothing about RFC-32 Phase 2 acceptance depends on RFC-34 landing.
+
 #### Option C — defer indefinitely
 
-Leave `specdev check` unchanged. RM-10 and framework CI remain separate surfaces sharing only `specify-domain` parsers. This is valid if Phase 3 cost exceeds benefit.
+Leave `specdev check` unchanged. RM-10 and framework CI remain separate surfaces sharing only `specify-codex` parsers (per §"Library layout"). This is valid if Phase 3 cost exceeds benefit.
 
 **Recommendation:** ship RFC-28 Phases 1–2, then RFC-32 Phase 2 (`specrun review`); RFC-28 Phase 3 ships in the same PR as Phases 1–2 when unified CI annotations for framework checks are needed; adopt Option B only for predicates that clearly map to reserved hint kinds.
 
 ### Predicate migration map (Phase 3 reference)
 
-Reference mapping from current `tooling/src/check/` predicates to declarative kinds. Not a commitment to migrate every row.
+Reference mapping from the current `crates/authoring/src/check/` predicates (in `augentic/specify-cli`) to declarative kinds. Not a commitment to migrate every row.
 
 
 | Current rule id prefix  | Declarative kind(s)                    | Phase 3 priority                          |
@@ -286,7 +288,7 @@ Reference mapping from current `tooling/src/check/` predicates to declarative ki
 | `skill.*` (frontmatter) | `schema`, `unique`, grammar as `regex` | High                                      |
 | `skill.*` (body)        | `cardinality`, `regex`, `set-coverage` | Medium                                    |
 | `links.*`               | `reference-resolves`                   | High                                      |
-| `codex.*`               | `schema`, `namespace-owner`, `unique`  | Medium — shape checks may stay in tooling |
+| `codex.*`               | `schema`, `namespace-owner`, `unique`  | Medium — shape checks may stay in `crates/authoring/` |
 | `plugins.*`             | `set-eq`, symlink facts                | Medium                                    |
 | `prose.*`               | `regex`, `constant-eq`                 | Medium                                    |
 | `scenarios.*`           | `schema`, custom trace freshness       | Low — may stay imperative                 |
@@ -297,50 +299,345 @@ Predicates invoking subprocesses (`specify source resolve`, declared-tool equiva
 
 ### Library layout
 
-Prefer `specify-domain` for shared types and parsers already used by RFC-28. Add execution modules behind a feature flag if dependency weight matters:
+This RFC introduces two new workspace crates — `specify-codex` (the standards layer) and `specify-schema` (shared JSON-Schema plumbing) — and amends RFC-28's placement of the codex parser accordingly. The crate graph becomes:
 
 ```text
-specify-domain (or specify-review)
-├── codex/              # RFC-28: parse, resolve, export DTOs
-├── review/
-│   ├── finding.rs      # RFC-28: ReviewFinding, envelope
-│   ├── model.rs        # RFC-32: WorkspaceModel DTOs
-│   ├── index/          # RFC-32: profile-specific extractors
-│   ├── eval/           # RFC-32: hint interpreter
-│   └── diagnostics/    # RFC-32: shared formatters (pretty, github, compact, json)
+specify-error ─┬──> specify-tool ──────────────────────┐
+               │                                       │
+               └──> specify-schema ──┬──> specify-codex ┐
+                                     │                  ├──> specify (root binary)
+                                     └──> specify-domain ┘
 ```
 
-Framework repo `tooling/` depends on `specify-domain` for parsers (already true per RFC-5). Phase 3 Option B may add a thin `tooling` subcommand `tooling review` that runs the framework profile locally — **not** required for Phase 2.
+- **`specify-schema` (new leaf).** Owns every embedded JSON Schema constant — workflow (`PLAN_JSON_SCHEMA`, `EVIDENCE_JSON_SCHEMA`, `FUSION_JSON_SCHEMA`, `COMPONENTS_JSON_SCHEMA`), codex (`CODEX_RULE_JSON_SCHEMA`, `RESOLVED_CODEX_JSON_SCHEMA`), and review (`REVIEW_FINDING_JSON_SCHEMA`, `WORKSPACE_MODEL_JSON_SCHEMA`, `REVIEW_RESULT_JSON_SCHEMA`) — plus the generic JSON-Schema plumbing both consumers share (`compile_schema`, `validate_value`, `validate_serialisable`, `validation_error_detail`, `child_pointer`, `read_yaml_as_json`). Depends only on `specify-error` plus `jsonschema` / `serde_json` / `serde_saphyr` / `serde`. Total surface is ~150 LoC; the crate exists to eliminate the only honest duplication between `specify-codex` and `specify-domain` rather than to host elaborate machinery.
+
+- **`specify-codex` (new, this RFC).** The standards layer covering RFC-28 (codex types, parser, resolver, finding wire shape, finding validator) and RFC-32 (WorkspaceModel, indexer, hint interpreter, diagnostic formatters, `specrun review` runner). Depends on `specify-error`, `specify-tool` (for the `kind: tool` hint), and `specify-schema`. Does **not** depend on `specify-domain` — the §"Principles" rule that review carries no lifecycle authority becomes a type-system invariant rather than a coding convention. The crate is named `specify-codex` because operators reach for "codex" as the umbrella noun for everything in this layer; throughout this RFC "codex" is shorthand for the standards surface as a whole (codex authoring **and** review enforcement), not the authoring half alone.
+
+- **`specify-domain` (existing, reshaped).** Workflow only: slice, change, spec, task, adapter, registry, config, merge, validate, init, evidence, journal, discovery, design_system. Loses its `codex/` module and the codex/review schema constants from `schema.rs`; gains a dependency on `specify-schema` so the workflow validators (`validate_plan`, `validate_evidence_dir`, `validate_components_yaml`) keep working. Its `Cargo.toml` description ("slice, change, spec, task, adapter, registry, config, merge, validate, init") finally matches what's in the crate.
+
+- **Sibling, not parent.** `specify-codex` and `specify-domain` are siblings — neither imports the other. The root `specify` binary wires them together for `specrun review` (consumes both: `specify-codex` for the scanner, `specify-domain` for project / slice context resolution). If a future workflow validator ever needs to mint a `ReviewFinding` directly, `specify-domain` gains a dependency on `specify-codex` at that point — the leaf-→-root order still holds. v1 does not need this and the sibling shape keeps the workflow crate strictly independent of the standards crate.
+
+- **`specify-authoring` picks up `specify-codex`.** The `specdev` predicate crate (`crates/authoring/`) currently depends only on `specify-error`. It gains a dependency on `specify-codex` so codex-frontmatter predicates can consume `CODEX_RULE_JSON_SCHEMA` and the typed `CodexRule` DTO directly. This is the precondition for the §"Eliminates the vendored codex-rule schema" cleanup below.
+
+The internal module shape of `specify-codex` preserves the RFC-28 vs RFC-32 split so the two RFC bodies remain navigable from the source tree:
+
+```text
+crates/codex/src/         (specify-codex)
+├── lib.rs
+├── codex.rs              # RFC-28 umbrella + DTOs (CodexRule, ResolvedCodex, ReviewFinding, …)
+├── codex/
+│   ├── parse.rs
+│   ├── resolve.rs        # plus resolve/{filter,sort}.rs
+│   ├── finding.rs        # finding validator (CH-16)
+│   └── fingerprint.rs
+├── review.rs             # RFC-32 umbrella
+└── review/
+    ├── model.rs          # WorkspaceModel DTOs
+    ├── index.rs          # umbrella for extractors
+    ├── index/
+    │   ├── files.rs      # filesystem walk + profile globs (§D1)
+    │   ├── frontmatter.rs
+    │   ├── markdown.rs   # sections + links (fence-aware)
+    │   ├── symlinks.rs
+    │   └── codex.rs      # reuses crate::codex::parse
+    ├── eval.rs           # umbrella for hint interpreter
+    ├── eval/
+    │   ├── path_pattern.rs
+    │   ├── schema.rs
+    │   ├── regex.rs
+    │   └── tool.rs
+    └── diagnostics.rs    # umbrella for formatters
+crates/codex/src/review/diagnostics/
+├── json.rs
+├── pretty.rs
+├── github.rs
+└── compact.rs
+```
+
+`scan_profile: framework` extractors (skill, adapter, marketplace, agent-teams) land here when [RFC-34](rfc-34-framework-convergence.md) ships — they live in `specify-codex` for the same reason consumer extractors do (the standards surface owns review code).
+
+`specify-schema` is intentionally flat:
+
+```text
+crates/schema/src/         (specify-schema)
+├── lib.rs                 # re-exports
+├── constants.rs           # every embedded schema (include_str! one-liners)
+└── validate.rs            # compile_schema, validate_value, helpers
+```
 
 #### Diagnostic formatters
 
-`ReviewFinding` rendering lives in `specify-domain::review::diagnostics` so `specrun review` (Phase 2) and `specdev check --format json` (RFC-28 Phase 3) share one set of formatters and cannot drift. v1 implements:
+`ReviewFinding` rendering lives in `specify-codex::review::diagnostics` so `specrun review` (Phase 2) and `specdev check --format json` (RFC-28 Phase 3) share one set of formatters and cannot drift. v1 implements:
 
 - `pretty` — terminal output with severity colour and source location;
 - `github` — `::error file=…,line=…,title=…::…` workflow annotation format;
 - `compact` — one finding per line, suitable for `grep` and PR-bot consumption;
 - `json` — the envelope shape RFC-28 defines verbatim.
 
-Heavy presentation dependencies (e.g. syntax highlighting, full markdown rendering) do not belong in `specify-domain` and are out of scope for v1; if they land later they live behind a feature flag or in a separate `specify-diagnostics` crate that depends on `specify-domain`, not the other way around. The `specdev` binary imports `diagnostics` directly for Phase 3; it does not duplicate formatter code at the binary boundary.
+Heavy presentation dependencies (e.g. syntax highlighting, full markdown rendering) do not belong in `specify-codex` and are out of scope for v1; if they land later they live behind a feature flag or in a separate `specify-diagnostics` crate that depends on `specify-codex`, not the other way around. The `specdev` binary imports `diagnostics` directly for Phase 3; it does not duplicate formatter code at the binary boundary.
+
+### Eliminates the vendored codex-rule schema
+
+The §"Library layout" split lifts the constraint that forced the codex-rule schema to be vendored in two places. Before this RFC:
+
+- `crates/authoring/schemas/codex-rule.schema.json` is the authoring source-of-truth that `specdev check` codex-frontmatter predicates read.
+- `specify-cli/schemas/codex/codex-rule.schema.json` is the vendored runtime copy that `specify-domain` embeds via `include_str!` for the codex resolver and DTO round-trip tests.
+- `scripts/sync-codex-schema.sh` is the only sanctioned way to refresh the vendored copy (a plain `cp src dst`).
+- `codex.schema-drift` (CH-09, `crates/authoring/src/check/codex_schema_drift.rs`) computes SHA-256 over both files and fails CI on drift.
+
+The duplication exists *because* `specify-authoring` deliberately does not depend on `specify-domain` — the predicate crate's charter is to stay lightweight and not drag in workflow types (slice, change, journal, merge). With `specify-codex` as a lightweight sibling crate (no workflow deps), `specify-authoring` gains a dependency on `specify-codex` and consumes the canonical schema constant directly. The vendoring goes away:
+
+1. The canonical schema lives at `specify-cli/schemas/codex/codex-rule.schema.json` and is embedded once in `specify-schema` via `include_str!`.
+2. `specify-codex` (the codex resolver) reads `specify_schema::CODEX_RULE_JSON_SCHEMA`.
+3. `specify-authoring` (the codex-frontmatter predicate) reads `specify_schema::CODEX_RULE_JSON_SCHEMA` via its new `specify-codex` dependency.
+4. `crates/authoring/schemas/codex-rule.schema.json` is deleted.
+5. `scripts/sync-codex-schema.sh` is deleted.
+6. `crates/authoring/src/check/codex_schema_drift.rs`, its test (`crates/authoring/tests/check_codex_schema_drift.rs`), and the `codex.schema-drift` rule id are deleted.
+7. The schema's `$id` URL is corrected to match its on-disk location (today it points at an aspirational `schemas/authoring/` path that does not exist on disk).
+
+This cleanup is bundled into the same implementation PR as the standards-layer split because the justification for the duplication evaporates at the moment `specify-codex` lands — leaving the vendoring in place after the split would ship a confused intermediate state on `main`.
+
+The same logic does not apply to the other authoring-only schemas in `crates/authoring/schemas/` (`marketplace.schema.json`, `scenario.schema.json`, `skill.schema.json`) — those are not duplicated anywhere and stay put.
+
+### Phase 2 normative decisions
+
+A consolidated checklist of pre-flight contracts that Phase 2 implementations MUST honour. These resolve open spots in §"Deterministic hints", §"`specrun review`", and §"Diagnostic formatters" so an implementing agent can start without reopening design.
+
+#### D1 — Consumer scan scope
+
+`scan_profile: consumer` walks `project_dir` with the following defaults:
+
+- **Roots.** `project_dir` itself, plus any path explicitly named in `artifact_paths[]`. Symlinks are recorded as `symlink` facts but **not** traversed.
+- **Default include globs.** `**/*.{md,yaml,yml,json,toml,rs,swift,kt,kts,gradle,ts,tsx,js,jsx,py,sql}` plus every path under `.specify/**` (the slice tree).
+- **Always-ignore globs.** `target/**`, `**/node_modules/**`, `.git/**`, `dist/**`, `build/**`, `out/**`, `**/.DS_Store`, and every path matching the project-root `.gitignore` (parsed with the `ignore` crate).
+- **Binary files.** Files whose first 8 KiB contain a NUL byte are recorded as `file { kind: "binary" }` with no further extraction. Hints with `kind: regex` skip binary files unless the rule's frontmatter sets `applicability.binary: true` (reserved; rejected as `unsupported` until §"Reserved kinds" lands).
+- **Encoding.** UTF-8 with U+FFFD replacement on invalid sequences; an `index.warning` finding is emitted once per non-UTF-8 file (severity `optional`).
+- **Determinism.** File enumeration is sorted by project-relative path before parallel dispatch. Each extractor sorts its own output before merge into the model envelope so the JSON serialization is byte-stable irrespective of thread scheduling.
+
+`scan_profile: framework` is out of scope for Phase 2 (it lands with Phase 3b).
+
+#### D2 — `--slice` and `--artifact` scope semantics
+
+The two narrowing flags compose with `--target` rather than replacing it:
+
+| Flag | Effect on extraction inputs |
+| --- | --- |
+| _(none)_ | `artifact_paths[]` is empty; the indexer performs a full consumer scan under D1. |
+| `--slice <name>` | `artifact_paths[]` is populated with every path listed under the slice's `tasks.md` *Touches* / *Produces* sections plus `.specify/slices/<name>/**`. Hints still scan within those paths only. |
+| `--artifact <path>` (repeatable) | Each `<path>` is appended to `artifact_paths[]` verbatim. Globs are expanded against the D1 enumeration so ignored paths stay ignored. |
+| `--slice` + `--artifact` | Union of the two sets. |
+
+`specrun codex export` is called with the same `--artifact` / `--language` filters so resolved rule set and scan set agree.
+
+#### D3 — `schema` hint value format
+
+`value` is a string that selects a JSON Schema. The interpreter accepts exactly two shapes; everything else is an `unsupported` finding:
+
+1. **Registered schema id.** A bare token resolvable against the schemas the CLI ships (`schemas/codex/resolved.schema.json`, `schemas/review/finding.schema.json`, `schemas/review/workspace-model.schema.json`, the per-axis adapter manifests, …). The token matches the schema's `$id` final path segment, e.g. `value: codex-rule`.
+2. **Project-relative `$ref`.** A `./` or `../`-prefixed path to a JSON Schema file under the project tree, resolved against `project_dir`. External `http(s)://` refs are rejected to keep `specrun review` offline and reproducible.
+
+The hint applies to the parsed JSON / YAML body of the candidate file or, if the hint frontmatter sets `target: frontmatter`, to the extracted frontmatter document only. Schema validation errors map to one `ReviewFinding` per failing keyword, with `evidence.json_pointer` recording the failing location.
+
+#### D4 — `tool` hint wire contract
+
+`tool` hints invoke **declared WASI tools only** — no host commands, no shell expansion, no environment leakage. The interpreter calls the same code path `specrun tool run <name>` uses today:
+
+- `value` is the declared tool name (matched against the project's `tools.yaml` / adapter-declared tools).
+- Optional `args:` array supplies positional arguments, expanded against a closed set of placeholders: `{artifact}`, `{project_dir}`, `{rule_id}`. Any other `{…}` placeholder rejects as `unsupported`.
+- The tool's structured output (RFC-28 `ReviewFinding[]` envelope, or a single-finding shape with `rule_id`, `severity`, `evidence`) is folded into the scan result. Non-zero exit with no findings emits one `tool.invocation-failed` finding with the tool's stderr captured in `evidence.text` (bounded by the RFC-28 evidence cap).
+- Tools that are not declared by the project, or that the project's `tools.yaml` does not grant `review` capability, surface as `tool.undeclared` findings (severity `important`).
+
+Phase 2 ships this for at least the `contract` tool so OpenAPI / JSON Schema validation runs through the same review surface as deterministic hints.
+
+#### D5 — Reserved hint policy
+
+- **Default behaviour.** Reserved kinds (anything listed under §"Hint kinds — reserved" above) evaluate as no-ops. The runner emits **one** summary `review.reserved-hint-skipped` finding per scan (severity `optional`) listing the affected `(rule_id, hint_index)` pairs so operators can see which rules carry hints awaiting implementation.
+- **Strict mode.** `specrun review --strict-hints` upgrades the summary to severity `important` and contributes to exit-code `2`. Useful in CI for adapter authors who want a forcing function before reserved kinds ship.
+- **Single rule id across modes.** Strict mode emits the same `review.reserved-hint-skipped` rule id as default mode (only `severity` differs); producers MUST NOT mint a separate rule id for strict mode so dashboards aggregate cleanly across strict and non-strict runs.
+- **No silent skip.** Reserved hints are never silently dropped — at minimum the summary finding fires so the absence of expected findings is observable.
+
+#### D6 — Formatter scope in Phase 2
+
+`specrun review --format <name>` accepts the closed set `{ json, pretty, github, compact }` from day one. All four formatters live in `specify-codex::review::diagnostics` (§"Diagnostic formatters") and ship together in Phase 2 step 4. JSON is the wire contract and the only format whose shape is governed by RFC-28; the other three are presentation layers that render the same envelope. There is no JSON-only intermediate release.
+
+#### D7 — `specrun review` codex-root resolution
+
+The runner resolves the codex tree in the following order (first hit wins):
+
+1. `--codex-root <path>` (explicit flag).
+2. `$CODEX_ROOT` environment variable (matches `specrun codex export`).
+3. `.specify/cache/codex/` if present (populated by `specrun init` and refreshed by `specrun workspace sync`).
+4. The shared codex tree bundled with the CLI install (resolved relative to the binary, mirroring how schemas are located).
+
+Resolution failure (no source found) is `Error::Validation` with exit code `2` and a hint pointing at `specrun init` / `--codex-root`. Consumer projects without a vendored codex but with network access do **not** fetch on demand — that contract belongs to `specrun init`, not `specrun review`.
+
+#### D8 — `specrun review` exit-code map
+
+Pins the closed mapping from runtime failure modes to `Exit::from(&Error)` so CI scripts, JSON envelope consumers, and reviewing agents can switch on a stable surface. Producers MUST NOT introduce new exit codes; new failure modes route through the existing `Error` variants:
+
+| Source error                                                          | `Error` variant                                            | Exit |
+| --------------------------------------------------------------------- | ---------------------------------------------------------- | ---- |
+| Findings present (`summary.critical + important > 0`)                 | `Validation`                                               | 2    |
+| Strict reserved hint (`--strict-hints`, per §D5)                      | `Validation { rule_id: "review-unsupported-hint-kind" }`   | 2    |
+| Codex export resolution failure                                       | passthrough from `specrun codex export` resolver mapping   | 1/2  |
+| WorkspaceModel I/O (filesystem walk, frontmatter read, link resolve)  | `Filesystem { op: "review-index" }`                        | 1    |
+| `tool` hint subprocess failure (per §D4)                              | `Tool { … }` (passthrough from `specrun tool run`)         | 1    |
+
+The `Filesystem { op }` discriminant and the `rule_id` strings appear verbatim in `--format json` output (kebab-case wire form); changing either is a wire break and requires an envelope version bump per §D9.
+
+#### D9 — Review-result envelope schema
+
+The `specrun review --format json` envelope (`{ version, summary, findings }` per RFC-28 §"Review result envelope") is validated against `schemas/review/review-result.schema.json` before emit. RFC-32 owns this schema; RFC-28 owns the inner `ReviewFinding[]` element shape via `schemas/review/finding.schema.json` (referenced by `$ref`). The `version` field is the discriminant any future RM-11 / RM-14 consumer keys on; widening the envelope (new top-level fields, new `summary` keys) is a `version: 2` change and requires updating both schemas and at least one round-trip consumer fixture in the same PR.
 
 ## Implementation Plan
 
 ### Phase 2 (required)
 
-1. **Schemas.** Add `workspace-model.schema.json`; extend codex authoring schema with reserved hint kinds (documented, not executed in RFC-28).
-2. **Indexer.** Implement `scan_profile: consumer` extractors: files, frontmatter, markdown links, basic sections. Reuse RFC-28 codex parser for any codex paths in consumer overlays.
-3. **Hint interpreter.** Implement `regex`, `path-pattern`, `schema`, `tool` with golden fixtures per kind.
-4. `**specrun review`.** Wire export → index → eval → envelope; add `--dump-model` for debugging.
-5. **Acceptance.** Golden tests: resolved rules + sample crate tree → stable findings JSON; fingerprint stability; evidence size cap enforcement from RFC-28.
-6. **Roadmap RM-10.** Update review briefs to reference deterministic standards findings alongside human `REVIEW.md`.
+1. **Crates and schemas.** Introduce `specify-schema` (constants + JSON-Schema plumbing) and `specify-codex` (codex + review modules) per §"Library layout"; relocate `crates/domain/src/codex/` to `crates/codex/src/codex/`; move the embedded schema constants and validator helpers from `crates/domain/src/schema.rs` to `crates/schema/src/`; add `workspace-model.schema.json` and `review-result.schema.json` (per §D9) under `specify-cli/schemas/review/`; extend codex authoring schema with reserved hint kinds (documented, not executed in RFC-28); execute the §"Eliminates the vendored codex-rule schema" cleanup (delete `crates/authoring/schemas/codex-rule.schema.json`, `scripts/sync-codex-schema.sh`, and the `codex.schema-drift` predicate + test).
+2. **Indexer.** Implement `scan_profile: consumer` extractors per §D1 (consumer scan scope): files, frontmatter, markdown links, basic sections, symlinks, binary detection. Reuse RFC-28 codex parser for any codex paths in consumer overlays.
+3. **Hint interpreter.** Implement `regex`, `path-pattern`, `schema` (per §D3), `tool` (per §D4) with golden fixtures per kind; reserved kinds emit the §D5 summary finding. Within a scan, evaluate hints in the order `path-pattern` → `schema` → `regex` → `tool` so subprocess hints run only against the candidate set that survived the cheaper filters (mirrors §"Evaluation algorithm").
+4. **`specrun review`.** Wire export → index → eval → envelope per §D2 / §D7 (scope flags and codex-root resolution); ship `--dump-model` and all four formatters from §D6 (`json`, `pretty`, `github`, `compact`); add `--strict-hints` for §D5; map failure modes to exit codes per §D8 and validate the JSON envelope against the §D9 schema before emit.
+5. **Acceptance.** Golden tests: resolved rules + sample crate tree → stable findings JSON; fingerprint stability; evidence size cap enforcement from RFC-28; one fixture per Phase 2 hint kind plus one for each formatter; `--dump-model` schema-validates against `workspace-model.schema.json`.
+6. **Seed policy.** Land `deterministic_hints` on at least one shared `UNI-*` rule (e.g. `UNI-014` URL-in-generated-code via `kind: regex`) and one target-namespaced rule so acceptance has non-empty findings against a fixture tree. Without this step the scanner ships but emits zero findings on real projects.
+7. **Roadmap RM-10.** Update review briefs to reference deterministic standards findings alongside human `REVIEW.md`.
 
-### Phase 3b (optional — this RFC)
+### Phase 3 — framework convergence (out of scope)
 
-Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](done/rfc-28-standards-contract.md#phase-3--framework-finding-export-specdev)**.
+Phase 3 splits into two surfaces, both **out of scope for this RFC**:
 
-1. **Framework profile.** Extend indexer for marketplace, skills, briefs, agent-teams (Option B).
-2. **FRAME rules.** Port high-priority predicates from the migration map; delete imperative code only when fixture parity is proven.
-3. **Diagnostics UX.** Pretty, GitHub, and compact formatters shared between `specrun review` and `specdev check` (optional; may follow [augentic/lints](https://github.com/augentic/lints) patterns without coupling repos).
+- **Option A — finding-shape mapper** (`specdev check --format json` emitting `ReviewFinding` JSON from existing imperative predicates): owned by [RFC-28 Phase 3](done/rfc-28-standards-contract.md#phase-3--framework-finding-export-specdev), already implemented.
+- **Option B — declarative `FRAME-*` rules + framework scan profile + `specdev review` verb**: owned by [RFC-34](rfc-34-framework-convergence.md). RFC-34 carries the full normative contract (framework scan-scope, the `Origin::Framework` amendment to RFC-28, consumer opt-in flag, migration cadence, parity-fixture rule).
+
+Nothing about RFC-32 Phase 2 acceptance depends on RFC-34. RM-10 (CI-native consumer-project standards enforcement) ships on Phase 2 alone.
+
+## Implementation Guide
+
+Non-normative notes for the agent or contributor picking up Phase 2. These are *implementation suggestions*, not contract — the RFC body (§"Design", §"Phase 2 normative decisions") is the source of truth. Items here may evolve in PR review without an RFC amendment.
+
+### Module layout under `crates/codex/src/`
+
+Mirror the existing `crates/domain/src/codex.rs` + `codex/` umbrella precedent (no `mod.rs` outside `tests/`, per `specify-cli` coding standards) inside the new `specify-codex` crate. The full tree is shown in §"Library layout"; the salient rule is that `codex.rs` (RFC-28 surface) and `review.rs` (RFC-32 surface) are sibling umbrellas, each owning a subdirectory of submodules:
+
+```text
+crates/codex/src/codex/
+├── parse.rs
+├── resolve.rs                              # + resolve/{filter,sort}.rs
+├── finding.rs                              # CH-16 finding validator
+└── fingerprint.rs
+
+crates/codex/src/review/
+├── model.rs                                # WorkspaceModel DTOs + version discriminant
+├── index/
+│   ├── files.rs                            # filesystem walk, profile globs (per §D1)
+│   ├── frontmatter.rs                      # markdown --- block extractor
+│   ├── markdown.rs                         # sections + links (fence-aware)
+│   ├── symlinks.rs
+│   └── codex.rs                            # reuses crate::codex::parse
+├── eval/
+│   ├── path_pattern.rs
+│   ├── schema.rs
+│   ├── regex.rs
+│   └── tool.rs
+└── diagnostics/
+    ├── json.rs
+    ├── pretty.rs
+    ├── github.rs
+    └── compact.rs
+```
+
+`scan_profile: framework` extractors (skill, adapter, marketplace, agent-teams) land under `review/index/` when [RFC-34](rfc-34-framework-convergence.md) ships.
+
+`specify-schema` stays flat — `constants.rs` for the `include_str!` one-liners, `validate.rs` for the helpers, `lib.rs` re-exports both.
+
+### Cargo dependency additions
+
+The new crates land their own `[dependencies]` blocks; only `rayon` and `ignore` are net-new to the workspace:
+
+- **`specify-schema/Cargo.toml`** — `specify-error.workspace = true`, `jsonschema.workspace = true`, `serde.workspace = true`, `serde_json.workspace = true`, `serde-saphyr.workspace = true`. All pre-existing workspace deps.
+- **`specify-codex/Cargo.toml`** — `specify-error.workspace = true`, `specify-tool.workspace = true`, `specify-schema.workspace = true`, plus the moved-out parsing/regex/glob deps (`serde`, `serde_json`, `serde-saphyr`, `regex`, `glob`, `thiserror`, `jiff`, `petgraph`, `semver`, `strum`, `tempfile`) and the two net-new entries:
+  - `rayon` — the §"Performance — parallelism and incrementality" parallel pass over per-file extractors.
+  - `ignore` — `.gitignore`-aware filesystem walk used by §D1's always-ignore globs.
+- **`specify-domain/Cargo.toml`** — gains `specify-schema.workspace = true` (for the workflow validators); loses the codex/review schema constants and the JSON-Schema plumbing (both move to `specify-schema`).
+- **`specify-authoring/Cargo.toml`** — gains `specify-codex.workspace = true` (precondition for §"Eliminates the vendored codex-rule schema").
+
+Both `rayon` and `ignore` are low-risk in `cargo deny` terms (already in adjacent Rust tooling crates). Defer pinning specific versions until the PR; the workspace pattern is `package = { workspace = true }`.
+
+### `ReviewAction` CLI shape
+
+A clap-derive sketch for the new `Commands::Review` arm in `src/runtime/cli.rs`, mirroring the existing `CodexAction` precedent in `src/runtime/commands/codex/cli.rs`:
+
+```rust
+#[derive(Subcommand)]
+pub enum ReviewAction {
+    /// Resolve applicable codex rules, build a WorkspaceModel,
+    /// evaluate deterministic hints, and emit the RFC-28 review
+    /// envelope (RFC-32 §"`specrun review` (Phase 2 CLI)").
+    Run {
+        #[arg(long)] codex_root: Option<PathBuf>,
+        #[arg(long)] target: String,
+        #[arg(long = "source", value_name = "NAME")] sources: Vec<String>,
+        #[arg(long)] slice: Option<String>,
+        #[arg(long = "artifact", value_name = "PATH")] artifacts: Vec<PathBuf>,
+        #[arg(long = "language", value_name = "TOKEN")] languages: Vec<String>,
+        #[arg(long)] dump_model: bool,
+        #[arg(long)] strict_hints: bool,
+        #[arg(long, default_value = ".")] project_dir: PathBuf,
+    },
+}
+```
+
+Files (matching the codex command tree):
+
+```text
+src/runtime/commands/review.rs              # umbrella
+src/runtime/commands/review/cli.rs          # ReviewAction subcommand enum
+src/runtime/commands/review/run.rs          # handler: export → index → eval → envelope
+```
+
+### Hint interpreter function signature
+
+A reasonable starting shape for each kind's evaluator, kept identical so the runner can dispatch through a closed match:
+
+```rust
+pub(crate) fn evaluate(
+    rule: &ResolvedRule,
+    hint: &DeterministicHint,
+    model: &WorkspaceModel,
+    project_dir: &Path,
+) -> Result<Vec<ReviewFinding>, HintError>;
+```
+
+`HintError` is a closed `thiserror` enum mapping to the §D8 exit-code table at the handler boundary.
+
+### Test layout
+
+Golden tests live alongside the new `crates/codex/tests/` integration tree, one fixture per Phase 2 hint kind plus an end-to-end runner:
+
+```text
+crates/codex/tests/review_indexer_consumer.rs
+crates/codex/tests/review_hint_regex.rs
+crates/codex/tests/review_hint_path_pattern.rs
+crates/codex/tests/review_hint_schema.rs
+crates/codex/tests/review_hint_tool.rs
+crates/codex/tests/review_dump_model.rs
+crates/codex/tests/fixtures/review/minimal/      # shared minimal fixture tree
+tests/review_run.rs                              # binary-level end-to-end
+```
+
+`crates/schema/tests/` carries the schema-compile smoke tests that live in `crates/domain/src/schema.rs::tests` today (one `#[test]` per embedded constant, plus the RFC-28 example round-trip tests).
+
+Use the existing `REGENERATE_GOLDENS` convention from `docs/standards/testing.md`. A single shared minimal fixture is cheaper than parallel per-kind fixtures and forces hints to compose cleanly.
+
+### Documentation touch-points (post-merge)
+
+After the implementation PR lands, these follow-up docs need editing — none of these block Phase 2 itself and none belong in this RFC body:
+
+- `specify-cli` `AGENTS.md` — replace the `crates/domain/src/codex/` "Modules of note" row with one row for `crates/codex/src/codex/` and one for `crates/codex/src/review/`; add a row for `crates/schema/`; update the §"Crate graph" diagram to show `specify-schema` as a leaf and `specify-codex` as a sibling of `specify-domain`; update the §"When working in this repo" cross-repo `rg` rule to name `crates/codex/src/codex/` and `crates/codex/src/review/`; add a documentation-map row pointing at this RFC.
+- `specify-cli` `docs/standards/architecture.md` — extend the workspace-layout section with `specify-codex` and `specify-schema`; add the crate-graph diagram from §"Library layout"; note the standards-layer-vs-workflow split.
+- `specify-cli` `DECISIONS.md` — record the standards-layer split (new `specify-codex` and `specify-schema` crates, sibling shape, no workflow-→-standards dependency) and the vendored-codex-rule-schema removal as standing decisions.
+- `specify-cli` `crates/authoring/` — note the new `specify-codex` dependency picked up to eliminate the vendored codex-rule schema; remove any prose that mentions the `codex.schema-drift` predicate or the sync script.
+- `specify` `docs/contributing/checks.md` — note `specrun review` as the consumer-project counterpart to `specdev check --format json`; remove the `codex.schema-drift` (CH-09) entry now that the predicate is deleted.
+- `specify` `docs/explanation/standards-layer.md` — replace references to "shared codex parser in specify-domain" with `specify-codex`; document the new crate split as the type-system enforcement of the "no lifecycle authority in review" rule.
 
 ## Migration
 
@@ -348,11 +645,17 @@ Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](d
 
 **For adapter authors:** Add `deterministic_hints` to codex rules that should fire in CI without waiting for custom Rust scanners. Hints must use Phase 2 kinds only until reserved kinds are implemented.
 
-**For framework contributors:** No change until RFC-28 Phase 3. `make check` continues to run imperative predicates; after Phase 3, optional `--format json` exposes the same finding shape as `specrun review`.
+**For codex rule authors:** File location implies the owning adapter — a rule under `adapters/targets/omnia/codex/` is already scoped to Omnia. Omit `applicability.adapters` unless it narrows further (e.g. to `omnia@v2`). The `check::codex` predicate that lints redundant `applicability.adapters` declarations is deferred until the first redundant declaration appears in the tree; the authoring rule is documented here and in `docs/contributing/checks.md` so contributors can find it by reading rather than by tripping a check. (Belongs to `specify-authoring` when implemented, not the runtime resolver.)
+
+**For framework contributors:** No change from RFC-32 alone. RFC-28 Phase 3 already ships `specdev check --format json` (imperative findings in `ReviewFinding` shape); declarative `FRAME-*` rules and the `specdev review` verb arrive with [RFC-34](rfc-34-framework-convergence.md). `make check` continues to run imperative predicates throughout.
 
 **For CLI maintainers:** Keep indexer and interpreter free of lifecycle transitions. Do not persist WorkspaceModel under `.specify/` without a separate RFC.
 
 ## Alternatives Considered
+
+**Kept codex types in `specify-domain` (the original RFC-32 v1 design).** Rejected on second pass. The original design co-located standards code with workflow code on the basis that splitting added a crate without delivering a concrete win. In practice the split delivers three: (1) `specify-authoring` can consume the canonical codex schema directly, eliminating the `crates/authoring/schemas/codex-rule.schema.json` vendoring + `scripts/sync-codex-schema.sh` + `codex.schema-drift` predicate (CH-09) trio; (2) the §"Principles" rule that review carries no lifecycle authority becomes a type-system invariant rather than a coding convention; (3) `specify-domain` shrinks to the workflow-only crate its `Cargo.toml` description has always claimed it is. See §"Library layout" and §"Eliminates the vendored codex-rule schema".
+
+**Bundled the JSON-Schema plumbing into `specify-codex` or `specify-domain` rather than a third crate.** Rejected. Both crates need the helpers (`compile_schema`, `validate_value`, …) and the embedded schema constants. Folding them into `specify-codex` forces `specify-domain` to depend on `specify-codex` for `validate_plan` / `validate_evidence_dir` — wrong direction. Folding them into `specify-domain` forces `specify-codex` to depend on `specify-domain` — also wrong, and inverts the standards-vs-workflow separation. `specify-schema` is a thin leaf crate (~150 LoC) that owns the schema constants and the validator helpers; both `specify-codex` and `specify-domain` depend on it. The duplication-vs-coupling tradeoff (duplicate the helpers into both crates and avoid a new crate entirely) was considered and rejected because the workspace already has two concrete consumers from day one and `specify-authoring` would become a third the moment a codex-frontmatter predicate ports to declarative form.
 
 **Fold into RFC-28.** Rejected. RFC-28's value is landing the contract and export before any scanner exists. Combining execution would delay RM-10 and blur resolver vs scanner boundaries.
 
@@ -368,20 +671,24 @@ Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](d
 
 - Model-assisted or hybrid review execution (agents remain in target adapter briefs for Phase 2).
 - Implementing every reserved hint kind in the first Phase 2 PR.
-- Mandatory Phase 3b migration of imperative `specdev check` to `FRAME-*` rules.
+- Declarative `FRAME-*` rules, the framework scan profile, the `specdev review` verb, and the `Origin::Framework` enum widening (all owned by [RFC-34](rfc-34-framework-convergence.md); not required for RM-10).
 - SARIF output (may follow as an export adapter).
 - Persisting WorkspaceModel as a Specify artifact.
 - Auto-opening slices or mutating lifecycle state from findings.
 - RFC-4 Option 2/3 skill manifest or DSL work.
 
-## Open Questions
+## Resolved Decisions
 
-1. Should `FRAME-`* live in `tooling/rules/` or `adapters/shared/codex/framework/`? Current preference: `tooling/rules/` to keep consumer codex trees clean; export treats them as `origin: framework`.
-2. Should `specrun review` evaluate reserved hints as no-ops or hard-fail? Current preference: no-op with a single summary warning when `--verbose`; hard-fail only with `--strict-hints`.
-3. Is Phase 3 Option B worth automating from existing `Check` impls, or hand-authored FRAME rules only? Current preference: hand-authored only; migration is deliberate.
-4. Should `specdev check::codex` warn (or error) when an authored rule under `adapters/{sources,targets}/<name>/codex/` redundantly declares `applicability.adapters` for the directory's owning adapter? RFC-28 §Applicability notes no first-party rule populates `applicability` today, so there is nothing to lint yet. Current preference: defer the predicate until the first redundant declaration appears; the inference rule is "file-location implies adapter, so omit `applicability.adapters` unless narrowing further (e.g. to a specific version)." Belongs in `specify-authoring`, not the runtime resolver.
+Every question raised during drafting is resolved in the body. The list below indexes the resolutions for reviewers checking that no design question is parked.
 
-> Resolved during drafting and moved into the body: indexer parallelism + incrementality (§"Performance — parallelism and incrementality"); shared diagnostic formatter location (§"Diagnostic formatters"); WorkspaceModel persistence and query surface (§"Persistence and query (v1 decision)").
+- **Standards-layer crate split** — §"Library layout" (new `specify-codex` crate sibling to `specify-domain`; new leaf `specify-schema` crate owning embedded schema constants and JSON-Schema plumbing; neither standards crate depends on workflow code).
+- **Vendored codex-rule schema removal** — §"Eliminates the vendored codex-rule schema" (deletes `crates/authoring/schemas/codex-rule.schema.json`, `scripts/sync-codex-schema.sh`, and the `codex.schema-drift` CH-09 predicate; the standards-layer split makes the workaround unnecessary; bundled into the same implementation PR as the split).
+- **Indexer parallelism + incrementality** — §"Performance — parallelism and incrementality" (rayon from day one, sequential cross-file pass, `.specify/cache/index.v1.json` reserved).
+- **Shared diagnostic formatter location** — §"Diagnostic formatters" (`specify-codex::review::diagnostics`).
+- **WorkspaceModel persistence and query surface** — §"Persistence and query (v1 decision)" (in-memory only; cache path and `specrun model query` reserved).
+- **Phase 2 normative contract** — §"Phase 2 normative decisions" D1–D9 (scan scope, scope-flag composition, schema/tool hint payloads, reserved-hint policy, formatter scope, codex-root resolution, exit-code map, envelope schema).
+- **`FRAME-*` placement, framework scan profile, `specdev review` CLI surface, `Origin::Framework` enum widening, consumer opt-in flag, `Check` → `FRAME-*` migration cadence** — carved out as [RFC-34](rfc-34-framework-convergence.md). This RFC commits only to the high-level direction; the wire and CLI contracts live in RFC-34 to keep RFC-32 acceptance focused on consumer-side enforcement.
+- **Redundant `applicability.adapters` lint** — Migration §"For codex rule authors" (predicate deferred until first redundant declaration; inference rule documented as authoring guidance in this RFC and in `docs/contributing/checks.md`).
 
 ## References
 
@@ -391,6 +698,6 @@ Option A (finding mapper, `specdev check --format json`) is **[RFC-28 Phase 3](d
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md)
 - [Specify Roadmap — RM-10](roadmap.md#rm-10-ci-native-standards-enforcement)
 - [docs/contributing/checks.md](../docs/contributing/checks.md)
-- [tooling/src/check/mod.rs](../tooling/src/check/mod.rs) — current imperative predicate registry
+- [`specify-cli` `crates/authoring/src/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/src/check.rs) — current imperative predicate registry
 - [augentic/lints](https://github.com/augentic/lints) — reference for diagnostics UX in Phase 3
 

@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check`) and consumer-project **engineering standards** (`specrun review`). The planned validator and reviewer share rule ids and finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](rfc-32-standards-enforcement.md) adds the shared execution substrate for consumer standards enforcement, with framework finding export in RFC-28 Phase 3 and optional declarative convergence in RFC-32 Phase 3b. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check`) and consumer-project **engineering standards** (`specrun review`). The planned validator and reviewer share rule ids and finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](rfc-32-standards-enforcement.md) adds the shared execution substrate for consumer standards enforcement, with framework finding export in RFC-28 Phase 3 and optional declarative convergence in [RFC-34](rfc-34-framework-convergence.md). See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 
 ## Sequenced Roadmap
 
@@ -38,12 +38,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 #### RM-05: Multi-repo acceptance suite expansion
 
 **Goal:** Extend the acceptance fixture to blocked, failed, interrupted, and stale-workspace recovery paths.
-
-#### RM-07: RFC-4 Option 1: typed skill expression
-
-**Goal:** Add deterministic structural validation for skill authoring inside `specdev check`.  
-**Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.  
-**Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
+**Status:** Partial — `tests/cross-repo/runs/2.0.0/` already covers extract failure (`05f`), invalid evidence (`05g`), source sandbox denial (`05j`), execute build failure (`09`), step-through breakout (`08`), workspace breakout (`11`), and dual-driving refusal (`12`). The remaining gap is a dedicated stale-workspace recovery scenario.
 
 ---
 
@@ -68,7 +63,7 @@ specrun review --format json
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
 
-**Framework finding export:** [RFC-28](done/rfc-28-standards-contract.md) Phase 3 — `specdev check --format json` emits the same `ReviewFinding` shape as `specrun review` (RFC-32 Phase 3 Option A); this convergence lands as part of the RFC-28 contract before any RFC-32 enforcement work begins. **Optional follow-on:** [RFC-32](rfc-32-standards-enforcement.md) Phase 3b — declarative `FRAME-*` rules; not required for RM-10.
+**Framework finding export:** [RFC-28](done/rfc-28-standards-contract.md) Phase 3 — `specdev check --format json` emits the same `ReviewFinding` shape as `specrun review` (RFC-32 Phase 3 Option A); this convergence lands as part of the RFC-28 contract before any RFC-32 enforcement work begins. **Optional follow-on:** [RFC-34](rfc-34-framework-convergence.md) — declarative `FRAME-*` rules, the framework scan profile, and the `specdev review` verb; not required for RM-10.
 
 **Distribution follow-up:** RFC-28 v1 requires operators to pass `--codex-root` to `specrun codex export` when their tree does not contain `adapters/shared/codex/universal/`. Before CI-native standards enforcement is broadly usable, `specrun init` or plugin distribution should carry the shared codex tree into the consumer project (e.g. as an extension of the existing manifest cache) so `UNI-*` rules resolve without a co-located framework checkout. Tracked here rather than in RFC-28 to keep the contract layer narrow; the change is additive — a new probe step in the closed resolution order in RFC-28 §"Codex root resolution (v1)" — and does not alter wire output for callers that already pass `--codex-root`.
 
@@ -121,13 +116,6 @@ specrun events export
 **Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
-
-#### RM-16: RFC-5: framework developer tooling workspace
-
-**Goal:** Maintain the framework authoring checker now hosted by `specify-cli`'s `specdev` binary — schema-first authoring feedback in Cursor, `specdev check` for CI and local use, and integration tests in the publish-disabled `specify-authoring` crate.
-**Why now:** Keeps Deno out of CI and contributor prerequisites, avoids parser duplication with `specify-domain`, shifts most violations into the editor via JSON Schema, and turns reserved framework-lint rule ids into a working scanner without bloating the `specrun` runtime binary with dev-only surfaces.
-**Codex follow-up:** First-party codex shape validation lives in `check::codex` and preserves RFC-28's namespace-ownership contract; consumer-project **engineering standards** enforcement stays under future `specrun review`.
-**Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize
 
