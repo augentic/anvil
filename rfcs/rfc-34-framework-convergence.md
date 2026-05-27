@@ -210,7 +210,7 @@ Mirrors the `src/runtime/commands/review/` tree introduced by RFC-32 Phase 2. Th
 
 ### Cargo dependency edges
 
-`crates/authoring/Cargo.toml` gains `specify-domain = { workspace = true }`. This edge is permitted: the workspace graph in `specify-cli` `AGENTS.md` already has `specify-authoring` depending on `specify-domain` indirectly via the `specdev` binary's RFC-28 Phase 3 mapper. RFC-34 promotes that to a direct crate-level dependency.
+`crates/authoring/Cargo.toml` gains `specify-domain.workspace = true`. This edge is permitted: the workspace graph in `specify-cli` `AGENTS.md` already has `specify-authoring` depending on `specify-domain` indirectly via the `specdev` binary's RFC-28 Phase 3 mapper. RFC-34 promotes that to a direct crate-level dependency.
 
 ### Test layout
 

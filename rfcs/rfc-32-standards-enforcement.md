@@ -82,11 +82,11 @@ RM-10 (CI-native **standards enforcement** via `specrun review`) needs a scanner
 ### Phasing
 
 
-| Phase | Owner  | Scope                                                                                         | Required?            |
-| ----- | ------ | --------------------------------------------------------------------------------------------- | -------------------- |
-| **1** | RFC-28 Phases 1–2 | Finding schema, `specrun codex export`, shared codex parser, hint shape validation            | Yes — prerequisite   |
-| **2** | RFC-32        | WorkspaceModel, hint interpreter, `specrun review` deterministic MVP                          | Yes — this RFC       |
-| **3a** | RFC-28 Phase 3  | Framework `specdev check --format json` → `ReviewFinding` (Option A)                          | Yes — same train     |
+| Phase  | Owner                                     | Scope                                                                              | Required?            |
+| ------ | ----------------------------------------- | ---------------------------------------------------------------------------------- | -------------------- |
+| **1**  | RFC-28 Phases 1–2                         | Finding schema, `specrun codex export`, shared codex parser, hint shape validation | Yes — prerequisite   |
+| **2**  | RFC-32                                    | WorkspaceModel, hint interpreter, `specrun review` deterministic MVP               | Yes — this RFC       |
+| **3a** | RFC-28 Phase 3                            | Framework `specdev check --format json` → `ReviewFinding` (Option A)               | Yes — same train     |
 | **3b** | [RFC-34](rfc-34-framework-convergence.md) | Declarative `FRAME-*` rules + framework scan profile + `specdev review` (Option B) | No — operator choice |
 
 
@@ -174,11 +174,11 @@ RFC-32 extends the **closed** `kind` enum for execution. RFC-28 validates shape 
 #### Hint kinds — Phase 2 (implement)
 
 
-| Kind           | Evaluates against                               | Purpose                                                    |
-| -------------- | ----------------------------------------------- | ---------------------------------------------------------- |
-| `regex`        | Raw file bytes (per applicability path filter)  | Line/column findings for pattern hits                      |
-| `path-pattern` | `file.path` glob                                | Narrow scan targets before other hints                     |
-| `schema`       | Parsed JSON/YAML value or extracted frontmatter | Structural validation via JSON Schema ref                  |
+| Kind           | Evaluates against                               | Purpose                                                         |
+| -------------- | ----------------------------------------------- | --------------------------------------------------------------- |
+| `regex`        | Raw file bytes (per applicability path filter)  | Line/column findings for pattern hits                           |
+| `path-pattern` | `file.path` glob                                | Narrow scan targets before other hints                          |
+| `schema`       | Parsed JSON/YAML value or extracted frontmatter | Structural validation via JSON Schema ref                       |
 | `tool`         | Declared WASI tool                              | Delegate to a project-declared WASI tool via `specrun tool run` |
 
 
@@ -237,13 +237,13 @@ Exit codes follow the operator CLI table: validation/findings failure → `2`; i
 ### Relationship to RFC-28
 
 
-| Concern                     | RFC-28                         | RFC-32                                                 |
-| --------------------------- | ------------------------------ | ------------------------------------------------------ |
-| `rule-id` namespaces        | Defines and exports            | Consumes; does not mint new consumer-facing namespaces |
-| Finding JSON schema         | Defines                        | Produces                                               |
-| `deterministic_hints` shape | Validates                      | Executes                                               |
-| `specrun codex export`      | Implements                     | Calls                                                  |
-| `specrun review`            | Non-goal                       | Implements deterministic core                          |
+| Concern                     | RFC-28                                                                 | RFC-32                                                 |
+| --------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
+| `rule-id` namespaces        | Defines and exports                                                    | Consumes; does not mint new consumer-facing namespaces |
+| Finding JSON schema         | Defines                                                                | Produces                                               |
+| `deterministic_hints` shape | Validates                                                              | Executes                                               |
+| `specrun codex export`      | Implements                                                             | Calls                                                  |
+| `specrun review`            | Non-goal                                                               | Implements deterministic core                          |
 | Shared codex parser         | Implements (relocates to `specify-codex` per RFC-32 §"Library layout") | Reuses in indexer                                      |
 
 
@@ -282,17 +282,17 @@ Leave `specdev check` unchanged. RM-10 and framework CI remain separate surfaces
 Reference mapping from the current `crates/authoring/src/check/` predicates (in `augentic/specify-cli`) to declarative kinds. Not a commitment to migrate every row.
 
 
-| Current rule id prefix  | Declarative kind(s)                    | Phase 3 priority                          |
-| ----------------------- | -------------------------------------- | ----------------------------------------- |
-| `adapter.`*             | `schema`                               | High — already schema-shaped              |
-| `skill.*` (frontmatter) | `schema`, `unique`, grammar as `regex` | High                                      |
-| `skill.*` (body)        | `cardinality`, `regex`, `set-coverage` | Medium                                    |
-| `links.*`               | `reference-resolves`                   | High                                      |
+| Current rule id prefix  | Declarative kind(s)                    | Phase 3 priority                                      |
+| ----------------------- | -------------------------------------- | ----------------------------------------------------- |
+| `adapter.`*             | `schema`                               | High — already schema-shaped                          |
+| `skill.*` (frontmatter) | `schema`, `unique`, grammar as `regex` | High                                                  |
+| `skill.*` (body)        | `cardinality`, `regex`, `set-coverage` | Medium                                                |
+| `links.*`               | `reference-resolves`                   | High                                                  |
 | `codex.*`               | `schema`, `namespace-owner`, `unique`  | Medium — shape checks may stay in `crates/authoring/` |
-| `plugins.*`             | `set-eq`, symlink facts                | Medium                                    |
-| `prose.*`               | `regex`, `constant-eq`                 | Medium                                    |
-| `scenarios.*`           | `schema`, custom trace freshness       | Low — may stay imperative                 |
-| `tools.*`               | `tool`, `constant-eq`                  | Low                                       |
+| `plugins.*`             | `set-eq`, symlink facts                | Medium                                                |
+| `prose.*`               | `regex`, `constant-eq`                 | Medium                                                |
+| `scenarios.*`           | `schema`, custom trace freshness       | Low — may stay imperative                             |
+| `tools.*`               | `tool`, `constant-eq`                  | Low                                                   |
 
 
 Predicates invoking subprocesses (`specify source resolve`, declared-tool equivalence) remain `kind: tool` or imperative orchestration.
@@ -420,12 +420,12 @@ A consolidated checklist of pre-flight contracts that Phase 2 implementations MU
 
 The two narrowing flags compose with `--target` rather than replacing it:
 
-| Flag | Effect on extraction inputs |
-| --- | --- |
-| _(none)_ | `artifact_paths[]` is empty; the indexer performs a full consumer scan under D1. |
-| `--slice <name>` | `artifact_paths[]` is populated with every path listed under the slice's `tasks.md` *Touches* / *Produces* sections plus `.specify/slices/<name>/**`. Hints still scan within those paths only. |
-| `--artifact <path>` (repeatable) | Each `<path>` is appended to `artifact_paths[]` verbatim. Globs are expanded against the D1 enumeration so ignored paths stay ignored. |
-| `--slice` + `--artifact` | Union of the two sets. |
+| Flag                             | Effect on extraction inputs                                                                                                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(none)_                         | `artifact_paths[]` is empty; the indexer performs a full consumer scan under D1.                                                                                                                |
+| `--slice <name>`                 | `artifact_paths[]` is populated with every path listed under the slice's `tasks.md` *Touches* / *Produces* sections plus `.specify/slices/<name>/**`. Hints still scan within those paths only. |
+| `--artifact <path>` (repeatable) | Each `<path>` is appended to `artifact_paths[]` verbatim. Globs are expanded against the D1 enumeration so ignored paths stay ignored.                                                          |
+| `--slice` + `--artifact`         | Union of the two sets.                                                                                                                                                                          |
 
 `specrun codex export` is called with the same `--artifact` / `--language` filters so resolved rule set and scan set agree.
 
@@ -475,13 +475,13 @@ Resolution failure (no source found) is `Error::Validation` with exit code `2` a
 
 Pins the closed mapping from runtime failure modes to `Exit::from(&Error)` so CI scripts, JSON envelope consumers, and reviewing agents can switch on a stable surface. Producers MUST NOT introduce new exit codes; new failure modes route through the existing `Error` variants:
 
-| Source error                                                          | `Error` variant                                            | Exit |
-| --------------------------------------------------------------------- | ---------------------------------------------------------- | ---- |
-| Findings present (`summary.critical + important > 0`)                 | `Validation`                                               | 2    |
-| Strict reserved hint (`--strict-hints`, per §D5)                      | `Validation { rule_id: "review-unsupported-hint-kind" }`   | 2    |
-| Codex export resolution failure                                       | passthrough from `specrun codex export` resolver mapping   | 1/2  |
-| WorkspaceModel I/O (filesystem walk, frontmatter read, link resolve)  | `Filesystem { op: "review-index" }`                        | 1    |
-| `tool` hint subprocess failure (per §D4)                              | `Tool { … }` (passthrough from `specrun tool run`)         | 1    |
+| Source error                                                         | `Error` variant                                          | Exit |
+| -------------------------------------------------------------------- | -------------------------------------------------------- | ---- |
+| Findings present (`summary.critical + important > 0`)                | `Validation`                                             | 2    |
+| Strict reserved hint (`--strict-hints`, per §D5)                     | `Validation { rule_id: "review-unsupported-hint-kind" }` | 2    |
+| Codex export resolution failure                                      | passthrough from `specrun codex export` resolver mapping | 1/2  |
+| WorkspaceModel I/O (filesystem walk, frontmatter read, link resolve) | `Filesystem { op: "review-index" }`                      | 1    |
+| `tool` hint subprocess failure (per §D4)                             | `Tool { … }` (passthrough from `specrun tool run`)       | 1    |
 
 The `Filesystem { op }` discriminant and the `rule_id` strings appear verbatim in `--format json` output (kebab-case wire form); changing either is a wire break and requires an envelope version bump per §D9.
 
@@ -560,7 +560,7 @@ The new crates land their own `[dependencies]` blocks; only `rayon` and `ignore`
 - **`specify-domain/Cargo.toml`** — gains `specify-schema.workspace = true` (for the workflow validators); loses the codex/review schema constants and the JSON-Schema plumbing (both move to `specify-schema`).
 - **`specify-authoring/Cargo.toml`** — gains `specify-codex.workspace = true` (precondition for §"Eliminates the vendored codex-rule schema").
 
-Both `rayon` and `ignore` are low-risk in `cargo deny` terms (already in adjacent Rust tooling crates). Defer pinning specific versions until the PR; the workspace pattern is `package = { workspace = true }`.
+Both `rayon` and `ignore` are low-risk in `cargo deny` terms (already in adjacent Rust tooling crates). Defer pinning specific versions until the PR; the workspace pattern is `package.workspace = true`.
 
 ### `ReviewAction` CLI shape
 
