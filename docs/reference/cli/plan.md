@@ -12,7 +12,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> reviewed`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
-| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specrun plan finalize` rather than directly.) |
+| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
 
 ## Subcommands
 

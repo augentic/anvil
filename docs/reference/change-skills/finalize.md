@@ -69,5 +69,5 @@ Single-repo projects skip workspace push when no registry slots are involved; ar
 
 - [/spec:execute](execute.md) — drives slices until drain
 - [Cross-repo changes tutorial](../../tutorials/cross-repo-change.md) — workspace push and PR flow
-- [specrun plan](../cli/plan.md) — `plan archive` and `plan finalize`
+- [specrun plan](../cli/plan.md) — `plan archive`
 - [Registry](../registry.md) — multi-repo platform setup

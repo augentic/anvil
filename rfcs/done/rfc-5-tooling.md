@@ -401,5 +401,5 @@ The RFC lands as a **single PR** in this rough order:
 - `[Specify CLI AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md)` — crate graph this workspace consumes via `specify-domain`.
 - [RFC-4: Type-Safe Skill Expression](future/rfc-4-dsl.md) — Option 1 is satisfied by the schema-first pass plus the skill-discipline modules.
 - [RFC-28: Engineering Standards — Codex Contract and Findings](rfc-28-standards-contract.md) — namespace-ownership contract preserved by `check::codex`.
-- [RFC-32: Engineering Standards — Deterministic Enforcement](../rfc-32-standards-enforcement.md) — optional Phase 3 framework convergence; does not replace RFC-5 check modules by default.
+- [RFC-32: Engineering Standards — Deterministic Enforcement](rfc-32-standards-enforcement.md) — optional Phase 3 framework convergence; does not replace RFC-5 check modules by default.
 

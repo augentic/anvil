@@ -80,7 +80,7 @@ specrun plan add <name> --sources <key>=<candidate-id> --target <name> --project
 specrun plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
 specrun plan transition <name> reviewed                  # Gate 1; operator-only
 specrun plan next                                        # active in-progress, or pick next pending
-specrun plan finalize <name> --clean
+specrun plan archive
 
 # Slice management
 specrun slice create <name> --target <target>

@@ -30,7 +30,7 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specrun workspace push`, and `specrun plan finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specrun workspace push`, and `/spec:finalize` (which runs `specrun plan archive` after PR observation). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
@@ -126,14 +126,14 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 Automated workspace merge has been removed. There is no active `specrun workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
-specrun plan finalize
+/spec:finalize <name>
 ```
 
-`specrun plan finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
+`/spec:finalize` verifies the operator-merged PR state with `gh pr view` and archives the coordinator state via `specrun plan archive`; it does not merge PRs.
 
 ## See also
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
 - [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
-- [`specrun plan finalize`](plan.md) -- closure after PRs are operator-merged
+- [`specrun plan archive`](plan.md) -- archive verb used by `/spec:finalize` after PRs are operator-merged

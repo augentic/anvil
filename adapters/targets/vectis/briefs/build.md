@@ -65,6 +65,12 @@ When all in-scope reviews complete:
 3. **Validate classifications.** Each finding already carries `code-fix` or `spec-change`. Treat that as the source of truth. Resolve disagreements between platforms by applying: spec is clear but code is wrong → `code-fix`; spec is silent, ambiguous, or problematic → `spec-change`.
 4. **Surface findings.** Findings flow to the operator alongside the build outcome. Cross-platform follow-up work is queued as a new slice via the operator's normal `/spec:plan` flow rather than letting reviewers spawn slices directly — the legacy "reviewer auto-creates a Specify change" path is retired in 2.0.
 
+## § Deterministic review
+
+The per-platform reviewers above ([`build/core/review.md`](build/core/review.md), [`build/ios/review.md`](build/ios/review.md), [`build/android/review.md`](build/android/review.md)) carry the model-assisted surface — specialist + antagonist judgment per [`agent-teams.md`](../references/agent-teams.md). `specrun review --format json` is the **deterministic complement**. It resolves applicable codex rules via `specrun codex export`, evaluates declarative `deterministic_hints`, and emits findings in the same `ReviewFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
+
+Per RFC-32 [§"Principles"](../../../../rfcs/done/rfc-32-standards-enforcement.md#principles) — **"No lifecycle authority in review"** — deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
+
 ## § Template / version-pin drift handling
 
 The Vectis scaffold tool (`specrun tool run vectis -- scaffold ...`) is render-only and ships with embedded version pins. Upstream bumps (Crux core, uniffi, AGP / Gradle, cargo-swift, Xcode) can break a freshly rendered scaffold even when the rest of the slice is correct. Detect this when a verify-repair loop fails repeatedly with cargo / Gradle / Xcode errors that look like API renames, missing imports, or toolchain mismatches rather than feature-level bugs. When detected, do **not** auto-fix in-band: record the failing combo (caps + shells), the failing host step, and the load-bearing error line, then mark the build outcome as `deferred` with a template-drift signal. The operator opens a separate slice rooted in the CLI repo to bump the embedded `versions.toml`.

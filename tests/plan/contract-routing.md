@@ -182,7 +182,7 @@ inspect plan.yaml
 specrun registry validate
 ```
 
-Do not run `/spec:execute`, `specrun workspace push`, or `specrun plan finalize`. This scenario ends after plan validation and inspection.
+Do not run `/spec:execute`, `specrun workspace push`, or `specrun plan archive`. This scenario ends after plan validation and inspection.
 
 ## Expected Artifacts
 

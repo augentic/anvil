@@ -96,7 +96,7 @@ Adapter manifests and brief files. The adapter loader (`crates/domain/src/adapte
 
 Workspace slots for multi-repo changes. Created or refreshed by `specrun workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
 
-Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specrun workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `specrun plan finalize` later verifies the merge state.
+Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specrun workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `/spec:finalize` later observes the merge state with `gh pr view` before running `specrun plan archive`.
 
 ### `archive/`
 

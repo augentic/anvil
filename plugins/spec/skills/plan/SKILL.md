@@ -6,7 +6,7 @@ argument-hint: <name> [source]...
 
 # Plan Skill
 
-`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `enumerate` brief into `discovery.md`, fuses the resulting candidates into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> reviewed` command from the closing hint — the skill never writes `reviewed` itself.
+`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `enumerate` brief into `discovery.md`, fuses the resulting candidates into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> reviewed` command from step 8 — the skill never writes `reviewed` itself.
 
 N=1 is degenerate, not special. A single intent binding produces one candidate, one slice with `sources: [intent]` shorthand, and the same Gate-1 hint. Multi-source planning differs only in step counts.
 
@@ -19,7 +19,11 @@ N=1 is degenerate, not special. A single intent binding produces one candidate, 
 5. **Write `discovery.md`** — the three-section form: `## Summary` (one-line counts), `## Source inventory` (one row per bound source), `## Candidate inventory` (one block per candidate). N=1 leaves `Summary` and `Source inventory` minimal. Template: [`../../references/discovery.md`](../../references/discovery.md).
 6. **Propose** — fuse candidates into `slices[]` rows (see *Propose sub-step* below).
 7. **Validate (Gate 1 optional)** — `specrun plan validate --format json` before printing the closing hint when multi-slice or workspace plans need doctor output. Surface Error-level findings verbatim; Warnings are advisory.
-8. **Exit at `pending`** — print the closing hint exactly (see *Closing hint* below). Do not call `specrun plan transition`.
+8. **Exit at `pending`** — print this closing hint exactly. Do not call `specrun plan transition`:
+
+   ```text
+   Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+   ```
 
 ## Source binding grammar
 
@@ -45,14 +49,6 @@ The agent reads the full `## Candidate inventory` in `discovery.md`, matches can
 3. **`divergence: likely`** — when merged candidates' `summary` strings materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), invoke `specrun plan amend <name> <slice> --divergence likely` for each affected slice. The CLI is the single writer of `plan.yaml.slices[].divergence` (any value) and fires `plan.amend.divergence` once per invocation. Also add a `## Likely divergences` block to `change.md` listing the contributing candidate-pair summaries side by side; that operator-facing prose is still authored by the skill.
 
 Authority hierarchy does not apply at propose — without `Evidence`, fusion runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
-
-## Closing hint
-
-The skill exits by printing the literal transition command, followed by next-step orientation:
-
-```text
-Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
-```
 
 ## Guardrails
 

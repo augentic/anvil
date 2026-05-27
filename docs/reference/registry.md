@@ -72,7 +72,7 @@ Selection is resolved once, before side effects. A human-invoked `workspace sync
 
 Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. The `workspace merge` verb was removed pre-2.0 — landing is an explicit operator action outside Specify.
 
-After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` invokes `specrun plan finalize` to verify that every required per-project PR is merged, check workspace cleanliness, archive the plan, and (with `specrun plan finalize --clean`) optionally remove clean workspace clones; it never merges PRs.
+After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` verifies each required per-project PR with `gh pr view`, then invokes `specrun plan archive` to archive the plan; it never merges PRs.
 
 ## Dependency direction
 

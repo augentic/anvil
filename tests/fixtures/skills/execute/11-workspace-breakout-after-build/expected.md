@@ -13,7 +13,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 ## Trace
 
 1. **Operator runs `/spec:build` from the workspace root.**
-   - The breakout body's first action is to acquire `.specify/plan.lock` via the same snippet `/spec:execute` uses ([`../../../../../plugins/spec/skills/execute/references/plan-lock.md`](../../../../../plugins/spec/skills/execute/references/plan-lock.md)). Lock acquired at the workspace root (not in any slot).
+   - The breakout body's first action is to acquire `.specify/plan.lock` via the same snippet `/spec:execute` uses ([`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md)). Lock acquired at the workspace root (not in any slot).
    - `specrun plan next` returns slice 1 (`auth-rotate`, `in-progress`, `project: project-a`).
    - Workspace routing rule kicks in identically to the loop: save CWD = workspace root; resolve `project-a` through `registry.yaml`; slot already materialised; `chdir` into `.specify/workspace/project-a/`. Emit `Routing: auth-rotate → project-a (.specify/workspace/project-a/)`.
    - `/spec:build` resumes from task 7 (the failing one); operator's patch landed before the breakout; build passes; slice lifecycle transitions to `built`.

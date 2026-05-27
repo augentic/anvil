@@ -80,6 +80,12 @@ A build failure surfaces a stop hint as the body's final output — a single str
 
 Render the hint as the final visible output of the run. Do not call `specrun slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly.
 
+## § Deterministic review
+
+Phase 6 writes `$REVIEW_OUTPUT` (`REVIEW.md`) — that is the model-assisted surface: specialist + antagonist judgment per [`review-team-protocol.md`](../references/review-team-protocol.md) and [`build/review.md`](build/review.md). `specrun review --format json` is the **deterministic complement**. It resolves applicable codex rules via `specrun codex export`, evaluates declarative `deterministic_hints`, and emits findings in the same `ReviewFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
+
+Per RFC-32 [§"Principles"](../../../../rfcs/done/rfc-32-standards-enforcement.md#principles) — **"No lifecycle authority in review"** — deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
+
 ## References
 
 - [`shape.md`](shape.md), [`merge.md`](merge.md) — sibling briefs.

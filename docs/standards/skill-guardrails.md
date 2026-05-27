@@ -8,9 +8,9 @@ Per-skill guardrails — rules that only make sense for one skill ("never auto-p
 
 The CLI is the **only** writer for change and slice lifecycle state. Skills route every write through a CLI verb; they never edit the underlying files by hand.
 
-- **Never hand-edit `plan.yaml`.** Append entries through `specrun plan add`; transition entries through `specrun plan transition`; close out the plan through `specrun plan finalize`. The single-writer contract lives in [`plan` skill body](../../plugins/spec/skills/plan/SKILL.md).
+- **Never hand-edit `plan.yaml`.** Append entries through `specrun plan add`; transition entries through `specrun plan transition`; close out the plan through `specrun plan archive`. The single-writer contract lives in [`plan` skill body](../../plugins/spec/skills/plan/SKILL.md).
 - **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specrun slice transition`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
-- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan finalize`.
+- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan archive`.
 - **Never hand-roll `AGENTS.md` during init.** `specrun init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` as the generation fingerprint.
 
 ## Baseline immutability for contract authoring

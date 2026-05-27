@@ -29,7 +29,6 @@ exclude = [
   # Retired-stub redirect pages — present on disk so external bookmarks
   # don't 404, but intentionally omitted from SUMMARY.md so they don't
   # clutter the nav.
-  'change-skills/draft\.md',
   'contributing/adapter-anatomy\.md',
   'platform-repo\.md',
   'workspace-tiers\.md',
