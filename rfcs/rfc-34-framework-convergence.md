@@ -284,7 +284,7 @@ Every design question raised while drafting RFC-34 is resolved in the body. The 
 
 - [RFC-28: Engineering Standards — Codex Contract and Findings](done/rfc-28-standards-contract.md) — finding shape, codex resolution, the `Origin` enum widened by §A1.
 - [RFC-32: Engineering Standards — Deterministic Enforcement](done/rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun review`).
-- [RFC-33: Standards Finding Lifecycle](rfc-33-standards-finding-lifecycle.md) — baseline/suppression layer that applies equally to `specdev review` and `specrun review` envelopes.
+- [RFC-33: Standards Finding Lifecycle](done/rfc-33-standards-finding-lifecycle.md) — baseline/suppression layer that applies equally to `specdev review` and `specrun review` envelopes.
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md) — `specdev` binary contract.
 - [Specify Roadmap — RM-10](roadmap.md#rm-10-ci-native-standards-enforcement) — CI-native standards enforcement; RFC-34 is optional relative to RM-10.
 - [Standards layer (explanation)](../docs/explanation/standards-layer.md)

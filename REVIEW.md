@@ -106,7 +106,7 @@ fn error_mapping_matches_d8_table() {
 
 ### F3 — Delete redundant sort unit tests
 
-**Evidence:** `crates/codex/src/codex/resolve/sort.rs:171–203` — `sort_orders_by_severity` and `sort_orders_by_origin` re-prove enum ordering already pinned in `crates/codex/src/codex.rs:544–569` (`severity_ordering_matches_rfc`, `origin_ordering_matches_rfc`). Integration test `build_resolved_codex_emits_versioned_envelope` (`sort.rs:281–312`) already asserts final rule-id order on the wire envelope.
+**Evidence:** `crates/codex/src/rules/resolve/sort.rs:171–203` — `sort_orders_by_severity` and `sort_orders_by_origin` re-prove enum ordering already pinned in `crates/codex/src/rules.rs:544–569` (`severity_ordering_matches_rfc`, `origin_ordering_matches_rfc`). Integration test `build_resolved_codex_emits_versioned_envelope` (`sort.rs:281–312`) already asserts final rule-id order on the wire envelope.
 
 **Action:** Delete `sort_orders_by_severity` and `sort_orders_by_origin` tests only. Keep tests 3–5 (deprecated flag, rule-id tie-break, full tuple) and integration tests 6–8.
 
@@ -114,7 +114,7 @@ fn error_mapping_matches_d8_table() {
 
 **Net LOC:** 396 → ~361 in `sort.rs` test module.
 
-**Done when:** `rg -c 'fn sort_orders_by_(severity|origin)' crates/codex/src/codex/resolve/sort.rs` → 0; `cargo make check` passes.
+**Done when:** `rg -c 'fn sort_orders_by_(severity|origin)' crates/codex/src/rules/resolve/sort.rs` → 0; `cargo make check` passes.
 
 **Rule?** no.
 
@@ -208,7 +208,7 @@ Example — `AGENTS.md:45`:
 
 ### T4 — Delete `resolve_and_filter` one-liner re-export path
 
-**Evidence:** `crates/codex/src/codex/resolve/filter.rs:110–115`:
+**Evidence:** `crates/codex/src/rules/resolve/filter.rs:110–115`:
 
 ```rust
 pub fn resolve_and_filter(inputs: &ResolveInputs<'_>) -> Result<Vec<ResolvedRuleEntry>, ResolveError> {
@@ -261,3 +261,5 @@ Remove `resolve_and_filter` fn and `pub use` from `resolve.rs:64`. Update `filte
 - **T2:** actual ΔLOC −14 (vs predicted −15); done-when flipped cleanly (`rg` 0, severity 5/5 pass); no regressions; full `cargo make check` blocked transiently by corrupted `target/` (T4 fixed unrelated clippy).
 - **T3:** actual ΔLOC −20 in `links.rs` (vs predicted −18); done-when flipped cleanly (`rg` 0, `make check` pass); no regressions.
 - **T4:** actual ΔLOC −11 task-only (vs predicted −6); done-when flipped cleanly (`rg` 0, `cargo make check` pass); no regressions; removed unused `ResolveError` import left by inline.
+
+**Final validation:** `make check` (specify) pass; `cargo make check` + `cargo make ci` (specify-cli) pass after sequential `rm -rf target` (parallel subagent builds had raced on shared `target/`).
