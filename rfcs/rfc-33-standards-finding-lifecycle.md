@@ -1,6 +1,6 @@
 # RFC-33: Standards Finding Lifecycle
 
-> Status: Draft · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Accepted · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 
 ## Abstract
 
