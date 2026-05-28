@@ -25,7 +25,7 @@ deterministic_hints:
 
 Every relative `[label](target)` markdown link under `adapters/`, `plugins/`, `docs/`, or `.cursor/` must resolve to an existing path on disk after the link target is joined against the markdown file's parent directory. URL-style targets (`http://…`, `https://…`, `mailto://…`), anchor-only references (`#section`), and targets the indexer cannot reason about (empty after fragment stripping) are skipped — the rule fires only on references the resolver attempted and rejected.
 
-The path scope mirrors the retired imperative `links.unresolved` predicate: RFCs and other archival trees (`rfcs/`, `docs/proposals/`) are excluded by design because they intentionally cite future or deferred work whose targets do not yet exist on disk.
+The path scope mirrors the retired imperative `links.unresolved` predicate: archival design-history trees and the proposals directory are excluded by design because they intentionally cite future or deferred work whose targets do not yet exist on disk.
 
 Broken links rot documentation: skill briefs, target adapter references, codex bodies, and AGENTS map files all rely on the fence-aware `[label](target)` shape that this rule covers. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced (`crates/specify-lints/src/lint/index/markdown.rs::extract_links` + `index.rs::resolve_link`), so the rule cost is one BTreeSet lookup per candidate file at lint time.
 

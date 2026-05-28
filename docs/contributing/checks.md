@@ -189,7 +189,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against [`crates/authoring/schemas/scenario.schema.json`](../../crates/authoring/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
@@ -268,7 +268,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`crates/authoring/schemas/rule.schema.json`](../../crates/authoring/schemas/rule.schema.json).
+  conforms to [`schemas/rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/rules/rule.schema.json) in the `specify-cli` repo.
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
