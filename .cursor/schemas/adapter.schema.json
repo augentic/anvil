@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/adapter.schema.json",
+  "title": "Specify adapter manifest",
+  "description": "Shared shape for source and target adapter manifests (`adapter.yaml`) per workflow §Adapter implementation shape. Carries the kebab-case `name`, integer `version`, the `axis` discriminator (`source` or `target`), the `briefs.<operation>` map of relative brief paths, and an optional `tools[]` declaration. The set of operations is closed by the per-axis `briefs` constraints in `source.schema.json` and `target.schema.json` — `briefs.keys()` is the canonical operation iterator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "axis", "description", "briefs"],
+  "properties": {
+    "name": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Adapter identifier in kebab-case. Must match the directory name under sources/ or targets/."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Major adapter version. Increments when the adapter ships breaking operation or contract changes."
+    },
+    "axis": {
+      "type": "string",
+      "enum": ["source", "target"],
+      "description": "Adapter role. `source` adapters enumerate candidates and extract evidence; `target` adapters supply `shape`, `build`, and `merge` briefs."
+    },
+    "briefs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
+      },
+      "description": "Map from operation name to a relative path to the brief markdown file. Absolute paths and URIs are rejected. The per-axis schemas (`source.schema.json`, `target.schema.json`) close the legal key set."
+    },
+    "tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/toolDeclaration" },
+      "description": "Optional WASI tool declarations for declared WASI tools. Tools resolve into `.specify/.cache/{sources,targets}/<name>/`."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable, single-sentence summary of the adapter's role. Required."
+    },
+    "cache": {
+      "type": "string",
+      "enum": ["opt-out"],
+      "description": "workflow \u00a7D8 \u2014 optional cache opt-out switch. When set to `opt-out`, the CLI treats every `extract` (and `enumerate`) run for this adapter as a cache miss; the `slice.extract.cache-miss` journal event carries `reason: adapter-opt-out`. Absence (the default) means cache fingerprinting is on. Intended for adapters whose intermediate results are non-deterministic; new values require a workflow contract update."
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens."
+    },
+    "toolDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "WASI tool identifier; resolves under `.specify/.cache/{sources,targets}/<adapter>/<name>/`."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$",
+          "description": "Required semver pin (`x.y.z` with optional `-prerelease`). Tools without a release must cut one before being declared; the cache fingerprint (workflow \u00a7D8) folds declared-tool versions in, so an absent pin would silently drop tool-version from the cache key."
+        },
+        "permissions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Optional permission grants (e.g. `read:source-dir`)."
+        }
+      }
+    }
+  }
+}
