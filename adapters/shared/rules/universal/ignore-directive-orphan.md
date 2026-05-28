@@ -18,3 +18,7 @@ A `specify-ignore` directive must suppress a real finding. When a directive's ru
 - A directive whose target line is empty or comment-only because of an intervening reformat (the directive now applies to a line that emits no finding).
 - A copy-pasted directive carried into a file where the targeted finding never fired in the first place.
 - A directive whose rule id does not belong to any rule resolved by the current scan (typo, wrong namespace, or a rule from a codex tree not loaded in this project).
+
+## See Also
+
+- [Ignore directives reference](../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.

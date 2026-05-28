@@ -18,3 +18,7 @@ The 16-character minimum on the rationale is the floor at which a rationale is l
 - A rationale shorter than 16 characters (for example, `bug`, `fix later`, `todo`).
 - Rationales that paraphrase the directive itself rather than explaining why the finding is tolerated (for example, `ignore this`).
 - Drive-by suppression added in the same change as the protected code with no commit-message or in-line rationale context.
+
+## See Also
+
+- [Ignore directives reference](../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.

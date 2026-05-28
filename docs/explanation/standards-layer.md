@@ -51,3 +51,4 @@ The split means lint code physically cannot construct or transition a slice, pla
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
 - [Consistency checks](../contributing/checks.md) — `specdev lint` vs `specrun lint`
 - [Shared UNI-* codex inventory](../../adapters/shared/rules/universal/README.md)
+- [Ignore directives](../reference/ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and exit semantics
