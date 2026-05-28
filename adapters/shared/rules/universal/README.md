@@ -40,6 +40,8 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 | UNI-014 | [`hardcoded-configuration.md`](hardcoded-configuration.md)             |
 | UNI-015 | [`stale-closure-captures.md`](stale-closure-captures.md)               |
 | UNI-017 | [`type-safety-erosion.md`](type-safety-erosion.md)                     |
+| UNI-022 | [`ignore-directive-missing-rationale.md`](ignore-directive-missing-rationale.md) |
+| UNI-023 | [`ignore-directive-orphan.md`](ignore-directive-orphan.md)             |
 
 ### Suggestion
 
