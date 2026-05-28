@@ -10,7 +10,7 @@ This RFC pre-designs that surface so it can land against a settled contract when
 
 Concretely, RFC-33b adds:
 
-1. **Baseline file** — `.specify/lint/baseline.json`, indexed by RFC-28 `fingerprint`. `specrun lint` runs in baseline mode by default when the file is present; only findings outside the baseline block CI.
+1. **Baseline file** — `.specify/lint/baseline.json`, indexed by RFC-28 `fingerprint`. `specrun lint run` runs in baseline mode by default when the file is present; only findings outside the baseline block CI.
 2. **Last-run persistence** — `.specify/lint/last.json` carries the full envelope from the most recent run so `specrun lint baseline diff` answers "what changed since last scan" without re-scanning.
 3. **Diff verb** — `specrun lint baseline diff` reports `new[] / fixed[] / unchanged[] / ignored[] / baselined[]` as a pure function over `last.json`, the current scan, and the baseline.
 4. **CLI surface** — `specrun lint baseline {write, drop, diff}` subcommands plus `--no-baseline` / `--baseline <path>` flags on `specrun lint run`.
@@ -60,7 +60,7 @@ Principles (1), (3), (4), (5), and (7) carry forward unchanged.
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
 | **D1 Baseline file** | A scan-profile-scoped baseline lives at `.specify/lint/baseline.json`. | New `schemas/lint/baseline.schema.json`; new `Baseline` DTO in `specify-lints`; `specrun lint run` loads and matches by `fingerprint`. |
-| **D2 Baseline mode default** | When a baseline file matching the active scope exists under `.specify/lint/`, `specrun lint` runs in baseline mode unless `--no-baseline` is passed. Per-target files (`baseline.<target>.json`) override the project-wide `baseline.json` only when `--target <name>` is active; nearest-scope wins. `--baseline <path>` is an explicit override that bypasses the layering rule. | Two new flags on the `specrun lint` clap surface (`--no-baseline`, `--baseline <path>`); one new branch in the scanner pipeline; selection table pinned in §"Baseline file" below. |
+| **D2 Baseline mode default** | When a baseline file matching the active scope exists under `.specify/lint/`, `specrun lint run` runs in baseline mode unless `--no-baseline` is passed. Per-target files (`baseline.<target>.json`) override the project-wide `baseline.json` only when `--target <name>` is active; nearest-scope wins. `--baseline <path>` is an explicit override that bypasses the layering rule. | Two new flags on the `specrun lint run` clap surface (`--no-baseline`, `--baseline <path>`); one new branch in the scanner pipeline; selection table pinned in §"Baseline file" below. |
 | **D7 Last-run persistence** | `.specify/lint/last.json` holds the previous run's envelope verbatim. | One additional write at scanner exit; one new schema `schemas/lint/run.schema.json` (same shape as live emission). |
 | **D9 Diff verb** | `specrun lint baseline diff` reports `new[]`, `fixed[]`, `unchanged[]`, `ignored[]`, `baselined[]` against `last.json`. | One new subcommand; pure function over two envelopes plus the baseline; no scan side effects. |
 | **D10 Baseline omits rule body** | Baseline entries store only `(fingerprint, rule_id, path, line, kind, rationale, recorded_at)`. They never embed hint kind, regex pattern, or any other rule-body slice; interpreter drift surfaces through `evidence-payload` changes already encoded in the fingerprint. | `schemas/lint/baseline.schema.json` pins the closed entry shape; no duplicate of `specrun rules export` output; baseline rewrites are fingerprint-driven, not rule-edit-driven. |
@@ -106,8 +106,8 @@ Selection matrix (per D2):
 
 | Active scope | Files present | File matched against scan |
 | --- | --- | --- |
-| `specrun lint` (no `--target`) | `baseline.json` only | `baseline.json` |
-| `specrun lint` (no `--target`) | `baseline.json` + `baseline.<target>.json` | `baseline.json` only — target-suffixed files are ignored when no target is active |
+| `specrun lint run` (no `--target`) | `baseline.json` only | `baseline.json` |
+| `specrun lint run` (no `--target`) | `baseline.json` + `baseline.<target>.json` | `baseline.json` only — target-suffixed files are ignored when no target is active |
 | `specrun lint run --target omnia` | `baseline.json` only | `baseline.json` |
 | `specrun lint run --target omnia` | `baseline.json` + `baseline.omnia.json` | `baseline.omnia.json` only — per-target supersedes project-wide |
 
@@ -118,7 +118,7 @@ Override flags:
 
 ### Last-run persistence
 
-`.specify/lint/last.json` is the verbatim envelope from the most recent `specrun lint` run (any flags, any scope). One file per project. It is overwritten on every run.
+`.specify/lint/last.json` is the verbatim envelope from the most recent `specrun lint run` invocation (any flags, any scope). One file per project. It is overwritten on every run.
 
 Diff semantics:
 
@@ -165,7 +165,7 @@ RFC-33b widens `schemas/lint/finding.schema.json` a second time: the `status` en
 
 1. **Schemas.** Add `schemas/lint/baseline.schema.json` and `schemas/lint/run.schema.json`. Widen `schemas/lint/finding.schema.json` additively: extend the `status` enum with `new` and `baselined`, and add the optional `disposition.baseline` sub-field.
 2. **Standards-layer types.** Add `Baseline`, `BaselineEntry`, `ReviewRun` DTOs to `specify-lints`. Reuse RFC-28's canonical-JSON helper.
-3. **Scanner pipeline.** Insert the baseline pass between directive and status assignment. Order becomes: directive → baseline → status assignment → ordering.
+3. **Scanner pipeline.** Insert the baseline pass after directive matching. Order becomes: hint evaluation → default `status: open` assignment → directive validation/matching → baseline matching → ordering → envelope/render → status-aware exit decision.
 4. **Last-run persistence.** Write `.specify/lint/last.json` at scanner exit, after envelope emission.
 5. **CLI surface.** Add `specrun lint baseline {write, write --append, write --rescan, drop, diff}` subcommands and the `--no-baseline` / `--baseline <path>` flags on `specrun lint run`. Enforce the §"Baseline file" selection matrix, the `last.json` staleness check from D11 (`lint-baseline-write-stale`), and confirm-or-`--yes` discipline on every write.
 6. **Journal.** Flip the `baseline_present` field to populate from the scan's actual baseline state. Add `counts.{new, baselined}` to the `lint-completed` payload, populated from the baseline pass output.

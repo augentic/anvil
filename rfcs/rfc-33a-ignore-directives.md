@@ -172,12 +172,13 @@ The directive-validation findings are ordinary findings. `UNI-022` and `UNI-023`
 
 ### Schema changes
 
-One schema extension:
+Two schema extensions:
 
 
-| File                                 | Status   | Owner                                                                                 |
-| ------------------------------------ | -------- | ------------------------------------------------------------------------------------- |
+| File | Status | Owner |
+| --- | --- | --- |
 | `schemas/lint/finding.schema.json` | Extended | RFC-28 (this RFC extends the `status` enum and adds the optional `disposition` field) |
+| `schemas/lint/workspace-model.schema.json` | Extended | RFC-32 (this RFC adds the `ignore_directives` fact collection) |
 
 
 Backwards compatibility:
@@ -193,7 +194,7 @@ Each enum widening is additive, and consumers using exhaustive matching must alr
 1. **Schema.** Extend `schemas/lint/finding.schema.json` (status enum adds `ignored`; optional `disposition` field added with `source`, `directive?`, `since?` sub-fields) and `schemas/lint/workspace-model.schema.json` (new `ignore_directives` top-level fact collection). Golden test: fingerprint stability across the enum widening, asserted against the RFC-28 Phase 2 fixtures.
 2. **Standards-layer types.** Add `FindingDisposition` / `DirectiveDisposition` DTOs beside `LintFinding` in `crates/specify-lints/src/rules.rs`, and add the `IgnoreDirective` DTO plus `WorkspaceModel.ignore_directives` in `crates/specify-lints/src/lint/model.rs`. Reuse RFC-28's canonical-JSON helper for stable serialisation. ([RFC-33b](future/rfc-33b-standards-baseline.md) adds `Baseline`, `BaselineEntry`, `ReviewRun` to the same standards-layer boundary when it lands.)
 3. **Indexer fact.** Add the `ignore_directive` extractor under `crates/specify-lints/src/lint/index/`. Honour the closed comment-style list; ignore everything else without falling back to heuristics.
-4. **Scanner pipeline.** Insert the directive pass in `crates/specify-lints/src/lint/ignore.rs` between hint evaluation and envelope emission. Order: hint evaluation → default `status: open` assignment → directive validation/matching → status-aware exit decision → ordering. ([RFC-33b](future/rfc-33b-standards-baseline.md) inserts a baseline pass between directive matching and exit decision when it lands.)
+4. **Scanner pipeline.** Insert the directive pass in `crates/specify-lints/src/lint/ignore.rs` between hint evaluation and envelope emission. Order: hint evaluation → default `status: open` assignment → directive validation/matching → ordering → envelope/render → status-aware exit decision. ([RFC-33b](future/rfc-33b-standards-baseline.md) inserts a baseline pass between directive matching and ordering when it lands.)
 5. **Journal.** Add the `lint-completed` variant and wire it into the existing emission path. One new event-shape fixture; `baseline_present` hard-coded to `false` in RFC-33a emitters.
 6. **First-party rules.** Author the two `UNI-`* rules pinned by D13: `adapters/shared/rules/universal/ignore-directive-missing-rationale.md` (id `UNI-022`) and `adapters/shared/rules/universal/ignore-directive-orphan.md` (id `UNI-023`). They are policy metadata consumed by the directive-validation pass, not `kind: regex` hints; resolver failures degrade per the §"Graceful degradation" rule below.
 7. **Acceptance.** Golden tests: scan with directive absent → all `open`; scan with directive present → `ignored` with `disposition.directive`; scan with unrationaled directive → `UNI-022`; scan with orphan directive → `UNI-023`.
