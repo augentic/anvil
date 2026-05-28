@@ -4,7 +4,7 @@ Shared **engineering standards** catalog — target-agnostic rules under `adapte
 
 See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
-This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map per [RFC-28 §Namespaces](../../../../rfcs/done/rfc-28-standards-contract.md#namespaces), so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for [RFC-32](../../../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specdev check`.
+This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map by the `check::rules` namespace map, so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specdev check`.
 
 Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks/replay/) — shared build-time replay hook contract for targets that opt in.
 
@@ -50,7 +50,7 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `crates/authoring/schemas/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specdev check` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are to be kept byte-identical by `specdev check`'s `rules.schema-drift` predicate (lands with RFC-28 Phase 2). The minimum form:
+Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `crates/authoring/schemas/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specdev check` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are kept byte-identical by `specdev check`'s `rules.schema-drift` predicate. The minimum form:
 
 ```markdown
 ---

@@ -17,9 +17,9 @@ Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succe
 
 ## Finding-ID conventions
 
-- Report-local occurrence IDs: `SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`. These are the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage).
-- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Omnia-specific rules live under [`adapters/targets/omnia/rules/`](../../rules/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
-- Severity uses the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Antagonist adjustments rewrite the displayed severity but preserve the original prefix and occurrence ID.
+- Report-local occurrence IDs: `SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`. These are the `id` field on a structured `LintFinding` (the `LintFinding` schema uses the equivalent `FIND-0001` shape; this report uses prefixed counters for human triage).
+- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the `LintFinding` wire shape. Omnia-specific rules live under [`adapters/targets/omnia/rules/`](../../rules/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
+- Severity uses the closed `LintFinding` severity enum: `critical`, `important`, `suggestion`, `optional`. Antagonist adjustments rewrite the displayed severity but preserve the original prefix and occurrence ID.
 - Every finding carries a `file:line` reference and a verbatim code snippet.
 
 ## Auto-fix scope

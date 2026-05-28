@@ -26,7 +26,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 | Class | Use |
 |-------|-----|
 | `.hero` + `.eyebrow` + `.hero-title` + `.meta-row` + `.meta-chip` | Top-of-chapter hero block with breadcrumb + lede + meta chips |
-| `section` + `h2 .num` | Numbered top-level sections (RFC-style outline) |
+| `section` + `h2 .num` | Numbered top-level sections (proposal-style outline) |
 | `.decisions` + `.decision[data-d="D1"..."D8"]` + `.tag` | Decision cards (D1 = behaviour, D2 = documentation, …) |
 | `.audience-grid` / `.audience` | "Start here if you are…" orientation blocks |
 | `.questions` / `.question` + `.qnum` + `.q` + `.answer` | Open-question cards |

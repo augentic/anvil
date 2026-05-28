@@ -21,4 +21,4 @@ These fixtures are documentation pins for the target adapter. `make test` no lon
 - [`adapters/targets/vectis/briefs/shape.md`](../../../../adapters/targets/vectis/briefs/shape.md) — the idiom guidance each fixture's `input/` reflects.
 - [`adapters/targets/vectis/briefs/build.md`](../../../../adapters/targets/vectis/briefs/build.md) — the orchestration each fixture's `expected/composition.yaml` reflects.
 - [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) — the matching source-side fixture (W2.4) whose `expected/evidence/` feeds these fixtures' `input/evidence/`.
-- [`rfcs/done/rfc-25-workflow.md`](../../../../rfcs/done/rfc-25-workflow.md) §Acceptance scenarios #5h.
+- [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md#scenario-ids) scenario `5h`.

@@ -34,7 +34,7 @@ WASM CONSTRAINTS: Scan every .rs file in src/ for:
 - Blocking operations (synchronous I/O)
 
 For each finding, report: file:line, code snippet, severity (`critical` for
-all in these categories — the RFC-28 closed enum is `critical` / `important`
+all in these categories — the closed `LintFinding` severity enum is `critical` / `important`
 / `suggestion` / `optional`), risk description, suggested fix, and whether
 it is auto-fixable. When the issue maps to a rule, include `rule_id`
 separately from the report-local finding ID (for example, `OMNIA-002`,
@@ -128,7 +128,7 @@ Your job is to challenge every finding and find what they missed.
 For EACH finding (SEC-, COR-, QUA-, and UNI- prefixed):
 1. Validate evidence: Is there a real file:line reference and code snippet?
 2. Challenge severity: Is `critical` really critical? Is `optional` actually
-   higher? Severities come from the closed RFC-28 enum
+   higher? Severities come from the closed `LintFinding` severity enum
    (`critical` / `important` / `suggestion` / `optional`).
 3. Check for false positives: Could this be a non-issue or acceptable pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
@@ -153,7 +153,7 @@ Output format:
 
 You MUST provide evidence for every challenge. Opinion alone is insufficient.
 You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level along the closed RFC-28 enum
+Severity downgrades move at most one level along the closed `LintFinding` severity enum
 (`critical` → `important`, not `critical` → `optional`).
 ```
 

@@ -56,7 +56,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 
 ## What to read next
 
-- [RFC-27 synthesis](../../rfcs/done/rfc-27-synthesis.md) -- evidence fusion, authority, and cache; normative 2.0 workflow contract in [rfc-25-workflow.md](../../rfcs/done/rfc-25-workflow.md)
+- [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence fusion, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing

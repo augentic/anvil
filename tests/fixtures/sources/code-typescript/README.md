@@ -1,6 +1,6 @@
 # `code-typescript` source adapter fixture
 
-Tiny Express service mirroring a small legacy monolith. It documents the expected `code-typescript` source-adapter shape for RFC-25 scenario #4 (`code, multi-slice` decomposes the source tree into candidates).
+Tiny Express service mirroring a small legacy monolith. It documents the expected `code-typescript` source-adapter shape for acceptance scenario `4` (`code, multi-slice` decomposes the source tree into candidates).
 
 ## Layout
 

@@ -9,7 +9,7 @@ The reviewer team divides work across four finding-ID prefixes:
 - `QUA-` — Quality Reviewer (Performance + Code Quality)
 - `UNI-` — Lead's universal-checks pass (gaps not covered by SEC/COR/QUA)
 
-These prefixes are **report-local occurrence ids** — the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex ids. When a finding maps cleanly to a rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014` — three-digit codex ids matching `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Do not replace the occurrence id with the codex id.
+These prefixes are **report-local occurrence ids** — the `id` field on a structured `LintFinding` (the `LintFinding` schema uses the equivalent `FIND-0001` shape; this report uses prefixed counters for human triage). They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex ids. When a finding maps cleanly to a rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014` — three-digit codex ids matching `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the `LintFinding` wire shape. Do not replace the occurrence id with the codex id.
 
 Stable codex sources for this reviewer:
 

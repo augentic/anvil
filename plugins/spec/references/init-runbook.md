@@ -185,5 +185,6 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## References
 
-- [RFC-9: Platform](../../../rfcs/done/rfc-9-platform.md) — registry-only platform hub topology.
-- [RFC-13: Extensibility](../../../rfcs/done/rfc-13-extensibility.md) — adapter vs `--hub` shape requirements.
+- [`docs/explanation/adapter-anatomy.md`](../../../docs/explanation/adapter-anatomy.md) — adapter manifest boundaries and resolver behavior.
+- [`docs/reference/lifecycle.md`](../../../docs/reference/lifecycle.md) — workflow state owned by CLI verbs.
+- [`init-output-templates.md`](init-output-templates.md) — regular, brownfield, and hub init summaries.

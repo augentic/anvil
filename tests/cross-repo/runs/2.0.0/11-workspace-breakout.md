@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #11.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `11`.
 
 > `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at workspace root and runs `/spec:build`.
 

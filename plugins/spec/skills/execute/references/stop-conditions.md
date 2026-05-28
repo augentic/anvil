@@ -58,7 +58,7 @@ The following return cleanly into the next iteration:
 | `/spec:refine` success | Continue to `/spec:build` for the same entry. |
 | `/spec:build` success | Continue to `/spec:merge` for the same entry. |
 | `/spec:merge` success | `specrun plan transition <slice> done` (by `/spec:merge`), then continue to the next `specrun plan next`. |
-| `/spec:refine` surfaces `[unknown]` / `[conflict]` / `[divergence]` tags | Tags are review signals; lifecycle still reaches `refined`; loop continues to `/spec:build`. RFC-25 D2/D4. |
+| `/spec:refine` surfaces `[unknown]` / `[conflict]` / `[divergence]` tags | Tags are review signals; lifecycle still reaches `refined`; loop continues to `/spec:build`. |
 | Workspace residue commit succeeded | Continue. |
 
 A `/spec:refine` hard failure (extract failed, schema rejection) leaves the slice `refining` and the plan entry `in-progress`; the skill body treats this the same as a build failure for stop-condition purposes — print `stop: refine-failed` with the same shape as build-failed and exit.

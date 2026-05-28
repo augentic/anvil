@@ -169,7 +169,7 @@ The closed set matches the resolution-order taxonomy in [`authority.md` §Resolu
 
 ## Audit posture
 
-`fusion.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same posture RFC-22's `mapping` field and RFC-24's `surfaces[]` follow.
+`fusion.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same audit-only posture used by plan summary metadata.
 
 Operator hand-edits to `fusion.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
 
@@ -252,4 +252,4 @@ REQ-001 is the agreed cross-source case (one shared statement; no winner / loser
 - [`authority.md`](authority.md) — authority hierarchy, override surfaces, and the resolution-order taxonomy the `resolution-trace.step` names mirror.
 - [`claim-fusion.md`](claim-fusion.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
 - [`tags.md`](tags.md) — tag / `Status:` coherence on the matching `spec.md` requirement block.
-- [RFC-27](../../../../rfcs/done/rfc-27-synthesis.md) §Reconciliation index — normative shape and rationale.
+- [`fusion.md`](fusion.md) — normative reconciliation-index shape and rationale.

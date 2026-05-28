@@ -35,4 +35,4 @@ This fixture is a documentation pin for the target adapter. `make test` no longe
 
 - `targets/omnia/briefs/shape.md` — the idiom guidance this fixture's `input/` reflects.
 - `targets/omnia/briefs/build.md` — the orchestration this fixture's `expected/crate/` reflects.
-- `rfcs/done/rfc-25-workflow.md` §Acceptance scenarios #5h.
+- [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md#scenario-ids) scenario `5h`.

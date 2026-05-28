@@ -48,6 +48,33 @@ The plan-generation scenarios ask an operator to create disposable workspaces an
 
 These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> approved`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
 
+## Scenario IDs
+
+The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row numbers. The canonical queue lives in [`tests/cross-repo/runs/2.0.0/`](../../tests/cross-repo/runs/2.0.0/); each stub links back here so acceptance references survive archive cleanup.
+
+| Scenario ID | Meaning | Stub |
+| --- | --- | --- |
+| `1` | Pure intent, one slice | [`01-pure-intent.md`](../../tests/cross-repo/runs/2.0.0/01-pure-intent.md) |
+| `2` | Documentation, one slice | [`02-documentation-one-slice.md`](../../tests/cross-repo/runs/2.0.0/02-documentation-one-slice.md) |
+| `3` | Documentation, multi-slice | [`03-documentation-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/03-documentation-multi-slice.md) |
+| `4` | Code, multi-slice | [`04-code-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/04-code-multi-slice.md) |
+| `5` | Intra-Evidence `[conflict]` | [`05-intra-evidence-conflict.md`](../../tests/cross-repo/runs/2.0.0/05-intra-evidence-conflict.md) |
+| `5a` | Combined evidence from code and documentation | [`05a-combined-evidence.md`](../../tests/cross-repo/runs/2.0.0/05a-combined-evidence.md) |
+| `5b` | `[divergence]` from authority resolution | [`05b-divergence-authority.md`](../../tests/cross-repo/runs/2.0.0/05b-divergence-authority.md) |
+| `5c` | `[conflict]` from same-authority disagreement | [`05c-same-authority-conflict.md`](../../tests/cross-repo/runs/2.0.0/05c-same-authority-conflict.md) |
+| `5e` | Cross-source propose-time merge | [`05e-cross-source-merge.md`](../../tests/cross-repo/runs/2.0.0/05e-cross-source-merge.md) |
+| `5f` | Extract failure | [`05f-extract-failure.md`](../../tests/cross-repo/runs/2.0.0/05f-extract-failure.md) |
+| `5g` | Invalid Evidence schema rejection | [`05g-invalid-evidence.md`](../../tests/cross-repo/runs/2.0.0/05g-invalid-evidence.md) |
+| `5h` | Target `shape` injection | [`05h-target-shape-injection.md`](../../tests/cross-repo/runs/2.0.0/05h-target-shape-injection.md) |
+| `5j` | Source-adapter sandbox path-denied | [`05j-source-sandbox-denied.md`](../../tests/cross-repo/runs/2.0.0/05j-source-sandbox-denied.md) |
+| `6` | Multi-repo assignment from a workspace | [`06-multi-repo-workspace.md`](../../tests/cross-repo/runs/2.0.0/06-multi-repo-workspace.md) |
+| `7` | Operator amends one-slice plan into two slices at Gate 1 | [`07-amend-into-two.md`](../../tests/cross-repo/runs/2.0.0/07-amend-into-two.md) |
+| `8` | Step-through breakout mid-execute | [`08-stepthrough-breakout.md`](../../tests/cross-repo/runs/2.0.0/08-stepthrough-breakout.md) |
+| `9` | `/spec:execute` parks on a build failure, operator fixes, resumes | [`09-execute-build-failure.md`](../../tests/cross-repo/runs/2.0.0/09-execute-build-failure.md) |
+| `10` | Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects.md`](../../tests/cross-repo/runs/2.0.0/10-workspace-execute-two-projects.md) |
+| `11` | Workspace breakout after build failure in a slot | [`11-workspace-breakout.md`](../../tests/cross-repo/runs/2.0.0/11-workspace-breakout.md) |
+| `12` | Dual-driving refused | [`12-dual-driving-refused.md`](../../tests/cross-repo/runs/2.0.0/12-dual-driving-refused.md) |
+
 ## Evidence
 
 Each cross-repo manual run should fill out [`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md). On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.

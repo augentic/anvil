@@ -14,7 +14,7 @@
   "properties": {
     "id": {
       "$ref": "#/$defs/ruleId",
-      "description": "Stable rule identifier. V1 reserves UNI, SRC, FRAME, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes. SRC namespaces shared source-adapter overlays; FRAME is reserved for RFC-32 framework declarative checks and is not used in consumer adapter codex."
+      "description": "Stable rule identifier. V1 reserves UNI, SRC, FRAME, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes. SRC namespaces shared source-adapter overlays; FRAME is reserved for framework declarative checks and is not used in consumer adapter codex."
     },
     "title": {
       "type": "string",
@@ -121,7 +121,7 @@
               "content-digest-eq",
               "namespace-owner"
             ],
-            "description": "Kind of deterministic signal the hint describes. The kinds `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner` are reserved for RFC-32 declarative framework checks and are shape-validated only at this layer; no execution semantics are implied."
+            "description": "Kind of deterministic signal the hint describes. The kinds `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner` are reserved for declarative framework checks and are shape-validated only at this layer; no execution semantics are implied."
           },
           "value": {
             "type": "string",

@@ -2,9 +2,7 @@
 
 The producer-side contract every Vectis layout inferer follows. It pins the argument surface, the output shape, the idempotence rules, the component-directive emission policy, and the deterministic verification step that every inferer MUST run before reporting success.
 
-The contract is source-agnostic. The first-pass implementer is the `vectis-image-layout-inferer` skill; planned future producers (`vectis-figma-layout-inferer`, `vectis-code-layout-inferer`) reuse the same contract unless their own RFC explicitly amends it. Source-specific arguments (image input lists, Figma file IDs, source-tree paths) live in each skill's `SKILL.md`; this document covers only the surface every inferer shares.
-
-The normative source is [RFC-11 §A, §G, §H](../../../../rfcs/done/rfc-11-ui-spec.md). When this document and the RFC disagree, the RFC wins and the discrepancy is a bug in this file.
+The contract is source-agnostic and self-normative for current Vectis layout inferers. The first-pass implementer is the `vectis-image-layout-inferer` skill; planned future producers (`vectis-figma-layout-inferer`, `vectis-code-layout-inferer`) reuse the same contract until their own maintained reference amends it. Source-specific arguments (image input lists, Figma file IDs, source-tree paths) live in each skill's `SKILL.md`; this document covers only the surface every inferer shares. Tool-owned Vectis schemas and validators are the deterministic authority for output shape.
 
 ## Common arguments
 
@@ -61,7 +59,7 @@ Arguments deliberately excluded from the common surface:
 
 ## Component directive emission
 
-The `component: <slug>` directive is the v1 cross-shell factoring contract (see [RFC-11 §G](../../../../rfcs/done/rfc-11-ui-spec.md)). Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
+The `component: <slug>` directive is the v1 cross-shell factoring contract; see [Component Catalog](../../../../docs/explanation/components.md) for the operator-curated catalog and validation surfaces. Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
 
 Emission policy:
 
@@ -141,6 +139,6 @@ Source-specific skills MAY add additional sections (e.g. the image inferer repor
 
 ## See also
 
-- [RFC-11: UI Specification Workflow](../../../../rfcs/done/rfc-11-ui-spec.md) — normative source for §A (this contract), §G (component directive), §H (CLI validation modes).
+- [Component Catalog](../../../../docs/explanation/components.md) — operator workflow and validation surfaces for `components.yaml`.
 - [`composition.schema.json`](https://schemas.specify.dev/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against. Retrieve with `specrun tool schema vectis composition`.
 - [`tokens.schema.json`](https://schemas.specify.dev/vectis/tokens.schema.json) and [`assets.schema.json`](https://schemas.specify.dev/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.

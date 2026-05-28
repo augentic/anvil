@@ -120,7 +120,7 @@ candidate: user-registration
 Rules:
 
 - `authority` (document-level) stays required. `authority-overrides` is purely additive — an Evidence file without the field behaves exactly as today.
-- The override applies to **every** claim of the named kind in that Evidence document; per-claim overrides remain out of scope (see [RFC-27](../../../../rfcs/done/rfc-27-synthesis.md) §Non-goals).
+- The override applies to **every** claim of the named kind in that Evidence document; per-claim overrides remain out of scope (see the non-goals in this synthesis reference set).
 - Both keys and values are closed enums. New kinds or new classes still require an RFC update.
 - The map is informational on the Evidence document alone; it gains force only when synthesis runs the [§Resolution order](#resolution-order) below.
 
@@ -161,14 +161,14 @@ specrun plan add   <plan> <slice> --authority-override <claim-kind>=<source-key>
 
 ### Resolution order
 
-When synthesis fuses claims for a single `claim-id` group and the contributing claims disagree, it walks the following ordered steps. The first step that yields a winner stops the walk; the chosen step name is recorded in [`fusion.yaml`](../../../../rfcs/done/rfc-27-synthesis.md#reconciliation-index-d4) at `requirements[].resolution-trace.step` so the operator can audit which surface broke the tie.
+When synthesis fuses claims for a single `claim-id` group and the contributing claims disagree, it walks the following ordered steps. The first step that yields a winner stops the walk; the chosen step name is recorded in `fusion.yaml` at `requirements[].resolution-trace.step` so the operator can audit which surface broke the tie.
 
 1. **`per-slice-authority-override`** — the slice's `authority-override.<kind>` names a source key that appears in the fused group's contributing sources. That source wins; the requirement block carries `Status: divergence` (or `agreed` when the override happens to align with a shared value), and the runner-up survives as a `Note:` line.
 2. **`per-evidence-authority-override`** — at least one contributing Evidence carries `authority-overrides.<kind>` that resolves to a strictly-greater authority class than the other contributors' effective class for this kind. That class wins.
 3. **`document-authority-ordering`** — fall back to the document-level `authority:` enum (`intent > documentation > behaviour`). Highest class wins; ties at the top class continue to step 4.
 4. **`tied-conflict`** — still tied. Emit `Status: conflict` with `[conflict]` tag; preserve every contributing value as `Note:` lines. The operator reconciles by hand-editing `spec.md` before `/spec:build`.
 
-Steps 1–3 produce `Status: divergence` when the chosen source disagrees with at least one other contributor and `Status: agreed` when every contributor's value matches the winner's. Step 4 produces `Status: conflict`. Step names are byte-stable across runs and match `fusion.yaml.requirements[].resolution-trace.step` exactly — see [`fusion.md`](../../../../rfcs/done/rfc-27-synthesis.md#reconciliation-index-d4) for the audit shape and [`claim-fusion.md`](claim-fusion.md) for the per-kind body landing rules.
+Steps 1–3 produce `Status: divergence` when the chosen source disagrees with at least one other contributor and `Status: agreed` when every contributor's value matches the winner's. Step 4 produces `Status: conflict`. Step names are byte-stable across runs and match `fusion.yaml.requirements[].resolution-trace.step` exactly — see [`fusion.md`](fusion.md) for the audit shape and [`claim-fusion.md`](claim-fusion.md) for the per-kind body landing rules.
 
 ### Worked example — both overrides at play
 
@@ -211,7 +211,7 @@ Had the operator instead omitted the per-slice map and added `authority-override
 ## Notes
 
 - Authority does **not** apply at plan-time `propose` (no `Evidence` yet); it activates here at slice-time synthesis.
-- Per-claim overrides remain out of scope (see [RFC-27](../../../../rfcs/done/rfc-27-synthesis.md) §Non-goals). The override seam below per-kind granularity stays as today: hand-edit `spec.md` after `/spec:refine` transitions the slice to `refined`.
+- Per-claim overrides remain out of scope (see the non-goals in this synthesis reference set). The override seam below per-kind granularity stays as today: hand-edit `spec.md` after `/spec:refine` transitions the slice to `refined`.
 - The `Sources:` list MUST list every contributing source key, highest authority first **after override resolution** — a per-slice override that promotes a `behaviour`-class source to the operative winner promotes that key to the front of the list for the affected block.
 - The provenance parser cross-resolves every `Sources:` key against the slice's `plan.yaml.slices[].sources[]` bindings; a stale or missing key fails validation. Per-slice `authority-override` source keys are checked by the same parser before `/spec:refine` runs.
 - Every override resolution — including step 3 fallbacks where neither override map fired — lands in `fusion.yaml.requirements[].resolution-trace.step`. The reconciliation index is the audit surface; `spec.md` carries operator-facing prose only.

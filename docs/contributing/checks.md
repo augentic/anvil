@@ -83,9 +83,9 @@ FAIL: <rule-id>: <message>
 
 See the `specify-authoring` crate's `check` module for the full predicate list.
 
-### JSON output (RFC-28)
+### JSON output
 
-`specdev check` also speaks the [RFC-28](../../rfcs/done/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun lint`](../../rfcs/done/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `LintFinding` objects.
+`specdev check` can emit the same structured result shape consumed by CI integrations. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specrun lint` output.
 
 ```bash
 specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
@@ -101,19 +101,19 @@ Envelope shape:
 }
 ```
 
-The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed rule shape it references is pinned by [`crates/authoring/schemas/rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/rule.schema.json).
+The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/lint/lint-result.schema.json` for the envelope, `schemas/lint/finding.schema.json` for each `LintFinding`, and `crates/authoring/schemas/rule.schema.json` for rule authoring shape.
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
-**Severity mapping.** Authoring imperative rule ids map to RFC-28 severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs) (CH-20):
+**Severity mapping.** Authoring imperative rule ids map to `LintFinding` severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs):
 
 - `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
 - every other authoring family (`adapter.*`, `codex.duplicate-rule-id`, `codex.namespace-ownership-violation`, `links.*`, `scenarios.*`, `skill.*`, …) → `important`.
 - unclassified rule ids fall through to the `important` default.
 
-**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
+**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.duplicate-name` do not match. The [authoring mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; a future framework-rules migration may move authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
 
-**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; [`specrun lint`](../../rfcs/done/rfc-32-standards-enforcement.md#specrun-review-phase-2-cli) is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same [RFC-28 `LintFinding` envelope](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope) so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; `specrun lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 
@@ -168,7 +168,7 @@ Built-in variables (`$ARGUMENTS`, `$HOME`) are excluded from the check.
 
 ### 8. Skill directive validation
 
-`<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under `rfcs/` are excluded.
+`<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under the historical design-record tree are excluded.
 
 ### 9. Marketplace manifest consistency
 
@@ -301,7 +301,7 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under `adapters/` must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
 
-This enforces RFC-31 D1 (tool-owned schemas): plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
+This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
 **Common fix:** verify the tool name and schema name in the URL. Use `specrun tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
 

@@ -5,7 +5,7 @@ This catalogue has two readers:
 - **Operators** triaging a `deferred` outcome from [`../briefs/build.md`](../briefs/build.md) § Template / version-pin drift handling, or a Mode 3 cap-matrix failure from [`../briefs/merge.md`](../briefs/merge.md). Match the symptom to one of the items below, then escalate via a template-fix slice rooted in the CLI repo.
 - **The host-side template-updater workflow** living in `augentic/specify-cli`'s vectis carve-out. The workflow checks this list **first** when a fresh `specify vectis update-versions --verify` run fails: if the reproduced failure matches an item below, the workflow follows that item's playbook rather than re-diagnosing from scratch.
 
-Concrete fix items carried into this catalogue from earlier RFC-6 chunks. Each item is reproducible today via:
+Concrete fix items carried into this catalogue from earlier Vectis template-update chunks. Each item is reproducible today via:
 
 ```sh
 specify vectis update-versions --dry-run --verify
@@ -95,8 +95,8 @@ Chunk 8 already pinned Gradle-the-wrapper to 8.13 via a scratch bootstrap (`init
 
 **Fix path** (choose one):
 
-- **Normalise on query**: in `update_versions::query::crates_io_latest_stable` (or a wrapper) inside `<specify-cli>/crates/vectis/src/update_versions/query.rs`, convert `^0.x` / `^0.x.y` to `=0.x.y` before emitting. This preserves the RFC-6 hard-pin convention for every Crux-adjacent coordinate.
-- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `<specify-cli>/crates/vectis/embedded/versions.toml` to carry `= "^0.15"` and update the RFC-6 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
+- **Normalise on query**: in `update_versions::query::crates_io_latest_stable` (or a wrapper) inside `<specify-cli>/crates/vectis/src/update_versions/query.rs`, convert `^0.x` / `^0.x.y` to `=0.x.y` before emitting. This preserves the Vectis hard-pin convention for every Crux-adjacent coordinate.
+- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `<specify-cli>/crates/vectis/embedded/versions.toml` to carry `= "^0.15"` and update the hard-pin rationale block to note that `facet_generate` tracks semver-minor. The hard-pin set was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
 
 This item is purely cosmetic -- no build or verify step actually fails. It is listed so `specify vectis update-versions` runs don't emit a noisy "changed" entry on every invocation when nothing has substantively moved.
 

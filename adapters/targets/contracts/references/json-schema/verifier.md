@@ -1,6 +1,6 @@
 # JSON Schema — Verifier
 
-> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts adapter build brief in `single` mode after the author or importer sibling produces output, by the contracts adapter merge brief in `cross-project` mode against the merged baseline (RFC-13 §"Merge and adoption contract"), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts adapter build brief in `single` mode after the author or importer sibling produces output, by the contracts adapter merge brief in `cross-project` mode against the merged baseline (the contracts adapter merge contract), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -11,13 +11,13 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 | Mode               | Caller                                         | Trigger                                                   | Scope                                                                                                           | Output                                                |
 | ------------------ | ---------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `single` (default) | contracts adapter build brief in `/spec:build` | Post-author or post-import                                | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop            |
-| `cross-project`    | contracts adapter merge brief                  | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation                                               | JSON envelope produced by `specrun tool run contract` |
+| `cross-project`    | contracts adapter merge brief                  | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce contract identity/version validation                                               | JSON envelope produced by `specrun tool run contract` |
 
-`single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specrun tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
+`single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (the declared `contract` WASI tool) — the verifier shells out through `specrun tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
 `--mode` is an internal flag of the format-specific verifier. Cross-project consumer-impact analysis is deferred until a real consumer workflow exists; this verifier owns deterministic single-slice and merged-baseline checks.
 
-Note: `specrun tool run contract` walks **top-level OpenAPI 3.1 / AsyncAPI 3.0 documents only** (root key `openapi:` or `asyncapi:`). Standalone JSON Schema files under `contracts/schemas/` are payload vocabulary, not top-level contracts, and are skipped by the validator filter (RFC-12 §"Top-level contracts"). The `cross-project` invocation is therefore identical across all three format verifiers — the tool handles format selection internally.
+Note: `specrun tool run contract` walks **top-level OpenAPI 3.1 / AsyncAPI 3.0 documents only** (root key `openapi:` or `asyncapi:`). Standalone JSON Schema files under `contracts/schemas/` are payload vocabulary, not top-level contracts, and are skipped by the validator filter (the top-level contract filter). The `cross-project` invocation is therefore identical across all three format verifiers — the tool handles format selection internally.
 
 ## Inputs
 
@@ -42,7 +42,7 @@ Caller passes the merged baseline directory:
 $BASELINE_CONTRACTS = $PROJECT_ROOT/contracts   # the merged baseline, post-`specrun slice merge run`
 ```
 
-The verifier shells out to `specrun tool run contract -- "$BASELINE_CONTRACTS" --format json` (RFC-13 §4.2a, RFC-15), which walks every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under `$BASELINE_CONTRACTS` and enforces the RFC-12 §Validation rules. Standalone schemas under `$BASELINE_CONTRACTS/schemas/` are not validated by the tool — they are payload vocabulary, not top-level contracts (RFC-12 §"Top-level contracts" + §Non-goals). Schema-side issues are caught earlier, in `single` mode, during the build verify-repair loop.
+The verifier shells out to `specrun tool run contract -- "$BASELINE_CONTRACTS" --format json` (the declared `contract` WASI tool), which walks every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under `$BASELINE_CONTRACTS` and enforces the contract identity/version validation rules. Standalone schemas under `$BASELINE_CONTRACTS/schemas/` are not validated by the tool — they are payload vocabulary, not top-level contracts (the top-level contract filter + §Non-goals). Schema-side issues are caught earlier, in `single` mode, during the build verify-repair loop.
 
 ## Prerequisites
 
@@ -160,7 +160,7 @@ Algorithm:
 
 3. **For each schema with no consumers**, skip Check 4 — there is no binding-side risk surface inside the slice. The compatibility risk lives entirely in `cross-project` mode (downstream projects may have their own consumers).
 
-The `change-kind` enum above is a contract-domain classification — not the RFC-28 severity enum. The Severity column gives the markdown-report ladder for the verify-repair loop; if a Check 4 finding is later surfaced as an RFC-28 `LintFinding`, the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) sits on the envelope while `change-kind` and the per-property contract context (schema pointer, property name, baseline binding paths) travel inside `evidence.kind: structured` under `evidence.data` (RFC-28 §"Relationship to contracts and compatibility").
+The `change-kind` enum above is a contract-domain classification — not the `LintFinding` severity enum. The Severity column gives the markdown-report ladder for the verify-repair loop; if a Check 4 finding is later surfaced as a `LintFinding`, the closed `LintFinding` severity enum (`critical` / `important` / `suggestion` / `optional`) sits on the envelope while `change-kind` and the per-property contract context (schema pointer, property name, baseline binding paths) travel inside `evidence.kind: structured` under `evidence.data` (see `schemas/lint/finding.schema.json`).
 
 Report format:
 
@@ -224,9 +224,9 @@ All checks passed (19 $ref pointers, 7 schemas, 0 $id collisions, 0 backwards-in
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The contracts adapter merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/spec:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
+`cross-project` mode runs **after** a producer's contract change merges. The contracts adapter merge brief invokes it as the post-merge baseline gate (the contracts adapter merge contract); `/spec:execute` re-uses the same gate per project after a producer-side merge (the workspace execution contract).
 
-The mode is a thin delegate over `specrun tool run contract` (RFC-13 §4.2a, RFC-15). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/spec:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the RFC-12 §Validation rules over the merged baseline's top-level OpenAPI / AsyncAPI documents:
+The mode is a thin delegate over `specrun tool run contract` (the declared `contract` WASI tool). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/spec:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the contract identity/version validation rules over the merged baseline's top-level OpenAPI / AsyncAPI documents:
 
 - `contract.version-is-semver` — every top-level document's `info.version` parses as SemVer (per [semver.org](https://semver.org), prerelease labels included).
 - `contract.id-format` — when `info.x-specify-id` is present, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters.
@@ -266,7 +266,7 @@ The declared tool writes a single JSON object to stdout in `--format json` when 
 
 Field semantics:
 
-- `envelope-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
+- `envelope-version` — currently `2`; bumps follow the contract envelope versioning policy. Callers MUST validate this before parsing the rest of the envelope.
 - `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<baseline-dir>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering in operator-facing reports.
@@ -276,7 +276,7 @@ Field semantics:
 
 Callers that surface post-merge validator failures (the merge brief on a blocking finding) parse `findings[]` and include `{ rule-id, path, detail }` triples in the stop hint's `paths` field. The load-bearing finding is typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`; the full envelope is captured at the log path referenced in the stop hint.
 
-When a caller re-surfaces an envelope finding as an RFC-28 `LintFinding` (see [RFC-28 §Structured review finding schema](../../../../../rfcs/done/rfc-28-standards-contract.md#structured-review-finding-schema)), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. Schema-side contract metadata (schema pointer, `$id`, plus any single-mode Check 4 `change-kind` such as `removed-field` / `required-field-added` / `type-narrowed` / `enum-value-removed` / `additional-properties-tightened`) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
+When a caller re-surfaces an envelope finding as a `LintFinding` (see `schemas/lint/finding.schema.json` in the CLI repo), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. Schema-side contract metadata (schema pointer, `$id`, plus any single-mode Check 4 `change-kind` such as `removed-field` / `required-field-added` / `type-narrowed` / `enum-value-removed` / `additional-properties-tightened`) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed `LintFinding` severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
 
 ### Exit semantics
 
@@ -328,7 +328,7 @@ Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format c
 - Report every issue with the file path and a description of the problem.
 - Use `WARN` rather than `FAIL` (in `single` mode) when classification is ambiguous, e.g. when a schema is referenced by no bindings but might be shared vocabulary the spec brief just hasn't bound yet.
 - Do not attempt to fix issues — report them. Repair belongs to the author or importer sibling.
-- **`cross-project` mode is fatal.** Treat exit codes `1` (findings) and `2` (invocation error) as `failure` per RFC-13 §"Merge and adoption contract". The merge brief MUST halt; the slice's deltas remain unmerged until the operator resolves the finding.
+- **`cross-project` mode is fatal.** Treat exit codes `1` (findings) and `2` (invocation error) as `failure` per the contracts adapter merge contract. The merge brief MUST halt; the slice's deltas remain unmerged until the operator resolves the finding.
 - Do not re-implement the tool's checks. The verifier sibling's `cross-project` mode is a delegate; the canonical algorithm lives in `crates/validate/src/contracts.rs` of the `specify-cli` workspace.
 
 ## Verification checklist

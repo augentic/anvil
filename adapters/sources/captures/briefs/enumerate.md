@@ -132,5 +132,5 @@ Expected output (alphabetically by `id`, source key `runtime`):
 
 ## References
 
-- [workflow §Runtime source adapter (D1)](../../../../rfcs/done/rfc-27-synthesis.md#runtime-source-adapter-d1)
+- [Capture format reference](../references/capture-format.md) and [`extract.md`](extract.md) for `kind: example` Evidence claims
 - [Capture format reference](../references/capture-format.md)

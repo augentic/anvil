@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-The Vectis target adapter contributes its `shape` / `build` / `merge` briefs to the RFC-25 workflow. The adapter generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, and Kotlin/Jetpack Compose Android shells from synthesised Specify artifacts (`spec.md` + `design.md`) plus operator-curated `tokens.yaml` / `assets.yaml` build inputs.
+The Vectis target adapter contributes its `shape` / `build` / `merge` briefs to the current Specify workflow. The adapter generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, and Kotlin/Jetpack Compose Android shells from synthesised Specify artifacts (`spec.md` + `design.md`) plus operator-curated `tokens.yaml` / `assets.yaml` build inputs.
 
 **Purpose**: Carry the Vectis `shape` / `build` / `merge` briefs and the references the briefs lift from, plus a `screenshots`-driven layout inferer that emits spatial Evidence for the matching source adapter.
 

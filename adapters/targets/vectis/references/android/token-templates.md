@@ -35,7 +35,7 @@ Generated under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/`:
 | `colors` | `Colors.kt` | One file per category; defines the M3 light/dark `ColorScheme` plus `vectisColor()` parser. |
 | `typography` | `Typography.kt` | Defines `object VectisTypography` plus `vectisTypography()` mapping into M3 slots. |
 | `spacing` + `cornerRadius` | `Spacing.kt` | Colocated as two `object`s (mirrors Swift `Spacing.swift`). |
-| `elevation` | `Elevation.kt` | New v1 category (RFC-11 §F); separate file. |
+| `elevation` | `Elevation.kt` | v1 token category; separate file. |
 | `border` | `Border.kt` | New v1 category; uses composite shape. |
 | `opacity` | `Opacity.kt` | New v1 category. |
 | _any new scalar / color / font category_ | `<Name>.kt` | One file per new category unless the writer explicitly colocates. |

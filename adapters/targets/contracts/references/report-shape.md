@@ -25,11 +25,11 @@ The severity vocabulary is shared across formats and modes:
 
 Single-mode markdown reports use `FAIL` / `WARN` / `INFO` words plus the corresponding glyph in summary tables. Future consumer-impact reports may use a separate classification vocabulary when a real workflow needs it.
 
-### Relationship to RFC-28 `LintFinding`
+### Relationship to `LintFinding`
 
-The verifier's `FAIL` / `WARN` / `INFO` ladder is the report-local severity vocabulary for the markdown surface and is distinct from the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) used by the structured `LintFinding` schema (see [RFC-28 §Structured review finding schema](../../../../rfcs/done/rfc-28-standards-contract.md#structured-review-finding-schema)). When a caller re-surfaces a verifier finding as an RFC-28 `LintFinding`, the contracts-specific evidence (operation id, schema pointer, channel, message, compatibility classification, `change-kind`, the raw `findings[].detail`) lives inside the structured-finding payload as `evidence.kind: structured` with the contract data under `evidence.data`; the RFC-28 `rule-id`, `target-adapter`, `source-adapter`, `evidence`, `confidence`, and `related-rule-ids` fields use kebab-case on the wire, with `target-adapter: contracts`.
+The verifier's `FAIL` / `WARN` / `INFO` ladder is the report-local severity vocabulary for the markdown surface and is distinct from the closed `LintFinding` severity enum (`critical` / `important` / `suggestion` / `optional`) used by the structured `LintFinding` schema (see `schemas/lint/finding.schema.json` in the CLI repo). When a caller re-surfaces a verifier finding as a `LintFinding`, the contracts-specific evidence (operation id, schema pointer, channel, message, compatibility classification, `change-kind`, the raw `findings[].detail`) lives inside the structured-finding payload as `evidence.kind: structured` with the contract data under `evidence.data`; the `LintFinding` `rule-id`, `target-adapter`, `source-adapter`, `evidence`, `confidence`, and `related-rule-ids` fields use kebab-case on the wire, with `target-adapter: contracts`.
 
-Compatibility classifications like `additive`, `breaking`, `ambiguous`, and `unverifiable` (see [`cross-project-compatibility.md`](./cross-project-compatibility.md)) are **not** the RFC-28 severity enum — they remain contract-domain evidence fields and travel inside `evidence.data` alongside the same closed severity enum on the envelope (RFC-28 §"Relationship to contracts and compatibility").
+Compatibility classifications like `additive`, `breaking`, `ambiguous`, and `unverifiable` (see [`cross-project-compatibility.md`](./cross-project-compatibility.md)) are **not** the `LintFinding` severity enum — they remain contract-domain evidence fields and travel inside `evidence.data` alongside the same closed severity enum on the envelope (see `schemas/lint/finding.schema.json`).
 
 ## Single-mode output (markdown)
 

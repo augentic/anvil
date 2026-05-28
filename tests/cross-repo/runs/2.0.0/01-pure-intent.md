@@ -4,7 +4,7 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #1.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `1`.
 
 > Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.
 

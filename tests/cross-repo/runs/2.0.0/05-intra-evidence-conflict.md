@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #5.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `5`.
 
 > Single-source slice where synthesis cannot reconcile contradictory `claims` within one `Evidence` document.
 

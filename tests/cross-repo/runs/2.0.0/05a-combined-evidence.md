@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #5a.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `5a`.
 
 > Operator binds a legacy repo and a design-notes path on the same slice.
 

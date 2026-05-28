@@ -1,6 +1,6 @@
 # `captures` source adapter fixture — `user-registration`
 
-Worked example for the [`captures`](../../../../../adapters/sources/captures/) source adapter (workflow §D1). Exercises both operations of the source contract: `enumerate` emits one candidate per `tests/data/replays/<handler>/` directory under `## Candidate inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
+Worked example for the [`captures`](../../../../../adapters/sources/captures/) source adapter (the capture-backed replay workflow). Exercises both operations of the source contract: `enumerate` emits one candidate per `tests/data/replays/<handler>/` directory under `## Candidate inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
 
 ## Layout
 
@@ -24,7 +24,7 @@ expected/
 
 ## Validation
 
-The `expected/evidence.yaml` document validates against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) (workflow §D1 widened `claimKind` with `example` and requires `claim-id` on every `kind: example` claim). The `expected/fusion.yaml` document validates against [`schemas/slice/fusion.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/slice/fusion.schema.json) (workflow §D4 reconciliation index). The candidate block in `expected/discovery.md` follows the grammar in [`schemas/discovery/candidate.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/candidate.schema.json).
+The `expected/evidence.yaml` document validates against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) (the capture-backed replay workflow widened `claimKind` with `example` and requires `claim-id` on every `kind: example` claim). The `expected/fusion.yaml` document validates against [`schemas/slice/fusion.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/slice/fusion.schema.json) (workflow §D4 reconciliation index). The candidate block in `expected/discovery.md` follows the grammar in [`schemas/discovery/candidate.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/candidate.schema.json).
 
 `replay-digest` values are real `sha256` over the on-disk capture bytes. Re-running `shasum -a 256 inputs/tests/data/replays/user-registration/*.json` MUST reproduce the digests written into `expected/evidence.yaml`.
 
