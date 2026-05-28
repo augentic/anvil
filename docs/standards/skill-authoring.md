@@ -31,7 +31,7 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 - **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
 - **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
-Both caps are enforced by `SkillBodyLineCount` and `SkillSectionLineCount` (see `specify-authoring` `check::skill_body`).
+The body cap is enforced by the declarative [`CORE-005`](../../adapters/shared/rules/core/CORE-005-skill-body-line-count.md) rule (via the `cardinality` reserved-kind interpreter); the per-section cap is enforced by `SkillSectionLineCount` (see `specify-authoring` `check::skill_body`).
 
 All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
 
