@@ -2,7 +2,7 @@
 
 The acceptance surface has two layers:
 
-1. **Deterministic boundary harness** — `make test` runs the compact Rust regression suite in the `specify-authoring` crate. It exercises the checker code with targeted broken fixtures plus one real-repo smoke test that runs the registered `specdev check` predicates. It does not replay source/target/skill fixtures or invoke the live `specrun` binary.
+1. **Deterministic boundary harness** — `make test` runs the compact Rust regression suite in the `specify-authoring` crate. It exercises the checker code with targeted broken fixtures plus one real-repo smoke test that runs the registered `specdev lint` predicates. It does not replay source/target/skill fixtures or invoke the live `specrun` binary.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; the deterministic-boundary harness above does **not** pin synthesised bytes.
 
 ## Running the harness locally
@@ -15,7 +15,7 @@ Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--fr
 
 ## Targets
 
-- `make check` runs `specdev check` — static repository checks, including scenario frontmatter validation.
+- `make check` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
 - `make test` runs the same acceptance tests as `cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`.
 - `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).

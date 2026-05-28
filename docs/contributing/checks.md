@@ -1,15 +1,15 @@
 # Consistency Checks
 
-The `specify` repo is checked by the `specdev` authoring binary from `augentic/specify-cli`. `make check` forwards to `specdev check`; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is linted by the `specdev` authoring binary from `augentic/specify-cli`. `make check` forwards to `specdev lint`; CI runs the same binary in release mode. Run checks before every pull request.
 
-## Editor-first vs specdev check
+## Editor-first vs specdev lint
 
 Framework validation splits into two surfaces:
 
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specdev check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- check --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specdev lint` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
 **Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
@@ -21,7 +21,7 @@ Framework validation splits into two surfaces:
 
 Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev lint` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -29,7 +29,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
-| **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Authoring standards** | `specdev lint` (`make check`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
 | **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
@@ -41,7 +41,7 @@ Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/s
 make check
 ```
 
-This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
 Tooling contributors run the full local CI subset with:
 
@@ -54,7 +54,7 @@ make ci
 Tooling contributors can also invoke the binary and acceptance tests directly:
 
 ```bash
-cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .
+cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .
 cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
 ```
 
@@ -85,10 +85,10 @@ See the `specify-authoring` crate's `check` module for the full predicate list.
 
 ### JSON output
 
-`specdev check` can emit the same structured result shape consumed by CI integrations. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specrun lint` output.
+`specdev lint` can emit the same structured result shape consumed by CI integrations. Run `specdev lint --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specrun lint` output.
 
 ```bash
-specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+specdev lint --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 Envelope shape:
@@ -113,7 +113,7 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 
 **`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.duplicate-name` do not match. The [authoring mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; a future framework-rules migration may move authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
 
-**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; `specrun lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specdev lint --format json` is the **framework-repo** authoring surface; `specrun lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 

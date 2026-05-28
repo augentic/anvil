@@ -40,7 +40,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
 | **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specrun rules export` and `specrun lint` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specrun rules export` and enforced by `specrun lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specdev lint` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specrun rules export` and enforced by `specrun lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 `specrun lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
@@ -92,7 +92,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make check` — forwards to `specdev check` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .`) for documentation and workflow consistency checks.
+- `make check` — forwards to `specdev lint` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`) for documentation and workflow consistency checks.
 - `make test` — runs the compact Rust regression suite in `specify-cli` via Cargo (`cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
@@ -100,12 +100,12 @@ Full acceptance guidance, including the manual cross-repo scenario, lives in [do
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-authoring` crate in `augentic/specify-cli`. Enforced strictly by `specdev check` (`make check` locally) — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-authoring` crate in `augentic/specify-cli`. Enforced strictly by `specdev lint` (`make check` locally) — every predicate fails on the first violation, with no per-file grandfathering.
 
 ## Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
-- `specdev check` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
+- `specdev lint` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specrun init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
 - 2.0 is a hard cut from 1.x. No compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace.

@@ -55,4 +55,4 @@ jobs:
       - name: Verify framework
         run: |
           cargo test --locked --manifest-path specify-cli/Cargo.toml -p specify-authoring
-          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specdev -- check --framework-root .
+          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specdev -- lint --framework-root .

@@ -7,7 +7,7 @@ endif
 .PHONY: check test ci use-local-plugins use-team-plugins
 
 check:
-	cargo run --release --manifest-path $(SPECDEV_MANIFEST) --bin specdev -- check --framework-root .
+	cargo run --release --manifest-path $(SPECDEV_MANIFEST) --bin specdev -- lint --framework-root .
 
 test:
 	cargo test --manifest-path $(SPECDEV_MANIFEST) -p specify-authoring

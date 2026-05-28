@@ -20,7 +20,7 @@ This RFC adds no lifecycle authority. Ignored findings never transition plan ent
 
 ## Motivation
 
-`specrun lint` and `specdev check --format json` will be the first surfaces in the Specify stack that operators can choose to either ignore or comply with. The cost of ignoring is high (CI loses signal); the cost of complying without an escape hatch is higher still (every false positive at the rule layer becomes a blocker until the rule itself is improved).
+`specrun lint` and `specdev lint --format json` will be the first surfaces in the Specify stack that operators can choose to either ignore or comply with. The cost of ignoring is high (CI loses signal); the cost of complying without an escape hatch is higher still (every false positive at the rule layer becomes a blocker until the rule itself is improved).
 
 The pressure point this RFC addresses, and how soon it bites:
 
@@ -205,7 +205,7 @@ Each enum widening is additive, and consumers using exhaustive matching must alr
 
 **For adapter authors:** No required action. Adapter rules may add directives in their own examples; the new shared `UNI-022` / `UNI-023` rules apply to consumer-project code, not to adapter source.
 
-**For framework contributors:** No required action in RFC-32 Phase 2. If RFC-28 Phase 3 (`specdev check --format json`) is in scope by the time this RFC ships, the same `status` / `disposition` field set applies to framework findings without code changes on the `specdev` side.
+**For framework contributors:** No required action in RFC-32 Phase 2. If RFC-28 Phase 3 (`specdev lint --format json`) is in scope by the time this RFC ships, the same `status` / `disposition` field set applies to framework findings without code changes on the `specdev` side.
 
 **For CLI maintainers:** RFC-33a introduces no filesystem state under `.specify/lint/`. The directory shape is reserved for [RFC-33b](future/rfc-33b-standards-baseline.md).
 

@@ -21,7 +21,7 @@ Two audiences share this repository:
 
 | Audience | Typical edits | Rust required locally? |
 |----------|---------------|------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev check` on every PR |
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
 | **Tooling contributors** | `specify-authoring` predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
 Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make check` and `make test` locally before opening a PR.
@@ -61,7 +61,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `specdev check` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what `specdev lint` enforces and how to extend it
 
 ## Example Patterns
 

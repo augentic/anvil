@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/authoring/scenario.schema.json",
   "title": "Scenario pack frontmatter",
-  "description": "Validates the optional YAML frontmatter of a Specify scenario file. The discoverer in `specdev check` only validates files that live under an accepted scenario root and start with frontmatter. Bodies of opted-in scenarios follow the standard sections (`Intent`, `Workspace`, `Inputs`, `Invocation`, `Expected Artifacts`, `Assertions`, `Negative Expectations`, `Cleanup`).",
+  "description": "Validates the optional YAML frontmatter of a Specify scenario file. The discoverer in `specdev lint` only validates files that live under an accepted scenario root and start with frontmatter. Bodies of opted-in scenarios follow the standard sections (`Intent`, `Workspace`, `Inputs`, `Invocation`, `Expected Artifacts`, `Assertions`, `Negative Expectations`, `Cleanup`).",
   "type": "object",
   "required": [
     "id",
@@ -20,7 +20,7 @@
       "pattern": "^[a-z][a-z0-9-]*$",
       "minLength": 2,
       "maxLength": 96,
-      "description": "Globally unique scenario identifier (kebab-case). Cross-file uniqueness is enforced in `specdev check`."
+      "description": "Globally unique scenario identifier (kebab-case). Cross-file uniqueness is enforced in `specdev lint`."
     },
     "owner": {
       "type": "string",
@@ -54,7 +54,7 @@
         "type": "string",
         "enum": ["plan", "refine", "build", "merge", "drop"]
       },
-      "description": "Slice phases the scenario exercises. Must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element; the prefix rule is enforced in `specdev check` because JSON Schema cannot express ordering without combinatorial enums."
+      "description": "Slice phases the scenario exercises. Must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element; the prefix rule is enforced in `specdev lint` because JSON Schema cannot express ordering without combinatorial enums."
     },
     "isolation": {
       "type": "string",
@@ -74,7 +74,7 @@
     "expected-artifacts": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "description": "Optional list of relative artifact paths produced by the scenario. Path-safety (relative, no `..`, no absolute) is enforced in `specdev check`."
+      "description": "Optional list of relative artifact paths produced by the scenario. Path-safety (relative, no `..`, no absolute) is enforced in `specdev lint`."
     },
     "negative-expectations": {
       "type": "array",

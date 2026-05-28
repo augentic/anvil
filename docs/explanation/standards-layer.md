@@ -20,7 +20,7 @@ Two different uses of "standards" appear in this repository:
 
 | Term | Meaning | Location |
 | --- | --- | --- |
-| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specdev check` (`make check`) on `augentic/specify` |
+| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specdev lint` (`make check`) on `augentic/specify` |
 | **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `adapters/shared/rules/`, `adapters/targets/<name>/rules/`, and optional source overlays — resolved by `specrun rules export` and enforced by `specrun lint` |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
@@ -31,7 +31,7 @@ Enforcement splits by audience, not by rule id:
 
 | Surface | Binary | Audience | What it checks |
 | --- | --- | --- | --- |
-| Framework authoring | `specdev check` | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| Framework authoring | `specdev lint` | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
 | Consumer standards | `specrun lint` | Downstream projects with `.specify/` | Applicable rules with `deterministic_hints`; emits structured findings |
 | Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted application of codex policy → human `REVIEW.md` |
 
@@ -49,5 +49,5 @@ The split means lint code physically cannot construct or transition a slice, pla
 
 - [Core concepts](concepts.md) — change rhythm and slice loop
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
-- [Consistency checks](../contributing/checks.md) — `specdev check` vs `specrun lint`
+- [Consistency checks](../contributing/checks.md) — `specdev lint` vs `specrun lint`
 - [Shared UNI-* codex inventory](../../adapters/shared/rules/universal/README.md)

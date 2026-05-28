@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is now credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills have landed across RFCs 10, 13, 15, and 16. The **enforcement** pillar is landing too: [RFC-28](done/rfc-28-standards-contract.md) (contract + export), [RFC-32](done/rfc-32-standards-enforcement.md) (`specrun lint`), [RFC-33a](rfc-33a-ignore-directives.md) (ignore directives + `lint-completed` telemetry), and [RFC-34](rfc-34-rules-convergence.md) (`FRAME-*` rules + `specdev review`). The next phase should make the **reconciliation** loop provable end-to-end — not only enforceable — and then observable and portable across teams, forges, agents, and catalogs.
+The local substrate is now credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills have landed across RFCs 10, 13, 15, and 16. The **enforcement** pillar is landing too: [RFC-28](done/rfc-28-standards-contract.md) (contract + export), [RFC-32](done/rfc-32-standards-enforcement.md) (`specrun lint`), [RFC-33a](rfc-33a-ignore-directives.md) (ignore directives + `lint-completed` telemetry), and [RFC-34](rfc-34-rules-convergence.md) (`FRAME-*` rules + `specdev lint`). The next phase should make the **reconciliation** loop provable end-to-end — not only enforceable — and then observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev check` / `specdev review`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](done/rfc-32-standards-enforcement.md) adds the consumer scanner substrate; [RFC-34](rfc-34-rules-convergence.md) adds declarative `FRAME-*` convergence on the framework side. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev lint`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](done/rfc-32-standards-enforcement.md) adds the consumer scanner substrate; [RFC-34](rfc-34-rules-convergence.md) adds declarative `FRAME-*` convergence on the framework side. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 - **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [RFC-29](rfc-29-fan-in-fan-out.md).
 
 ## Sequenced Roadmap
@@ -98,8 +98,7 @@ specrun source extract <source-key> <candidate-id> --slice <name> [--format json
 specrun lint run
 specrun lint run --slice <name>
 specrun lint run --output-format json
-specdev review --format json          # framework repo; RFC-34
-specdev check --format json           # imperative checks; RFC-28 Phase 3
+specdev lint --format json            # framework repo; RFC-28 Phase 3 + RFC-34
 ```
 
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.

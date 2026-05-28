@@ -40,7 +40,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 2. **Artifacts** — slice-local and baseline product intent (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs). Records what to build; does not encode durable engineering policy.
 3. **Engineering standards** — rules under `adapters/**/rules/` plus future `specrun rules export` and `specrun lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
 
-**Authoring standards** (`docs/standards/`, enforced by `specdev check` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
+**Authoring standards** (`docs/standards/`, enforced by `specdev lint` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 
 **Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
 
