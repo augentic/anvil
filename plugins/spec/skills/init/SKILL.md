@@ -1,6 +1,6 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specrun init <adapter>` or `specrun init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` command; not for re-initializing an existing `.specify/`.
+description: Initialize Specify in a project. Bootstraps the `specrun` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specrun init <adapter>` or `specrun init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` command; not for re-initializing an existing `.specify/`.
 argument-hint: <adapter>
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <adapter>
 
 ## Critical Path
 
-1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
+1. **Verify the CLI** — run `specrun --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.
 3. **Choose topology** — decide regular project vs registry-only platform hub; adapter is required for regular projects and forbidden in hub mode.
 4. **Resolve metadata** — choose `$ADAPTER`, the project name, and an optional domain; never pre-populate `.specify/.cache/`.
@@ -30,6 +30,6 @@ See [`references/init-runbook.md`](references/init-runbook.md) for the operation
 
 ## Guardrails
 
-- **`/spec:init` is the one Specify skill that may install the CLI.** Install only after explicit user confirmation via `cargo install --git https://github.com/augentic/specify-cli`, always verify `specify --version` before invoking `specrun init`, and never overwrite `project.yaml` without user confirmation.
+- **`/spec:init` is the one Specify skill that may install the CLI.** Install only after explicit user confirmation via `cargo install --git https://github.com/augentic/specify-cli`, always verify `specrun --version` before invoking `specrun init`, and never overwrite `project.yaml` without user confirmation.
 - **The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.** On non-zero exit, surface the error and stop; never hand-roll the scaffold. Never pre-populate `.specify/.cache/` — `specrun init` owns adapter fetch when invoked with the adapter positional.
 - **Adapter vs `--hub` is mutually exclusive.** Pass `$ADAPTER` as the first positional for regular projects; pass `--hub` (and only `--hub`) for hubs. Hub init refuses to run over an existing `.specify/`; converting a regular project to a hub requires the operator to remove `.specify/` first.
