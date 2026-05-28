@@ -17,9 +17,9 @@ This RFC turns the fan-in promise into an end-to-end contract by adding:
 
 1. **Executable source operations** - first-class `specrun source enumerate` and `specrun source extract` commands that run source adapters under the declared sandbox, cache, and journal contract.
 2. **Deterministic plan-time fusion** - a CLI-owned candidate-fusion engine that proposes slice rows from `Candidate[]`, preserving operator review for ambiguous joins.
-3. **Typed slice IR** - a machine-readable slice intermediate representation emitted by refine and used by target builders, while the existing Markdown artifacts remain the human review surface and baseline merge input.
-4. **Target build contract** - target adapters consume the slice IR through a stable per-slice build envelope, with per-slice validation, review findings, and merge gates.
-5. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice IR -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`.
+3. **Typed slice model** - a machine-readable, schema-pinned view of the slice emitted by refine and used by target builders, while the existing Markdown artifacts remain the human review surface and baseline merge input.
+4. **Target build contract** - target adapters consume the slice model through a stable per-slice build envelope, with per-slice validation, review findings, and merge gates.
+5. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice model -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`.
 
 ## Motivation
 
@@ -32,8 +32,8 @@ The findings this RFC resolves:
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source operations are briefs, not executable CLI operations. | `specrun source resolve` exists; `enumerate` and `extract` are agent-run instructions.                                                       | Add `specrun source enumerate` and `specrun source extract` with sandbox, cache, schema validation, and journal events.                                                                            |
 | Plan-time candidate fusion is agent-only.                    | `/spec:plan`'s `propose` sub-step reads `discovery.md` and calls `specrun plan add`.                                                         | Split the step in two. Add a deterministic `specrun plan propose --dry-run --format json` (Stage B1) that emits structural candidate groups. The `/spec:plan` agent step keeps target binding (per-slice fan-out, D5) and writes via `specrun plan add`. A full-writer Stage B2 is deferred behind a Candidate target-axis vocabulary (open question 6). |
-| Slice-time synthesis has no production resolver.             | CLI validates `spec.md`, Evidence, and `fusion.yaml`; it does not synthesize them.                                                           | Add a `specrun slice synthesize` engine that emits artifacts, `fusion.yaml`, and the typed slice IR from the same model.                                                                           |
-| The intermediate representation is implicit.                 | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, Evidence, and `fusion.yaml` together act as the IR, but target builders consume Markdown. | Add `.specify/slices/<slice>/ir.yaml` as generated machine-readable build input, with drift validation against rendered artifacts.                                                                 |
+| Slice-time synthesis has no production resolver.             | CLI validates `spec.md`, Evidence, and `fusion.yaml`; it does not synthesize them.                                                           | Add a `specrun slice synthesize` engine that emits artifacts, `fusion.yaml`, and the typed slice model from one in-memory synthesis model.                                                         |
+| The machine-readable slice view is implicit.                 | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, Evidence, and `fusion.yaml` together act as the slice model, but target builders consume Markdown. | Add `.specify/slices/<slice>/model.yaml` as generated machine-readable build input, with drift validation against rendered artifacts.                                                                 |
 | Target codegen is adapter-brief discipline.                  | Target `build` briefs orchestrate generation, validation, and review, but no stable input/output envelope joins them to core synthesis.      | Add a per-slice target build envelope; each target reports structured status, generated paths, validation commands, and RFC-28 review findings.                                                    |
 
 
@@ -42,11 +42,11 @@ The goal is not to remove agents from Specify. The goal is to move stable workfl
 ## Principles
 
 1. **Core owns reconciliation.** If a rule decides how sources combine, it belongs in the CLI or a CLI-owned schema, not only in a skill body.
-2. **Markdown remains reviewable.** `proposal.md`, `spec.md`, `design.md`, and `tasks.md` stay the operator-facing artifacts. The IR is the machine view emitted from the same synthesis model.
+2. **Markdown remains reviewable.** `proposal.md`, `spec.md`, `design.md`, and `tasks.md` stay the operator-facing artifacts. `model.yaml` is the machine view emitted from the same synthesis model.
 3. **One slice, one lifecycle, one target.** Each slice binds exactly one target adapter / project and walks one `refining -> refined -> built -> merged` lifecycle. Cross-target fan-out is plan-level — a change decomposes into multiple slices joined by `depends-on`. RFC-29 does not introduce a second per-output lifecycle inside a slice (see [decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project)).
 4. **Targets consume, not synthesize.** Target adapters may shape synthesis and build outputs, but they do not create behavioral requirements or provenance.
 5. **Agent fallback is explicit.** Where a target still needs model-assisted generation, the input and output envelope is stable and validation catches drift.
-6. **Compatibility is additive.** Existing one-source, one-target plans keep working. New IR and envelope fields ride alongside the unchanged `slices[].target` / `slices[].project` shape.
+6. **Compatibility is additive.** Existing one-source, one-target plans keep working. New `model.yaml` and envelope fields ride alongside the unchanged `slices[].target` / `slices[].project` shape.
 
 ## Normative decisions
 
@@ -55,12 +55,12 @@ The goal is not to remove agents from Specify. The goal is to move stable workfl
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D1 Source operation runner**  | The CLI runs source adapter `enumerate` and `extract` operations.                                                                                                                                                                        | Add `specrun source enumerate` and `specrun source extract`; route through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events.                       |
 | **D2 Candidate fusion engine**  | The CLI owns the **structural** `Candidate[] -> candidate groups` pass (rules 1–3 — exact id, exact alias, transitive cross-reference). **Target binding** (which group becomes which `(slice, target)` pair) stays agent-driven until a Candidate target-axes hint lands. | Ship in two stages. Stage B1: `specrun plan propose --dry-run --format json` returns the structural groups as JSON without writing the plan. `/spec:plan` reads the JSON, decides target binding per group, and writes through the existing `specrun plan add` / `plan amend` writers. Stage B2 (deferred): once Candidate target-axes are RFC'd, promote `propose` to a full writer that emits one `(group, target)` slice directly. |
-| **D3 Slice synthesis engine**   | The CLI owns `Evidence[] + target shape -> slice artifacts + fusion.yaml + ir.yaml`.                                                                                                                                                     | Add `specrun slice synthesize <slice>`; retire the instruction that `/spec:refine` hand-codes synthesis. The engine uses the RFC-27 authority resolver as production code.                                            |
-| **D4 Typed slice IR**           | Every synthesized slice carries `.specify/slices/<slice>/ir.yaml`.                                                                                                                                                                       | Add `schemas/slice/ir.schema.json`; `specrun slice validate` checks IR/artifact/fusion drift; target build reads the IR as its primary machine input.                                                                 |
-| **D5 Per-slice fan-out**        | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`. RFC-29 introduces no per-output schema, lifecycle, or build envelope.                    | No `outputs[]` field on the IR, build request, or build report. `plan.yaml.slices[].target` / `slices[].project` keep their existing shape and meaning. Cross-slice ordering uses the existing `slices[].depends-on`. |
+| **D3 Slice synthesis engine**   | The CLI owns `Evidence[] + target shape -> slice artifacts + fusion.yaml + model.yaml`.                                                                                                                                                     | Add `specrun slice synthesize <slice>`; retire the instruction that `/spec:refine` hand-codes synthesis. The engine uses the RFC-27 authority resolver as production code.                                            |
+| **D4 Typed slice model**           | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`.                                                                                                                                                                       | Add `schemas/slice/model.schema.json`; `specrun slice validate` checks model/artifact/fusion drift; target build reads the slice model as its primary machine input.                                                     |
+| **D5 Per-slice fan-out**        | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`. RFC-29 introduces no per-output schema, lifecycle, or build envelope.                    | No `outputs[]` field on the slice model, build request, or build report. `plan.yaml.slices[].target` / `slices[].project` keep their existing shape and meaning. Cross-slice ordering uses the existing `slices[].depends-on`. |
 | **D6 Target build envelope**    | Target adapters receive a stable per-slice build request and return a stable per-slice build report.                                                                                                                                     | Add `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json`, keyed on `(slice, target)`; reports may include RFC-28 findings.                                                        |
 | **D7 Acceptance proof path**    | The release is not complete until an end-to-end fixture demonstrates fan-in and cross-slice fan-out together.                                                                                                                            | Add a cross-repo test in which two sources feed two slices (one targeting `contracts@v1`, one targeting `omnia@v1`), joined by `depends-on`; each slice independently synthesises, builds, and merges.                |
-| **D8 Shape-brief scope**        | Target `shape` briefs may parameterise IR structure for `design-model` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but MUST NOT influence `requirements[]`, `sources[]`, or any provenance-bearing field. | `specrun slice synthesize` computes the requirements section from `(Evidence[], authority-overrides)` alone; the requirements section is byte-equivalent across slices that share Evidence and authority-overrides regardless of bound target.   |
+| **D8 Shape-brief scope**        | Target `shape` briefs may parameterise the slice model's structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but MUST NOT influence `requirements[]`, `sources[]`, or any provenance-bearing field. | `specrun slice synthesize` computes the requirements section from `(Evidence[], authority-overrides)` alone; the requirements section is byte-equivalent across slices that share Evidence and authority-overrides regardless of bound target.   |
 | **D9 Adapter execution mode**   | Source adapters declare a closed `execution: executable | agent-fallback` field; first-party adapters MUST be `executable` before RFC-29 ships, third-party adapters MAY be `agent-fallback` indefinitely.                               | Extend `schemas/source.schema.json` and (symmetrically) `schemas/target.schema.json` with the closed enum. `agent-fallback` forces `cache: opt-out` and emits `source.execution.agent-fallback` per invocation.       |
 
 
@@ -82,7 +82,7 @@ specrun source enumerate docs --format json
 specrun source extract docs password-reset --slice identity-password-reset --format json
 specrun plan propose --dry-run --format json     # Stage B1 structural grouper (returns groups, never writes plan.yaml)
 specrun slice synthesize identity-password-reset --format json
-specrun slice ir show identity-password-reset --format json
+specrun slice model show identity-password-reset --format json
 ```
 
 `specrun plan propose` without `--dry-run` is reserved for the deferred Stage B2 full writer (see §"Candidate fusion engine (D2)"); in v1 it returns `propose-target-binding-required` and points at the dry-run form. Target binding stays with the `/spec:plan` agent step, which calls `specrun plan add` per `(group, target)` pair.
@@ -289,7 +289,7 @@ It writes, from one in-memory synthesis model:
 .specify/slices/<slice>/design.md
 .specify/slices/<slice>/tasks.md
 .specify/slices/<slice>/fusion.yaml
-.specify/slices/<slice>/ir.yaml
+.specify/slices/<slice>/model.yaml
 ```
 
 The write is staged and validated before the slice transitions to `refined`. If any artifact fails validation, the command exits non-zero and leaves the prior artifact set intact where possible.
@@ -307,35 +307,35 @@ The micro-resolver currently pinned in tests becomes black-box coverage for the 
 
 ### Shape-brief scope (D8)
 
-`specrun slice synthesize` reads the target's `shape` brief (one target per slice, per D5) and may use it to parameterise the **structure** of the IR's `design-model`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks` sections (e.g. surface-by-surface vs type-by-type grouping; which optional sub-fields are populated).
+`specrun slice synthesize` reads the target's `shape` brief (one target per slice, per D5) and may use it to parameterise the **structure** of the slice model's `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks` sections (e.g. surface-by-surface vs type-by-type grouping; which optional sub-fields are populated).
 
 Shape briefs MUST NOT influence:
 
 - `requirements[]` — entries, ids, ordering, statements, status, or scenarios;
-- `requirements[].sources` or any `sources` field elsewhere in the IR;
-- `domain-model.types[].sources`, `apis.surfaces[].operations[].sources`, `technical-logic.decisions[].sources`, or any other provenance-bearing field.
+- `requirements[].sources` or any `sources` field elsewhere in the slice model;
+- `domain.types[].sources`, `apis.surfaces[].operations[].sources`, `technical-logic.decisions[].sources`, or any other provenance-bearing field.
 
-The engine enforces D8 by computing the requirements section from `(Evidence[], authority-overrides)` alone, independently of the bound target. Acceptance asserts that two slices binding the same `(source-key -> candidate)` map and same `authority-overrides` produce an `ir.yaml` whose `requirements[]` array is byte-identical, even when their `target` fields differ (D7).
+The engine enforces D8 by computing the requirements section from `(Evidence[], authority-overrides)` alone, independently of the bound target. Acceptance asserts that two slices binding the same `(source-key -> candidate)` map and same `authority-overrides` produce an `model.yaml` whose `requirements[]` array is byte-identical, even when their `target` fields differ (D7).
 
 ### Rendering
 
 The synthesis engine renders Markdown artifacts from the typed model. It does not parse its own Markdown output to recover state during the same run.
 
-`spec.md` stays the behavioral review artifact and baseline merge input. `ir.yaml` is the generated machine view used by target builds. `fusion.yaml` remains audit-only.
+`spec.md` stays the behavioral review artifact and baseline merge input. `model.yaml` is the generated machine view used by target builds. `fusion.yaml` remains audit-only.
 
-## Typed slice IR (D4)
+## Typed slice model (D4)
 
 ### File
 
 ```text
-.specify/slices/<slice>/ir.yaml
+.specify/slices/<slice>/model.yaml
 ```
 
-The IR is generated by `specrun slice synthesize` and regenerated whole on re-synthesis. Operators should edit `spec.md` or `design.md`, not `ir.yaml`; re-running synthesize will overwrite `ir.yaml`.
+The slice model is generated by `specrun slice synthesize` and regenerated whole on re-synthesis. Operators should edit `spec.md` or `design.md`, not `model.yaml`; re-running synthesize will overwrite `model.yaml`.
 
 ### Shape
 
-The full machine shape is committed at `specify-cli/schemas/slice/ir.schema.json` and reproduced verbatim in §"Schemas added by this RFC" below. The IR is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain-model`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
+The full machine shape is committed at `specify-cli/schemas/slice/model.schema.json` and reproduced verbatim in §"Schemas added by this RFC" below. The slice model is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
 
 Sketch of the on-disk shape (illustrative; the schema is normative):
 
@@ -360,7 +360,7 @@ requirements:
     statement: The system lets a registered user request a password reset link by email.
     scenarios:
       - Given REQ-001 and a registered email, when the user requests a reset, then the system accepts the request.
-domain-model:
+domain:
   types: []
 apis:
   surfaces: []
@@ -376,7 +376,7 @@ tasks:
 
 ### ID grammar
 
-`ir.yaml` introduces six closed three-digit id grammars in addition to the existing `REQ-NNN` from `crates/domain/src/spec/provenance.rs`:
+`model.yaml` introduces six closed three-digit id grammars in addition to the existing `REQ-NNN` from `crates/domain/src/spec/provenance.rs`:
 
 
 | Id         | Grammar           | Used by                                                                                 |
@@ -384,13 +384,13 @@ tasks:
 | `REQ-NNN`  | `^REQ-[0-9]{3}$`  | `requirements[].id`, plus `satisfies[]` references from operations / decisions / tasks. |
 | `TASK-NNN` | `^TASK-[0-9]{3}$` | `tasks[].id`, plus `tasks[].depends-on[]`.                                              |
 | `DEC-NNN`  | `^DEC-[0-9]{3}$`  | `technical-logic.decisions[].id`.                                                       |
-| `TYP-NNN`  | `^TYP-[0-9]{3}$`  | `domain-model.types[].id`.                                                              |
+| `TYP-NNN`  | `^TYP-[0-9]{3}$`  | `domain.types[].id`.                                                              |
 | `OP-NNN`   | `^OP-[0-9]{3}$`   | `apis.surfaces[].operations[].id`.                                                      |
 | `CFG-NNN`  | `^CFG-[0-9]{3}$`  | `configuration[].id`.                                                                   |
 | `OBS-NNN`  | `^OBS-[0-9]{3}$`  | `observability[].id`.                                                                   |
 
 
-All seven grammars are enforced by `schemas/slice/ir.schema.json`. The synthesis engine assigns ids in declaration order per section, with no cross-section reuse and no holes after a single synthesis run.
+All seven grammars are enforced by `schemas/slice/model.schema.json`. The synthesis engine assigns ids in declaration order per section, with no cross-section reuse and no holes after a single synthesis run.
 
 ### Drift validation
 
@@ -399,19 +399,19 @@ All seven grammars are enforced by `schemas/slice/ir.schema.json`. The synthesis
 
 | Finding                      | Meaning                                                                                                      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `slice-ir-schema`            | `ir.yaml` does not match `schemas/slice/ir.schema.json`.                                                     |
-| `slice-ir-requirement-drift` | `ir.yaml.requirements[].id` set differs from `spec.md` `REQ-*` set.                                          |
-| `slice-ir-fusion-drift`      | `ir.yaml.requirements[].sources` disagrees with `fusion.yaml` for any matching `REQ-*`.                      |
-| `slice-ir-target-drift`      | `ir.yaml.target` (or `ir.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.      |
-| `slice-ir-source-orphan`     | An IR provenance entry references a source key absent from `ir.yaml.sources[].key`.                          |
-| `slice-ir-cross-ref-orphan`  | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                     |
+| `slice-model-schema`            | `model.yaml` does not match `schemas/slice/model.schema.json`.                                                     |
+| `slice-model-requirement-drift` | `model.yaml.requirements[].id` set differs from `spec.md` `REQ-*` set.                                          |
+| `slice-model-fusion-drift`      | `model.yaml.requirements[].sources` disagrees with `fusion.yaml` for any matching `REQ-*`.                      |
+| `slice-model-target-drift`      | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.      |
+| `slice-model-source-orphan`     | A model provenance entry references a source key absent from `model.yaml.sources[].key`.                        |
+| `slice-model-cross-ref-orphan`  | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                     |
 
 
-Absence of `ir.yaml` is allowed for pre-RFC-29 slices and rejected for slices synthesized by an RFC-29-aware CLI.
+Absence of `model.yaml` is allowed for pre-RFC-29 slices and rejected for slices synthesized by an RFC-29-aware CLI.
 
 ### Build input
 
-Target builders consume `ir.yaml` as their machine input and may also read rendered Markdown for context. If they disagree, `ir.yaml` wins for generated code shape and `spec.md` wins for operator-facing behavior. The drift validator is responsible for keeping that situation rare and visible.
+Target builders consume `model.yaml` as their machine input and may also read rendered Markdown for context. If they disagree, `model.yaml` wins for generated code shape and `spec.md` wins for operator-facing behavior. The drift validator is responsible for keeping that situation rare and visible.
 
 ## Per-slice fan-out (D5)
 
@@ -486,7 +486,7 @@ phase: build
 project-root: /workspace/.specify/workspace/identity-service
 workspace-root: /workspace
 slice-dir: /workspace/.specify/slices/identity-service
-ir-path: /workspace/.specify/slices/identity-service/ir.yaml
+model-path: /workspace/.specify/slices/identity-service/model.yaml
 artifacts:
   proposal: proposal.md
   design: design.md
@@ -551,7 +551,7 @@ The report is persisted at `.specify/slices/<slice>/build/report.yaml` and surfa
 Target `build` briefs change from "read Markdown and decide what to do" to "consume the build request and produce a build report":
 
 - `shape` remains synthesis guidance.
-- `build` consumes `ir.yaml` and rendered artifacts.
+- `build` consumes `model.yaml` and rendered artifacts.
 - `merge` consumes build reports and target-specific validation state.
 - Any agent-generated code must still pass target-local validation before `status: success`.
 
@@ -561,7 +561,7 @@ The first migration path should be:
 
 1. `contracts` first, because API contracts are already structured outputs.
 2. `omnia` second, because Rust crate generation benefits most from typed requirements, APIs, configuration, and replay examples.
-3. `vectis` third, because UI layout, assets, tokens, and `composition.yaml` need the widest IR shape.
+3. `vectis` third, because UI layout, assets, tokens, and `composition.yaml` need the widest slice-model shape.
 
 ## Adapter execution mode (D9)
 
@@ -607,8 +607,8 @@ documentation + code-typescript
         -> plan propose --dry-run           (CLI proposes structural groups; agent binds each group to one or more targets and writes the slices via plan add)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
-             slice synthesize               (one Evidence map -> one IR)
-             ir.yaml + artifacts + fusion.yaml
+             slice synthesize               (one Evidence map -> one slice model)
+             model.yaml + artifacts + fusion.yaml
              target build (one target)
              slice merge (one baseline)
         -> validate cross-slice ordering via depends-on
@@ -631,7 +631,7 @@ tests/fixtures/rfc-29/fan-in-fan-out/
       design.md
       tasks.md
       fusion.yaml
-      ir.yaml                                # target: contracts@v1
+      model.yaml                                # target: contracts@v1
       build/report.yaml
     slices/identity-service/
       evidence/docs.yaml
@@ -641,7 +641,7 @@ tests/fixtures/rfc-29/fan-in-fan-out/
       design.md
       tasks.md
       fusion.yaml
-      ir.yaml                                # target: omnia@v1; sources include docs + legacy
+      model.yaml                                # target: omnia@v1; sources include docs + legacy
       build/report.yaml                      # prior-slices cites identity-contracts/build/report.yaml
 ```
 
@@ -652,29 +652,29 @@ Required assertions:
 - The fixture's `/spec:plan` agent step (or the test harness simulating it) consumes the JSON, decides the per-group target binding (`contracts@v1` + `omnia@v1`), and issues two `specrun plan add` calls producing two single-target slices with `identity-service.depends-on: [identity-contracts]`.
 - `specrun plan propose` without `--dry-run` exits non-zero with `propose-target-binding-required` (proves Stage B2 is gated).
 - `specrun source extract` writes schema-valid Evidence for every `(slice, source)` pair.
-- `specrun slice synthesize` writes valid artifacts, `fusion.yaml`, and `ir.yaml` for each slice.
-- `specrun slice validate` catches no provenance, fusion, or IR drift on either slice.
+- `specrun slice synthesize` writes valid artifacts, `fusion.yaml`, and `model.yaml` for each slice.
+- `specrun slice validate` catches no provenance, fusion, or slice-model drift on either slice.
 - Each slice builds independently against its single bound target; `identity-service`'s build request carries a `prior-slices[]` entry pointing at `identity-contracts/build/report.yaml`.
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
 - Re-running the full flow with unchanged inputs produces byte-stable generated artifacts except for explicitly timestamped journal entries.
-- **D8 invariant.** The two slices — which share the `docs:identity-api` candidate and the same `authority-overrides` — produce `ir.yaml` files whose `requirements[]` arrays are byte-identical, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1` (and the latter additionally fuses `legacy:identity-api`, which appears as extra `requirements[]` entries appended deterministically after the shared set). The shared-prefix assertion proves shape briefs do not leak into the requirements section.
+- **D8 invariant.** The two slices — which share the `docs:identity-api` candidate and the same `authority-overrides` — produce `model.yaml` files whose `requirements[]` arrays are byte-identical, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1` (and the latter additionally fuses `legacy:identity-api`, which appears as extra `requirements[]` entries appended deterministically after the shared set). The shared-prefix assertion proves shape briefs do not leak into the requirements section.
 
 ## Schemas added by this RFC
 
-Four new JSON Schemas are committed alongside this RFC. All are embedded in the `specify-schema` crate as `IR_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, and `PROPOSAL_JSON_SCHEMA` constants and reached through the existing `compile_schema` / `validate_value` plumbing. Field names are kebab-case on disk; top-level shapes are closed (`additionalProperties: false`); reusable closed enums (`kebabName`, `targetRef`, `requirementStatus`, `authorityClass`, the seven id grammars) live under `$defs` and are mirrored byte-identically with the matching `$defs` blocks in `evidence.schema.json`, `fusion.schema.json`, and `plan.schema.json`.
+Four new JSON Schemas are committed alongside this RFC. All are embedded in the `specify-schema` crate as `SLICE_MODEL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, and `PROPOSAL_JSON_SCHEMA` constants and reached through the existing `compile_schema` / `validate_value` plumbing. Field names are kebab-case on disk; top-level shapes are closed (`additionalProperties: false`); reusable closed enums (`kebabName`, `targetRef`, `requirementStatus`, `authorityClass`, the seven id grammars) live under `$defs` and are mirrored byte-identically with the matching `$defs` blocks in `evidence.schema.json`, `fusion.schema.json`, and `plan.schema.json`.
 
-The IR, build-request, and build-report schemas key on `(slice, target)` per D5 — none of them carries an `outputs[]` or `output-id` field. A future RFC that re-opens multi-target slices would need to widen all three schemas and revisit the lifecycle / merge contract.
+The slice-model, build-request, and build-report schemas key on `(slice, target)` per D5 — none of them carries an `outputs[]` or `output-id` field. A future RFC that re-opens multi-target slices would need to widen all three schemas and revisit the lifecycle / merge contract.
 
 `schemas/discovery/proposal.schema.json` (returned by `specrun plan propose --dry-run`) is described inline in §"Candidate fusion engine (D2) → Stage B1". It is intentionally smaller than the other three — it carries no target binding — because target binding is agent-driven in v1.
 
-### Schema A — `schemas/slice/ir.schema.json`
+### Schema A — `schemas/slice/model.schema.json`
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/slice/ir.schema.json",
-  "title": "Specify slice ir.yaml",
-  "description": "Validates a slice's typed intermediate representation per RFC-29 §Typed slice IR. Generated by `specrun slice synthesize` and regenerated whole on re-synthesis. Operators edit `spec.md` / `design.md` / `tasks.md`; `ir.yaml` is the machine view target builders consume. One slice binds one target (RFC-29 D5 §Per-slice fan-out) — `target` is a scalar, not an array. Drift between `ir.yaml.requirements[].id` and `spec.md` `REQ-*` ids is reported as `slice-ir-requirement-drift`; drift between `ir.yaml.requirements[].sources` and `fusion.yaml` is reported as `slice-ir-fusion-drift`; drift between `ir.yaml.target` / `ir.yaml.project` and `plan.yaml.slices[<slice>].target` / `.project` is reported as `slice-ir-target-drift`. Closed top-level shape — unknown fields are rejected.",
+  "$id": "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json",
+  "title": "Specify slice model.yaml",
+  "description": "Validates a slice's typed machine-readable model per RFC-29 §Typed slice model. Generated by `specrun slice synthesize` and regenerated whole on re-synthesis. Operators edit `spec.md` / `design.md` / `tasks.md`; `model.yaml` is the machine view target builders consume. One slice binds one target (RFC-29 D5 §Per-slice fan-out) — `target` is a scalar, not an array. Drift between `model.yaml.requirements[].id` and `spec.md` `REQ-*` ids is reported as `slice-model-requirement-drift`; drift between `model.yaml.requirements[].sources` and `fusion.yaml` is reported as `slice-model-fusion-drift`; drift between `model.yaml.target` / `model.yaml.project` and `plan.yaml.slices[<slice>].target` / `.project` is reported as `slice-model-target-drift`. Closed top-level shape — unknown fields are rejected.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -685,7 +685,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
     "sources",
     "target",
     "requirements",
-    "domain-model",
+    "domain",
     "apis",
     "configuration",
     "technical-logic",
@@ -699,28 +699,28 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
     "generator": { "type": "string", "minLength": 1 },
     "sources": {
       "type": "array",
-      "items": { "$ref": "#/$defs/irSource" }
+      "items": { "$ref": "#/$defs/modelSource" }
     },
     "target": { "$ref": "#/$defs/targetRef" },
     "project": { "type": ["string", "null"] },
     "requirements": {
       "type": "array",
-      "items": { "$ref": "#/$defs/irRequirement" }
+      "items": { "$ref": "#/$defs/modelRequirement" }
     },
-    "domain-model": { "$ref": "#/$defs/irDomainModel" },
-    "apis": { "$ref": "#/$defs/irApis" },
+    "domain": { "$ref": "#/$defs/modelDomain" },
+    "apis": { "$ref": "#/$defs/modelApis" },
     "configuration": {
       "type": "array",
-      "items": { "$ref": "#/$defs/irConfiguration" }
+      "items": { "$ref": "#/$defs/modelConfiguration" }
     },
-    "technical-logic": { "$ref": "#/$defs/irTechnicalLogic" },
+    "technical-logic": { "$ref": "#/$defs/modelTechnicalLogic" },
     "observability": {
       "type": "array",
-      "items": { "$ref": "#/$defs/irObservability" }
+      "items": { "$ref": "#/$defs/modelObservability" }
     },
     "tasks": {
       "type": "array",
-      "items": { "$ref": "#/$defs/irTask" }
+      "items": { "$ref": "#/$defs/modelTask" }
     }
   },
   "$defs": {
@@ -748,7 +748,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
       "type": "string",
       "enum": ["agreed", "unknown", "conflict", "divergence"]
     },
-    "irSource": {
+    "modelSource": {
       "type": "object",
       "additionalProperties": false,
       "required": ["key", "adapter", "candidate", "authority"],
@@ -760,7 +760,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         "evidence-path": { "type": "string" }
       }
     },
-    "irRequirement": {
+    "modelRequirement": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "title", "status", "sources", "statement"],
@@ -789,7 +789,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         "notes": { "type": "string" }
       }
     },
-    "irDomainModel": {
+    "modelDomain": {
       "type": "object",
       "additionalProperties": false,
       "required": ["types"],
@@ -832,7 +832,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         }
       }
     },
-    "irApis": {
+    "modelApis": {
       "type": "object",
       "additionalProperties": false,
       "required": ["surfaces"],
@@ -882,7 +882,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         }
       }
     },
-    "irConfiguration": {
+    "modelConfiguration": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "key", "type"],
@@ -899,7 +899,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         }
       }
     },
-    "irTechnicalLogic": {
+    "modelTechnicalLogic": {
       "type": "object",
       "additionalProperties": false,
       "required": ["decisions"],
@@ -929,7 +929,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         }
       }
     },
-    "irObservability": {
+    "modelObservability": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "kind", "name"],
@@ -948,7 +948,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
         }
       }
     },
-    "irTask": {
+    "modelTask": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "text"],
@@ -988,7 +988,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
     "phase",
     "project-root",
     "slice-dir",
-    "ir-path",
+    "model-path",
     "artifacts",
     "briefs",
     "execution"
@@ -1004,7 +1004,7 @@ The IR, build-request, and build-report schemas key on `(slice, target)` per D5 
     "project-root":   { "type": "string" },
     "workspace-root": { "type": "string" },
     "slice-dir":      { "type": "string" },
-    "ir-path":        { "type": "string" },
+    "model-path":        { "type": "string" },
     "artifacts":      { "$ref": "#/$defs/artifacts" },
     "briefs":         { "$ref": "#/$defs/briefs" },
     "execution":      { "$ref": "#/$defs/execution" },
@@ -1220,7 +1220,7 @@ The closed `Event` / `EventKind` taxonomy in `crates/domain/src/journal.rs` gain
 | `slice.extract.cache-miss`        | (Existing) Source-adapter `extract` ran.                                                                                                                     |
 | `slice.extract.completed`         | (Existing) Evidence file was successfully persisted.                                                                                                         |
 | `slice.synthesize.started`        | `specrun slice synthesize` began for a slice.                                                                                                                |
-| `slice.synthesize.completed`      | `specrun slice synthesize` finished and all artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, `fusion.yaml`, `ir.yaml`) validated and persisted. |
+| `slice.synthesize.completed`      | `specrun slice synthesize` finished and all artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, `fusion.yaml`, `model.yaml`) validated and persisted. |
 | `slice.synthesize.failed`         | `specrun slice synthesize` aborted; prior artifacts left intact where possible.                                                                              |
 | `slice.build.started`             | `/spec:build` (or `specrun slice build`) began work on a slice.                                                                                              |
 | `slice.build.succeeded`           | A slice's build report validated with `status: success`.                                                                                                     |
@@ -1229,7 +1229,7 @@ The closed `Event` / `EventKind` taxonomy in `crates/domain/src/journal.rs` gain
 | `slice.merge.succeeded`           | A slice's merge report validated with `status: success`.                                                                                                     |
 | `slice.merge.failed`              | A slice's merge report carried `status: failure` or failed schema validation.                                                                                |
 | `target.execution.agent-fallback` | A target-adapter operation ran in `agent-fallback` mode.                                                                                                     |
-| `slice.ir.show.requested`         | Operator invoked `specrun slice ir show` (audit-only; useful for measuring IR-consumer adoption).                                                            |
+| `slice.model.show.requested`         | Operator invoked `specrun slice model show` (audit-only; useful for measuring model-consumer adoption).                                                         |
 
 
 ## Error discriminants and exit codes
@@ -1239,13 +1239,13 @@ The closed `Event` / `EventKind` taxonomy in `crates/domain/src/journal.rs` gain
 
 | Error variant (kebab-case discriminant)           | Exit | Cause                                                                                                   |
 | ------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------- |
-| `slice-ir-schema`                                 | 2    | `ir.yaml` does not match `schemas/slice/ir.schema.json`.                                                |
-| `slice-ir-requirement-drift`                      | 2    | `ir.yaml.requirements[].id` set differs from `spec.md` `REQ-*` set.                                     |
-| `slice-ir-fusion-drift`                           | 2    | `ir.yaml.requirements[].sources` disagrees with `fusion.yaml`.                                          |
-| `slice-ir-target-drift`                           | 2    | `ir.yaml.target` (or `ir.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`. |
-| `slice-ir-source-orphan`                          | 2    | An IR provenance entry references a source key absent from `ir.yaml.sources[].key`.                     |
-| `slice-ir-cross-ref-orphan`                       | 2    | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                |
-| `slice-ir-id-grammar`                             | 2    | A REQ / TASK / DEC / TYP / OP / CFG / OBS id does not match its closed three-digit grammar.             |
+| `slice-model-schema`                                 | 2    | `model.yaml` does not match `schemas/slice/model.schema.json`.                                                |
+| `slice-model-requirement-drift`                      | 2    | `model.yaml.requirements[].id` set differs from `spec.md` `REQ-*` set.                                     |
+| `slice-model-fusion-drift`                           | 2    | `model.yaml.requirements[].sources` disagrees with `fusion.yaml`.                                          |
+| `slice-model-target-drift`                           | 2    | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`. |
+| `slice-model-source-orphan`                          | 2    | A model provenance entry references a source key absent from `model.yaml.sources[].key`.                   |
+| `slice-model-cross-ref-orphan`                       | 2    | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                |
+| `slice-model-id-grammar`                             | 2    | A REQ / TASK / DEC / TYP / OP / CFG / OBS id does not match its closed three-digit grammar.             |
 | `target-build-request-schema`                     | 2    | A build request fails `schemas/target/build-request.schema.json`.                                       |
 | `target-build-report-schema`                      | 2    | A build report fails `schemas/target/build-report.schema.json`.                                         |
 | `target-build-success-with-critical-finding`      | 2    | A build report sets `status: success` while carrying a finding at severity `critical`.                  |
@@ -1282,16 +1282,16 @@ Stage B2 (full writer) is explicitly deferred — see §"Candidate fusion engine
 5. Update `/spec:plan` to call `specrun source enumerate` per source, then `specrun plan propose --dry-run`, then issue one `specrun plan add` per `(group, target)` pair the agent decides on. `specrun plan add` continues to be the only writer.
 6. Add fixtures for exact match, alias match, transitive cross-reference, tentative non-match, and per-group multi-target fan-out (the agent emits two `plan add` calls — the fixture asserts both slices land with the expected `target` and `depends-on`).
 
-### Wave C - Synthesis engine and IR
+### Wave C - Synthesis engine and slice model
 
-1. Commit `schemas/slice/ir.schema.json` and embed it as `IR_JSON_SCHEMA` in the `specify-schema` crate alongside the existing `*_JSON_SCHEMA` constants.
+1. Commit `schemas/slice/model.schema.json` and embed it as `SLICE_MODEL_JSON_SCHEMA` in the `specify-schema` crate alongside the existing `*_JSON_SCHEMA` constants.
 2. Add `SynthesisModel` and the production authority resolver to `specify-domain`.
-3. Implement renderers for `proposal.md`, `spec.md`, `design.md`, `tasks.md`, `fusion.yaml`, and `ir.yaml` from one in-memory model (no second-pass Markdown reparse).
+3. Implement renderers for `proposal.md`, `spec.md`, `design.md`, `tasks.md`, `fusion.yaml`, and `model.yaml` from one in-memory model (no second-pass Markdown reparse).
 4. Enforce D8: requirements section is a function of `(Evidence[], authority-overrides)` only; add a unit test that synthesises two slices binding different `target` values against the same Evidence map and asserts the shared-prefix of their `requirements[]` arrays is byte-identical.
 5. Add `specrun slice synthesize` plus `slice.synthesize.{started,completed,failed}` journal events.
-6. Add `specrun slice ir show <slice> [--format json]`.
+6. Add `specrun slice model show <slice> [--format json]`.
 7. Update `/spec:refine` to call the CLI command instead of hand-coding synthesis.
-8. Extend `specrun slice validate` with the six IR drift checks and their `Error` variants (`slice-ir-{schema,requirement-drift,fusion-drift,target-drift,source-orphan,cross-ref-orphan,id-grammar}`).
+8. Extend `specrun slice validate` with the six slice-model drift checks and their `Error` variants (`slice-model-{schema,requirement-drift,fusion-drift,target-drift,source-orphan,cross-ref-orphan,id-grammar}`).
 
 ### Wave D - Plan loader confirmation
 
@@ -1308,8 +1308,8 @@ No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay sin
 3. Add `slice.build.{started,succeeded,failed}`, `slice.merge.{started,succeeded,failed}`, and `target.execution.agent-fallback` journal events.
 4. Wire `prior-slices[]` population in the build-request builder: for each entry in the current slice's `plan.yaml.slices[].depends-on`, resolve the depended-on slice's `build/report.yaml` path and reject (`target-build-prior-slice-not-built`) when missing.
 5. Update `contracts` build to consume the build request and emit a report (executable mode via WASI tool).
-6. Update `omnia` build to consume `ir.yaml` for crate/test/guest generation, read `prior-slices[]` to pick up upstream contract schemas, and emit a report (executable mode where deterministic; `agent-fallback` for the model-assisted phases that remain).
-7. Update `vectis` build after the IR has enough UI/layout structure.
+6. Update `omnia` build to consume `model.yaml` for crate/test/guest generation, read `prior-slices[]` to pick up upstream contract schemas, and emit a report (executable mode where deterministic; `agent-fallback` for the model-assisted phases that remain).
+7. Update `vectis` build after the slice model has enough UI/layout structure.
 8. Integrate RFC-28 findings into build reports; enforce `target-build-success-with-critical-finding` at the CLI boundary.
 
 ### Wave F - Proof fixtures and docs
@@ -1324,13 +1324,13 @@ No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay sin
 Existing projects continue to work without any change to `plan.yaml`:
 
 - `plan.yaml.slices[]` keeps its existing one-`target`, optional-`project` shape. There is no `outputs[]` desugar to perform, and no `primary` literal to reserve. Any draft pre-RFC-29 plan referring to `outputs[]` is rejected as an unknown field on the existing plan schema.
-- Slices without `ir.yaml` validate under the pre-RFC-29 compatibility path unless re-synthesised.
-- Target build briefs may initially read Markdown and ignore `ir.yaml`, but first-party targets must migrate before RFC-29 is marked implemented.
+- Slices without `model.yaml` validate under the pre-RFC-29 compatibility path unless re-synthesised.
+- Target build briefs may initially read Markdown and ignore `model.yaml`, but first-party targets must migrate before RFC-29 is marked implemented.
 - Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
 - Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently. The companion `rfc-29-plan.md` PR list pins which adapters land each migration.
 - Cross-repo references that anticipated the dropped multi-output model — notably `rfcs/next/rfc-30-init.md`'s "`slices[].target` → `outputs[]` once RFC-29 lands" line and `rfcs/roadmap.md` §RM-06's "D5 multi-output plan entries" follow-on bullet — must be retracted in the same PR train that lands D5's per-slice form.
 
-Once a slice has been synthesized by an RFC-29-aware CLI, `ir.yaml` becomes required for that slice and drift validation applies.
+Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes required for that slice and drift validation applies.
 
 ## Non-goals
 
@@ -1339,7 +1339,7 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `ir.yaml` becomes requ
 - No graph database or global knowledge store for synthesis.
 - No automatic merging of semantically similar candidates without exact id, alias, or operator-seeded evidence.
 - **No multi-target slices.** A slice binds exactly one target adapter / project (D5). Cross-target fan-out is plan-level, achieved by decomposing a change into multiple slices joined by `slices[].depends-on`. RFC-29 introduces no `outputs[]` array, no per-output lifecycle, no per-output build envelope, no per-output `.metadata.yaml` keying, and no per-output journal events. A future RFC that wishes to re-open this question must first amend `docs/explanation/decision-log.md` §"One plan entry, one project" and account for the multi-baseline merge contract that decision deliberately rules out.
-- No target-specific behavior in core synthesis beyond reading the bound target's `shape` brief to parameterise IR structure (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
+- No target-specific behavior in core synthesis beyond reading the bound target's `shape` brief to parameterise slice-model structure (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
 - No commitment to per-target determinism on day one. RFC-29 commits only to a stable build envelope and validation contract; per-target determinism milestones are tracked in each target adapter's manifest and changelog.
 
 ## Alternatives considered
@@ -1348,11 +1348,11 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `ir.yaml` becomes requ
 
 Rejected. The current skill-driven synthesis can work in practice, but it cannot be tested, cached, or reused as a framework guarantee. The fan-in/fan-out promise depends on a stable reconciliation engine.
 
-### Make Markdown the only IR
+### Make Markdown the only slice model
 
 Rejected. Markdown is excellent for review and version control, but target builders need structured requirements, sources, APIs, configuration, tasks, and examples. Parsing Markdown in every target would duplicate fragile logic and create inconsistent generators.
 
-### Make `fusion.yaml` the IR
+### Make `fusion.yaml` the slice model
 
 Rejected. `fusion.yaml` answers "why did this requirement win?" not "what should targets build?" It remains an audit index.
 
@@ -1370,8 +1370,8 @@ Rejected for v1. It would move too much judgment into the framework. Exact ids a
 
 The five open questions from the original draft are resolved as normative decisions in this revision:
 
-1. **IR on-disk format.** Resolved: YAML on disk; JSON only via `specrun slice ir show <slice> --format json`. See §"Typed slice IR (D4)".
-2. **Shape-brief scope.** Resolved as **D8** — shape briefs may parameterise IR structure for `design-model` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but not `requirements[]` or any provenance-bearing field. See §"Slice synthesis engine (D3) → Shape-brief scope (D8)".
+1. **Slice-model on-disk format.** Resolved: YAML on disk; JSON only via `specrun slice model show <slice> --format json`. See §"Typed slice model (D4)".
+2. **Shape-brief scope.** Resolved as **D8** — shape briefs may parameterise slice-model structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but not `requirements[]` or any provenance-bearing field. See §"Slice synthesis engine (D3) → Shape-brief scope (D8)".
 3. **Per-target determinism.** Dropped from the RFC contract; tracked per target adapter. RFC-29 commits only to envelope and validation determinism. See §"Non-goals".
 4. **Slice fan-out shape.** Resolved as **D5** — fan-out is plan-level (one slice per target, joined by `slices[].depends-on`). The dropped multi-output-per-slice form is documented in §"Alternatives considered → Multi-output slices". Cross-slice build context flows through `prior-slices[]` on the build envelope (§"Target build envelope (D6)").
 5. **Adapter execution fallback.** Resolved as **D9** — closed `execution: executable | agent-fallback` enum on adapter manifests; first-party adapters must be `executable`, third-party adapters may be `agent-fallback` indefinitely. See §"Adapter execution mode (D9)".
