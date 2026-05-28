@@ -4,7 +4,7 @@ Operational detail for `/spec:init`. The SKILL.md keeps only the orientation sur
 
 ## CLI bootstrap
 
-`/spec:init` is the one Specify skill that may install the CLI before continuing. Other CLI-dependent skills still stop when `specify` is missing.
+`/spec:init` is the one Specify skill that may install the CLI before continuing. Other CLI-dependent skills still stop when `specrun` is missing.
 
 ## Arguments
 
@@ -12,7 +12,7 @@ Operational detail for `/spec:init`. The SKILL.md keeps only the orientation sur
 $PROFILE     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specrun init <adapter>` (regular) or `specrun init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
+I'll ensure the `specrun` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specrun init <adapter>` (regular) or `specrun init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
 
 ## Input
 
@@ -32,14 +32,14 @@ A regular project must declare a adapter; a hub must declare `--hub` and never c
 Run:
 
 ```bash
-specify --version
+specrun --version
 ```
 
 If the command succeeds, continue to step 2.
 
-If `specify` is not on PATH, tell the user:
+If `specrun` is not on PATH, tell the user:
 
-> "The `specify` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify-cli`, then verify `specify --version` before continuing."
+> "The `specrun` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify-cli`, then verify `specrun --version` before continuing."
 
 Use the **AskQuestion tool** to confirm whether they want to install the CLI now.
 
@@ -50,7 +50,7 @@ Use the **AskQuestion tool** to confirm whether they want to install the CLI now
   cargo install --git https://github.com/augentic/specify-cli
   ```
 
-After installation, run `specify --version` again.
+After installation, run `specrun --version` again.
 
 - If verification succeeds, continue.
 - If installation or verification fails, surface the error and stop. Do not attempt a prose fallback or hand-roll `.specify/` scaffolding.
