@@ -121,7 +121,7 @@
               "content-digest-eq",
               "namespace-owner"
             ],
-            "description": "Kind of deterministic signal the hint describes. The kinds `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner` are reserved for declarative framework checks and are shape-validated only at this layer; no execution semantics are implied."
+            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specrun lint` hint interpreter; no kind is reserved. This editor mirror shape-validates the value; execution semantics live in the canonical CLI schema and interpreter."
           },
           "value": {
             "type": "string",
