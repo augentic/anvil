@@ -57,7 +57,7 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 ## Hint-kind preference
 
-`CORE-*` rules SHOULD prefer the executable hint kinds shipped with the interpreter — currently `path-pattern`, `schema`, `regex`, `tool`, `reference-resolves`, `unique`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, and `content-digest-eq`. The remaining hint kind (`namespace-owner`) is marked `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) and ships paired with its interpreter implementation (one per-kind PR per reserved kind). Pick a reserved kind only when authoring a new rule alongside its interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
+Every v1 hint kind is now executable: `path-pattern`, `schema`, `regex`, `tool`, `reference-resolves`, `unique`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner`. No kind carries an `"x-hint-status": "reserved"` annotation in the canonical `rule.schema.json` distributed by the CLI (editor-mirrored at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json)) anymore. The reserved-kind machinery survives in the interpreter as forward-compat scaffolding, so if a future kind ever lands shape-only ahead of its interpreter, pick it only when authoring a new rule alongside that interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
 
 ## Authoring conventions
 
