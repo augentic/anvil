@@ -110,14 +110,14 @@ slices:
     status: pending
 ```
 
-**`discovery.md`** — what sources enumerated:
+**`discovery.md`** — what sources surveyd:
 
 ```markdown
 ## Summary
 
-Sources: 1. Candidates: 1.
+Sources: 1. Leads: 1.
 
-## Candidate inventory
+## Lead inventory
 
 ### fix-typo
 

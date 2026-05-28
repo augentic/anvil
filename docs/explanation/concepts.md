@@ -56,7 +56,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Plan</div>
 <h4 class="rhythm-title">Define the change</h4>
 
-`/spec:plan` enumerates sources and writes `plan.yaml`. Exits at `pending`.
+`/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
 </div>
 
 
@@ -94,9 +94,9 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 </div>
 
 
-`/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specrun plan transition <name> approved` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
+`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specrun plan transition <name> approved` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
 
-A one-slice change uses the same steps as a twelve-slice change: `intent.enumerate` produces one candidate and `/spec:execute` runs the same single-slice rhythm.
+A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `/spec:execute` runs the same single-slice rhythm.
 
 ## The per-slice loop
 
@@ -142,7 +142,7 @@ A **change** is the operator-defined umbrella that coordinates one or more slice
 
 Specify 2.0 splits adapters by direction.
 
-A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `enumerate` (plan-time, produces `Candidate[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`.
+A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`.
 
 A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `shape` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 

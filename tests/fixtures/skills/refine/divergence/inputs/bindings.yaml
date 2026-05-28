@@ -4,9 +4,9 @@ slice:
   project: identity-svc
   sources:
     - key: identity-design-notes
-      candidate: password-reset
+      lead: password-reset
     - key: legacy-monolith
-      candidate: account-pwd-reset
+      lead: account-pwd-reset
   divergence: likely
   status: in-progress
 plan-sources:

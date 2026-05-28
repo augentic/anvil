@@ -36,4 +36,4 @@ Every source and target adapter ships a manifest at `adapters/sources/<name>/ada
 
 ## Fix
 
-Open the failing `adapter.yaml`, compare it against the schema fields listed above, and either populate the missing or malformed key or align the value with the closed enum / pattern. The schema is the canonical authority — adapter resolve, plan enumeration, and slice extraction all depend on a clean manifest.
+Open the failing `adapter.yaml`, compare it against the schema fields listed above, and either populate the missing or malformed key or align the value with the closed enum / pattern. The schema is the canonical authority — adapter resolve, plan survey, and slice extraction all depend on a clean manifest.

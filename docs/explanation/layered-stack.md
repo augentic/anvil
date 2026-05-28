@@ -16,9 +16,9 @@ Layer 0 is the static project configuration plus the adapter manifests every hig
 The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
-- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [enumerate, extract]`).
+- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [survey, extract]`).
 - **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/candidate.schema.json`, and the `plan.yaml` schema.
+- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, and the `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
@@ -54,15 +54,15 @@ The matching CLI surface is the **`specrun slice ...`** family: `slice create`, 
 
 ## Layer 2: Planning and driving a change
 
-Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize. There is no separate "single-slice mode" — N=1 uses the same rhythm as N=12, with `intent.enumerate` producing one candidate.
+Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize. There is no separate "single-slice mode" — N=1 uses the same rhythm as N=12, with `intent.survey` producing one lead.
 
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `/spec:plan`     | Enumerate each bound source, propose `slices[]` rows in `plan.yaml`, validate; exit at `pending`    |
+| `/spec:plan`     | Survey each bound source, propose `slices[]` rows in `plan.yaml`, validate; exit at `pending`    |
 | `/spec:execute`  | Drive the plan through the Layer 1 loop; refuses unless plan is `approved`                          |
 | `/spec:finalize` | Push branches, observe PR state, archive once every PR is `MERGED`                                  |
 
-The plan is the change's table of contents. `/spec:plan` produces it by enumerating each source, fusing candidates across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specrun plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
+The plan is the change's table of contents. `/spec:plan` produces it by surveying each source, fusing leads across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specrun plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
 
 `/spec:execute` consumes the approved plan by picking the next eligible slice (`specrun plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 

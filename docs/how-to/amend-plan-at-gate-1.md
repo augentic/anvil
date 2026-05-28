@@ -14,7 +14,7 @@ Open these files at `.specify/` (workspace mode: workspace root):
 | ---- | ----- |
 | `change.md` | Intent, scope, tentative merge notes |
 | `plan.yaml` | Slice names, targets, source bindings, order |
-| `discovery.md` | Candidate inventory matches your expectations |
+| `discovery.md` | Lead inventory matches your expectations |
 
 ## Step 2 — Amend entries if needed
 
@@ -22,7 +22,7 @@ Use CLI amend verbs — never hand-edit `plan.yaml`:
 
 ```bash
 # Add a source binding to an existing slice
-specrun plan amend <name> <slice> --add-source <key>=<candidate-id>
+specrun plan amend <name> <slice> --add-source <key>=<lead-id>
 
 # Remove a source
 specrun plan amend <name> <slice> --remove-source <key>

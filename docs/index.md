@@ -41,7 +41,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
     <div class="rhythm-num">01</div>
     <div class="rhythm-label">Plan</div>
     <div class="rhythm-title">Define the change</div>
-    <p>Bind sources, enumerate candidates, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
+    <p>Bind sources, survey leads, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">02</div>

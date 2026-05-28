@@ -1,7 +1,7 @@
 source: intent
 adapter: intent
 authority: intent
-candidate: add-search-filter
+lead: add-search-filter
 claims:
   - kind: intent
     statement: "Add a search filter to the user list."

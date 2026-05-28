@@ -2,7 +2,7 @@
 <div class="eyebrow">Reference</div>
 <h1 class="hero-title">/spec:plan</h1>
 
-Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
+Survey bound sources, fuse leads into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
 
 <div class="meta-row">
 
@@ -51,7 +51,7 @@ source <key>=<adapter>:value:<literal>
 ## When to use
 
 - Starting a fresh change from one or more bound sources (or pure intent).
-- Re-enumerating sources on an existing plan (same-source candidate ids replace in place).
+- Re-surveying sources on an existing plan (same-source lead ids replace in place).
 
 Not for continuing an already-approved plan into execution — use [/spec:execute](execute.md).
 
@@ -61,20 +61,20 @@ Not for continuing an already-approved plan into execution — use [/spec:execut
 | -------- | -------- | ------- |
 | Change narrative | `.specify/change.md` | Operator-facing intent, scope, tentative merges |
 | Plan | `.specify/plan.yaml` | Sources, `slices[]` rows, `lifecycle: pending` |
-| Discovery | `.specify/discovery.md` | Summary, source inventory, candidate inventory |
+| Discovery | `.specify/discovery.md` | Summary, source inventory, lead inventory |
 
 ## Behavior
 
 1. **Pre-flight** — validate `<name>` as kebab-case; read `.specify/project.yaml`.
 2. **Scaffold** — `specrun plan create <name> --source <key>=<adapter>:<binding> …` writes `change.md` and `plan.yaml` atomically.
-3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before enumerate.
-4. **Enumerate each source** — run each source adapter's `enumerate` brief; append candidate blocks to `discovery.md`.
-5. **Write `discovery.md`** — three sections: Summary, Source inventory, Candidate inventory.
-6. **Propose** — fuse candidates into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
+3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey.
+4. **Survey each source** — run each source adapter's `survey` brief; append lead blocks to `discovery.md`.
+5. **Write `discovery.md`** — three sections: Summary, Source inventory, Lead inventory.
+6. **Propose** — fuse leads into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
 7. **Validate** — `specrun plan validate --format json` when multi-slice or workspace plans need doctor output.
 8. **Exit at `pending`** — print the closing hint; never call `specrun plan transition`.
 
-A one-slice change uses the same steps as a twelve-slice change: `intent.enumerate` produces one candidate and one slice row.
+A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and one slice row.
 
 ### Closing hint
 

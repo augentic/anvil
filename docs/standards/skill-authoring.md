@@ -64,7 +64,7 @@ The canonical "skills MUST NOT" list:
 
 ## Brief authoring
 
-Adapter briefs live at `adapters/targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/briefs/{enumerate,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+Adapter briefs live at `adapters/targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/briefs/{survey,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
 
 Briefs split into two roles:
 

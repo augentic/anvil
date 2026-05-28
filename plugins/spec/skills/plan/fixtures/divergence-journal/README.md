@@ -4,7 +4,7 @@ Pins the `plan.amend.divergence` journal event the CLI fires when the propose su
 
 ## Scenario
 
-Same shape as `cross-source-identity-revamp/` plus a third slice (`identity-session-expiry`) where the two contributing sources surfaced the **same** candidate id but with materially-disagreeing summaries:
+Same shape as `cross-source-identity-revamp/` plus a third slice (`identity-session-expiry`) where the two contributing sources surfaced the **same** lead id but with materially-disagreeing summaries:
 
 - `identity-design-notes` says: "Session tokens expire after 60 minutes of inactivity."
 - `legacy-monolith` says: "Session tokens expire after 24 hours of absolute lifetime."

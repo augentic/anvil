@@ -39,7 +39,7 @@ The Capture and Client plugins are target-independent — Capture supports legac
 ## Artifact flow
 
 ```text
-/spec:plan     →  enumerates each bound source, proposes slices[]
+/spec:plan     →  surveys each bound source, proposes slices[]
 /spec:refine   →  extracts evidence per source, synthesizes proposal/spec/design/tasks via core
 /spec:build    →  drives the target adapter's build brief (Omnia, Vectis, Contracts, ...)
 /spec:merge    →  applies deltas to baseline (target-agnostic)

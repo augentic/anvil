@@ -6,17 +6,17 @@
 
 Specify's architectural promise is a fan-in / fan-out workflow:
 
-- **Fan-in** happens twice per change. Multiple source adapters' `Candidate`s fan in at plan time into the `slices[]` rows of `plan.yaml`. Multiple sources' `Evidence` fans in at slice time into one synthesized slice. Both are core's responsibility.
+- **Fan-in** happens twice per change. Multiple source adapters' `Lead`s fan in at plan time into the `slices[]` rows of `plan.yaml`. Multiple sources' `Evidence` fans in at slice time into one synthesized slice. Both are core's responsibility.
 - **Fan-out** happens once per change, at the plan layer. One change decomposes into multiple slices — each slice binding exactly one target — joined by `depends-on` edges. The `refine -> build -> merge` loop runs per slice; baseline merge runs once per slice against one target's baseline.
 
 This is the framework's "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project)). RFC-29 affirms it and does not extend the slice to multi-target.
 
-The current system has source adapters, target adapters, `Candidate`, `Evidence`, provenance, authority, `fusion.yaml`, target `shape` briefs, and the `refine -> build -> merge` loop. The gap is that several load-bearing fan-in steps — enumerate, extract, plan-time fusion, and the *reconciliation half* of slice synthesis — are still implemented as agent discipline rather than CLI-owned contract. The *prose half* of slice synthesis (cross-modal fusion of design prose, code, and screenshots into requirement statements, scenarios, and design narrative) is judgment work and stays with an LLM; this RFC's job is to put a stable envelope around that step, not to claim it away.
+The current system has source adapters, target adapters, `Lead`, `Evidence`, provenance, authority, `fusion.yaml`, target `shape` briefs, and the `refine -> build -> merge` loop. The gap is that several load-bearing fan-in steps — survey, extract, plan-time fusion, and the *reconciliation half* of slice synthesis — are still implemented as agent discipline rather than CLI-owned contract. The *prose half* of slice synthesis (cross-modal fusion of design prose, code, and screenshots into requirement statements, scenarios, and design narrative) is judgment work and stays with an LLM; this RFC's job is to put a stable envelope around that step, not to claim it away.
 
 This RFC turns the fan-in promise into an end-to-end contract by adding:
 
-1. **Executable source operations** - first-class `specrun source enumerate` and `specrun source extract` commands that run source adapters under the declared sandbox, cache, and journal contract.
-2. **Deterministic plan-time structural fusion** - a CLI-owned candidate-fusion engine that proposes slice rows from `Candidate[]`, preserving operator review for ambiguous joins and operator/agent judgment for target binding.
+1. **Executable source operations** - first-class `specrun source survey` and `specrun source extract` commands that run source adapters under the declared sandbox, cache, and journal contract.
+2. **Deterministic plan-time structural fusion** - a CLI-owned lead-fusion engine that proposes slice rows from `Lead[]`, preserving operator review for ambiguous joins and operator/agent judgment for target binding.
 3. **Slice synthesis engine** - a CLI-owned reconciliation kernel (authority resolution, REQ-id assignment, provenance projection, `fusion.yaml`, the deterministic-field skeleton of `model.yaml`, and drift validators) wrapped around an agent-driven prose-synthesis step running under a stable input/output envelope.
 4. **Typed slice model** - a machine-readable, schema-pinned view of the slice emitted by refine and used by target builders, while the existing Markdown artifacts remain the human review surface and baseline merge input.
 5. **Target build contract** - target adapters consume the slice model through a stable per-slice build envelope, with per-slice validation, review findings, and merge gates.
@@ -31,8 +31,8 @@ The findings this RFC resolves:
 
 | Finding                                                      | Current state                                                                                                                                | RFC-29 resolution                                                                                                                                                                                  |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source operations are briefs, not executable CLI operations. | `specrun source resolve` exists; `enumerate` and `extract` are agent-run instructions.                                                       | Add `specrun source enumerate` and `specrun source extract` with sandbox, cache, schema validation, and journal events.                                                                            |
-| Plan-time candidate fusion is agent-only.                    | `/spec:plan`'s `propose` sub-step reads `discovery.md` and calls `specrun plan add`.                                                         | Split the step in two. Add a deterministic `specrun plan propose --dry-run --format json` (Stage B1) that emits structural candidate groups. The `/spec:plan` agent step keeps target binding (per-slice fan-out, D5) and writes via `specrun plan add`. A full-writer Stage B2 is deferred behind a Candidate target-axis vocabulary (open question 6). |
+| Source operations are briefs, not executable CLI operations. | `specrun source resolve` exists; `survey` and `extract` are agent-run instructions.                                                       | Add `specrun source survey` and `specrun source extract` with sandbox, cache, schema validation, and journal events.                                                                            |
+| Plan-time lead fusion is agent-only.                    | `/spec:plan`'s `propose` sub-step reads `discovery.md` and calls `specrun plan add`.                                                         | Split the step in two. Add a deterministic `specrun plan propose --dry-run --format json` (Stage B1) that emits structural lead groups. The `/spec:plan` agent step keeps target binding (per-slice fan-out, D5) and writes via `specrun plan add`. A full-writer Stage B2 is deferred behind a Lead target-axis vocabulary (open question 6). |
 | Slice-time reconciliation has no production resolver.        | CLI validates `spec.md`, Evidence, and `fusion.yaml`; it does not own authority resolution, REQ-id assignment, or model projection.          | Add a `specrun slice synthesize` engine. It owns reconciliation bookkeeping (`fusion.yaml`, REQ-id assignment, structural `model.yaml` projection, drift validation) and dispatches the cross-modal prose synthesis under a stable agent envelope. |
 | The machine-readable slice view is implicit.                 | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, Evidence, and `fusion.yaml` together act as the slice model, but target builders consume Markdown. | Add `.specify/slices/<slice>/model.yaml` as generated machine-readable build input, with drift validation against rendered artifacts.                                                                 |
 | Target codegen is adapter-brief discipline.                  | Target `build` briefs orchestrate generation, validation, and review, but no stable input/output envelope joins them to core synthesis.      | Add a per-slice target build envelope; each target reports structured status, generated paths, validation commands, and RFC-28 review findings.                                                    |
@@ -54,8 +54,8 @@ The goal is not to remove agents from Specify. The goal is to move stable workfl
 
 | ID                              | Decision                                                                                                                                                                                                                                 | Implementation consequence                                                                                                                                                                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **D1 Source operation runner**  | The CLI runs source adapter `enumerate` and `extract` operations.                                                                                                                                                                        | Add `specrun source enumerate` and `specrun source extract`; route through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events.                       |
-| **D2 Candidate fusion engine**  | The CLI owns the **structural** `Candidate[] -> candidate groups` pass (rules 1–3 — exact id, exact alias, transitive cross-reference). **Target binding** (which group becomes which `(slice, target)` pair) stays agent-driven until a Candidate target-axes hint lands. | Ship in two stages. Stage B1: `specrun plan propose --dry-run --format json` returns the structural groups as JSON without writing the plan. `/spec:plan` reads the JSON, decides target binding per group, and writes through the existing `specrun plan add` / `plan amend` writers. Stage B2 (deferred): once Candidate target-axes are RFC'd, promote `propose` to a full writer that emits one `(group, target)` slice directly. |
+| **D1 Source operation runner**  | The CLI runs source adapter `survey` and `extract` operations.                                                                                                                                                                        | Add `specrun source survey` and `specrun source extract`; route through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events.                       |
+| **D2 Lead fusion engine**  | The CLI owns the **structural** `Lead[] -> lead groups` pass (rules 1–3 — exact id, exact alias, transitive cross-reference). **Target binding** (which group becomes which `(slice, target)` pair) stays agent-driven until a Lead target-axes hint lands. | Ship in two stages. Stage B1: `specrun plan propose --dry-run --format json` returns the structural groups as JSON without writing the plan. `/spec:plan` reads the JSON, decides target binding per group, and writes through the existing `specrun plan add` / `plan amend` writers. Stage B2 (deferred): once Lead target-axes are RFC'd, promote `propose` to a full writer that emits one `(group, target)` slice directly. |
 | **D3 Slice synthesis engine** | The CLI owns the reconciliation kernel (authority resolution, REQ-id assignment, provenance tracking, `fusion.yaml`, structural `model.yaml` projection, drift validation) and the synthesis envelope. Cross-modal prose synthesis of `Evidence[]` into `proposal.md` / `spec.md` / `design.md` / `tasks.md` and the prose fields of `model.yaml` is dispatched under that envelope and remains agent-driven by default. | Add `specrun slice synthesize <slice>`. The engine resolves authority via the RFC-27 resolver, computes the deterministic `model.yaml` skeleton, dispatches the prose-synthesis step (executable WASI tool when declared, otherwise agent-fallback per D10), then validates and persists. `/spec:refine` stops hand-coding reconciliation and shells out to the engine. |
 | **D4 Typed slice model**           | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`.                                                                                                                                                                       | Add `schemas/slice/model.schema.json`; `specrun slice validate` checks model/artifact/fusion drift; target build reads the slice model as its primary machine input.                                                     |
 | **D5 Per-slice fan-out**        | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`. RFC-29 introduces no per-output schema, lifecycle, or build envelope.                    | No `outputs[]` field on the slice model, build request, or build report. `plan.yaml.slices[].target` / `slices[].project` keep their existing shape and meaning. Cross-slice ordering uses the existing `slices[].depends-on`. |
@@ -80,14 +80,14 @@ specrun plan transition identity-refresh approved
 The new CLI surfaces are lower-level breakouts:
 
 ```bash
-specrun source enumerate docs --format json
+specrun source survey docs --format json
 specrun source extract docs password-reset --slice identity-password-reset --format json
 specrun plan propose --dry-run --format json     # Stage B1 structural grouper (returns groups, never writes plan.yaml)
 specrun slice synthesize identity-password-reset --format json
 specrun slice model show identity-password-reset --format json
 ```
 
-`specrun plan propose` without `--dry-run` is reserved for the deferred Stage B2 full writer (see §"Candidate fusion engine (D2)"); in v1 it returns `propose-target-binding-required` and points at the dry-run form. Target binding stays with the `/spec:plan` agent step, which calls `specrun plan add` per `(group, target)` pair.
+`specrun plan propose` without `--dry-run` is reserved for the deferred Stage B2 full writer (see §"Lead fusion engine (D2)"); in v1 it returns `propose-target-binding-required` and points at the dry-run form. Target binding stays with the `/spec:plan` agent step, which calls `specrun plan add` per `(group, target)` pair.
 
 Cross-target changes are planned as multiple slices, each bound to one target, joined by `depends-on`:
 
@@ -124,15 +124,15 @@ A downstream slice that needs another slice's build report (e.g. `omnia` consumi
 Add two commands under the existing `specify source` family:
 
 ```bash
-specrun source enumerate <source-key> [--plan <name>] [--format json]
-specrun source extract <source-key> <candidate-id> --slice <slice> [--format json]
+specrun source survey <source-key> [--plan <name>] [--format json]
+specrun source extract <source-key> <lead-id> --slice <slice> [--format json]
 ```
 
 `<source-key>` resolves against `plan.yaml.sources.<key>`, not against adapter name. The command then resolves the adapter from `SourceBinding.adapter`.
 
-### `enumerate`
+### `survey`
 
-`enumerate` runs the source adapter's `briefs.enumerate` operation under the source-adapter sandbox:
+`survey` runs the source adapter's `briefs.survey` operation under the source-adapter sandbox:
 
 
 | Root              | Mode       | Contents                                                              |
@@ -145,11 +145,11 @@ specrun source extract <source-key> <candidate-id> --slice <slice> [--format jso
 
 For value-bound sources such as `intent`, `$SOURCE_DIR` is absent and the value is passed through the build request envelope.
 
-Output is a candidate set, validated against `schemas/discovery/candidate.schema.json`, then merged into `discovery.md` by CLI-owned discovery helpers. Re-running `enumerate` for the same source replaces candidates by canonical `id`, preserves operator aliases, and keeps deterministic ordering.
+Output is a lead set, validated against `schemas/discovery/lead.schema.json`, then merged into `discovery.md` by CLI-owned discovery helpers. Re-running `survey` for the same source replaces leads by canonical `id`, preserves operator aliases, and keeps deterministic ordering.
 
 ### `extract`
 
-`extract` runs the source adapter's `briefs.extract` operation for one `(source-key, candidate-id)` pair and writes:
+`extract` runs the source adapter's `briefs.extract` operation for one `(source-key, lead-id)` pair and writes:
 
 ```text
 .specify/slices/<slice>/evidence/<source-key>.yaml
@@ -162,31 +162,31 @@ The CLI validates the Evidence document against `schemas/evidence.schema.json` b
 Both operations use the RFC-27 cache fingerprint model:
 
 ```text
-source identity + adapter name@version + brief sha256 + sorted tool versions + candidate id?
+source identity + adapter name@version + brief sha256 + sorted tool versions + lead id?
 ```
 
-`candidate id` is absent for `enumerate` and present for `extract`.
+`lead id` is absent for `survey` and present for `extract`.
 
 Journal events:
 
 
 | Event                         | When                                      |
 | ----------------------------- | ----------------------------------------- |
-| `source.enumerate.cache-hit`  | Candidate set was read from cache.        |
-| `source.enumerate.cache-miss` | Adapter `enumerate` ran.                  |
+| `source.survey.cache-hit`  | Lead set was read from cache.        |
+| `source.survey.cache-miss` | Adapter `survey` ran.                  |
 | `slice.extract.cache-hit`     | Evidence was read from cache.             |
 | `slice.extract.cache-miss`    | Adapter `extract` ran.                    |
 | `slice.extract.completed`     | Evidence file was successfully persisted. |
 
 
-`slice.extract.cache-*` already exists in RFC-27; this RFC adds the enumerate equivalents.
+`slice.extract.cache-*` already exists in RFC-27; this RFC adds the survey equivalents.
 
-## Candidate fusion engine (D2)
+## Lead fusion engine (D2)
 
-D2 splits a single conceptual step — `Candidate[] -> plan entries` — into two halves:
+D2 splits a single conceptual step — `Lead[] -> plan entries` — into two halves:
 
 1. **Structural fusion** (rules 1–3 below): exact id, exact alias, transitive cross-reference. Deterministic, pure data, no judgment. **CLI-owned from day one (Stage B1).**
-2. **Target binding**: deciding which target adapter(s) each candidate group becomes a slice for, under the per-slice fan-out model (D5). Inherently judgment work until Candidates carry target-axis hints. **Agent-driven in v1, promoted to the CLI later (Stage B2).**
+2. **Target binding**: deciding which target adapter(s) each lead group becomes a slice for, under the per-slice fan-out model (D5). Inherently judgment work until Leads carry target-axis hints. **Agent-driven in v1, promoted to the CLI later (Stage B2).**
 
 This split lets RFC-29 land the deterministic half without blocking on a target-axes design.
 
@@ -199,7 +199,7 @@ specrun plan propose --dry-run --format json
 `propose --dry-run` reads:
 
 - `plan.yaml.sources`;
-- `discovery.md` candidate inventory (via the in-place `crates/domain/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_candidate` already cover the join surface);
+- `discovery.md` lead inventory (via the in-place `crates/domain/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_lead` already cover the join surface);
 - optional operator-authored aliases.
 
 It writes **nothing** to disk. It returns a JSON document describing the proposed groups:
@@ -212,23 +212,23 @@ It writes **nothing** to disk. It returns a JSON document describing the propose
       "group-id": "identity-api",
       "rule": "exact-id",
       "members": [
-        { "source-key": "docs",   "candidate-id": "identity-api" },
-        { "source-key": "legacy", "candidate-id": "identity-api" }
+        { "source-key": "docs",   "lead-id": "identity-api" },
+        { "source-key": "legacy", "lead-id": "identity-api" }
       ],
       "tentative-merges": []
     }
   ],
   "tentative-merges": [
     {
-      "left":  { "source-key": "docs",   "candidate-id": "password-reset" },
-      "right": { "source-key": "legacy", "candidate-id": "reset-password" },
+      "left":  { "source-key": "docs",   "lead-id": "password-reset" },
+      "right": { "source-key": "legacy", "lead-id": "reset-password" },
       "reason": "no alias or exact id match exists; textual similarity 0.82"
     }
   ]
 }
 ```
 
-The schema lives at `schemas/discovery/proposal.schema.json` (committed alongside the existing `schemas/discovery/candidate.schema.json`, reproduced verbatim as Schema D in §"Schemas added by this RFC") and embeds in the `specify-schema` crate as `PROPOSAL_JSON_SCHEMA`. `propose --dry-run` validates its own output before returning so callers can rely on the shape.
+The schema lives at `schemas/discovery/proposal.schema.json` (committed alongside the existing `schemas/discovery/lead.schema.json`, reproduced verbatim as Schema D in §"Schemas added by this RFC") and embeds in the `specify-schema` crate as `PROPOSAL_JSON_SCHEMA`. `propose --dry-run` validates its own output before returning so callers can rely on the shape.
 
 ### Matching algorithm (B1)
 
@@ -236,8 +236,8 @@ The structural pass is intentionally conservative:
 
 1. Exact canonical `id` match across source keys -> one group.
 2. Exact alias match -> one group, persisted under the canonical id.
-3. One candidate's `sources` list transitively names another source's candidate id (the existing `Candidate.sources[]` cross-reference field) -> one group.
-4. Otherwise each candidate stays in its own group.
+3. One lead's `sources` list transitively names another source's lead id (the existing `Lead.sources[]` cross-reference field) -> one group.
+4. Otherwise each lead stays in its own group.
 
 Textual-similarity may surface as a diagnostic under `tentative-merges[]`, but never auto-merges in v1. That keeps Stage B1 a pure function of the parsed discovery document.
 
@@ -247,24 +247,24 @@ Textual-similarity may surface as a diagnostic under `tentative-merges[]`, but n
 
 1. Calls `specrun plan propose --dry-run --format json` to obtain the structural groups.
 2. For each `groups[]` entry, decides which bound target(s) the group should become a slice for. Cross-target work expands to one slice per `(group, target)` pair, per D5. This is the only structural decision the agent still owns.
-3. For each `(group, target)` pair, emits one `specrun plan add <slice-name> --sources <key>=<candidate-id>… --target <name@vN> [--project <slug>] [--depends-on <other-slice>]` call.
+3. For each `(group, target)` pair, emits one `specrun plan add <slice-name> --sources <key>=<lead-id>… --target <name@vN> [--project <slug>] [--depends-on <other-slice>]` call.
 4. For each `tentative-merges[]` entry, raises the diagnostic for operator review at Gate 1 (or runs `specrun plan amend --add-alias` to accept the merge).
 
 Every plan mutation flows through the existing CLI writers in `crates/domain/src/change/plan/`. The agent never hand-edits `plan.yaml`, never writes `discovery.md`, never decides authority — its scope is target binding and tentative-merge adjudication.
 
 ### Stage B2 — Full writer (deferred)
 
-Once Candidates carry deterministic target-axis hints (see §"Open questions" below), promote `specrun plan propose` to a full writer:
+Once Leads carry deterministic target-axis hints (see §"Open questions" below), promote `specrun plan propose` to a full writer:
 
 ```bash
 specrun plan propose [--format json]
 ```
 
-The full form fuses the structural pass with the target-binding pass and writes `plan.yaml.slices[]` directly. Stage B2 is **not** in scope for RFC-29 implementation; it ships in a follow-up RFC that nails down the target-axis vocabulary on `schemas/discovery/candidate.schema.json`. Until then, `specrun plan propose` without `--dry-run` returns a `propose-target-binding-required` error directing the caller at the Stage B1 form.
+The full form fuses the structural pass with the target-binding pass and writes `plan.yaml.slices[]` directly. Stage B2 is **not** in scope for RFC-29 implementation; it ships in a follow-up RFC that nails down the target-axis vocabulary on `schemas/discovery/lead.schema.json`. Until then, `specrun plan propose` without `--dry-run` returns a `propose-target-binding-required` error directing the caller at the Stage B1 form.
 
 ### Review annotations
 
-`tentative-merges[]` is the structured form of the "Tentative merges" Markdown block the agent renders into `change.md` for the operator. The agent may also call `specrun plan amend --divergence likely` against any subsequently-written slice when its bound candidates carry materially disagreeing summaries; that writer path already exists.
+`tentative-merges[]` is the structured form of the "Tentative merges" Markdown block the agent renders into `change.md` for the operator. The agent may also call `specrun plan amend --divergence likely` against any subsequently-written slice when its bound leads carry materially disagreeing summaries; that writer path already exists.
 
 ## Slice synthesis engine (D3)
 
@@ -361,7 +361,7 @@ Shape briefs MUST NOT influence:
 
 The engine enforces D8 in two layers:
 
-- **Deterministic fields.** The reconciliation kernel computes `requirements[].{id, sources, status}` and every other `*.sources` field from `(Evidence[], authority-overrides)` alone, independently of the bound target. Two slices binding the same `(source-key -> candidate)` map and the same `authority-overrides` produce reconciliation skeletons whose deterministic fields are **byte-identical** even when their `target` fields differ. This part of the invariant is testable as byte-equality (D7).
+- **Deterministic fields.** The reconciliation kernel computes `requirements[].{id, sources, status}` and every other `*.sources` field from `(Evidence[], authority-overrides)` alone, independently of the bound target. Two slices binding the same `(source-key -> lead)` map and the same `authority-overrides` produce reconciliation skeletons whose deterministic fields are **byte-identical** even when their `target` fields differ. This part of the invariant is testable as byte-equality (D7).
 - **Prose fields.** The synthesis envelope hides `target` and `shape-brief` from the inputs the synthesis step is permitted to use for `requirements[].{title, statement, scenarios, notes}`. The CLI cannot byte-test prose stability across runs of a non-deterministic model, but it can assert structural target-neutrality: re-running synthesis against the same Evidence map yields requirements with the **same ids, sources, status, and ordering**, and the prose-equivalence check in §"Acceptance proof (D7)" guarantees the requirement set conveys the same intent across two targets. Byte-equality is asserted only on the deterministic-field projection.
 
 ### Rendering
@@ -394,7 +394,7 @@ generator: specrun@2.1.0
 sources:
   - key: docs
     adapter: documentation
-    candidate: password-reset
+    lead: password-reset
     authority: documentation
     evidence-path: .specify/slices/identity-service/evidence/docs.yaml
 target: omnia@v1
@@ -478,7 +478,7 @@ slices:
     project: identity-contracts
     sources:
       - key: docs
-        candidate: identity-api
+        lead: identity-api
   - name: identity-service
     status: pending
     target: omnia@v1
@@ -486,12 +486,12 @@ slices:
     depends-on: [identity-contracts]
     sources:
       - key: docs
-        candidate: identity-api
+        lead: identity-api
       - key: legacy
-        candidate: identity-api
+        lead: identity-api
 ```
 
-The same `Candidate` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Candidate fusion (D2) proposes one slice per `(target, candidate-group)` pair; the operator may split or merge proposed slices at Gate 1.
+The same `Lead` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Lead fusion (D2) proposes one slice per `(target, lead-group)` pair; the operator may split or merge proposed slices at Gate 1.
 
 ### Lifecycle
 
@@ -621,7 +621,7 @@ execution: executable     # or `agent-fallback`
 
 The two values are:
 
-- `**executable**` — `enumerate` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in this RFC. Required for first-party adapters before RFC-29 ships.
+- `**executable**` — `survey` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in this RFC. Required for first-party adapters before RFC-29 ships.
 - `**agent-fallback**` — the adapter's brief is executed by an agent against the same sandbox preopens. The CLI orchestrates inputs and validates outputs against the same schemas, but does not cache the result. Permitted for third-party adapters indefinitely.
 
 When `execution: agent-fallback`, the CLI:
@@ -671,11 +671,11 @@ Regardless of execution mode, the engine validates the response against `schemas
 
 ## Acceptance proof (D7)
 
-RFC-29 is complete only when the acceptance suite proves the full path — fan-in twice (Candidates and Evidence), fan-out once (across slices):
+RFC-29 is complete only when the acceptance suite proves the full path — fan-in twice (Leads and Evidence), fan-out once (across slices):
 
 ```text
 documentation + code-typescript
-        -> source enumerate                 (fan-in #1: Candidate sets)
+        -> source survey                 (fan-in #1: Lead sets)
         -> plan propose --dry-run           (CLI proposes structural groups; agent binds each group to one or more targets and writes the slices via plan add)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
@@ -721,8 +721,8 @@ tests/fixtures/rfc-29/fan-in-fan-out/
 
 Required assertions:
 
-- `specrun source enumerate` produces schema-valid candidates for both sources.
-- `specrun plan propose --dry-run --format json` returns one structural group for the shared candidate (`rule: exact-id`), validates against `proposal.schema.json`, and writes nothing.
+- `specrun source survey` produces schema-valid leads for both sources.
+- `specrun plan propose --dry-run --format json` returns one structural group for the shared lead (`rule: exact-id`), validates against `proposal.schema.json`, and writes nothing.
 - The fixture's `/spec:plan` agent step (or the test harness simulating it) consumes the JSON, decides the per-group target binding (`contracts@v1` + `omnia@v1`), and issues two `specrun plan add` calls producing two single-target slices with `identity-service.depends-on: [identity-contracts]`.
 - `specrun plan propose` without `--dry-run` exits non-zero with `propose-target-binding-required` (proves Stage B2 is gated).
 - `specrun source extract` writes schema-valid Evidence for every `(slice, source)` pair.
@@ -731,8 +731,8 @@ Required assertions:
 - Each slice builds independently against its single bound target; `identity-service`'s build request carries a `prior-slices[]` entry pointing at `identity-contracts/build/report.yaml`.
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
 - Re-running the full flow with unchanged inputs produces byte-stable **reconciliation skeletons** (`fusion.yaml`, and the deterministic-field projection of `model.yaml` — see §"D8 invariant" below) except for explicitly timestamped journal entries. Prose fields of `model.yaml` and the Markdown artifacts are not asserted byte-stable; they are validated by schema + drift checks only.
-- **D8 invariant (deterministic-field projection).** Project both slices' `model.yaml` onto their deterministic-field projection (`requirements[].{id, sources, status}` and every other `*.sources` field, in declaration order). The two slices — which share the `docs:identity-api` candidate and the same `authority-overrides` — produce projections whose shared prefix is **byte-identical**, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1` (and the latter additionally fuses `legacy:identity-api`, which appears as extra `requirements[]` entries appended deterministically after the shared set). The shared-prefix assertion proves shape briefs and target binding do not leak into the deterministic part of the requirements section.
-- **D8 invariant (prose target-neutrality).** The two slices' `requirements[]` arrays carry the same `id` and `sources` for the shared candidate's requirements, and their prose fields (`statement`, `title`, `scenarios[]`) are validated for **semantic equivalence** on the shared subset by a fixture-local check (golden text on the simplest cases; LLM-judge with a fixed grader prompt on the more elaborate cases). Byte-equality on prose is not asserted; target-neutrality of intent is.
+- **D8 invariant (deterministic-field projection).** Project both slices' `model.yaml` onto their deterministic-field projection (`requirements[].{id, sources, status}` and every other `*.sources` field, in declaration order). The two slices — which share the `docs:identity-api` lead and the same `authority-overrides` — produce projections whose shared prefix is **byte-identical**, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1` (and the latter additionally fuses `legacy:identity-api`, which appears as extra `requirements[]` entries appended deterministically after the shared set). The shared-prefix assertion proves shape briefs and target binding do not leak into the deterministic part of the requirements section.
+- **D8 invariant (prose target-neutrality).** The two slices' `requirements[]` arrays carry the same `id` and `sources` for the shared lead's requirements, and their prose fields (`statement`, `title`, `scenarios[]`) are validated for **semantic equivalence** on the shared subset by a fixture-local check (golden text on the simplest cases; LLM-judge with a fixed grader prompt on the more elaborate cases). Byte-equality on prose is not asserted; target-neutrality of intent is.
 - **Synthesis envelope contract.** A fixture-local test re-runs `specrun slice synthesize` with a deliberately-corrupted synthesis-step response that touches a deterministic field (e.g. moves an `id`, changes a `sources` list, alters `status`). The engine rejects the response with `slice-synthesize-deterministic-field-mutation` rather than persisting it, proving the kernel layer is the final authority on every deterministic field.
 
 ## Schemas added by this RFC
@@ -829,11 +829,11 @@ The slice-model, build-request, and build-report schemas key on `(slice, target)
     "modelSource": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["key", "adapter", "candidate", "authority"],
+      "required": ["key", "adapter", "lead", "authority"],
       "properties": {
         "key":           { "$ref": "#/$defs/kebabName" },
         "adapter":       { "$ref": "#/$defs/kebabName" },
-        "candidate":     { "$ref": "#/$defs/kebabName" },
+        "lead":     { "$ref": "#/$defs/kebabName" },
         "authority":     { "$ref": "#/$defs/authorityClass" },
         "evidence-path": { "type": "string" }
       }
@@ -1286,14 +1286,14 @@ The slice-model, build-request, and build-report schemas key on `(slice, target)
 
 ### Schema D — `schemas/discovery/proposal.schema.json`
 
-Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is intentionally the smallest of the five schemas: it carries the structural groups and advisory tentative merges only — no target binding, because target binding stays agent-driven in v1 (D2, open question 6). Each `groups[]` entry records how its members fused via the closed `rule` enum, covering all four branches of the §"Matching algorithm (B1)" pass (`exact-id`, `exact-alias`, `transitive-cross-reference`, and `singleton` for a candidate that matched nothing). `tentative-merges[]` carries the advisory textual-similarity diagnostics that never auto-merge in v1; it appears both per-group and at the top level, sharing one `tentativeMerge` shape.
+Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is intentionally the smallest of the five schemas: it carries the structural groups and advisory tentative merges only — no target binding, because target binding stays agent-driven in v1 (D2, open question 6). Each `groups[]` entry records how its members fused via the closed `rule` enum, covering all four branches of the §"Matching algorithm (B1)" pass (`exact-id`, `exact-alias`, `transitive-cross-reference`, and `singleton` for a lead that matched nothing). `tentative-merges[]` carries the advisory textual-similarity diagnostics that never auto-merge in v1; it appears both per-group and at the top level, sharing one `tentativeMerge` shape.
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify plan propose structural grouping",
-  "description": "Validates the structural candidate-grouping document returned by `specrun plan propose --dry-run --format json` per RFC-29 §Candidate fusion engine (D2) Stage B1. A pure function of the parsed `discovery.md`; the command writes nothing to disk and validates this shape before returning. Each `groups[]` entry records how its members fused (`rule`): `exact-id` (rule 1), `exact-alias` (rule 2), `transitive-cross-reference` (rule 3), or `singleton` (rule 4, a candidate that matched nothing). Textual-similarity matches never auto-merge in v1; they surface as advisory `tentative-merges[]` for operator/agent adjudication at Gate 1. Target binding is NOT present here — it stays agent-driven until Stage B2. Closed top-level shape — unknown fields are rejected.",
+  "description": "Validates the structural lead-grouping document returned by `specrun plan propose --dry-run --format json` per RFC-29 §Lead fusion engine (D2) Stage B1. A pure function of the parsed `discovery.md`; the command writes nothing to disk and validates this shape before returning. Each `groups[]` entry records how its members fused (`rule`): `exact-id` (rule 1), `exact-alias` (rule 2), `transitive-cross-reference` (rule 3), or `singleton` (rule 4, a lead that matched nothing). Textual-similarity matches never auto-merge in v1; they surface as advisory `tentative-merges[]` for operator/agent adjudication at Gate 1. Target binding is NOT present here — it stays agent-driven until Stage B2. Closed top-level shape — unknown fields are rejected.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "groups", "tentative-merges"],
@@ -1320,7 +1320,7 @@ Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is 
       "properties": {
         "group-id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Canonical id the group is persisted under (the shared `id` for rules 1/3, the canonical id behind an alias for rule 2, or the lone candidate's id for a singleton)."
+          "description": "Canonical id the group is persisted under (the shared `id` for rules 1/3, the canonical id behind an alias for rule 2, or the lone lead's id for a singleton)."
         },
         "rule": {
           "type": "string",
@@ -1340,10 +1340,10 @@ Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is 
     "memberRef": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source-key", "candidate-id"],
+      "required": ["source-key", "lead-id"],
       "properties": {
         "source-key":   { "$ref": "#/$defs/kebabName" },
-        "candidate-id": { "$ref": "#/$defs/kebabName" }
+        "lead-id": { "$ref": "#/$defs/kebabName" }
       }
     },
     "tentativeMerge": {
@@ -1491,9 +1491,9 @@ The closed `Event` / `EventKind` taxonomy in `crates/domain/src/journal.rs` gain
 
 | Event                             | When                                                                                                                                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `source.enumerate.cache-hit`      | Candidate set was read from cache.                                                                                                                           |
-| `source.enumerate.cache-miss`     | Source-adapter `enumerate` ran.                                                                                                                              |
-| `source.execution.agent-fallback` | A source-adapter operation ran in `agent-fallback` mode (`enumerate` or `extract`).                                                                          |
+| `source.survey.cache-hit`      | Lead set was read from cache.                                                                                                                           |
+| `source.survey.cache-miss`     | Source-adapter `survey` ran.                                                                                                                              |
+| `source.execution.agent-fallback` | A source-adapter operation ran in `agent-fallback` mode (`survey` or `extract`).                                                                          |
 | `slice.extract.cache-hit`         | (Existing) Evidence was read from cache.                                                                                                                     |
 | `slice.extract.cache-miss`        | (Existing) Source-adapter `extract` ran.                                                                                                                     |
 | `slice.extract.completed`         | (Existing) Evidence file was successfully persisted.                                                                                                         |
@@ -1547,22 +1547,22 @@ A PR-sized breakdown of these waves lands in a companion `rfc-29-plan.md` (mirro
 ### Wave A - Source runner and cache integration
 
 1. Add the closed `execution: executable | agent-fallback` field to `schemas/source.schema.json`; thread it through `SourceAdapter` parse and add `adapter-execution-mode-required` / `adapter-execution-agent-fallback-cache-conflict` `Error` variants.
-2. Add CLI DTOs and clap surfaces for `specrun source enumerate` and `specrun source extract`.
+2. Add CLI DTOs and clap surfaces for `specrun source survey` and `specrun source extract`.
 3. Reuse `SourceAdapter::resolve` and `SourceOperation::artifact_name`; branch dispatch on `execution`.
 4. Route `executable` operations through declared WASI tools; route `agent-fallback` operations through the existing agent-run path but force `cache: opt-out` and emit `source.execution.agent-fallback`.
-5. Validate candidate output against `candidate.schema.json` and Evidence output against `evidence.schema.json` before writes.
-6. Add `source.enumerate.cache-{hit,miss}` cache events and update `specrun source resolve --explain` to show both operations.
-7. Pin the `enumerate` cache fingerprint inputs explicitly in code and tests: source identity (path or value sha256) + adapter `name@version` + `enumerate` brief sha256 + sorted declared-tool versions.
+5. Validate lead output against `lead.schema.json` and Evidence output against `evidence.schema.json` before writes.
+6. Add `source.survey.cache-{hit,miss}` cache events and update `specrun source resolve --explain` to show both operations.
+7. Pin the `survey` cache fingerprint inputs explicitly in code and tests: source identity (path or value sha256) + adapter `name@version` + `survey` brief sha256 + sorted declared-tool versions.
 
 ### Wave B - Plan propose (Stage B1 only)
 
-Stage B2 (full writer) is explicitly deferred — see §"Candidate fusion engine (D2) → Stage B2" and the new "Candidate target-axis vocabulary" open question.
+Stage B2 (full writer) is explicitly deferred — see §"Lead fusion engine (D2) → Stage B2" and the new "Lead target-axis vocabulary" open question.
 
-1. Reuse the existing `Discovery` model in `crates/domain/src/discovery/` (parse, `resolve_candidate`, `check_alias_collisions` are already implemented and tested). No new parsing.
+1. Reuse the existing `Discovery` model in `crates/domain/src/discovery/` (parse, `resolve_lead`, `check_alias_collisions` are already implemented and tested). No new parsing.
 2. Implement the structural grouper as a pure function: `discovery::propose::group(&Discovery) -> Vec<Group>` covering rules 1 (exact id), 2 (exact alias), and 3 (transitive cross-reference). Surface diagnostic-only textual-similarity matches under `tentative_merges`.
 3. Commit `schemas/discovery/proposal.schema.json` and embed it as `PROPOSAL_JSON_SCHEMA` in `specify-schema`.
 4. Add `specrun plan propose --dry-run --format json` that runs the grouper, validates the output against `proposal.schema.json`, and prints. Reject every other `propose` form with `propose-target-binding-required` until Stage B2 lands.
-5. Update `/spec:plan` to call `specrun source enumerate` per source, then `specrun plan propose --dry-run`, then issue one `specrun plan add` per `(group, target)` pair the agent decides on. `specrun plan add` continues to be the only writer.
+5. Update `/spec:plan` to call `specrun source survey` per source, then `specrun plan propose --dry-run`, then issue one `specrun plan add` per `(group, target)` pair the agent decides on. `specrun plan add` continues to be the only writer.
 6. Add fixtures for exact match, alias match, transitive cross-reference, tentative non-match, and per-group multi-target fan-out (the agent emits two `plan add` calls — the fixture asserts both slices land with the expected `target` and `depends-on`).
 
 ### Wave C - Synthesis engine and slice model
@@ -1584,7 +1584,7 @@ No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay sin
 
 1. Add a parser regression test asserting that `plan.yaml.slices[]` rejects an `outputs[]` field if a stray draft ever introduces one. This pins D5 in code rather than only in this RFC.
 2. Confirm `specrun plan add` / `specrun plan amend` continue to refuse an `--output` flag; the only legal target binding is `--target <name@vN> [--project <slug>]`.
-3. Confirm `specrun plan propose --dry-run` (Wave B / Stage B1) emits one structural group per matched candidate set and that `/spec:plan`'s agent step issues one `specrun plan add` call per `(group, target)` pair with `depends-on` edges populated from operator-declared ordering hints in `discovery.md`.
+3. Confirm `specrun plan propose --dry-run` (Wave B / Stage B1) emits one structural group per matched lead set and that `/spec:plan`'s agent step issues one `specrun plan add` call per `(group, target)` pair with `depends-on` edges populated from operator-declared ordering hints in `discovery.md`.
 
 ### Wave E - Target build envelope
 
@@ -1599,8 +1599,8 @@ No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay sin
 
 ### Wave F - Proof fixtures and docs
 
-1. Add the RFC-29 end-to-end fixture (D7): two slices over two sources, joined by `depends-on`, each binding one target. Include the D8 invariant assertion (the two slices share a candidate; the shared-prefix of their `requirements[]` arrays is byte-identical).
-2. Update `docs/explanation/concepts.md` and `docs/explanation/adapter-anatomy.md` to distinguish source fan-in (Candidates + Evidence) from slice fan-out (plan-level decomposition with `depends-on`). Reaffirm "one slice, one target" alongside the existing `docs/explanation/decision-log.md` entry.
+1. Add the RFC-29 end-to-end fixture (D7): two slices over two sources, joined by `depends-on`, each binding one target. Include the D8 invariant assertion (the two slices share a lead; the shared-prefix of their `requirements[]` arrays is byte-identical).
+2. Update `docs/explanation/concepts.md` and `docs/explanation/adapter-anatomy.md` to distinguish source fan-in (Leads + Evidence) from slice fan-out (plan-level decomposition with `depends-on`). Reaffirm "one slice, one target" alongside the existing `docs/explanation/decision-log.md` entry.
 3. Update CLI reference pages for source, plan, slice, and target build reports — none of them gain an `outputs[]` field.
 4. Update acceptance docs with the new proof command sequence (two `specrun plan add` calls, one per target, second with `--depends-on`).
 
@@ -1623,7 +1623,7 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 - No hosted execution or cloud runner. RFC-29 is local-first.
 - No replacement of `spec.md` as the human behavioral artifact or baseline merge input.
 - No graph database or global knowledge store for synthesis.
-- No automatic merging of semantically similar candidates without exact id, alias, or operator-seeded evidence.
+- No automatic merging of semantically similar leads without exact id, alias, or operator-seeded evidence.
 - **No multi-target slices.** A slice binds exactly one target adapter / project (D5). Cross-target fan-out is plan-level, achieved by decomposing a change into multiple slices joined by `slices[].depends-on`. RFC-29 introduces no `outputs[]` array, no per-output lifecycle, no per-output build envelope, no per-output `.metadata.yaml` keying, and no per-output journal events. A future RFC that wishes to re-open this question must first amend `docs/explanation/decision-log.md` §"One plan entry, one project" and account for the multi-baseline merge contract that decision deliberately rules out.
 - No target-specific behavior in the reconciliation kernel. The bound target's `shape` brief is an input to the prose-synthesis step only, and only for the non-requirements sections of the slice model (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
 - No claim of deterministic prose synthesis. Cross-modal Evidence fusion is judgment work and remains agent-driven under the envelope defined in §"Synthesis envelope" (D3) and the execution mode in §"Synthesis execution mode" (D10). RFC-29 commits to deterministic *reconciliation*, not deterministic *prose*.
@@ -1653,9 +1653,9 @@ Rejected. `fusion.yaml` answers "why did this requirement win?" not "what should
 
 Considered in an earlier draft of this RFC under "D5 Multi-output plan entries" and rejected. A single slice driving multiple targets would have required the per-slice lifecycle to manage multiple project roots, multiple `shape` briefs, multiple build reports, and (most awkwardly) multiple baseline merges inside one `refining -> refined -> built -> merged` walk. That contradicts the existing "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project), `docs/reference/targets/index.md`, and `docs/explanation/adapter-anatomy.md`) and would have forced rework of `specrun slice merge`'s single-baseline contract.
 
-The accepted model is per-slice fan-out (D5): one slice, one target, one baseline, one merge. Cross-target changes decompose into N slices joined by `depends-on`. This costs some duplicate Evidence extraction when two slices fuse the same Candidate, but the duplication is bounded by the extraction cache (RFC-27) and pays for a single, well-defined per-slice lifecycle.
+The accepted model is per-slice fan-out (D5): one slice, one target, one baseline, one merge. Cross-target changes decompose into N slices joined by `depends-on`. This costs some duplicate Evidence extraction when two slices fuse the same Lead, but the duplication is bounded by the extraction cache (RFC-27) and pays for a single, well-defined per-slice lifecycle.
 
-### Allow arbitrary semantic candidate auto-merge
+### Allow arbitrary semantic lead auto-merge
 
 Rejected for v1. It would move too much judgment into the framework. Exact ids and aliases are reviewable; textual similarity is advisory until an operator accepts it.
 
@@ -1675,9 +1675,9 @@ This revision additionally resolves the question opened by the synthesis-determi
 
 The per-slice fan-out revision (D5) opens one new question that RFC-29 deliberately does **not** answer in v1:
 
-6. **Candidate target-axis vocabulary (Stage B2 prerequisite).** Under D5, `specrun plan propose` would need a deterministic policy for turning a candidate group into `(group, target)` slices. The four candidates considered are:
+6. **Lead target-axis vocabulary (Stage B2 prerequisite).** Under D5, `specrun plan propose` would need a deterministic policy for turning a lead group into `(group, target)` slices. The four leads considered are:
 
-   - **6.a Target hints on Candidates.** Source adapters tag each candidate with a closed `axes: [api, service, ui, …]` enum at `enumerate` time; `propose` cross-products groups by their members' union of axes. Cleanest long-term shape; requires extending `schemas/discovery/candidate.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
+   - **6.a Target hints on Leads.** Source adapters tag each lead with a closed `axes: [api, service, ui, …]` enum at `survey` time; `propose` cross-products groups by their members' union of axes. Cleanest long-term shape; requires extending `schemas/discovery/lead.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
    - **6.b Cross-product over plan-bound targets.** Emit `|groups| × |bound-targets|` slices and let the operator delete the irrelevant ones at Gate 1. Over-generates badly at scale; not viable past a handful of targets.
    - **6.c Operator post-amend.** `propose` emits `target: null` rows; operator runs `specrun plan amend --target` per slice. Pushes mechanical work onto the operator.
    - **6.d Status quo: agent decides.** Per the **D2 Stage B1** decision in this revision, this is what v1 does. Honest about the judgment involved; keeps the CLI free of an arbitrary heuristic. Costs us a deterministic acceptance assertion on `plan.yaml.slices[]` byte-stability and keeps target binding out of the CLI's audit / journal trail.

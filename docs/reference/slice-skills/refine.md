@@ -36,7 +36,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 
 ## Behavior
 
-1. **Resolve target and sources** — read `plan.yaml.slices[<slice>]` for `target:` and `sources[]`; cross-resolve against `discovery.md` candidate inventory.
+1. **Resolve target and sources** — read `plan.yaml.slices[<slice>]` for `target:` and `sources[]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
 4. **Synthesize** — load target `shape` brief; write `proposal.md → spec.md → design.md → tasks.md` in fixed order.
@@ -65,7 +65,7 @@ On extract failure, the slice stays `refining` with amend-plan guidance. On vali
 | Error | Cause | Resolution |
 | ----- | ----- | ---------- |
 | `refine-no-active-slice` | No `in-progress` entry and no slice argument | Run `/spec:execute` or pass slice name |
-| `refine-binding-unresolved` | Source key or candidate id not in plan/discovery | Fix plan bindings |
+| `refine-binding-unresolved` | Source key or lead id not in plan/discovery | Fix plan bindings |
 | Extract failure | Source path denied or brief error | Amend plan sources; re-run refine |
 | Validation failure | Provenance or fusion drift | Fix `spec.md` or `fusion.yaml`; re-validate |
 

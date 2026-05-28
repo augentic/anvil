@@ -4,11 +4,11 @@
 
 ## 1. `proposal.md`
 
-Carries the slice's *why*. Author from the candidate `summary` (in `discovery.md`) plus the contributing Evidence:
+Carries the slice's *why*. Author from the lead `summary` (in `discovery.md`) plus the contributing Evidence:
 
 - **Single-source intent** — `proposal.md` is a one- to three-paragraph restatement of the `intent` claim's `statement`. Scope is "what the operator asked for"; non-goals are inferred from the absence of language ("not …", "without …").
 - **Single-source documentation** — motivation comes from `decision` and top-level `section` claims; scope is the union of `requirement` claim subjects; non-goals are any `decision` claim that explicitly rules a path out.
-- **Single-source code (port)** — motivation is "preserve observed legacy behaviour for `<candidate-id>`"; scope is the set of handlers / endpoints surfaced by `excerpt` / `call` claims; non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
+- **Single-source code (port)** — motivation is "preserve observed legacy behaviour for `<lead-id>`"; scope is the set of handlers / endpoints surfaced by `excerpt` / `call` claims; non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
 - **Combined evidence** — fold all contributing sources into one narrative. When sources disagree on motivation (rare), state the higher-authority motivation as the operative one and note the lower-authority position as commentary.
 
 Required H2 sections, in order: `## Motivation`, `## Scope`, `## Non-goals`. No provenance lines on `proposal.md` — provenance lives in `spec.md`.

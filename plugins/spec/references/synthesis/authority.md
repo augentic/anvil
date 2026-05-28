@@ -87,7 +87,7 @@ Operator reconciliation required before /spec:build.
 
 ### No contributing Evidence (`[unknown]`)
 
-A requirement the slice's proposal calls for (e.g. covered by the candidate `summary`) that no source supplied a claim for. Synthesis still authors the block so the operator sees the gap:
+A requirement the slice's proposal calls for (e.g. covered by the lead `summary`) that no source supplied a claim for. Synthesis still authors the block so the operator sees the gap:
 
 ```markdown
 ### Requirement: Reset link single-use [unknown]
@@ -114,7 +114,7 @@ authority: behaviour            # document-level default (applied when no per-ki
 authority-overrides:
   decision: documentation       # decisions extracted from comments outrank decision claims from elsewhere
   criterion: behaviour          # explicit: pin behaviour-class precedence for criterion claims
-candidate: user-registration
+lead: user-registration
 ```
 
 Rules:
@@ -135,11 +135,11 @@ slices:
     project: identity-svc
     sources:
       - key: identity-design-notes
-        candidate: user-registration
+        lead: user-registration
       - key: legacy-monolith
-        candidate: user-registration
+        lead: user-registration
       - key: runtime
-        candidate: user-registration
+        lead: user-registration
     authority-override:
       requirement: runtime         # runtime captures dictate requirement-class disagreements on this slice
       criterion: legacy-monolith   # legacy code dictates criterion-class disagreements on this slice
@@ -182,9 +182,9 @@ slices:
     project: identity-svc
     sources:
       - key: identity-design-notes
-        candidate: password-reset
+        lead: password-reset
       - key: runtime
-        candidate: password-reset
+        lead: password-reset
     authority-override:
       criterion: runtime
     status: pending

@@ -1,7 +1,7 @@
 source: identity-design-notes
 adapter: documentation
 authority: documentation
-candidate: user-registration
+lead: user-registration
 claims:
   - kind: requirement
     claim-id: users.register.email-validation

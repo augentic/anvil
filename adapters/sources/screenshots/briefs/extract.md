@@ -1,6 +1,6 @@
 # `screenshots.extract`
 
-For one `Candidate`, run the vision-assisted spatial pipeline against the image(s) bound to that screen under `$SOURCE_DIR` and return a single `Evidence` document carrying `region` / `container` / `leaf` claims. The CLI persists the result at `.specify/slices/<slice>/evidence/<source-key>.yaml`; this brief returns the YAML body only.
+For one `Lead`, run the vision-assisted spatial pipeline against the image(s) bound to that screen under `$SOURCE_DIR` and return a single `Evidence` document carrying `region` / `container` / `leaf` claims. The CLI persists the result at `.specify/slices/<slice>/evidence/<source-key>.yaml`; this brief returns the YAML body only.
 
 The pipeline body lives in [`extract/pipeline.md`](extract/pipeline.md) and preserves the inference algorithm of the retired `vectis-image-layout-inferer` skill verbatim — triage → chrome cropping → regions → containers → leaves → conservative component detection. Only the *output* shape changed (flat claims instead of a hierarchical `layout.yaml`). Downstream synthesis (core) folds the claims back into the canonical artifacts; `adapters/targets/vectis/build` regenerates `composition.yaml` from the synthesised `spec.md` / `design.md`.
 
@@ -8,22 +8,22 @@ The pipeline body lives in [`extract/pipeline.md`](extract/pipeline.md) and pres
 
 - `$SOURCE_DIR` — read-only preopen of the bound screenshots directory.
 - `<source-key>` — the plan-level binding key under `plan.yaml.sources.<key>`.
-- `<candidate-id>` — the candidate from `discovery.md` this run is extracting Evidence for (one screen, possibly with state and platform variants attached).
+- `<lead-id>` — the lead from `discovery.md` this run is extracting Evidence for (one screen, possibly with state and platform variants attached).
 - `$SCRATCH_DIR` — per-slice write-only scratch space. Use only for unavoidable intermediate state (cropped image staging).
 
 ## Vision prerequisite
 
-Identical to `screenshots.enumerate`: read at least one of the input image paths through the runtime's native attachment mechanism. On failure, exit `1` with the supported-runtimes message — never fall back to filename or metadata inference.
+Identical to `screenshots.survey`: read at least one of the input image paths through the runtime's native attachment mechanism. On failure, exit `1` with the supported-runtimes message — never fall back to filename or metadata inference.
 
-## Resolve the candidate's images
+## Resolve the lead's images
 
-The candidate id was produced by `screenshots.enumerate` from one screen (potentially with state / platform variants triaged into it). Resolve it back:
+The lead id was produced by `screenshots.survey` from one screen (potentially with state / platform variants triaged into it). Resolve it back:
 
-1. Prefer images whose vision-inferred title slugs to `<candidate-id>`.
-2. Fall back to images whose kebab-cased filename stem equals `<candidate-id>` (or starts with `<candidate-id>-` for state variants).
+1. Prefer images whose vision-inferred title slugs to `<lead-id>`.
+2. Fall back to images whose kebab-cased filename stem equals `<lead-id>` (or starts with `<lead-id>-` for state variants).
 3. When operator `state` / `group` / `platform` hints accompany the source binding, apply them as authoritative: hint-bound images win over visual similarity.
 
-If no image resolves, return Evidence with `claims: []` rather than fabricating content. The CLI treats empty `claims:` as valid; an unresolvable candidate becomes a `Status: unknown` requirement during synthesis.
+If no image resolves, return Evidence with `claims: []` rather than fabricating content. The CLI treats empty `claims:` as valid; an unresolvable lead becomes a `Status: unknown` requirement during synthesis.
 
 ## Pipeline
 
@@ -62,7 +62,7 @@ Keep the dotted segments kebab-case. Re-running `extract` against the same sourc
 
 ## Output
 
-Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`source`, `adapter`, `authority`, `candidate`, `claims`). Each claim's body fields depend on its `kind`:
+Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`source`, `adapter`, `authority`, `lead`, `claims`). Each claim's body fields depend on its `kind`:
 
 - **region** — `screen`, `region` (closed enum: `header | body | footer | fab | states.<name> | overlays.<name> | platforms.<platform>.<region>`); optional `bbox`, `title`, `overlay_kind`, `state_when`, `state_replaces`, `notes.cropped_chrome`.
 - **container** — `screen`, `region`, `parent`, `container` (closed enum: `group | list | grid | form | card | surface | divider`); optional `direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`, `each`, `columns`, `rows`, `style`, `component`, `notes.candidate_component`, `notes.todo`.
@@ -70,7 +70,7 @@ Return one Evidence document matching `schemas/evidence.schema.json`. Field orde
 
 `adapter` is always the literal `screenshots`. `authority` is always the literal `documentation` (operator-provided written product / technical intent — see the authority hierarchy `intent > documentation > behaviour`).
 
-Worked example: [`references/examples/task-list.md`](../references/examples/task-list.md) — a `task-list` candidate with populated and empty-state images, ending in a candidate-component note that promotes to `component: task-row` on the next pass.
+Worked example: [`references/examples/task-list.md`](../references/examples/task-list.md) — a `task-list` lead with populated and empty-state images, ending in a candidate-component note that promotes to `component: task-row` on the next pass.
 
 ## Guardrails
 
@@ -82,4 +82,4 @@ Worked example: [`references/examples/task-list.md`](../references/examples/task
 - Never invent token names that do not appear in `design-system/tokens.yaml`. Raw values plus `notes.todo` are the v1 escape hatch.
 - Never invent asset IDs that do not appear in `design-system/assets.yaml`. Emit `name:` placeholder plus `notes.todo`.
 - Never promote a candidate component to `component: <slug>` unless the pipeline's stage-6 policy is satisfied. When in doubt, emit the note.
-- Empty `claims: []` is valid output when the candidate cannot be resolved to any image content. Do not pad with speculative claims.
+- Empty `claims: []` is valid output when the lead cannot be resolved to any image content. Do not pad with speculative claims.

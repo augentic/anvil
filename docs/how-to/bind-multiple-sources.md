@@ -12,7 +12,7 @@ Append multiple `source` positionals after the change name:
 /spec:plan identity-revamp source legacy=code-typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
-Each binding creates a slot in `plan.yaml.sources` and contributes candidates to `discovery.md`.
+Each binding creates a slot in `plan.yaml.sources` and contributes leads to `discovery.md`.
 
 ## Binding forms
 
@@ -20,21 +20,21 @@ Each binding creates a slot in `plan.yaml.sources` and contributes candidates to
 | ---- | ------- | -------- |
 | Path binding | `docs=documentation:./design-notes` | Filesystem tree |
 | Value binding | `intent=intent:value:fix typo in user.rs` | Inline operator intent |
-| Code binding | `legacy=code-typescript:./src` | Legacy codebase enumeration |
+| Code binding | `legacy=code-typescript:./src` | Legacy codebase survey |
 
 ## Multi-source slices
 
-At propose time, fuse candidates across sources into one slice row:
+At propose time, fuse leads across sources into one slice row:
 
 ```bash
-specrun plan add <slice> --sources legacy=<candidate-id> --sources docs=<candidate-id>
+specrun plan add <slice> --sources legacy=<lead-id> --sources docs=<lead-id>
 ```
 
 Single-source intent slices may use the shorthand `sources: [intent]`.
 
 ## Uncertain fusion
 
-When candidates align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `approved`.
+When leads align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `approved`.
 
 When summaries materially disagree, the plan skill may stamp `divergence: likely` on affected slice rows.
 

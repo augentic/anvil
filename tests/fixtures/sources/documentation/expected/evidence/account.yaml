@@ -1,7 +1,7 @@
 source: product-notes
 adapter: documentation
 authority: documentation
-candidate: account
+lead: account
 claims:
   - kind: requirement
     claim-id: account.storage

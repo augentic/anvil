@@ -5,7 +5,7 @@ Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn 
 <div class="audience-grid">
   <div class="audience">
     <div class="who">Source author</div>
-    <div class="path"><a href="#source-adapter-contract">enumerate + extract</a> → <a href="#sandboxing">Sandboxing</a></div>
+    <div class="path"><a href="#source-adapter-contract">survey + extract</a> → <a href="#sandboxing">Sandboxing</a></div>
   </div>
   <div class="audience">
     <div class="who">Target author</div>
@@ -21,7 +21,7 @@ Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn 
 
 | Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
 | -------- | ------------ | --------------------------- | ------------------------------------------------ | ------------------------ |
-| `source` | input        | `enumerate`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `adapters/sources/<name>/`        |
+| `source` | input        | `survey`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `adapters/sources/<name>/`        |
 | `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `adapters/targets/<name>/`        |
 
 Both ship `adapter.yaml` validated by an axis-specific schema (`schemas/source.schema.json` or `schemas/target.schema.json` distributed with the CLI). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
@@ -36,7 +36,7 @@ name: code-typescript
 version: 1
 axis: source
 briefs:
-  enumerate: briefs/enumerate.md
+  survey: briefs/survey.md
   extract:   briefs/extract.md
 ```
 
@@ -51,13 +51,13 @@ briefs:
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `enumerate` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
 A source adapter participates in two places in the lifecycle.
 
-**`enumerate(Source) → Candidate[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized candidate under `## Candidate inventory` in `discovery.md`. Each block carries a stable `id` and a `sources[]` list. Re-enumerating the same source replaces blocks by `id`; enumerating a different source appends new ids. The candidate grammar:
+**`survey(Source) → Lead[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized lead under `## Lead inventory` in `discovery.md`. Each block carries a stable `id` and a `sources[]` list. Re-surveying the same source replaces blocks by `id`; surveying a different source appends new ids. The lead grammar:
 
 ```markdown
 ### user-registration
@@ -67,13 +67,13 @@ A source adapter participates in two places in the lifecycle.
 - summary: Registration endpoint accepting email + password with email-format validation.
 ```
 
-**`extract(Candidate, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`:
+**`extract(Lead, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`:
 
 ```yaml
 source: legacy-monolith
 adapter: code-typescript
 authority: behaviour
-candidate: user-registration
+lead: user-registration
 claims:
   - kind: excerpt
     claim-id: users.register.email-validation
@@ -93,7 +93,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | `$SCRATCH_DIR`    | write-only | `.specify/.cache/extractions/<adapter>/<slice>/` — per-slice scratch under the per-source extraction tree. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
-Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-enumerate-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
+Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
 
 ## Target adapter contract
 
@@ -111,7 +111,7 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 ![Source and target adapter axes](../assets/diagrams/adapter-anatomy/adapter-axes.svg)
 
-<p class="pipeline-caption">Sources enumerate/extract into evidence; core synthesis reads target shape; target build/merge lands code.</p>
+<p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target shape; target build/merge lands code.</p>
 </div>
 
 The adapter loader (`crates/domain/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
@@ -178,7 +178,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
 1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
 2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
 3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
-4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `enumerate` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
+4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`.
 6. **Validate.** `specrun source resolve <name>` / `specrun target resolve <name>` exercises manifest loading; `make check` runs the documentation predicates and the schema validators.
 

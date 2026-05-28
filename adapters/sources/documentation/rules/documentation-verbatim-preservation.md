@@ -20,7 +20,7 @@ Operator-provided documentation is the highest-fidelity input for `authority: do
 - Bullet lists in the source flattened into one criterion sentence rather than one `criterion` claim per bullet.
 - Synonyms or rewrites of operator vocabulary (`user` → `customer`, `must` → `should`, domain terms paraphrased into generic English).
 - `requirement` or `criterion` claims whose `path` anchor points at lines that do not contain the quoted text.
-- Sentences invented to "fill in" an empty section instead of returning `claims: []` for an unresolvable candidate.
+- Sentences invented to "fill in" an empty section instead of returning `claims: []` for an unresolvable lead.
 
 ## Spec Guidance
 

@@ -127,7 +127,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with `specify-cli` under `schemas/` and are loaded by the `specify-authoring` crate.
 
-**Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
+**Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`survey` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
 ### 3. Adapter referential integrity
 

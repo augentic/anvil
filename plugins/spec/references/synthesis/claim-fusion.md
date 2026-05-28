@@ -77,4 +77,4 @@ When a fused `claim-id` group carries claims from multiple authorities, [`author
 
 ## Plan-time fusion is a separate playbook
 
-This file covers slice-time `Evidence[]` fusion only. Plan-time `Candidate[]` fusion — the `propose` sub-step inside `/spec:plan` that writes `slices[]` rows — is W3.2's territory; if it shares anything with this file, W3.2 references this document explicitly rather than this file describing plan-time behaviour.
+This file covers slice-time `Evidence[]` fusion only. Plan-time `Lead[]` fusion — the `propose` sub-step inside `/spec:plan` that writes `slices[]` rows — is W3.2's territory; if it shares anything with this file, W3.2 references this document explicitly rather than this file describing plan-time behaviour.

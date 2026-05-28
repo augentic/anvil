@@ -22,7 +22,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/spec:init`             | One-time project setup; run `specrun init --hub` for a registry-only platform hub               |
-| `/spec:plan`             | Enumerate sources, propose `slices[]`, exit at Gate 1                                          |
+| `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
 | `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
@@ -36,7 +36,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
 | `change.md`         | Why is the change happening?        | `.specify/change.md` (workspace mode: at workspace root)          |
 | `plan.yaml`         | Which slices, in what order?        | `.specify/plan.yaml`                                              |
-| `discovery.md`      | What candidates did sources surface? | `.specify/discovery.md`                                           |
+| `discovery.md`      | What leads did sources surface? | `.specify/discovery.md`                                           |
 | `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
 | `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<unit>/spec.md`                     |
 | `design.md`         | How will it be implemented?         | `.specify/slices/<name>/design.md`                                |
@@ -76,8 +76,8 @@ specrun target resolve <value>                           # validate a target ada
 
 # Plan management
 specrun plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specrun plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
-specrun plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
+specrun plan add <name> --sources <key>=<lead-id> --target <name> --project <name>
+specrun plan amend <name> --add-source <key>=<lead-id> --remove-source <key> --divergence accepted
 specrun plan transition <name> approved                  # Gate 1; operator-only
 specrun plan next                                        # active in-progress, or pick next pending
 specrun plan archive
@@ -120,7 +120,7 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
     ├── project.yaml      # project config (target, sources, workspace, specify-version)
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
-    ├── discovery.md      # plan-time candidate inventory
+    ├── discovery.md      # plan-time lead inventory
     ├── plan.lock         # advisory file lock for /spec:execute and breakouts
     ├── .cache/           # cached adapter manifests + briefs ({sources,targets}/)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)

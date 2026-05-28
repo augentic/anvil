@@ -15,7 +15,7 @@ At plan time, bind a code source alongside or instead of documentation:
 /spec:plan legacy-migration source legacy=code-typescript:./vendor/monolith
 ```
 
-The source adapter's `enumerate` operation scans the bound tree and emits slice-sized **candidates** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis fuses into `spec.md`.
+The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis fuses into `spec.md`.
 
 Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `/spec:execute` drives each slice through refine → build → merge.
 
@@ -32,7 +32,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 1. [Bind multiple sources](../how-to/bind-multiple-sources.md) — combine legacy code with design notes at plan time
 2. [Your first multi-slice change](first-change.md) — multi-slice execute rhythm
-3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — enumerate vs extract operations
+3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — survey vs extract operations
 4. [Target adapters](../reference/targets/omnia.md) — Omnia build and merge briefs
 
 ## Acceptance scenarios

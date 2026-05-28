@@ -266,7 +266,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Source/target split
 
-**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `enumerate` + `extract` briefs at `adapters/sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `adapters/targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the manifest cache splits as `.specify/.cache/manifests/{sources,targets}/<name>/` (the workflow §D8 per-source extraction cache lives in a disjoint sibling tree at `.specify/.cache/extractions/<adapter>/`).
+**Decision:** Replace the unqualified 1.x "adapter" with two qualified roles. **Source adapters** declare `axis: source` and ship `survey` + `extract` briefs at `adapters/sources/<name>/adapter.yaml`. **Target adapters** declare `axis: target` and ship `shape` + `build` + `merge` briefs at `adapters/targets/<name>/adapter.yaml`. The adapter loader (`crates/domain/src/adapter/`) routes by axis and the manifest cache splits as `.specify/.cache/manifests/{sources,targets}/<name>/` (the workflow §D8 per-source extraction cache lives in a disjoint sibling tree at `.specify/.cache/extractions/<adapter>/`).
 
 **Rationale:** `/change:analyze` and `/change:survey` were two evidence sources for the same operation; `/spec:define` and `/spec:extract` repeated the pattern at slice time. Unqualified `adapter` only named outputs, leaving no symmetrical term for inputs. Qualifying by direction makes the input/output asymmetry explicit, gives third-party legacy migration a first-class home (source adapters), and lets one resolver module replace the bifurcated define/analyze surface.
 
@@ -282,9 +282,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Multi-source slices
 
-**Decision:** `Slice.sources` is a list of `{ key, candidate }` bindings with cardinality ≥ 1. Each binding pairs a source key (referencing `plan.yaml.sources.<key>`) with the candidate id from `discovery.md` that contributed to the slice. The reader accepts a bare `<key>` shorthand when the candidate id equals the slice's `name`; the CLI always writes the structured form.
+**Decision:** `Slice.sources` is a list of `{ key, lead }` bindings with cardinality ≥ 1. Each binding pairs a source key (referencing `plan.yaml.sources.<key>`) with the lead id from `discovery.md` that contributed to the slice. The reader accepts a bare `<key>` shorthand when the lead id equals the slice's `name`; the CLI always writes the structured form.
 
-**Rationale:** Combined evidence (code + documentation, intent + design notes, screenshots + product brief) is the common case for non-trivial work. Single-source slices become a degenerate one-binding case rather than the structural default. Carrying the candidate id on every binding preserves the back-reference into `discovery.md` so re-enumeration can replace by id without disturbing the slice row.
+**Rationale:** Combined evidence (code + documentation, intent + design notes, screenshots + product brief) is the common case for non-trivial work. Single-source slices become a degenerate one-binding case rather than the structural default. Carrying the lead id on every binding preserves the back-reference into `discovery.md` so re-survey can replace by id without disturbing the slice row.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -298,7 +298,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Always plan
 
-**Decision:** Every change runs through `enumerate` and `plan.yaml`, including N=1. `/spec:define` retires; trivial work uses the degenerate `intent.enumerate` path — one operator-supplied intent value produces one candidate, which becomes one slice.
+**Decision:** Every change runs through `survey` and `plan.yaml`, including N=1. `/spec:define` retires; trivial work uses the degenerate `intent.survey` path — one operator-supplied intent value produces one lead, which becomes one slice.
 
 **Rationale:** 1.x's `/spec:define` shortcut for "single trivial slice" duplicated the plan-time machinery and produced an orphan path that bypassed Gate 1. Collapsing to one rhythm — `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` — means N=1 and N=12 share every skill body, every CLI verb, and every artifact. Operator ergonomics at N=1 became the release blocker for the collapse.
 
@@ -346,8 +346,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Automated propose
 
-**Decision:** `/spec:plan`'s `propose` sub-step fuses `Candidate[]` from each source's `enumerate` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing candidate blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — fusion runs on candidate headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
+**Decision:** `/spec:plan`'s `propose` sub-step fuses `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing lead blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — fusion runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
 
-**Rationale:** Operator-driven candidate fusion at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
+**Rationale:** Operator-driven lead fusion at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.

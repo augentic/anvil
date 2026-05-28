@@ -19,7 +19,7 @@ Bind a filesystem path instead of inline intent:
 /spec:plan account-revamp source docs=./design-notes/account
 ```
 
-The plan enumerates the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
+The plan surveys the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
 
 ```yaml
 version: 1
@@ -33,23 +33,23 @@ slices:
     target: omnia
     sources:
       - key: docs
-        candidate: account-registration
+        lead: account-registration
     status: pending
   - name: password-reset
     target: omnia
     sources:
       - key: docs
-        candidate: password-reset
+        lead: password-reset
     status: pending
   - name: account-audit-log
     target: omnia
     sources:
       - key: docs
-        candidate: account-audit-log
+        lead: account-audit-log
     status: pending
 ```
 
-Each slice row maps one candidate from `discovery.md` to a unit of work.
+Each slice row maps one lead from `discovery.md` to a unit of work.
 
 ## Step 2 — Inspect at Gate 1
 
@@ -57,7 +57,7 @@ Before stamping `approved`, read:
 
 - **`change.md`** — scope and any tentative merge notes
 - **`plan.yaml`** — slice names, source bindings, dependency order
-- **`discovery.md`** — full candidate inventory
+- **`discovery.md`** — full lead inventory
 
 Amend if needed:
 

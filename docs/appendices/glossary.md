@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify 2.0.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `enumerate` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specrun plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -28,15 +28,15 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/briefs/{enumerate,extract}.md` or `adapters/targets/<name>/briefs/{shape,build,merge}.md`.
+A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/briefs/{survey,extract}.md` or `adapters/targets/<name>/briefs/{shape,build,merge}.md`.
 
 **Breakout verb**
 `/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `/spec:execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Shares the same skill body as the in-loop call.
 
 ## C
 
-**Candidate**
-A slice-sized unit emitted by a source adapter's `enumerate`. One block per candidate under `## Candidate inventory` in `discovery.md`, with stable `id` and `sources[]`. Re-enumerating the same source replaces blocks by `id`.
+**Lead**
+A slice-sized unit emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, with stable `id` and `sources[]`. Re-surveying the same source replaces blocks by `id`.
 
 **Change**
 The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary in 2.0, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
@@ -56,7 +56,7 @@ The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0
 ## D
 
 **Discovery**
-The plan-time discovery artifact at `.specify/discovery.md` (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Candidate inventory`. Written by `/spec:plan` through CLI helpers.
+The plan-time discovery artifact at `.specify/discovery.md` (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
 
 **Divergence**
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
@@ -66,8 +66,8 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 
 ## E
 
-**Enumerate**
-The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Candidate` block per slice-sized unit under `## Candidate inventory` in `discovery.md`.
+**Survey**
+The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`.
 
 **Evidence**
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
@@ -76,7 +76,7 @@ The per-source result of `extract`. A structured document with `claims:` persist
 The supervised driver skill (`/spec:execute`) that loops per slice: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
-The slice-time operation declared by a source adapter. Reads one `Candidate` plus the bound source and returns `Evidence` content the CLI persists.
+The slice-time operation declared by a source adapter. Reads one `Lead` plus the bound source and returns `Evidence` content the CLI persists.
 
 ## F
 
@@ -118,7 +118,7 @@ The shared shape for either adapter role. Schemas `source.schema.json` / `target
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that fuses `Candidate[]` from each source's `enumerate` into `slices[]` rows in `plan.yaml`. Agent-default with operator override at Gate 1. Tentative merges annotate with `tentative: true`; materially-disagreeing summary pairs set `slices[].divergence: likely`.
+The `/spec:plan` sub-step that fuses `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml`. Agent-default with operator override at Gate 1. Tentative merges annotate with `tentative: true`; materially-disagreeing summary pairs set `slices[].divergence: likely`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -146,7 +146,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `enumerate` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `adapters/sources/<name>/adapter.yaml`.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `adapters/sources/<name>/adapter.yaml`.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.

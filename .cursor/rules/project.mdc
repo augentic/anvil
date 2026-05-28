@@ -68,10 +68,10 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/
-  ├── sources/            # Source adapters: adapter.yaml + briefs/{enumerate,extract}.md
+  ├── sources/            # Source adapters: adapter.yaml + briefs/{survey,extract}.md
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
-  │   ├── code-typescript/    # legacy TypeScript enumeration + extract
+  │   ├── code-typescript/    # legacy TypeScript survey + extract
   │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
   ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
@@ -81,7 +81,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   └── shared/               # Shared adapter support material, not adapters
       ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
       └── target-hooks/replay/
-/schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
+/schemas/                 # plugin, source, target, evidence, lead JSON Schemas
 /scripts/                 # Validation and plugin management
 ```
 

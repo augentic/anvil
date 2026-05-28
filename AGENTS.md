@@ -8,19 +8,19 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 ### Adapter roles
 
-- **source adapter** — input role with two operations: `enumerate` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`.
+- **source adapter** — input role with two operations: `survey` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`.
 - **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter". Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
 - **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`crates/domain/src/adapter/`](https://github.com/augentic/specify-cli/tree/main/crates/domain/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
 
 ### Synthesis terms
 
-- **candidate** — slice-sized unit emitted by `enumerate`; one block per candidate under `## Candidate inventory` in `discovery.md`, with stable `id` and `sources[]`.
+- **lead** — slice-sized unit emitted by `survey`; one block per lead under `## Lead inventory` in `discovery.md`, with stable `id` and `sources[]`.
 - **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
 - **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
 - **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [`plugins/spec/references/synthesis/fusion.md`](plugins/spec/references/synthesis/fusion.md) for the reconciliation-index shape and audit posture.
-- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, candidate id). See [`plugins/spec/references/synthesis/claim-fusion.md`](plugins/spec/references/synthesis/claim-fusion.md) and the CLI extraction-cache implementation for the stable cache inputs.
+- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, lead id). See [`plugins/spec/references/synthesis/claim-fusion.md`](plugins/spec/references/synthesis/claim-fusion.md) and the CLI extraction-cache implementation for the stable cache inputs.
 - **component catalog** — operator-curated file at `.specify/design-system/components.yaml` declaring shared UI components (`status: confirmed | rejected`). The Vectis target reads the catalog at build time and factors shared component code per shell tree. Follows the same pattern as `tokens.yaml` and `assets.yaml`. Opt-in; absent catalog means no component factoring. Validated by `specrun slice validate` (`slice-catalog-drift`) and `specrun tool run vectis -- validate composition` (catalog cross-reference check). See [docs/explanation/components.md](docs/explanation/components.md).
 
 ### Workflow nouns
@@ -59,7 +59,7 @@ The full mechanics — per-kind authority overrides, per-slice operator override
 The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
 
 - `/spec:init` — scaffold `.specify/`, run once per project.
-- `/spec:plan` — author `change.md` and `plan.yaml`: enumerate each bound source, propose `slices[]` rows by fusing candidates across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> approved` command.
+- `/spec:plan` — author `change.md` and `plan.yaml`: survey each bound source, propose `slices[]` rows by fusing leads across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> approved` command.
 - `specrun plan transition <name> approved` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `approved` itself.
 - `/spec:execute` — refuses unless the plan is `approved`; loops `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
 - `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
@@ -68,7 +68,7 @@ The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:exe
 - `/spec:drop` — abandon a slice without merging.
 - `/spec:finalize` — push branches, observe PR state, run `specrun plan archive` once every PR is `MERGED`.
 
-N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `approved`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
+N=1 is degenerate, not special: `intent.survey` produces one lead, the operator stamps `approved`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
 ## Skill / CLI responsibility split
 

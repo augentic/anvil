@@ -4,9 +4,9 @@ slice:
   project: identity-svc
   sources:
     - key: product-notes
-      candidate: password-reset-expiry
+      lead: password-reset-expiry
     - key: identity-design-notes
-      candidate: password-reset-expiry
+      lead: password-reset-expiry
   status: in-progress
 plan-sources:
   product-notes:

@@ -10,5 +10,5 @@ slices:
     target: omnia
     sources:
       - key: identity-design-notes
-        candidate: user-registration
+        lead: user-registration
     status: in-progress
