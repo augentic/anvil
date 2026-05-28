@@ -1,6 +1,6 @@
 version: 1
 name: identity-revamp
-lifecycle: reviewed
+lifecycle: approved
 sources:
   identity-design-notes:
     adapter: documentation

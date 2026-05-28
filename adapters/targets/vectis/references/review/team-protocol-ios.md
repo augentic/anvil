@@ -22,7 +22,7 @@ For EACH finding (IOS-, SWF-, INT-, and UNI- prefixed):
 5. Preserve any attached rule_id (codex citations match `^VECTIS-[0-9]{3}$`
    for Vectis-owned rules and `^UNI-[0-9]{3}$` for shared rules; the markdown
    `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28
-   `ReviewFinding` wire shape). For new findings, add rule_id only when
+   `LintFinding` wire shape). For new findings, add rule_id only when
    the issue clearly maps to a stable codex rule.
 
 Then perform a COUNTER-SCAN of all `.swift` files under `iOS/` looking

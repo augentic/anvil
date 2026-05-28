@@ -82,7 +82,7 @@
         }
       }
     },
-    "review_mode": {
+    "lint_mode": {
       "type": "string",
       "enum": [
         "deterministic",

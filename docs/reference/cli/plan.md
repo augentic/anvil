@@ -9,7 +9,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
-| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> reviewed`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
+| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> approved`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
@@ -94,7 +94,7 @@ specrun plan transition <name> <target> [--reason "<text>"]
 
 | Target | Applies to | Meaning |
 |--------|------------|---------|
-| `reviewed` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
+| `approved` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
 | `done` | `<entry-name>` (a `slices[]` row) | Close the entry after `/spec:merge` folded the slice. |
 
 Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.

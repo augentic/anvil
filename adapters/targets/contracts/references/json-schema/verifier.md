@@ -160,7 +160,7 @@ Algorithm:
 
 3. **For each schema with no consumers**, skip Check 4 — there is no binding-side risk surface inside the slice. The compatibility risk lives entirely in `cross-project` mode (downstream projects may have their own consumers).
 
-The `change-kind` enum above is a contract-domain classification — not the RFC-28 severity enum. The Severity column gives the markdown-report ladder for the verify-repair loop; if a Check 4 finding is later surfaced as an RFC-28 `ReviewFinding`, the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) sits on the envelope while `change-kind` and the per-property contract context (schema pointer, property name, baseline binding paths) travel inside `evidence.kind: structured` under `evidence.data` (RFC-28 §"Relationship to contracts and compatibility").
+The `change-kind` enum above is a contract-domain classification — not the RFC-28 severity enum. The Severity column gives the markdown-report ladder for the verify-repair loop; if a Check 4 finding is later surfaced as an RFC-28 `LintFinding`, the closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) sits on the envelope while `change-kind` and the per-property contract context (schema pointer, property name, baseline binding paths) travel inside `evidence.kind: structured` under `evidence.data` (RFC-28 §"Relationship to contracts and compatibility").
 
 Report format:
 
@@ -276,7 +276,7 @@ Field semantics:
 
 Callers that surface post-merge validator failures (the merge brief on a blocking finding) parse `findings[]` and include `{ rule-id, path, detail }` triples in the stop hint's `paths` field. The load-bearing finding is typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`; the full envelope is captured at the log path referenced in the stop hint.
 
-When a caller re-surfaces an envelope finding as an RFC-28 `ReviewFinding` (see [RFC-28 §Structured review finding schema](../../../../../rfcs/done/rfc-28-standards-contract.md#structured-review-finding-schema)), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. Schema-side contract metadata (schema pointer, `$id`, plus any single-mode Check 4 `change-kind` such as `removed-field` / `required-field-added` / `type-narrowed` / `enum-value-removed` / `additional-properties-tightened`) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
+When a caller re-surfaces an envelope finding as an RFC-28 `LintFinding` (see [RFC-28 §Structured review finding schema](../../../../../rfcs/done/rfc-28-standards-contract.md#structured-review-finding-schema)), the mapping is: `findings[].rule-id` → `rule-id`, `findings[].path` → `location.path`, `target-adapter: contracts`. Schema-side contract metadata (schema pointer, `$id`, plus any single-mode Check 4 `change-kind` such as `removed-field` / `required-field-added` / `type-narrowed` / `enum-value-removed` / `additional-properties-tightened`) lives inside `evidence.kind: structured` with the contract data under `evidence.data`. The closed RFC-28 severity enum (`critical` / `important` / `suggestion` / `optional`) is separate from any compatibility classification — classifiers remain contract-domain evidence fields, not severity.
 
 ### Exit semantics
 

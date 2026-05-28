@@ -38,11 +38,11 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | --- | --- | --- |
 | **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specrun slice transition` |
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Codex rules under `adapters/**/codex/`; `specrun codex export` and `specrun review` |
+| **Engineering standards** | Durable policy that outlives any slice | Codex rules under `adapters/**/codex/`; `specrun rules export` and `specrun lint` |
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (codex, enforced per [RFC-28](rfcs/done/rfc-28-standards-contract.md) / [RFC-32](rfcs/done/rfc-32-standards-enforcement.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
 
-`specrun review` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `reviewed` are separate surfaces.
+`specrun lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
 ### Authority and fusion mechanics
 
@@ -56,19 +56,19 @@ The full mechanics — per-kind authority overrides, per-slice operator override
 
 ## Workflow overview
 
-The default rhythm is `/spec:plan` → operator stamps `reviewed` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
+The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
 
 - `/spec:init` — scaffold `.specify/`, run once per project.
-- `/spec:plan` — author `change.md` and `plan.yaml`: enumerate each bound source, propose `slices[]` rows by fusing candidates across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> reviewed` command.
-- `specrun plan transition <name> reviewed` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `reviewed` itself.
-- `/spec:execute` — refuses unless the plan is `reviewed`; loops `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
+- `/spec:plan` — author `change.md` and `plan.yaml`: enumerate each bound source, propose `slices[]` rows by fusing candidates across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> approved` command.
+- `specrun plan transition <name> approved` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `approved` itself.
+- `/spec:execute` — refuses unless the plan is `approved`; loops `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
 - `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 - `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
 - `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
 - `/spec:finalize` — push branches, observe PR state, run `specrun plan archive` once every PR is `MERGED`.
 
-N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `reviewed`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
+N=1 is degenerate, not special: `intent.enumerate` produces one candidate, the operator stamps `approved`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
 ## Skill / CLI responsibility split
 
@@ -86,7 +86,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 ## Plan-driven loop
 
-`/spec:plan` authors the plan and exits at Gate 1; the operator stamps `reviewed`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specrun plan add` / `specrun plan amend`; plan *lifecycle* is only ever written via `specrun plan transition`; per-entry `in-progress` is only ever written by `specrun plan next`; per-entry `done` is only ever written by `specrun slice merge`. Per-entry status walks backwards only via `specrun plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
+`/spec:plan` authors the plan and exits at Gate 1; the operator stamps `approved`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specrun plan add` / `specrun plan amend`; plan *lifecycle* is only ever written via `specrun plan transition`; per-entry `in-progress` is only ever written by `specrun plan next`; per-entry `done` is only ever written by `specrun slice merge`. Per-entry status walks backwards only via `specrun plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
 
 ## Commands
 

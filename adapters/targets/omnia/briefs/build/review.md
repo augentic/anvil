@@ -1,6 +1,6 @@
 # Omnia build — standards review (code reviewer)
 
-Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succeeds. Applies **engineering standards** with model-assisted judgment: an agent team of three specialists (Security, Correctness, Quality) plus an antagonist; the lead synthesises findings into `$REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md`. This is build-time standards application, not CI-native `specrun review` (planned RM-10) and not plan Gate 1. Carries the body of the retired `omnia-code-reviewer` skill.
+Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succeeds. Applies **engineering standards** with model-assisted judgment: an agent team of three specialists (Security, Correctness, Quality) plus an antagonist; the lead synthesises findings into `$REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md`. This is build-time standards application, not CI-native `specrun lint` (planned RM-10) and not plan Gate 1. Carries the body of the retired `omnia-code-reviewer` skill.
 
 ## Review pipeline
 
@@ -17,8 +17,8 @@ Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succe
 
 ## Finding-ID conventions
 
-- Report-local occurrence IDs: `SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`. These are the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage).
-- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape. Omnia-specific codex rules live under [`adapters/targets/omnia/codex/`](../../codex/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
+- Report-local occurrence IDs: `SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`. These are the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage).
+- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Omnia-specific codex rules live under [`adapters/targets/omnia/codex/`](../../codex/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
 - Severity uses the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Antagonist adjustments rewrite the displayed severity but preserve the original prefix and occurrence ID.
 - Every finding carries a `file:line` reference and a verbatim code snippet.
 

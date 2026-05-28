@@ -48,7 +48,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 Plan lifecycle (two stored states):
 
 ```text
-pending --(operator stamps Gate 1)--> reviewed
+pending --(operator stamps Gate 1)--> approved
 ```
 
 Per-entry status:
@@ -78,7 +78,7 @@ specrun target resolve <value>                           # validate a target ada
 specrun plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
 specrun plan add <name> --sources <key>=<candidate-id> --target <name> --project <name>
 specrun plan amend <name> --add-source <key>=<candidate-id> --remove-source <key> --divergence accepted
-specrun plan transition <name> reviewed                  # Gate 1; operator-only
+specrun plan transition <name> approved                  # Gate 1; operator-only
 specrun plan next                                        # active in-progress, or pick next pending
 specrun plan archive
 

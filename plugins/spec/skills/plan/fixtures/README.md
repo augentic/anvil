@@ -12,5 +12,5 @@ Reference outputs for the acceptance scenarios `/spec:plan` exercises end-to-end
 Closing-hint wording is identical across all scenarios:
 
 ```text
-Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `<name>` is at `pending`. Run `specrun plan transition <name> approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```

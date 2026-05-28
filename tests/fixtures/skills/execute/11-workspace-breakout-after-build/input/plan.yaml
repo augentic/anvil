@@ -1,6 +1,6 @@
 version: 1
 name: identity-rotation
-lifecycle: reviewed
+lifecycle: approved
 workspace: true
 sources:
   intent:

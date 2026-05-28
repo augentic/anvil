@@ -264,7 +264,7 @@ Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/ma
 
 ```markdown
 > [!IMPORTANT]
-> **Gate 1.** The operator stamps `reviewed` explicitly — `/spec:plan` never writes it.
+> **Gate 1.** The operator stamps `approved` explicitly — `/spec:plan` never writes it.
 ```
 
 Multi-line bodies prefix every line with `> `.

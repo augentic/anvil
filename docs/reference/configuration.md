@@ -69,7 +69,7 @@ The change's table of contents — an ordered, dependency-aware list of slices, 
 ```yaml
 version: 1
 name: identity-revamp
-lifecycle: reviewed
+lifecycle: approved
 sources:
   identity-design-notes:
     adapter: documentation
@@ -103,7 +103,7 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `reviewed`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
+| `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
 | `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].key`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 

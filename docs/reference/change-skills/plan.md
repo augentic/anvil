@@ -25,7 +25,7 @@ Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and
 /spec:plan <name> [source <key>=<adapter>:<binding> ...]
 ```
 
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *` and `specrun source resolve`. Never writes `reviewed`.
+Agent-driven orchestrator. Deterministic work delegates to `specrun plan *` and `specrun source resolve`. Never writes `approved`.
 
 </div>
 
@@ -53,7 +53,7 @@ source <key>=<adapter>:value:<literal>
 - Starting a fresh change from one or more bound sources (or pure intent).
 - Re-enumerating sources on an existing plan (same-source candidate ids replace in place).
 
-Not for continuing an already-reviewed plan into execution — use [/spec:execute](execute.md).
+Not for continuing an already-approved plan into execution — use [/spec:execute](execute.md).
 
 ## Artifacts produced
 
@@ -79,10 +79,10 @@ A one-slice change uses the same steps as a twelve-slice change: `intent.enumera
 ### Closing hint
 
 ```text
-Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `<name>` is at `pending`. Run `specrun plan transition <name> approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
-The skill never auto-stamps `reviewed`. The operator runs the literal transition command after inspecting the plan.
+The skill never auto-stamps `approved`. The operator runs the literal transition command after inspecting the plan.
 
 ## CLI delegation
 
@@ -117,7 +117,7 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 <div class="see-also">
 <strong>See also</strong>
 
-- [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `reviewed`
+- [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `approved`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
 - [specrun plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change

@@ -19,8 +19,8 @@ Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific te
 
 ## Finding-ID conventions
 
-- Report-local occurrence IDs: `IOS-1`, `SWF-1`, `INT-1`, `UNI-1`, `NEW-1`. These are **report-local** counters — the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this review uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
-- Stable codex citations: `rule_id: VECTIS-101` (for example) appears alongside each mapped finding. Codex ids must match `^VECTIS-[0-9]{3}$`. Markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape (likewise `target-adapter`, `source-adapter`, `related-rule-ids`, `confidence`). Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
+- Report-local occurrence IDs: `IOS-1`, `SWF-1`, `INT-1`, `UNI-1`, `NEW-1`. These are **report-local** counters — the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this review uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
+- Stable codex citations: `rule_id: VECTIS-101` (for example) appears alongside each mapped finding. Codex ids must match `^VECTIS-[0-9]{3}$`. Markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape (likewise `target-adapter`, `source-adapter`, `related-rule-ids`, `confidence`). Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
 
 Severity values in finding output use the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`.
 

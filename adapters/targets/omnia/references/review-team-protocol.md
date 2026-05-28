@@ -43,7 +43,7 @@ separately from the report-local finding ID (for example, `OMNIA-002`,
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "SEC-" (e.g., SEC-1, SEC-2). These prefixed counters are the report-local
-occurrence ids (the `id` field on a `ReviewFinding`); `rule_id` is the codex
+occurrence ids (the `id` field on a `LintFinding`); `rule_id` is the codex
 citation (the kebab-case `rule-id` field on the wire).
 ```
 

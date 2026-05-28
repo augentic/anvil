@@ -1,6 +1,6 @@
 # Shared engineering standards (UNI-\*)
 
-Shared **engineering standards** catalog — target-agnostic codex rules under `adapters/shared/`. Codex is the on-disk rule format; these files are durable policy, not workflow state or slice artifacts. Read by every target adapter's build review brief during `/spec:build` and (when implemented) by `specrun review` for deterministic CI enforcement. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
+Shared **engineering standards** catalog — target-agnostic codex rules under `adapters/shared/`. Codex is the on-disk rule format; these files are durable policy, not workflow state or slice artifacts. Read by every target adapter's build review brief during `/spec:build` and (when implemented) by `specrun lint` for deterministic CI enforcement. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
 
 See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
@@ -69,7 +69,7 @@ What the rule actually requires, in prose.
 - Concrete code patterns or smells that hint the rule is being violated.
 ```
 
-Optional frontmatter fields (`applicability`, `review_mode`, `deterministic_hints`, `references`, `deprecated`) are documented in the schema. `id` must be globally unique across every codex tree the checker discovers.
+Optional frontmatter fields (`applicability`, `lint_mode`, `deterministic_hints`, `references`, `deprecated`) are documented in the schema. `id` must be globally unique across every codex tree the checker discovers.
 
 ## How rules are consumed
 

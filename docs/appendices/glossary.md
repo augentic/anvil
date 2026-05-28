@@ -73,7 +73,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
 
 **Execute**
-The supervised driver skill (`/spec:execute`) that loops per slice: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `reviewed`. Resumes from on-disk state — no `--continue` flag.
+The supervised driver skill (`/spec:execute`) that loops per slice: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Candidate` plus the bound source and returns `Evidence` content the CLI persists.
@@ -86,7 +86,7 @@ The closure skill (`/spec:finalize`) that pushes branches, observes PR state wit
 ## G
 
 **Gate 1**
-The operator-stamped lifecycle transition `plan.lifecycle: pending → reviewed`. The only review gate Specify 2.0 ships in v1. Written by `specrun plan transition <name> reviewed`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
+The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify 2.0 ships in v1. Written by `specrun plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 ## I
 
@@ -96,7 +96,7 @@ The operator-supplied free-form description that backs N=1 work and overrides hi
 ## L
 
 **Lifecycle**
-Three stacked lifecycles in `plan.yaml`: the plan lifecycle (`pending → reviewed`, two stored states), the per-entry lifecycle (`pending → in-progress → done`, with `dropped` available as a slice transition target), and the slice lifecycle inside `.metadata.yaml` (`refining → refined → built → merged`).
+Three stacked lifecycles in `plan.yaml`: the plan lifecycle (`pending → approved`, two stored states), the per-entry lifecycle (`pending → in-progress → done`, with `dropped` available as a slice transition target), and the slice lifecycle inside `.metadata.yaml` (`refining → refined → built → merged`).
 
 ## M
 

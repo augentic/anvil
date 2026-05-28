@@ -1,10 +1,10 @@
 # Amend a plan at Gate 1
 
-Inspect and edit a plan after `/spec:plan` and before stamping `reviewed`.
+Inspect and edit a plan after `/spec:plan` and before stamping `approved`.
 
 **Prerequisites:** A plan at `plan.lifecycle: pending`; completed [Quick start](../tutorials/quick-start.md).
 
-Gate 1 is the operator review step between plan authoring and execution. `/spec:plan` exits at `pending`; you stamp `reviewed` only after the plan looks right.
+Gate 1 is the operator review step between plan authoring and execution. `/spec:plan` exits at `pending`; you stamp `approved` only after the plan looks right.
 
 ## Step 1 — Read the plan artifacts
 
@@ -42,12 +42,12 @@ See [specrun plan](../reference/cli/plan.md) for the full amend surface.
 specrun plan validate --format json
 ```
 
-Surface Error-level findings before stamping reviewed.
+Surface Error-level findings before stamping approved.
 
-## Step 4 — Stamp reviewed
+## Step 4 — Stamp approved
 
 ```bash
-specrun plan transition <name> reviewed
+specrun plan transition <name> approved
 ```
 
 Only after this transition will `/spec:execute` start.

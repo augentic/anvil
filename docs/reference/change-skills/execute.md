@@ -1,6 +1,6 @@
 # /spec:execute
 
-Drive a reviewed plan through refine → build → merge per entry under an exclusive plan lock.
+Drive a approved plan through refine → build → merge per entry under an exclusive plan lock.
 
 ## Synopsis
 
@@ -21,14 +21,14 @@ Not before Gate 1, nor after every per-entry status is `done` (use [/spec:finali
 
 | Artifact | Role |
 | -------- | ---- |
-| `.specify/plan.yaml` | Reads lifecycle and per-entry status; never writes `reviewed` or `done` directly |
+| `.specify/plan.yaml` | Reads lifecycle and per-entry status; never writes `approved` or `done` directly |
 | `.specify/plan.lock` | Exclusive advisory lock for the duration of the loop |
 | Slice directories | Created and updated by phase skills (`/spec:refine`, `/spec:build`, `/spec:merge`) |
 | Per-entry `done` | Written only by `/spec:merge` via `specrun slice merge` |
 
 ## Behavior
 
-1. **Refusal gate** — `specrun plan next --format json` refuses when `plan-not-reviewed`; prints `specrun plan transition <name> reviewed` verbatim.
+1. **Refusal gate** — `specrun plan next --format json` refuses when `plan-not-approved`; prints `specrun plan transition <name> approved` verbatim.
 2. **Acquire plan lock** — exclusive non-blocking lock on `.specify/plan.lock` (workspace root in workspace mode). On `plan-lock-busy`, exit with holder pid.
 3. **Loop** — for each `specrun plan next` result:
    - Route to workspace slot when `project` is set.
@@ -51,13 +51,13 @@ When a plan entry carries `project`, plan artifacts stay at the workspace root a
 | `specrun plan next` picks pending row | per-entry: `pending → in-progress` | CLI |
 | `/spec:merge` succeeds | per-entry: `in-progress → done` | `specrun slice merge` |
 
-Execute never writes `reviewed` or `done` directly.
+Execute never writes `approved` or `done` directly.
 
 ## Error modes
 
 | Error | Cause | Resolution |
 | ----- | ----- | ---------- |
-| `plan-not-reviewed` | Plan still `pending` | Run `specrun plan transition <name> reviewed` |
+| `plan-not-approved` | Plan still `pending` | Run `specrun plan transition <name> approved` |
 | `plan-lock-busy` | Another process holds `.specify/plan.lock` | Wait or remove stale lock if holder is dead |
 | Build failure | Task exited non-zero | Fix failure; re-run `/spec:execute` or [/spec:build](../slice-skills/build.md) |
 | Merge conflict | Baseline drift | Resolve conflict; re-run execute or merge |
@@ -66,7 +66,7 @@ Execute never writes `reviewed` or `done` directly.
 
 ```text
 # Drive every slice after Gate 1
-specrun plan transition fix-typo reviewed
+specrun plan transition fix-typo approved
 /spec:execute
 ```
 

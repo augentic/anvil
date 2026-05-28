@@ -46,7 +46,7 @@ This repository does not add an automated runner, fake forge, transcript replay,
 
 The plan-generation scenarios ask an operator to create disposable workspaces and run `/spec:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists with `lifecycle: pending`, `specrun plan add` and the propose substep produce coherent slice rows, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
 
-These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> reviewed`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
+These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> approved`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
 
 ## Evidence
 

@@ -53,7 +53,7 @@ Each slice row maps one candidate from `discovery.md` to a unit of work.
 
 ## Step 2 — Inspect at Gate 1
 
-Before stamping `reviewed`, read:
+Before stamping `approved`, read:
 
 - **`change.md`** — scope and any tentative merge notes
 - **`plan.yaml`** — slice names, source bindings, dependency order
@@ -63,7 +63,7 @@ Amend if needed:
 
 ```bash
 specrun plan amend account-revamp --add-source ...
-specrun plan transition account-revamp reviewed
+specrun plan transition account-revamp approved
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).

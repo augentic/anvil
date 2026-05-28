@@ -45,7 +45,7 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadat
 
 /spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
 
-specrun plan transition <name> reviewed   (Gate 1; operator-only)
+specrun plan transition <name> approved   (Gate 1; operator-only)
 
 /spec:execute                     (drives /spec:refine -> /spec:build -> /spec:merge per slice)
 

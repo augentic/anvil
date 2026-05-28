@@ -38,11 +38,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 1. **Workflow** — phase skills and lifecycle CLI verbs (`/spec:plan` … `/spec:finalize`, `specrun slice *`, `specrun plan *`). Mutates `.specify/` state through a closed verb set.
 2. **Artifacts** — slice-local and baseline product intent (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs). Records what to build; does not encode durable engineering policy.
-3. **Engineering standards** — codex rules under `adapters/**/codex/` plus future `specrun codex export` and `specrun review`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
+3. **Engineering standards** — codex rules under `adapters/**/codex/` plus future `specrun rules export` and `specrun lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev check` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 
-**Rationale:** CI-native standards enforcement (`specrun review`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun review` from being mistaken for a phase skill.
+**Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
 
 **Source:** [Specify roadmap §Principles](https://github.com/augentic/specify/blob/main/rfcs/roadmap.md#principles), [RFC-28: Engineering Standards — Codex Contract and Findings](https://github.com/augentic/specify/blob/main/rfcs/done/rfc-28-standards-contract.md), [RFC-32: Engineering Standards — Deterministic Enforcement](https://github.com/augentic/specify/blob/main/rfcs/done/rfc-32-standards-enforcement.md)
 
@@ -306,7 +306,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Gate 1 only (RFC-25 D6)
 
-**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == reviewed`. The operator runs `specrun plan transition <name> reviewed` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `reviewed` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
+**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == approved`. The operator runs `specrun plan transition <name> approved` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `approved` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
 
 **Rationale:** Multiple gates compound operator cost and incentivise skipping. One observable gate written by the operator at one observable moment makes the review pause unambiguous and unbypassable. Synthesis-time disagreements use tag-and-proceed; the `slices[].divergence` field carries the Gate-1 acknowledgement signal a future Gate 2 would consume, so the park can be wired in later without a schema change.
 

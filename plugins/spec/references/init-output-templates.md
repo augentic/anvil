@@ -56,5 +56,5 @@ Next steps:
 Next steps:
 1. Add registered projects with `specrun registry add`
 2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
-3. Stamp Gate 1 with `specrun plan transition <name> reviewed`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+3. Stamp Gate 1 with `specrun plan transition <name> approved`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
 ```

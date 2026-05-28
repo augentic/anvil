@@ -6,7 +6,7 @@ Task-oriented recipes for common Specify operator situations. Each guide assumes
 | ----- | -------------- |
 | [Drop down a layer](drop-down-a-layer.md) | Automation failed and you need manual CLI control |
 | [Drive a slice manually](drive-slice-manually.md) | `/spec:execute` parked mid-loop |
-| [Amend a plan at Gate 1](amend-plan-at-gate-1.md) | Inspect or edit the plan before stamping `reviewed` |
+| [Amend a plan at Gate 1](amend-plan-at-gate-1.md) | Inspect or edit the plan before stamping `approved` |
 | [Resolve spec conflicts](resolve-spec-conflicts.md) | `[conflict]` or `[divergence]` tags in `spec.md` |
 | [Bind multiple sources](bind-multiple-sources.md) | Fuse legacy code and documentation at plan time |
 

@@ -30,7 +30,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
 | **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, codex rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specrun review` | Consumer projects with `.specify/` | Applicable codex rules with `deterministic_hints`; structured findings for CI |
+| **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable codex rules with `deterministic_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
 Codex rule *content* lives under `adapters/**/codex/` (engineering standards). `docs/standards/` is **authoring** house style only.
@@ -85,7 +85,7 @@ See the `specify-authoring` crate's `check` module for the full predicate list.
 
 ### JSON output (RFC-28)
 
-`specdev check` also speaks the [RFC-28](../../rfcs/done/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun review`](../../rfcs/done/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `ReviewFinding` objects.
+`specdev check` also speaks the [RFC-28](../../rfcs/done/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun lint`](../../rfcs/done/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `LintFinding` objects.
 
 ```bash
 specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
@@ -101,7 +101,7 @@ Envelope shape:
 }
 ```
 
-The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#review-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
+The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
@@ -113,7 +113,7 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 
 **`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `codex.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[codex.schema-violation] Codex rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
 
-**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; [`specrun review`](../../rfcs/done/rfc-32-standards-enforcement.md#specrun-review-phase-2-cli) is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same [RFC-28 `ReviewFinding` envelope](../../rfcs/done/rfc-28-standards-contract.md#review-result-envelope) so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; [`specrun lint`](../../rfcs/done/rfc-32-standards-enforcement.md#specrun-review-phase-2-cli) is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same [RFC-28 `LintFinding` envelope](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope) so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 

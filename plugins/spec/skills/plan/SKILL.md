@@ -1,12 +1,12 @@
 ---
 name: specify-plan
-description: Plan a Specify change end-to-end — pre-flight, scaffold `change.md` and `plan.yaml`, enumerate each bound source, write `discovery.md`, fuse candidates into `slices[]` via the agent-driven `propose` sub-step, and exit at `pending` with the literal Gate-1 transition hint. Use when starting a fresh change from one or more bound sources (or pure intent); not when continuing an already-reviewed plan into execution (use `/spec:execute`).
+description: Plan a Specify change end-to-end — pre-flight, scaffold `change.md` and `plan.yaml`, enumerate each bound source, write `discovery.md`, fuse candidates into `slices[]` via the agent-driven `propose` sub-step, and exit at `pending` with the literal Gate-1 transition hint. Use when starting a fresh change from one or more bound sources (or pure intent); not when continuing an already-approved plan into execution (use `/spec:execute`).
 argument-hint: <name> [source]...
 ---
 
 # Plan Skill
 
-`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `enumerate` brief into `discovery.md`, fuses the resulting candidates into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> reviewed` command from step 8 — the skill never writes `reviewed` itself.
+`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `enumerate` brief into `discovery.md`, fuses the resulting candidates into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
 
 N=1 is degenerate, not special. A single intent binding produces one candidate, one slice with `sources: [intent]` shorthand, and the same Gate-1 hint. Multi-source planning differs only in step counts.
 
@@ -22,7 +22,7 @@ N=1 is degenerate, not special. A single intent binding produces one candidate, 
 8. **Exit at `pending`** — print this closing hint exactly. Do not call `specrun plan transition`:
 
    ```text
-   Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+   Plan `<name>` is at `pending`. Run `specrun plan transition <name> approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
    ```
 
 ## Source binding grammar

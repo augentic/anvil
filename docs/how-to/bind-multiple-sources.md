@@ -34,7 +34,7 @@ Single-source intent slices may use the shorthand `sources: [intent]`.
 
 ## Uncertain fusion
 
-When candidates align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `reviewed`.
+When candidates align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `approved`.
 
 When summaries materially disagree, the plan skill may stamp `divergence: likely` on affected slice rows.
 

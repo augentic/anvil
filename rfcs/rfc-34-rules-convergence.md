@@ -1,42 +1,42 @@
-# RFC-34: Framework Convergence — `FRAME-*` Rules and Framework Scan Profile
+# RFC-34: Rules Convergence — `FRAME-*` Rules
 
 > Status: Draft · Depends: [RFC-28](done/rfc-28-standards-contract.md) (codex contract + `Origin` enum amendment), [RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter) · Enables: optional follow-on to [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement)
 
 ## Abstract
 
-[RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 ships consumer-side deterministic enforcement: `specrun review` walks a consumer project, builds a [WorkspaceModel](done/rfc-32-standards-enforcement.md#workspacemodel), evaluates `deterministic_hints` against applicable codex rules from `specrun codex export`, and emits `ReviewFinding` JSON. Framework-repo enforcement (this repo's own `make check`) still runs through ~30 imperative Rust predicates in `crates/authoring/src/check/`. [RFC-28](done/rfc-28-standards-contract.md) Phase 3 made those predicates emit `ReviewFinding` JSON via `specdev check --format json` but did not move them into the codex layer.
+[RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 ships consumer-side deterministic enforcement: `specrun lint` walks a consumer project, builds a [WorkspaceModel](done/rfc-32-standards-enforcement.md#workspacemodel), evaluates `deterministic_hints` against applicable codex rules from `specrun rules export`, and emits `LintFinding` JSON. Framework-repo enforcement (this repo's own `make check`) still runs through ~30 imperative Rust predicates in `crates/authoring/src/check/`. [RFC-28](done/rfc-28-standards-contract.md) Phase 3 made those predicates emit `LintFinding` JSON via `specdev check --format json` but did not move them into the codex layer.
 
 RFC-34 adds the optional **framework convergence** layer that lets new framework checks be authored as declarative codex rules instead of new Rust predicates:
 
-1. **`FRAME-*` codex rules under `adapters/shared/codex/framework/`** — first-class first-party rules using the same hint interpreter as `UNI-*` / target-namespaced rules.
+1. `**FRAME-*` codex rules under `adapters/shared/codex/framework/`** — first-class first-party rules using the same hint interpreter as `UNI-*` / target-namespaced rules.
 2. **Framework scan profile** — `scan_profile: framework` extractors for skills, adapters, marketplace, agent-teams symlinks, briefs.
-3. **`specdev review` CLI verb** — framework-side counterpart to `specrun review`, drives the framework-profile indexer plus hint interpreter.
-4. **`Origin::Framework` amendment to RFC-28** — wire-format extension so framework findings are distinguishable from `Shared` ones in `ReviewFinding` envelopes.
-5. **`--include-framework` consumer opt-in** — framework rules are excluded from consumer codex exports by default; opt-in via flag.
-6. **Hand-author migration cadence** — closed policy for moving imperative `Check` predicates to `FRAME-*` rules without losing CI coverage.
+3. `**specdev review` CLI verb** — framework-side counterpart to `specrun lint`, drives the framework-profile indexer plus hint interpreter.
+4. `**Origin::Framework` amendment to RFC-28** — wire-format extension so framework findings are distinguishable from `Shared` ones in `LintFinding` envelopes.
+5. `**--include-framework` consumer opt-in** — framework rules are excluded from consumer codex exports by default; opt-in via flag.
+6. **Hand-author migration cadence** — closed policy for moving imperative `Check` predicates to `FRAME-`* rules without losing CI coverage.
 
-This RFC adds no lifecycle authority. `FRAME-*` findings may block `make check` and CI, but never transition plan entries, slices, or changes — the same contract that already governs `specrun review`.
+This RFC adds no lifecycle authority. `FRAME-*` findings may block `make check` and CI, but never transition plan entries, slices, or changes — the same contract that already governs `specrun lint`.
 
 ## Motivation
 
 After RFC-32 Phase 2 lands, the framework repository has two enforcement surfaces that share substrate but not authoring:
 
-- Consumer projects: write a codex rule, add a `deterministic_hints` block, `specrun review` fires it.
+- Consumer projects: write a codex rule, add a `deterministic_hints` block, `specrun lint` fires it.
 - Framework repository: write a Rust `Check` impl, register it in `crates/authoring/src/check.rs`, ship a binary update.
 
 Three pressure points push toward convergence:
 
-- **Authoring asymmetry punishes framework contributors.** A first-time contributor proposing a new framework check today writes Rust + tests + a registration line + a docs entry. The consumer-side equivalent is a markdown file. Equalizing the bar is the main motivation for `FRAME-*`.
+- **Authoring asymmetry punishes framework contributors.** A first-time contributor proposing a new framework check today writes Rust + tests + a registration line + a docs entry. The consumer-side equivalent is a markdown file. Equalizing the bar is the main motivation for `FRAME-`*.
 - **Imperative-predicate sprawl recreates itself.** Every new cross-file invariant grows another bespoke walk. The hint interpreter's reserved kinds (`unique`, `set-coverage`, `reference-resolves`, `set-eq`, `content-digest-eq`, …) cover the exact graph shapes most existing predicates implement; using them once on the framework side proves out the reserved kinds for the consumer side, and vice versa.
-- **`specdev check --format json` already speaks `ReviewFinding`.** RFC-28 Phase 3 mapped imperative findings into the same envelope. Adding declarative findings to that envelope is the next step, not a rewrite — the wire output stays compatible whether a finding came from a `Check` impl or a `FRAME-*` rule's hint.
+- `**specdev check --format json` already speaks `LintFinding`.** RFC-28 Phase 3 mapped imperative findings into the same envelope. Adding declarative findings to that envelope is the next step, not a rewrite — the wire output stays compatible whether a finding came from a `Check` impl or a `FRAME-`* rule's hint.
 
 ## Principles
 
-1. **`FRAME-*` is additive, not a replacement.** Imperative `Check` predicates remain valid indefinitely. Migration is per-predicate and reversible until the imperative impl is deleted.
-2. **One substrate, two CLIs.** `specdev review` and `specrun review` share `specify-domain::review` modules but keep separate binaries and separate failure semantics, per RFC-32 §"Framework and consumer scans share libraries, not commands."
-3. **No consumer surprise.** Consumer-project `specrun review` / `specrun codex export` invocations never include `FRAME-*` rules unless `--include-framework` is set.
-4. **Wire compatibility.** `Origin::Framework` is the only RFC-28 amendment. The `ReviewFinding` shape, the fingerprint algorithm, the severity enum, and the evidence union all stay as RFC-28 defined them.
-5. **Parity before deletion.** An imperative `Check` only retires when an equivalent `FRAME-*` rule produces byte-identical findings against the predicate's existing golden fixtures.
+1. `**FRAME-*` is additive, not a replacement.** Imperative `Check` predicates remain valid indefinitely. Migration is per-predicate and reversible until the imperative impl is deleted.
+2. **One substrate, two CLIs.** `specdev review` and `specrun lint` share `specify-domain::review` modules but keep separate binaries and separate failure semantics, per RFC-32 §"Framework and consumer scans share libraries, not commands."
+3. **No consumer surprise.** Consumer-project `specrun lint` / `specrun rules export` invocations never include `FRAME-`* rules unless `--include-framework` is set.
+4. **Wire compatibility.** `Origin::Framework` is the only RFC-28 amendment. The `LintFinding` shape, the fingerprint algorithm, the severity enum, and the evidence union all stay as RFC-28 defined them.
+5. **Parity before deletion.** An imperative `Check` only retires when an equivalent `FRAME-`* rule produces byte-identical findings against the predicate's existing golden fixtures.
 
 ## RFC-28 amendments
 
@@ -70,7 +70,7 @@ The justification mirrors RFC-28's existing rationale: `framework` is more speci
 
 ### A3 — Consumer opt-in flag
 
-`specrun codex export` and `specrun review` accept a new flag:
+`specrun rules export` and `specrun lint` accept a new flag:
 
 ```text
 --include-framework    Include FRAME-* rules from adapters/shared/codex/framework/
@@ -89,17 +89,17 @@ A1, A2, and A3 are the only RFC-28 changes. The finding schema, fingerprint algo
 Symmetric counterpart to [RFC-32 §D1](done/rfc-32-standards-enforcement.md#d1--consumer-scan-scope). `scan_profile: framework` walks the framework repository (`augentic/specify`) with the following defaults:
 
 - **Roots.** `project_dir` itself (always the framework-repo root for `specdev review` invocations), plus any path explicitly named in `artifact_paths[]`.
-- **Default include globs.** `adapters/**`, `plugins/**`, `docs/**`, `.cursor/**`, `rfcs/**`, `scripts/**`, `schemas/**`, `**/AGENTS.md`, `**/REVIEW.md`. Wider than the consumer profile because the framework repo's source of truth is markdown and YAML across many trees.
-- **Always-ignore globs.** `target/**`, `**/node_modules/**`, `.git/**`, `dist/**`, `.specify/**` (the framework repo MAY carry a project-local `.specify/` for self-hosting; framework scans do not enter it), and every path matching the project-root `.gitignore`.
+- **Default include globs.** `adapters/`**, `plugins/**`, `docs/**`, `.cursor/**`, `rfcs/**`, `scripts/**`, `schemas/**`, `**/AGENTS.md`, `**/REVIEW.md`. Wider than the consumer profile because the framework repo's source of truth is markdown and YAML across many trees.
+- **Always-ignore globs.** `target/`**, `**/node_modules/**`, `.git/**`, `dist/**`, `.specify/**` (the framework repo MAY carry a project-local `.specify/` for self-hosting; framework scans do not enter it), and every path matching the project-root `.gitignore`.
 - **Symlink policy.** Framework `agent-teams.md` files symlink into `docs/reference/`. The framework profile **follows** symlinks (recording both endpoints) so review-team-protocol drift is visible. This is the opposite of the consumer profile's record-without-traverse rule and is normative. Symlink cycles abort with a `Filesystem` error.
 - **Binary files.** Same NUL-byte detection as RFC-32 §D1; binary files emit `file { kind: "binary" }` facts and are skipped by `regex` hints unless the rule sets `applicability.binary: true`.
 - **Encoding.** UTF-8 with U+FFFD replacement; one `index.warning` finding per non-UTF-8 file at severity `optional`.
 - **Determinism.** Enumeration is sorted by project-relative path before parallel dispatch (matches RFC-32 §D1).
-- **Codex parse.** Codex trees under `adapters/{shared,sources,targets}/**/codex/` are parsed using the existing RFC-28 codex parser. The framework profile additionally accepts `FRAME-*` rules at `adapters/shared/codex/framework/` per §F3.
+- **Codex parse.** Codex trees under `adapters/{shared,sources,targets}/**/codex/` are parsed using the existing RFC-28 codex parser. The framework profile additionally accepts `FRAME-`* rules at `adapters/shared/codex/framework/` per §F3.
 
 ### F2 — `specdev review` CLI surface
 
-Add a new subcommand to the `specdev` binary that mirrors `specrun review`'s shape but defaults to the framework profile and the current directory as both codex root and scan root:
+Add a new subcommand to the `specdev` binary that mirrors `specrun lint`'s shape but defaults to the framework profile and the current directory as both codex root and scan root:
 
 ```bash
 specdev review                                    # full framework scan
@@ -110,31 +110,31 @@ specdev review --strict-hints                     # treat reserved kinds as fail
 specdev review --format json                      # CI-consumable envelope
 ```
 
-**Defaults pinned for `specdev review` only** (these differ from `specrun review`):
+**Defaults pinned for `specdev review` only** (these differ from `specrun lint`):
 
 - `--codex-root` defaults to `.` (the framework repo's own codex tree resolves shared `UNI-*` and `FRAME-*` rules without any flag).
-- `--scan-profile` is hard-coded to `framework`; the flag does not exist on this verb. (A separate `specrun review --scan-profile framework` form is deliberately not introduced to avoid two ways to run the same scan; framework profile is `specdev review`'s sole reason for existing.)
-- `--target` is optional and defaults to "none". A framework scan does not have a single target adapter; `applicability.adapters` filtering against framework files is rare. When supplied, the flag narrows applicability the same way it does on `specrun review`.
+- `--scan-profile` is hard-coded to `framework`; the flag does not exist on this verb. (A separate `specrun lint --scan-profile framework` form is deliberately not introduced to avoid two ways to run the same scan; framework profile is `specdev review`'s sole reason for existing.)
+- `--target` is optional and defaults to "none". A framework scan does not have a single target adapter; `applicability.adapters` filtering against framework files is rare. When supplied, the flag narrows applicability the same way it does on `specrun lint`.
 
-**Shared with `specrun review`** (per RFC-32 §D6 / §D7 / §D8 / §D9):
+**Shared with `specrun lint`** (per RFC-32 §D6 / §D7 / §D8 / §D9):
 
 - The four formatters (`json`, `pretty`, `github`, `compact`) live in `specify-domain::review::diagnostics`.
-- The exit-code map (RFC-32 §D8) applies verbatim; `--format json` validates against `schemas/review/review-result.schema.json` before emit (RFC-32 §D9).
+- The exit-code map (RFC-32 §D8) applies verbatim; `--format json` validates against `schemas/review/lint-result.schema.json` before emit (RFC-32 §D9).
 - The hint evaluation order is `path-pattern → schema → regex → tool`.
 - Reserved-hint policy (RFC-32 §D5) and `--strict-hints` semantics are identical.
 
-The handler lives under `src/authoring/commands/review/{cli.rs, run.rs}` in `augentic/specify-cli` (mirroring `src/runtime/commands/review/` for `specrun review`). The `specify-authoring` crate gains a dependency on `specify-domain::review` for this verb; the existing `specdev check --format json` Phase 3a mapper is unaffected.
+The handler lives under `src/authoring/commands/review/{cli.rs, run.rs}` in `augentic/specify-cli` (mirroring `src/runtime/commands/review/` for `specrun lint`). The `specify-authoring` crate gains a dependency on `specify-domain::review` for this verb; the existing `specdev check --format json` Phase 3a mapper is unaffected.
 
 ### F3 — `check::codex` placement and resolution
 
 Two `check::codex` changes activate `FRAME-*` placement in the framework repo without weakening existing constraints:
 
-1. **`CODEX_PROFILE_NAMESPACES` extension.** Map the new path `adapters/shared/codex/framework/` → `{"FRAME"}`. Owner discovery uses the same first-segment-under-`adapters/` rule already in place; the framework pack appears as a peer of `universal/` rather than as a per-adapter overlay.
-2. **Placement predicate (lift, then re-apply).** RFC-28 Phase 1 step 2 added a predicate rejecting `FRAME-*` under `adapters/{sources,targets}/<name>/codex/`. That rejection stays; `FRAME-*` rules under per-adapter trees remain a `check::codex` failure. The predicate additionally REQUIRES `FRAME-*` placement under `adapters/shared/codex/framework/` (a non-`FRAME-*` rule there is rejected with the same `codex-namespace-ownership-violation` rule id).
+1. `**CODEX_PROFILE_NAMESPACES` extension.** Map the new path `adapters/shared/codex/framework/` → `{"FRAME"}`. Owner discovery uses the same first-segment-under-`adapters/` rule already in place; the framework pack appears as a peer of `universal/` rather than as a per-adapter overlay.
+2. **Placement predicate (lift, then re-apply).** RFC-28 Phase 1 step 2 added a predicate rejecting `FRAME-`* under `adapters/{sources,targets}/<name>/codex/`. That rejection stays; `FRAME-*` rules under per-adapter trees remain a `check::codex` failure. The predicate additionally REQUIRES `FRAME-*` placement under `adapters/shared/codex/framework/` (a non-`FRAME-*` rule there is rejected with the same `codex-namespace-ownership-violation` rule id).
 
 **Resolution root activation.** RFC-28 §"Resolution roots" line 138 reserves root 2: "Shared language or artifact packs, if added later under `adapters/shared/codex/<pack>/`." RFC-34 activates root 2 with pack name `framework`. The resolver walks the new pack root immediately after `adapters/shared/codex/universal/`; rules are tagged with `origin: framework` per A1. No new root order or precedence is introduced.
 
-**Consumer-export filtering.** `specrun codex export` filters out `origin: framework` rules unless `--include-framework` (A3) is set. `specrun review` inherits that filter from the resolver — consumer-project review runs never evaluate `FRAME-*` hints by accident.
+**Consumer-export filtering.** `specrun rules export` filters out `origin: framework` rules unless `--include-framework` (A3) is set. `specrun lint` inherits that filter from the resolver — consumer-project review runs never evaluate `FRAME-`* hints by accident.
 
 ### F4 — Per-rule applicability for framework files
 
@@ -158,7 +158,7 @@ These tokens compose with the existing consumer-side ones (`code`, `tests`, `con
 Hand-authored only (already pinned in RFC-32 §"Phase 3 — framework convergence" Option B). RFC-34 adds the executable rule:
 
 - An imperative `Check` impl retires only when a `FRAME-*` rule plus its hint coverage produces **byte-identical** findings against the predicate's existing golden fixtures. The parity test (`crates/authoring/tests/frame_parity_<rule>.rs`) lands in the same PR as the imperative deletion.
-- Until parity is proven, both the imperative `Check` and the `FRAME-*` rule may run. Duplicate findings against the same `(rule-id, location)` are suppressed by fingerprint deduplication in `specdev review`'s envelope emission step (the existing RFC-28 fingerprint algorithm already produces identical fingerprints for identical evidence; this requires no new code).
+- Until parity is proven, both the imperative `Check` and the `FRAME-`* rule may run. Duplicate findings against the same `(rule-id, location)` are suppressed by fingerprint deduplication in `specdev review`'s envelope emission step (the existing RFC-28 fingerprint algorithm already produces identical fingerprints for identical evidence; this requires no new code).
 - Migration order seeds the `High`-priority rows from RFC-32's "Predicate migration map": `adapter.*` (schema), `skill.* (frontmatter)` (schema + unique + regex), `links.*` (reference-resolves). Other rows migrate when contributor demand emerges.
 
 ### F6 — Reserved hint kind dependency
@@ -171,13 +171,13 @@ The PR pattern is therefore: kind implementation in `specify-domain::review::eva
 
 RFC-34 lands as **five sequenced steps** merged to main in a single PR across `augentic/specify` and `augentic/specify-cli`. Steps 1–2 are pure plumbing; step 3 is the first user-visible surface; steps 4–5 prove the pattern with one real migration.
 
-1. **Schema + predicate updates.** Add `framework` to the closed `Origin` enum in `schemas/codex/resolved.schema.json`. Extend `CODEX_PROFILE_NAMESPACES` to map `adapters/shared/codex/framework/` → `{"FRAME"}`. Update `check::codex` placement predicate to require `FRAME-*` at the new path and reject non-`FRAME-*` rules there. Add the `--include-framework` flag to `specrun codex export` (default off; no behaviour change without the flag).
+1. **Schema + predicate updates.** Add `framework` to the closed `Origin` enum in `schemas/codex/resolved.schema.json`. Extend `CODEX_PROFILE_NAMESPACES` to map `adapters/shared/codex/framework/` → `{"FRAME"}`. Update `check::codex` placement predicate to require `FRAME-`* at the new path and reject non-`FRAME-*` rules there. Add the `--include-framework` flag to `specrun rules export` (default off; no behaviour change without the flag).
 2. **Framework scan profile.** Implement `scan_profile: framework` extractors under `crates/domain/src/review/index/{skill.rs, adapter.rs, marketplace.rs, agent_teams.rs, brief.rs}`. Reuse `index/files.rs`, `index/frontmatter.rs`, `index/markdown.rs`, `index/symlinks.rs` from Phase 2; symlink policy changes per §F1 (follow instead of record).
-3. **`specdev review` CLI verb.** New files `src/authoring/commands/review/{cli.rs, run.rs}` in `augentic/specify-cli`. `specify-authoring` gains a `specify-domain` dependency (allowed; the binary boundary already imports `specify-domain` for the RFC-28 Phase 3 mapper). Wire export → index → eval → envelope per §F2; ship `--dump-model`, all four formatters, `--strict-hints`, and the exit-code map from RFC-32 §D8.
-4. **First FRAME-* rules.** Hand-author 3–5 `FRAME-*` rules covering the High-priority migration-map rows (start with `FRAME-001` ≅ `adapter.schema`, `FRAME-002` ≅ `links.unresolved`, `FRAME-003` ≅ `skill.duplicate-name`). Each rule lands under `adapters/shared/codex/framework/` with a `## Rule` body and a `deterministic_hints` block using Phase 2 kinds.
-5. **Parity tests + imperative retirement.** For each `FRAME-*` rule in step 4, land a parity fixture under `crates/authoring/tests/frame_parity_<rule>.rs`. Delete the matching imperative `Check` impl in the same PR. Update `docs/contributing/checks.md` to point at the codex rule instead of the predicate.
+3. `**specdev review` CLI verb.** New files `src/authoring/commands/review/{cli.rs, run.rs}` in `augentic/specify-cli`. `specify-authoring` gains a `specify-domain` dependency (allowed; the binary boundary already imports `specify-domain` for the RFC-28 Phase 3 mapper). Wire export → index → eval → envelope per §F2; ship `--dump-model`, all four formatters, `--strict-hints`, and the exit-code map from RFC-32 §D8.
+4. *First FRAME- rules.** Hand-author 3–5 `FRAME-`* rules covering the High-priority migration-map rows (start with `FRAME-001` ≅ `adapter.schema`, `FRAME-002` ≅ `links.unresolved`, `FRAME-003` ≅ `skill.duplicate-name`). Each rule lands under `adapters/shared/codex/framework/` with a `## Rule` body and a `deterministic_hints` block using Phase 2 kinds.
+5. **Parity tests + imperative retirement.** For each `FRAME-`* rule in step 4, land a parity fixture under `crates/authoring/tests/frame_parity_<rule>.rs`. Delete the matching imperative `Check` impl in the same PR. Update `docs/contributing/checks.md` to point at the codex rule instead of the predicate.
 
-**Acceptance:** `cargo make ci` green; `make check` (parent repo) green; `specdev review --format json` produces a stable envelope against the framework repo with the seeded `FRAME-*` rules; consumer `specrun codex export` without `--include-framework` excludes every `FRAME-*` rule (golden test).
+**Acceptance:** `cargo make ci` green; `make check` (parent repo) green; `specdev review --format json` produces a stable envelope against the framework repo with the seeded `FRAME-`* rules; consumer `specrun rules export` without `--include-framework` excludes every `FRAME-*` rule (golden test).
 
 ## Implementation Guide
 
@@ -236,7 +236,7 @@ Use the existing `REGENERATE_GOLDENS` convention. The framework-minimal fixture 
 
 **For framework contributors:** New checks SHOULD be authored as `FRAME-*` codex rules under `adapters/shared/codex/framework/` unless the predicate requires subprocess orchestration or stateful behaviour that the hint interpreter cannot model. The `## Rule` body is the canonical agent-readable explanation; the `deterministic_hints` block makes the rule fire under `specdev review`. Existing imperative `Check` impls remain valid; migrate only when parity is achievable.
 
-**For consumer projects:** No change from RFC-32 Phase 2 baseline. `specrun review` and `specrun codex export` continue to exclude `FRAME-*` rules. Pass `--include-framework` only if your project deliberately wants to enforce framework-authoring rules against your own tree (rare; typically only relevant to projects that vendor parts of the framework repo).
+**For consumer projects:** No change from RFC-32 Phase 2 baseline. `specrun lint` and `specrun rules export` continue to exclude `FRAME-*` rules. Pass `--include-framework` only if your project deliberately wants to enforce framework-authoring rules against your own tree (rare; typically only relevant to projects that vendor parts of the framework repo).
 
 **For RFC-28-aware tooling:** The closed `Origin` enum widens with one value (`framework`). Strict parsers MUST treat unknown enum values as a forward-compatibility extension (i.e., they should not crash on `framework` if they predate RFC-34); RFC-28 already specifies forward-compatible behaviour for closed enums in its evidence-union and severity-enum sections.
 
@@ -244,22 +244,22 @@ Use the existing `REGENERATE_GOLDENS` convention. The framework-minimal fixture 
 
 ## Alternatives Considered
 
-**Fold framework convergence back into RFC-32.** Rejected. RFC-32 is now `Accepted` and ships Phase 2 cleanly. Re-opening it to absorb the `Origin` amendment, framework scan-scope, and `specdev review` CLI surface would delay RM-10 and inflate RFC-32 past 750 lines covering two distinct audience scopes. The carve-out matches the precedent set by RFC-28 → RFC-32 → RFC-33.
+**Fold framework convergence back into RFC-32.** Rejected. RFC-32 is now `Accepted` and ships Phase 2 cleanly. Re-opening it to absorb the `Origin` amendment, framework scan-scope, and `specdev review` CLI surface would delay RM-10 and inflate RFC-32 past 750 lines covering two distinct audience scopes. The carve-out matches the precedent set by RFC-28 → RFC-32 → RFC-33a / RFC-33b.
 
-**Run `FRAME-*` through `specrun review --scan-profile framework`.** Rejected. RFC-28 §"CLI and binary split" preserves a hard `specrun` (operator-facing) / `specdev` (contributor-facing) split. Adding a framework-profile flag to `specrun review` would erode that split for one feature and force the operator-facing binary to ship framework extractors it never needs.
+**Run `FRAME-*` through `specrun lint --scan-profile framework`.** Rejected. RFC-28 §"CLI and binary split" preserves a hard `specrun` (operator-facing) / `specdev` (contributor-facing) split. Adding a framework-profile flag to `specrun lint` would erode that split for one feature and force the operator-facing binary to ship framework extractors it never needs.
 
-**Extend `specdev check --format json` to also fire `FRAME-*` rules.** Rejected. The Phase 3a mapper translates imperative `Finding` → `ReviewFinding` and stays single-purpose; folding hint evaluation into the same handler would mix two execution models in one verb. Separate verbs (`specdev check` for imperative, `specdev review` for declarative) keep the contributor's mental model clean and let imperative retirement happen one predicate at a time without touching the other verb's handler.
+**Extend `specdev check --format json` to also fire `FRAME-*` rules.** Rejected. The Phase 3a mapper translates imperative `Finding` → `LintFinding` and stays single-purpose; folding hint evaluation into the same handler would mix two execution models in one verb. Separate verbs (`specdev check` for imperative, `specdev review` for declarative) keep the contributor's mental model clean and let imperative retirement happen one predicate at a time without touching the other verb's handler.
 
-**Use a different root for `FRAME-*` (e.g. `tooling/rules/`).** Rejected during RFC-32 drafting (see RFC-32 §Resolved Decisions). Keeping every codex tree under `adapters/**` reuses `check::codex` owner discovery, the resolver root walk, and the `origin:` filter without growing a second root.
+**Use a different root for `FRAME-*` (e.g. `tooling/rules/`).** Rejected during RFC-32 drafting (see RFC-32 §Resolved Decisions). Keeping every codex tree under `adapters/`** reuses `check::codex` owner discovery, the resolver root walk, and the `origin:` filter without growing a second root.
 
 **Skip `Origin::Framework`; reuse `Shared`.** Rejected. The point of `Origin` is to let consumers filter by source; collapsing `framework` into `shared` would make `--include-framework` impossible to implement without a parallel discriminant. Adding one enum value once is cheaper than two-layer discriminants forever.
 
-**Automate `Check` → `FRAME-*` translation.** Rejected (already in RFC-32 §"Phase 3 — framework convergence"). Hand-authoring is the validation pass for whether a reserved hint kind models the predicate; an auto-porter would mechanically translate without that scrutiny and would still get the Low-priority rows (`scenarios.*`, `tools.*`) wrong.
+**Automate `Check` → `FRAME-`* translation.** Rejected (already in RFC-32 §"Phase 3 — framework convergence"). Hand-authoring is the validation pass for whether a reserved hint kind models the predicate; an auto-porter would mechanically translate without that scrutiny and would still get the Low-priority rows (`scenarios.`*, `tools.*`) wrong.
 
 ## Non-Goals
 
 - Mandatory migration of every imperative `Check` to `FRAME-*`. Imperative predicates may live indefinitely; RFC-34 only enables migration on demand.
-- A `specdev review --scan-profile consumer` mode. The consumer profile is `specrun review`'s domain.
+- A `specdev review --scan-profile consumer` mode. The consumer profile is `specrun lint`'s domain.
 - New severity, fingerprint, or evidence semantics. RFC-28 + RFC-32 already cover these.
 - Lifecycle authority for `FRAME-*` findings. Findings may block CI; they never transition plans, slices, or changes.
 - SARIF export (deferred per RFC-32 non-goals).
@@ -270,22 +270,24 @@ Use the existing `REGENERATE_GOLDENS` convention. The framework-minimal fixture 
 
 Every design question raised while drafting RFC-34 is resolved in the body. The list below indexes the resolutions for reviewers checking that no question is parked.
 
-- **`FRAME-*` placement** — §F3 (`adapters/shared/codex/framework/`, activates RFC-28 reserved resolution root 2 with pack name `framework`).
-- **`Origin` enum widening** — §A1 + §A2 (add `framework`, sort between `shared` and `organization`).
+- `**FRAME-*` placement** — §F3 (`adapters/shared/codex/framework/`, activates RFC-28 reserved resolution root 2 with pack name `framework`).
+- `**Origin` enum widening** — §A1 + §A2 (add `framework`, sort between `shared` and `organization`).
 - **Consumer opt-in flag** — §A3 (`--include-framework`, default off, mirrors `--include-deprecated`).
 - **CLI surface for framework execution** — §F2 (`specdev review`, not a `specrun` flag, not a `specdev check` extension).
 - **Framework scan scope** — §F1 (symmetric to RFC-32 §D1; symlinks follow instead of record; wider include globs).
 - **Hint-kind preference for first-wave rules** — §F6 (Phase 2 kinds preferred; reserved kinds ship paired with their interpreter implementations).
 - **Migration cadence** — §F5 (hand-authored, byte-identical parity fixture required for imperative deletion, dedup via existing fingerprint algorithm during overlap).
-- **`check::codex` predicate inversion** — §F3 (placement predicate requires `FRAME-*` at the new path and rejects non-`FRAME-*` rules there, while keeping the existing rejection under per-adapter trees).
-- **`applicability.artifacts` framework tokens** — §F4 (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`, `doc` added to the closed enum).
+- `**check::codex` predicate inversion** — §F3 (placement predicate requires `FRAME-`* at the new path and rejects non-`FRAME-*` rules there, while keeping the existing rejection under per-adapter trees).
+- `**applicability.artifacts` framework tokens** — §F4 (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`, `doc` added to the closed enum).
 
 ## References
 
 - [RFC-28: Engineering Standards — Codex Contract and Findings](done/rfc-28-standards-contract.md) — finding shape, codex resolution, the `Origin` enum widened by §A1.
-- [RFC-32: Engineering Standards — Deterministic Enforcement](done/rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun review`).
-- [RFC-33: Standards Finding Lifecycle](done/rfc-33-standards-finding-lifecycle.md) — baseline/suppression layer that applies equally to `specdev review` and `specrun review` envelopes.
+- [RFC-32: Engineering Standards — Deterministic Enforcement](done/rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun lint`).
+- [RFC-33a: Standards Ignore Directives](rfc-33a-standards-finding-suppression.md) — in-source ignore directive + telemetry layer that applies equally to `specdev review` and `specrun lint` envelopes.
+- [RFC-33b: Standards Finding Baseline](rfc-33b-standards-finding-baseline.md) — deferred cross-run baseline + diff layer; lands when the trigger conditions in RFC-33b §"Trigger conditions" are met.
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md) — `specdev` binary contract.
 - [Specify Roadmap — RM-10](roadmap.md#rm-10-ci-native-standards-enforcement) — CI-native standards enforcement; RFC-34 is optional relative to RM-10.
 - [Standards layer (explanation)](../docs/explanation/standards-layer.md)
-- [docs/contributing/checks.md](../docs/contributing/checks.md) — receives the new "choose between `Check` and `FRAME-*`" guidance per §"Documentation touch-points".
+- [docs/contributing/checks.md](../docs/contributing/checks.md) — receives the new "choose between `Check` and `FRAME-`*" guidance per §"Documentation touch-points".
+

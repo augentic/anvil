@@ -65,7 +65,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Gate 1</div>
 <h4 class="rhythm-title">Human approval</h4>
 
-Operator stamps `reviewed`. Nothing executes until this transition.
+Operator stamps `approved`. Nothing executes until this transition.
 </div>
 
 
@@ -94,7 +94,7 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 </div>
 
 
-`/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specrun plan transition <name> reviewed` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
+`/spec:plan` enumerates each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specrun plan transition <name> approved` (Gate 1). `/spec:execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches, observes PRs, and archives.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.enumerate` produces one candidate and `/spec:execute` runs the same single-slice rhythm.
 
@@ -171,7 +171,7 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specrun plan transition <name> reviewed` (Gate 1) → `/spec:execute` → `/spec:finalize <name>`
+> **Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specrun plan transition <name> approved` (Gate 1) → `/spec:execute` → `/spec:finalize <name>`
 
 Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) run one phase by hand when execute parks or you want manual control.
 

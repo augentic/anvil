@@ -23,7 +23,7 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 Drive one slice without the execute loop:
 
 ```bash
-specrun plan transition <name> reviewed
+specrun plan transition <name> approved
 specrun plan next
 /spec:refine <slice>
 /spec:build <slice>

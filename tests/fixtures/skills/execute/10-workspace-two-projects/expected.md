@@ -4,7 +4,7 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
 
 ## Starting state
 
-- `plan.yaml.lifecycle == reviewed`; `workspace: true`.
+- `plan.yaml.lifecycle == approved`; `workspace: true`.
 - Two slices, both `pending`: `api-platform-v2-upgrade` → `project-a`; `worker-platform-v2-upgrade` → `project-b`.
 - `.specify/workspace/` is empty at run start (no slots materialised yet).
 - `registry.yaml` declares both projects.
