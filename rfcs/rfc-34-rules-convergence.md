@@ -284,8 +284,8 @@ Every design question raised while drafting RFC-34 is resolved in the body. The 
 
 - [RFC-28: Engineering Standards — Codex Contract and Findings](done/rfc-28-standards-contract.md) — finding shape, codex resolution, the `Origin` enum widened by §A1.
 - [RFC-32: Engineering Standards — Deterministic Enforcement](done/rfc-32-standards-enforcement.md) — Phase 2 substrate (WorkspaceModel, hint interpreter, `specrun lint`).
-- [RFC-33a: Standards Ignore Directives](rfc-33a-standards-finding-suppression.md) — in-source ignore directive + telemetry layer that applies equally to `specdev review` and `specrun lint` envelopes.
-- [RFC-33b: Standards Finding Baseline](rfc-33b-standards-finding-baseline.md) — deferred cross-run baseline + diff layer; lands when the trigger conditions in RFC-33b §"Trigger conditions" are met.
+- [RFC-33a: Standards Ignore Directives](rfc-33a-ignore-directives.md) — in-source ignore directive + telemetry layer that applies equally to `specdev review` and `specrun lint` envelopes.
+- [RFC-33b: Standards Baseline](future/rfc-33b-standards-baseline.md) — deferred cross-run baseline + diff layer; lands when the trigger conditions in RFC-33b §"Trigger conditions" are met.
 - [RFC-5: Framework Developer Tooling](done/rfc-5-tooling.md) — `specdev` binary contract.
 - [Specify Roadmap — RM-10](roadmap.md#rm-10-ci-native-standards-enforcement) — CI-native standards enforcement; RFC-34 is optional relative to RM-10.
 - [Standards layer (explanation)](../docs/explanation/standards-layer.md)

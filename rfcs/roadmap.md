@@ -95,9 +95,9 @@ specrun source extract <source-key> <candidate-id> --slice <name> [--format json
 **Target surface:**
 
 ```bash
-specrun lint
-specrun lint --slice <name>
-specrun lint --format json
+specrun lint run
+specrun lint run --slice <name>
+specrun lint run --output-format json
 specdev review --format json          # framework repo; RFC-34
 specdev check --format json           # imperative checks; RFC-28 Phase 3
 ```
