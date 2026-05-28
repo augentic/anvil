@@ -21,7 +21,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 
 - **Keep the CLI authoritative.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
 - **Treat `registry.yaml` as a projection.** Rich catalog metadata can live in Backstage or another catalog; Specify should consume reviewable registry projections for routing, workspace sync, and execution.
-- **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; codex rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
+- **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
@@ -37,7 +37,7 @@ Items are identified as `RM-NN`. **Near Term** order reflects deliberate priorit
 After the standards layer lands, three tracks run in parallel:
 
 1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source enumerate` / `extract`).
-2. **Shared codex distribution (RM-07)** — operational unblock. Consumer CI cannot rely on `specrun lint` until `UNI-*` rules resolve without `--codex-root`. Small, additive; should not wait for RM-06.
+2. **Shared codex distribution (RM-07)** — operational unblock. Consumer CI cannot rely on `specrun lint` until `UNI-*` rules resolve without `--rules-root`. Small, additive; should not wait for RM-06.
 3. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
 
 **Deferred until trigger conditions or prerequisites:**
@@ -69,9 +69,9 @@ specrun source extract <source-key> <candidate-id> --slice <name> [--format json
 
 #### RM-07: Shared codex distribution
 
-**Goal:** Resolve shared `UNI-*` (and directive-validation `UNI-022` / `UNI-023`) rules on consumer projects without a co-located framework checkout or manual `--codex-root`.
+**Goal:** Resolve shared `UNI-*` (and directive-validation `UNI-022` / `UNI-023`) rules on consumer projects without a co-located framework checkout or manual `--rules-root`.
 **Depends:** [RFC-28](done/rfc-28-standards-contract.md) §"Codex root resolution (v1)"; [RFC-33a](rfc-33a-ignore-directives.md) (orphan-directive checks degrade silently when the universal tree is absent).
-**Implementation:** Extend `specrun init` or the existing manifest cache so `adapters/shared/codex/universal/` (and eventually `framework/` when `--include-framework` is relevant) lands under `.specify/.cache/` and participates in the closed resolution probe order. Additive — does not alter wire output for callers that already pass `--codex-root`.
+**Implementation:** Extend `specrun init` or the existing manifest cache so `adapters/shared/rules/universal/` (and eventually `framework/` when `--include-framework` is relevant) lands under `.specify/.cache/` and participates in the closed resolution probe order. Additive — does not alter wire output for callers that already pass `--rules-root`.
 **Why now:** RM-10's scanner exists; consumer CI adoption is blocked until distribution ships. Run in parallel with RM-06, not after it.
 
 #### RM-05: Multi-repo acceptance suite
@@ -90,7 +90,7 @@ specrun source extract <source-key> <candidate-id> --slice <name> [--format json
 
 **Goal:** Continuously enforce engineering standards on consumer projects (not a workflow phase — findings may block CI but never transition plan or slice lifecycle).
 **Status:** Core implemented — [RFC-28](done/rfc-28-standards-contract.md), [RFC-32](done/rfc-32-standards-enforcement.md), [RFC-33a](rfc-33a-ignore-directives.md), and [RFC-34](rfc-34-rules-convergence.md) cover the contract, consumer scanner, per-line tolerance, and framework convergence respectively. **Remaining gap for broad adoption:** RM-07 (shared codex distribution). Optional deferred follow-on: [RFC-33b](future/rfc-33b-standards-baseline.md) (cross-run baseline/diff — lands only when trigger conditions in that RFC are met).
-**Source of truth:** [RFC-28](done/rfc-28-standards-contract.md) is canonical for the resolved codex rule export wire shape (`schemas/codex/resolved.schema.json`, `specrun rules export`), the structured finding schema (`schemas/lint/finding.schema.json`, the `LintFinding` envelope), the fingerprint algorithm, the closed severity enum (`critical` / `important` / `suggestion` / `optional`), and the evidence union; [RFC-32](done/rfc-32-standards-enforcement.md) owns `specrun lint`, hint execution, and the WorkspaceModel that consumes those shapes — RM-10 should not redefine any of them.
+**Source of truth:** [RFC-28](done/rfc-28-standards-contract.md) is canonical for the resolved rule export wire shape (`schemas/rules/resolved.schema.json`, `specrun rules export`), the structured finding schema (`schemas/lint/finding.schema.json`, the `LintFinding` envelope), the fingerprint algorithm, the closed severity enum (`critical` / `important` / `suggestion` / `optional`), and the evidence union; [RFC-32](done/rfc-32-standards-enforcement.md) owns `specrun lint`, hint execution, and the WorkspaceModel that consumes those shapes — RM-10 should not redefine any of them.
 **Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-32's deterministic standards scanner.
 **Target surface:**
 
@@ -199,7 +199,7 @@ specify execute resume <run-id>
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Depends:** [RFC-30](next/rfc-30-init.md) (bootstrap/upgrade/migrate lifecycle) for adoption at scale; RM-06 for executable adapter operations as the contract authors target.
-**Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
+**Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for rules, artifact templates, and tool manifests.
 
 #### RM-22: Hosted observability dashboards
 
@@ -221,7 +221,7 @@ specify execute resume <run-id>
 ## Open Questions
 
 - What is the minimum RFC-29 D1 surface (`specrun source enumerate` / `extract`) before `/spec:refine` delegates extraction to the CLI?
-- Which codex rules should ship as deterministic scanners next, and which should stay model-assisted findings?
+- Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
 - Which acceptance fixtures best represent the product proof path now that scenario #1 is the release blocker?

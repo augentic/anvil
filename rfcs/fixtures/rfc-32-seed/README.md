@@ -33,7 +33,7 @@ cargo run --bin specrun -- \
   --format json \
   review run \
   --target omnia \
-  --codex-root /Users/andrewweston/github.com/augentic/specify \
+  --rules-root /Users/andrewweston/github.com/augentic/specify \
   --project-dir /Users/andrewweston/github.com/augentic/specify/rfcs/fixtures/rfc-32-seed \
   --output-format json
 ```

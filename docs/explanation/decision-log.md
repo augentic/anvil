@@ -38,7 +38,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 1. **Workflow** — phase skills and lifecycle CLI verbs (`/spec:plan` … `/spec:finalize`, `specrun slice *`, `specrun plan *`). Mutates `.specify/` state through a closed verb set.
 2. **Artifacts** — slice-local and baseline product intent (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs). Records what to build; does not encode durable engineering policy.
-3. **Engineering standards** — codex rules under `adapters/**/codex/` plus future `specrun rules export` and `specrun lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
+3. **Engineering standards** — rules under `adapters/**/rules/` plus future `specrun rules export` and `specrun lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev check` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 

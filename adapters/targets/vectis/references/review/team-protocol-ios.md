@@ -23,7 +23,7 @@ For EACH finding (IOS-, SWF-, INT-, and UNI- prefixed):
    for Vectis-owned rules and `^UNI-[0-9]{3}$` for shared rules; the markdown
    `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28
    `LintFinding` wire shape). For new findings, add rule_id only when
-   the issue clearly maps to a stable codex rule.
+   the issue clearly maps to a stable rule.
 
 Then perform a COUNTER-SCAN of all `.swift` files under `iOS/` looking
 for issues ALL specialists missed. Common SwiftUI blind spots:

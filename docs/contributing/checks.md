@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specdev check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- check --framework-root .` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specdev check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- check --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
 **Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
@@ -19,9 +19,9 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -29,11 +29,11 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
-| **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, codex rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable codex rules with `deterministic_hints`; structured findings for CI |
+| **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
-Codex rule *content* lives under `adapters/**/codex/` (engineering standards). `docs/standards/` is **authoring** house style only.
+Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
 
 ## Running checks
 
@@ -79,7 +79,7 @@ FAIL: <rule-id>: <message>
 | `links.*` | `check::links`, `check::schema_links` | Markdown links, skill references, skill directives, tool-owned schema URLs |
 | `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
 | `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
-| `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
+| `codex.*` | `check::rules` | Rule shape and namespace ownership |
 
 See the `specify-authoring` crate's `check` module for the full predicate list.
 
@@ -101,17 +101,17 @@ Envelope shape:
 }
 ```
 
-The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
+The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed rule shape it references is pinned by [`crates/authoring/schemas/rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/rule.schema.json).
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
 **Severity mapping.** Authoring imperative rule ids map to RFC-28 severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs) (CH-20):
 
-- `codex.schema-violation` → `critical` — a malformed codex rule breaks every downstream consumer of the resolved codex.
+- `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
 - every other authoring family (`adapter.*`, `codex.duplicate-rule-id`, `codex.namespace-ownership-violation`, `links.*`, `scenarios.*`, `skill.*`, …) → `important`.
 - unclassified rule ids fall through to the `important` default.
 
-**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `codex.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[codex.schema-violation] Codex rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
+**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
 
 **Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; [`specrun lint`](../../rfcs/done/rfc-32-standards-enforcement.md#specrun-review-phase-2-cli) is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same [RFC-28 `LintFinding` envelope](../../rfcs/done/rfc-28-standards-contract.md#lint-result-envelope) so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) for the consumer-side scanner contract.
 
@@ -260,34 +260,34 @@ The recorded-trace check is opt-in. If a future suite adds
 `recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
 `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
-### 13. First-party codex rule shape
+### 13. First-party rule shape
 
-First-party codex rule files are validated in the shared tree at `adapters/shared/codex/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/codex/**/*.md` and `adapters/targets/<name>/codex/**/*.md`.
+First-party rule files are validated in the shared tree at `adapters/shared/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/rules/**/*.md` and `adapters/targets/<name>/rules/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`crates/authoring/schemas/codex-rule.schema.json`](../../crates/authoring/schemas/codex-rule.schema.json).
+  conforms to [`crates/authoring/schemas/rule.schema.json`](../../crates/authoring/schemas/rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- `adapters/shared/codex/universal/` owns `UNI-*`;
+- **Namespace ownership** -- `adapters/shared/rules/universal/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.schema-violation: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.duplicate-rule-id: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — / missing required property 'trigger'
+  at adapters/shared/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/shared/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule body: adapters/shared/rules/universal/example.md — missing required '## Rule' heading
+  at adapters/shared/rules/universal/example.md:1
+FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/rules/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/shared/rules/universal/example.md:1
+FAIL: codex.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`

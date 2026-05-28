@@ -1,5 +1,7 @@
 # RFC-32: Engineering Standards — Deterministic Enforcement
 
+> **Terminology superseded (pass 2):** `specrun lint` (not `specrun review`); `WorkspaceModel.rule_index` (not `codex_rules`); crate `specify-lints` with `rules` + `lint` modules; cache `.specify/cache/rules/`. Historical prose below retains the original names where they differ.
+
 > Status: Implemented · Depends: [RFC-28](done/rfc-28-standards-contract.md), [RFC-5](done/rfc-5-tooling.md) · Enables: [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md) · Optional follow-on: framework-repo convergence — see [RFC-34](rfc-34-framework-convergence.md)
 
 ## Abstract

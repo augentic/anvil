@@ -9,12 +9,12 @@ The reviewer team divides work across four finding-ID prefixes:
 - `QUA-` — Quality Reviewer (Performance + Code Quality)
 - `UNI-` — Lead's universal-checks pass (gaps not covered by SEC/COR/QUA)
 
-These prefixes are **report-local occurrence ids** — the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex ids. When a finding maps cleanly to a codex rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014` — three-digit codex ids matching `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Do not replace the occurrence id with the codex id.
+These prefixes are **report-local occurrence ids** — the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report (`SEC-1`, `COR-1`, `UNI-1`) and must not be treated as stable codex ids. When a finding maps cleanly to a rule, add a separate `rule_id` field such as `OMNIA-002`, `RUST-001`, `SEC-001`, or `UNI-014` — three-digit codex ids matching `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Do not replace the occurrence id with the codex id.
 
 Stable codex sources for this reviewer:
 
-- [`adapters/targets/omnia/codex/`](../codex/) — Omnia-specific rules: `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors, No Panic Paths, and `SEC-001` Host-Managed Secrets and Identity.
-- [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) — shared `UNI-001` through `UNI-021` rules. Read these codex files directly.
+- [`adapters/targets/omnia/rules/`](../rules/) — Omnia-specific rules: `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors, No Panic Paths, and `SEC-001` Host-Managed Secrets and Identity.
+- [`adapters/shared/rules/universal/`](../../../shared/rules/universal/) — shared `UNI-001` through `UNI-021` rules. Read these codex files directly.
 
 Prefer the most specific matching rule. For example, direct `std::env` access for a secret maps to `SEC-001`; direct `std::env` access for ordinary configuration maps to `OMNIA-002` or `OMNIA-001` depending on whether the core violation is WASM runtime behavior or provider bypass.
 
@@ -128,7 +128,7 @@ Readability and maintainability issues.
 
 ## Universal checks (`UNI-` prefix)
 
-After all three specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all three specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../shared/rules/universal/) with Omnia/WASM-specific detection. Read the first-party codex files directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check                    | Already covered by                           | Action                |
 | ---------------------------------- | -------------------------------------------- | --------------------- |
@@ -160,6 +160,6 @@ Apply the remaining checks with these Omnia/WASM-specific heuristics:
 
 Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severity defined in the universal checklist for each check.
 
-For each universal finding, also set `rule_id` to the stable codex ID that triggered it (for example, local finding `UNI-2` may carry `rule_id: UNI-014`). Use the severity from the codex rule.
+For each universal finding, also set `rule_id` to the stable codex ID that triggered it (for example, local finding `UNI-2` may carry `rule_id: UNI-014`). Use the severity from the rule.
 
 Tag findings that have a **Spec-change indicator** (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) for inclusion in the Adversarial Review and report synthesis. When the spec is silent on the concern a check raises, surface the finding as a `spec-change` design finding for the operator's `/spec:plan` follow-up rather than auto-spawning a Specify slice (the legacy reviewer-spawns-slice path is retired in 2.0).

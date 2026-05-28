@@ -30,5 +30,5 @@ Targets that skip the hook produce no `replay` field and emit no journal event; 
 
 ## See also
 
-- [`../../codex/universal/`](../../codex/universal/) — sibling shared review rules (`UNI-*`)
+- [`../../rules/universal/`](../../rules/universal/) — sibling shared review rules (`UNI-*`)
 - [Target adapters reference](../../../../docs/reference/targets/index.md)

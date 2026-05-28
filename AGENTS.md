@@ -38,9 +38,9 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | --- | --- | --- |
 | **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specrun slice transition` |
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Codex rules under `adapters/**/codex/`; `specrun rules export` and `specrun lint` |
+| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specrun rules export` and `specrun lint` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (codex, enforced per [RFC-28](rfcs/done/rfc-28-standards-contract.md) / [RFC-32](rfcs/done/rfc-32-standards-enforcement.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specdev check` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, enforced per [RFC-28](rfcs/done/rfc-28-standards-contract.md) / [RFC-32](rfcs/done/rfc-32-standards-enforcement.md)) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 `specrun lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 

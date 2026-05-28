@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/authoring/codex-rule.schema.json",
-  "title": "Specify codex rule frontmatter",
-  "description": "Validates the YAML frontmatter block at the top of a codex rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specdev check`.",
+  "$id": "https://github.com/augentic/specify-cli/schemas/authoring/rule.schema.json",
+  "title": "Specify rule frontmatter",
+  "description": "Validates the YAML frontmatter block at the top of a rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specdev check`.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,7 +14,7 @@
   "properties": {
     "id": {
       "$ref": "#/$defs/ruleId",
-      "description": "Stable codex rule identifier. V1 reserves UNI, SRC, FRAME, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes. SRC namespaces shared source-adapter overlays; FRAME is reserved for RFC-32 framework declarative checks and is not used in consumer adapter codex."
+      "description": "Stable rule identifier. V1 reserves UNI, SRC, FRAME, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes. SRC namespaces shared source-adapter overlays; FRAME is reserved for RFC-32 framework declarative checks and is not used in consumer adapter codex."
     },
     "title": {
       "type": "string",
@@ -192,7 +192,7 @@
         },
         "replaced_by": {
           "$ref": "#/$defs/ruleId",
-          "description": "Replacement codex rule id, when there is a direct successor."
+          "description": "Replacement rule id, when there is a direct successor."
         }
       }
     }

@@ -1,5 +1,7 @@
 # RFC-28: Engineering Standards — Codex Contract and Findings
 
+> **Terminology superseded (pass 2):** on-disk policy trees are `adapters/**/rules/` (not `codex/`); CLI export is `specrun rules export`; wire `path-root` is `rules-root`; the standards crate is `specify-lints`. Historical prose below retains the original `codex` naming.
+
 > Status: Implemented - Depends: [RFC-5](done/rfc-5-tooling.md) for codex authoring validation, [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md) - Enables: [RFC-32](rfc-32-standards-enforcement.md), [RFC-34](rfc-34-framework-convergence.md), [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement), [RFC-18](future/rfc-18-slm.md)
 >
 > **Post-implementation note (RFC-34):** the declarative `FRAME-*` rules, framework scan profile, and `specdev review` verb originally attributed to "RFC-32 Phase 3 Option B" throughout this RFC's body were carved out as [RFC-34](rfc-34-framework-convergence.md) after RFC-28 was implemented. RFC-34 also normatively widens the closed `Origin` enum below by one value (`framework`) and amends the origin sort order (see [RFC-34 §A1–A2](rfc-34-framework-convergence.md#rfc-28-amendments)). Historical attributions to "RFC-32 Phase 3 Option B" in the body still resolve correctly via RFC-32's forward pointer to RFC-34; this note exists so a reader does not have to chase the chain.

@@ -10,7 +10,7 @@ Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succe
    - Correctness Reviewer — COR-prefixed findings.
    - Quality Reviewer — QUA-prefixed findings.
    The full check library per specialist (SEC / COR / QUA categories) lives in [`review-categories.md`](../../references/review-categories.md).
-3. **Universal checks (lead)** — apply every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../shared/codex/universal/) with Omnia / WASM heuristics; prefix `UNI-`. Skip universal checks already covered by SEC / COR / QUA per the table in [`review-categories.md`](../../references/review-categories.md).
+3. **Universal checks (lead)** — apply every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../../shared/rules/universal/) with Omnia / WASM heuristics; prefix `UNI-`. Skip universal checks already covered by SEC / COR / QUA per the table in [`review-categories.md`](../../references/review-categories.md).
 4. **Adversarial challenge** — forward all findings to the antagonist. The antagonist confirms, upgrades, downgrades, disputes, and may add `NEW-` findings. Protocol: [`review-team-protocol.md`](../../references/review-team-protocol.md).
 5. **Synthesis** — author `REVIEW.md` per the template in [`review-output-template.md`](../../references/review-output-template.md). Sections: Summary, Findings (grouped by severity), Adversarial Review (confirmed / downgraded / upgraded / disputed / new tallies), Auto-Fix Summary (when `fix` is set), Quality Metrics.
 6. **Auto-fix (only when `fix`)** — apply safe fixes for confirmed / upgraded auto-fixable findings only. Scope, success-rate table, and revert-on-failure recipe: [`review-auto-fix.md`](../../references/review-auto-fix.md). Re-run `cargo check`; revert on failure. Respect antagonist regression flags.
@@ -18,7 +18,7 @@ Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succe
 ## Finding-ID conventions
 
 - Report-local occurrence IDs: `SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`. These are the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage).
-- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Omnia-specific codex rules live under [`adapters/targets/omnia/codex/`](../../codex/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
+- Stable codex citations: `rule_id: OMNIA-002` (for example) appears alongside each mapped finding. The markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape. Omnia-specific rules live under [`adapters/targets/omnia/rules/`](../../rules/): `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors / No Panic Paths, `SEC-001` Host-Managed Secrets and Identity. All codex ids are three digits and match `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`.
 - Severity uses the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Antagonist adjustments rewrite the displayed severity but preserve the original prefix and occurrence ID.
 - Every finding carries a `file:line` reference and a verbatim code snippet.
 
@@ -47,5 +47,5 @@ After auto-fix completes:
 - [`review-auto-fix.md`](../../references/review-auto-fix.md) — `fix` scope, success-rate table, regression guard, recovery process.
 - [`review-output-template.md`](../../references/review-output-template.md) — `REVIEW.md` template and finding-ID conventions.
 - [`agent-teams.md`](../../references/agent-teams.md) — shared team roles, antagonist protocol, file ownership.
-- [`codex/`](../../codex/) — Omnia-specific codex rules cited as `rule_id` values.
-- [`codex/universal/`](../../../../shared/codex/universal/) — shared `UNI-*` codex rules.
+- [`codex/`](../../rules/) — Omnia-specific rules cited as `rule_id` values.
+- [`codex/universal/`](../../../../shared/rules/universal/) — shared `UNI-*` rules.

@@ -17,7 +17,7 @@ The Vectis target adapter contributes its `shape` / `build` / `merge` briefs to 
 /adapters/targets/vectis/
 ├── adapter.yaml                     # Target adapter manifest
 ├── briefs/                          # shape, build (with sub-briefs), merge
-├── codex/                           # Vectis codex rules
+├── codex/                           # Vectis rules
 ├── examples/                        # Operator-facing example artifacts
 ├── references/                      # Crux idiom prose, design-system docs, layout-inferer contract
 ├── rules/

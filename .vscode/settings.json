@@ -18,6 +18,6 @@
         ],
         "./.cursor/schemas/skill.schema.json": [],
         "./.cursor/schemas/scenario.schema.json": [],
-        "./.cursor/schemas/codex-rule.schema.json": []
+        "./.cursor/schemas/rule.schema.json": []
     }
 }

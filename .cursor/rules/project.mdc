@@ -15,7 +15,7 @@ See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
-Workflow skills orchestrate phases; **engineering standards** live in codex rules (`adapters/**/codex/`); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
+Workflow skills orchestrate phases; **engineering standards** live in rules (`adapters/**/rules/`); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
 
 ## Main Inputs
 
@@ -79,7 +79,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   │   ├── vectis/
   │   └── contracts/
   └── shared/               # Shared adapter support material, not adapters
-      ├── codex/universal/  # Shared UNI-* review rules read by per-target review briefs
+      ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
       └── target-hooks/replay/
 /schemas/                 # plugin, source, target, evidence, candidate JSON Schemas
 /scripts/                 # Validation and plugin management

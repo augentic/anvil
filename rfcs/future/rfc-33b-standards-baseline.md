@@ -31,7 +31,7 @@ Both pressure points are conditional: neither bites under a "resolve every findi
 
 Any one of the following promotes RFC-33b from deferred to active:
 
-1. **Retroactive rule pressure.** A new `UNI-*`, `OMNIA-*`, `VECTIS-*`, or other shared codex rule lands that flags existing slice code with no immediate-fix path. The operator needs a way to acknowledge the debt while the cleanup is tracked in plan entries.
+1. **Retroactive rule pressure.** A new `UNI-*`, `OMNIA-*`, `VECTIS-*`, or other shared rule lands that flags existing slice code with no immediate-fix path. The operator needs a way to acknowledge the debt while the cleanup is tracked in plan entries.
 2. **Pre-existing codebase intake.** A consumer project onboards code that did not flow through `/spec:build` — for example the TypeScript→Rust WASM reconstruction input named in `.cursor/rules/project.mdc` §"Main Inputs". Day-one scans on that input are expected to surface mass legitimate findings that cannot be cleared before CI is enabled.
 3. **Operator policy change.** "Resolve every finding before release" stops being feasible at the team's current cadence, and staged remediation across releases becomes the norm. At that point the `last.json` + diff verb signal becomes non-trivial.
 

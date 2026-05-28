@@ -11,7 +11,7 @@ Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific te
    - **Structural** — IOS-001..019: ViewModel / screen correspondence, effect handlers, token usage, ScrollView hazards, recurring-group component candidates. Full library: [`review/ios-checks.md`](../../../references/review/ios-checks.md).
    - **Quality** — SWF-001..010: concurrency, force unwraps, a11y labels, state management, previews, swiftformat. Full library: [`review/swift-quality-checks.md`](../../../references/review/swift-quality-checks.md).
    - **Integration** — only on the first full-scope iteration. Token / asset / composition cross-artifact checks per [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md) § Integration.
-3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../../shared/codex/universal/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
+3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../../../shared/rules/universal/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
 4. **Adversarial challenge.** Forward all findings to the antagonist per [`agent-teams.md`](../../../references/agent-teams.md).
 5. **Synthesis.** Lead authors the iteration report per [`review/iteration-report.md`](../../../references/review/iteration-report.md).
    - Return classified `design_findings` per [../../build.md](../../build.md) § Consolidate review findings.
@@ -20,7 +20,7 @@ Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific te
 ## Finding-ID conventions
 
 - Report-local occurrence IDs: `IOS-1`, `SWF-1`, `INT-1`, `UNI-1`, `NEW-1`. These are **report-local** counters — the `id` field on a structured `LintFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this review uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
-- Stable codex citations: `rule_id: VECTIS-101` (for example) appears alongside each mapped finding. Codex ids must match `^VECTIS-[0-9]{3}$`. Markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape (likewise `target-adapter`, `source-adapter`, `related-rule-ids`, `confidence`). Codex rules: [`adapters/targets/vectis/codex/`](../../../codex/).
+- Stable codex citations: `rule_id: VECTIS-101` (for example) appears alongside each mapped finding. Codex ids must match `^VECTIS-[0-9]{3}$`. Markdown `rule_id:` prose maps to the kebab-case `rule-id` field on the RFC-28 `LintFinding` wire shape (likewise `target-adapter`, `source-adapter`, `related-rule-ids`, `confidence`). Rules: [`adapters/targets/vectis/rules/`](../../../rules/).
 
 Severity values in finding output use the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`.
 
