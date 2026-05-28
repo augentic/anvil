@@ -46,7 +46,7 @@ tools:
     version: 0.3.0
 ```
 
-First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. The legacy 1.x `tools.yaml` sidecar is no longer recognised in 2.0.
+First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specrun tool run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `scripts/use-local-dev.sh` writes it with a `source:` pointing to a locally-built WASM binary. The sidecar is gitignored and never checked in.
 
 Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 

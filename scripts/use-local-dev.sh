@@ -34,6 +34,47 @@ done
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLI_ROOT="$REPO_ROOT/../specify-cli"
 INSTALL_DIR="${SPECIFY_BIN_DIR:-$HOME/.local/bin}"
+WASI_TOOLS_DIR="$CLI_ROOT/wasi-tools"
+
+# ── Helpers ──────────────────────────────────────────────────
+
+adapter_tool_version() {
+  awk '/^tools:/{found=1} found && /version:/{gsub(/[" ]/, "", $2); print $2; exit}' "$1"
+}
+
+# Write a tools.yaml sidecar with the correct first-party permissions.
+# Permissions must match specify_tool::manifest::first_party_permissions().
+write_sidecar() {
+  local tool_name="$1" version="$2" source_path="$3" dest="$4"
+  case "$tool_name" in
+    vectis)
+      cat > "$dest" <<YAML
+tools:
+  - name: vectis
+    version: "${version}"
+    source: "${source_path}"
+    permissions:
+      read:
+        - \$PROJECT_DIR
+        - \$CAPABILITY_DIR
+      write:
+        - \$PROJECT_DIR
+YAML
+      ;;
+    contract)
+      cat > "$dest" <<YAML
+tools:
+  - name: contract
+    version: "${version}"
+    source: "${source_path}"
+    permissions:
+      read:
+        - \$PROJECT_DIR/contracts
+YAML
+      ;;
+    *) echo "Warning: unknown tool $tool_name, skipping sidecar" >&2; return 1 ;;
+  esac
+}
 
 # ── Pre-flight ────────────────────────────────────────────────
 
@@ -50,12 +91,10 @@ fi
 
 mkdir -p "$INSTALL_DIR"
 
-# ── Step 1: Build the CLI ─────────────────────────────────────
+# ── Build and install CLI binaries ────────────────────────────
 
 echo "Building specrun + specdev from $CLI_ROOT …"
 cargo build --release --manifest-path "$CLI_ROOT/Cargo.toml"
-
-# ── Step 2: Install binaries ──────────────────────────────────
 
 for bin in specrun specdev; do
   src="$CLI_ROOT/target/release/$bin"
@@ -68,70 +107,65 @@ for bin in specrun specdev; do
 done
 
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
-  echo ""
-  echo "⚠  $INSTALL_DIR is not on your PATH."
-  echo "   Add it to your shell profile:"
-  echo "     export PATH=\"$INSTALL_DIR:\$PATH\""
+  echo "Warning: $INSTALL_DIR is not on your PATH."
+  echo "         Add to your shell profile: export PATH=\"$INSTALL_DIR:\$PATH\""
 fi
 
-# ── Step 3: Build WASI tools ─────────────────────────────────
+# ── Build WASI tools ─────────────────────────────────────────
+#
+# First-party WASI tools declared by target adapters.  Each entry is
+# cargo_pkg|bin_name|adapter_dir|tool_name.  Omnia declares no tools.
 
-VECTIS_ADAPTER_DIR="$REPO_ROOT/adapters/targets/vectis"
+WASI_TOOLS=(
+  "specify-vectis|vectis|vectis|vectis"
+  "specify-contract|specify-contract|contracts|contract"
+)
 
 if [ "$SKIP_WASI" = "1" ]; then
-  echo ""
   echo "Skipping WASI tool build (--skip-wasi)."
+elif [ ! -d "$WASI_TOOLS_DIR" ]; then
+  echo "Warning: wasi-tools/ not found in specify-cli, skipping WASI build" >&2
+elif ! rustup target list --installed 2>/dev/null | grep -q wasm32-wasip2; then
+  echo "Warning: wasm32-wasip2 target not installed, skipping WASI build" >&2
+  echo "         Install with: rustup target add wasm32-wasip2"
 else
-  WASI_TOOLS_DIR="$CLI_ROOT/wasi-tools"
-  if [ ! -d "$WASI_TOOLS_DIR" ]; then
-    echo ""
-    echo "Warning: wasi-tools/ not found in specify-cli, skipping WASI build" >&2
-  elif ! rustup target list --installed 2>/dev/null | grep -q wasm32-wasip2; then
-    echo ""
-    echo "Warning: wasm32-wasip2 target not installed, skipping WASI build" >&2
-    echo "         Install with: rustup target add wasm32-wasip2"
-  else
-    echo ""
-    echo "Building vectis WASI tool …"
-    (cd "$WASI_TOOLS_DIR" && cargo build -p specify-vectis --target wasm32-wasip2 --release)
-    VECTIS_WASM="$WASI_TOOLS_DIR/target/wasm32-wasip2/release/vectis.wasm"
-    if [ -f "$VECTIS_WASM" ]; then
-      VECTIS_WASM_ABS="$(cd "$(dirname "$VECTIS_WASM")" && pwd)/$(basename "$VECTIS_WASM")"
-      VECTIS_VERSION=$(awk '/^tools:/{found=1} found && /version:/{gsub(/[" ]/, "", $2); print $2; exit}' \
-        "$VECTIS_ADAPTER_DIR/adapter.yaml")
-      cat > "$VECTIS_ADAPTER_DIR/tools.yaml" <<EOF
-tools:
-  - name: vectis
-    version: "${VECTIS_VERSION}"
-    source: "${VECTIS_WASM_ABS}"
-    permissions:
-      read:
-        - \$PROJECT_DIR
-        - \$CAPABILITY_DIR
-      write:
-        - \$PROJECT_DIR
-EOF
-      echo "Installed vectis.wasm sidecar → $VECTIS_ADAPTER_DIR/tools.yaml"
-    else
-      echo "Warning: vectis.wasm not found after build, skipping sidecar" >&2
+  for entry in "${WASI_TOOLS[@]}"; do
+    IFS='|' read -r cargo_pkg bin_name adapter_dir tool_name <<< "$entry"
+    adapter_path="$REPO_ROOT/adapters/targets/$adapter_dir"
+    wasm_file="$WASI_TOOLS_DIR/target/wasm32-wasip2/release/$bin_name.wasm"
+
+    echo "Building $tool_name WASI tool …"
+    (cd "$WASI_TOOLS_DIR" && cargo build -p "$cargo_pkg" --target wasm32-wasip2 --release)
+
+    if [ ! -f "$wasm_file" ]; then
+      echo "Warning: $bin_name.wasm not found after build, skipping sidecar" >&2
+      continue
     fi
-  fi
+
+    wasm_abs="$(cd "$(dirname "$wasm_file")" && pwd)/$(basename "$wasm_file")"
+    version=$(adapter_tool_version "$adapter_path/adapter.yaml")
+    write_sidecar "$tool_name" "$version" "$wasm_abs" "$adapter_path/tools.yaml"
+    echo "Installed $tool_name sidecar → $adapter_path/tools.yaml"
+  done
 fi
 
-# ── Step 4: Populate plugin cache ─────────────────────────────
+# ── Populate plugin cache ─────────────────────────────────────
 
-echo ""
 bash "$REPO_ROOT/scripts/use-local-plugins.sh"
 
-# ── Done ──────────────────────────────────────────────────────
+# ── Summary ───────────────────────────────────────────────────
 
 echo ""
 echo "Local dev environment ready."
 specrun_path="$(command -v specrun 2>/dev/null || echo "$INSTALL_DIR/specrun")"
 echo "  specrun: $specrun_path ($("$specrun_path" --version 2>/dev/null || echo "version unknown"))"
-if [ -f "$VECTIS_ADAPTER_DIR/tools.yaml" ]; then
-  echo "  vectis:  $(grep 'source:' "$VECTIS_ADAPTER_DIR/tools.yaml" | sed 's/.*source: *//')"
-fi
+for entry in "${WASI_TOOLS[@]}"; do
+  IFS='|' read -r _ _ adapter_dir tool_name <<< "$entry"
+  sidecar="$REPO_ROOT/adapters/targets/$adapter_dir/tools.yaml"
+  if [ -f "$sidecar" ]; then
+    echo "  $tool_name:  $(grep 'source:' "$sidecar" | sed 's/.*source: *//' | tr -d '"')"
+  fi
+done
 echo ""
 echo "Next steps:"
 echo "  1. Restart Cursor to pick up local plugin changes."
