@@ -1,4 +1,4 @@
-# RFC-34: Rules Convergence — `FRAME-*` Rules
+# RFC-34: Core Rules — `FRAME-*` Rules
 
 > Status: Draft · Depends: [RFC-28](done/rfc-28-standards-contract.md) (codex contract + `Origin` enum amendment), [RFC-32](done/rfc-32-standards-enforcement.md) Phase 2 (WorkspaceModel + hint interpreter) · Enables: optional follow-on to [roadmap RM-10](roadmap.md#rm-10-ci-native-standards-enforcement)
 
@@ -8,14 +8,14 @@
 
 RFC-34 adds the optional **framework convergence** layer that lets new framework checks be authored as declarative rules instead of new Rust predicates:
 
-1. `**FRAME-*` rules under `adapters/shared/rules/framework/`** — first-class first-party rules using the same hint interpreter as `UNI-*` / target-namespaced rules.
+1. `**FRAME-`* rules under `adapters/shared/rules/framework/`** — first-class first-party rules using the same hint interpreter as `UNI-`* / target-namespaced rules.
 2. **Framework scan profile** — `scan_profile: framework` extractors for skills, adapters, marketplace, agent-teams symlinks, briefs.
 3. `**specdev lint` CLI extension** — framework-side counterpart to `specrun lint`, drives the framework-profile indexer plus hint interpreter alongside existing imperative predicates.
 4. `**Origin::Framework` amendment to RFC-28** — wire-format extension so framework findings are distinguishable from `Shared` ones in `LintFinding` envelopes.
 5. `**--include-framework` consumer opt-in** — framework rules are excluded from consumer codex exports by default; opt-in via flag.
 6. **Hand-author migration cadence** — closed policy for moving imperative `Check` predicates to `FRAME-`* rules without losing CI coverage.
 
-This RFC adds no lifecycle authority. `FRAME-*` findings may block `make check` and CI, but never transition plan entries, slices, or changes — the same contract that already governs `specrun lint`.
+This RFC adds no lifecycle authority. `FRAME-`* findings may block `make check` and CI, but never transition plan entries, slices, or changes — the same contract that already governs `specrun lint`.
 
 ## Motivation
 
@@ -32,7 +32,7 @@ Three pressure points push toward convergence:
 
 ## Principles
 
-1. `**FRAME-*` is additive, not a replacement.** Imperative `Check` predicates remain valid indefinitely. Migration is per-predicate and reversible until the imperative impl is deleted.
+1. `**FRAME-`* is additive, not a replacement.** Imperative `Check` predicates remain valid indefinitely. Migration is per-predicate and reversible until the imperative impl is deleted.
 2. **One substrate, two CLIs.** `specdev lint` and `specrun lint` share `specify-domain::review` modules but keep separate binaries and separate failure semantics, per RFC-32 §"Framework and consumer scans share libraries, not commands."
 3. **No consumer surprise.** Consumer-project `specrun lint` / `specrun rules export` invocations never include `FRAME-`* rules unless `--include-framework` is set.
 4. **Wire compatibility.** `Origin::Framework` is the only RFC-28 amendment. The `LintFinding` shape, the fingerprint algorithm, the severity enum, and the evidence union all stay as RFC-28 defined them.
@@ -89,8 +89,8 @@ A1, A2, and A3 are the only RFC-28 changes. The finding schema, fingerprint algo
 Symmetric counterpart to [RFC-32 §D1](done/rfc-32-standards-enforcement.md#d1--consumer-scan-scope). `scan_profile: framework` walks the framework repository (`augentic/specify`) with the following defaults:
 
 - **Roots.** `project_dir` itself (always the framework-repo root for `specdev lint` invocations), plus any path explicitly named in `artifact_paths[]`.
-- **Default include globs.** `adapters/`**, `plugins/**`, `docs/**`, `.cursor/**`, `rfcs/**`, `scripts/**`, `schemas/**`, `**/AGENTS.md`, `**/REVIEW.md`. Wider than the consumer profile because the framework repo's source of truth is markdown and YAML across many trees.
-- **Always-ignore globs.** `target/`**, `**/node_modules/**`, `.git/**`, `dist/**`, `.specify/**` (the framework repo MAY carry a project-local `.specify/` for self-hosting; framework scans do not enter it), and every path matching the project-root `.gitignore`.
+- **Default include globs.** `adapters/`**, `plugins/`**, `docs/**`, `.cursor/**`, `rfcs/**`, `scripts/**`, `schemas/**`, `**/AGENTS.md`, `**/REVIEW.md`. Wider than the consumer profile because the framework repo's source of truth is markdown and YAML across many trees.
+- **Always-ignore globs.** `target/`**, `**/node_modules/`**, `.git/**`, `dist/**`, `.specify/**` (the framework repo MAY carry a project-local `.specify/` for self-hosting; framework scans do not enter it), and every path matching the project-root `.gitignore`.
 - **Symlink policy.** Framework `agent-teams.md` files symlink into `docs/reference/`. The framework profile **follows** symlinks (recording both endpoints) so review-team-protocol drift is visible. This is the opposite of the consumer profile's record-without-traverse rule and is normative. Symlink cycles abort with a `Filesystem` error.
 - **Binary files.** Same NUL-byte detection as RFC-32 §D1; binary files emit `file { kind: "binary" }` facts and are skipped by `regex` hints unless the rule sets `applicability.binary: true`.
 - **Encoding.** UTF-8 with U+FFFD replacement; one `index.warning` finding per non-UTF-8 file at severity `optional`.
@@ -130,7 +130,7 @@ The handler lives under `src/authoring/commands/lint/{cli.rs, run.rs}` in `augen
 Two `check::rules` changes activate `FRAME-*` placement in the framework repo without weakening existing constraints:
 
 1. `**CODEX_PROFILE_NAMESPACES` extension.** Map the new path `adapters/shared/rules/framework/` → `{"FRAME"}`. Owner discovery uses the same first-segment-under-`adapters/` rule already in place; the framework pack appears as a peer of `universal/` rather than as a per-adapter overlay.
-2. **Placement predicate (lift, then re-apply).** RFC-28 Phase 1 step 2 added a predicate rejecting `FRAME-`* under `adapters/{sources,targets}/<name>/rules/`. That rejection stays; `FRAME-*` rules under per-adapter trees remain a `check::rules` failure. The predicate additionally REQUIRES `FRAME-*` placement under `adapters/shared/rules/framework/` (a non-`FRAME-*` rule there is rejected with the same `codex-namespace-ownership-violation` rule id).
+2. **Placement predicate (lift, then re-apply).** RFC-28 Phase 1 step 2 added a predicate rejecting `FRAME-`* under `adapters/{sources,targets}/<name>/rules/`. That rejection stays; `FRAME-`* rules under per-adapter trees remain a `check::rules` failure. The predicate additionally REQUIRES `FRAME-*` placement under `adapters/shared/rules/framework/` (a non-`FRAME-*` rule there is rejected with the same `codex-namespace-ownership-violation` rule id).
 
 **Resolution root activation.** RFC-28 §"Resolution roots" line 138 reserves root 2: "Shared language or artifact packs, if added later under `adapters/shared/rules/<pack>/`." RFC-34 activates root 2 with pack name `framework`. The resolver walks the new pack root immediately after `adapters/shared/rules/universal/`; rules are tagged with `origin: framework` per A1. No new root order or precedence is introduced.
 
@@ -159,7 +159,7 @@ Hand-authored only (already pinned in RFC-32 §"Phase 3 — framework convergenc
 
 - An imperative `Check` impl retires only when a `FRAME-*` rule plus its hint coverage produces **byte-identical** findings against the predicate's existing golden fixtures. The parity test (`crates/authoring/tests/frame_parity_<rule>.rs`) lands in the same PR as the imperative deletion.
 - Until parity is proven, both the imperative `Check` and the `FRAME-`* rule may run. Duplicate findings against the same `(rule-id, location)` are suppressed by fingerprint deduplication in `specdev lint`'s envelope emission step (the existing RFC-28 fingerprint algorithm already produces identical fingerprints for identical evidence; this requires no new code).
-- Migration order seeds the `High`-priority rows from RFC-32's "Predicate migration map": `adapter.*` (schema), `skill.* (frontmatter)` (schema + unique + regex), `links.*` (reference-resolves). Other rows migrate when contributor demand emerges.
+- Migration order seeds the `High`-priority rows from RFC-32's "Predicate migration map": `adapter.`* (schema), `skill.* (frontmatter)` (schema + unique + regex), `links.*` (reference-resolves). Other rows migrate when contributor demand emerges.
 
 ### F6 — Reserved hint kind dependency
 
@@ -171,13 +171,13 @@ The PR pattern is therefore: kind implementation in `specify-domain::review::eva
 
 RFC-34 lands as **five sequenced steps** merged to main in a single PR across `augentic/specify` and `augentic/specify-cli`. Steps 1–2 are pure plumbing; step 3 is the first user-visible surface; steps 4–5 prove the pattern with one real migration.
 
-1. **Schema + predicate updates.** Add `framework` to the closed `Origin` enum in `schemas/rules/resolved.schema.json`. Extend `CODEX_PROFILE_NAMESPACES` to map `adapters/shared/rules/framework/` → `{"FRAME"}`. Update `check::rules` placement predicate to require `FRAME-`* at the new path and reject non-`FRAME-*` rules there. Add the `--include-framework` flag to `specrun rules export` (default off; no behaviour change without the flag).
+1. **Schema + predicate updates.** Add `framework` to the closed `Origin` enum in `schemas/rules/resolved.schema.json`. Extend `CODEX_PROFILE_NAMESPACES` to map `adapters/shared/rules/framework/` → `{"FRAME"}`. Update `check::rules` placement predicate to require `FRAME-`* at the new path and reject non-`FRAME-`* rules there. Add the `--include-framework` flag to `specrun rules export` (default off; no behaviour change without the flag).
 2. **Framework scan profile.** Implement `scan_profile: framework` extractors under `crates/domain/src/review/index/{skill.rs, adapter.rs, marketplace.rs, agent_teams.rs, brief.rs}`. Reuse `index/files.rs`, `index/frontmatter.rs`, `index/markdown.rs`, `index/symlinks.rs` from Phase 2; symlink policy changes per §F1 (follow instead of record).
 3. `**specdev lint` CLI extension.** Extend `src/authoring/commands/lint/{cli.rs, run.rs}` in `augentic/specify-cli`. `specify-authoring` gains a `specify-domain` dependency (allowed; the binary boundary already imports `specify-domain` for the RFC-28 Phase 3 mapper). Wire export → index → eval → envelope per §F2; ship `--dump-model`, all four formatters, `--strict-hints`, and the exit-code map from RFC-32 §D8.
 4. *First FRAME- rules.** Hand-author 3–5 `FRAME-`* rules covering the High-priority migration-map rows (start with `FRAME-001` ≅ `adapter.schema`, `FRAME-002` ≅ `links.unresolved`, `FRAME-003` ≅ `skill.duplicate-name`). Each rule lands under `adapters/shared/rules/framework/` with a `## Rule` body and a `deterministic_hints` block using Phase 2 kinds.
 5. **Parity tests + imperative retirement.** For each `FRAME-`* rule in step 4, land a parity fixture under `crates/authoring/tests/frame_parity_<rule>.rs`. Delete the matching imperative `Check` impl in the same PR. Update `docs/contributing/checks.md` to point at the rule instead of the predicate.
 
-**Acceptance:** `cargo make ci` green; `make check` (parent repo) green; `specdev lint --format json` produces a stable envelope against the framework repo with the seeded `FRAME-`* rules; consumer `specrun rules export` without `--include-framework` excludes every `FRAME-*` rule (golden test).
+**Acceptance:** `cargo make ci` green; `make check` (parent repo) green; `specdev lint --format json` produces a stable envelope against the framework repo with the seeded `FRAME-`* rules; consumer `specrun rules export` without `--include-framework` excludes every `FRAME-`* rule (golden test).
 
 ## Implementation Guide
 
@@ -234,27 +234,27 @@ Use the existing `REGENERATE_GOLDENS` convention. The framework-minimal fixture 
 
 ## Migration
 
-**For framework contributors:** New checks SHOULD be authored as `FRAME-*` rules under `adapters/shared/rules/framework/` unless the predicate requires subprocess orchestration or stateful behaviour that the hint interpreter cannot model. The `## Rule` body is the canonical agent-readable explanation; the `deterministic_hints` block makes the rule fire under `specdev lint`. Existing imperative `Check` impls remain valid; migrate only when parity is achievable.
+**For framework contributors:** New checks SHOULD be authored as `FRAME-`* rules under `adapters/shared/rules/framework/` unless the predicate requires subprocess orchestration or stateful behaviour that the hint interpreter cannot model. The `## Rule` body is the canonical agent-readable explanation; the `deterministic_hints` block makes the rule fire under `specdev lint`. Existing imperative `Check` impls remain valid; migrate only when parity is achievable.
 
-**For consumer projects:** No change from RFC-32 Phase 2 baseline. `specrun lint` and `specrun rules export` continue to exclude `FRAME-*` rules. Pass `--include-framework` only if your project deliberately wants to enforce framework-authoring rules against your own tree (rare; typically only relevant to projects that vendor parts of the framework repo).
+**For consumer projects:** No change from RFC-32 Phase 2 baseline. `specrun lint` and `specrun rules export` continue to exclude `FRAME-`* rules. Pass `--include-framework` only if your project deliberately wants to enforce framework-authoring rules against your own tree (rare; typically only relevant to projects that vendor parts of the framework repo).
 
 **For RFC-28-aware tooling:** The closed `Origin` enum widens with one value (`framework`). Strict parsers MUST treat unknown enum values as a forward-compatibility extension (i.e., they should not crash on `framework` if they predate RFC-34); RFC-28 already specifies forward-compatible behaviour for closed enums in its evidence-union and severity-enum sections.
 
-**For CI integrations consuming `specdev lint --format json` (RFC-28 Phase 3):** Output remains wire-compatible as RFC-34 adds declarative `FRAME-*` findings to the same envelope. Integrations that already consume `LintFinding` can aggregate imperative and declarative findings without changing schema handling.
+**For CI integrations consuming `specdev lint --format json` (RFC-28 Phase 3):** Output remains wire-compatible as RFC-34 adds declarative `FRAME-`* findings to the same envelope. Integrations that already consume `LintFinding` can aggregate imperative and declarative findings without changing schema handling.
 
 ## Alternatives Considered
 
 **Fold framework convergence back into RFC-32.** Rejected. RFC-32 is now `Accepted` and ships Phase 2 cleanly. Re-opening it to absorb the `Origin` amendment, framework scan-scope, and `specdev lint` framework-rule extension would delay RM-10 and inflate RFC-32 past 750 lines covering two distinct audience scopes. The carve-out matches the precedent set by RFC-28 → RFC-32 → RFC-33a / RFC-33b.
 
-**Run `FRAME-*` through `specrun lint --scan-profile framework`.** Rejected. RFC-28 §"CLI and binary split" preserves a hard `specrun` (operator-facing) / `specdev` (contributor-facing) split. Adding a framework-profile flag to `specrun lint` would erode that split for one feature and force the operator-facing binary to ship framework extractors it never needs.
+**Run `FRAME-`* through `specrun lint --scan-profile framework`.** Rejected. RFC-28 §"CLI and binary split" preserves a hard `specrun` (operator-facing) / `specdev` (contributor-facing) split. Adding a framework-profile flag to `specrun lint` would erode that split for one feature and force the operator-facing binary to ship framework extractors it never needs.
 
-**Keep separate imperative and declarative framework verbs.** Rejected. The framework-facing command should match the consumer-facing `specrun lint` vocabulary, and RFC-28 already made imperative authoring findings speak the `LintFinding` envelope. A single `specdev lint` surface keeps contributors focused on "framework lint" while implementation can still keep imperative predicates and declarative `FRAME-*` evaluation as separate internal stages.
+**Keep separate imperative and declarative framework verbs.** Rejected. The framework-facing command should match the consumer-facing `specrun lint` vocabulary, and RFC-28 already made imperative authoring findings speak the `LintFinding` envelope. A single `specdev lint` surface keeps contributors focused on "framework lint" while implementation can still keep imperative predicates and declarative `FRAME-`* evaluation as separate internal stages.
 
-**Use a different root for `FRAME-*` (e.g. `tooling/rules/`).** Rejected during RFC-32 drafting (see RFC-32 §Resolved Decisions). Keeping every codex tree under `adapters/`** reuses `check::rules` owner discovery, the resolver root walk, and the `origin:` filter without growing a second root.
+**Use a different root for `FRAME-`* (e.g. `tooling/rules/`).** Rejected during RFC-32 drafting (see RFC-32 §Resolved Decisions). Keeping every codex tree under `adapters/`** reuses `check::rules` owner discovery, the resolver root walk, and the `origin:` filter without growing a second root.
 
 **Skip `Origin::Framework`; reuse `Shared`.** Rejected. The point of `Origin` is to let consumers filter by source; collapsing `framework` into `shared` would make `--include-framework` impossible to implement without a parallel discriminant. Adding one enum value once is cheaper than two-layer discriminants forever.
 
-**Automate `Check` → `FRAME-`* translation.** Rejected (already in RFC-32 §"Phase 3 — framework convergence"). Hand-authoring is the validation pass for whether a reserved hint kind models the predicate; an auto-porter would mechanically translate without that scrutiny and would still get the Low-priority rows (`scenarios.`*, `tools.*`) wrong.
+*Automate `Check` → `FRAME-` translation.** Rejected (already in RFC-32 §"Phase 3 — framework convergence"). Hand-authoring is the validation pass for whether a reserved hint kind models the predicate; an auto-porter would mechanically translate without that scrutiny and would still get the Low-priority rows (`scenarios.`*, `tools.`*) wrong.
 
 ## Non-Goals
 
@@ -277,7 +277,7 @@ Every design question raised while drafting RFC-34 is resolved in the body. The 
 - **Framework scan scope** — §F1 (symmetric to RFC-32 §D1; symlinks follow instead of record; wider include globs).
 - **Hint-kind preference for first-wave rules** — §F6 (Phase 2 kinds preferred; reserved kinds ship paired with their interpreter implementations).
 - **Migration cadence** — §F5 (hand-authored, byte-identical parity fixture required for imperative deletion, dedup via existing fingerprint algorithm during overlap).
-- `**check::rules` predicate inversion** — §F3 (placement predicate requires `FRAME-`* at the new path and rejects non-`FRAME-*` rules there, while keeping the existing rejection under per-adapter trees).
+- `**check::rules` predicate inversion** — §F3 (placement predicate requires `FRAME-`* at the new path and rejects non-`FRAME-`* rules there, while keeping the existing rejection under per-adapter trees).
 - `**applicability.artifacts` framework tokens** — §F4 (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`, `doc` added to the closed enum).
 
 ## References
