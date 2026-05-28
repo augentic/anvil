@@ -53,9 +53,11 @@ The closed `applicability.artifacts` enum carries framework-side tokens alongsid
 
 Framework tokens compose with the existing consumer-side tokens (`code`, `tests`, `contracts`, `specs`, `design`, `tasks`); a single rule can list both sides.
 
+**Chassis quirk — prefer `path-pattern` over `applicability.artifacts` until further notice.** The framework-profile resolver passes `include_unmatched: false` into `artifact_dimension_matches`, which drops any rule that declares a populated `applicability.artifacts` set from the resolved output before hints run. Until the chassis flips that behaviour for the framework profile (or wires artifact-kind facts off `WorkspaceModel`), leave `applicability.artifacts` unset and narrow the candidate file set with a `kind: path-pattern` deterministic hint instead (see [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md) for the worked example). Revisit once a chassis follow-up enabling artifact-token filtering for the framework profile lands.
+
 ## Hint-kind preference
 
-`CORE-*` rules SHOULD prefer the executable hint kinds shipped with the interpreter (`path-pattern`, `schema`, `regex`, `tool`). The remaining hint kinds (`unique`, `set-coverage`, `reference-resolves`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `namespace-owner`) are reserved in the schema and ship paired with their interpreter implementation; pick a reserved kind only when authoring a new rule alongside its interpreter in the same change.
+`CORE-*` rules SHOULD prefer the executable hint kinds shipped with the interpreter — currently `path-pattern`, `schema`, `regex`, and `tool`. The remaining hint kinds (`unique`, `set-coverage`, `reference-resolves`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `namespace-owner`) are marked `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) and ship paired with their interpreter implementation (one per-kind PR per reserved kind). Pick a reserved kind only when authoring a new rule alongside its interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
 
 ## Authoring conventions
 
@@ -63,6 +65,7 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
 3. Add the rule, then run `make check`. `specdev lint` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
 4. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the existing fingerprint algorithm collapses duplicate findings during the overlap.
+5. Pair each new `CORE-*` rule with the existing imperative predicate it replaces by consulting the **predicate migration map** in the standards-enforcement decision record (filed in the design-history tree). The map names which `Check` row each reserved hint kind is intended to retire; rules without a mapped predecessor are still legal but should land with a smoke-test fixture rather than a parity test.
 
 ## References
 

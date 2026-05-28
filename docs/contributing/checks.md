@@ -307,14 +307,36 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 ## Extending the checks
 
-To add a new check:
+Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-authoring` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
 
-1. Add a module under [`crates/authoring/src/check/`](../../crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
-2. Register the check in the `checks` array in [`crates/authoring/src/check/mod.rs`](../../crates/authoring/src/check/mod.rs).
-3. Add a fixture-based integration test under [`crates/authoring/tests/`](../../crates/authoring/tests/) when the predicate needs regression coverage.
+### Choose `CORE-*` (declarative) when
+
+- The predicate can be expressed as one or more `deterministic_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
+- A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
+
+The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/authoring/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
+
+To add a `CORE-*` rule:
+
+1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
+2. Run `make check`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
+3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
+
+### Choose an imperative `Check` when
+
+- The predicate genuinely needs subprocess orchestration or stateful behaviour the hint interpreter cannot model (e.g. spawning a long-running validator with multi-turn interaction).
+- The predicate is exploratory and you are not ready to commit to a stable `CORE-NNN` id.
+- You are extending an existing imperative module with a small adjacent row that does not yet warrant a dedicated `CORE-*` rule.
+
+To add an imperative check:
+
+1. Add a module under [`crates/authoring/src/check/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
+2. Register the check in the `checks` array in [`crates/authoring/src/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/src/check.rs).
+3. Add a fixture-based integration test under [`crates/authoring/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/tests/) when the predicate needs regression coverage.
 4. Run `make check` to verify the new check works.
 
-Checks are numbered 1–14 contiguously in this document. New checks should use the next available number (currently 15).
+Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 
