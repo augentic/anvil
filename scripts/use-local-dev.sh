@@ -109,6 +109,14 @@ done
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
   echo "Warning: $INSTALL_DIR is not on your PATH."
   echo "         Add to your shell profile: export PATH=\"$INSTALL_DIR:\$PATH\""
+else
+  for bin in specrun specdev; do
+    resolved="$(command -v "$bin" 2>/dev/null || true)"
+    if [ -n "$resolved" ] && [ "$resolved" != "$INSTALL_DIR/$bin" ]; then
+      echo "Warning: $bin resolves to $resolved, which shadows $INSTALL_DIR/$bin."
+      echo "         Move $INSTALL_DIR earlier on your PATH or remove the other copy."
+    fi
+  done
 fi
 
 # ── Build WASI tools ─────────────────────────────────────────

@@ -63,9 +63,9 @@ Within a single declaration site, tool names must be unique.
 Permission entries may use:
 
 - `$PROJECT_DIR` in both project-scope and adapter-scope declarations.
-- `$ADAPTER_DIR` only in adapter-scope declarations.
+- `$CAPABILITY_DIR` only in adapter-scope declarations.
 
-`$ADAPTER_DIR` is rejected in project-scope tools because project declarations must remain valid even for hub projects or projects whose adapter changes later.
+`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for hub projects or projects whose adapter changes later.
 
 Variables are expanded only in `permissions.read` and `permissions.write`. They are not expanded in `source`, and they are not expanded in arguments passed after `--`.
 
@@ -139,7 +139,7 @@ Choose adapter scope when:
 - The tool is part of the adapter's documented behavior.
 - Briefs or skills in the adapter call `specrun tool run <name>`.
 - The adapter author owns updates, digest pins, and distribution.
-- `$ADAPTER_DIR` is needed for read-only templates or bundled resources.
+- `$CAPABILITY_DIR` is needed for read-only templates or bundled resources.
 
 ## Examples
 
@@ -170,7 +170,7 @@ tools:
     sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     permissions:
       read:
-        - "$ADAPTER_DIR/templates"
+        - "$CAPABILITY_DIR/templates"
         - "$PROJECT_DIR/specs"
       write:
         - "$PROJECT_DIR/generated"
