@@ -57,7 +57,7 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 ## Hint-kind preference
 
-`CORE-*` rules SHOULD prefer the executable hint kinds shipped with the interpreter — currently `path-pattern`, `schema`, `regex`, `tool`, `reference-resolves`, `unique`, `set-coverage`, and `cardinality`. The remaining hint kinds (`constant-eq`, `set-eq`, `content-digest-eq`, `namespace-owner`) are marked `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) and ship paired with their interpreter implementation (one per-kind PR per reserved kind). Pick a reserved kind only when authoring a new rule alongside its interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
+`CORE-*` rules SHOULD prefer the executable hint kinds shipped with the interpreter — currently `path-pattern`, `schema`, `regex`, `tool`, `reference-resolves`, `unique`, `set-coverage`, `cardinality`, and `constant-eq`. The remaining hint kinds (`set-eq`, `content-digest-eq`, `namespace-owner`) are marked `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) and ship paired with their interpreter implementation (one per-kind PR per reserved kind). Pick a reserved kind only when authoring a new rule alongside its interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
 
 ## Authoring conventions
 
