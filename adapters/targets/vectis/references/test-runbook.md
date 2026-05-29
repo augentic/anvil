@@ -5,12 +5,12 @@ Operational detail for `vectis-test-writer`. The SKILL.md keeps only the orienta
 ## Arguments
 
 ```text
-$FEATURE_NAME   = $ARGUMENTS[0]
+$UNIT_NAME      = $ARGUMENTS[0]
 
 # Path derivation
 $SLICE_DIR      = .specify/slices/<active-change>
 $SPECS_DIR      = $SLICE_DIR/specs
-$SPEC_PATH      = $SPECS_DIR/$FEATURE_NAME/spec.md
+$SPEC_PATH      = $SPECS_DIR/$UNIT_NAME/spec.md
 $DESIGN_PATH    = $SLICE_DIR/design.md
 $PROJECT_DIR    = <project directory>
 $APP_RS         = $PROJECT_DIR/shared/src/app.rs
@@ -79,7 +79,7 @@ When invoked in repair mode:
 
 For each requirement block and each scenario within it, generate one test function following the deterministic mapping rules in [`spec-to-test-mapping.md`](test-spec-mapping.md):
 
-1. **One test function per scenario** — naming: `test_<feature_snake>_<scenario_snake_case>` where `<feature_snake>` is the spec folder name converted to snake_case (e.g., `weather-forecast` becomes `weather_forecast`).
+1. **One test function per scenario** — naming: `test_<unit_snake>_<scenario_snake_case>` where `<unit_snake>` is the spec folder name converted to snake_case (e.g., `weather-forecast` becomes `weather_forecast`).
 2. **Happy path tests** from success scenarios (WHEN/THEN with expected state and view model).
 3. **Error case tests** from error scenarios (WHEN/THEN with expected error state or error view).
 4. **Validation tests** from requirement constraints (field presence, format, range).
@@ -88,9 +88,9 @@ For each requirement block and each scenario within it, generate one test functi
 7. **Traceability comments** on each test citing the stable requirement ID:
 
 ```rust
-/// Spec: specs/<feature>/spec.md > REQ-XXX > Scenario: <scenario title>
+/// Spec: specs/<unit>/spec.md > REQ-XXX > Scenario: <scenario title>
 #[test]
-fn test_<feature_snake>_<scenario_snake_case>() {
+fn test_<unit_snake>_<scenario_snake_case>() {
     // ...
 }
 ```
@@ -122,9 +122,9 @@ mod tests {
 
     // --- Spec-mapped tests ---
 
-    /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: <title>
+    /// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: <title>
     #[test]
-    fn test_<feature_snake>_<scenario_snake_case>() {
+    fn test_<unit_snake>_<scenario_snake_case>() {
         let app = app();
         let mut model = Model::default();
 
@@ -169,7 +169,7 @@ Before completing, verify all structural items. Do NOT run `cargo test` in creat
 - [ ] All tests are inside `#[cfg(test)] mod tests` in `app.rs`
 - [ ] Every spec scenario has a corresponding test function
 - [ ] Every test has a `/// Spec:` traceability comment with `REQ-XXX` ID
-- [ ] Test naming follows `test_<feature_snake>_<scenario_snake_case>` convention
+- [ ] Test naming follows `test_<unit_snake>_<scenario_snake_case>` convention
 - [ ] Tests use synchronous `#[test]` (not `#[tokio::test]`)
 - [ ] Tests import `crux_core::App as _` for `update()` and `view()` access
 - [ ] Effect chain tests resolve effects and feed events back into `update()`
@@ -234,7 +234,7 @@ See [`spec-to-test-mapping.md`](test-spec-mapping.md) for the full mapping rules
 
 ## Drift Detection
 
-When invoked against a crate with existing tests and baseline specs at `.specify/specs/<feature>/spec.md`:
+When invoked against a crate with existing tests and baseline specs at `.specify/specs/<unit>/spec.md`:
 
 1. **Regenerate** the expected test structure from the baseline spec
 2. **Compare** against existing tests in the `#[cfg(test)]` module
@@ -279,7 +279,7 @@ Before completing, verify ALL structural items. In create and update modes, comp
 ### Structure
 
 - [ ] Tests are inside `#[cfg(test)] mod tests` in `app.rs`
-- [ ] Test naming follows `test_<feature_snake>_<scenario_snake_case>`
+- [ ] Test naming follows `test_<unit_snake>_<scenario_snake_case>`
 - [ ] Tests use `#[test]` (synchronous, no async runtime)
 - [ ] `crux_core::App as _` imported in test module
 - [ ] Factory functions extract repeated type construction

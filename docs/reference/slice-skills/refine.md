@@ -39,7 +39,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 1. **Resolve target and sources** — read `plan.yaml.slices[<slice>]` for `target:` and `sources[]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
-4. **Synthesize** — load target `shape` brief; write `proposal.md → spec.md → design.md → tasks.md` in fixed order.
+4. **Synthesize** — load target `shape` brief; write `proposal.md → specs/<unit>/spec.md → design.md → tasks.md` in fixed order.
 5. **Write `provenance.yaml`** — atomic provenance index per `REQ-*` id.
 6. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
 7. **Transition** — `specrun slice transition <name> refined`.
@@ -51,7 +51,7 @@ Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice 
 On success:
 
 ```text
-Slice <slice-name> refined. spec.md tags: <U> unknown, <C> conflict, <D> divergence. Review .specify/slices/<slice-name>/spec.md, then run /spec:build <slice-name> or resume /spec:execute.
+Slice <slice-name> refined. spec tags: <U> unknown, <C> conflict, <D> divergence. Review .specify/slices/<slice-name>/specs/, then run /spec:build <slice-name> or resume /spec:execute.
 ```
 
 On extract failure, the slice stays `refining` with amend-plan guidance. On validation failure, fix artifacts and re-validate before transitioning.
@@ -67,7 +67,7 @@ On extract failure, the slice stays `refining` with amend-plan guidance. On vali
 | `refine-no-active-slice` | No `in-progress` entry and no slice argument | Run `/spec:execute` or pass slice name |
 | `refine-binding-unresolved` | Source key or lead id not in plan/discovery | Fix plan bindings |
 | Extract failure | Source path denied or brief error | Amend plan sources; re-run refine |
-| Validation failure | Provenance drift | Fix `spec.md` or `provenance.yaml`; re-validate |
+| Validation failure | Provenance drift | Fix `specs/<unit>/spec.md` or `provenance.yaml`; re-validate |
 
 ## Examples
 

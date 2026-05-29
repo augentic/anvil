@@ -51,20 +51,20 @@ $BASELINE_SPECS   = $PROJECT_DIR/.specify/specs
 
 ## Spec Files (Behavioral "What")
 
-One spec file per adapter or crate, at `specs/<name>/spec.md`.
+One spec file per unit, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They should not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions.
 
-### Spec File Format (Baseline / New Crate)
+### Spec File Format (Baseline / New Unit)
 
-New crate specs and merged baselines use a flat requirement format. The hard-coded spec format (`plugins/spec/references/spec-format.md`) defines the requirement, scenario, and delta-operation headings used by all downstream skills.
+New unit specs and merged baselines use a flat requirement format. The hard-coded spec format (`plugins/spec/references/spec-format.md`) defines the requirement, scenario, and delta-operation headings used by all downstream skills.
 
 ```markdown
-# <Crate Name> Specification
+# <Unit Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this crate or adapter does>
+<1-2 sentence description of what this unit does>
 
 ### Requirement: <Behavior Name>
 
@@ -92,9 +92,9 @@ Source: <source function or design section>
 - `<metric_name>` — type: <counter|gauge|histogram>; emitted: <when>
 ```
 
-### Delta Spec Format (Modified Crate)
+### Delta Spec Format (Modified Unit)
 
-When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the adapter's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
+When modifying an existing unit, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the adapter's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (extract)
 
@@ -176,7 +176,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 Use `proposal.md` to capture why the slice exists and what is in scope. The adapter's brief file (`briefs/proposal.md`) provides the full output template.
 
-The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
+The **Units** section creates the contract between proposal and specs phases. Each unit listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
 Keep proposals concise (1-2 pages). Focus on the "why" not the "how" — implementation details belong in design.md.
 
@@ -246,7 +246,7 @@ Use explicit unknown markers instead of guessing.
 
 ### Behavioral Specs
 
-- [ ] One spec file per adapter or crate
+- [ ] One spec file per unit
 - [ ] Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - [ ] Specs stay behavioral and avoid platform-binding detail
 - [ ] Traceability is present for each requirement and can refer to its stable ID

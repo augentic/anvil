@@ -1,6 +1,6 @@
 # Requirement block
 
-Every requirement in `spec.md` is one H3 block with three required provenance lines plus a body. The provenance parser (consumed by `specrun slice validate`) enforces this shape exactly — any deviation fails the slice in `refining`.
+Every requirement in a spec file (`specs/<unit>/spec.md`) is one H3 block with three required provenance lines plus a body. The provenance parser (consumed by `specrun slice validate`) enforces this shape exactly — any deviation fails the slice in `refining`.
 
 ## Canonical template
 
@@ -12,11 +12,18 @@ Sources: [<source-key>, <source-key>, …]
 Status: <agreed|unknown|conflict|divergence>
 
 <Requirement body — one or more paragraphs, optionally followed by `Note: …` lines for conflict/divergence commentary.>
+
+#### Scenario: <Scenario name>
+
+- **WHEN** <trigger or input>
+- **THEN** <expected behavior>
 ```
+
+The `#### Scenario:` heading is optional per requirement block — include it when the requirement has meaningful acceptance criteria. GIVEN is optional context that precedes the WHEN/THEN pair. Multiple `#### Scenario:` headings may appear within one requirement block. The heading level is fixed at H4; see [`spec-format.md`](../spec-format.md) for the canonical heading conventions.
 
 Rules the parser enforces:
 
-- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no gaps required, but each id MUST be unique inside one `spec.md`. Numbering starts at `REQ-001` per slice.
+- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no gaps required, but each id MUST be unique across all spec files in the slice (since `reconciliation.yaml` is a per-slice flat index keyed by `REQ-*` id). Numbering is sequential across units — do not restart at `REQ-001` per unit.
 - **`Sources:`** is a YAML-flow list of kebab-case source keys. Every key MUST resolve against the slice's `plan.yaml.slices[].sources[]` bindings. `[]` is legal only when `Status: unknown`. Highest-authority key first.
 - **`Status:`** is one of the closed enum `agreed | unknown | conflict | divergence`. Snake-case or any other casing fails.
 - **Tag coherence:** the headline tag (`[unknown]` / `[conflict]` / `[divergence]`) MUST match `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag; the other three Status values carry their matching tag verbatim.
@@ -24,7 +31,7 @@ Rules the parser enforces:
 
 ## Worked examples per Status
 
-### `agreed` — single source
+### `agreed` — single source with scenario
 
 ```markdown
 ### Requirement: User registration accepts valid email
@@ -34,6 +41,11 @@ Sources: [legacy-monolith]
 Status: agreed
 
 The system accepts a registration request when the email field is RFC-5322 valid.
+
+#### Scenario: Valid email accepted
+
+- **WHEN** a registration request arrives with email `user@example.com`
+- **THEN** the system creates the account and returns 201
 ```
 
 ### `agreed` — multiple sources agree
@@ -105,4 +117,4 @@ No contributing source supplied a claim for this requirement. Operator review re
 | `Status:` outside the closed enum                             | Map to `agreed | unknown | conflict | divergence`.                                          |
 | Tag in headline disagrees with `Status:`                      | Make them match per [`tags.md`](tags.md).                                                   |
 | `Sources: []` with `Status:` anything other than `unknown`    | A non-`unknown` requirement always has at least one contributing source.                    |
-| Duplicate `REQ-NNN` ids inside one `spec.md`                  | Renumber so each block is unique.                                                           |
+| Duplicate `REQ-NNN` ids inside the slice (across all spec files) | Renumber so each id is unique across the entire slice.                                      |

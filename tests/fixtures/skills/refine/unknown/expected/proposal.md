@@ -1,12 +1,12 @@
 # Audit trail retention
 
-## Motivation
+## Why
 
 Settle the retention policy for the identity service's audit trail. The lead exists in the plan (operator-flagged at `/spec:plan`) but no contributing source surfaced a concrete claim about the retention window or eviction strategy; the operator is expected to fill the gap before `/spec:build`.
 
-## Scope
+## Units
 
-- Define the audit-trail retention window and the eviction trigger that enforces it.
+- audit-trail-retention — audit-trail retention window and eviction trigger definition
 
 ## Non-goals
 

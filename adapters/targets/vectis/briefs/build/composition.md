@@ -6,7 +6,7 @@ Loaded by [../build.md](../build.md) Step 1 before any per-platform phase. Regen
 
 Priority order:
 
-1. `${SLICE_DIR}/specs/<feature>/spec.md` — screen titles, platform-specific behaviour, observable token / asset references.
+1. `${SLICE_DIR}/specs/<unit>/spec.md` — screen titles, platform-specific behaviour, observable token / asset references.
 2. `${SLICE_DIR}/design.md` — ViewModel variants, per-page view struct fields, `Event` variants, `Route` variants, capability matrix.
 3. Sibling UI inputs (operator-curated, read-only): `${SLICE_DIR}/tokens.yaml` and `${SLICE_DIR}/assets.yaml` when present; otherwise `${PROJECT_DIR}/design-system/tokens.yaml` and `${PROJECT_DIR}/design-system/assets.yaml`. Used to validate token / asset references; never to author requirements.
 4. Component catalog (operator-curated, read-only): `${PROJECT_DIR}/.specify/design-system/components.yaml` when present. Each `confirmed` entry names a shared component the build must factor; `rejected` entries are intentionally declined and ignored. When absent, skip all component-factoring logic.
