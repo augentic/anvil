@@ -63,7 +63,7 @@ Every v1 hint kind is now executable: `path-pattern`, `schema`, `regex`, `tool`,
 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
-3. Add the rule, then run `make check`. `specdev lint` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
+3. Add the rule, then run `make lint`. `specdev lint` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
 4. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the existing fingerprint algorithm collapses duplicate findings during the overlap.
 5. Pair each new `CORE-*` rule with the existing imperative predicate it replaces by consulting the **predicate migration map** in the standards-enforcement decision record (filed in the design-history tree). The map names which `Check` row each reserved hint kind is intended to retire; rules without a mapped predecessor are still legal but should land with a smoke-test fixture rather than a parity test.
 

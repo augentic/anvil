@@ -40,7 +40,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
 | **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specrun rules export` and `specrun lint` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specdev lint` / `make check` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specrun rules export` and enforced by `specrun lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specdev lint` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specrun rules export` and enforced by `specrun lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 `specrun lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
@@ -92,7 +92,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make check` — forwards to `specdev lint` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`) for documentation and workflow consistency checks.
+- `make lint` — forwards to `specdev lint` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`) for documentation and workflow consistency checks.
 - `make test` — runs the compact Rust regression suite in `specify-cli` via Cargo (`cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
@@ -100,7 +100,7 @@ Full acceptance guidance, including the manual cross-repo scenario, lives in [do
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-authoring` crate in `augentic/specify-cli`. Enforced strictly by `specdev lint` (`make check` locally) — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-authoring` crate in `augentic/specify-cli`. Enforced strictly by `specdev lint` (`make lint` locally) — every predicate fails on the first violation, with no per-file grandfathering.
 
 ## Gotchas
 

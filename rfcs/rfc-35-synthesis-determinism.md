@@ -205,7 +205,7 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 5. **Add `specrun journal emit` (D7) and improve validator diagnostics (D8).** New handler under `crates/domain/src/journal/`. Update provenance-parser error messages to distinguish file-location from heading-format errors.
 6. **Add `briefs_dir` to resolve output (D9).** Update the JSON serialisation for both `specrun target resolve` and `specrun source resolve`.
 
-**Acceptance:** `make check` green on `augentic/specify` after steps 1–3. `cargo make ci` green on `augentic/specify-cli` after steps 4–6. Manual verification: an agent running `/spec:refine` against a Vectis slice completes without trial-and-error on artifact format, file location, or reconciliation authoring.
+**Acceptance:** `make lint` green on `augentic/specify` after steps 1–3. `cargo make ci` green on `augentic/specify-cli` after steps 4–6. Manual verification: an agent running `/spec:refine` against a Vectis slice completes without trial-and-error on artifact format, file location, or reconciliation authoring.
 
 ## Migration
 

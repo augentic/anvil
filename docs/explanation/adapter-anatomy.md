@@ -180,7 +180,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
 3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`.
-6. **Validate.** `specrun source resolve <name>` / `specrun target resolve <name>` exercises manifest loading; `make check` runs the documentation predicates and the schema validators.
+6. **Validate.** `specrun source resolve <name>` / `specrun target resolve <name>` exercises manifest loading; `make lint` runs the documentation predicates and the schema validators.
 
 ## Adapter manifests vs Cursor plugin manifests
 

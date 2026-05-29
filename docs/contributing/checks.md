@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo is linted by the `specdev` authoring binary from `augentic/specify-cli`. `make check` forwards to `specdev lint`; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is linted by the `specdev` authoring binary from `augentic/specify-cli`. `make lint` forwards to `specdev lint`; CI runs the same binary in release mode. Run checks before every pull request.
 
 ## Editor-first vs specdev lint
 
@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specdev lint` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specdev lint` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
 **Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
@@ -29,7 +29,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
-| **Authoring standards** | `specdev lint` (`make check`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Authoring standards** | `specdev lint` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
 | **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
@@ -38,7 +38,7 @@ Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/s
 ## Running checks
 
 ```bash
-make check
+make lint
 ```
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
@@ -49,7 +49,7 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `check` + `test`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout.
+`make ci` runs `lint` + `test`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout.
 
 Tooling contributors can also invoke the binary and acceptance tests directly:
 
@@ -320,7 +320,7 @@ The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shar
 To add a `CORE-*` rule:
 
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
-2. Run `make check`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
+2. Run `make lint`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
 3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
 
 ### Choose an imperative `Check` when
@@ -334,7 +334,7 @@ To add an imperative check:
 1. Add a module under [`crates/authoring/src/check/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
 2. Register the check in the `checks` array in [`crates/authoring/src/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/src/check.rs).
 3. Add a fixture-based integration test under [`crates/authoring/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/tests/) when the predicate needs regression coverage.
-4. Run `make check` to verify the new check works.
+4. Run `make lint` to verify the new check works.
 
 Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 

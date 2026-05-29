@@ -24,7 +24,7 @@ Two audiences share this repository:
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
 | **Tooling contributors** | `specify-authoring` predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
-Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make check` and `make test` locally before opening a PR.
+Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` and `make test` locally before opening a PR.
 
 ## Development environment
 
@@ -50,7 +50,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make check` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 

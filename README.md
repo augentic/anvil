@@ -73,7 +73,7 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make check
+make lint
 ```
 
 This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.

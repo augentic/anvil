@@ -15,7 +15,7 @@ Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--fr
 
 ## Targets
 
-- `make check` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
+- `make lint` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
 - `make test` runs the same acceptance tests as `cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`.
 - `make ci` runs both sequentially.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).

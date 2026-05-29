@@ -7,7 +7,7 @@ Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0.
 1. **Top three:** (A) lift the byte-identical `specdev`/`specrun` lint error mappers + helpers into `specify-lints` (~−125 LOC); (B) collapse the duplicated `map_resolve_error` (~−42 LOC); (C) collapse the verbatim-duplicated `LintFormat` enum + `From` (−22 LOC). All are subtraction; no verified defect outranks them.
 2. **Total ΔLOC if all land:** ≈ **−223 LOC** (A −125, B −42, C −22, D −14, E −20).
 3. **Primary non-LOC axes moved:** −2 types (one `LintFormat` mirror, one `escape_*` fn pair), −module-edge churn (two CLI trees stop carrying private copies of the same mappers), and one *latent* defect retired (the two `map_hint_error` copies have already drifted — runtime binds `op` then discards it, authoring uses `..`).
-4. **Verified defects:** **none qualified.** `make check` (specify) = "0 finding(s)"; `cargo clippy --workspace --all-targets --all-features -- -D warnings` = clean (exit 0). Non-test panic surface (`rg -c '\.(unwrap|expect)\('` = 935; `panic!|unreachable!` = 79) is almost entirely inside inline `#[cfg(test)]` modules; no operator-reachable handler panic found. Net ΔLOC from defect-only findings = **0** (≤ +30, trivially).
+4. **Verified defects:** **none qualified.** `make lint` (specify) = "0 finding(s)"; `cargo clippy --workspace --all-targets --all-features -- -D warnings` = clean (exit 0). Non-test panic surface (`rg -c '\.(unwrap|expect)\('` = 935; `panic!|unreachable!` = 79) is almost entirely inside inline `#[cfg(test)]` modules; no operator-reachable handler panic found. Net ΔLOC from defect-only findings = **0** (≤ +30, trivially).
 5. **Most likely to break in remediation:** Finding A — moving the mappers to `specify-lints` must not pull a `specify-domain` edge (`emit_lint_completed` stays behind because it touches `specify_domain::journal`; the sibling-crate invariant in `specify-cli/AGENTS.md` forbids `specify-lints → specify-domain`).
 
 ---
@@ -18,7 +18,7 @@ Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0.
 - `cargo tree --duplicates`: `base64` v0.21/v0.22 and `reqwest` v0.12/v0.13 doubled — **all transitive under `wasm-pkg-client`/`oci-client`/`warg-*`**, none in first-party `Cargo.toml`. `Cargo.toml` is frozen for this pass; not actionable.
 - test fns: **1,187**. `mod.rs` files: 5, **all under `tests/`** (allowed by `coding-standards.md`).
 - files > 500 lines under `crates/`+`src/`: 24 (largest `crates/domain/tests/workspace.rs` 1048; largest non-test `crates/specify-lints/src/rules.rs` 1016).
-- `make check` (specify): **0 findings** (0 critical/important/suggestion/optional) → no skill-predicate defects.
+- `make lint` (specify): **0 findings** (0 critical/important/suggestion/optional) → no skill-predicate defects.
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`: **pass (exit 0)**.
 - panic-adjacent: `unwrap|expect` non-test = 935; `panic!|unreachable!` non-test = 79 — sampled and found test-bound.
 - `#[allow(dead_code)]` / `#[allow(unused …)]`: **0**. `TODO|FIXME|XXX|HACK`: **0**.
@@ -212,4 +212,4 @@ One line per applied finding: actual ΔLOC vs predicted, did the "done when" ass
 - **`SourceAdapter` ⇄ `TargetAdapter` twins** (`adapter/core.rs:214/251`): collapsing fights the documented F9 "operations typed at parse boundary" split (`specify-cli/AGENTS.md`). Explicit architectural decision.
 - **`LintResultVersion` ⇄ `WorkspaceModelVersion`** (`lint/diagnostics.rs:32` / `lint/model.rs:48`): a shared deserialise helper saves ~6 lines but adds a cross-module `use` + a helper — net ≈ 0, adds a module edge. Dropped.
 - **Transitive `base64`/`reqwest` duplicate deps:** all under vendored `wasm-pkg-client`/`warg-*`; `Cargo.toml` frozen. Not actionable.
-- **`specify` skills/docs:** `make check` returns 0 findings; no skill-integrity or frontmatter/body-cap defect to close, and no taste-only edits proposed.
+- **`specify` skills/docs:** `make lint` returns 0 findings; no skill-integrity or frontmatter/body-cap defect to close, and no taste-only edits proposed.
