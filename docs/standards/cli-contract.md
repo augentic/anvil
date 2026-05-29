@@ -19,7 +19,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Project
 
 - `specrun init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specrun init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
-- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `fusion.yaml`, `discovery.md`) rather than formatted dashboard commands.
+- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `reconciliation.yaml`, `discovery.md`) rather than formatted dashboard commands.
 
 ### Slice (per-slice lifecycle)
 
@@ -53,9 +53,9 @@ Today the per-slice verbs live under `specrun slice *` and the umbrella verbs li
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `enumerate` operation, fuses candidates across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specrun plan transition <change-name> reviewed` command is printed for the operator.
-2. **Gate 1.** Operator runs `specrun plan transition <change-name> reviewed` — the only writer of `reviewed`. `/spec:plan` never stamps `reviewed` itself.
-3. **Execute.** `/spec:execute` refuses unless the plan is `reviewed`; it repeatedly picks `specrun plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:refine → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
+1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specrun plan transition <change-name> approved` command is printed for the operator.
+2. **Gate 1.** Operator runs `specrun plan transition <change-name> approved` — the only writer of `approved`. `/spec:plan` never stamps `approved` itself.
+3. **Execute.** `/spec:execute` refuses unless the plan is `approved`; it repeatedly picks `specrun plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:refine → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 4. **Finalize.** `/spec:finalize <change-name>` runs `specrun workspace push`, observes PR state via `gh pr view`, and runs `specrun plan archive` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specrun plan {create, add, amend}`, drive the loop yourself via `specrun plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specrun plan next`; per-entry `done` is written by `specrun slice merge`), then run `specrun workspace push`, verify PRs with `gh pr view`, and run `specrun plan archive` by hand.

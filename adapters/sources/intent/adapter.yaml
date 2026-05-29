@@ -3,9 +3,9 @@ name: intent
 version: 1
 axis: source
 description: >-
-  Operator-supplied free-form intent. Degenerate N=1 source — one candidate per
+  Operator-supplied free-form intent. Degenerate N=1 source — one lead per
   slice, one `kind: intent` claim per Evidence — that backs every plan including
   pure-greenfield work.
 briefs:
-  enumerate: briefs/enumerate.md
   extract: briefs/extract.md
+  survey: briefs/survey.md

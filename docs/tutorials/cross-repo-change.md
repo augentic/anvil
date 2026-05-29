@@ -46,7 +46,7 @@ specrun workspace prepare <project> --change <name>
 ## Step 4 — Execute with workspace routing
 
 ```bash
-specrun plan transition <name> reviewed
+specrun plan transition <name> approved
 /spec:execute
 ```
 

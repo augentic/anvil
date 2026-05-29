@@ -1,7 +1,7 @@
-# Expected Evidence for candidate `task-list` under `<source-key>: screens`.
+# Expected Evidence for lead `task-list` under `<source-key>: screens`.
 # Persisted by the CLI at `.specify/slices/<slice>/evidence/screens.yaml`
 # (one Evidence per source key per slice — when this slice also extracts the
-# `archive` candidate it merges into the same file under the same source key;
+# `archive` lead it merges into the same file under the same source key;
 # the fixture splits the two for readability).
 #
 # Claims emit in pipeline order: regions (header → body → fab → states),
@@ -12,7 +12,7 @@
 source: screens
 adapter: screenshots
 authority: documentation
-candidate: task-list
+lead: task-list
 
 claims:
   - kind: region

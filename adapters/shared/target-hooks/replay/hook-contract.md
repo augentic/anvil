@@ -1,6 +1,6 @@
 # Replay hook contract
 
-Target-agnostic rules for the optional build-time `replay` hook (workflow §D1). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
+Target-agnostic rules for the optional build-time `replay` hook (the capture-backed replay workflow). Each implementing target adds a runner sub-brief that links here and supplies target-specific paths and commands.
 
 ## When to run
 
@@ -24,7 +24,7 @@ Replay failures are **advisory in v1**:
 - The slice still transitions to `built`.
 - The operator inspects replay results at merge time (journal event today; future `.metadata.yaml` block when a CLI surface lands).
 
-This matches RFC-25 posture on `[conflict]` and `[divergence]` tags — review signals, not automatic gates. Stricter posture: custom target adapter fork, CI policy on journal events, or a future RFC promoting auto-refusal into core.
+This matches the current synthesis posture on `[conflict]` and `[divergence]` tags — review signals, not automatic gates. Stricter posture belongs in a custom target adapter fork, CI policy on journal events, or a future core contract.
 
 ## Recording results
 
@@ -36,9 +36,9 @@ The implementing target's runner sub-brief supplies the `runner` string (e.g. `o
 
 ### Do not hand-edit `.metadata.yaml`
 
-Agents must not write slice metadata by hand. RFC-25 retired `specrun slice outcome set` — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
+Agents must not write slice metadata by hand. The current phase contract has no `specrun slice outcome set` surface — see [`phase-outcome-contract.md`](../../../../plugins/spec/references/phase-outcome-contract.md).
 
-A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (workflow §D1). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
+A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (the capture-backed replay workflow). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
 ## Merge posture
 

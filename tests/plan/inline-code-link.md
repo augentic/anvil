@@ -9,11 +9,11 @@ treated as code, not as a real link, and must not be resolved against the
 filesystem.
 
 The lines below intentionally embed broken paths inside single-backtick
-spans. If `make check` exits 0, the inline-code stripping is working; if it
+spans. If `make lint` exits 0, the inline-code stripping is working; if it
 fails with `Broken link`, the predicate has regressed.
 
 - Sample 1: `[Phase outcome contract](../../references/phase-outcome-contract.md)`
-- Sample 2: `[RFC-N](rfcs/...)`
+- Sample 2: `[historical design note](historical/...)`
 - Sample 3: `[broken target](this-path-does-not-exist.md)`
 
 This file deliberately omits YAML frontmatter so the scenario-frontmatter

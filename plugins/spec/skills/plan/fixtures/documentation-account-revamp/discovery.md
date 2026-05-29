@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sources: 1. Candidates: 3.
+Sources: 1. Leads: 3.
 
 ## Source inventory
 
@@ -10,7 +10,7 @@ Sources: 1. Candidates: 3.
 |------|---------------|----------------------------|
 | docs | documentation | ./design-notes/account     |
 
-## Candidate inventory
+## Lead inventory
 
 ### account-registration
 

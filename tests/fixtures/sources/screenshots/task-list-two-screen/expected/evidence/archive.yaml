@@ -1,13 +1,13 @@
-# Expected Evidence for candidate `archive` under `<source-key>: screens`.
+# Expected Evidence for lead `archive` under `<source-key>: screens`.
 # The `archive` screen reuses the `task-row` group skeleton from `task-list`;
 # stage 6 of `screenshots.extract` promotes the second occurrence to
 # `component: task-row` (and back-fills the same slug on the first when the
-# brief sees both candidates in the same run).
+# brief sees both leads in the same run).
 
 source: screens
 adapter: screenshots
 authority: documentation
-candidate: archive
+lead: archive
 
 claims:
   - kind: region

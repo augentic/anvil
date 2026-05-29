@@ -1,11 +1,11 @@
 # Discovery — fixture extract
 
-> Only the `## Candidate inventory` section belongs to the source adapter; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `code-typescript` enumerate brief appends candidate blocks under `## Candidate inventory`; it never writes the heading itself.
+> Only the `## Lead inventory` section belongs to the source adapter; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `code-typescript` survey brief appends lead blocks under `## Lead inventory`; it never writes the heading itself.
 
 ## Summary
 
 - Sources: 1
-- Candidates: 1
+- Leads: 1
 
 ## Source inventory
 
@@ -13,7 +13,7 @@
 | --------------- | --------------- | -------------- |
 | legacy-monolith | code-typescript | ./source       |
 
-## Candidate inventory
+## Lead inventory
 
 ### user-registration
 

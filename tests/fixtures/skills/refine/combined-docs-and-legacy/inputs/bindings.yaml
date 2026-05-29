@@ -4,9 +4,9 @@ slice:
   project: identity-svc
   sources:
     - key: identity-design-notes
-      candidate: user-registration
+      lead: user-registration
     - key: legacy-monolith
-      candidate: user-registration
+      lead: user-registration
   status: in-progress
 plan-sources:
   identity-design-notes:

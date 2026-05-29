@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sources: 2. Candidates: 4.
+Sources: 2. Leads: 4.
 
 ## Source inventory
 
@@ -11,7 +11,7 @@ Sources: 2. Candidates: 4.
 | identity-design-notes | documentation  | ./design-notes/identity       |
 | legacy-monolith      | code-typescript | ./vendor/legacy-monolith      |
 
-## Candidate inventory
+## Lead inventory
 
 ### user-registration
 

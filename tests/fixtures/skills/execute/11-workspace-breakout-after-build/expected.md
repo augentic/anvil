@@ -4,7 +4,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 
 ## Starting state
 
-- `plan.yaml.lifecycle == reviewed`; `workspace: true`.
+- `plan.yaml.lifecycle == approved`; `workspace: true`.
 - `auth-rotate` is already `in-progress` from a prior `/spec:execute` pass; slice lifecycle is `refined` (refine landed before the build-failure park).
 - `audit-shipper-rotate` is still `pending`.
 - `.specify/workspace/project-a/` exists (materialised + branch prepared during the prior pass); `.specify/workspace/project-b/` is empty.

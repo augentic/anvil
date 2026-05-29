@@ -32,6 +32,10 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 - [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `.metadata.yaml`.
 
+### Engineering standards
+
+- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and `specrun lint` exit semantics.
+
 ## Finding what you need
 
 | I want to...                            | Go to...                                              |

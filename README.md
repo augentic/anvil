@@ -35,7 +35,7 @@ specify plan transition <name> reviewed
 /spec:execute
 ```
 
-`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `reviewed` with `specify plan transition <name> reviewed`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> reviewed`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
@@ -73,7 +73,7 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make check
+make lint
 ```
 
 This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.

@@ -1,6 +1,6 @@
-# Worked example — `task-list` candidate
+# Worked example — `task-list` lead
 
-End-to-end illustration of `screenshots.extract` for a candidate named `task-list` bound under source-key `screens`. Two screen images:
+End-to-end illustration of `screenshots.extract` for a lead named `task-list` bound under source-key `screens`. Two screen images:
 
 ```text
 task-list-populated.png   # visible header: "Today"; rows of task items + FAB
@@ -13,7 +13,7 @@ Resulting Evidence (only one task row's claims shown for brevity):
 source: screens
 adapter: screenshots
 authority: documentation
-candidate: task-list
+lead: task-list
 claims:
   - kind: region
     claim-id: task-list.header
@@ -78,4 +78,4 @@ claims:
     name: plus
 ```
 
-A full input / output fixture for this example lives at [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../../../tests/fixtures/sources/screenshots/task-list-two-screen/) in the repo. When `screenshots.extract` runs against a *second* candidate later in the same plan (e.g. an `archive` screen sharing the same row skeleton), the brief promotes the candidate-component note to `component: task-row` per the pipeline's stage-6 ≥2-screens rule.
+A full input / output fixture for this example lives at [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../../../tests/fixtures/sources/screenshots/task-list-two-screen/) in the repo. When `screenshots.extract` runs against a *second* lead later in the same plan (e.g. an `archive` screen sharing the same row skeleton), the brief promotes the candidate-component note to `component: task-row` per the pipeline's stage-6 ≥2-screens rule.

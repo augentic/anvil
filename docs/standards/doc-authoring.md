@@ -26,7 +26,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 | Class | Use |
 |-------|-----|
 | `.hero` + `.eyebrow` + `.hero-title` + `.meta-row` + `.meta-chip` | Top-of-chapter hero block with breadcrumb + lede + meta chips |
-| `section` + `h2 .num` | Numbered top-level sections (RFC-style outline) |
+| `section` + `h2 .num` | Numbered top-level sections (proposal-style outline) |
 | `.decisions` + `.decision[data-d="D1"..."D8"]` + `.tag` | Decision cards (D1 = behaviour, D2 = documentation, …) |
 | `.audience-grid` / `.audience` | "Start here if you are…" orientation blocks |
 | `.questions` / `.question` + `.qnum` + `.q` + `.answer` | Open-question cards |
@@ -264,7 +264,7 @@ Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/ma
 
 ```markdown
 > [!IMPORTANT]
-> **Gate 1.** The operator stamps `reviewed` explicitly — `/spec:plan` never writes it.
+> **Gate 1.** The operator stamps `approved` explicitly — `/spec:plan` never writes it.
 ```
 
 Multi-line bodies prefix every line with `> `.
@@ -319,7 +319,7 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 ## RFC citations
 
-User-facing docs must not cite RFC numbers in visible prose except in [`../explanation/decision-log.md`](../explanation/decision-log.md), [`../explanation/release-notes.md`](../explanation/release-notes.md), and [`../contributing/`](../contributing/). Link targets to archived RFC paths are fine when the link text does not name the RFC. Enforced by `checkNoRfcCitationsInDocs` in `make check`.
+User-facing docs must not cite RFC numbers in visible prose except in [`../explanation/decision-log.md`](../explanation/decision-log.md), [`../explanation/release-notes.md`](../explanation/release-notes.md), and [`../contributing/`](../contributing/). Link targets to archived RFC paths are fine when the link text does not name the RFC. Enforced by `checkNoRfcCitationsInDocs` in `make lint`.
 
 ## Building locally
 

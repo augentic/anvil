@@ -4,7 +4,7 @@ The component catalog at `.specify/design-system/components.yaml` lets operators
 
 ## The problem: cross-slice component drift
 
-Each `screenshots.extract` invocation only sees the candidate it is asked to extract. The screenshots adapter's stage-6 component detection fires within one run: a `component: <slug>` directive lands when two or more structurally identical groups appear in the same extraction. Across slices and across runs, the adapter has no memory.
+Each `screenshots.extract` invocation only sees the lead it is asked to extract. The screenshots adapter's stage-6 component detection fires within one run: a `component: <slug>` directive lands when two or more structurally identical groups appear in the same extraction. Across slices and across runs, the adapter has no memory.
 
 Consider two successive plans importing different screens. Both carry a tab bar, but each extract sees only one instance in its run. Stage 6 emits `notes.candidate_component: tab-bar` on both — a hint, not a promotion. The Vectis build inlines the tab bar twice, and the two implementations drift visually over time. The operator never knew the reuse opportunity existed.
 
@@ -96,7 +96,7 @@ Both validations treat an absent catalog file as a no-op — the catalog is opt-
 /spec:plan seed-app source ui=screenshots:./screens/onboarding
 ```
 
-- `enumerate` produces five candidates (`splash`, `signin`, `task-list`, `archive`, `settings`).
+- `survey` produces five leads (`splash`, `signin`, `task-list`, `archive`, `settings`).
 - `/spec:execute` runs refine; extract sees a 3-tab footer on `task-list` + `archive` + `settings` — stage 6 emits `component: tab-bar` on three claims (≥2 instances in the same run).
 - Vectis build factors `tab-bar` as a shared component on all three screens.
 - Plan merges; baseline screens reference `component: tab-bar`.
@@ -108,7 +108,7 @@ Both validations treat an absent catalog file as a no-op — the catalog is opt-
 /spec:plan profile-screens source ui=screenshots:./screens/profile
 ```
 
-- `enumerate` produces `profile` + `profile-edit`.
+- `survey` produces `profile` + `profile-edit`.
 - Refine runs extract. Both new screens carry a structurally matching footer — the operator (or the agent reading the catalog) applies `component: tab-bar` to both claims.
 - Vectis build emits `composition.yaml` for both new screens with `component: tab-bar` already wired. No shared-component file regeneration needed (it already exists from plan 1).
 

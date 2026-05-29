@@ -19,7 +19,7 @@ Bind a filesystem path instead of inline intent:
 /spec:plan account-revamp source docs=./design-notes/account
 ```
 
-The plan enumerates the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
+The plan surveys the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
 
 ```yaml
 version: 1
@@ -33,37 +33,37 @@ slices:
     target: omnia
     sources:
       - key: docs
-        candidate: account-registration
+        lead: account-registration
     status: pending
   - name: password-reset
     target: omnia
     sources:
       - key: docs
-        candidate: password-reset
+        lead: password-reset
     status: pending
   - name: account-audit-log
     target: omnia
     sources:
       - key: docs
-        candidate: account-audit-log
+        lead: account-audit-log
     status: pending
 ```
 
-Each slice row maps one candidate from `discovery.md` to a unit of work.
+Each slice row maps one lead from `discovery.md` to a unit of work.
 
 ## Step 2 — Inspect at Gate 1
 
-Before stamping `reviewed`, read:
+Before stamping `approved`, read:
 
 - **`change.md`** — scope and any tentative merge notes
 - **`plan.yaml`** — slice names, source bindings, dependency order
-- **`discovery.md`** — full candidate inventory
+- **`discovery.md`** — full lead inventory
 
 Amend if needed:
 
 ```bash
 specrun plan amend account-revamp --add-source ...
-specrun plan transition account-revamp reviewed
+specrun plan transition account-revamp approved
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
@@ -96,6 +96,6 @@ When all three entries are `done`:
 
 ## Next steps
 
-- [Bind multiple sources](../how-to/bind-multiple-sources.md) — fuse legacy code and docs at plan time
+- [Bind multiple sources](../how-to/bind-multiple-sources.md) — reconcile legacy code and docs at plan time
 - [Cross-repo changes](cross-repo-change.md) — workspace mode
 - [Lifecycle](../reference/lifecycle.md) — per-entry and slice state machines

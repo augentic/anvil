@@ -55,7 +55,7 @@ Composables should use design system color tokens when available, not hardcoded 
 
 Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
 
-**Do not flag** generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header — these legitimately contain `Color(0xFF...)` emitted from `tokens.yaml` by `vectis:android-writer` (RFC-11 §L "Generated layout"). Detect the carve-out by reading the first 5 lines of each `.kt` file and skipping when the header is present.
+**Do not flag** generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header — these legitimately contain `Color(0xFF...)` emitted from `tokens.yaml` by `vectis:android-writer` (per the generated-layout policy). Detect the carve-out by reading the first 5 lines of each `.kt` file and skipping when the header is present.
 
 **Fix**: Replace with the appropriate design system color token or `MaterialTheme.colorScheme` reference.
 
@@ -67,7 +67,7 @@ Composables should use design system typography tokens or `MaterialTheme.typogra
 
 **Detection**: Search **app module** `.kt` files for `TextStyle(fontSize` or `fontSize = ` with numeric literals without a preceding design system reference.
 
-Exclude icon sizing in `Icon` composables. Exclude generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (token `TextStyle` definitions live there post-RFC-11; the same header-based carve-out as AND-005 applies).
+Exclude icon sizing in `Icon` composables. Exclude generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (token `TextStyle` definitions live there in the current Vectis shell contract; the same header-based carve-out as AND-005 applies).
 
 **Fix**: Replace with the appropriate design system typography token or `MaterialTheme.typography` reference.
 
@@ -79,7 +79,7 @@ Padding and spacing values should use design system spacing tokens, not magic nu
 
 **Detection**: In **app module** composables, search for `.padding(` or `Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`. Check that the value matches a token; flag if it does not. Skip generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` carrying the `// Generated from design-system/tokens.yaml — do not edit manually.` header (the same header-based carve-out as AND-005 / AND-006).
 
-**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md`). Post-RFC-11, the writer emits `VectisSpacing` as a shell-local `Spacing.kt` file under `ui/theme/` (`com.vectis.<appname>.ui.theme` package). Consumers in sibling packages (`ui.screens`, `ui.components`) must have `import com.vectis.<appname>.ui.theme.*` — do not use the legacy `import com.vectis.design.*`.
+**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md`). The current writer emits `VectisSpacing` as a shell-local `Spacing.kt` file under `ui/theme/` (`com.vectis.<appname>.ui.theme` package). Consumers in sibling packages (`ui.screens`, `ui.components`) must have `import com.vectis.<appname>.ui.theme.*` — do not use the legacy `import com.vectis.design.*`.
 
 ## AND-008: Missing Preview
 
@@ -335,7 +335,7 @@ The Application class should install a global `Thread.setDefaultUncaughtExceptio
 
 **Severity**: suggestion
 
-Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the Android shell ends up with parallel inline copies of the same Compose subtree across `ui/screens/*.kt` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `Android/app/src/main/java/com/vectis/<appname>/ui/components/<Slug>.kt` file via `vectis:android-writer`).
+Per the component directive contract and reviewer surface, any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the Android shell ends up with parallel inline copies of the same Compose subtree across `ui/screens/*.kt` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `Android/app/src/main/java/com/vectis/<appname>/ui/components/<Slug>.kt` file via `vectis:android-writer`).
 
 **Detection**: When the wired `composition.yaml` is available (sibling at the change-local or baseline path — see SKILL.md "Gather context"):
 
@@ -348,5 +348,5 @@ When `composition.yaml` is absent (composition-less change, or a change that onl
 
 **Fix**: This is a candidate finding, not a defect. Suggest one of two actions and let the operator pick:
 
-1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the Android shell via `vectis:android-writer`; the writer emits a single `ui/components/<Slug>.kt` `@Composable` and rewrites every call site to use it (RFC-11 §I "Component directive contract").
+1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the Android shell via `vectis:android-writer`; the writer emits a single `ui/components/<Slug>.kt` `@Composable` and rewrites every call site to use it (per the component directive contract).
 2. **Accept the inline duplication.** When the recurring group is intentionally distinct (e.g. two visually similar groups that diverge in a way the skeleton check cannot see — different gesture handling, different state semantics), document the divergence in the composition or in `design.md` and accept the finding.

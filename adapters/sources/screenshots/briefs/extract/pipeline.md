@@ -8,11 +8,11 @@ The pipeline runs top-down. Each stage produces evidence the next refines; uncer
 
 Group resolved images into screen / state / platform buckets using explicit hints first, visual similarity second.
 
-1. Apply every `state <slug>:<name>=<path>` mapping bound to this candidate. These bindings are authoritative.
-2. Apply every `group <slug>:<paths>` mapping for un-bound images attached to this candidate.
+1. Apply every `state <slug>:<name>=<path>` mapping bound to this lead. These bindings are authoritative.
+2. Apply every `group <slug>:<paths>` mapping for un-bound images attached to this lead.
 3. For remaining images, group by visual similarity (header / chrome match, dominant content match) and propose state names from visible cues like "no tasks yet" → `empty`.
 
-Single-image candidates are accepted; the component-detection ≥2-screens rule (stage 6) governs `component:` emission, not candidate recognition.
+Single-image leads are accepted; the component-detection ≥2-screens rule (stage 6) governs `component:` emission, not lead recognition.
 
 ## 2. Crop platform chrome
 
@@ -23,7 +23,7 @@ Skip when no `platform` hint is present and no chrome is detected. Otherwise rem
 - Web: browser chrome, devtools panes, surrounding OS chrome.
 - Generic: emulator frames, screen recorder overlays, OS-level toasts that aren't part of the application.
 
-Cropped pixels are staged in `$SCRATCH_DIR` only; they never leave the brief and never appear in Evidence. Record what was cropped on the candidate's first emitted `region: { region: header }` claim under `notes.cropped_chrome:`.
+Cropped pixels are staged in `$SCRATCH_DIR` only; they never leave the brief and never appear in Evidence. Record what was cropped on the lead's first emitted `region: { region: header }` claim under `notes.cropped_chrome:`.
 
 ## 3. Infer regions
 
@@ -94,7 +94,7 @@ Walk every container claim produced in stage 4 and compare every `container: gro
 
 Apply the conservative emission policy:
 
-- Promote a container claim to `component: <slug>` only when **either** the operator confirms a candidate (a previous accepted Evidence carries the slug already) **or** the brief observes ≥2 structurally identical groups across screens of the *same run* (within `<candidate-id>` plus any prior candidates extracted for the same plan — synthesis aggregates across candidates).
+- Promote a container claim to `component: <slug>` only when **either** the operator confirms a candidate (a previous accepted Evidence carries the slug already) **or** the brief observes ≥2 structurally identical groups across screens of the *same run* (within `<lead-id>` plus any prior leads extracted for the same plan — synthesis aggregates across leads).
 - Otherwise leave `component:` unset on the claim and add `notes.candidate_component: <slug>` so the operator can promote it explicitly later.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). Reserved region names (`header`, `body`, `footer`, `fab`) MUST NOT be used as slugs.
 - Derive slugs from visible content (`task-row`, `setting-row`, `chip-tag`) — never from layout shape (`row-1`, `card-2`).
@@ -112,7 +112,7 @@ Record uncertainty on the affected claim under a `notes:` map when:
 - An asset reference is expected but `assets.yaml` does not list the ID (`notes.todo: add image '<id>' to assets.yaml`).
 - A candidate component skeleton is borderline (`notes.candidate_component: <slug>` — see stage 6).
 
-Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthesis output as a `[unknown]` tag against the affected requirement during fusion.
+Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthesis output as a `[unknown]` tag against the affected requirement during reconciliation.
 
 ## Determinism
 
@@ -124,8 +124,8 @@ Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthe
 
 ## Idempotence
 
-Re-runs are additive and conservative; the CLI replaces Evidence by `(<source-key>, <candidate-id>)` tuple, but within a run:
+Re-runs are additive and conservative; the CLI replaces Evidence by `(<source-key>, <lead-id>)` tuple, but within a run:
 
 - A re-run against the same source images MAY refine previously emitted body fields when the same images still support the refinement.
-- Operator overrides committed at synthesis time (post-fusion edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `claim-id`s so the fusion layer can detect and preserve operator edits.
+- Operator overrides committed at synthesis time (post-reconciliation edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `claim-id`s so the reconciliation layer can detect and preserve operator edits.
 - When the new screenshots no longer contain a previously inferred element, simply do not emit its claim. The synthesis layer detects the drop via the missing `claim-id` and tags affected requirements with `[unknown]` / `[divergence]` — there is no `# stale-source:` annotation at the Evidence layer.

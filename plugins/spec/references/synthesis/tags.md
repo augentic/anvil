@@ -88,4 +88,4 @@ The event is the durable hand-off `/spec:execute` and downstream review tooling 
 - **Tags on `proposal.md` / `design.md` / `tasks.md` headings** — synthesis tags only appear on `spec.md` requirement headlines.
 - **Tag without provenance** — `### Requirement: Foo [conflict]` with no `Sources:` line below fails the parser; every tagged requirement still carries the three provenance lines.
 - **Auto-resolving `[conflict]`** — synthesis never picks a winner when authorities tie. The operator reconciles.
-- **Suppressing `[unknown]` for empty Evidence** — a candidate whose Evidence emits `claims: []` legitimately produces `[unknown]` requirements; do not silently omit them.
+- **Suppressing `[unknown]` for empty Evidence** — a lead whose Evidence emits `claims: []` legitimately produces `[unknown]` requirements; do not silently omit them.

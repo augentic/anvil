@@ -1,8 +1,8 @@
-# discovery.md — expected `## Candidate inventory` section after `screenshots.enumerate`
+# discovery.md — expected `## Lead inventory` section after `screenshots.survey`
 
-> Only the `## Candidate inventory` section is owned by the source adapter brief. The CLI writes `## Summary` and `## Source inventory` from elsewhere in `/spec:plan`. This fixture shows the candidate inventory blocks the brief returns; the CLI appends them under the existing heading.
+> Only the `## Lead inventory` section is owned by the source adapter brief. The CLI writes `## Summary` and `## Source inventory` from elsewhere in `/spec:plan`. This fixture shows the lead inventory blocks the brief returns; the CLI appends them under the existing heading.
 
-## Candidate inventory
+## Lead inventory
 
 ### archive
 

@@ -1,4 +1,4 @@
-## Candidate inventory
+## Lead inventory
 
 ### user-registration
 

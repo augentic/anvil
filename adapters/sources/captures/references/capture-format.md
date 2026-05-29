@@ -7,15 +7,15 @@ The `captures` source adapter consumes a read-only capture tree under `$SOURCE_D
 ```text
 $SOURCE_DIR/
 └── tests/data/replays/
-    ├── <handler>/                # one subdirectory per captured handler (candidate grain)
+    ├── <handler>/                # one subdirectory per captured handler (lead grain)
     │   ├── <scenario>.json       # TestDef-style capture (claim grain)
     │   └── INSTRUCTIONS.md       # optional per-handler hint material — not evidence
     └── samples/                  # optional shared bulk payloads — not captures, not handlers
 ```
 
-- **`<handler>/`** — kebab-case directory name becomes the candidate `id` at enumerate time.
+- **`<handler>/`** — kebab-case directory name becomes the lead `id` at survey time.
 - **`<scenario>.json`** — one scenario per file; extract emits one `kind: example` claim per file.
-- **`samples/`** — shared bulk data referenced by captures via `@samples/` paths. Not a handler directory; enumerate skips it.
+- **`samples/`** — shared bulk data referenced by captures via `@samples/` paths. Not a handler directory; survey skips it.
 - **`INSTRUCTIONS.md`** — optional operator hints for Omnia test generation. Read for surface-naming context if needed; do not turn prose into Evidence claims. Test-harness semantics live in [`adapters/targets/omnia/references/replay-fixtures.md`](../../../targets/omnia/references/replay-fixtures.md).
 
 ## TestDef-style scenario files
@@ -55,11 +55,11 @@ Values prefixed with `@samples/` resolve relative to `tests/data/replays/`. Exam
 |---|---|
 | `samples/*.json` | Shared bulk datasets — not scenario files, not handler directories |
 | `INSTRUCTIONS.md` | Operator hints for test generation — not Evidence |
-| Directories named `.` / `_` prefix | Skipped at enumerate time |
+| Directories named `.` / `_` prefix | Skipped at survey time |
 
 ## See also
 
 - [`extraction-mapping.md`](extraction-mapping.md) — capture JSON → Evidence claim field mapping
-- [`../briefs/enumerate.md`](../briefs/enumerate.md) — handler-grain candidate enumeration
+- [`../briefs/survey.md`](../briefs/survey.md) — handler-grain lead survey
 - [`../briefs/extract.md`](../briefs/extract.md) — `kind: example` claim emission
 - Test-harness docs are **per-target** — Omnia: [`replay-fixtures.md`](../../../targets/omnia/references/replay-fixtures.md); hook contract: [`../../../shared/target-hooks/replay/`](../../../shared/target-hooks/replay/)

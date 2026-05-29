@@ -3,13 +3,13 @@ name: code-typescript
 version: 1
 axis: source
 briefs:
-  enumerate: briefs/enumerate.md
   extract: briefs/extract.md
+  survey: briefs/survey.md
 description: >-
   TypeScript / JavaScript legacy-code source adapter. Walks a read-only source
-  tree under `$SOURCE_DIR`, enumerates framework-rooted call sites (Express,
+  tree under `$SOURCE_DIR`, surveys framework-rooted call sites (Express,
   Fastify, NestJS, BullMQ, Next.js, node-cron, plain `ws`, yargs/commander,
-  `fetch` / `axios` / typed SDK call-outs) as slice-sized candidates, and
+  `fetch` / `axios` / typed SDK call-outs) as slice-sized leads, and
   extracts behavioural Evidence as `excerpt`, `type`, and `call` claims.
-  Authority emitted is `behaviour`; enumeration grammar is adapter-internal
+  Authority emitted is `behaviour`; survey grammar is adapter-internal
   (no `surfaces.json` sibling artifact).

@@ -2,7 +2,7 @@
 
 Reference documentation for the Omnia target adapter at [`adapters/targets/omnia/`](..). In Specify 2.0 Omnia is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
-The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`../briefs/build.md`](../briefs/build.md) and five phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, codex rules) and worked examples live in this folder.
+The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`../briefs/build.md`](../briefs/build.md) and five phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, rules) and worked examples live in this folder.
 
 ## Briefs
 
@@ -67,8 +67,8 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 - [`review-auto-fix.md`](review-auto-fix.md) — `fix` scope, per-category success-rate table, regression guard.
 - [`review-output-template.md`](review-output-template.md) — `REVIEW.md` template and finding-ID conventions.
 - [`agent-teams.md`](agent-teams.md) — shared multi-agent review pattern (specialists + antagonist + lead synthesis).
-- [`../codex/`](../codex/) — Omnia-specific codex rules (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`).
-- [`../../../shared/codex/universal/`](../../../shared/codex/universal/) — shared `UNI-*` codex rules.
+- [`../rules/`](../rules/) — Omnia-specific rules (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`).
+- [`../../../shared/rules/universal/`](../../../shared/rules/universal/) — shared `UNI-*` rules.
 
 ### Worked examples
 

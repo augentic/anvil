@@ -46,7 +46,7 @@ the operator reviews the draft plan, the change executes, and the
 project branches are merged externally.
 
 The scenario exercises the three-skill `draft → review → execute → finalize`
-lifecycle (RFC-23) end-to-end and pins the durable end-state outcome (merged
+lifecycle end-to-end and pins the durable end-state outcome (merged
 PRs, archived plan, archived `change.md`). It is deliberately manual. It does
 not introduce a test runner, fake forge, recorded transcript, CI target, or
 golden output comparison.
@@ -220,7 +220,7 @@ proceed into execution. After the hand-off, the operator drives the next stage.
 
 ### 3. Review the draft (operator pause)
 
-This is the explicit human seam introduced by RFC-23. Inspect the draft plan
+This is the explicit human review seam.  Inspect the draft plan
 without modifying it:
 
 ```bash

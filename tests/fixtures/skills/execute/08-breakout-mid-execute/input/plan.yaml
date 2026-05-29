@@ -1,6 +1,6 @@
 version: 1
 name: search-filter-rollout
-lifecycle: reviewed
+lifecycle: approved
 sources:
   intent:
     adapter: intent

@@ -1,6 +1,6 @@
 # RFC-35: Synthesis Determinism — Closing Reference Contradictions and Agent Trial-and-Error Loops
 
-> Status: Draft · Depends: [RFC-27](done/rfc-27-synthesis.md) (synthesis contract), [RFC-25](done/rfc-25-workflow.md) (workflow), [RFC-31](done/rfc-31-vectis-screenshots-loop.md) (Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun slice fusion`, synthesis references
+> Status: Draft · Depends: [RFC-27](done/rfc-27-synthesis.md) (synthesis contract), [RFC-25](done/rfc-25-workflow.md) (workflow), [RFC-31](done/rfc-31-vectis-screenshots-loop.md) (Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun slice reconciliation`, synthesis references
 
 ## Abstract
 
@@ -9,7 +9,7 @@ The `/spec:refine` phase orchestrates artifact synthesis from Evidence through a
 This RFC closes the six friction points with four categories of change:
 
 1. **Reference corrections** — fix three contradictions between `substeps.md`, `spec-format.md`, and the Vectis shape brief so every synthesis reference gives consistent guidance for scenario headings, proposal sections, and spec file paths.
-2. **CLI determinism** — add `specrun slice fusion write` and `specrun journal emit` verbs to replace fragile agent-authored YAML and NDJSON with schema-validated CLI output.
+2. **CLI determinism** — add `specrun slice reconciliation write` and `specrun journal emit` verbs to replace fragile agent-authored YAML and NDJSON with schema-validated CLI output.
 3. **Validator diagnostics** — improve `specrun slice validate` error messages to distinguish file-location errors from heading-format errors so agents (and operators) fix the right thing on the first attempt.
 4. **Resolver output** — add `briefs_dir` to the `specrun target resolve` and `specrun source resolve` JSON output so agents can locate adapter briefs deterministically.
 
@@ -21,13 +21,13 @@ The friction evidence comes from a single `/spec:execute` session driving six Ve
 
 ### F1. Scenario heading format — `substeps.md` contradicts `spec-format.md`
 
-`substeps.md` line 29 says: "Acceptance scenarios, when needed, live under a `## Scenarios` H2 *after* all requirement blocks." The actual validated format is `#### Scenario:` (H4) inline within each requirement block, as documented in `spec-format.md` line 10 and used throughout the Vectis test brief, `artifact-format.md`, and every worked example in the repository. The agent wrote plain `Scenario:` text, got "requirements have no scenarios", then had to grep through the adapter cache to discover the H4 format. The refine skill's reference list cites `substeps.md`, `requirement-block.md`, `authority.md`, and `claim-fusion.md` — but not `spec-format.md`.
+`substeps.md` line 29 says: "Acceptance scenarios, when needed, live under a `## Scenarios` H2 *after* all requirement blocks." The actual validated format is `#### Scenario:` (H4) inline within each requirement block, as documented in `spec-format.md` line 10 and used throughout the Vectis test brief, `artifact-format.md`, and every worked example in the repository. The agent wrote plain `Scenario:` text, got "requirements have no scenarios", then had to grep through the adapter cache to discover the H4 format. The refine skill's reference list cites `substeps.md`, `requirement-block.md`, `authority.md`, and `claim-reconciliation.md` — but not `spec-format.md`.
 
 **Cost:** Two failed validation cycles, one grep search, one full spec rewrite.
 
 ### F2. `spec.md` file location — generic refine skill vs. Vectis target convention
 
-The refine skill step 4 says "write `proposal.md → spec.md → design.md → tasks.md`" — implying flat files at the slice root. The Vectis shape brief says "One spec file per feature at `specs/<feature>/spec.md`", and `specrun slice create` creates a `specs/` subdirectory. The agent wrote `spec.md` at the slice root. The validator error said "REQ-001 appears in fusion.yaml but no matching `REQ-*` heading exists in spec.md" — which the agent interpreted as a heading-format problem. It spent four steps trying different heading formats before noticing the `specs/` directory and moving the file.
+The refine skill step 4 says "write `proposal.md → spec.md → design.md → tasks.md`" — implying flat files at the slice root. The Vectis shape brief says "One spec file per feature at `specs/<feature>/spec.md`", and `specrun slice create` creates a `specs/` subdirectory. The agent wrote `spec.md` at the slice root. The validator error said "REQ-001 appears in reconciliation.yaml but no matching `REQ-*` heading exists in spec.md" — which the agent interpreted as a heading-format problem. It spent four steps trying different heading formats before noticing the `specs/` directory and moving the file.
 
 **Cost:** Four failed validation cycles, one directory listing, one file move.
 
@@ -43,9 +43,9 @@ The agent needed the Vectis shape brief and source extract briefs. It tried glob
 
 **Cost:** Five discovery steps consuming context and tool calls.
 
-### F5. `fusion.yaml` manual authoring
+### F5. `reconciliation.yaml` manual authoring
 
-The refine skill says "No `specrun slice fusion write` verb exists — the skill body is the writer." The agent hand-authored ~100 lines of structured YAML, which then failed validation with drift errors. Since `fusion.yaml` is audit-only and `spec.md` is authoritative (per DECISIONS.md), the index can be mechanically derived.
+The refine skill says "No `specrun slice reconciliation write` verb exists — the skill body is the writer." The agent hand-authored ~100 lines of structured YAML, which then failed validation with drift errors. Since `reconciliation.yaml` is audit-only and `spec.md` is authoritative (per DECISIONS.md), the index can be mechanically derived.
 
 **Cost:** One failed validation cycle, one full YAML rewrite.
 
@@ -77,10 +77,10 @@ Every friction point follows the same shape: (1) the agent reads guidance, (2) w
 | **D3 Refine skill references spec-format.md** | The refine skill's References section adds `spec-format.md` alongside the existing synthesis references. | Edit `plugins/spec/skills/refine/SKILL.md`. |
 | **D4 Target-specific spec path in substeps.md** | `substeps.md` section 2 notes that the spec file path is target-specific: "The target shape brief determines the spec file path structure (e.g. Vectis uses `specs/<feature>/spec.md`; other targets may use `spec.md` at the slice root)." The refine skill step 4 echoes this note. | Edit `plugins/spec/references/synthesis/substeps.md` and `plugins/spec/skills/refine/SKILL.md`. |
 | **D5 Proposal sections are target-governed** | `substeps.md` section 1 changes "Required H2 sections" to "Default H2 sections" and adds: "When the target shape brief specifies different proposal sections, the shape brief takes precedence." | Edit `plugins/spec/references/synthesis/substeps.md`. |
-| **D6 `specrun slice fusion write`** | New CLI verb that reads `spec.md` and the slice's `evidence/*.yaml` files, then writes `fusion.yaml` deterministically. The verb owns timestamp generation, the `resolution` enum, claim cross-referencing, and atomic-write discipline. The refine skill step 5 becomes a single CLI invocation. | New handler in `specify-cli` under `crates/domain/src/slice/fusion.rs`; new `specrun slice fusion write $SLICE_NAME --format json` subcommand. |
-| **D7 `specrun journal emit`** | New CLI verb that appends one NDJSON event to `.specify/journal.jsonl` with validated event name, generated timestamp, and typed payload. Replaces fragile shell `printf` in skill bodies. | New handler in `specify-cli` under `crates/domain/src/journal/emit.rs`; new `specrun journal emit <event-name> [--payload key=value ...]` subcommand. |
-| **D8 Validator file-location diagnostics** | `specrun slice validate` distinguishes "no spec files found at expected path" from "spec file found but heading not matching." When the validator's target-specific expectation (e.g. `specs/<feature>/spec.md`) finds no files, it emits a targeted error naming the expected path pattern rather than reporting missing headings. | Update provenance-parser error paths in `crates/domain/src/validate/`. |
-| **D9 `briefs_dir` in resolve output** | `specrun target resolve --format json` and `specrun source resolve --format json` include a `briefs_dir` field giving the absolute filesystem path to the adapter's briefs directory. | Update the JSON serialisation in `crates/domain/src/adapter/`. |
+| **D6 `specrun slice reconciliation write`** | New CLI verb that reads `spec.md` and the slice's `evidence/*.yaml` files, then writes `reconciliation.yaml` deterministically. The verb owns timestamp generation, the `resolution` enum, claim cross-referencing, and atomic-write discipline. The refine skill step 5 becomes a single CLI invocation. | New handler in `specify-cli` under `crates/workflow/src/slice/reconciliation.rs`; new `specrun slice reconciliation write $SLICE_NAME --format json` subcommand. |
+| **D7 `specrun journal emit`** | New CLI verb that appends one NDJSON event to `.specify/journal.jsonl` with validated event name, generated timestamp, and typed payload. Replaces fragile shell `printf` in skill bodies. | New handler in `specify-cli` under `crates/workflow/src/journal/emit.rs`; new `specrun journal emit <event-name> [--payload key=value ...]` subcommand. |
+| **D8 Validator file-location diagnostics** | `specrun slice validate` distinguishes "no spec files found at expected path" from "spec file found but heading not matching." When the validator's target-specific expectation (e.g. `specs/<feature>/spec.md`) finds no files, it emits a targeted error naming the expected path pattern rather than reporting missing headings. | Update provenance-parser error paths in `crates/validate/src/`. |
+| **D9 `briefs_dir` in resolve output** | `specrun target resolve --format json` and `specrun source resolve --format json` include a `briefs_dir` field giving the absolute filesystem path to the adapter's briefs directory. | Update the JSON serialisation in `crates/workflow/src/adapter/`. |
 
 ### D1 + D2 — Scenario heading corrections
 
@@ -119,10 +119,10 @@ The refine skill step 4 adds the same note:
 
 > The shape brief determines the spec file organisation; write spec files at the path the shape brief prescribes (e.g. `specs/<crate>/spec.md` for Vectis, `spec.md` for Omnia).
 
-### D6 — `specrun slice fusion write`
+### D6 — `specrun slice reconciliation write`
 
 ```bash
-specrun slice fusion write app-shell --format json
+specrun slice reconciliation write app-shell --format json
 ```
 
 Behaviour:
@@ -131,15 +131,15 @@ Behaviour:
 - Reads `$SLICE_DIR/evidence/*.yaml` and indexes claims by `claim-id`.
 - Cross-references each requirement's `Sources:` keys against Evidence claims to build the `contributing-claims` list.
 - Selects the `resolution` enum value per the existing closed set (`single-source`, `single-value-agreement`, `authority-resolved`, `conflict`).
-- Writes `fusion.yaml` atomically (sibling temp file, then rename).
-- Emits the `slice.fusion.written` journal event with `{ slice-name, generator, requirement-count }`.
+- Writes `reconciliation.yaml` atomically (sibling temp file, then rename).
+- Emits the `slice.reconciliation.written` journal event with `{ slice-name, generator, requirement-count }`.
 - On `--format json`, prints a summary with `requirement_count` and `resolution_counts`.
 
 Error cases:
 
-- Missing Evidence for a `Sources:` key → `fusion-evidence-missing` (exit 2).
-- Duplicate `REQ-NNN` ids → `fusion-duplicate-req` (exit 2).
-- No spec files found → `fusion-no-spec-files` (exit 2).
+- Missing Evidence for a `Sources:` key → `reconciliation-evidence-missing` (exit 2).
+- Duplicate `REQ-NNN` ids → `reconciliation-duplicate-req` (exit 2).
+- No spec files found → `reconciliation-no-spec-files` (exit 2).
 
 This verb replaces the "step 5" prose in the refine skill with a single CLI call. The downstream `specrun slice validate` drift gate (step 6) remains unchanged — it validates the CLI's output the same way it validated the agent's output.
 
@@ -159,7 +159,7 @@ Behaviour:
 - Appends one NDJSON line to `.specify/journal.jsonl`.
 - Exits 0 on success; exit 2 on unknown event name or missing required payload fields.
 
-Required payload fields are enforced per-event-kind (e.g. `slice.extract.completed` requires `slice-name` and `source-key`). The closed taxonomy and required-field map live in `crates/domain/src/journal.rs`, which already owns the `EventKind` enum.
+Required payload fields are enforced per-event-kind (e.g. `slice.extract.completed` requires `slice-name` and `source-key`). The closed taxonomy and required-field map live in `crates/workflow/src/journal.rs`, which already owns the `EventKind` enum.
 
 ### D8 — Validator diagnostics
 
@@ -173,9 +173,9 @@ When `specrun slice validate` cannot find spec files at the target-expected path
 }
 ```
 
-When a spec file is found but a `REQ-NNN` from `fusion.yaml` has no matching block, the existing `slice-fusion-drift` error is kept but its message is refined to distinguish the two cases:
+When a spec file is found but a `REQ-NNN` from `reconciliation.yaml` has no matching block, the existing `slice-reconciliation-drift` error is kept but its message is refined to distinguish the two cases:
 
-- "REQ-001 listed in fusion.yaml but no requirement block with `ID: REQ-001` exists in any spec file under `specs/`."
+- "REQ-001 listed in reconciliation.yaml but no requirement block with `ID: REQ-001` exists in any spec file under `specs/`."
 - vs. "spec.md found at slice root instead of `specs/<feature>/spec.md` — the validator may not be reading the correct file."
 
 ### D9 — `briefs_dir` in resolve output
@@ -201,17 +201,17 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 1. **Fix `substeps.md` scenario guidance (D1, D5).** Replace the `## Scenarios` H2 paragraph with `#### Scenario:` H4 inline guidance. Add the target-governed proposal-sections caveat. Add the target-specific spec-path note (D4).
 2. **Extend `requirement-block.md` with scenario heading (D2).** Add the `#### Scenario:` heading and a WHEN/THEN worked example to the canonical template.
 3. **Update refine skill references (D3, D4).** Add `spec-format.md` to the References section. Add the shape-brief-governs-path note to step 4.
-4. **Add `specrun slice fusion write` (D6).** New handler under `crates/domain/src/slice/`. Reads spec files and evidence, writes `fusion.yaml` atomically, emits journal event. Golden tests against existing synthesis fixtures.
-5. **Add `specrun journal emit` (D7) and improve validator diagnostics (D8).** New handler under `crates/domain/src/journal/`. Update provenance-parser error messages to distinguish file-location from heading-format errors.
+4. **Add `specrun slice reconciliation write` (D6).** New handler under `crates/workflow/src/slice/`. Reads spec files and evidence, writes `reconciliation.yaml` atomically, emits journal event. Golden tests against existing synthesis fixtures.
+5. **Add `specrun journal emit` (D7) and improve validator diagnostics (D8).** New handler under `crates/workflow/src/journal/`. Update provenance-parser error messages to distinguish file-location from heading-format errors.
 6. **Add `briefs_dir` to resolve output (D9).** Update the JSON serialisation for both `specrun target resolve` and `specrun source resolve`.
 
-**Acceptance:** `make check` green on `augentic/specify` after steps 1–3. `cargo make ci` green on `augentic/specify-cli` after steps 4–6. Manual verification: an agent running `/spec:refine` against a Vectis slice completes without trial-and-error on artifact format, file location, or fusion authoring.
+**Acceptance:** `make lint` green on `augentic/specify` after steps 1–3. `cargo make ci` green on `augentic/specify-cli` after steps 4–6. Manual verification: an agent running `/spec:refine` against a Vectis slice completes without trial-and-error on artifact format, file location, or reconciliation authoring.
 
 ## Migration
 
 **For skill authors:** Steps 1–3 are breaking changes to the synthesis references. Any downstream skill or brief that cites `substeps.md`'s `## Scenarios` H2 guidance or `requirement-block.md`'s template without scenarios must be updated in the same PR. A grep for `## Scenarios` across the plugin repo covers this.
 
-**For CLI consumers:** `specrun slice fusion write` is additive — existing agents that hand-author `fusion.yaml` continue to work until they adopt the new verb. `specrun journal emit` is additive — existing `printf`-based journal writes continue to work. The `briefs_dir` field is additive — existing parsers that do not read it are unaffected.
+**For CLI consumers:** `specrun slice reconciliation write` is additive — existing agents that hand-author `reconciliation.yaml` continue to work until they adopt the new verb. `specrun journal emit` is additive — existing `printf`-based journal writes continue to work. The `briefs_dir` field is additive — existing parsers that do not read it are unaffected.
 
 **For target adapter authors:** The `specs.file-location` validator diagnostic (D8) is target-aware — it reads the target manifest to determine the expected spec path structure. Target adapters that expect a non-default spec layout should declare this in their `adapter.yaml` or shape brief. Vectis already does; Omnia and contracts use the default (`spec.md` at slice root).
 
@@ -219,9 +219,9 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 
 **Embed the scenario heading in `substeps.md` as a cross-reference to `spec-format.md`.** Rejected. A cross-reference still requires the agent to read a second file, and experience shows agents follow the first concrete example they find. Putting the `#### Scenario:` template directly in both `substeps.md` and `requirement-block.md` eliminates the indirection.
 
-**Make `fusion.yaml` optional.** Rejected. The audit trail it provides (which Evidence claims contributed to which requirements, and how conflicts were resolved) is valuable for operator review. The problem is not the artifact's existence but the authoring burden. A CLI verb that derives it deterministically preserves the audit value at zero agent cost.
+**Make `reconciliation.yaml` optional.** Rejected. The audit trail it provides (which Evidence claims contributed to which requirements, and how conflicts were resolved) is valuable for operator review. The problem is not the artifact's existence but the authoring burden. A CLI verb that derives it deterministically preserves the audit value at zero agent cost.
 
-**Add a `specrun slice synthesize` verb that runs all four substeps.** Rejected. The synthesis substeps require LLM-driven judgment (grouping claims, writing requirement prose, designing domain models). A single CLI verb cannot own that work. The verb boundary should be at the mechanical steps: `fusion write` and `journal emit`.
+**Add a `specrun slice synthesize` verb that runs all four substeps.** Rejected. The synthesis substeps require LLM-driven judgment (grouping claims, writing requirement prose, designing domain models). A single CLI verb cannot own that work. The verb boundary should be at the mechanical steps: `reconciliation write` and `journal emit`.
 
 **Fold validator improvements into a broader "developer experience" RFC.** Rejected. The diagnostic improvements here are tightly coupled to the synthesis contract and directly motivated by observed agent failures. Separating them from the reference corrections would delay the fix and lose the causal link.
 
@@ -230,7 +230,7 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 - Changing the synthesis contract (claim kinds, authority hierarchy, provenance rules). RFC-27 owns those.
 - Automating the four synthesis substeps (proposal, spec, design, tasks). Those require LLM judgment.
 - Adding new slice lifecycle states or plan-level changes.
-- Changing the Evidence schema or the `fusion.yaml` schema. The existing schemas are correct; the problem is who writes them.
+- Changing the Evidence schema or the `reconciliation.yaml` schema. The existing schemas are correct; the problem is who writes them.
 - Addressing WASI tool availability or distribution. That is tracked separately.
 
 ## References
@@ -242,4 +242,4 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 - [`plugins/spec/references/synthesis/substeps.md`](../plugins/spec/references/synthesis/substeps.md) — synthesis substep contract corrected by D1, D4, D5.
 - [`plugins/spec/references/synthesis/requirement-block.md`](../plugins/spec/references/synthesis/requirement-block.md) — requirement block template extended by D2.
 - [`docs/reference/artifact-format.md`](../docs/reference/artifact-format.md) — definitive artifact format reference (already correct on scenario headings).
-- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `fusion.yaml` audit-only decision that motivates D6.
+- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `reconciliation.yaml` audit-only decision that motivates D6.

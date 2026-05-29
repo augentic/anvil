@@ -1,6 +1,6 @@
 # `omnia` target — `without-replay` fixture
 
-Worked example for the omission-is-not-an-error posture on the shared replay hook ([`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md), workflow §D1). The `.metadata.yaml` in this directory is what a build emits when the slice has no `captures` source binding (or when a target adapter fork has not implemented the hook).
+Worked example for the omission-is-not-an-error posture on the shared replay hook ([`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md), the capture-backed replay workflow). The `.metadata.yaml` in this directory is what a build emits when the slice has no `captures` source binding (or when a target adapter fork has not implemented the hook).
 
 ## What this fixture demonstrates
 
@@ -14,4 +14,4 @@ The two fixtures are byte-identical apart from the trailing `replay:` block. A `
 
 ## Validation
 
-`.metadata.yaml` follows the `SliceMetadata` shape in [`crates/domain/src/slice/metadata.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). No `replay:` field appears — the absence itself is what this fixture pins.
+`.metadata.yaml` follows the `SliceMetadata` shape in [`crates/workflow/src/slice/metadata.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). No `replay:` field appears — the absence itself is what this fixture pins.

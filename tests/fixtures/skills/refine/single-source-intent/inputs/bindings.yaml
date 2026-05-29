@@ -4,7 +4,7 @@ slice:
   project: identity-svc
   sources:
     - key: intent
-      candidate: add-search-filter
+      lead: add-search-filter
   status: in-progress
 plan-sources:
   intent:

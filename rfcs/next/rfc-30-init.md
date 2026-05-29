@@ -46,11 +46,11 @@ These concerns share substrate. All three are bootstrap problems, all three need
 | --- | --- | --- |
 | **D1 CLI upgrade verb** | The CLI exposes `specify upgrade` that detects its install channel and self-updates. | Add `src/commands/upgrade.rs`; add `InstallChannel` enum (`cargo`, `brew`, `binary`, `unknown`); shell out to the channel-native upgrade command after confirmation. |
 | **D2 Plugin cache verbs** | The CLI exposes `specify plugins doctor` (read-only drift report) and `specify plugins refresh` (cache invalidation). | Add `src/commands/plugins.rs`; locate `$CURSOR_HOME/plugins/cache/<org>/`; compare against `.cursor-plugin/marketplace.json`. |
-| **D3 Migration framework** | The CLI exposes `specify migrate` with a closed registry of per-major migrators. | Add `crates/domain/src/migrate.rs`; add `MigrationKind` closed enum; each variant registers a golden fixture under `tests/migrate/`. |
+| **D3 Migration framework** | The CLI exposes `specify migrate` with a closed registry of per-major migrators. | Add `crates/workflow/src/migrate.rs`; add `MigrationKind` closed enum; each variant registers a golden fixture under `tests/migrate/`. |
 | **D4 ProjectNeedsMigration error** | `ProjectConfig::load` rejects a project whose `specify_version` major is older than the running binary. | Add `Error::ProjectNeedsMigration { from, to }`; add `Exit::MigrationRequired = 4`; update DECISIONS.md exit-code table. |
-| **D5 Init re-entry semantics** | `specify init --upgrade` rewrites `specify_version` and re-scaffolds preservation-safe files only. | Add `--upgrade` flag to `init` clap surface; `crates/domain/src/init/regular.rs` and `init/hub.rs` route through the same preservation rules as today's first-run case. |
+| **D5 Init re-entry semantics** | `specify init --upgrade` rewrites `specify_version` and re-scaffolds preservation-safe files only. | Add `--upgrade` flag to `init` clap surface; `crates/workflow/src/init/regular.rs` and `init/hub.rs` route through the same preservation rules as today's first-run case. |
 | **D6 Init skill expansion** | `/spec:init` runbook adds three probe steps (CLI version, plugin cache, artifact major) before existing step 2. | Update `plugins/spec/skills/init/SKILL.md` Critical Path and Guardrails; add `references/init-runbook.md` sections 1b, 1c, and 2a. |
-| **D7 Bootstrap journal events** | Every CLI-owned bootstrap action emits a journal event with kebab-case discriminant. | Add `cli-upgraded`, `plugins-refreshed`, `migration-applied`, and `migration-skipped` variants to the closed `EventKind` enum in `crates/domain/src/journal.rs`. |
+| **D7 Bootstrap journal events** | Every CLI-owned bootstrap action emits a journal event with kebab-case discriminant. | Add `cli-upgraded`, `plugins-refreshed`, `migration-applied`, and `migration-skipped` variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`. |
 
 ## Operator surface
 
@@ -302,7 +302,7 @@ Update `src/output.rs`'s `Exit::from(&Error)` mapping, the AGENTS.md exit-code t
 
 ### `specify init --upgrade`
 
-Add an `--upgrade` flag to `src/commands/init.rs` and `crates/domain/src/init/InitOptions`. Behavior:
+Add an `--upgrade` flag to `src/commands/init.rs` and `crates/workflow/src/init/InitOptions`. Behavior:
 
 - Mutually exclusive with `<adapter>` positional and `--hub`.
 - Refuses to run if `Error::ProjectNeedsMigration` would fire (the operator must `specify migrate` first).
@@ -343,7 +343,7 @@ Add `migrated` template alongside `greenfield`, `brownfield`, and `hub` in `plug
 
 ## Bootstrap journal events (D7)
 
-Add four kebab-case variants to the closed `EventKind` enum in `crates/domain/src/journal.rs`:
+Add four kebab-case variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`:
 
 | Wire id | Rust variant | Payload |
 | --- | --- | --- |
@@ -362,11 +362,11 @@ Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/m
 2. Add `Exit::MigrationRequired = 4` and update `src/output.rs` mapping.
 3. Update AGENTS.md, DECISIONS.md, and `docs/standards/handler-shape.md` exit-code tables in the same PR.
 4. Add detection branch in `ProjectConfig::load` plus `load_for_migration` variant.
-5. Add unit tests in `crates/domain/src/config.rs` analogous to `load_refuses_future_specify_version`.
+5. Add unit tests in `crates/workflow/src/config.rs` analogous to `load_refuses_future_specify_version`.
 
 ### Wave B — Migration framework
 
-1. Add `crates/domain/src/migrate.rs` with `MigrationKind`, `Migrator`, `MigrationPlan`, `MigrationReport`.
+1. Add `crates/workflow/src/migrate.rs` with `MigrationKind`, `Migrator`, `MigrationPlan`, `MigrationReport`.
 2. Add `src/commands/migrate.rs` with `--from`, `--to`, `--dry-run`, `--yes`, and `--format` flags.
 3. Implement `V1ToV2` migrator; check in golden fixtures under `tests/migrate/v1-to-v2/{before,after}/`.
 4. Add `migration-applied` and `migration-skipped` journal events.
@@ -374,14 +374,14 @@ Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/m
 
 ### Wave C — CLI upgrade verb
 
-1. Add `crates/domain/src/upgrade.rs` with `InstallChannel::detect` and per-channel upgrade strategy.
+1. Add `crates/workflow/src/upgrade.rs` with `InstallChannel::detect` and per-channel upgrade strategy.
 2. Add `src/commands/upgrade.rs` and `--channel`, `--yes`, `--format`, `--dry-run` flags.
 3. Add the latest-version probe (`gh release view` first, `api.github.com` fallback).
 4. Add `cli-upgraded` journal event.
 
 ### Wave D — Plugin cache verbs
 
-1. Add `crates/domain/src/plugins.rs` with marketplace discovery and cache scanning.
+1. Add `crates/workflow/src/plugins.rs` with marketplace discovery and cache scanning.
 2. Add `src/commands/plugins.rs` with `doctor` and `refresh` subcommands.
 3. Add `plugins-refreshed` journal event.
 4. Add cross-platform `$CURSOR_HOME` detection (default `~/.cursor`, overridable).
@@ -389,7 +389,7 @@ Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/m
 ### Wave E — Init flag and skill expansion
 
 1. Add `--upgrade` flag to `src/commands/init.rs` and `InitOptions`.
-2. Update `crates/domain/src/init/{regular,hub}.rs` to honor the flag.
+2. Update `crates/workflow/src/init/{regular,hub}.rs` to honor the flag.
 3. Update `plugins/spec/skills/init/SKILL.md` Critical Path, scope, and Guardrails.
 4. Update `plugins/spec/skills/init/references/init-runbook.md` with steps 1b, 1c, 1d.
 5. Add the `migrated` output template.
@@ -433,7 +433,7 @@ For the CLI: `specify init --upgrade` replaces the implicit `$UPGRADE=true` runb
 
 **Ship plugin refresh as a developer-only `make` script.** Rejected. `scripts/use-team-plugins.sh` already covers the developer workflow. RFC-30's contribution is making refresh a first-class concern for end users who cannot reason about the marketplace internals.
 
-**Embed update logic in `specify init` itself.** Rejected. `init` is already the busiest single command; folding upgrade, plugin-cache, and migration into one Rust handler would defeat the single-responsibility split that the existing `crates/domain/src/init/` module already enforces. Separate verbs keep tests, fixtures, and journal events orthogonal.
+**Embed update logic in `specify init` itself.** Rejected. `init` is already the busiest single command; folding upgrade, plugin-cache, and migration into one Rust handler would defeat the single-responsibility split that the existing `crates/workflow/src/init/` module already enforces. Separate verbs keep tests, fixtures, and journal events orthogonal.
 
 ## Open Questions
 

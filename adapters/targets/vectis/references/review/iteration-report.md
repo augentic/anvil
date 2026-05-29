@@ -74,8 +74,8 @@ Classify each finding as **mechanical** (auto-fixable) or **design-level** (requ
 
 ## Finding-ID conventions
 
-- Occurrence prefixes (`CRX-1`, `LOG-1`, `IOS-1`, `AND-1`, `SWF-1`, `KTL-1`, `INT-1`, `GEN-1`, `UNI-1`, `NEW-1`) are **report-local** counters — the `id` field on a structured `ReviewFinding` (RFC-28 illustrates the equivalent shape as `FIND-0001`; this report uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
-- Codex citations carry a separate `rule_id` field (markdown prose) that maps to the kebab-case `rule-id` field on the RFC-28 `ReviewFinding` wire shape. Vectis codex ids match `^VECTIS-[0-9]{3}$` (e.g. `VECTIS-001`, `VECTIS-101`, `VECTIS-201`); shared ids match `^UNI-[0-9]{3}$`. Leave the field out for genuinely unmapped findings rather than inventing a rule id.
-- Severity uses the closed RFC-28 enum: `critical`, `important`, `suggestion`, `optional`. Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence id.
-- Confidence uses the closed RFC-28 enum: `high`, `medium`, `low`. Required when `source: model-assisted`.
+- Occurrence prefixes (`CRX-1`, `LOG-1`, `IOS-1`, `AND-1`, `SWF-1`, `KTL-1`, `INT-1`, `GEN-1`, `UNI-1`, `NEW-1`) are **report-local** counters — the `id` field on a structured `LintFinding` (the `LintFinding` schema uses the equivalent `FIND-0001` shape; this report uses prefixed counters for human triage). They restart in each report and must not be confused with codex `rule-id`s.
+- Codex citations carry a separate `rule_id` field (markdown prose) that maps to the kebab-case `rule-id` field on the `LintFinding` wire shape. Vectis codex ids match `^VECTIS-[0-9]{3}$` (e.g. `VECTIS-001`, `VECTIS-101`, `VECTIS-201`); shared ids match `^UNI-[0-9]{3}$`. Leave the field out for genuinely unmapped findings rather than inventing a rule id.
+- Severity uses the closed `LintFinding` severity enum: `critical`, `important`, `suggestion`, `optional`. Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but preserve the original prefix and occurrence id.
+- Confidence uses the closed `LintFinding` severity enum: `high`, `medium`, `low`. Required when `source: model-assisted`.
 - Every finding carries a `file:line` reference and a verbatim code snippet.

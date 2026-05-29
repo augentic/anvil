@@ -2,7 +2,7 @@
 <div class="eyebrow">Reference</div>
 <h1 class="hero-title">/spec:plan</h1>
 
-Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
+Survey bound sources, reconcile leads into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
 
 <div class="meta-row">
 
@@ -25,7 +25,7 @@ Enumerate bound sources, fuse candidates into `slices[]`, validate the plan, and
 /spec:plan <name> [source <key>=<adapter>:<binding> ...]
 ```
 
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *` and `specrun source resolve`. Never writes `reviewed`.
+Agent-driven orchestrator. Deterministic work delegates to `specrun plan *` and `specrun source resolve`. Never writes `approved`.
 
 </div>
 
@@ -51,9 +51,9 @@ source <key>=<adapter>:value:<literal>
 ## When to use
 
 - Starting a fresh change from one or more bound sources (or pure intent).
-- Re-enumerating sources on an existing plan (same-source candidate ids replace in place).
+- Re-surveying sources on an existing plan (same-source lead ids replace in place).
 
-Not for continuing an already-reviewed plan into execution — use [/spec:execute](execute.md).
+Not for continuing an already-approved plan into execution — use [/spec:execute](execute.md).
 
 ## Artifacts produced
 
@@ -61,28 +61,28 @@ Not for continuing an already-reviewed plan into execution — use [/spec:execut
 | -------- | -------- | ------- |
 | Change narrative | `.specify/change.md` | Operator-facing intent, scope, tentative merges |
 | Plan | `.specify/plan.yaml` | Sources, `slices[]` rows, `lifecycle: pending` |
-| Discovery | `.specify/discovery.md` | Summary, source inventory, candidate inventory |
+| Discovery | `.specify/discovery.md` | Summary, source inventory, lead inventory |
 
 ## Behavior
 
 1. **Pre-flight** — validate `<name>` as kebab-case; read `.specify/project.yaml`.
 2. **Scaffold** — `specrun plan create <name> --source <key>=<adapter>:<binding> …` writes `change.md` and `plan.yaml` atomically.
-3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before enumerate.
-4. **Enumerate each source** — run each source adapter's `enumerate` brief; append candidate blocks to `discovery.md`.
-5. **Write `discovery.md`** — three sections: Summary, Source inventory, Candidate inventory.
-6. **Propose** — fuse candidates into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
+3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey.
+4. **Survey each source** — run each source adapter's `survey` brief; append lead blocks to `discovery.md`.
+5. **Write `discovery.md`** — three sections: Summary, Source inventory, Lead inventory.
+6. **Propose** — reconcile leads into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when reconciliation is uncertain.
 7. **Validate** — `specrun plan validate --format json` when multi-slice or workspace plans need doctor output.
 8. **Exit at `pending`** — print the closing hint; never call `specrun plan transition`.
 
-A one-slice change uses the same steps as a twelve-slice change: `intent.enumerate` produces one candidate and one slice row.
+A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and one slice row.
 
 ### Closing hint
 
 ```text
-Plan `<name>` is at `pending`. Run `specrun plan transition <name> reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `<name>` is at `pending`. Run `specrun plan transition <name> approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
-The skill never auto-stamps `reviewed`. The operator runs the literal transition command after inspecting the plan.
+The skill never auto-stamps `approved`. The operator runs the literal transition command after inspecting the plan.
 
 ## CLI delegation
 
@@ -117,7 +117,7 @@ The skill never auto-stamps `reviewed`. The operator runs the literal transition
 <div class="see-also">
 <strong>See also</strong>
 
-- [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `reviewed`
+- [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `approved`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
 - [specrun plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change

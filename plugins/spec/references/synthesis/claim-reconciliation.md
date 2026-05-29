@@ -1,0 +1,80 @@
+# Claim reconciliation
+
+How synthesis groups claims across `Evidence[]` and where each claim kind lands in the four artifacts.
+
+## Per-kind reconciliation
+
+The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four bands:
+
+| Kind            | Carrying authority class    | Where it lands                                                                                  | Reconciliation key                                |
+| --------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `requirement`   | `documentation`             | `spec.md` — one requirement block per `claim-id` group.                                         | `claim-id` (required by the schema).      |
+| `criterion`     | `documentation`             | `spec.md` — folds into the requirement block whose `claim-id` shares the same `<requirement>.*` prefix; or a `## Scenarios` H2 entry when no requirement prefix matches. | `claim-id` (required by the schema).      |
+| `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source-key>)`. | None (free-form; not reconciled).              |
+| `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Motivation` when the section names the slice's *why*. | None (free-form; not reconciled).              |
+| `excerpt`       | `behaviour`                 | Primarily `design.md` `## Technical logic` (paraphrased). When no other source contributes a requirement on the same behaviour, also drives a `spec.md` requirement with `Status: agreed`. When a `documentation` claim contradicts, becomes commentary on the resulting `[divergence]` block. | Optional `claim-id`; fall back to grouping by handler name extracted from `path`. |
+| `type`          | `behaviour`                 | `design.md` `## Domain model` — render the `signature` field verbatim as the type's canonical shape. | Optional `claim-id`; fall back to the type name from `signature`. |
+| `call`          | `behaviour`                 | `design.md` `## APIs and integrations` (external surfaces) or `## Technical logic` (internal delegation). | Optional `claim-id`; fall back to `callee`. |
+| `example`       | `behaviour`                 | `spec.md` — folds into the requirement block whose `claim-id` shares the same prefix as the example's `claim-id` (e.g. `users.register.happy-path` corroborates the `users.register` requirement); when no requirement prefix matches, drives its own `spec.md` requirement with `Status: agreed`. `design.md` `## Technical logic` references the fixture path for the operator to inspect concrete I/O. | Required `claim-id` (per the per-kind body shape owned by `adapters/sources/captures/briefs/extract.md`). |
+| `region`        | `documentation` (spatial)   | `design.md` `## UI / layout` — top-level layout regions per screen.                             | None (positional; not reconciled).             |
+| `container`     | `documentation` (spatial)   | `design.md` `## UI / layout` — grouping within a region.                                        | None (positional; not reconciled).             |
+| `leaf`          | `documentation` (spatial)   | `design.md` `## UI / layout` — individual UI element.                                           | None (positional; not reconciled).             |
+| `intent`        | `intent`                    | `proposal.md` `## Motivation` (primary) and one headline `spec.md` requirement when the intent names a behaviour. | None (one claim per Evidence).            |
+| `diagram`       | source-dependent            | `design.md` under the most relevant H2.                                                         | None.                                     |
+| `contract`      | source-dependent            | `design.md` `## APIs and integrations`.                                                         | None.                                     |
+
+### Deterministic reconciliation on `claim-id`
+
+`requirement` and `criterion` claims MUST carry `claim-id` (enforced by `schemas/evidence.schema.json`). Synthesis groups every contributing claim by exact `claim-id` match across all Evidence documents — that is the cross-source reconciliation key.
+
+- All claims sharing one `claim-id` collapse into one `spec.md` requirement block.
+- The `Sources:` list of the block enumerates every source key that contributed, highest authority first.
+- The block's `Status:` is decided by [`authority.md`](authority.md)'s table over the contributing authorities and the agreement state of the claim bodies.
+
+When two contributing claims share `claim-id` but their `statement:` / `criterion:` strings *agree* (after trivial whitespace normalisation), the body is the shared text and `Status: agreed`. When they *disagree*, apply the per-authority resolution below.
+
+### Behaviour claims as corroboration
+
+`excerpt`, `type`, `call`, and `example` claims (authority class: `behaviour` by default) primarily drive `design.md`. They contribute to `spec.md` in two ways:
+
+- **Standalone source** — when no other source supplied a `requirement` claim on the same behavioural surface, an `excerpt` whose paraphrase reads as a single behavioural assertion, or an `example` whose captured `input` / `output` pair reads as one, becomes a `spec.md` requirement block with `Status: agreed` and `Sources: [<code-key>]`.
+- **Authority-loser** — when a `documentation` `requirement` contradicts an `excerpt` or `example`, the `documentation` claim wins per the default ordering; the behaviour-class claim becomes the `Note:` line of a `[divergence]` block (see [`authority.md`](authority.md)). Operators flip that default per slice via per-slice `authority-override` — useful exactly when runtime captures should outrank stale docs.
+
+### `example` claims from `captures`
+
+`example` claims are emitted by the `captures` source adapter from captured request/response data. They share the `behaviour` authority class with `excerpt` and `call` claims, and they tie-break the same way:
+
+- **Default precedence vs other behaviour-class claims.** `example`, `excerpt`, and `call` are siblings at the same authority class. Operators tie-break across them via per-slice `authority-override.<kind>` on `plan.yaml` (see [`authority.md` §Per-slice overrides](authority.md#per-slice-overrides-on-planyaml)). The synthesis playbook does not silently prefer one over another.
+- **Per-Evidence override.** A `captures` Evidence document MAY emit `authority-overrides: { example: documentation }` to lift its `example` claims above the document-level `behaviour` default — rare, but useful when the captured data encodes an explicit contract the operator wants treated as documentation-class.
+- **Per-kind body.** `example` claims carry `claim-id`, `path` (the on-disk capture anchor), `replay-digest` (a `sha256:` fingerprint the cache keys against), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `adapters/sources/captures/briefs/extract.md` (the current captures reference); refer to that brief rather than mirroring the fields here.
+
+### Spatial claims fold into design
+
+`region` / `container` / `leaf` claims describe layout, not behaviour. They land under `design.md` `## UI / layout` as a single tree per screen, preserving the spatial nesting from the Evidence. The Vectis target's `build` brief reads this section to regenerate `composition.yaml`; targets that do not consume spatial Evidence (Omnia, contracts) omit the H2 entirely. Spatial claims never produce `spec.md` requirements directly — behavioural assertions that *use* spatial structure live as separate `requirement` claims on a contributing `documentation` Evidence.
+
+### Intent drives proposal
+
+The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1 contract). Synthesis:
+
+- Renders the `statement` verbatim as the heart of `proposal.md` `## Motivation`.
+- If the statement names a behaviour ("Add a search filter to the user list"), also emits one headline `spec.md` requirement (`REQ-001`) with `Status: agreed` and `Sources: [<intent-key>]`.
+- Pure-intent slices (the degenerate `[intent]` case) produce a `spec.md` with at most one requirement block — additional requirements only appear when other sources contribute.
+
+## Per-authority resolution (slice-time)
+
+When a reconciled `claim-id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s [§Resolution order](authority.md#resolution-order) picks the winning Status. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
+
+- **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
+- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `claim-id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
+- **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `code-typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
+- **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `claim-id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
+
+## Order and stability
+
+- Group reconciliation is deterministic: sort `Sources:` by authority class (`intent` < `documentation` < `behaviour`), then alphabetically by source key within a class. The requirement block lists the highest-authority key first.
+- Requirement-block ordering inside `spec.md` follows source order on the highest-authority Evidence document. When tied, fall back to alphabetical order on the first `Sources:` key.
+- Re-running `/spec:refine` on identical `Evidence[]` and `shape` MUST produce byte-identical artifacts (modulo non-deterministic timestamps the agent never writes — synthesis emits no timestamps into the artifacts).
+
+## Plan-time reconciliation is a separate playbook
+
+This file covers slice-time `Evidence[]` reconciliation only. Plan-time `Lead[]` reconciliation — the `propose` sub-step inside `/spec:plan` that writes `slices[]` rows — is W3.2's territory; if it shares anything with this file, W3.2 references this document explicitly rather than this file describing plan-time behaviour.

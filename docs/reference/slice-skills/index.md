@@ -15,7 +15,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
 | [/spec:init](init.md) | One-time project setup | — | `.specify/`, `project.yaml`, cache, `AGENTS.md` |
-| [/spec:refine](refine.md) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `fusion.yaml` |
+| [/spec:refine](refine.md) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `reconciliation.yaml` |
 | [/spec:build](build.md) | Validate artifacts, implement tasks | Slice artifacts, target build brief | Source code, task checkmarks |
 | [/spec:merge](merge.md) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
 | [/spec:drop](drop.md) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |

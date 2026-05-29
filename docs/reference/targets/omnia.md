@@ -16,7 +16,7 @@
 | `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 
-When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `code-typescript`) and fuses claims into `spec.md` requirements with `Sources:` provenance lines.
+When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `code-typescript`) and reconciles claims into `spec.md` requirements with `Sources:` provenance lines.
 
 The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
