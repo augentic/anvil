@@ -1,6 +1,6 @@
 # RFC-29: Fan-In/Fan-Out Code Contract
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../done/rfc-28-standards-contract.md) - Enables: provable multi-source fan-in and plan-level multi-slice fan-out, with one target per slice (see §D5)
+> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../done/rfc-28-standards-contract.md) - Relates: [RFC-35](rfc-35-synthesis-determinism.md) (synthesis-determinism stepping stone; see §"Relationship to RFC-35") - Enables: provable multi-source fan-in and plan-level multi-slice fan-out, with one target per slice (see §D5)
 
 ## Abstract
 
@@ -1614,7 +1614,7 @@ Existing projects continue to work without any change to `plan.yaml`:
 - Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
 - Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently. The companion `rfc-29-plan.md` PR list pins which adapters land each migration.
 - Slice synthesis ships with `synthesize.execution: agent-fallback` as the first-party default (D10). Projects that already have a `/spec:refine` agent workflow continue to use it; the change is that the agent now operates inside a CLI-orchestrated envelope rather than driving the lifecycle. There is no "first-party adapters must be executable" deadline for synthesis — the executable mode is reserved for future declared synthesis tools.
-- Cross-repo references that anticipated the dropped multi-output model — notably `rfcs/next/rfc-30-init.md`'s "`slices[].target` → `outputs[]` once RFC-29 lands" line and `rfcs/roadmap.md` §RM-06's "D5 multi-output plan entries" follow-on bullet — must be retracted in the same PR train that lands D5's per-slice form.
+- Cross-repo references that anticipated the dropped multi-output model — notably `rfcs/next/rfc-30-init.md`'s `slices[].target` migration line and `rfcs/roadmap.md` §RM-06's follow-on bullet — have been retracted to the per-slice fan-out form alongside this revision. Any future reference that re-introduces an `outputs[]` desugar must be rejected against this section.
 
 Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes required for that slice and drift validation applies.
 
@@ -1628,6 +1628,20 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 - No target-specific behavior in the reconciliation kernel. The bound target's `shape` brief is an input to the prose-synthesis step only, and only for the non-requirements sections of the slice model (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
 - No claim of deterministic prose synthesis. Cross-modal Evidence reconciliation is judgment work and remains agent-driven under the envelope defined in §"Synthesis envelope" (D3) and the execution mode in §"Synthesis execution mode" (D10). RFC-29 commits to deterministic *reconciliation*, not deterministic *prose*.
 - No commitment to per-target determinism on day one. RFC-29 commits only to a stable build envelope and validation contract; per-target determinism milestones are tracked in each target adapter's manifest and changelog.
+
+## Relationship to RFC-35
+
+[RFC-35](rfc-35-synthesis-determinism.md) (synthesis determinism) and RFC-29 both touch `reconciliation.yaml` generation and the `/spec:refine` synthesis path, but they sit at different layers and are sequenced as **stepping stone -> kernel**, not as competitors. The overlap is intentional and reconciled here so neither RFC duplicates the reconciliation derivation.
+
+RFC-35 is the near-term, additive layer. It corrects synthesis-reference contradictions and adds two deterministic CLI verbs — `specrun slice reconciliation write` (RFC-35 D6) and `specrun journal emit` (RFC-35 D7) — plus validator diagnostics (RFC-35 D8) and a `briefs_dir` field on `specrun {source,target} resolve` (RFC-35 D9). RFC-35 explicitly does **not** alter the synthesis contract: synthesis stays agent-driven and `reconciliation.yaml` becomes CLI-derived from `spec.md` + Evidence.
+
+RFC-29 D3 **subsumes**, rather than replaces, RFC-35 D6. The reconciliation kernel inside `specrun slice synthesize` (authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml` derivation, structural `model.yaml` projection, drift validation) is the same mechanical derivation RFC-35 D6 ships standalone. Concretely:
+
+- **Shared kernel, not parallel logic.** RFC-35 D6's reconciliation-writer module is the kernel RFC-29 D3 wraps. `specrun slice synthesize` calls it as one step of the synthesis envelope; `specrun slice reconciliation write` remains a thin standalone entry point onto the same code, for re-deriving the audit index without re-running prose synthesis. Whichever RFC lands a given module first, the other consumes it — neither re-implements the derivation.
+- **One journal emitter.** RFC-35 D7 `specrun journal emit` is the writer that RFC-29's new `source.*` and `slice.synthesize.*` event kinds use. RFC-29 adds event kinds to the closed `EventKind` taxonomy; it does not add a second emission path.
+- **One brief-location surface.** RFC-35 D9 `briefs_dir` is the deterministic brief-location output that RFC-29 D1 (`survey` / `extract`) and D3 (shape-brief dispatch in the synthesis envelope) rely on instead of cache-path arithmetic.
+
+**Sequencing.** RFC-35 should land first: it is small, additive, and unblocks the current agent-driven loop without waiting on the RFC-29 kernel. RFC-29 then builds the synthesis kernel and envelope on top of RFC-35's verbs. If a module needed by both is authored under RFC-29 first, the matching RFC-35 verb is implemented as the standalone entry point onto RFC-29's kernel rather than as separate logic. Roadmap [RM-06](roadmap.md#rm-06-fan-infan-out-workflow-contract) tracks RFC-29; RFC-35 is the sequenced stepping stone ahead of it.
 
 ## Alternatives considered
 
@@ -1661,28 +1675,29 @@ Rejected for v1. It would move too much judgment into the framework. Exact ids a
 
 ## Open questions
 
-The five open questions from the original draft are resolved as normative decisions in this revision:
+### Resolved in this revision
 
-1. **Slice-model on-disk format.** Resolved: YAML on disk; JSON only via `specrun slice model show <slice> --format json`. See §"Typed slice model (D4)".
-2. **Shape-brief scope.** Resolved as **D8** — shape briefs may parameterise slice-model structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but not `requirements[]` or any provenance-bearing field. The reconciliation kernel never reads the shape brief; the prose-synthesis step reads it for non-requirements sections only. See §"Slice synthesis engine (D3) → Shape-brief scope (D8)".
-3. **Per-target determinism.** Dropped from the RFC contract; tracked per target adapter. RFC-29 commits only to envelope and validation determinism. See §"Non-goals".
-4. **Slice fan-out shape.** Resolved as **D5** — fan-out is plan-level (one slice per target, joined by `slices[].depends-on`). The dropped multi-output-per-slice form is documented in §"Alternatives considered → Multi-output slices". Cross-slice build context flows through `prior-slices[]` on the build envelope (§"Target build envelope (D6)").
-5. **Adapter execution fallback.** Resolved as **D9** — closed `execution: executable | agent-fallback` enum on adapter manifests; first-party adapters must be `executable`, third-party adapters may be `agent-fallback` indefinitely. See §"Adapter execution mode (D9)".
+Every open question from the original draft is now a normative decision; this section is the resolution log, not a list of unanswered questions.
 
-This revision additionally resolves the question opened by the synthesis-determinism reframing:
+- **Slice-model on-disk format.** Resolved: YAML on disk; JSON only via `specrun slice model show <slice> --format json`. See §"Typed slice model (D4)".
+- **Shape-brief scope.** Resolved as **D8** — shape briefs may parameterise slice-model structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but not `requirements[]` or any provenance-bearing field. The reconciliation kernel never reads the shape brief; the prose-synthesis step reads it for non-requirements sections only. See §"Slice synthesis engine (D3) → Shape-brief scope (D8)".
+- **Per-target determinism.** Dropped from the RFC contract; tracked per target adapter. RFC-29 commits only to envelope and validation determinism. See §"Non-goals".
+- **Slice fan-out shape.** Resolved as **D5** — fan-out is plan-level (one slice per target, joined by `slices[].depends-on`). The dropped multi-output-per-slice form is documented in §"Alternatives considered → Multi-output slices". Cross-slice build context flows through `prior-slices[]` on the build envelope (§"Target build envelope (D6)").
+- **Adapter execution fallback.** Resolved as **D9** — closed `execution: executable | agent-fallback` enum on adapter manifests; first-party adapters must be `executable`, third-party adapters may be `agent-fallback` indefinitely. See §"Adapter execution mode (D9)".
+- **Synthesis execution mode.** Resolved as **D10** — closed `execution: executable | agent-fallback` enum at the workspace level for the slice-synthesis step inside `specrun slice synthesize`. First-party Specify defaults to `agent-fallback` (the honest default for cross-modal Evidence reconciliation); `executable` is reserved for future declared synthesis tools. The CLI owns the reconciliation kernel and the synthesis envelope; the agent owns prose synthesis. See §"Synthesis execution mode (D10)".
 
-7. **Synthesis execution mode.** Resolved as **D10** — closed `execution: executable | agent-fallback` enum at the workspace level for the slice-synthesis step inside `specrun slice synthesize`. First-party Specify defaults to `agent-fallback` (the honest default for cross-modal Evidence reconciliation); `executable` is reserved for future declared synthesis tools. The CLI owns the reconciliation kernel and the synthesis envelope; the agent owns prose synthesis. See §"Synthesis execution mode (D10)".
+### Remaining open question
 
-The per-slice fan-out revision (D5) opens one new question that RFC-29 deliberately does **not** answer in v1:
+Exactly one question is unresolved. RFC-29 deliberately does **not** answer it in v1 and is fully implementable without it — the v1 decision is already pinned (option (d), per **D2 Stage B1**), and the question is only the prerequisite for the deferred **D2 Stage B2** full writer.
 
-6. **Lead target-axis vocabulary (Stage B2 prerequisite).** Under D5, `specrun plan propose` would need a deterministic policy for turning a lead group into `(group, target)` slices. The four leads considered are:
+**Q1. Lead target-axis vocabulary (Stage B2 prerequisite).** Under D5, promoting `specrun plan propose` to a full writer would need a deterministic policy for turning a lead group into `(group, target)` slices. The four leads considered are:
 
-   - **6.a Target hints on Leads.** Source adapters tag each lead with a closed `axes: [api, service, ui, …]` enum at `survey` time; `propose` cross-products groups by their members' union of axes. Cleanest long-term shape; requires extending `schemas/discovery/lead.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
-   - **6.b Cross-product over plan-bound targets.** Emit `|groups| × |bound-targets|` slices and let the operator delete the irrelevant ones at Gate 1. Over-generates badly at scale; not viable past a handful of targets.
-   - **6.c Operator post-amend.** `propose` emits `target: null` rows; operator runs `specrun plan amend --target` per slice. Pushes mechanical work onto the operator.
-   - **6.d Status quo: agent decides.** Per the **D2 Stage B1** decision in this revision, this is what v1 does. Honest about the judgment involved; keeps the CLI free of an arbitrary heuristic. Costs us a deterministic acceptance assertion on `plan.yaml.slices[]` byte-stability and keeps target binding out of the CLI's audit / journal trail.
+   - **(a) Target hints on Leads.** Source adapters tag each lead with a closed `axes: [api, service, ui, …]` enum at `survey` time; `propose` cross-products groups by their members' union of axes. Cleanest long-term shape; requires extending `schemas/discovery/lead.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
+   - **(b) Cross-product over plan-bound targets.** Emit `|groups| × |bound-targets|` slices and let the operator delete the irrelevant ones at Gate 1. Over-generates badly at scale; not viable past a handful of targets.
+   - **(c) Operator post-amend.** `propose` emits `target: null` rows; operator runs `specrun plan amend --target` per slice. Pushes mechanical work onto the operator.
+   - **(d) Status quo: agent decides — the v1 decision.** Per the **D2 Stage B1** decision in this revision, this is what v1 does. Honest about the judgment involved; keeps the CLI free of an arbitrary heuristic. Costs us a deterministic acceptance assertion on `plan.yaml.slices[]` byte-stability and keeps target binding out of the CLI's audit / journal trail.
 
-   This question is the explicit blocker for **D2 Stage B2** (`specrun plan propose` as a full writer). It is not a blocker for any other RFC-29 wave; D1, D3, D4, D5, D6, and D7 all land against the Stage B1 + agent form.
+   v1 ships option (d). This question is the explicit — and only — blocker for **D2 Stage B2** (`specrun plan propose` as a full writer), which is deferred to its own future RFC once a Lead target-axis vocabulary (option (a)) is designed. It blocks no other RFC-29 wave; D1, D3, D4, D5, D6, and D7 all land against the Stage B1 + agent form.
 
 ## References
 
@@ -1690,6 +1705,7 @@ The per-slice fan-out revision (D5) opens one new question that RFC-29 deliberat
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
 - RFC-28: Engineering Standards — Codex Contract and Findings
 - RFC-32: Engineering Standards — Deterministic Enforcement
+- [RFC-35: Synthesis Determinism](rfc-35-synthesis-determinism.md) — the synthesis-determinism stepping stone; its `specrun slice reconciliation write` (D6) is the standalone entry point onto the reconciliation kernel RFC-29 D3 wraps (see §"Relationship to RFC-35")
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim reconciliation](../../plugins/spec/references/synthesis/claim-reconciliation.md)

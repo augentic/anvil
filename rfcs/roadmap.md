@@ -36,7 +36,7 @@ Items are identified as `RM-NN`. **Near Term** order reflects deliberate priorit
 
 After the standards layer lands, three tracks run in parallel:
 
-1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source enumerate` / `extract`).
+1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source survey` / `extract`). [RFC-35](rfc-35-synthesis-determinism.md) is the sequenced stepping stone ahead of it (deterministic `reconciliation.yaml` / journal verbs that RFC-29 D3 reuses).
 2. **Shared codex distribution (RM-07)** — operational unblock. Consumer CI cannot rely on `specrun lint` until `UNI-*` rules resolve without `--rules-root`. Small, additive; should not wait for RM-06.
 3. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
 
@@ -56,15 +56,16 @@ After the standards layer lands, three tracks run in parallel:
 **Goal:** Turn Specify's fan-in/fan-out promise into a CLI-owned end-to-end contract so reconciliation is a framework invariant, not agent discipline.
 **Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
-**Why now:** Vocabulary and lifecycle guards exist, but `enumerate`, `extract`, plan-time reconciliation, slice synthesis, typed IR, and multi-output fan-out are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
+**Why now:** Vocabulary and lifecycle guards exist, but `survey`, `extract`, plan-time lead reconciliation, slice synthesis, the typed slice model, and the target build envelope are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
+**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic verbs (`specrun slice reconciliation write`, `specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the reconciliation kernel and journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
 **First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
 
 ```bash
-specrun source enumerate <source-key> [--format json]
+specrun source survey <source-key> [--format json]
 specrun source extract <source-key> <candidate-id> --slice <name> [--format json]
 ```
 
-**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose`; D3 `specrun slice synthesize`; D4 typed slice IR (`.specify/slices/<slice>/ir.yaml`); D5 multi-output plan entries; D6 target build envelope; D7 acceptance fixture proving `N sources → one IR → M outputs`.
+**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (Stage B1 structural grouper; target binding stays agent-driven, Stage B2 full writer deferred); D3 `specrun slice synthesize` (reconciliation kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
 **Unblocks:** RM-05 durable proof path, RM-11 compatibility gates, RM-14 meaningful workflow telemetry, RM-18 hosted execute.
 
 #### RM-07: Shared codex distribution
@@ -107,7 +108,7 @@ specdev lint --format json            # framework repo; RFC-28 Phase 3 + RFC-34
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
-**Depends:** RM-06 (typed slice IR and multi-output plan entries make producer/consumer impact machine-readable); RM-10 (standards findings for `IFACE-*` contract rules).
+**Depends:** RM-06 (the typed slice model and per-slice fan-out joined by `depends-on` make producer/consumer impact machine-readable); RM-10 (standards findings for `IFACE-*` contract rules).
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
 **Consumes:** RFC-28's `LintFinding` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings (producer project, consumer project, operation id, schema pointer, channel, message, classification, `change-kind`) via `schemas/review/finding/contracts-evidence.schema.json`; RFC-28 defines the `evidence.kind: structured` union but deliberately leaves the inner `data` shape to the consumer roadmap item so contracts-specific decisions land alongside the gate that needs them.
 **Target surface:**
@@ -177,7 +178,7 @@ specrun plan finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
-**Requires:** RM-06 (resumable phase contracts and typed IR); sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
+**Requires:** RM-06 (resumable phase contracts and the typed slice model); sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
 **Target surface:**
 
 ```bash
@@ -219,7 +220,7 @@ specify execute resume <run-id>
 
 ## Open Questions
 
-- What is the minimum RFC-29 D1 surface (`specrun source enumerate` / `extract`) before `/spec:refine` delegates extraction to the CLI?
+- What is the minimum RFC-29 D1 surface (`specrun source survey` / `extract`) before `/spec:refine` delegates extraction to the CLI?
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?

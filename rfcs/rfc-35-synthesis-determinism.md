@@ -236,6 +236,7 @@ Six steps, ordered by dependency. Steps 1–3 are documentation-only changes in 
 ## References
 
 - [RFC-27: Synthesis](done/rfc-27-synthesis.md) — the synthesis contract this RFC's reference corrections align with.
+- [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — sequenced after this RFC. RFC-29 D3's reconciliation kernel subsumes D6's `specrun slice reconciliation write` (which becomes the standalone entry point onto the shared kernel), reuses D7 `specrun journal emit` for its new event kinds, and relies on D9 `briefs_dir`. See RFC-29 §"Relationship to RFC-35".
 - [RFC-25: Workflow](done/rfc-25-workflow.md) — the plan-driven loop and slice lifecycle.
 - [RFC-31: Vectis Screenshots Loop](done/rfc-31-vectis-screenshots-loop.md) — Vectis target hardening; this RFC addresses synthesis-side friction from the same pipeline.
 - [`plugins/spec/references/spec-format.md`](../plugins/spec/references/spec-format.md) — canonical heading conventions for `spec.md`.
