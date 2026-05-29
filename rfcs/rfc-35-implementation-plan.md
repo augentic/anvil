@@ -17,7 +17,7 @@ Step  Session                                             Repo(s)               
 6     Resolver JSON briefs-dir output                     specify-cli             done         source/target resolve tests
 7     Proposal Units validator rename                     specify-cli             done         validator tests + goldens
 8     Spec file-location diagnostics                      specify-cli             done         slice validate tests + cargo make check
-9     Cross-repo acceptance and operator notes            both                    not-started  make check + cargo make check/ci
+9     Cross-repo acceptance and operator notes            both                    done         make check + cargo make ci
 ```
 
 ## Sequencing Rules
@@ -470,3 +470,38 @@ Exit criteria:
 
 - Both repos have clean intended diffs.
 - Acceptance commands and any skipped checks are recorded in the final session handoff.
+
+### Step 9 session notes
+
+Completed. All acceptance criteria met.
+
+**Acceptance results:**
+
+- `make check` in `augentic/specify` — passed ("All checks passed."). First run hit a transient build-cache filesystem error (`failed to write bytecode … No such file or directory`); retry succeeded cleanly.
+- `cargo make ci` in `augentic/specify-cli` — passed (302 tests, 1 skipped; lint, test, test-docs, doc, vet, outdated, deny all green).
+- Resolver `briefs-dir` — verified via `source_resolve_local_returns_resolved_manifest` and `target_resolve_local_returns_resolved_manifest` integration tests. Both assert the field is present, absolute, ends with `/briefs`, and contains the correct adapter path segment.
+- `specs.file-location` diagnostic — verified via three integration tests: positive case (root `spec.md` without canonical `specs/<unit>/spec.md` emits the diagnostic with `specs/<unit>/spec.md` guidance and `slice root` mention), and two negative cases (canonical specs present silences it; no root `spec.md` at all silences it).
+- Both repos are clean on `rfc-35` branches with no untracked or unstaged changes.
+
+**Commit history:**
+
+`augentic/specify` (`rfc-35` branch, 12 commits ahead of `main`):
+
+- Steps 0–5: synthesis reference corrections, refine skill/fixture updates, Vectis/Omnia/contracts brief alignment.
+- Step 8: implementation plan session notes (specify-side documentation of the CLI step 8 work).
+- RFC and implementation plan authoring.
+
+`augentic/specify-cli` (`rfc-35` branch, 3 commits ahead of `main`):
+
+- Step 6: `briefs-dir` field in resolver JSON output.
+- Step 7: `proposal.units-listed` / `cross.proposal-units-have-specs` validator rename and fixture updates.
+- Step 8: `specs.file-location` diagnostic gate and fusion drift message refinement.
+
+**Remaining non-goals (unchanged from RFC):**
+
+- No `specrun slice fusion write` verb — `fusion.yaml` authoring stays skill-driven with existing schema + drift validation.
+- No `specrun journal emit` verb — journal events stay owned by deterministic CLI commands.
+- No Evidence schema, `fusion.yaml` schema, or slice lifecycle changes.
+- No new workspace crates or public API surfaces.
+
+**Skipped checks:** None. `cargo make ci` was run (the full CI suite), not the smaller `cargo make check` subset.
