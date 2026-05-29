@@ -34,16 +34,16 @@ WASM CONSTRAINTS: Scan every .rs file in src/ for:
 - Blocking operations (synchronous I/O)
 
 For each finding, report: file:line, code snippet, severity (`critical` for
-all in these categories — the RFC-28 closed enum is `critical` / `important`
+all in these categories — the closed `LintFinding` severity enum is `critical` / `important`
 / `suggestion` / `optional`), risk description, suggested fix, and whether
-it is auto-fixable. When the issue maps to a codex rule, include `rule_id`
+it is auto-fixable. When the issue maps to a rule, include `rule_id`
 separately from the report-local finding ID (for example, `OMNIA-002`,
 `SEC-001`, `UNI-019`, or `UNI-021` — three-digit codex ids matching
 `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "SEC-" (e.g., SEC-1, SEC-2). These prefixed counters are the report-local
-occurrence ids (the `id` field on a `ReviewFinding`); `rule_id` is the codex
+occurrence ids (the `id` field on a `LintFinding`); `rule_id` is the codex
 citation (the kebab-case `rule-id` field on the wire).
 ```
 
@@ -76,7 +76,7 @@ PROVIDER MISUSE: Check handler functions for:
 For each finding, report: file:line, code snippet, severity (`critical` for
 error handling panics, `important` for validation/provider issues), risk,
 suggested fix, auto-fixable status, and a separate `rule_id` when the issue
-maps to a codex rule (for example, `RUST-001`, `OMNIA-001`, `UNI-002`,
+maps to a rule (for example, `RUST-001`, `OMNIA-001`, `UNI-002`,
 `UNI-004`, or `UNI-016`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
@@ -109,7 +109,7 @@ CODE QUALITY: Check all .rs files in src/ for:
 For each finding, report: file:line, code snippet, severity (`suggestion`
 for performance, `optional` for code quality), impact description, suggested
 fix, auto-fixable status, and a separate `rule_id` when the issue maps to a
-codex rule (for example, `UNI-005`, `UNI-007`, `UNI-013`, `UNI-014`, or
+rule (for example, `UNI-005`, `UNI-007`, `UNI-013`, `UNI-014`, or
 `OMNIA-002`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
@@ -128,11 +128,11 @@ Your job is to challenge every finding and find what they missed.
 For EACH finding (SEC-, COR-, QUA-, and UNI- prefixed):
 1. Validate evidence: Is there a real file:line reference and code snippet?
 2. Challenge severity: Is `critical` really critical? Is `optional` actually
-   higher? Severities come from the closed RFC-28 enum
+   higher? Severities come from the closed `LintFinding` severity enum
    (`critical` / `important` / `suggestion` / `optional`).
 3. Check for false positives: Could this be a non-issue or acceptable pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
-5. Check `rule_id` mapping when present: does the cited codex rule match the
+5. Check `rule_id` mapping when present: does the cited rule match the
    evidence? If missing but obvious, recommend the stable rule ID without
    changing the report-local finding ID.
 
@@ -153,7 +153,7 @@ Output format:
 
 You MUST provide evidence for every challenge. Opinion alone is insufficient.
 You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level along the closed RFC-28 enum
+Severity downgrades move at most one level along the closed `LintFinding` severity enum
 (`critical` → `important`, not `critical` → `optional`).
 ```
 
@@ -165,7 +165,7 @@ The three specialists analyze the crate concurrently. Each reads all `.rs` files
 
 ## Step 3: Universal Checks (Lead)
 
-After all specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../shared/codex/universal/) with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](review-categories.md#universal-checks-uni--prefix). Prefix the lead's findings with report-local `UNI-` occurrence IDs, set `rule_id` to the matching stable codex ID, and tag spec-change indicators for the synthesis report.
+After all specialists report, the lead applies every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../shared/rules/universal/) with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](review-categories.md#universal-checks-uni--prefix). Prefix the lead's findings with report-local `UNI-` occurrence IDs, set `rule_id` to the matching stable codex ID, and tag spec-change indicators for the synthesis report.
 
 ## Step 4: Adversarial Challenge
 
@@ -186,7 +186,7 @@ The lead merges all findings into `$REVIEW_OUTPUT`:
 3. **Upgraded findings**: Include with the antagonist's revised severity and rationale
 4. **Disputed findings**: Lead makes final call; if included, add dispute note
 5. **New findings**: Include with the antagonist's severity and evidence
-6. Preserve occurrence IDs and include `rule_id` for findings that map to codex rules
+6. Preserve occurrence IDs and include `rule_id` for findings that map to rules
 7. Assign overall confidence level per [Agent Team Patterns - Confidence Scoring](agent-teams.md#confidence-scoring)
 8. Add "Adversarial Review" section documenting challenge statistics
 

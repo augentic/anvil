@@ -1,10 +1,10 @@
 # Runtime capture extract
 
-`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `captures`. Your job: for a single `(source-key, candidate-id)` pair, locate the matching `tests/data/replays/<handler>/` directory under `$SOURCE_DIR`, read every scenario capture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `captures`. Your job: for a single `(source-key, lead-id)` pair, locate the matching `tests/data/replays/<handler>/` directory under `$SOURCE_DIR`, read every scenario capture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 
 ## Binding
 
-The plan-level binding looks the same as `enumerate`'s:
+The plan-level binding looks the same as `survey`'s:
 
 ```yaml
 sources:
@@ -25,7 +25,7 @@ Load both references — they own everything the brief does not spell out.
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the bound capture root.
-- **`<candidate-id>`** — the kebab-case id of the `## Candidate inventory` block this binding resolves to. It matches the `tests/data/replays/<candidate-id>/` directory name verbatim.
+- **`<lead-id>`** — the kebab-case id of the `## Lead inventory` block this binding resolves to. It matches the `tests/data/replays/<lead-id>/` directory name verbatim.
 - **`<source-key>`** — the plan-level binding key under `plan.yaml.sources.<key>`.
 - **`$SCRATCH_DIR`** — per-slice write-only scratch space; use only for unavoidable intermediate state.
 
@@ -33,7 +33,7 @@ Load both references — they own everything the brief does not spell out.
 
 ## Claim grain
 
-One `kind: example` claim per scenario file. A handler directory with 47 `<scenario>.json` files yields 47 example claims; synthesis fuses them later through the `requirement` / `criterion` claims contributed by sibling sources. The per-handler grain is the candidate (`enumerate`'s output); the per-scenario grain is the claim. This adapter does not collapse scenarios into a representative subset — every scenario the operator captured contributes one claim, and the 64 KiB inline cap (see references) handles the bulk case.
+One `kind: example` claim per scenario file. A handler directory with 47 `<scenario>.json` files yields 47 example claims; synthesis reconciles them later through the `requirement` / `criterion` claims contributed by sibling sources. The per-handler grain is the lead (`survey`'s output); the per-scenario grain is the claim. This adapter does not collapse scenarios into a representative subset — every scenario the operator captured contributes one claim, and the 64 KiB inline cap (see references) handles the bulk case.
 
 ## Output skeleton
 
@@ -43,11 +43,11 @@ Emit Evidence YAML per [`extraction-mapping.md`](../references/extraction-mappin
 source: <source-key>
 adapter: captures
 authority: behaviour
-candidate: <candidate-id>
+lead: <lead-id>
 claims:
   - kind: example
-    claim-id: <candidate-id>.<scenario-stem>
-    path: tests/data/replays/<candidate-id>/<scenario>.json
+    claim-id: <lead-id>.<scenario-stem>
+    path: tests/data/replays/<lead-id>/<scenario>.json
     replay-digest: sha256:<hex>
     statement: "<single-line summary>"
     input: { ... }

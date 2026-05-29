@@ -4,7 +4,7 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
 
 ## Starting state
 
-- `plan.yaml.lifecycle == reviewed`.
+- `plan.yaml.lifecycle == approved`.
 - Slice 1 `password-hash-rotate` already `done`.
 - Slice 2 `session-cookie-harden` is `in-progress`; its slice lifecycle is `refined` (refine landed cleanly on the first `/spec:execute` pass).
 - Slice 3 `reset-flow-retire` is still `pending`.

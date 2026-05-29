@@ -8,7 +8,7 @@ The workspace is leaf → root with three crates plus the root binary:
 
 ```text
 specify (binary)
-└── specify-domain      Change orchestration, plan/slice lifecycle, registry,
+└── specify-workflow      Change orchestration, plan/slice lifecycle, registry,
     │                   merge engine, spec/task parsing, adapter resolution,
     │                   journal, schema validation (every domain module)
     ├── specify-tool    Declared WASI tool resolution and execution

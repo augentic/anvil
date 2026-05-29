@@ -15,7 +15,7 @@ Specify's layered design is explained in [The Layered Stack](../explanation/laye
 
 Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
 
-`/spec:plan` writes `pending`. The operator stamps `reviewed` — this is **Gate 1**, the only review seam Specify 2.0 ships in v1. `/spec:plan` never writes `reviewed` itself. `/spec:execute` refuses to start unless the plan is `reviewed`.
+`/spec:plan` writes `pending`. The operator stamps `approved` — this is **Gate 1**, the only review seam Specify 2.0 ships in v1. `/spec:plan` never writes `approved` itself. `/spec:execute` refuses to start unless the plan is `approved`.
 
 ## Per-entry lifecycle
 
@@ -47,7 +47,7 @@ Each slice's `.metadata.yaml` tracks an independent lifecycle:
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
 | `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specrun plan create`                            |
-| Operator stamps Gate 1                            | plan: `pending → reviewed`        | `specrun plan transition <name> reviewed`        |
+| Operator stamps Gate 1                            | plan: `pending → approved`        | `specrun plan transition <name> approved`        |
 | `specrun plan next` picks next pending row       | per-entry: `pending → in-progress` | `specrun plan next`                              |
 | `/spec:refine` creates slice                      | slice: (none) → `refining`         | `specrun slice create`                           |
 | `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specrun slice transition <name> refined`        |

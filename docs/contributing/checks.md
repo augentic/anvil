@@ -1,15 +1,15 @@
 # Consistency Checks
 
-The `specify` repo is checked by the `specdev` authoring binary from `augentic/specify-cli`. `make check` forwards to `specdev check`; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is linted by the `specdev` authoring binary from `augentic/specify-cli`. `make lint` forwards to `specdev lint`; CI runs the same binary in release mode. Run checks before every pull request.
 
-## Editor-first vs specdev check
+## Editor-first vs specdev lint
 
 Framework validation splits into two surfaces:
 
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specdev check` (Markdown + cross-file)** | Local `make check`, CI, and direct `cargo run … --bin specdev -- check --framework-root .` | Markdown frontmatter (`SKILL.md`, codex rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specdev lint` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
 **Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
@@ -19,9 +19,9 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, codex rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev check` extracts the leading `---` block from `SKILL.md`, codex rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev lint` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -29,19 +29,19 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
-| **Authoring standards** | `specdev check` (`make check`) | `augentic/specify` contributors | Skill frontmatter, codex rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specrun review` | Consumer projects with `.specify/` | Applicable codex rules with `deterministic_hints`; structured findings for CI |
+| **Authoring standards** | `specdev lint` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
-Codex rule *content* lives under `adapters/**/codex/` (engineering standards). `docs/standards/` is **authoring** house style only.
+Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
 
 ## Running checks
 
 ```bash
-make check
+make lint
 ```
 
-This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
 Tooling contributors run the full local CI subset with:
 
@@ -49,12 +49,12 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `check` + `test`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout.
+`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-authoring` predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
-Tooling contributors can also invoke the binary and acceptance tests directly:
+Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
 ```bash
-cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- check --framework-root .
+cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .
 cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
 ```
 
@@ -79,16 +79,16 @@ FAIL: <rule-id>: <message>
 | `links.*` | `check::links`, `check::schema_links` | Markdown links, skill references, skill directives, tool-owned schema URLs |
 | `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
 | `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
-| `codex.*` | `check::codex` | Codex rule shape and namespace ownership |
+| `codex.*` | `check::rules` | Rule shape and namespace ownership |
 
 See the `specify-authoring` crate's `check` module for the full predicate list.
 
-### JSON output (RFC-28)
+### JSON output
 
-`specdev check` also speaks the [RFC-28](../../rfcs/done/rfc-28-standards-contract.md) *Review result envelope*. Run `specdev check --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing for [`specrun review`](../../rfcs/done/rfc-28-standards-contract.md#framework-convergence-phase-3) (RM-10), or feeding dashboards that consume `ReviewFinding` objects.
+`specdev lint` can emit the same structured result shape consumed by CI integrations. Run `specdev lint --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specrun lint` output.
 
 ```bash
-specdev check --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+specdev lint --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 Envelope shape:
@@ -101,19 +101,19 @@ Envelope shape:
 }
 ```
 
-The full wire contract — including per-finding fields and the canonical fingerprint algorithm — lives in [RFC-28 §"Review result envelope"](../../rfcs/done/rfc-28-standards-contract.md#review-result-envelope). The per-finding shape is pinned by [`schemas/review/finding.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/review/finding.schema.json); the closed codex rule shape it references is pinned by [`crates/authoring/schemas/codex-rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/schemas/codex-rule.schema.json).
+The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/lint/lint-result.schema.json` for the envelope, `schemas/lint/finding.schema.json` for each `LintFinding`, and `crates/authoring/schemas/rule.schema.json` for rule authoring shape.
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
-**Severity mapping.** Authoring imperative rule ids map to RFC-28 severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs) (CH-20):
+**Severity mapping.** Authoring imperative rule ids map to `LintFinding` severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs):
 
-- `codex.schema-violation` → `critical` — a malformed codex rule breaks every downstream consumer of the resolved codex.
+- `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
 - every other authoring family (`adapter.*`, `codex.duplicate-rule-id`, `codex.namespace-ownership-violation`, `links.*`, `scenarios.*`, `skill.*`, …) → `important`.
 - unclassified rule ids fall through to the `important` default.
 
-**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `codex.schema-violation` and `skill.duplicate-name` do not match. The [CH-21 mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[codex.schema-violation] Codex rule frontmatter failed schema validation."`). This is transitional; [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) Phase 3 may migrate authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
+**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.unknown-tool` do not match. The [authoring mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; a future framework-rules migration may move authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
 
-**Consumer-project counterpart.** `specdev check --format json` is the **framework-repo** authoring surface; [`specrun review`](../../rfcs/done/rfc-32-standards-enforcement.md#specrun-review-phase-2-cli) is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same [RFC-28 `ReviewFinding` envelope](../../rfcs/done/rfc-28-standards-contract.md#review-result-envelope) so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [RFC-32](../../rfcs/done/rfc-32-standards-enforcement.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specdev lint --format json` is the **framework-repo** authoring surface; `specrun lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 
@@ -127,7 +127,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with `specify-cli` under `schemas/` and are loaded by the `specify-authoring` crate.
 
-**Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`enumerate` + `extract` for sources; `shape` + `build` + `merge` for targets).
+**Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`survey` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
 ### 3. Adapter referential integrity
 
@@ -168,7 +168,7 @@ Built-in variables (`$ARGUMENTS`, `$HOME`) are excluded from the check.
 
 ### 8. Skill directive validation
 
-`<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under `rfcs/` are excluded.
+`<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under the historical design-record tree are excluded.
 
 ### 9. Marketplace manifest consistency
 
@@ -189,7 +189,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against [`crates/authoring/schemas/scenario.schema.json`](../../crates/authoring/schemas/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
@@ -260,34 +260,34 @@ The recorded-trace check is opt-in. If a future suite adds
 `recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
 `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
-### 13. First-party codex rule shape
+### 13. First-party rule shape
 
-First-party codex rule files are validated in the shared tree at `adapters/shared/codex/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/codex/**/*.md` and `adapters/targets/<name>/codex/**/*.md`.
+First-party rule files are validated in the shared tree at `adapters/shared/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/rules/**/*.md` and `adapters/targets/<name>/rules/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`crates/authoring/schemas/codex-rule.schema.json`](../../crates/authoring/schemas/codex-rule.schema.json).
+  conforms to [`schemas/rule.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/rules/rule.schema.json) in the `specify-cli` repo.
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- `adapters/shared/codex/universal/` owns `UNI-*`;
+- **Namespace ownership** -- `adapters/shared/rules/universal/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — / missing required property 'trigger'
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.schema-violation: Codex rule frontmatter: adapters/shared/codex/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.schema-violation: Codex rule body: adapters/shared/codex/universal/example.md — missing required '## Rule' heading
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/codex/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
-  at adapters/shared/codex/universal/example.md:1
-FAIL: codex.duplicate-rule-id: Codex rule duplicate id 'UNI-001' across files: adapters/shared/codex/universal/a.md, adapters/shared/codex/universal/b.md
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — / missing required property 'trigger'
+  at adapters/shared/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/shared/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule body: adapters/shared/rules/universal/example.md — missing required '## Rule' heading
+  at adapters/shared/rules/universal/example.md:1
+FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/rules/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/shared/rules/universal/example.md:1
+FAIL: codex.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -301,20 +301,42 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under `adapters/` must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
 
-This enforces RFC-31 D1 (tool-owned schemas): plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
+This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
 **Common fix:** verify the tool name and schema name in the URL. Use `specrun tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
 
 ## Extending the checks
 
-To add a new check:
+Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-authoring` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
 
-1. Add a module under [`crates/authoring/src/check/`](../../crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
-2. Register the check in the `checks` array in [`crates/authoring/src/check/mod.rs`](../../crates/authoring/src/check/mod.rs).
-3. Add a fixture-based integration test under [`crates/authoring/tests/`](../../crates/authoring/tests/) when the predicate needs regression coverage.
-4. Run `make check` to verify the new check works.
+### Choose `CORE-*` (declarative) when
 
-Checks are numbered 1–14 contiguously in this document. New checks should use the next available number (currently 15).
+- The predicate can be expressed as one or more `deterministic_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
+- A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
+
+The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/authoring/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
+
+To add a `CORE-*` rule:
+
+1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
+2. Run `make lint`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
+3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
+
+### Choose an imperative `Check` when
+
+- The predicate genuinely needs subprocess orchestration or stateful behaviour the hint interpreter cannot model (e.g. spawning a long-running validator with multi-turn interaction).
+- The predicate is exploratory and you are not ready to commit to a stable `CORE-NNN` id.
+- You are extending an existing imperative module with a small adjacent row that does not yet warrant a dedicated `CORE-*` rule.
+
+To add an imperative check:
+
+1. Add a module under [`crates/authoring/src/check/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
+2. Register the check in the `checks` array in [`crates/authoring/src/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/src/check.rs).
+3. Add a fixture-based integration test under [`crates/authoring/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/tests/) when the predicate needs regression coverage.
+4. Run `make lint` to verify the new check works.
+
+Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

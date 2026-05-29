@@ -10,7 +10,7 @@ Validate and locate a source adapter manifest.
 specrun source resolve <name>
 ```
 
-Returns the adapter root, manifest path, and brief paths for `enumerate` and `extract`. Used by `/spec:plan` during enumeration and `/spec:refine` during extract.
+Returns the adapter root, manifest path, and brief paths for `survey` and `extract`. Used by `/spec:plan` during survey and `/spec:refine` during extract.
 
 ## specrun target resolve
 

@@ -4,11 +4,11 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #1.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `1`.
 
 > Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.
 
-**Stress-tests:** Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specrun plan transition fix-typo reviewed` command -- the operator runs it, then `/spec:execute`. The skill never auto-stamps `reviewed`.
+**Stress-tests:** Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specrun plan transition fix-typo approved` command -- the operator runs it, then `/spec:execute`. The skill never auto-stamps `approved`.
 
 ## Run-summary
 

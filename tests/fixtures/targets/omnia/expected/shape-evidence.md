@@ -22,4 +22,4 @@ Synthesis (W3.1, `/spec:refine`) MUST fold the Omnia `shape` brief's idiom guida
 
 ## Cross-fixture invariant
 
-A pure-intent variant (`sources: [intent]`, candidate ≡ slice name) and a documentation-sourced variant of the same slice MUST produce `spec.md` / `design.md` where every checkbox above is satisfied. The `Sources:` line on each requirement block reflects the actual source(s); the structural shape does not vary.
+A pure-intent variant (`sources: [intent]`, lead ≡ slice name) and a documentation-sourced variant of the same slice MUST produce `spec.md` / `design.md` where every checkbox above is satisfied. The `Sources:` line on each requirement block reflects the actual source(s); the structural shape does not vary.

@@ -2,7 +2,7 @@
 
 These documents are manual acceptance scenarios for the cross-repo Specify
 workflow from an operator's point of view, expressed through the three-skill
-change lifecycle introduced by RFC-23 (`draft → review → execute → finalize`):
+change lifecycle (`/spec:plan` → operator review → `/spec:execute` → `/spec:finalize`):
 
 1. draft a multi-slice change from a short feature brief (`/spec:plan`)
 2. review the draft plan at the operator pause (`inspect plan.yaml`,

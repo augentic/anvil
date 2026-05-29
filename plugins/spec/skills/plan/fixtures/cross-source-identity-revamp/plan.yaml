@@ -12,15 +12,15 @@ slices:
     target: omnia
     sources:
       - key: identity-design-notes
-        candidate: user-registration
+        lead: user-registration
       - key: legacy-monolith
-        candidate: user-registration
+        lead: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia
     sources:
       - key: identity-design-notes
-        candidate: password-reset
+        lead: password-reset
       - key: legacy-monolith
-        candidate: account-pwd-reset
+        lead: account-pwd-reset
     status: pending

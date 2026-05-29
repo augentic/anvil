@@ -4,7 +4,7 @@ slice:
   project: identity-svc
   sources:
     - key: product-notes
-      candidate: audit-trail-retention
+      lead: audit-trail-retention
   status: in-progress
 plan-sources:
   product-notes:

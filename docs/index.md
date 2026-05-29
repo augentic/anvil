@@ -41,7 +41,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
     <div class="rhythm-num">01</div>
     <div class="rhythm-label">Plan</div>
     <div class="rhythm-title">Define the change</div>
-    <p>Bind sources, enumerate candidates, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
+    <p>Bind sources, survey leads, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">02</div>
@@ -112,7 +112,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
 /spec:plan fix-typo source intent="fix typo in user.rs"
   --> writes change.md + plan.yaml + discovery.md, exits at pending
 
-specrun plan transition fix-typo reviewed
+specrun plan transition fix-typo approved
   --> operator review step (Gate 1)
 
 /spec:execute

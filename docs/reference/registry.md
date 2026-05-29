@@ -79,7 +79,7 @@ After `workspace push` opens or updates PRs, landing is an explicit operator act
 The dependency edge is one-way; `specify-core` never depends on the registry.
 
 ```text
-specify (binary) → specify-domain → specify-tool → specify-error
+specify (binary) → specify-workflow → specify-tool → specify-error
                                   ↑
                                   plugin loader (routes by axis)
 ```

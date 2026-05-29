@@ -69,7 +69,7 @@ The change's table of contents — an ordered, dependency-aware list of slices, 
 ```yaml
 version: 1
 name: identity-revamp
-lifecycle: reviewed
+lifecycle: approved
 sources:
   identity-design-notes:
     adapter: documentation
@@ -83,18 +83,18 @@ slices:
     project: identity-svc
     sources:
       - key: identity-design-notes
-        candidate: user-registration
+        lead: user-registration
       - key: legacy-monolith
-        candidate: user-registration
+        lead: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia
     project: identity-svc
     sources:
       - key: identity-design-notes
-        candidate: password-reset
+        lead: password-reset
       - key: legacy-monolith
-        candidate: account-pwd-reset
+        lead: account-pwd-reset
     divergence: likely
     status: pending
 ```
@@ -103,7 +103,7 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `reviewed`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
+| `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
 | `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].key`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
@@ -112,7 +112,7 @@ slices:
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
 | `target`                 | Yes      | Target adapter identifier for the slice (or the plan-level default). |
 | `project`                | No       | Workspace project name (workspace mode only). |
-| `sources`                | Yes      | List of `{ key, candidate }` bindings; cardinality ≥ 1. Bare `<key>` shorthand allowed when the candidate id equals the slice's `name`. |
+| `sources`                | Yes      | List of `{ key, lead }` bindings; cardinality ≥ 1. Bare `<key>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
 | `divergence`             | No       | Closed enum: `none` (default; absent), `likely` (set by propose), `accepted` / `rejected` (set by `plan amend --divergence`). Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must be `done` first. |
@@ -163,7 +163,7 @@ projects:
 **Created by:** `/spec:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
-Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain candidate fusion) and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing candidate pairs).
+Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation) and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
 
 ```markdown
 # Identity revamp

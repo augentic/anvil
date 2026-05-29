@@ -10,4 +10,4 @@ Three slices, all driven by `docs=./design-notes/account`. No legacy code source
 
 ## Notes
 
-Scaffolded by `/spec:plan account-revamp source docs=./design-notes/account`. No tentative merges; no likely divergences. Operator reviews and stamps Gate 1 with `specrun plan transition account-revamp reviewed`.
+Scaffolded by `/spec:plan account-revamp source docs=./design-notes/account`. No tentative merges; no likely divergences. Operator reviews and stamps Gate 1 with `specrun plan transition account-revamp approved`.

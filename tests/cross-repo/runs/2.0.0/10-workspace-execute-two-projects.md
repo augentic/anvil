@@ -2,7 +2,7 @@
 
 ## Source
 
-[`rfcs/done/rfc-25-workflow.md` §Acceptance scenarios](../../../../rfcs/done/rfc-25-workflow.md#acceptance-scenarios), row #10.
+[`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `10`.
 
 > Plan with slices targeting `project-a` and `project-b`; operator runs `/spec:execute` from the workspace root.
 

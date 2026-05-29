@@ -1,7 +1,7 @@
 source: legacy-monolith
 adapter: code-typescript
 authority: behaviour
-candidate: account-pwd-reset
+lead: account-pwd-reset
 claims:
   - kind: excerpt
     claim-id: password-reset.request

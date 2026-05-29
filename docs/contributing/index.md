@@ -21,10 +21,10 @@ Two audiences share this repository:
 
 | Audience | Typical edits | Rust required locally? |
 |----------|---------------|------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev check` on every PR |
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
 | **Tooling contributors** | `specify-authoring` predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
-Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make check` and `make test` locally before opening a PR.
+Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-authoring` predicate suite) before opening a PR.
 
 ## Development environment
 
@@ -50,18 +50,18 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make check` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
 ## What to read next
 
-- [RFC-27 synthesis](../../rfcs/done/rfc-27-synthesis.md) -- evidence fusion, authority, and cache; normative 2.0 workflow contract in [rfc-25-workflow.md](../../rfcs/done/rfc-25-workflow.md)
+- [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `specdev check` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what `specdev lint` enforces and how to extend it
 
 ## Example Patterns
 

@@ -19,8 +19,8 @@ Inside `/spec:execute`, each slice runs through the per-slice loop documented in
 
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
-| [/spec:plan](plan.md) | Enumerate sources, propose slices, exit at `pending` | Bound sources, `project.yaml` | `change.md`, `plan.yaml`, `discovery.md` |
-| [/spec:execute](execute.md) | Drive reviewed plan through refine → build → merge | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
+| [/spec:plan](plan.md) | Survey sources, propose slices, exit at `pending` | Bound sources, `project.yaml` | `change.md`, `plan.yaml`, `discovery.md` |
+| [/spec:execute](execute.md) | Drive approved plan through refine → build → merge | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
 | [/spec:finalize](finalize.md) | Push branches, observe PRs, archive plan | Drained plan, workspace slots | Archived plan; no direct `.specify/` writes |
 
 ## How skills delegate

@@ -4,7 +4,7 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 
 ## Starting state
 
-- `plan.yaml.lifecycle == reviewed` (Gate 1 stamped).
+- `plan.yaml.lifecycle == approved` (Gate 1 stamped).
 - Slice 1 `user-list-search-filter` already `done`.
 - Slice 2 `group-list-search-filter` is `in-progress`; its slice lifecycle is `refined` (refine landed before the operator cancelled).
 - Slice 3 `audit-list-search-filter` is still `pending`.

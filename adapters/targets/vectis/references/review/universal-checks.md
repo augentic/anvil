@@ -2,7 +2,7 @@
 
 Read this at step 2c of the review-fix cycle, after the specialists complete and before the antagonist runs.
 
-The lead applies every `UNI-*` rule from [`adapters/shared/codex/universal/`](../../../../shared/codex/universal/). Several universal checks overlap with categories already covered by the specialists; skip those:
+The lead applies every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../../shared/rules/universal/). Several universal checks overlap with categories already covered by the specialists; skip those:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -32,6 +32,6 @@ Apply the remaining checks with these Rust-specific heuristics:
 - **UNI-020** (unsafe deserialization): Look for deserialization of untrusted external payloads (SSE events, HTTP responses) directly into internal model types that carry authorization or privilege state. Check for missing size limits on payloads deserialized from effects.
 - **UNI-021** (missing auth checks): In a Crux core, authentication is typically managed by the shell and passed as model state. Check that handlers for sensitive operations (delete, admin actions) verify `model.auth_state` or equivalent before proceeding. Flag handlers that assume authentication without checking.
 
-Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the codex rule.
+Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the rule.
 
 Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.

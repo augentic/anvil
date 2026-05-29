@@ -1,15 +1,15 @@
 ---
 name: specify-execute
-description: Drive a reviewed plan through refine → build → merge per entry under an exclusive plan lock. Use when Gate 1 has stamped plan reviewed; not before Gate 1, nor after all entries are done.
+description: Drive a approved plan through refine → build → merge per entry under an exclusive plan lock. Use when Gate 1 has stamped plan reviewed; not before Gate 1, nor after all entries are done.
 ---
 
 # Specify Execute
 
-`/spec:execute` is the supervised driver for an operator-stamped `reviewed` plan. It refuses unless `plan.lifecycle == reviewed`, takes an exclusive lock on `.specify/plan.lock`, then loops: ask `specrun plan next` for the active entry, route to the right workspace slot, invoke `/spec:refine` → `/spec:build` → `/spec:merge`, and stop the moment a phase fails or the plan drains. No automation flags exist — no `--continue`, no `--one`, no `--until`, no `--dry-run`, no `--yes-plan`. The skill takes no positional arguments; the active plan is the one and only argument.
+`/spec:execute` is the supervised driver for an operator-stamped `approved` plan. It refuses unless `plan.lifecycle == approved`, takes an exclusive lock on `.specify/plan.lock`, then loops: ask `specrun plan next` for the active entry, route to the right workspace slot, invoke `/spec:refine` → `/spec:build` → `/spec:merge`, and stop the moment a phase fails or the plan drains. No automation flags exist — no `--continue`, no `--one`, no `--until`, no `--dry-run`, no `--yes-plan`. The skill takes no positional arguments; the active plan is the one and only argument.
 
 ## Critical Path
 
-1. Verify `plan.lifecycle == reviewed` via `specrun plan next`; refuse with the literal `specrun plan transition <name> reviewed` hint when the plan is still `pending`.
+1. Verify `plan.lifecycle == approved` via `specrun plan next`; refuse with the literal `specrun plan transition <name> approved` hint when the plan is still `pending`.
 2. Acquire the exclusive lock on `.specify/plan.lock` (workspace root in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
 3. For each `specrun plan next` result, route the active slice into its workspace slot when `project` is set, then invoke `/spec:refine` (when the slice is fresh), `/spec:build`, and `/spec:merge` — the only writer of per-entry `done`.
 4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`references/stop-conditions.md`](references/stop-conditions.md).

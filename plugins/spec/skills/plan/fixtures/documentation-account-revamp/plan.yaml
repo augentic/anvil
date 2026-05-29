@@ -9,17 +9,17 @@ slices:
     target: omnia
     sources:
       - key: docs
-        candidate: account-registration
+        lead: account-registration
     status: pending
   - name: password-reset
     target: omnia
     sources:
       - key: docs
-        candidate: password-reset
+        lead: password-reset
     status: pending
   - name: account-audit-log
     target: omnia
     sources:
       - key: docs
-        candidate: account-audit-log
+        lead: account-audit-log
     status: pending

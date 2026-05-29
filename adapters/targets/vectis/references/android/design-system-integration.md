@@ -17,8 +17,7 @@ which carries the concrete code templates per token shape.
 When this document conflicts with another source, follow this precedence:
 
 1. `tokens.yaml` and `assets.yaml` — the operator-owned input artifacts.
-2. RFC-11 §E (assets pipeline), §F (tokens artifact), §I (shell handoff +
-   component directive), §L (no generated platform between inputs and shells).
+2. [Layout Inferer Contract](../layout-inferer-contract.md), [Component Catalog](../../../../../docs/explanation/components.md), and the Vectis schemas/tool validators.
 3. [`kotlin-token-templates.md`](token-templates.md) — concrete code
    templates per token category.
 4. This document — integration policy and fallback rules.
@@ -79,7 +78,7 @@ The generated app **MUST NOT** depend on
 `implementation(project(":vectis-design"))` and **MUST NOT** declare an
 `include(":vectis-design")` line in `settings.gradle.kts`, an
 `implementation` dependency on a `com.vectis.design` AAR, or a path under
-`design-system/android/` (per RFC-11 §L "Generated layout"). The
+`design-system/android/` (per the generated-layout policy below). The
 `Android/` shell must build from its own platform directory after
 generation.
 
@@ -88,7 +87,7 @@ generation.
 ### Reading `tokens.yaml`
 
 The Android writer's primary token input is `tokens.yaml`. Resolution
-order matches RFC-11 §H "Inputs":
+order follows the Vectis input policy:
 
 1. Slice-local `.specify/slices/<name>/tokens.yaml`, when present.
 2. Project-level `design-system/tokens.yaml`.
@@ -183,7 +182,7 @@ to the literal `0.38f`.
 
 The deterministic check that every token reference in `composition.yaml`
 resolves to a `tokens.yaml` entry lives in
-`specrun tool run vectis -- validate composition` (RFC-11 §H, Phase 1.9): when sibling
+`specrun tool run vectis -- validate composition` (via the Vectis validator): when sibling
 `tokens.yaml` exists, the validator auto-invokes `tokens` mode and reports
 unresolved references as errors before the Android writer is called. The
 writer does not need to re-validate references at generation time; it
@@ -193,7 +192,7 @@ consumes the already-validated input set.
 
 When `tokens.yaml` is **absent** the Android writer falls back to
 platform-native Material 3 defaults instead of emitting a `ui/theme/`
-directory (RFC-11 §F "Fallback policy belongs to shell writers"). The
+directory (fallback policy belongs to shell writers). The
 skill emits a minimal `<AppName>Theme` composable (or rewrites the
 scaffold's `Theme.kt`) that wraps `MaterialTheme` with the standard
 dynamic / static Material 3 schemes; screen views reference the M3
@@ -265,7 +264,7 @@ on Android 12+ without any token authoring.
 ### Reading `assets.yaml`
 
 The Android writer's primary asset input is `assets.yaml`. Resolution
-order matches RFC-11 §I "Inputs":
+order follows the Vectis input policy:
 
 1. Slice-local `.specify/slices/<name>/assets.yaml`, when present, plus
    files under `.specify/slices/<name>/assets/`.
@@ -284,7 +283,7 @@ set.
 
 ### Copy-on-generate
 
-Per RFC-11 §E "Build hand-off is copy-on-generate", the Android writer
+Build hand-off is copy-on-generate: the Android writer
 **copies** referenced asset files into the app module's `res/` tree at
 generation time. The generated shell project must build from its own
 platform directory after generation; it MUST NOT symlink, alias, or
@@ -336,8 +335,7 @@ indirection.
 
 When a `vector` asset is referenced from `composition.yaml` but
 `sources.android` is missing, the validator reports an error and shell
-generation halts for the affected screen (per RFC-11 §E "Missing vector
-exports are validation errors, not deferred TODOs"). The Android writer
+generation halts for the affected screen (missing vector exports are validation errors, not deferred TODOs). The Android writer
 does **not** silently fall back to a placeholder, generate from the
 canonical `source:` SVG at build time, or skip the screen. The legitimate
 operator responses are to add an Android Vector Drawable export to
@@ -355,8 +353,7 @@ writer only deletes entries it generated.
 
 ## Component directive contract
 
-When a `composition.yaml` `group` carries `component: <slug>` (RFC-11 §G,
-§I), the Android writer emits **one named `@Composable`** per slug under
+When a `composition.yaml` `group` carries `component: <slug>` (per the component directive contract), the Android writer emits **one named `@Composable`** per slug under
 `Android/app/src/main/java/com/vectis/<appname>/ui/components/`,
 PascalCased from the slug:
 
@@ -367,7 +364,7 @@ PascalCased from the slug:
 
 Every call site in `composition.yaml` becomes a use of the named
 composable. Props are inferred from variation observed across instances
-of the slug per RFC-11 §I "Component directive contract":
+of the slug per the component directive contract:
 
 - `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and
   free text content that **differ** across instances become parameters on
@@ -382,8 +379,7 @@ skeleton and only the wiring varies.
 
 The directive is platform-agnostic; the inferred prop shape is
 per-platform. iOS may emit a slightly different prop signature for the
-same slug — v1 does not require cross-shell prop agreement (RFC-11 §I
-closing paragraph).
+same slug — v1 does not require cross-shell prop agreement (per the platform-local prop-shape policy).
 
 ### Component examples
 
@@ -477,14 +473,13 @@ The `vectis-android-reviewer` skill checks generated composables for:
 2. **No** stale external design-system dependencies —
    `implementation(project(":vectis-design"))`,
    `include(":vectis-design")`, `import com.vectis.design.*`,
-   `design-system/android/`, `design-system/ios/` (RFC-11 §I "Reviewer
-   surface" + §L "Compatibility policy").
+   `design-system/android/`, `design-system/ios/` (per the reviewer surface and generated-layout compatibility policy).
 3. Asset references that resolve to entries in the shell-local
    `app/src/main/res/drawable*/` tree (no string-literal paths into
    `design-system/assets/`).
 4. Groups that visibly recur in `composition.yaml` without a
    `component:` slug — flagged so the operator can promote them to a
-   named component before drift compounds (RFC-11 §I "Reviewer surface").
+   named component before drift compounds (per the reviewer surface).
 
 When `tokens.yaml` is absent (M3 fallback path), the reviewer accepts
 `MaterialTheme.colorScheme.*` slots, `MaterialTheme.typography.*` slots,

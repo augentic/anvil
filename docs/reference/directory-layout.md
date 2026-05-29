@@ -20,14 +20,14 @@ contracts/                                  # Baseline API contracts
 ├── project.yaml                            # Project configuration (target, sources, workspace, specify-version)
 ├── change.md                               # Operator brief for the active change
 ├── plan.yaml                               # Change plan (lifecycle + slices[])
-├── discovery.md                            # Plan-time candidate inventory
+├── discovery.md                            # Plan-time lead inventory
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
 ├── .cache/                                 # Cached adapter manifests + briefs
 │   ├── adapters/sources/<name>/                     # Source adapter cache
 │   │   ├── adapter.yaml
-│   │   └── briefs/{enumerate,extract}.md
+│   │   └── briefs/{survey,extract}.md
 │   └── adapters/targets/<name>/                     # Target adapter cache
 │       ├── adapter.yaml
 │       └── briefs/{shape,build,merge}.md
@@ -90,7 +90,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `.cache/`
 
-Adapter manifests and brief files. The adapter loader (`crates/domain/src/adapter/`) routes by axis: `adapters/sources/<name>/` for source adapters and `adapters/targets/<name>/` for target adapters. The cache is populated by `specrun source resolve` and `specrun target resolve` on first use.
+Adapter manifests and brief files. The adapter loader (`crates/workflow/src/adapter/`) routes by axis: `adapters/sources/<name>/` for source adapters and `adapters/targets/<name>/` for target adapters. The cache is populated by `specrun source resolve` and `specrun target resolve` on first use.
 
 ### `workspace/`
 

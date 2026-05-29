@@ -110,14 +110,14 @@ slices:
     status: pending
 ```
 
-**`discovery.md`** — what sources enumerated:
+**`discovery.md`** — what sources surveyd:
 
 ```markdown
 ## Summary
 
-Sources: 1. Candidates: 1.
+Sources: 1. Leads: 1.
 
-## Candidate inventory
+## Lead inventory
 
 ### fix-typo
 
@@ -129,15 +129,15 @@ Sources: 1. Candidates: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specrun plan transition fix-typo reviewed` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `specrun plan transition fix-typo approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `reviewed` itself; you do:
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `approved` itself; you do:
 
 ```bash
-specrun plan transition fix-typo reviewed
+specrun plan transition fix-typo approved
 ```
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).

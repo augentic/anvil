@@ -1,7 +1,7 @@
 source: legacy-monolith
 adapter: code-typescript
 authority: behaviour
-candidate: user-registration
+lead: user-registration
 claims:
   - kind: excerpt
     path: src/users/register.ts#L6-L18

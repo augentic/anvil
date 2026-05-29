@@ -1,6 +1,6 @@
 # `code-typescript` source adapter fixture
 
-Tiny Express service mirroring a small legacy monolith. It documents the expected `code-typescript` source-adapter shape for RFC-25 scenario #4 (`code, multi-slice` decomposes the source tree into candidates).
+Tiny Express service mirroring a small legacy monolith. It documents the expected `code-typescript` source-adapter shape for acceptance scenario `4` (`code, multi-slice` decomposes the source tree into leads).
 
 ## Layout
 
@@ -14,10 +14,10 @@ source/                          # the read-only tree the adapter walks ($SOURCE
     │   ├── register.ts          # handler + email validation
     │   └── repository.ts        # User interface + insertUser
 expected/
-├── discovery.md                 # the candidate block enumerate appends to discovery.md
-└── evidence/legacy-monolith.yaml # Evidence for the user-registration candidate
+├── discovery.md                 # the lead block survey appends to discovery.md
+└── evidence/legacy-monolith.yaml # Evidence for the user-registration lead
 ```
 
-The source tree has one route registration. The enumerate brief's size check (Decision 2) collapses it into a single source-level candidate named `user-registration`. The extract brief returns one `excerpt`, one `type`, and one `call` claim against the same tree.
+The source tree has one route registration. The survey brief's size check (Decision 2) collapses it into a single source-level lead named `user-registration`. The extract brief returns one `excerpt`, one `type`, and one `call` claim against the same tree.
 
 Source key used in the expected outputs: `legacy-monolith`. The slice that binds this source is also named `user-registration` (so the bare-string `sources: [legacy-monolith]` shorthand is legal at the plan level).

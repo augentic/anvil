@@ -19,7 +19,7 @@ Each fixture is one slice. The layout per fixture is:
     tasks.md
 ```
 
-The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json). The `expected/specs/<unit>/spec.md` requirement blocks validate against the W1.3 provenance parser at [`crates/domain/src/spec/provenance.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/spec/provenance.rs).
+The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json). The `expected/specs/<unit>/spec.md` requirement blocks validate against the W1.3 provenance parser at [`crates/model/src/spec/provenance.rs`](https://github.com/augentic/specify-cli/blob/main/crates/model/src/spec/provenance.rs).
 
 ## Fixture matrix
 

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sources: 1. Candidates: 1.
+Sources: 1. Leads: 1.
 
 ## Source inventory
 
@@ -10,7 +10,7 @@ Sources: 1. Candidates: 1.
 |--------|---------|----------------------------|
 | intent | intent  | "fix typo in user.rs"      |
 
-## Candidate inventory
+## Lead inventory
 
 ### fix-typo
 

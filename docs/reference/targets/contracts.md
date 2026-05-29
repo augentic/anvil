@@ -68,7 +68,7 @@ The Contracts adapter's briefs and skills carry domain context about:
 - OpenAPI 3.1 structure for HTTP endpoint bindings.
 - AsyncAPI 3.0 structure for messaging bindings.
 - Artifact structure and naming conventions for root `contracts/`.
-- Codex rules under [`adapters/targets/contracts/codex/`](../../../adapters/targets/contracts/codex/) for stable `IFACE-*` reviewer guidance on compatibility, versioning, and consumer-impact classification.
+- Rules under [`adapters/targets/contracts/rules/`](../../../adapters/targets/contracts/rules/) for stable `IFACE-*` reviewer guidance on compatibility, versioning, and consumer-impact classification.
 
 ## Adapter framework
 

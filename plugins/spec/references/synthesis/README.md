@@ -1,6 +1,6 @@
 # Synthesis playbook
 
-The synthesis playbook is the agent-facing fusion contract `/spec:refine` follows when it folds per-source `Evidence[]` plus the active slice's target `shape` brief into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`). The skill body owns the CLI choreography (slice create, serial extract, validate, transition); this playbook owns **what to write into the artifacts**.
+The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it folds per-source `Evidence[]` plus the active slice's target `shape` brief into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`). The skill body owns the CLI choreography (slice create, serial extract, validate, transition); this playbook owns **what to write into the artifacts**.
 
 ## Substeps in fixed order
 
@@ -20,8 +20,8 @@ See [`substeps.md`](substeps.md) for the per-artifact contract.
 | [`substeps.md`](substeps.md)               | Per-artifact contract for the four substeps; what each artifact MUST contain.              |
 | [`authority.md`](authority.md)             | Authority hierarchy, per-Evidence per-kind overrides, per-slice overrides on `plan.yaml`, the resolution order synthesis walks, and the agreement → `Status` decision table. |
 | [`requirement-block.md`](requirement-block.md) | Canonical `spec.md` requirement-block template + worked examples per `Status` variant. |
-| [`claim-fusion.md`](claim-fusion.md)       | How to fuse per-`kind` and per-`authority` claims; where each claim kind lands.            |
-| [`fusion.md`](fusion.md)                   | Reconciliation index (`fusion.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, `resolution-trace` step names, and the `slice-fusion-drift` gate. |
+| [`claim-reconciliation.md`](claim-reconciliation.md)       | How to reconcile per-`kind` and per-`authority` claims; where each claim kind lands.            |
+| [`reconciliation.md`](reconciliation.md)                   | Reconciliation index (`reconciliation.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, `resolution-trace` step names, and the `slice-reconciliation-drift` gate. |
 | [`tags.md`](tags.md)                       | Tag grammar (`[unknown]` / `[conflict]` / `[divergence]`) and the tag ↔ `Status` coherence rule. |
 
 ## Posture

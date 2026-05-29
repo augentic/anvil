@@ -1,6 +1,6 @@
 # Runtime Capture
 
-Runtime capture for migration workflows. Source-code enumeration lives in the [`code-typescript` source adapter](../../adapters/sources/code-typescript/briefs/enumerate.md); capture consumption lives in the [`captures` source adapter](../../adapters/sources/captures/); replay test generation and build-time verification live in the [Omnia target `build` briefs](../../adapters/targets/omnia/briefs/build.md). Cloning a source tree is an inlined guarded `git clone` snippet at the callers — see [`plugins/capture/skills/wiretapper/SKILL.md`](skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
+Runtime capture for migration workflows. Source-code survey lives in the [`code-typescript` source adapter](../../adapters/sources/code-typescript/briefs/survey.md); capture consumption lives in the [`captures` source adapter](../../adapters/sources/captures/); replay test generation and build-time verification live in the [Omnia target `build` briefs](../../adapters/targets/omnia/briefs/build.md). Cloning a source tree is an inlined guarded `git clone` snippet at the callers — see [`plugins/capture/skills/wiretapper/SKILL.md`](skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
 
 ## Skills
 

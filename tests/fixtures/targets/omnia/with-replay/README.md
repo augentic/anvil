@@ -1,6 +1,6 @@
 # `omnia` target — `with-replay` fixture
 
-Worked example for the **optional** replay hook on the [`omnia` target adapter's `build/replay.md`](../../../../../adapters/targets/omnia/briefs/build/replay.md) sub-brief (workflow §D1, target half). Shared hook contract: [`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md). The `.metadata.yaml` in this directory carries a top-level `replay:` block alongside the standard slice metadata.
+Worked example for the **optional** replay hook on the [`omnia` target adapter's `build/replay.md`](../../../../../adapters/targets/omnia/briefs/build/replay.md) sub-brief (the capture-backed replay workflow, target half). Shared hook contract: [`replay/hook-contract.md`](../../../../../adapters/shared/target-hooks/replay/hook-contract.md). The `.metadata.yaml` in this directory carries a top-level `replay:` block alongside the standard slice metadata.
 
 ## What this fixture demonstrates
 
@@ -25,4 +25,4 @@ The two fixtures are byte-identical apart from the trailing `replay:` block. A `
 
 ## Validation
 
-`.metadata.yaml` follows the `SliceMetadata` shape in [`crates/domain/src/slice/metadata.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). The optional `replay:` block is currently additive at the document level (`SliceMetadata` allows unknown fields); a closed sub-schema lands when the field is promoted out of the v1 "optional" posture.
+`.metadata.yaml` follows the `SliceMetadata` shape in [`crates/workflow/src/slice/metadata.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). The optional `replay:` block is currently additive at the document level (`SliceMetadata` allows unknown fields); a closed sub-schema lands when the field is promoted out of the v1 "optional" posture.

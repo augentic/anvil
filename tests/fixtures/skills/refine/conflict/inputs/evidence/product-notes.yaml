@@ -1,7 +1,7 @@
 source: product-notes
 adapter: documentation
 authority: documentation
-candidate: password-reset-expiry
+lead: password-reset-expiry
 claims:
   - kind: requirement
     claim-id: password-reset.expiry

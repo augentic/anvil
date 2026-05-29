@@ -1,7 +1,7 @@
 source: runtime
 adapter: captures
 authority: behaviour
-candidate: user-registration
+lead: user-registration
 claims:
   - kind: example
     claim-id: user-registration.error

@@ -15,7 +15,7 @@ fallback policy. This file describes only the present-tokens path.
 
 **Stack**: Jetpack Compose Material 3 (`androidx.compose.material3`), Compose
 BOM versions aligned with the app module the CLI scaffolded (see
-[`crux-android-shell-pattern.md`](crux-android-shell-pattern.md)).
+[`shell-pattern.md`](shell-pattern.md)).
 
 **Package**: `com.vectis.<appname>.ui.theme` (matching the rest of the app
 module's package convention). The previous standalone token approach emitted
@@ -35,7 +35,7 @@ Generated under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/`:
 | `colors` | `Colors.kt` | One file per category; defines the M3 light/dark `ColorScheme` plus `vectisColor()` parser. |
 | `typography` | `Typography.kt` | Defines `object VectisTypography` plus `vectisTypography()` mapping into M3 slots. |
 | `spacing` + `cornerRadius` | `Spacing.kt` | Colocated as two `object`s (mirrors Swift `Spacing.swift`). |
-| `elevation` | `Elevation.kt` | New v1 category (RFC-11 §F); separate file. |
+| `elevation` | `Elevation.kt` | v1 token category; separate file. |
 | `border` | `Border.kt` | New v1 category; uses composite shape. |
 | `opacity` | `Opacity.kt` | New v1 category. |
 | _any new scalar / color / font category_ | `<Name>.kt` | One file per new category unless the writer explicitly colocates. |
@@ -77,7 +77,7 @@ that referenced `VectisColors` / `VectisSpacing` / `VectisCornerRadius` /
 - Preserve token **order** from YAML within each file.
 - **Color grouping**: blank lines between semantic groups using the same
   prefix table as
-  [`swift-token-templates.md`](../../ios-writer/references/swift-token-templates.md)
+  [`ios/token-templates.md`](../ios/token-templates.md)
   (primary, secondary, surface, error, ungrouped).
 - **Weight mapping** (typography): identical to Swift.
 
@@ -99,7 +99,7 @@ that referenced `VectisColors` / `VectisSpacing` / `VectisCornerRadius` /
 
 Color strings in `tokens.yaml` are **`#RRGGBB`** — a `#` prefix plus **6**
 hex digits (opaque RGB). This matches the Swift `UIColor(hex:)` template in
-[`swift-token-templates.md`](../../ios-writer/references/swift-token-templates.md).
+[`ios/token-templates.md`](../ios/token-templates.md).
 
 Compose `Color(color: Int)` expects a packed **ARGB** int. Generated code
 treats the token as **24-bit RGB** and supplies full opacity by combining
@@ -456,7 +456,7 @@ generated `VectisElevation` / `VectisBorders` / `VectisOpacity` objects.
 | _(new color)_ | Color | extend color scheme mapping or new file | TBD in same change as Swift |
 
 When iOS gains a new value shape or file, extend **both**
-[`swift-token-templates.md`](../../ios-writer/references/swift-token-templates.md)
+[`ios/token-templates.md`](../ios/token-templates.md)
 and this file in the same change.
 
 ## Removing stale files
@@ -474,8 +474,8 @@ and leaves it on disk so any composable code that wraps content in
 ## Build verification
 
 The standard Android shell build (`make build` → `./gradlew :shared:cargoBuild` →
-`./gradlew :app:assembleDebug`, the U8 step in
-[`SKILL.md`](../SKILL.md#u8-build-and-verify)) compiles every generated
+`./gradlew :app:assembleDebug`, the U8 build-and-verify step in the
+Android shell skill) compiles every generated
 file as part of the app module. There is no separate
 `./gradlew :vectis-design:compileDebugKotlin` step — the previous
 standalone token approach emitted a `vectis-design` Gradle library that needed
