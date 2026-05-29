@@ -13,7 +13,7 @@ Step  Session                                             Repo(s)               
 2     Refine skill, shared docs, and refine fixtures      specify                 done         make check (passed)
 3     Vectis target brief alignment                       specify                 done         make check (passed) + focused rg clean
 4     Omnia target brief alignment                        specify                 done         make check (passed) + focused rg clean
-5     Contracts target brief alignment                    specify                 not-started  make check
+5     Contracts target brief alignment                    specify                 done         make check (passed) + focused rg clean
 6     Resolver JSON briefs-dir output                     specify-cli             not-started  source/target resolve tests
 7     Proposal Units validator rename                     specify-cli             not-started  validator tests + goldens
 8     Spec file-location diagnostics                      specify-cli             not-started  slice validate tests
@@ -306,6 +306,24 @@ Exit criteria:
 
 - Focused `rg` in `adapters/targets/contracts` shows no root `spec.md` instruction.
 - `make check` passes in `augentic/specify`, or remaining failures are documented as out of scope.
+
+### Step 5 session notes
+
+Completed. `make check` passes with zero failures. Focused `rg` confirms every `spec.md` reference in `adapters/targets/contracts/` now uses the canonical `specs/<unit>/spec.md` path — no bare root `spec.md` instructions remain.
+
+Files changed:
+
+- `adapters/targets/contracts/briefs/shape.md` — added `## Contract units` section with guidance on how units map to contract surfaces (HTTP API domain, event family, schema vocabulary scope); updated intro to reference `specs/<unit>/spec.md`; updated `## What core synthesises` bullet from `spec.md` to `specs/<unit>/spec.md`; updated `## Source-driven authoring vs import` provenance reference; updated `## What synthesis MUST NOT do` inline-YAML prohibition.
+- `adapters/targets/contracts/briefs/build.md` — updated `## Inputs` from `spec.md` to `specs/<unit>/spec.md` with "(one file per `proposal.md ## Units` entry)" clarification; updated closing guidance from "synthesised `spec.md`" to "synthesised `specs/<unit>/spec.md` files".
+- `adapters/targets/contracts/briefs/build/openapi.md` — updated critical path step 1 from "the slice's `spec.md`" to "the slice's `specs/<unit>/spec.md` files".
+- `adapters/targets/contracts/briefs/build/asyncapi.md` — updated critical path step 1 from "the slice's `spec.md`" to "the slice's `specs/<unit>/spec.md` files".
+- `adapters/targets/contracts/briefs/build/json-schema.md` — updated critical path step 1 from "the slice's `spec.md`" to "the slice's `specs/<unit>/spec.md` files".
+
+Files not changed (confirmed no workflow vocabulary issues): `merge.md` (no `spec.md` references), `references/*-conventions.md` (`## Scope Boundary` is a conventions section, not a proposal section), `references/` directory (no `spec.md` references).
+
+Observations for future steps:
+
+- No changes required to the plan sequencing or scope of Steps 6–9.
 
 ## Step 6 - Resolver JSON `briefs-dir` Output
 

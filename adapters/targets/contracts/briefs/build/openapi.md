@@ -6,7 +6,7 @@ This sub-flow is OpenAPI-only. Shared payload schemas under `contracts/schemas/`
 
 ## Critical path
 
-1. **Read the briefs and specs.** Open [../build.md](../build.md) and the slice's `spec.md` to identify what HTTP interactions the slice requires; read `contracts/http/` (the HTTP baseline) to know what already exists.
+1. **Read the briefs and specs.** Open [../build.md](../build.md) and the slice's `specs/<unit>/spec.md` files to identify what HTTP interactions the slice requires; read `contracts/http/` (the HTTP baseline) to know what already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling references using the [intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading sub-flow prose once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`../../references/openapi/author.md`](../../references/openapi/author.md), [`../../references/openapi/importer.md`](../../references/openapi/importer.md), or [`../../references/openapi/verifier.md`](../../references/openapi/verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$SLICE_DIR/contracts/http/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-sub-flow territory) — never inline them.
