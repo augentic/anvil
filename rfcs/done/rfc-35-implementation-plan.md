@@ -126,10 +126,10 @@ Goal: make the workflow-owned synthesis references say one thing about scenario 
 
 Primary files:
 
-- [`plugins/spec/references/synthesis/substeps.md`](../plugins/spec/references/synthesis/substeps.md)
-- [`plugins/spec/references/synthesis/requirement-block.md`](../plugins/spec/references/synthesis/requirement-block.md)
-- [`plugins/spec/references/synthesis/claim-fusion.md`](../plugins/spec/references/synthesis/claim-fusion.md)
-- [`plugins/spec/references/synthesis/README.md`](../plugins/spec/references/synthesis/README.md)
+- [`plugins/spec/references/synthesis/substeps.md`](../../plugins/spec/references/synthesis/substeps.md)
+- [`plugins/spec/references/synthesis/requirement-block.md`](../../plugins/spec/references/synthesis/requirement-block.md)
+- [`plugins/spec/references/synthesis/claim-reconciliation.md`](../../plugins/spec/references/synthesis/claim-reconciliation.md)
+- [`plugins/spec/references/synthesis/README.md`](../../plugins/spec/references/synthesis/README.md)
 
 Actions:
 
@@ -138,7 +138,7 @@ Actions:
 - In `claim-fusion.md` lines 14, 22, 59, update `proposal.md ## Motivation` references to `proposal.md ## Why`.
 - Standardize proposal guidance on `## Why`, `## Units`, and `## Non-goals`.
 - Standardize spec output on `specs/<unit>/spec.md`, with units declared one-to-one under `## Units`.
-- Keep [`plugins/spec/references/spec-format.md`](../plugins/spec/references/spec-format.md) as the canonical heading reference; update only if a contradiction is found.
+- Keep [`plugins/spec/references/spec-format.md`](../../plugins/spec/references/spec-format.md) as the canonical heading reference; update only if a contradiction is found.
 
 Exit criteria:
 
@@ -151,11 +151,11 @@ Goal: make `/spec:refine` and its tests follow the new core contract before targ
 
 Primary files:
 
-- [`plugins/spec/skills/refine/SKILL.md`](../plugins/spec/skills/refine/SKILL.md)
-- [`docs/reference/slice-skills/refine.md`](../docs/reference/slice-skills/refine.md)
-- [`plugins/spec/rules/spec.mdc`](../plugins/spec/rules/spec.mdc)
-- [`tests/fixtures/skills/refine/`](../tests/fixtures/skills/refine/)
-- Shared artifact docs such as [`docs/reference/artifact-format.md`](../docs/reference/artifact-format.md) and [`docs/explanation/augentic-specify-usage.md`](../docs/explanation/augentic-specify-usage.md)
+- [`plugins/spec/skills/refine/SKILL.md`](../../plugins/spec/skills/refine/SKILL.md)
+- [`docs/reference/slice-skills/refine.md`](../../docs/reference/slice-skills/refine.md)
+- [`plugins/spec/rules/spec.mdc`](../../plugins/spec/rules/spec.mdc)
+- [`tests/fixtures/skills/refine/`](../../tests/fixtures/skills/refine/)
+- Shared artifact docs such as [`docs/reference/artifact-format.md`](../../docs/reference/artifact-format.md) and [`docs/explanation/augentic-specify-usage.md`](../../docs/explanation/augentic-specify-usage.md)
 
 Actions:
 
@@ -196,12 +196,12 @@ Goal: keep Vectis-specific behavior while making it obey the workflow-owned arti
 
 Primary files:
 
-- [`adapters/targets/vectis/briefs/shape.md`](../adapters/targets/vectis/briefs/shape.md)
-- [`adapters/targets/vectis/briefs/build.md`](../adapters/targets/vectis/briefs/build.md)
-- [`adapters/targets/vectis/briefs/build/test.md`](../adapters/targets/vectis/briefs/build/test.md)
-- [`adapters/targets/vectis/briefs/build/ios/write.md`](../adapters/targets/vectis/briefs/build/ios/write.md)
-- [`adapters/targets/vectis/briefs/build/android/write.md`](../adapters/targets/vectis/briefs/build/android/write.md)
-- [`tests/fixtures/targets/vectis/task-list/`](../tests/fixtures/targets/vectis/task-list/)
+- [`adapters/targets/vectis/briefs/shape.md`](../../adapters/targets/vectis/briefs/shape.md)
+- [`adapters/targets/vectis/briefs/build.md`](../../adapters/targets/vectis/briefs/build.md)
+- [`adapters/targets/vectis/briefs/build/test.md`](../../adapters/targets/vectis/briefs/build/test.md)
+- [`adapters/targets/vectis/briefs/build/ios/write.md`](../../adapters/targets/vectis/briefs/build/ios/write.md)
+- [`adapters/targets/vectis/briefs/build/android/write.md`](../../adapters/targets/vectis/briefs/build/android/write.md)
+- [`tests/fixtures/targets/vectis/task-list/`](../../tests/fixtures/targets/vectis/task-list/)
 
 Actions:
 
@@ -248,10 +248,10 @@ Goal: map Omnia units to crates or service surfaces without using root `spec.md`
 
 Primary files:
 
-- [`adapters/targets/omnia/briefs/shape.md`](../adapters/targets/omnia/briefs/shape.md)
-- [`adapters/targets/omnia/briefs/build.md`](../adapters/targets/omnia/briefs/build.md)
-- [`adapters/targets/omnia/briefs/build/crate.md`](../adapters/targets/omnia/briefs/build/crate.md)
-- [`adapters/targets/omnia/briefs/build/test.md`](../adapters/targets/omnia/briefs/build/test.md)
+- [`adapters/targets/omnia/briefs/shape.md`](../../adapters/targets/omnia/briefs/shape.md)
+- [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md)
+- [`adapters/targets/omnia/briefs/build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md)
+- [`adapters/targets/omnia/briefs/build/test.md`](../../adapters/targets/omnia/briefs/build/test.md)
 - Other Omnia build/review briefs that cite `spec.md` directly.
 
 Actions:
@@ -290,11 +290,11 @@ Goal: map contracts units to contract surfaces while preserving OpenAPI/AsyncAPI
 
 Primary files:
 
-- [`adapters/targets/contracts/briefs/shape.md`](../adapters/targets/contracts/briefs/shape.md)
-- [`adapters/targets/contracts/briefs/build.md`](../adapters/targets/contracts/briefs/build.md)
-- [`adapters/targets/contracts/briefs/build/openapi.md`](../adapters/targets/contracts/briefs/build/openapi.md)
-- [`adapters/targets/contracts/briefs/build/asyncapi.md`](../adapters/targets/contracts/briefs/build/asyncapi.md)
-- [`adapters/targets/contracts/briefs/build/json-schema.md`](../adapters/targets/contracts/briefs/build/json-schema.md)
+- [`adapters/targets/contracts/briefs/shape.md`](../../adapters/targets/contracts/briefs/shape.md)
+- [`adapters/targets/contracts/briefs/build.md`](../../adapters/targets/contracts/briefs/build.md)
+- [`adapters/targets/contracts/briefs/build/openapi.md`](../../adapters/targets/contracts/briefs/build/openapi.md)
+- [`adapters/targets/contracts/briefs/build/asyncapi.md`](../../adapters/targets/contracts/briefs/build/asyncapi.md)
+- [`adapters/targets/contracts/briefs/build/json-schema.md`](../../adapters/targets/contracts/briefs/build/json-schema.md)
 
 Actions:
 

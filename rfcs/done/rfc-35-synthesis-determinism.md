@@ -1,6 +1,6 @@
 # RFC-35: Synthesis Determinism — Closing Reference Contradictions and Agent Trial-and-Error Loops
 
-> Status: Draft · Depends: [RFC-27](done/rfc-27-synthesis.md) (synthesis contract), [RFC-25](done/rfc-25-workflow.md) (workflow), [RFC-31](done/rfc-31-vectis-screenshots-loop.md) (Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun source resolve`, `specrun target resolve`, synthesis references
+> Status: Done · Depends: [RFC-27](rfc-27-synthesis.md) (synthesis contract), [RFC-25](rfc-25-workflow.md) (workflow), [RFC-31](rfc-31-vectis-screenshots-loop.md) (Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun source resolve`, `specrun target resolve`, synthesis references
 
 ## Abstract
 
@@ -240,17 +240,17 @@ Four steps, ordered by dependency. Steps 1–3 are documentation-only changes in
 - Changing the synthesis contract (claim kinds, authority hierarchy, provenance rules). RFC-27 owns those.
 - Automating the four synthesis substeps (proposal, spec, design, tasks). Those require LLM judgment.
 - Adding new slice lifecycle states or plan-level changes.
-- Changing the Evidence schema or the `fusion.yaml` schema. The existing schemas are correct; the problem is contradictory guidance and misleading diagnostics.
-- Adding new `fusion.yaml` writer or generic journal-emitter verbs.
+- Changing the Evidence schema or the `reconciliation.yaml` schema. The existing schemas are correct; the problem is contradictory guidance and misleading diagnostics.
+- Adding new `reconciliation.yaml` writer or generic journal-emitter verbs.
 - Addressing WASI tool availability or distribution. That is tracked separately.
 
 ## References
 
-- [RFC-27: Synthesis](done/rfc-27-synthesis.md) — the synthesis contract this RFC's reference corrections align with.
-- [RFC-25: Workflow](done/rfc-25-workflow.md) — the plan-driven loop and slice lifecycle.
-- [RFC-31: Vectis Screenshots Loop](done/rfc-31-vectis-screenshots-loop.md) — Vectis target hardening; this RFC addresses synthesis-side friction from the same pipeline.
-- [`plugins/spec/references/spec-format.md`](../plugins/spec/references/spec-format.md) — canonical heading conventions for `spec.md`.
-- [`plugins/spec/references/synthesis/substeps.md`](../plugins/spec/references/synthesis/substeps.md) — synthesis substep contract corrected by D1, D4, D5.
-- [`plugins/spec/references/synthesis/requirement-block.md`](../plugins/spec/references/synthesis/requirement-block.md) — requirement block template extended by D2.
-- [`docs/reference/artifact-format.md`](../docs/reference/artifact-format.md) — definitive artifact format reference (already correct on scenario headings).
-- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `fusion.yaml` audit-only decision that keeps this RFC focused on guidance and validation rather than new authoring verbs.
+- [RFC-27: Synthesis](rfc-27-synthesis.md) — the synthesis contract this RFC's reference corrections align with.
+- [RFC-25: Workflow](rfc-25-workflow.md) — the plan-driven loop and slice lifecycle.
+- [RFC-31: Vectis Screenshots Loop](rfc-31-vectis-screenshots-loop.md) — Vectis target hardening; this RFC addresses synthesis-side friction from the same pipeline.
+- [`plugins/spec/references/spec-format.md`](../../plugins/spec/references/spec-format.md) — canonical heading conventions for `spec.md`.
+- [`plugins/spec/references/synthesis/substeps.md`](../../plugins/spec/references/synthesis/substeps.md) — synthesis substep contract corrected by D1, D4, D5.
+- [`plugins/spec/references/synthesis/requirement-block.md`](../../plugins/spec/references/synthesis/requirement-block.md) — requirement block template extended by D2.
+- [`docs/reference/artifact-format.md`](../../docs/reference/artifact-format.md) — definitive artifact format reference (already correct on scenario headings).
+- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `reconciliation.yaml` audit-only decision that keeps this RFC focused on guidance and validation rather than new authoring verbs.
