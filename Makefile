@@ -4,15 +4,12 @@ else
   SPECDEV_MANIFEST := specify-cli/Cargo.toml
 endif
 
-.PHONY: lint test ci use-local-plugins use-team-plugins
+.PHONY: lint ci use-local-plugins use-team-plugins
 
 lint:
 	cargo run --release --manifest-path $(SPECDEV_MANIFEST) --bin specdev -- lint --framework-root .
 
-test:
-	cargo test --manifest-path $(SPECDEV_MANIFEST) -p specify-authoring
-
-ci: lint test
+ci: lint
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

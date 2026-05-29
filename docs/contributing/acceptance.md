@@ -2,22 +2,22 @@
 
 The acceptance surface has two layers:
 
-1. **Deterministic boundary harness** — `make test` runs the compact Rust regression suite in the `specify-authoring` crate. It exercises the checker code with targeted broken fixtures plus one real-repo smoke test that runs the registered `specdev lint` predicates. It does not replay source/target/skill fixtures or invoke the live `specrun` binary.
-2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; the deterministic-boundary harness above does **not** pin synthesised bytes.
+1. **Static repository checks** — `make lint` runs `specdev lint --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-authoring` predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-authoring` — so this repo does not re-run it.
+2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specdev lint` does **not** pin synthesised bytes.
 
-## Running the harness locally
+## Running checks locally
 
 ```bash
-cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
+make lint
 ```
 
-Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--framework-root`.
+Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Targets
 
 - `make lint` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
-- `make test` runs the same acceptance tests as `cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`.
-- `make ci` runs both sequentially.
+- `make ci` runs `make lint`.
+- The `specify-authoring` predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 

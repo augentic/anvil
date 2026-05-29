@@ -93,8 +93,9 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 All commands are run from the repository root:
 
 - `make lint` — forwards to `specdev lint` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`) for documentation and workflow consistency checks.
-- `make test` — runs the compact Rust regression suite in `specify-cli` via Cargo (`cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring`).
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
+
+The `specify-authoring` predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-authoring`); this repo's CI runs only `make lint` against the live tree.
 
 Full acceptance guidance, including the manual cross-repo scenario, lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 

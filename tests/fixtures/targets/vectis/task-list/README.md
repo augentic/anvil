@@ -23,7 +23,7 @@ tests/fixtures/targets/vectis/task-list/
 
 ## Status
 
-This fixture is a documentation pin for the Vectis target. `make test` no longer walks target fixtures. `input/evidence/screens.yaml` remains a hand-authored stand-in for what `sources/screenshots/extract` would emit; replacing it with live extractor output is a follow-up bound to the source ↔ target chain end-to-end story.
+This fixture is a documentation pin for the Vectis target. No automated harness walks target fixtures. `input/evidence/screens.yaml` remains a hand-authored stand-in for what `sources/screenshots/extract` would emit; replacing it with live extractor output is a follow-up bound to the source ↔ target chain end-to-end story.
 
 ## See also
 

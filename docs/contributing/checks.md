@@ -49,9 +49,9 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint` + `test`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout.
+`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-authoring` predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
-Tooling contributors can also invoke the binary and acceptance tests directly:
+Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
 ```bash
 cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .

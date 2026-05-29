@@ -29,7 +29,7 @@ tests/fixtures/targets/omnia/
 
 ## Status
 
-This fixture is a documentation pin for the target adapter. `make test` no longer walks these target fixtures; executable replay of `/spec:refine` and `/spec:build` remains deferred to a future agent/CLI harness.
+This fixture is a documentation pin for the target adapter. No automated harness walks these target fixtures; executable replay of `/spec:refine` and `/spec:build` remains deferred to a future agent/CLI harness.
 
 ## See also
 

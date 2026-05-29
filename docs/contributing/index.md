@@ -24,7 +24,7 @@ Two audiences share this repository:
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
 | **Tooling contributors** | `specify-authoring` predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
-Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` and `make test` locally before opening a PR.
+Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-authoring` predicate suite) before opening a PR.
 
 ## Development environment
 

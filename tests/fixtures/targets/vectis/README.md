@@ -14,7 +14,7 @@ These fixtures pin the *output* shape: what synthesised `spec.md` / `design.md` 
 
 ## Status
 
-These fixtures are documentation pins for the target adapter. `make test` no longer walks target fixtures; executable replay of `/spec:refine`, `/spec:build`, and the end-to-end source ↔ target chain remains deferred to a future agent/CLI harness.
+These fixtures are documentation pins for the target adapter. No automated harness walks target fixtures; executable replay of `/spec:refine`, `/spec:build`, and the end-to-end source ↔ target chain remains deferred to a future agent/CLI harness.
 
 ## See also
 
