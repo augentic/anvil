@@ -55,16 +55,16 @@ One spec file per unit, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They should not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions.
 
-### Spec File Format (Baseline / New Crate)
+### Spec File Format (Baseline / New Unit)
 
-New crate specs and merged baselines use a flat requirement format. The hard-coded spec format (`plugins/spec/references/spec-format.md`) defines the requirement, scenario, and delta-operation headings used by all downstream skills.
+New unit specs and merged baselines use a flat requirement format. The hard-coded spec format (`plugins/spec/references/spec-format.md`) defines the requirement, scenario, and delta-operation headings used by all downstream skills.
 
 ```markdown
-# <Crate Name> Specification
+# <Unit Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this crate or adapter does>
+<1-2 sentence description of what this unit does>
 
 ### Requirement: <Behavior Name>
 
@@ -92,9 +92,9 @@ Source: <source function or design section>
 - `<metric_name>` — type: <counter|gauge|histogram>; emitted: <when>
 ```
 
-### Delta Spec Format (Modified Crate)
+### Delta Spec Format (Modified Unit)
 
-When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the adapter's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
+When modifying an existing unit, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the adapter's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (extract)
 

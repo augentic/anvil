@@ -12,7 +12,7 @@ Step  Session                                             Repo(s)               
 1     Core synthesis reference contract                   specify                 done         focused rg + make check (passed)
 2     Refine skill, shared docs, and refine fixtures      specify                 done         make check (passed)
 3     Vectis target brief alignment                       specify                 done         make check (passed) + focused rg clean
-4     Omnia target brief alignment                        specify                 not-started  make check
+4     Omnia target brief alignment                        specify                 done         make check (passed) + focused rg clean
 5     Contracts target brief alignment                    specify                 not-started  make check
 6     Resolver JSON briefs-dir output                     specify-cli             not-started  source/target resolve tests
 7     Proposal Units validator rename                     specify-cli             not-started  validator tests + goldens
@@ -264,6 +264,25 @@ Exit criteria:
 
 - Focused `rg` in `adapters/targets/omnia` shows no root `spec.md` instruction and no validator-facing `## Crates` contract.
 - `make check` is attempted.
+
+### Step 4 session notes
+
+Completed. `make check` passes with zero failures. Focused `rg` confirms no `$SLICE_DIR/spec.md`, root `spec.md` instruction, or `## Crates` references remain in `adapters/targets/omnia/`.
+
+Files changed:
+
+- `adapters/targets/omnia/briefs/shape.md` — added `## Omnia units` section with guidance on how units map to crates or service surfaces; updated intro to reference `specs/<unit>/spec.md`; renamed `### spec.md` subsection to `### specs/<unit>/spec.md`; updated WASM guardrails and tasks.md sections.
+- `adapters/targets/omnia/briefs/build.md` — replaced `$SPEC_PATH = $SLICE_DIR/spec.md` with `$SPEC_PATH = $SLICE_DIR/specs/$UNIT_NAME/spec.md`; added `$UNIT_NAME` binding; updated intro, phase order step 1, and regression check prose.
+- `adapters/targets/omnia/briefs/build/crate.md` — updated all `spec.md` references to `specs/<unit>/spec.md` (intro, authority hierarchy rule 1, critical path step 1).
+- `adapters/targets/omnia/briefs/build/test.md` — updated all `spec.md` references to `specs/<unit>/spec.md` (intro, authority hierarchy, test generation steps 1/3, quality checklist).
+- `adapters/targets/omnia/references/cross-cutting-matrices.md` — updated traceability verification instruction from `spec.md` to `specs/<unit>/spec.md`.
+- `docs/explanation/augentic-specify-usage.md` — "Crate Name" → "Unit Name" in spec template heading; "Baseline / New Crate" → "Baseline / New Unit"; "Modified Crate" → "Modified Unit"; "what this crate or adapter does" → "what this unit does".
+
+Files not changed (confirmed no workflow vocabulary issues): `build/guest.md` (no `spec.md` references), `build/review.md` (no `spec.md` references), `build/replay.md` (no `spec.md` references), `references/spec-to-test-mapping.md` (already uses `specs/<unit>/spec.md` paths correctly).
+
+Observations for future steps:
+
+- No changes required to the plan sequencing or scope of Steps 5–9.
 
 ## Step 5 - Contracts Target Brief Alignment
 

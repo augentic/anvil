@@ -1,13 +1,14 @@
 # Omnia target — build brief
 
-> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to five phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `spec.md` + `design.md` before this brief runs.
+> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to five phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `specs/<unit>/spec.md` + `design.md` before this brief runs.
 
 ## Inputs and bindings
 
 ```text
 $SLICE_NAME    = active in-progress plan entry's slice name (from `specrun plan next`)
 $SLICE_DIR     = .specify/slices/$SLICE_NAME
-$SPEC_PATH     = $SLICE_DIR/spec.md
+$UNIT_NAME     = unit slug from proposal.md ## Units (typically equals crate name for single-crate slices)
+$SPEC_PATH     = $SLICE_DIR/specs/$UNIT_NAME/spec.md
 $DESIGN_PATH   = $SLICE_DIR/design.md
 $TASKS_PATH    = $SLICE_DIR/tasks.md
 $CRATE_NAME    = $SLICE_NAME with kebab → snake (or the slice's plan-level `crate:` override)
@@ -27,7 +28,7 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 
 ## Phase order
 
-1. Read [`shape.md`](shape.md) refresher and the slice's `spec.md` + `design.md` + `tasks.md`.
+1. Read [`shape.md`](shape.md) refresher and the slice's `specs/<unit>/spec.md` + `design.md` + `tasks.md`.
 2. Load and follow [`build/crate.md`](build/crate.md) — generates or updates the crate.
 3. Load and follow [`build/test.md`](build/test.md) — generates or updates the tests.
 4. (Create mode only) Load and follow [`build/guest.md`](build/guest.md) — scaffolds the WASM guest wrapper.
@@ -64,7 +65,7 @@ If `cargo test` fails, classify each failure:
 
 **Repair discipline.** Minimum change only — fix the reported error and nothing else. Scope the diff to files and functions named in the error output. Group failures by classification and re-enter each phase brief once with all same-class errors. Full repair recipes: [`repair-patterns.md`](../references/repair-patterns.md).
 
-**Update-mode regression check.** Before iteration 1, record the baseline: `cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_NAME}-${CRATE_NAME}-baseline.txt`. After each iteration, for each test that passed before and now fails: if `spec.md` explicitly changes the asserted behaviour → expected behavioural change, re-enter test writer to align expectations; if `spec.md` does not change the asserted behaviour → true regression, route the fix through the classification table.
+**Update-mode regression check.** Before iteration 1, record the baseline: `cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_NAME}-${CRATE_NAME}-baseline.txt`. After each iteration, for each test that passed before and now fails: if the spec explicitly changes the asserted behaviour → expected behavioural change, re-enter test writer to align expectations; if the spec does not change the asserted behaviour → true regression, route the fix through the classification table.
 
 Repeat until all four checks pass or 3 iterations exhausted. If still failing after 3 iterations: **STOP**. Do not mark the slice complete. Report the remaining failures with full error output to the operator and signal the build phase outcome accordingly.
 
