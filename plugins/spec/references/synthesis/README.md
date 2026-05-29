@@ -1,13 +1,13 @@
 # Synthesis playbook
 
-The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it folds per-source `Evidence[]` plus the active slice's target `shape` brief into the four canonical slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`). The skill body owns the CLI choreography (slice create, serial extract, validate, transition); this playbook owns **what to write into the artifacts**.
+The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it folds per-source `Evidence[]` plus the active slice's target `shape` brief into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`). The skill body owns the CLI choreography (slice create, serial extract, validate, transition); this playbook owns **what to write into the artifacts**.
 
 ## Substeps in fixed order
 
 The skill body invokes synthesis in this order — each substep is hand-coded, there is no `specrun slice synthesize` verb:
 
-1. **`proposal.md`** — motivation, scope, non-goals. Carries the slice's *why*.
-2. **`spec.md`** — behavioural requirements. Every block carries `ID:`, `Sources:`, `Status:`. This is the only artifact the provenance parser validates.
+1. **`proposal.md`** — why, units, non-goals. Carries the slice's *why*.
+2. **`specs/<unit>/spec.md`** — behavioural requirements. One file per `## Units` entry. Every block carries `ID:`, `Sources:`, `Status:`. This is the only artifact the provenance parser validates.
 3. **`design.md`** — domain model, APIs, integrations, configuration, technical logic, target-idiom folding (provider DI / Crux idioms / contract format choice), and the UI / layout subsection that spatial Evidence (`region` / `container` / `leaf` from the `screenshots` source adapter) folds into.
 4. **`tasks.md`** — implementation sequencing as plain markdown checkboxes (`- [ ] …`).
 

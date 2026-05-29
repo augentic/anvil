@@ -1,10 +1,10 @@
 # Shape-evidence checklist
 
-Sections that MUST appear in `input/spec.md` and `input/design.md` because the Vectis target's `shape` brief was injected during core synthesis (W3.1 / `/spec:refine`). The synthesis golden test should validate each item; the items are stable across alternate source mixes (pure-intent vs. screenshots-sourced) — only the `Sources:` lines differ.
+Sections that MUST appear in `input/specs/task-list/spec.md` and `input/design.md` because the Vectis target's `shape` brief was injected during core synthesis (W3.1 / `/spec:refine`). The synthesis golden test should validate each item; the items are stable across alternate source mixes (pure-intent vs. screenshots-sourced) — only the `Sources:` lines differ.
 
-## `input/spec.md`
+## `input/specs/task-list/spec.md`
 
-- One spec file per feature at `specs/<feature>/spec.md`. The fixture's single feature is `task-list`.
+- One spec file per unit at `specs/<unit>/spec.md`. The fixture's single unit is `task-list`.
 - Single flat `REQ-[0-9]{3}` namespace across the core body and platform sections. The fixture spans REQ-001..REQ-010 with no `REQ-IOS-*` or `REQ-ANDROID-*` prefixes.
 - Every requirement carries the standard `ID:` / `Sources:` / `Status:` block (synthesis-contract default; Vectis adds no extra header fields).
 - Named screen requirements drive `composition.yaml` screen slugs in `build`:

@@ -1,6 +1,12 @@
 # Omnia target — shape brief
 
-> This brief produces **prose guidance only**. Core synthesis (the `/spec:refine` pipeline) consumes the guidance below when authoring `proposal.md`, `spec.md`, and `design.md` for a slice whose `Slice.target == omnia`. The brief does **not** read sources or write artifacts — it carries idioms the synthesiser folds into the canonical artifacts. The same guidance applies whether the slice's evidence is pure intent, documentation, code, or any combination; per acceptance scenario #5h, both fixtures pick up identical `shape`.
+> This brief produces **prose guidance only**. Core synthesis (the `/spec:refine` pipeline) consumes the guidance below when authoring `proposal.md`, `specs/<unit>/spec.md`, and `design.md` for a slice whose `Slice.target == omnia`. The brief does **not** read sources or write artifacts — it carries idioms the synthesiser folds into the canonical artifacts. The same guidance applies whether the slice's evidence is pure intent, documentation, code, or any combination; per acceptance scenario #5h, both fixtures pick up identical `shape`.
+
+## Omnia units
+
+For Omnia targets, each `## Units` entry in `proposal.md` maps to one spec file at `specs/<unit>/spec.md`. The unit slug normally equals the crate name for a single generated crate; for broader work (multi-crate service or migration), the unit is the service surface slug.
+
+The workflow owns the `## Units` section and the `specs/<unit>/spec.md` layout. This brief defines what a unit *means* for Omnia but does not rename or relocate the core sections.
 
 ## How synthesis consumes this brief
 
@@ -8,7 +14,7 @@ When the synthesising agent assembles a slice for an Omnia target it MUST:
 
 1. Read this brief first, ahead of any source-supplied `Evidence`.
 2. Lift the deep references listed at the bottom into the synthesis context (they are normative, not optional).
-3. Author `proposal.md`, `spec.md`, `design.md`, and `tasks.md` so the artifacts match the §Required artifact shapes below, regardless of which sources contributed evidence.
+3. Author `proposal.md`, `specs/<unit>/spec.md`, `design.md`, and `tasks.md` so the artifacts match the §Required artifact shapes below, regardless of which sources contributed evidence.
 4. Carry tag-and-proceed posture on uncertainty: `[unknown]`, `[conflict]`, `[divergence]` are review signals (see [`../references/guardrails.md`](../references/guardrails.md) for the per-trait coverage matrix the spec lists each handler against). The brief never asks synthesis to halt.
 
 ## Idiom: provider-based dependency injection
@@ -24,7 +30,7 @@ When synthesising `design.md` for an Omnia slice:
 
 ## Idiom: WASM-Preview-2 guardrails
 
-All generated code targets `wasm32-wasip2`. The forbidden surface is normative — synthesised `spec.md` and `design.md` MUST NOT prescribe any APIs from the table below. Forbidden crates include `reqwest`, `tokio` (as runtime; dev-deps OK), `redis`, `sqlx`, `diesel`, `mongodb`, `hyper`, `dotenv` / `dotenvy`, `rand`, `uuid`, `std::process`, `lazy_static`. Forbidden std APIs include `std::env::var`, `std::fs::*`, `std::net::*`, `std::process::*`, `std::thread::spawn`. The replacements (provider traits, `Config::get`, `StateStore`, `Blobstore`, `DocumentStore`, `HttpRequest::fetch`) live in [`../references/guardrails.md`](../references/guardrails.md).
+All generated code targets `wasm32-wasip2`. The forbidden surface is normative — synthesised specs and `design.md` MUST NOT prescribe any APIs from the table below. Forbidden crates include `reqwest`, `tokio` (as runtime; dev-deps OK), `redis`, `sqlx`, `diesel`, `mongodb`, `hyper`, `dotenv` / `dotenvy`, `rand`, `uuid`, `std::process`, `lazy_static`. Forbidden std APIs include `std::env::var`, `std::fs::*`, `std::net::*`, `std::process::*`, `std::thread::spawn`. The replacements (provider traits, `Config::get`, `StateStore`, `Blobstore`, `DocumentStore`, `HttpRequest::fetch`) live in [`../references/guardrails.md`](../references/guardrails.md).
 
 Statelessness: WASM components are fully stateless. Synthesised design MUST NOT prescribe `static mut`, `OnceCell::new`, or any mutable global. `std::sync::LazyLock` is allowed only for immutable compile-time lookup tables.
 
@@ -58,9 +64,9 @@ The synthesised design MUST NOT prescribe `Utc::now()` inside `from_input()` —
 
 ## Required artifact shapes (Omnia target)
 
-### `spec.md`
+### `specs/<unit>/spec.md`
 
-Per-requirement provenance lines (`ID:`, `Sources:`, `Status:`) are core's responsibility (workflow §Requirement block contract). On top of that, an Omnia slice's `spec.md` MUST cover:
+Per-requirement provenance lines (`ID:`, `Sources:`, `Status:`) are core's responsibility (workflow §Requirement block contract). On top of that, an Omnia slice's spec files MUST cover:
 
 - One requirement block per handler-observable behaviour (HTTP request → response shape, message topic → handler effect, WebSocket event → server-side reaction). The block names the trigger and the observable outcome; provider mechanics belong in `design.md`.
 - Acceptance scenarios that name **inputs**, **provider state preconditions** (`StateStore` keys present / absent, `DocumentStore` rows, `Config` keys), and **observable outcomes** (response body, published events, state writes, status code).
@@ -84,7 +90,7 @@ Synthesis writes the following headings, in order:
 Sequence:
 
 1. Author / update crate per `design.md`.
-2. Author / update tests per `spec.md` (scenarios) + `design.md` (side-effect assertions).
+2. Author / update tests per `specs/<unit>/spec.md` (scenarios) + `design.md` (side-effect assertions).
 3. Author / update guest wiring (routes, topic arms, WebSocket exports, provider impls).
 4. Run code review.
 

@@ -14,7 +14,7 @@ This is the definitive reference for the structure and conventions of Specify ar
 
 ## Spec files (behavioral "what")
 
-One spec file per adapter, at `specs/<name>/spec.md`.
+One spec file per unit, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They describe what the system must do, not how it should be implemented in a particular framework.
 
@@ -205,7 +205,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 `proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
 
-The **Crates** (or **Adapters**) section creates the contract between proposal and specs phases -- each adapter listed will need a corresponding spec file at `specs/<name>/spec.md`.
+The **Units** section creates the contract between proposal and specs phases -- each unit listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
 Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- implementation details belong in the design.
 
@@ -413,7 +413,7 @@ Contract deletion is rare and handled as a manual baseline edit. The slice-level
 
 ### Behavioral specs
 
-- One spec file per adapter
+- One spec file per unit
 - Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - Specs stay behavioral and avoid platform-binding detail
 - Traceability is present for each requirement via stable IDs

@@ -8,10 +8,10 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 
 | Kind            | Carrying authority class    | Where it lands                                                                                  | Reconciliation key                                |
 | --------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `requirement`   | `documentation`             | `spec.md` — one requirement block per `claim-id` group.                                         | `claim-id` (required by the schema).      |
-| `criterion`     | `documentation`             | `spec.md` — folds into the requirement block whose `claim-id` shares the same `<requirement>.*` prefix; or a `## Scenarios` H2 entry when no requirement prefix matches. | `claim-id` (required by the schema).      |
+| `requirement`   | `documentation`             | spec files (`specs/<unit>/spec.md`) — one requirement block per `claim-id` group.               | `claim-id` (required by the schema).      |
+| `criterion`     | `documentation`             | spec files — folds into the requirement block whose `claim-id` shares the same `<requirement>.*` prefix as a `#### Scenario:` H4 inline within that block; when no requirement prefix matches, attaches to the nearest requirement by source order. | `claim-id` (required by the schema).      |
 | `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source-key>)`. | None (free-form; not reconciled).              |
-| `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Motivation` when the section names the slice's *why*. | None (free-form; not reconciled).              |
+| `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Why` when the section names the slice's *why*. | None (free-form; not reconciled).              |
 | `excerpt`       | `behaviour`                 | Primarily `design.md` `## Technical logic` (paraphrased). When no other source contributes a requirement on the same behaviour, also drives a `spec.md` requirement with `Status: agreed`. When a `documentation` claim contradicts, becomes commentary on the resulting `[divergence]` block. | Optional `claim-id`; fall back to grouping by handler name extracted from `path`. |
 | `type`          | `behaviour`                 | `design.md` `## Domain model` — render the `signature` field verbatim as the type's canonical shape. | Optional `claim-id`; fall back to the type name from `signature`. |
 | `call`          | `behaviour`                 | `design.md` `## APIs and integrations` (external surfaces) or `## Technical logic` (internal delegation). | Optional `claim-id`; fall back to `callee`. |
@@ -19,7 +19,7 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 | `region`        | `documentation` (spatial)   | `design.md` `## UI / layout` — top-level layout regions per screen.                             | None (positional; not reconciled).             |
 | `container`     | `documentation` (spatial)   | `design.md` `## UI / layout` — grouping within a region.                                        | None (positional; not reconciled).             |
 | `leaf`          | `documentation` (spatial)   | `design.md` `## UI / layout` — individual UI element.                                           | None (positional; not reconciled).             |
-| `intent`        | `intent`                    | `proposal.md` `## Motivation` (primary) and one headline `spec.md` requirement when the intent names a behaviour. | None (one claim per Evidence).            |
+| `intent`        | `intent`                    | `proposal.md` `## Why` (primary) and one headline `spec.md` requirement when the intent names a behaviour. | None (one claim per Evidence).            |
 | `diagram`       | source-dependent            | `design.md` under the most relevant H2.                                                         | None.                                     |
 | `contract`      | source-dependent            | `design.md` `## APIs and integrations`.                                                         | None.                                     |
 
@@ -56,7 +56,7 @@ When two contributing claims share `claim-id` but their `statement:` / `criterio
 
 The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1 contract). Synthesis:
 
-- Renders the `statement` verbatim as the heart of `proposal.md` `## Motivation`.
+- Renders the `statement` verbatim as the heart of `proposal.md` `## Why`.
 - If the statement names a behaviour ("Add a search filter to the user list"), also emits one headline `spec.md` requirement (`REQ-001`) with `Status: agreed` and `Sources: [<intent-key>]`.
 - Pure-intent slices (the degenerate `[intent]` case) produce a `spec.md` with at most one requirement block — additional requirements only appear when other sources contribute.
 

@@ -6,16 +6,18 @@
 
 Carries the slice's *why*. Author from the lead `summary` (in `discovery.md`) plus the contributing Evidence:
 
-- **Single-source intent** — `proposal.md` is a one- to three-paragraph restatement of the `intent` claim's `statement`. Scope is "what the operator asked for"; non-goals are inferred from the absence of language ("not …", "without …").
-- **Single-source documentation** — motivation comes from `decision` and top-level `section` claims; scope is the union of `requirement` claim subjects; non-goals are any `decision` claim that explicitly rules a path out.
-- **Single-source code (port)** — motivation is "preserve observed legacy behaviour for `<lead-id>`"; scope is the set of handlers / endpoints surfaced by `excerpt` / `call` claims; non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
-- **Combined evidence** — fold all contributing sources into one narrative. When sources disagree on motivation (rare), state the higher-authority motivation as the operative one and note the lower-authority position as commentary.
+- **Single-source intent** — `## Why` is a one- to three-paragraph restatement of the `intent` claim's `statement`. `## Units` lists the operator's requested deliverable as a single kebab-case slug with a short scope summary; non-goals are inferred from the absence of language ("not …", "without …").
+- **Single-source documentation** — `## Why` comes from `decision` and top-level `section` claims; `## Units` lists the distinct deliverable surfaces identified from `requirement` claim subjects (one kebab-case slug per surface); non-goals are any `decision` claim that explicitly rules a path out.
+- **Single-source code (port)** — `## Why` is "preserve observed legacy behaviour for `<lead-id>`"; `## Units` lists the handler/endpoint families surfaced by `excerpt` / `call` claims (one kebab-case slug per family); non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
+- **Combined evidence** — fold all contributing sources into one narrative. When sources disagree on why (rare), state the higher-authority position as the operative one and note the lower-authority position as commentary.
 
-Required H2 sections, in order: `## Motivation`, `## Scope`, `## Non-goals`. No provenance lines on `proposal.md` — provenance lives in `spec.md`.
+Required H2 sections, in order: `## Why`, `## Units`, `## Non-goals`. Each `## Units` bullet is `- <unit-slug> — <target-specific meaning and short scope summary>` and maps one-to-one to `specs/<unit>/spec.md`. No provenance lines on `proposal.md` — provenance lives in spec files.
 
-## 2. `spec.md`
+## 2. `specs/<unit>/spec.md`
 
-Behavioural requirements. **This is the only synthesised artifact the provenance parser validates.** Every requirement block follows [`requirement-block.md`](requirement-block.md) verbatim: `ID:`, `Sources:`, `Status:`, with a tag in the headline when `Status` is anything other than `agreed`.
+Behavioural requirements. **This is the only synthesised artifact the provenance parser validates.** Write one spec file per `proposal.md` `## Units` entry at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+
+Every requirement block follows [`requirement-block.md`](requirement-block.md) verbatim: `ID:`, `Sources:`, `Status:`, with a tag in the headline when `Status` is anything other than `agreed`.
 
 Authoring loop:
 
@@ -24,9 +26,9 @@ Authoring loop:
 3. Emit one H3 requirement block per group, numbering `REQ-001`, `REQ-002`, … in source order (top of the highest-authority Evidence document down). Within one Evidence, keep claim order.
 4. For each block that carries a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 
-`spec.md` also opens with a short `## Overview` paragraph (one to three sentences) summarising the slice's behavioural surface; the overview carries no provenance lines.
+Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the unit's behavioural surface; the overview carries no provenance lines.
 
-Acceptance scenarios, when needed, live under a `## Scenarios` H2 *after* all requirement blocks. Scenarios cite requirements by id (`Given REQ-001 …`) and do not carry their own provenance.
+Each requirement block may include one or more `#### Scenario:` H4 headings after the requirement body and before the next `### Requirement:` heading. Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](../spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
 
 ## 3. `design.md`
 
@@ -41,7 +43,7 @@ Technical implementation guidance. Folds in the target `shape` brief (`adapters/
 
 `decision` and `section` claims fold into the H2 they inform (a decision about transport routing lands in `## APIs and integrations`; a decision about error strategy lands in `## Technical logic`). Quote `decision` text verbatim where useful and cite the source key in parentheses: `(from product-notes)`.
 
-`design.md` carries no provenance lines — every behavioural assertion that needs provenance lives in `spec.md`.
+`design.md` carries no provenance lines — every behavioural assertion that needs provenance lives in spec files.
 
 ## 4. `tasks.md`
 
@@ -59,7 +61,7 @@ One bullet per task. Nesting (`  - [ ]`) is allowed for sub-tasks but discourage
 ## What synthesis never does
 
 - **Never edit `.metadata.yaml`, `plan.yaml`, or `discovery.md`.** The skill body's CLI calls own those.
-- **Never rewrite an earlier substep.** `proposal.md` is final before `spec.md` opens; `spec.md` is final before `design.md` opens.
+- **Never rewrite an earlier substep.** `proposal.md` is final before spec files open; spec files are final before `design.md` opens.
 - **Never invent provenance.** A `Sources:` key that did not contribute a claim is a parser failure.
 - **Never park the slice on uncertainty.** Surface `[unknown]` / `[conflict]` / `[divergence]` and proceed.
 - **Never call a `specrun slice synthesize` verb.** It does not exist; substeps are hand-coded in the skill body.

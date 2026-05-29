@@ -1,12 +1,12 @@
 # Identity password reset expiry
 
-## Motivation
+## Why
 
 Settle the expiry window for password-reset links so the identity service can honour a single, operator-confirmed value.
 
-## Scope
+## Units
 
-- Configure the password-reset token TTL.
+- password-reset-expiry — password-reset token TTL configuration
 
 ## Non-goals
 

@@ -6,7 +6,7 @@ This sub-flow is AsyncAPI-only. Shared payload schemas under `contracts/schemas/
 
 ## Critical path
 
-1. **Read the briefs and specs.** Open [../build.md](../build.md) and the slice's `spec.md` to identify what evented interactions the slice requires; read `contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
+1. **Read the briefs and specs.** Open [../build.md](../build.md) and the slice's `specs/<unit>/spec.md` files to identify what evented interactions the slice requires; read `contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
 2. **Identify the intent.** Map the trigger to one of three sibling references using the [intent dispatch](#intent-dispatch) table — author, importer, or verifier. Load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`../../references/asyncapi/author.md`](../../references/asyncapi/author.md), [`../../references/asyncapi/importer.md`](../../references/asyncapi/importer.md), or [`../../references/asyncapi/verifier.md`](../../references/asyncapi/verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/messages/`.** Author and importer paths produce or normalise AsyncAPI 3.0 YAML files under `$SLICE_DIR/contracts/messages/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-sub-flow territory) — never inline them.

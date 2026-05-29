@@ -14,19 +14,19 @@ Each fixture is one slice. The layout per fixture is:
       <source-key>.yaml
   expected/
     proposal.md
-    spec.md
+    specs/<unit>/spec.md
     design.md
     tasks.md
 ```
 
-The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json). The `expected/spec.md` requirement blocks validate against the W1.3 provenance parser at [`crates/model/src/spec/provenance.rs`](https://github.com/augentic/specify-cli/blob/main/crates/model/src/spec/provenance.rs).
+The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json). The `expected/specs/<unit>/spec.md` requirement blocks validate against the W1.3 provenance parser at [`crates/model/src/spec/provenance.rs`](https://github.com/augentic/specify-cli/blob/main/crates/model/src/spec/provenance.rs).
 
 ## Fixture matrix
 
 | Fixture                          | Sources                                | Tag expected             | Playbook rule exercised                                   |
 | -------------------------------- | -------------------------------------- | ------------------------ | --------------------------------------------------------- |
 | `single-source-intent/`          | `intent`                               | none (Status: agreed)    | Degenerate one-source path; intent drives proposal.       |
-| `combined-docs-and-legacy/`      | `product-notes` + `legacy-monolith`    | none (Status: agreed)    | Combined evidence where sources agree per `claim-id`.     |
+| `combined-docs-and-legacy/`      | `identity-design-notes` + `legacy-monolith` | none (Status: agreed)    | Combined evidence where sources agree per `claim-id`.     |
 | `divergence/`                    | `identity-design-notes` + `legacy-monolith` | `[divergence]`      | `documentation > behaviour` resolves contradictory expiry values. |
 | `conflict/`                      | `product-notes` + `identity-design-notes` (both documentation) | `[conflict]` | Tied top authority leaves the operator to reconcile.      |
 | `unknown/`                       | `product-notes`                        | `[unknown]`              | Source emits `claims: []`; synthesis still surfaces the requirement gap. |

@@ -15,13 +15,13 @@ Build MUST NOT edit the root `contracts/` baseline directly. Baseline updates ha
 ## Inputs
 
 - `proposal.md` — authorship mode (author vs import), source material, interface scope, producer/consumer roles.
-- `spec.md` — behavioural requirements: endpoints / channels / payloads / errors. Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
+- `specs/<unit>/spec.md` — behavioural requirements: endpoints / channels / payloads / errors (one file per `proposal.md ## Units` entry). Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
 - `design.md` — the format selection (OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema), file-layout intent, and any cross-contract dependency notes (see [`shape.md`](shape.md)).
 - The slice's `contracts/` subtree (if present) — partial deltas written by a prior pass.
 - The root `contracts/` baseline — read-only context for `$ref` reuse and extension authoring.
 - `tasks.md` — progress tracking.
 
-Build consumes the synthesised Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the synthesised `spec.md` has captured the required behaviour.
+Build consumes the synthesised Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the synthesised `specs/<unit>/spec.md` files have captured the required behaviour.
 
 ## Algorithm
 
