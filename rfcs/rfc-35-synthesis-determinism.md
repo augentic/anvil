@@ -16,7 +16,7 @@ Each friction point observed in the run, with its fix mapped to a decision below
 | F2 | Wrote `spec.md` at slice root; validator reported missing `REQ-*` heading | Refine skill implies flat files; Vectis shape brief requires `specs/<feature>/spec.md`. Error misdirected to heading format. | D4, D8 |
 | F3 | Wrote default proposal sections, then rewrote | `substeps.md` prescribes `## Motivation`/`## Scope`/`## Non-goals`; Vectis overrides with `## Source`/`## Why`/`## Crates`/`## Platforms`. | D5 |
 | F4 | Five steps to locate adapter briefs | `specrun target resolve` output gives no filesystem path to the briefs directory. | D9 |
-| F5 | Hand-authored ~100 lines of `reconciliation.yaml`; failed drift validation | `reconciliation.yaml` is audit-only and derivable from `spec.md` + evidence, but no CLI verb writes it. | D6 |
+| F5 | Hand-authored ~100 lines of `provenance.yaml`; failed drift validation | `provenance.yaml` is audit-only and derivable from `spec.md` + evidence, but no CLI verb writes it. | D6 |
 | F6 | Composed journal NDJSON with shell `printf`/`date` | Fragile field names, event names, and timestamp format. | D7 |
 
 ## Principles
@@ -35,7 +35,7 @@ Each friction point observed in the run, with its fix mapped to a decision below
 | **D3** | Add `spec-format.md` to the refine skill's References section. | Edit `plugins/spec/skills/refine/SKILL.md`. |
 | **D4** | Note in `substeps.md` and refine skill step 4 that the spec file path is target-specific (Vectis `specs/<feature>/spec.md`; others may use `spec.md` at slice root) and the shape brief governs. | Edit `substeps.md` and `refine/SKILL.md`. |
 | **D5** | Change `substeps.md` "Required H2 sections" to "Default H2 sections" with: "When the target shape brief specifies different proposal sections, the shape brief takes precedence." | Edit `substeps.md`. |
-| **D6** | New `specrun slice reconcile` verb that derives `reconciliation.yaml` from `spec.md` + `evidence/*.yaml`. | New handler `crates/workflow/src/slice/reconciliation.rs`. |
+| **D6** | New `specrun slice reconcile` verb that derives `provenance.yaml` from `spec.md` + `evidence/*.yaml`. | New handler `crates/workflow/src/slice/provenance.rs`. |
 | **D7** | New `specrun journal emit` verb that appends one validated NDJSON event to `.specify/journal.jsonl`. | New handler `crates/workflow/src/journal/emit.rs`. |
 | **D8** | `specrun slice validate` distinguishes "no spec files at expected path" from "spec file found but heading not matching." | Update provenance-parser error paths in `crates/validate/src/`. |
 | **D9** | Add absolute `briefs_dir` to `specrun target resolve` and `specrun source resolve` JSON output. | Update JSON serialisation in `crates/workflow/src/adapter/`. |
@@ -76,7 +76,7 @@ specrun slice reconcile app-shell --format json
 - Parses every `REQ-NNN` block (with `Sources:` lines) from `$SLICE_DIR/specs/*/spec.md` (or `$SLICE_DIR/spec.md`, per target).
 - Indexes claims from `$SLICE_DIR/evidence/*.yaml` by `claim-id`; cross-references each requirement's `Sources:` keys to build `contributing-claims`.
 - Selects the `resolution` enum from the closed set (`single-source`, `single-value-agreement`, `authority-resolved`, `conflict`).
-- Writes `reconciliation.yaml` atomically; emits `slice.reconciliation.written` with `{ slice-name, generator, requirement-count }`; on `--format json` prints `requirement_count` + `resolution_counts`.
+- Writes `provenance.yaml` atomically; emits `slice.provenance.written` with `{ slice-name, generator, requirement-count }`; on `--format json` prints `requirement_count` + `resolution_counts`.
 
 Errors (exit 2): `reconciliation-evidence-missing`, `reconciliation-duplicate-req`, `reconciliation-no-spec-files`. The downstream `specrun slice validate` drift gate is unchanged.
 
@@ -102,7 +102,7 @@ When no spec files exist at the target-expected path:
 }
 ```
 
-The existing `slice-reconciliation-drift` error is kept but reworded to distinguish a genuinely missing `REQ-NNN` block from a spec file in the wrong directory.
+The existing `slice-provenance-drift` error is kept but reworded to distinguish a genuinely missing `REQ-NNN` block from a spec file in the wrong directory.
 
 ### D9 — `briefs_dir` in resolve output
 
@@ -140,7 +140,7 @@ Steps 1–3 are documentation-only in `augentic/specify`; 4–6 are CLI changes 
 ## Alternatives considered
 
 - **Cross-reference `spec-format.md` from `substeps.md` instead of inlining the template.** Rejected — agents follow the first concrete example they find; inlining eliminates the indirection.
-- **Make `reconciliation.yaml` optional.** Rejected — its audit trail is valuable; the problem is the authoring burden, which D6 removes.
+- **Make `provenance.yaml` optional.** Rejected — its audit trail is valuable; the problem is the authoring burden, which D6 removes.
 - **A single `specrun slice synthesize` verb for all four substeps.** Rejected — proposal/spec/design/tasks require LLM judgment. The verb boundary stays at the mechanical steps.
 
 ## Non-goals
@@ -148,11 +148,11 @@ Steps 1–3 are documentation-only in `augentic/specify`; 4–6 are CLI changes 
 - The synthesis contract (claim kinds, authority, provenance) — owned by RFC-27.
 - Automating the four LLM-driven synthesis substeps.
 - New slice lifecycle states or plan-level changes.
-- Changes to the Evidence or `reconciliation.yaml` schemas — the problem is who writes them, not their shape.
+- Changes to the Evidence or `provenance.yaml` schemas — the problem is who writes them, not their shape.
 
 ## References
 
 - [RFC-27: Synthesis](done/rfc-27-synthesis.md) — the contract these corrections align with.
 - [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — sequenced after this RFC; reuses D6/D7/D9 (see RFC-29 §"Relationship to RFC-35").
 - [`spec-format.md`](../plugins/spec/references/spec-format.md), [`substeps.md`](../plugins/spec/references/synthesis/substeps.md), [`requirement-block.md`](../plugins/spec/references/synthesis/requirement-block.md), [`artifact-format.md`](../docs/reference/artifact-format.md).
-- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `reconciliation.yaml` audit-only decision motivating D6.
+- [`DECISIONS.md` (specify-cli)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — `provenance.yaml` audit-only decision motivating D6.

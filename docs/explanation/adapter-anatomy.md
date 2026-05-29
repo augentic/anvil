@@ -169,7 +169,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
     </div>
   </div>
   <p style="font-size: 12px; margin: 8px 0 0; font-family: ui-monospace, monospace;">
-    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes by reading the slice's <code>reconciliation.yaml</code>.
+    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes by reading the slice's <code>provenance.yaml</code>.
   </p>
 </div>
 

@@ -220,60 +220,43 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 
 ### `specrun slice validate`
 
-Runs the slice-shape brief and cross-check predicates. Like `plan validate`, `passed` is a payload indicator and the envelope shape is identical for clean and failed runs.
+Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specrun lint`, `specdev lint`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
-`brief-results` is keyed by per-brief or per-spec scope (`proposal`, `design`, `tasks`, `specs/<name>/spec.md`); each entry is a list of `{rule, rule-id, status, detail?}` records where `status` is `pass`, `fail`, or `deferred` (semantic checks that need LLM judgement). `cross-checks[]` carries inter-artifact predicates with the same record shape.
+Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-provenance-drift`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
+
+- `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
+- `kind: "review"` — a deterministically-raised request for agent/human judgment (the former `deferred` semantic checks). Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
+
+`summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
 
 ```json
 {
-  "brief-results": {
-    "design": [
-      {
-        "rule": "References only requirement ids present in specs",
-        "rule-id": "design.references-valid-ids",
-        "status": "pass"
-      }
-    ],
-    "proposal": [
-      {
-        "rule": "Has a Why section with at least one sentence",
-        "rule-id": "proposal.why-has-content",
-        "status": "pass"
-      },
-      {
-        "detail": "Semantic check — requires LLM judgment",
-        "rule": "Uses imperative language for motivation",
-        "rule-id": "proposal.uses-imperative-language",
-        "status": "deferred"
-      }
-    ],
-    "specs/login/spec.md": [
-      {
-        "rule": "Every requirement has at least one scenario",
-        "rule-id": "specs.requirements-have-scenarios",
-        "status": "pass"
-      }
-    ],
-    "tasks": [
-      {
-        "rule": "All tasks use `- [ ] X.Y` checkbox format",
-        "rule-id": "tasks.use-checkbox-format",
-        "status": "pass"
-      }
-    ]
-  },
-  "cross-checks": [
+  "findings": [
     {
-      "rule": "Every crate listed in the proposal has a matching spec file",
-      "rule-id": "cross.proposal-crates-have-specs",
-      "status": "pass"
+      "artifact": "proposal",
+      "confidence": "medium",
+      "evidence": {
+        "kind": "snippet",
+        "value": "Semantic check — requires agent judgment"
+      },
+      "fingerprint": "sha256:…",
+      "id": "DIAG-0001",
+      "impact": "Semantic check — requires agent judgment",
+      "kind": "review",
+      "location": { "path": "proposal.md" },
+      "remediation": "Uses imperative language for motivation",
+      "rule-id": "proposal.uses-imperative-language",
+      "severity": "suggestion",
+      "source": "model-assisted",
+      "title": "Uses imperative language for motivation"
     }
   ],
-  "passed": true
+  "summary": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
+  "version": 1
 }
 ```
 
-A failed run keeps the same shape with `status: "fail"` on the offending records and an optional `detail` describing why the predicate fired.
+A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-provenance-drift"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
 
 ---
 

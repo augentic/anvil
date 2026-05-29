@@ -12,11 +12,21 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Pass/Fail/Deferred validation
+## Pass/Fail/Deferred validation (superseded by the shared `Diagnostic` substrate)
 
-**Decision:** The validation engine classifies checks into three outcomes: Pass (check passed), Fail (must fix), Deferred (requires semantic judgment, flagged for agent review).
+**Decision (superseded):** The validation engine classified checks into three outcomes: Pass (check passed), Fail (must fix), Deferred (requires semantic judgment, flagged for agent review).
 
-**Rationale:** Some checks are purely structural (file exists, format correct) and can be answered definitively by the CLI. Others require understanding context ("is this design adequate?"). The three-way classification lets the CLI handle what it can and explicitly flags what needs agent judgment, rather than pretending everything is binary.
+**Superseded by:** Every check surface now emits one neutral `Diagnostic` / `DiagnosticReport` currency with two orthogonal axes — `source` (`deterministic | model-assisted | hybrid | human | tool`) and `kind` (`violation` vs `review`). A clean check simply emits no `violation` finding; the former `Deferred` outcome is now `kind: review` (a deterministically-raised request for agent judgment), and lint's `lint-mode: model-assisted` rules surface as `review` too. "Needs judgment" became a first-class, queryable concept across both surfaces rather than a per-validate enum value. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
+
+**Rationale (unchanged):** Some checks are purely structural (file exists, format correct) and can be answered definitively by the CLI. Others require understanding context ("is this design adequate?"). The split lets the CLI handle what it can and explicitly flags what needs agent judgment, rather than pretending everything is binary — now expressed via the `kind` axis instead of a dedicated validation-only enum.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Lint and validate share a substrate but stay distinct surfaces
+
+**Decision:** `lint` and `validate` are unified onto one `Diagnostic` substrate (data type, fingerprint, validator, renderer, blocking predicate) but remain conceptually distinct surfaces with different authority. `validate` gates a lifecycle transition (`refining → refined`): workflow-owned, non-negotiable, non-silenceable. `lint` is standards/policy compliance: codex-owned, versioned, lifecycle-neutral (may block CI, never transitions a slice), silenceable with an in-source rationale.
+
+**Rationale:** The analogy is LSP — `rustc`, `clippy`, and `rust-analyzer` all emit one `Diagnostic` with a `source` without becoming the same tool. Convergence applies to the substrate, never to the concepts or their gate policies. The neutrality is encoded one layer down at the crate graph: the shared machinery lives in a neutral `specify-diagnostics` leaf, and the litmus test is that `validate` (or any non-lint producer) must not depend on anything named `lint`. A uniform blocking predicate (`kind == violation && status == open && severity ∈ {critical, important}`) serves both surfaces; they differ only in whether ignore directives apply (lint: yes; validate: no).
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 

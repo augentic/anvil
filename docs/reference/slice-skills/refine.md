@@ -32,7 +32,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 | Spec | `.specify/slices/<name>/specs/<unit>/spec.md` | Behavioral requirements |
 | Design | `.specify/slices/<name>/design.md` | Technical shape |
 | Tasks | `.specify/slices/<name>/tasks.md` | Implementation sequence |
-| Reconciliation index | `.specify/slices/<name>/reconciliation.yaml` | Audit-only reconciliation index |
+| Provenance index | `.specify/slices/<name>/provenance.yaml` | Audit-only provenance index |
 
 ## Behavior
 
@@ -40,7 +40,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
 4. **Synthesize** — load target `shape` brief; write `proposal.md → spec.md → design.md → tasks.md` in fixed order.
-5. **Write `reconciliation.yaml`** — atomic reconciliation index per `REQ-*` id.
+5. **Write `provenance.yaml`** — atomic provenance index per `REQ-*` id.
 6. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
 7. **Transition** — `specrun slice transition <name> refined`.
 
@@ -67,7 +67,7 @@ On extract failure, the slice stays `refining` with amend-plan guidance. On vali
 | `refine-no-active-slice` | No `in-progress` entry and no slice argument | Run `/spec:execute` or pass slice name |
 | `refine-binding-unresolved` | Source key or lead id not in plan/discovery | Fix plan bindings |
 | Extract failure | Source path denied or brief error | Amend plan sources; re-run refine |
-| Validation failure | Provenance or reconciliation drift | Fix `spec.md` or `reconciliation.yaml`; re-validate |
+| Validation failure | Provenance drift | Fix `spec.md` or `provenance.yaml`; re-validate |
 
 ## Examples
 

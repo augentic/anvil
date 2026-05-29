@@ -36,7 +36,7 @@ Items are identified as `RM-NN`. **Near Term** order reflects deliberate priorit
 
 After the standards layer lands, three tracks run in parallel:
 
-1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source survey` / `extract`). [RFC-35](rfc-35-synthesis-determinism.md) is the sequenced stepping stone ahead of it (deterministic `reconciliation.yaml` / journal verbs that RFC-29 D3 reuses).
+1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source survey` / `extract`). [RFC-35](rfc-35-synthesis-determinism.md) is the sequenced stepping stone ahead of it (deterministic `provenance.yaml` / journal verbs that RFC-29 D3 reuses).
 2. **Shared codex distribution (RM-07)** — operational unblock. Consumer CI cannot rely on `specrun lint` until `UNI-*` rules resolve without `--rules-root`. Small, additive; should not wait for RM-06.
 3. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
 
@@ -57,7 +57,7 @@ After the standards layer lands, three tracks run in parallel:
 **Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
 **Why now:** Vocabulary and lifecycle guards exist, but `survey`, `extract`, plan-time lead reconciliation, slice synthesis, the typed slice model, and the target build envelope are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
-**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic verbs (`specrun slice reconcile`, `specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the reconciliation kernel and journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
+**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic verbs (`specrun slice reconcile`, `specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the projection kernel and journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
 **First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
 
 ```bash
@@ -65,7 +65,7 @@ specrun source survey <source-key> [--format json]
 specrun source extract <source-key> <candidate-id> --slice <name> [--format json]
 ```
 
-**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (Stage B1 structural grouper; target binding stays agent-driven, Stage B2 full writer deferred); D3 `specrun slice synthesize` (reconciliation kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
+**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (Stage B1 structural grouper; target binding stays agent-driven, Stage B2 full writer deferred); D3 `specrun slice synthesize` (projection kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
 **Unblocks:** RM-05 durable proof path, RM-11 compatibility gates, RM-14 meaningful workflow telemetry, RM-18 hosted execute.
 
 #### RM-07: Shared codex distribution

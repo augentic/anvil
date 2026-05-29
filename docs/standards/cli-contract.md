@@ -19,7 +19,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Project
 
 - `specrun init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specrun init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
-- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `reconciliation.yaml`, `discovery.md`) rather than formatted dashboard commands.
+- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `provenance.yaml`, `discovery.md`) rather than formatted dashboard commands.
 
 ### Slice (per-slice lifecycle)
 

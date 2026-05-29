@@ -21,7 +21,7 @@ See [`substeps.md`](substeps.md) for the per-artifact contract.
 | [`authority.md`](authority.md)             | Authority hierarchy, per-Evidence per-kind overrides, per-slice overrides on `plan.yaml`, the resolution order synthesis walks, and the agreement → `Status` decision table. |
 | [`requirement-block.md`](requirement-block.md) | Canonical `spec.md` requirement-block template + worked examples per `Status` variant. |
 | [`claim-reconciliation.md`](claim-reconciliation.md)       | How to reconcile per-`kind` and per-`authority` claims; where each claim kind lands.            |
-| [`reconciliation.md`](reconciliation.md)                   | Reconciliation index (`reconciliation.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, `resolution-trace` step names, and the `slice-reconciliation-drift` gate. |
+| [`provenance.md`](provenance.md)                   | Provenance index (`provenance.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, `resolution-trace` step names, and the `slice-provenance-drift` gate. |
 | [`tags.md`](tags.md)                       | Tag grammar (`[unknown]` / `[conflict]` / `[divergence]`) and the tag ↔ `Status` coherence rule. |
 
 ## Posture

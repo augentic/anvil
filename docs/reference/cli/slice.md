@@ -92,7 +92,7 @@ Checks include:
 - **Adapter checks** -- artifacts conform to the active adapter's rules.
 - **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 
-Returns a JSON report with `Pass` / `Fail` / `Deferred` classifications. The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones; see the [Decision Log](../../explanation/decision-log.md) for the rationale.
+Renders a `DiagnosticReport` on stdout — the neutral finding currency every check surface shares. Each finding carries a `kind`: `violation` (a structural defect; open `critical`/`important` violations block the gate and exit 2) or `review` (a deterministically-raised request for agent judgment — the semantic checks the CLI cannot score, surfaced but never blocking). This keeps the CLI handling structural invariants while the agent evaluates semantic ones, without flattening "needs judgment" into a silent skip. See [CLI output shapes](../cli-output-shapes.md#specrun-slice-validate) for the wire shape and the [Decision Log](../../explanation/decision-log.md) for the rationale.
 
 ### specrun slice merge
 
