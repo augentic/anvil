@@ -23,7 +23,7 @@ The `#### Scenario:` heading is optional per requirement block — include it wh
 
 Rules the parser enforces:
 
-- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no gaps required, but each id MUST be unique across all spec files in the slice (since `reconciliation.yaml` is a per-slice flat index keyed by `REQ-*` id). Numbering is sequential across units — do not restart at `REQ-001` per unit.
+- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no gaps required, but each id MUST be unique across all spec files in the slice (since `provenance.yaml` is a per-slice flat index keyed by `REQ-*` id). Numbering is sequential across units — do not restart at `REQ-001` per unit.
 - **`Sources:`** is a YAML-flow list of kebab-case source keys. Every key MUST resolve against the slice's `plan.yaml.slices[].sources[]` bindings. `[]` is legal only when `Status: unknown`. Highest-authority key first.
 - **`Status:`** is one of the closed enum `agreed | unknown | conflict | divergence`. Snake-case or any other casing fails.
 - **Tag coherence:** the headline tag (`[unknown]` / `[conflict]` / `[divergence]`) MUST match `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag; the other three Status values carry their matching tag verbatim.

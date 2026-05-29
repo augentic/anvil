@@ -1610,7 +1610,7 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 
 [RFC-35](rfc-35-synthesis-determinism.md) is the near-term stepping stone; RFC-29 builds its kernel on top. RFC-35 should land first (small, additive, unblocks the current agent-driven loop). The two RFCs share modules rather than duplicating logic:
 
-- **Shared kernel, shared direction.** RFC-35 D6's `specrun slice reconcile` derives `provenance.yaml` *from* the agent-authored `spec.md` — agent-first. RFC-29 D3 now takes the same direction: the agent authors the requirement set and the kernel projects `provenance.yaml` over it, rather than computing a requirement skeleton up front. RFC-35 D6 is therefore a thin standalone entry point onto the same projection kernel RFC-29 D3 wraps inside `specrun slice synthesize`. Whichever RFC lands the module first, the other consumes it.
+- **Shared kernel, shared direction.** RFC-35 D6's `specrun slice provenance` derives `provenance.yaml` *from* the agent-authored `spec.md` — agent-first. RFC-29 D3 now takes the same direction: the agent authors the requirement set and the kernel projects `provenance.yaml` over it, rather than computing a requirement skeleton up front. RFC-35 D6 is therefore a thin standalone entry point onto the same projection kernel RFC-29 D3 wraps inside `specrun slice synthesize`. Whichever RFC lands the module first, the other consumes it.
 - **One journal emitter.** RFC-35 D7 `specrun journal emit` is the writer RFC-29's new `source.*` and `slice.synthesize.*` event kinds use; RFC-29 adds kinds to the closed `EventKind` taxonomy, not a second emission path.
 - **One brief-location surface.** RFC-35 D9 `briefs_dir` is the deterministic brief-location output RFC-29 D1 and D3 rely on instead of cache-path arithmetic.
 
@@ -1635,7 +1635,7 @@ Exactly one question is unresolved. RFC-29 deliberately does **not** answer it i
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
 - RFC-28: Engineering Standards — Codex Contract and Findings
 - RFC-32: Engineering Standards — Deterministic Enforcement
-- [RFC-35: Synthesis Determinism](rfc-35-synthesis-determinism.md) — the synthesis-determinism stepping stone; its `specrun slice reconcile` (D6) is the standalone entry point onto the projection kernel RFC-29 D3 wraps (see §"Relationship to RFC-35")
+- [RFC-35: Synthesis Determinism](rfc-35-synthesis-determinism.md) — the synthesis-determinism stepping stone; its `specrun slice provenance` (D6) is the standalone entry point onto the projection kernel RFC-29 D3 wraps (see §"Relationship to RFC-35")
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim reconciliation](../../plugins/spec/references/synthesis/claim-reconciliation.md)

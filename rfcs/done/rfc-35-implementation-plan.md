@@ -31,7 +31,7 @@ Goal: confirm the current repo state and produce a short implementation note for
 Actions:
 
 - In `augentic/specify`, inspect `git status` and focused hits for `## Scenarios`, `#### Scenario`, `## Crates`, `## Features`, `## Units`, and root-level `spec.md` wording.
-- In `augentic/specify-cli`, inspect resolver output code, proposal/cross validator rules, fusion drift messages, and existing tests.
+- In `augentic/specify-cli`, inspect resolver output code, proposal/cross validator rules, provenance drift messages, and existing tests.
 - Record any extra touchpoints discovered before editing.
 
 Exit criteria:
@@ -48,7 +48,7 @@ Both repos are clean on `rfc-35` branches. The full touchpoint map follows.
 | File | Line(s) | What |
 | --- | --- | --- |
 | `plugins/spec/references/synthesis/substeps.md` | 29 | The source of friction F1; says scenarios live under `## Scenarios` H2 |
-| `plugins/spec/references/synthesis/claim-fusion.md` | 12 | `criterion` kind landing describes `## Scenarios` H2 as fallback |
+| `plugins/spec/references/synthesis/claim-reconciliation.md` | 12 | `criterion` kind landing describes `## Scenarios` H2 as fallback |
 | `tests/fixtures/skills/refine/combined-docs-and-legacy/expected/spec.md` | 15 | Fixture uses `## Scenarios` H2 |
 
 **`## Motivation` / `## Scope` (proposal sections — D5 targets):**
@@ -56,7 +56,7 @@ Both repos are clean on `rfc-35` branches. The full touchpoint map follows.
 | File | Line(s) | What |
 | --- | --- | --- |
 | `plugins/spec/references/synthesis/substeps.md` | 14 | Prescribes `## Motivation`, `## Scope`, `## Non-goals` |
-| `plugins/spec/references/synthesis/claim-fusion.md` | 14, 22, 59 | `section` and `intent` kind landing says `proposal.md ## Motivation` |
+| `plugins/spec/references/synthesis/claim-reconciliation.md` | 14, 22, 59 | `section` and `intent` kind landing says `proposal.md ## Motivation` |
 | `tests/fixtures/skills/refine/*/expected/proposal.md` | (all 5) | All use `## Motivation` / `## Scope` |
 
 **`## Features` (Vectis-specific — D5 rename to `## Units`):**
@@ -109,8 +109,8 @@ Both repos are clean on `rfc-35` branches. The full touchpoint map follows.
 
 | File | What |
 | --- | --- |
-| `src/runtime/commands/slice/validate.rs` | Add `specs.file-location` check before fusion drift |
-| `crates/domain/src/slice/fusion.rs` | Refine `slice-fusion-drift` message wording |
+| `src/runtime/commands/slice/validate.rs` | Add `specs.file-location` check before provenance drift |
+| `crates/domain/src/slice/provenance.rs` | Refine `slice-provenance-drift` message wording |
 | `tests/slice.rs` | Add tests for root `spec.md` → `specs.file-location` diagnostic |
 
 **Not affected (false positives confirmed):**
@@ -134,8 +134,8 @@ Primary files:
 Actions:
 
 - Replace `## Scenarios` H2 guidance with inline `#### Scenario:` H4 guidance using WHEN/THEN examples.
-- In `claim-fusion.md` line 12, update the `criterion` kind's fallback landing from `## Scenarios` H2 to `#### Scenario:` H4 inline within the parent requirement block.
-- In `claim-fusion.md` lines 14, 22, 59, update `proposal.md ## Motivation` references to `proposal.md ## Why`.
+- In `claim-reconciliation.md` line 12, update the `criterion` kind's fallback landing from `## Scenarios` H2 to `#### Scenario:` H4 inline within the parent requirement block.
+- In `claim-reconciliation.md` lines 14, 22, 59, update `proposal.md ## Motivation` references to `proposal.md ## Why`.
 - Standardize proposal guidance on `## Why`, `## Units`, and `## Non-goals`.
 - Standardize spec output on `specs/<unit>/spec.md`, with units declared one-to-one under `## Units`.
 - Keep [`plugins/spec/references/spec-format.md`](../../plugins/spec/references/spec-format.md) as the canonical heading reference; update only if a contradiction is found.
@@ -160,7 +160,7 @@ Primary files:
 Actions:
 
 - Add `spec-format.md` to the refine skill references.
-- Update refine step 4 to write `proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`, and `fusion.yaml`.
+- Update refine step 4 to write `proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`, and `provenance.yaml`.
 - Update validation failure wording to mention `specs/<unit>/spec.md`, not root `spec.md`.
 - Move/update refine expected fixtures from root `expected/spec.md` to `expected/specs/<unit>/spec.md` and update proposal fixtures from `## Scope`/`## Crates`/`## Features` to `## Units`.
 
@@ -415,12 +415,12 @@ Observations for future steps:
 
 ## Step 8 - Spec File-Location Diagnostics
 
-Goal: make `specrun slice validate` report the file-location problem before misleading fusion drift or heading-format messages.
+Goal: make `specrun slice validate` report the file-location problem before misleading provenance drift or heading-format messages.
 
 Primary files in `augentic/specify-cli`:
 
 - `src/runtime/commands/slice/validate.rs`
-- `crates/domain/src/slice/fusion.rs`
+- `crates/domain/src/slice/provenance.rs`
 - `crates/domain/src/validate/primitives.rs`
 - `crates/domain/src/validate/run.rs`
 - `tests/slice.rs`
@@ -429,23 +429,23 @@ Actions:
 
 - Add rule `specs.file-location` when no canonical `specs/**/*.md` files are found but root `spec.md` exists.
 - Put the corrective action in the existing validation summary shape, likely `detail`, because the current envelope has no separate `hint` field.
-- Refine `slice-fusion-drift` wording so missing headings and wrong file location are distinguishable.
-- Add tests for root `spec.md` with no canonical specs, and update existing fusion drift message tests.
+- Refine `slice-provenance-drift` wording so missing headings and wrong file location are distinguishable.
+- Add tests for root `spec.md` with no canonical specs, and update existing provenance drift message tests.
 
 Exit criteria:
 
 - `tests/slice.rs` covers the new `specs.file-location` diagnostic.
-- Fusion drift tests assert the new non-misleading messages.
+- Provenance drift tests assert the new non-misleading messages.
 - `cargo make check` is attempted.
 
 ### Step 8 session notes
 
-Completed. `cargo make check` passes with zero failures (302 tests passed, 1 skipped). The new `specs.file-location` diagnostic fires before fusion drift and all three integration test cases pass.
+Completed. `cargo make check` passes with zero failures (302 tests passed, 1 skipped). The new `specs.file-location` diagnostic fires before provenance drift and all three integration test cases pass.
 
 Files changed:
 
-- `src/runtime/commands/slice/validate.rs` — added `collect_spec_file_location_findings` function emitting `specs.file-location` when root `spec.md` exists but no canonical `specs/<unit>/spec.md` files found; integrated into `validate_pre_adapter_gates` as gate #1 (before fusion drift); updated doc comment to document five gates instead of four.
-- `crates/domain/src/slice/fusion.rs` — refined `FusionDrift::into_summary` messages: `MissingFusionRequirement` now says "appears in spec files under `specs/`" instead of "appears in spec.md"; `ExtraFusionRequirement` now says "no requirement block with `ID: {req_id}` exists in any spec file under `specs/`" instead of "no matching `REQ-*` heading exists in spec.md"; `rule` description updated to "stays in sync with specs/ REQ ids" for consistency.
+- `src/runtime/commands/slice/validate.rs` — added `collect_spec_file_location_findings` function emitting `specs.file-location` when root `spec.md` exists but no canonical `specs/<unit>/spec.md` files found; integrated into `validate_pre_adapter_gates` as gate #1 (before provenance drift); updated doc comment to document five gates instead of four.
+- `crates/domain/src/slice/provenance.rs` — refined `ProvenanceDrift::into_summary` messages: `MissingProvenanceRequirement` now says "appears in spec files under `specs/`" instead of "appears in spec.md"; `ExtraProvenanceRequirement` now says "no requirement block with `ID: {req_id}` exists in any spec file under `specs/`" instead of "no matching `REQ-*` heading exists in spec.md"; `rule` description updated to "stays in sync with specs/ REQ ids" for consistency.
 - `tests/slice.rs` — added three integration tests: `validate_emits_file_location_when_root_spec_md_exists_but_no_canonical_specs` (positive case), `validate_does_not_emit_file_location_when_canonical_specs_exist` (canonical specs present + stale root copy), `validate_does_not_emit_file_location_when_no_root_spec_md` (empty slice with neither root nor canonical specs).
 
 Implementation note: the plan listed `crates/domain/src/validate/primitives.rs` and `crates/domain/src/validate/run.rs` as primary files. Neither required changes — the file-location check lives in the CLI handler (`validate.rs`) because it needs filesystem stat calls on the slice directory, which the domain-layer runner already delegates to the CLI-level pre-adapter gates. The `validate_slice` domain function already handles `specs/**/*.md` via its glob expansion; the file-location gate runs upstream of that.
@@ -463,8 +463,8 @@ Actions:
 - Run `make check` in `augentic/specify`.
 - Run `cargo make check` or `cargo make ci` in `augentic/specify-cli`; prefer `cargo make ci` before merge if time and toolchain allow.
 - Manually verify resolver JSON includes `briefs-dir` for one source adapter and one target adapter.
-- Manually verify a misplaced root `spec.md` produces `specs.file-location` rather than only a fusion drift heading error.
-- Update the progress tracker and summarize any remaining non-goals: no `fusion.yaml` writer, no generic journal emitter, no schema changes.
+- Manually verify a misplaced root `spec.md` produces `specs.file-location` rather than only a provenance drift heading error.
+- Update the progress tracker and summarize any remaining non-goals: no `provenance.yaml` writer, no generic journal emitter, no schema changes.
 
 Exit criteria:
 
@@ -495,13 +495,13 @@ Completed. All acceptance criteria met.
 
 - Step 6: `briefs-dir` field in resolver JSON output.
 - Step 7: `proposal.units-listed` / `cross.proposal-units-have-specs` validator rename and fixture updates.
-- Step 8: `specs.file-location` diagnostic gate and fusion drift message refinement.
+- Step 8: `specs.file-location` diagnostic gate and provenance drift message refinement.
 
 **Remaining non-goals (unchanged from RFC):**
 
-- No `specrun slice fusion write` verb — `fusion.yaml` authoring stays skill-driven with existing schema + drift validation.
+- No `specrun slice provenance` verb — `provenance.yaml` authoring stays skill-driven with existing schema + drift validation.
 - No `specrun journal emit` verb — journal events stay owned by deterministic CLI commands.
-- No Evidence schema, `fusion.yaml` schema, or slice lifecycle changes.
+- No Evidence schema, `provenance.yaml` schema, or slice lifecycle changes.
 - No new workspace crates or public API surfaces.
 
 **Skipped checks:** None. `cargo make ci` was run (the full CI suite), not the smaller `cargo make check` subset.

@@ -4,7 +4,7 @@ The audit-only index per slice of every `REQ-*` id and the contributing `(source
 
 ## When the skill writes it
 
-`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `provenance.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice reconcile` verb. After the atomic rename succeeds, emit the `slice.provenance.written` journal event.
+`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `provenance.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice provenance` verb. After the atomic rename succeeds, emit the `slice.provenance.written` journal event.
 
 ## Block grammar
 
