@@ -199,7 +199,7 @@ specrun plan propose --dry-run --format json
 `propose --dry-run` reads:
 
 - `plan.yaml.sources`;
-- `discovery.md` lead inventory (via the in-place `crates/domain/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_lead` already cover the join surface);
+- `discovery.md` lead inventory (via the in-place `crates/model/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_lead` already cover the join surface);
 - optional operator-authored aliases.
 
 It writes **nothing** to disk. It returns a JSON document describing the proposed groups:
@@ -250,7 +250,7 @@ Textual-similarity may surface as a diagnostic under `tentative-merges[]`, but n
 3. For each `(group, target)` pair, emits one `specrun plan add <slice-name> --sources <key>=<lead-id>… --target <name@vN> [--project <slug>] [--depends-on <other-slice>]` call.
 4. For each `tentative-merges[]` entry, raises the diagnostic for operator review at Gate 1 (or runs `specrun plan amend --add-alias` to accept the merge).
 
-Every plan mutation flows through the existing CLI writers in `crates/domain/src/change/plan/`. The agent never hand-edits `plan.yaml`, never writes `discovery.md`, never decides authority — its scope is target binding and tentative-merge adjudication.
+Every plan mutation flows through the existing CLI writers in `crates/workflow/src/change/plan/`. The agent never hand-edits `plan.yaml`, never writes `discovery.md`, never decides authority — its scope is target binding and tentative-merge adjudication.
 
 ### Stage B2 — Full writer (deferred)
 
@@ -423,7 +423,7 @@ tasks:
 
 ### ID grammar
 
-`model.yaml` introduces six closed three-digit id grammars in addition to the existing `REQ-NNN` from `crates/domain/src/spec/provenance.rs`:
+`model.yaml` introduces six closed three-digit id grammars in addition to the existing `REQ-NNN` from `crates/model/src/spec/provenance.rs`:
 
 
 | Id         | Grammar           | Used by                                                                                 |
@@ -1486,7 +1486,7 @@ Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated 
 
 ## Journal events
 
-The closed `Event` / `EventKind` taxonomy in `crates/domain/src/journal.rs` gains the following kebab-case event kinds. Wire ids are normative; Rust variants follow the existing `#[serde(rename = …)]` pattern.
+The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` gains the following kebab-case event kinds. Wire ids are normative; Rust variants follow the existing `#[serde(rename = …)]` pattern.
 
 
 | Event                             | When                                                                                                                                                         |
@@ -1558,7 +1558,7 @@ A PR-sized breakdown of these waves lands in a companion `rfc-29-plan.md` (mirro
 
 Stage B2 (full writer) is explicitly deferred — see §"Lead reconciliation engine (D2) → Stage B2" and the new "Lead target-axis vocabulary" open question.
 
-1. Reuse the existing `Discovery` model in `crates/domain/src/discovery/` (parse, `resolve_lead`, `check_alias_collisions` are already implemented and tested). No new parsing.
+1. Reuse the existing `Discovery` model in `crates/model/src/discovery/` (parse, `resolve_lead`, `check_alias_collisions` are already implemented and tested). No new parsing.
 2. Implement the structural grouper as a pure function: `discovery::propose::group(&Discovery) -> Vec<Group>` covering rules 1 (exact id), 2 (exact alias), and 3 (transitive cross-reference). Surface diagnostic-only textual-similarity matches under `tentative_merges`.
 3. Commit `schemas/discovery/proposal.schema.json` and embed it as `PROPOSAL_JSON_SCHEMA` in `specify-schema`.
 4. Add `specrun plan propose --dry-run --format json` that runs the grouper, validates the output against `proposal.schema.json`, and prints. Reject every other `propose` form with `propose-target-binding-required` until Stage B2 lands.
@@ -1568,7 +1568,7 @@ Stage B2 (full writer) is explicitly deferred — see §"Lead reconciliation eng
 ### Wave C - Synthesis engine and slice model
 
 1. Commit `schemas/slice/model.schema.json` and embed it as `SLICE_MODEL_JSON_SCHEMA` in the `specify-schema` crate alongside the existing `*_JSON_SCHEMA` constants.
-2. Add the production authority resolver and the reconciliation kernel to `specify-domain`. The kernel emits `reconciliation.yaml` and the deterministic-field skeleton of `model.yaml` (every `id`, `sources`, `status`, ordering, and `*.sources` field) from `(Evidence[], authority-overrides)` alone. The kernel never reads the bound `target` or its `shape` brief.
+2. Add the production authority resolver and the reconciliation kernel to `specify-workflow`. The kernel emits `reconciliation.yaml` and the deterministic-field skeleton of `model.yaml` (every `id`, `sources`, `status`, ordering, and `*.sources` field) from `(Evidence[], authority-overrides)` alone. The kernel never reads the bound `target` or its `shape` brief.
 3. Commit `schemas/slice/synthesis-envelope.schema.json` (request + response) and embed it as `SYNTHESIS_ENVELOPE_JSON_SCHEMA`. The request carries the Evidence map, authority resolution, reconciliation path, model skeleton path, shape brief, and the closed `forbidden-inputs-for-requirements-prose` constraint list. The response carries the populated `model.yaml` plus the four Markdown artifacts.
 4. Implement the synthesis dispatcher: for `execution: executable`, pipe the request to a declared synthesis WASI tool on stdin; for `execution: agent-fallback` (the first-party default), write the request to `.specify/slices/<slice>/synthesis/request.yaml` and read the agent's response back from `.specify/slices/<slice>/synthesis/response.yaml`. In both modes, validate the response, reject any mutation of a deterministic field with `slice-synthesize-deterministic-field-mutation`, and merge with the skeleton.
 5. Enforce D8 in two layers. **Layer 1 (deterministic).** Unit-test the kernel: synthesise two slices binding different `target` values against the same Evidence map and assert the deterministic-field projection of `model.yaml` (every `id`, `sources`, `status`, ordering, every `*.sources` field) is **byte-identical** on the shared prefix. **Layer 2 (prose target-neutrality).** Integration-test the engine end-to-end: synthesise the same two slices via the real synthesis dispatcher (using a fixed-seed test stub for the agent) and assert prose target-neutrality by both (a) byte-equality on golden cases the stub renders deterministically, and (b) a fixture-local LLM-judge check with a fixed grader prompt on the more elaborate cases. Add the `slice-synthesize-forbidden-input-leak` probe as a separate fixture.

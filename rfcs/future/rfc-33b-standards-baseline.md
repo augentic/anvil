@@ -228,4 +228,4 @@ Q1, Q2, and Q4 from earlier drafts have been resolved into normative decisions D
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
 - [Specify Roadmap — RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
-- [`crates/domain/src/journal.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/journal.rs) — closed `EventKind` taxonomy
+- [`crates/workflow/src/journal.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/journal.rs) — closed `EventKind` taxonomy

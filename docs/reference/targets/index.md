@@ -56,7 +56,7 @@ The dependency graph is one-way; `specify-core` never depends on the plugin load
 
 ```text
 specify (binary)
-   └─ specify-domain
+   └─ specify-workflow
         ├─ specify-tool
         └─ plugin loader (adapters/sources/ + adapters/targets/)
               └─ specify-error

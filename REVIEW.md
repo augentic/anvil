@@ -8,7 +8,7 @@ Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0.
 2. **Total ΔLOC if all land:** ≈ **−223 LOC** (A −125, B −42, C −22, D −14, E −20).
 3. **Primary non-LOC axes moved:** −2 types (one `LintFormat` mirror, one `escape_*` fn pair), −module-edge churn (two CLI trees stop carrying private copies of the same mappers), and one *latent* defect retired (the two `map_hint_error` copies have already drifted — runtime binds `op` then discards it, authoring uses `..`).
 4. **Verified defects:** **none qualified.** `make lint` (specify) = "0 finding(s)"; `cargo clippy --workspace --all-targets --all-features -- -D warnings` = clean (exit 0). Non-test panic surface (`rg -c '\.(unwrap|expect)\('` = 935; `panic!|unreachable!` = 79) is almost entirely inside inline `#[cfg(test)]` modules; no operator-reachable handler panic found. Net ΔLOC from defect-only findings = **0** (≤ +30, trivially).
-5. **Most likely to break in remediation:** Finding A — moving the mappers to `specify-lints` must not pull a `specify-domain` edge (`emit_lint_completed` stays behind because it touches `specify_domain::journal`; the sibling-crate invariant in `specify-cli/AGENTS.md` forbids `specify-lints → specify-domain`).
+5. **Most likely to break in remediation:** Finding A — moving the mappers to `specify-lints` must not pull a `specify-workflow` edge (`emit_lint_completed` stays behind because it touches `specify_workflow::journal`; the sibling-crate invariant in `specify-cli/AGENTS.md` forbids `specify-lints → specify-workflow`).
 
 ---
 
@@ -17,7 +17,7 @@ Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0.
 - `tokei`: Rust 385 files, **60,409 code lines**; Markdown 117 files.
 - `cargo tree --duplicates`: `base64` v0.21/v0.22 and `reqwest` v0.12/v0.13 doubled — **all transitive under `wasm-pkg-client`/`oci-client`/`warg-*`**, none in first-party `Cargo.toml`. `Cargo.toml` is frozen for this pass; not actionable.
 - test fns: **1,187**. `mod.rs` files: 5, **all under `tests/`** (allowed by `coding-standards.md`).
-- files > 500 lines under `crates/`+`src/`: 24 (largest `crates/domain/tests/workspace.rs` 1048; largest non-test `crates/specify-lints/src/rules.rs` 1016).
+- files > 500 lines under `crates/`+`src/`: 24 (largest `crates/workflow/tests/workspace.rs` 1048; largest non-test `crates/specify-lints/src/rules.rs` 1016).
 - `make lint` (specify): **0 findings** (0 critical/important/suggestion/optional) → no skill-predicate defects.
 - `cargo clippy --workspace --all-targets --all-features -- -D warnings`: **pass (exit 0)**.
 - panic-adjacent: `unwrap|expect` non-test = 935; `panic!|unreachable!` non-test = 79 — sampled and found test-bound.
@@ -55,7 +55,7 @@ Every one of these maps a type **owned by `specify-lints`** (`IndexError`, `Hint
 1. In `crates/specify-lints/src/lint/diagnostics.rs` (already the home of `RenderError`/`render`), add `pub fn map_index_error`, `pub fn map_hint_error`, `pub fn map_render_error`, `pub fn count_status`, `pub fn emit_dump_model` — paste one copy verbatim (keep the runtime copy's richer `///` mapping tables).
 2. Delete all five fns from `src/runtime/commands/lint/run.rs` and `src/authoring/commands/lint/run.rs`.
 3. Add `map_index_error, map_hint_error, map_render_error, count_status, emit_dump_model` to the existing `use specify_lints::lint::diagnostics::{…}` import in both files.
-4. Leave `emit_lint_completed` where it is — it calls `specify_domain::journal` and must not move (sibling-crate invariant).
+4. Leave `emit_lint_completed` where it is — it calls `specify_workflow::journal` and must not move (sibling-crate invariant).
 
 **Quality delta:** `−125 LOC, −5 duplicate impls, −1 latent drift defect (map_hint_error)`.
 **Net LOC:** two files ~169 + ~131 dup lines → one ~169-line home: `~470 → ~345` across touched files.
@@ -199,9 +199,9 @@ One line per applied finding: actual ΔLOC vs predicted, did the "done when" ass
 - **B:** ΔLOC −36 (B-only, hand-isolated from A's prior edits to the two `run.rs` files) vs predicted −42 — undershoot, because only the authoring copy is a true deletion; relocating the canonical fn + its three tests into `specify-lints` is net-neutral and import-block reflows add ~+7 back. Done-when flipped cleanly (`fn map_resolve_error` in `crates/ src/` 2→1). No regression; `cargo make check` green. Same-crate clippy needed `#[must_use]` + one doc-paragraph split.
 - **C:** ΔLOC −20 on the two prescribed `cli.rs` files vs predicted −22. Done-when flipped cleanly (`pub enum LintFormat` in `src/` 2→1). No regression; `cargo make check` green. One unforeseen step: the re-export path didn't resolve until `mod commands;` in `src/runtime.rs` was widened to `pub(crate) mod commands;` (net 0); also dropped now-unused `DiagnosticsFormat`/`ValueEnum` imports in authoring cli.rs.
 - **D:** ΔLOC −13 (6 ins / 19 del) vs predicted −14. Done-when flipped cleanly (`fn escape_arg|fn escape_body` →0; `fn escape(` →1). Merged fn verified behaviorally identical to both originals; github diagnostics formatter tests pass. No regression; `cargo make check` green (after a one-off transient `cargo clean` filesystem race, unrelated to the edit).
-- **E:** ΔLOC **+19** (E-isolated; `eval.rs` E-exclusive +52/−1, offset by ~−33 removed from the two `run.rs` loops) vs predicted −20 — wrong-direction miss. The single `evaluate_rules` fn (filter param, ModelAssisted/empty-hints skips, internal `map_hint_error` → `specify_error::Error`, tuple return, doc) is larger than the two duplicated loops, so the dedup wins single-source-of-truth but loses raw LOC. Done-when flipped cleanly (`for rule in &resolved.rules` in `src/` 2→0). Authoring `--rules` allow-list semantics preserved (runtime passes empty filter); no `specify-domain` edge; lint runner tests pass; `cargo make check` green.
+- **E:** ΔLOC **+19** (E-isolated; `eval.rs` E-exclusive +52/−1, offset by ~−33 removed from the two `run.rs` loops) vs predicted −20 — wrong-direction miss. The single `evaluate_rules` fn (filter param, ModelAssisted/empty-hints skips, internal `map_hint_error` → `specify_error::Error`, tuple return, doc) is larger than the two duplicated loops, so the dedup wins single-source-of-truth but loses raw LOC. Done-when flipped cleanly (`for rule in &resolved.rules` in `src/` 2→0). Authoring `--rules` allow-list semantics preserved (runtime passes empty filter); no `specify-workflow` edge; lint runner tests pass; `cargo make check` green.
 
-**Roll-up:** total across A–E = **−178 LOC** (`git diff --shortstat`: 385 ins / 563 del across 11 files) vs predicted ≈ −223. Shortfall driven by E reversing direction (+19 vs −20) plus modest B/C/D undershoots; A overshot. Five duplicate impls + one drifted-mapper latent defect retired; sibling-crate invariant (`specify-lints` ⊥ `specify-domain`) held throughout.
+**Roll-up:** total across A–E = **−178 LOC** (`git diff --shortstat`: 385 ins / 563 del across 11 files) vs predicted ≈ −223. Shortfall driven by E reversing direction (+19 vs −20) plus modest B/C/D undershoots; A overshot. Five duplicate impls + one drifted-mapper latent defect retired; sibling-crate invariant (`specify-lints` ⊥ `specify-workflow`) held throughout.
 
 ---
 
