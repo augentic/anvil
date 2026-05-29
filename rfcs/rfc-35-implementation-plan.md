@@ -9,7 +9,7 @@ Status values: `not-started`, `in-progress`, `done`, `blocked`.
 ```text
 Step  Session                                             Repo(s)                 Status       Primary verification
 0     Preflight and baseline inventory                    specify, specify-cli    done         git status + focused rg map
-1     Core synthesis reference contract                   specify                 not-started  focused rg + make check if feasible
+1     Core synthesis reference contract                   specify                 done         focused rg + make check (passed)
 2     Refine skill, shared docs, and refine fixtures      specify                 not-started  make check or fixture-specific checks
 3     Vectis target brief alignment                       specify                 not-started  make check + Vectis fixture checks
 4     Omnia target brief alignment                        specify                 not-started  make check
