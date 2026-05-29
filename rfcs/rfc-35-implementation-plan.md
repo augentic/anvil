@@ -10,7 +10,7 @@ Status values: `not-started`, `in-progress`, `done`, `blocked`.
 Step  Session                                             Repo(s)                 Status       Primary verification
 0     Preflight and baseline inventory                    specify, specify-cli    done         git status + focused rg map
 1     Core synthesis reference contract                   specify                 done         focused rg + make check (passed)
-2     Refine skill, shared docs, and refine fixtures      specify                 not-started  make check or fixture-specific checks
+2     Refine skill, shared docs, and refine fixtures      specify                 done         make check (passed)
 3     Vectis target brief alignment                       specify                 not-started  make check + Vectis fixture checks
 4     Omnia target brief alignment                        specify                 not-started  make check
 5     Contracts target brief alignment                    specify                 not-started  make check
@@ -168,6 +168,27 @@ Exit criteria:
 
 - Refine fixtures reflect the new layout and section names.
 - `make check` is attempted; any failures should point only to target brief/doc references scheduled for Steps 3-5.
+
+### Step 2 session notes
+
+Completed. `make check` passes with zero failures.
+
+Files changed:
+
+- `plugins/spec/skills/refine/SKILL.md` — step 4 now writes `specs/<unit>/spec.md`; added `spec-format.md` to References; closing hints updated.
+- `docs/reference/slice-skills/refine.md` — step 4 artifact path, closing hint, and error table updated.
+- `plugins/spec/rules/spec.mdc` — refine breakout summary updated.
+- `docs/reference/artifact-format.md` — "Crates (or Adapters)" → "Units"; "per adapter" → "per unit".
+- `docs/explanation/augentic-specify-usage.md` — "Crates" section → "Units"; "per adapter or crate" → "per unit".
+- `tests/fixtures/skills/refine/README.md` — layout template uses `specs/<unit>/spec.md`; fixed pre-existing source-key typo in matrix.
+- All 5 fixture `expected/proposal.md` — `## Motivation` → `## Why`, `## Scope` → `## Units` (with `- <slug> — <summary>` bullet format).
+- All 5 fixture `expected/spec.md` — moved to `expected/specs/<unit>/spec.md`. Unit slugs: `user-list`, `user-registration`, `password-reset`, `password-reset-expiry`, `audit-trail-retention`.
+- `combined-docs-and-legacy` spec fixture — converted `## Scenarios` H2 to inline `#### Scenario:` H4 headings per the Step 1 reference correction.
+
+Observations for future steps:
+
+- `docs/explanation/augentic-specify-usage.md` retains "Crate Name" vocabulary in spec format example templates (lines 58, 63, 95). These are Omnia-specific display examples appropriate for Step 4.
+- No changes required to the plan sequencing or scope of Steps 3–9.
 
 ## Step 3 - Vectis Target Brief Alignment
 

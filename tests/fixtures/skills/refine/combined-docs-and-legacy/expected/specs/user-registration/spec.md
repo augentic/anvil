@@ -12,8 +12,12 @@ Status: agreed
 
 The registration endpoint accepts an email address that is RFC-5322 valid and rejects all others with a `400` response carrying the body `{ "error": "invalid-email" }`.
 
-## Scenarios
+#### Scenario: Valid email accepted
 
-Given a registration request whose email field is RFC-5322 valid, the handler persists the user (REQ-001) and returns `201` with the persisted record.
+- **WHEN** a registration request arrives with an RFC-5322-valid email
+- **THEN** the handler persists the user and returns `201` with the persisted record
 
-Given a registration request whose email field is not RFC-5322 valid, the handler returns `400` with the body `{ "error": "invalid-email" }` and does not persist (REQ-001).
+#### Scenario: Invalid email rejected
+
+- **WHEN** a registration request arrives with an email that is not RFC-5322 valid
+- **THEN** the handler returns `400` with the body `{ "error": "invalid-email" }` and does not persist

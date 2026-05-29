@@ -54,7 +54,7 @@ specrun plan transition <name> reviewed   (Gate 1; operator-only)
 
 Breakouts share skill bodies with the loop and are reached when `/spec:execute` parks or the operator wants to inspect a slice by hand:
 
-- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
+- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<unit>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 - **/spec:build**: Validate artifacts and implement tasks for one slice.
 - **/spec:merge**: Fold a slice's deltas into the baseline and archive it.
 - **/spec:drop**: Abandon a slice without merging.

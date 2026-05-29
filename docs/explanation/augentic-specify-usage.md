@@ -51,7 +51,7 @@ $BASELINE_SPECS   = $PROJECT_DIR/.specify/specs
 
 ## Spec Files (Behavioral "What")
 
-One spec file per adapter or crate, at `specs/<name>/spec.md`.
+One spec file per unit, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They should not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions.
 
@@ -176,7 +176,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 Use `proposal.md` to capture why the slice exists and what is in scope. The adapter's brief file (`briefs/proposal.md`) provides the full output template.
 
-The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
+The **Units** section creates the contract between proposal and specs phases. Each unit listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
 Keep proposals concise (1-2 pages). Focus on the "why" not the "how" — implementation details belong in design.md.
 
@@ -246,7 +246,7 @@ Use explicit unknown markers instead of guessing.
 
 ### Behavioral Specs
 
-- [ ] One spec file per adapter or crate
+- [ ] One spec file per unit
 - [ ] Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - [ ] Specs stay behavioral and avoid platform-binding detail
 - [ ] Traceability is present for each requirement and can refer to its stable ID
