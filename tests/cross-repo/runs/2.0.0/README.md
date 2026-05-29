@@ -6,10 +6,10 @@ Manual operator runs of the stable scenario IDs documented in [`docs/contributin
 
 1. Build a 2.0 `specify` binary in the [sibling specify-cli repo](https://github.com/augentic/specify-cli) and export `SPECIFY_BIN=/abs/path/to/specify`. The PATH default `specify` is the historical 0.1.0 build and is **not** the 2.0 binary.
 2. Open a fresh disposable workspace per scenario.
-3. Drive the documented operator script using `cursor-agent` (or your editor's slash-command runner). The skill bodies under `plugins/spec/skills/` orchestrate `/spec:plan` -> Gate 1 -> `/spec:execute` -> `/spec:finalize`; the deterministic-boundary harness in `specify-authoring` tests does **not** simulate this layer.
+3. Drive the documented operator script using `cursor-agent` (or your editor's slash-command runner). The skill bodies under `plugins/spec/skills/` orchestrate `/spec:plan` -> Gate 1 -> `/spec:execute` -> `/spec:finalize`; the deterministic-boundary harness in `specify-lints` framework tests does **not** simulate this layer.
 4. Fill in the matching `<scenario-id>.md` from the per-scenario stub. The stub embeds the scenario prompt and links the [`run-summary-template.md`](../../run-summary-template.md) field-set; an operator copy-pastes the template body into the stub, fills it, and commits.
 5. **Halt rule:** scenario #1 is the release blocker. If it fails, file the failure into `01-pure-intent.md`, do **not** continue to #2-#12, triage instead, then resume from #1 once green.
-6. After every run, file follow-up issues (in the augentic/specify repo) for any gap the deterministic harness in `specify-authoring` does not yet cover. Link the issue back to the run-summary.
+6. After every run, file follow-up issues (in the augentic/specify repo) for any gap the deterministic harness in `specify-lints` framework does not yet cover. Link the issue back to the run-summary.
 
 ## Queue
 
