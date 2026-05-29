@@ -16,7 +16,7 @@ Step  Session                                             Repo(s)               
 5     Contracts target brief alignment                    specify                 done         make check (passed) + focused rg clean
 6     Resolver JSON briefs-dir output                     specify-cli             done         source/target resolve tests
 7     Proposal Units validator rename                     specify-cli             done         validator tests + goldens
-8     Spec file-location diagnostics                      specify-cli             not-started  slice validate tests
+8     Spec file-location diagnostics                      specify-cli             done         slice validate tests + cargo make check
 9     Cross-repo acceptance and operator notes            both                    not-started  make check + cargo make check/ci
 ```
 
@@ -437,6 +437,22 @@ Exit criteria:
 - `tests/slice.rs` covers the new `specs.file-location` diagnostic.
 - Fusion drift tests assert the new non-misleading messages.
 - `cargo make check` is attempted.
+
+### Step 8 session notes
+
+Completed. `cargo make check` passes with zero failures (302 tests passed, 1 skipped). The new `specs.file-location` diagnostic fires before fusion drift and all three integration test cases pass.
+
+Files changed:
+
+- `src/runtime/commands/slice/validate.rs` — added `collect_spec_file_location_findings` function emitting `specs.file-location` when root `spec.md` exists but no canonical `specs/<unit>/spec.md` files found; integrated into `validate_pre_adapter_gates` as gate #1 (before fusion drift); updated doc comment to document five gates instead of four.
+- `crates/domain/src/slice/fusion.rs` — refined `FusionDrift::into_summary` messages: `MissingFusionRequirement` now says "appears in spec files under `specs/`" instead of "appears in spec.md"; `ExtraFusionRequirement` now says "no requirement block with `ID: {req_id}` exists in any spec file under `specs/`" instead of "no matching `REQ-*` heading exists in spec.md"; `rule` description updated to "stays in sync with specs/ REQ ids" for consistency.
+- `tests/slice.rs` — added three integration tests: `validate_emits_file_location_when_root_spec_md_exists_but_no_canonical_specs` (positive case), `validate_does_not_emit_file_location_when_canonical_specs_exist` (canonical specs present + stale root copy), `validate_does_not_emit_file_location_when_no_root_spec_md` (empty slice with neither root nor canonical specs).
+
+Implementation note: the plan listed `crates/domain/src/validate/primitives.rs` and `crates/domain/src/validate/run.rs` as primary files. Neither required changes — the file-location check lives in the CLI handler (`validate.rs`) because it needs filesystem stat calls on the slice directory, which the domain-layer runner already delegates to the CLI-level pre-adapter gates. The `validate_slice` domain function already handles `specs/**/*.md` via its glob expansion; the file-location gate runs upstream of that.
+
+Observations for future steps:
+
+- No changes required to the plan sequencing or scope of Step 9.
 
 ## Step 9 - Cross-Repo Acceptance and Operator Notes
 
