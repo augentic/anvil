@@ -8,7 +8,7 @@ Status values: `not-started`, `in-progress`, `done`, `blocked`.
 
 ```text
 Step  Session                                             Repo(s)                 Status       Primary verification
-0     Preflight and baseline inventory                    specify, specify-cli    not-started  git status + focused rg map
+0     Preflight and baseline inventory                    specify, specify-cli    done         git status + focused rg map
 1     Core synthesis reference contract                   specify                 not-started  focused rg + make check if feasible
 2     Refine skill, shared docs, and refine fixtures      specify                 not-started  make check or fixture-specific checks
 3     Vectis target brief alignment                       specify                 not-started  make check + Vectis fixture checks
@@ -39,6 +39,87 @@ Exit criteria:
 - No files changed unless the operator explicitly wants an inventory note committed as markdown.
 - The next session has a confirmed file list.
 
+### Step 0 inventory
+
+Both repos are clean on `rfc-35` branches. The full touchpoint map follows.
+
+**`## Scenarios` H2 (contradictory — D1 targets):**
+
+| File | Line(s) | What |
+| --- | --- | --- |
+| `plugins/spec/references/synthesis/substeps.md` | 29 | The source of friction F1; says scenarios live under `## Scenarios` H2 |
+| `plugins/spec/references/synthesis/claim-fusion.md` | 12 | `criterion` kind landing describes `## Scenarios` H2 as fallback |
+| `tests/fixtures/skills/refine/combined-docs-and-legacy/expected/spec.md` | 15 | Fixture uses `## Scenarios` H2 |
+
+**`## Motivation` / `## Scope` (proposal sections — D5 targets):**
+
+| File | Line(s) | What |
+| --- | --- | --- |
+| `plugins/spec/references/synthesis/substeps.md` | 14 | Prescribes `## Motivation`, `## Scope`, `## Non-goals` |
+| `plugins/spec/references/synthesis/claim-fusion.md` | 14, 22, 59 | `section` and `intent` kind landing says `proposal.md ## Motivation` |
+| `tests/fixtures/skills/refine/*/expected/proposal.md` | (all 5) | All use `## Motivation` / `## Scope` |
+
+**`## Features` (Vectis-specific — D5 rename to `## Units`):**
+
+| File | Line(s) | What |
+| --- | --- | --- |
+| `adapters/targets/vectis/briefs/shape.md` | 22 | `## Features` lists business adapters |
+| `tests/fixtures/targets/vectis/task-list/input/proposal.md` | 15 | Uses `## Features` |
+
+**Root `spec.md` path (D4 — must become `specs/<unit>/spec.md`):**
+
+| File | Line(s) | What |
+| --- | --- | --- |
+| `adapters/targets/omnia/briefs/build.md` | 10 | `$SPEC_PATH = $SLICE_DIR/spec.md` variable assignment |
+| `adapters/targets/omnia/briefs/build/crate.md` | (multiple) | Generic `spec.md` reading references |
+| `adapters/targets/omnia/briefs/build/test.md` | (multiple) | `spec.md` scenario references |
+| `adapters/targets/omnia/briefs/shape.md` | 61-63 | `### spec.md` subsection |
+| `adapters/targets/contracts/briefs/shape.md` | 3, 9, 34, 41 | Generic `spec.md` references |
+| `adapters/targets/contracts/briefs/build.md` | 18, 24 | `spec.md` reading instructions |
+| `adapters/targets/contracts/briefs/build/openapi.md` | 9 | "the slice's `spec.md`" |
+| `adapters/targets/contracts/briefs/build/asyncapi.md` | 9 | "the slice's `spec.md`" |
+| `adapters/targets/contracts/briefs/build/json-schema.md` | 9 | "the slice's `spec.md`" |
+
+**CLI validator (`## Crates` → `## Units` rename — D5):**
+
+| File | What |
+| --- | --- |
+| `crates/domain/src/validate/registry/proposal.rs` | `proposal_crates_listed` fn, `## Crates` heading check, rule id `proposal.crates-listed` |
+| `crates/domain/src/validate/registry/cross.rs` | `cross_proposal_crates_have_specs` fn, rule id, "crates" in detail message |
+| `crates/domain/src/validate/primitives.rs` | `extract_deliverables(proposal, "## Crates")`, unit tests with `## Crates` content |
+| `crates/domain/src/validate.rs` | doc comment on `CrossRule` references `cross.proposal-crates-have-specs` |
+| `crates/domain/tests/fixtures/change-good/proposal.md` | `## Crates` |
+| `crates/domain/tests/fixtures/change-bad/proposal.md` | `## Crates` |
+| `tests/fixtures/e2e/good-slice/proposal.md` | `## Crates` |
+| `tests/fixtures/e2e/bad-slice/proposal.md` | `## Crates` |
+| `crates/domain/tests/fixtures/change-good.golden.json` | `proposal.crates-listed`, `cross.proposal-crates-have-specs` |
+| `crates/domain/tests/fixtures/change-bad.golden.json` | `proposal.crates-listed`, `cross.proposal-crates-have-specs`, "crates" detail |
+| `tests/fixtures/e2e/goldens/validate-good.json` | `proposal.crates-listed`, `cross.proposal-crates-have-specs` |
+| `tests/fixtures/e2e/goldens/validate-bad.json` | `proposal.crates-listed`, `cross.proposal-crates-have-specs`, "crates" detail |
+
+**CLI resolver (`briefs-dir` — D9):**
+
+| File | What |
+| --- | --- |
+| `src/runtime/commands.rs` | `ResolveBody` struct (add `briefs_dir` field), `write_resolve_text`, `resolve_adapter` |
+| `tests/source.rs` | Add assertion for `briefs-dir` existence, absoluteness, `briefs` suffix |
+| `tests/target.rs` | Same assertion pattern |
+
+**CLI file-location diagnostic (`specs.file-location` — D8):**
+
+| File | What |
+| --- | --- |
+| `src/runtime/commands/slice/validate.rs` | Add `specs.file-location` check before fusion drift |
+| `crates/domain/src/slice/fusion.rs` | Refine `slice-fusion-drift` message wording |
+| `tests/slice.rs` | Add tests for root `spec.md` → `specs.file-location` diagnostic |
+
+**Not affected (false positives confirmed):**
+
+- `adapters/targets/contracts/briefs/build.md` `## Scope` is the build brief's own scope, not a proposal section.
+- `change.md` fixtures use `## Scope` — change-level artifact, not `proposal.md`.
+- `adapters/targets/vectis/adapter.yaml` mentions `spec.md` in its description — acceptable generic vocabulary.
+- `adapters/targets/contracts/references/*-conventions.md` `## Scope Boundary` is a conventions section, not a proposal section.
+
 ## Step 1 - Core Synthesis Reference Contract
 
 Goal: make the workflow-owned synthesis references say one thing about scenario headings, proposal sections, and spec layout.
@@ -53,6 +134,8 @@ Primary files:
 Actions:
 
 - Replace `## Scenarios` H2 guidance with inline `#### Scenario:` H4 guidance using WHEN/THEN examples.
+- In `claim-fusion.md` line 12, update the `criterion` kind's fallback landing from `## Scenarios` H2 to `#### Scenario:` H4 inline within the parent requirement block.
+- In `claim-fusion.md` lines 14, 22, 59, update `proposal.md ## Motivation` references to `proposal.md ## Why`.
 - Standardize proposal guidance on `## Why`, `## Units`, and `## Non-goals`.
 - Standardize spec output on `specs/<unit>/spec.md`, with units declared one-to-one under `## Units`.
 - Keep [`plugins/spec/references/spec-format.md`](../plugins/spec/references/spec-format.md) as the canonical heading reference; update only if a contradiction is found.
@@ -188,13 +271,15 @@ Primary files in `augentic/specify-cli`:
 - `crates/domain/src/validate/registry/proposal.rs`
 - `crates/domain/src/validate/registry/cross.rs`
 - `crates/domain/src/validate/primitives.rs`
-- Validator fixtures and goldens under `crates/domain/tests/` and integration fixtures under `tests/`
+- `crates/domain/src/validate.rs` (doc comment on `CrossRule` struct references old rule id)
+- Validator fixtures and goldens under `crates/domain/tests/` and integration fixtures under `tests/` (4 proposal fixtures + 4 golden JSONs — see Step 0 inventory)
 
 Actions:
 
 - Rename `proposal.crates-listed` to `proposal.units-listed` and parse `## Units` bullets.
 - Rename `cross.proposal-crates-have-specs` to `cross.proposal-units-have-specs` and map each unit to `specs/<unit>/spec.md`.
 - Update diagnostics to use target-neutral wording: `unit` and `spec file`, not `crate`.
+- Update the `CrossRule` doc comment in `validate.rs` to reference the new rule id.
 - Update all affected fixtures and golden outputs.
 
 Exit criteria:
