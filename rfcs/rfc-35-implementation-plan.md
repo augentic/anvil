@@ -15,7 +15,7 @@ Step  Session                                             Repo(s)               
 4     Omnia target brief alignment                        specify                 done         make check (passed) + focused rg clean
 5     Contracts target brief alignment                    specify                 done         make check (passed) + focused rg clean
 6     Resolver JSON briefs-dir output                     specify-cli             done         source/target resolve tests
-7     Proposal Units validator rename                     specify-cli             not-started  validator tests + goldens
+7     Proposal Units validator rename                     specify-cli             done         validator tests + goldens
 8     Spec file-location diagnostics                      specify-cli             not-started  slice validate tests
 9     Cross-repo acceptance and operator notes            both                    not-started  make check + cargo make check/ci
 ```
@@ -388,6 +388,30 @@ Exit criteria:
 
 - Validator unit/integration tests pass.
 - Golden outputs no longer mention the old crate-specific rule IDs unless they are historical docs.
+
+### Step 7 session notes
+
+Completed. `cargo make check` passes with zero failures (1105 tests passed, 1 skipped). All validator rule IDs, descriptions, detail messages, fixtures, and goldens updated from crate-specific to target-neutral unit vocabulary.
+
+Files changed:
+
+- `crates/domain/src/validate/registry/proposal.rs` — renamed `proposal_crates_listed` → `proposal_units_listed`; rule ID `proposal.crates-listed` → `proposal.units-listed`; description `Crates` → `Units`; checks `## Units` instead of `## Crates`.
+- `crates/domain/src/validate/registry/cross.rs` — renamed `cross_proposal_crates_have_specs` → `cross_proposal_units_have_specs`; rule ID `cross.proposal-crates-have-specs` → `cross.proposal-units-have-specs`; description and detail wording `crate` → `unit`.
+- `crates/domain/src/validate/primitives.rs` — `extract_deliverables` call changed from `"## Crates"` to `"## Units"`; doc comments updated; `extract_deliverables` doc comment `### New Crates` → `### New Units`; all three unit tests (`deliverable_specs_on_disk`, `deliverables_backticked_names`, absent-section) updated to use `## Units` / `### New Units`.
+- `crates/domain/src/validate.rs` — `CrossRule` doc comment example updated from `cross.proposal-crates-have-specs` to `cross.proposal-units-have-specs`.
+- `crates/domain/tests/fixtures/change-good/proposal.md` — `## Crates` → `## Units`, `### New Crates` → `### New Units`.
+- `crates/domain/tests/fixtures/change-bad/proposal.md` — same section rename.
+- `tests/fixtures/e2e/good-slice/proposal.md` — same section rename.
+- `tests/fixtures/e2e/bad-slice/proposal.md` — same section rename.
+- `crates/domain/tests/fixtures/change-good.golden.json` — rule ID, description updated for both `proposal.units-listed` and `cross.proposal-units-have-specs`.
+- `crates/domain/tests/fixtures/change-bad.golden.json` — rule ID, description, detail updated for both rules.
+- `tests/fixtures/e2e/goldens/validate-good.json` — rule ID, description updated for both rules.
+- `tests/fixtures/e2e/goldens/validate-bad.json` — rule ID, description, detail updated for both rules.
+
+Observations for future steps:
+
+- The bad-slice proposal fixtures retain `missing-crate` as a unit slug in their `## What Changes` prose — this is fixture-specific content, not validator vocabulary, so it was left unchanged. The validator correctly treats it as a unit name and checks `specs/missing-crate/spec.md`.
+- No changes required to the plan sequencing or scope of Steps 8–9.
 
 ## Step 8 - Spec File-Location Diagnostics
 
