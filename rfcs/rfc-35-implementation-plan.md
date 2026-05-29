@@ -11,7 +11,7 @@ Step  Session                                             Repo(s)               
 0     Preflight and baseline inventory                    specify, specify-cli    done         git status + focused rg map
 1     Core synthesis reference contract                   specify                 done         focused rg + make check (passed)
 2     Refine skill, shared docs, and refine fixtures      specify                 done         make check (passed)
-3     Vectis target brief alignment                       specify                 not-started  make check + Vectis fixture checks
+3     Vectis target brief alignment                       specify                 done         make check (passed) + focused rg clean
 4     Omnia target brief alignment                        specify                 not-started  make check
 5     Contracts target brief alignment                    specify                 not-started  make check
 6     Resolver JSON briefs-dir output                     specify-cli             not-started  source/target resolve tests
@@ -213,6 +213,34 @@ Exit criteria:
 
 - Focused `rg` in `adapters/targets/vectis` no longer finds target-owned replacements for core section names.
 - `make check` is attempted and Vectis fixtures are updated if required.
+
+### Step 3 session notes
+
+Completed. `make check` passes with zero failures. Focused `rg` confirms no `## Features`, `FEATURE_NAME`, `specs/<feature>`, or `<feature_snake>` references remain in `adapters/targets/vectis/` or `tests/fixtures/targets/vectis/`.
+
+Files changed:
+
+- `adapters/targets/vectis/briefs/shape.md` — `## Features` → `## Units`; "business adapters" → "business features"; `specs/<feature>/spec.md` → `specs/<unit>/spec.md`; "Modified Features" → "Modified units".
+- `adapters/targets/vectis/briefs/build.md` — `FEATURE_NAME` symbol → `UNIT_NAME`; "feature" → "unit" in description.
+- `adapters/targets/vectis/briefs/build/composition.md` — `specs/<feature>/spec.md` → `specs/<unit>/spec.md`.
+- `adapters/targets/vectis/briefs/build/core/write.md` — `${FEATURE_NAME}` → `${UNIT_NAME}` in spec path.
+- `adapters/targets/vectis/briefs/build/test.md` — traceability comment `<feature>` → `<unit>`; baseline capture path `${FEATURE_NAME}` → `${UNIT_NAME}`.
+- `adapters/targets/vectis/references/test-spec-mapping.md` — all `<feature>` / `<feature_snake>` path templates and naming conventions → `<unit>` / `<unit_snake>`.
+- `adapters/targets/vectis/references/test-runbook.md` — `$FEATURE_NAME` argument → `$UNIT_NAME`; all traceability and naming convention references updated.
+- `adapters/targets/vectis/references/review/logic-checks.md` — traceability comment template `specs/<feature>/spec.md` → `specs/<unit>/spec.md`.
+- `tests/fixtures/targets/vectis/task-list/input/proposal.md` — `## Features` / `### New Features` / `### Modified Features` → `## Units` / `### New Units` / `### Modified Units`.
+- `tests/fixtures/targets/vectis/task-list/input/spec.md` — moved to `input/specs/task-list/spec.md` to match canonical layout.
+- `tests/fixtures/targets/vectis/task-list/README.md` — layout diagram updated for `specs/task-list/spec.md` path; shape brief cross-reference updated.
+- `tests/fixtures/targets/vectis/task-list/expected/shape-evidence.md` — file path references updated; "feature" → "unit" in workflow vocabulary.
+- `tests/fixtures/targets/vectis/task-list/expected/composition.yaml` — header comment updated for new spec path.
+
+No changes to `build/ios/write.md`, `build/android/write.md`, or `merge.md` (no `feature`/`FEATURE` workflow vocabulary present).
+
+Additional files beyond the plan's primary list: `test-spec-mapping.md`, `test-runbook.md`, and `review/logic-checks.md` required updates because they contained `FEATURE_NAME`, `<feature_snake>`, and `specs/<feature>/spec.md` templates that directly support the build briefs. These are Vectis-specific references, so they fall within Step 3's scope.
+
+Observations for future steps:
+
+- No changes required to the plan sequencing or scope of Steps 4–9.
 
 ## Step 4 - Omnia Target Brief Alignment
 

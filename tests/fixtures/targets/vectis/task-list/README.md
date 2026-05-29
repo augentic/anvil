@@ -11,7 +11,9 @@ tests/fixtures/targets/vectis/task-list/
 ├── README.md
 ├── input/                          # synthesised slice artifacts (post-shape-injection)
 │   ├── proposal.md                 # Platforms: core, ios, android
-│   ├── spec.md                     # core requirements + iOS / Android sections; one REQ-XXX namespace
+│   ├── specs/
+│   │   └── task-list/
+│   │       └── spec.md             # core requirements + iOS / Android sections; one REQ-XXX namespace
 │   ├── design.md                   # Domain Model, Adapters, shell details, implementation constraints
 │   ├── tasks.md                    # core first, shells second
 │   └── evidence/
@@ -28,5 +30,5 @@ This fixture is a documentation pin for the Vectis target. `make test` no longer
 ## See also
 
 - [`tests/fixtures/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
-- [`adapters/targets/vectis/briefs/shape.md`](../../../../../adapters/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/spec.md` + `input/design.md`.
+- [`adapters/targets/vectis/briefs/shape.md`](../../../../../adapters/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/specs/task-list/spec.md` + `input/design.md`.
 - [`adapters/targets/vectis/briefs/build.md`](../../../../../adapters/targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.

@@ -16,7 +16,7 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 | --- | --- |
 | `SLICE_ID` | The active slice name (`specrun plan next` output, or `specrun slice` argument). |
 | `SLICE_DIR` | `.specify/slices/<SLICE_ID>/`. |
-| `FEATURE_NAME` | The single feature spec folder under `SLICE_DIR/specs/`. When the slice carries multiple features, iterate the per-feature phase sub-briefs in declaration order. |
+| `UNIT_NAME` | The single unit spec folder under `SLICE_DIR/specs/`. When the slice carries multiple units, iterate the per-unit phase sub-briefs in declaration order. |
 | `PROJECT_DIR` | The target project root (single-repo mode) or the resolved workspace slot (workspace mode). |
 | `IOS_SHELL_DIR` | `${PROJECT_DIR}/iOS` (only when `ios` is in scope). |
 | `ANDROID_SHELL_DIR` | `${PROJECT_DIR}/Android` (only when `android` is in scope). |

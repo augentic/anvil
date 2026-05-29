@@ -14,7 +14,7 @@ Run after [core/write.md](core/write.md) in the same slice. Detect mode from the
 
 ### Inline writer steps
 
-1. **Read inputs.** `${SPEC_PATH}`, `${DESIGN_PATH}`, `${APP_RS}`. Use spec-to-test mapping rules: one synchronous `#[test]` per scenario, named after the scenario, with a `/// Spec: <feature> > REQ-XXX > Scenario: <scenario>` traceability comment. Full mapping rules: [`test-spec-mapping.md`](../../references/test-spec-mapping.md).
+1. **Read inputs.** `${SPEC_PATH}`, `${DESIGN_PATH}`, `${APP_RS}`. Use spec-to-test mapping rules: one synchronous `#[test]` per scenario, named after the scenario, with a `/// Spec: <unit> > REQ-XXX > Scenario: <scenario>` traceability comment. Full mapping rules: [`test-spec-mapping.md`](../../references/test-spec-mapping.md).
 2. **Map scenarios deterministically.** Each `#### Scenario:` block produces exactly one test function. The `**WHEN**` clause becomes the test setup (model state, dispatched events). The `**THEN**` clause becomes assertions over `Command` effects and `view()` output. Stable `REQ-XXX` ID + scenario title is the drift-detection key.
 3. **Write tests inside `#[cfg(test)] mod tests`** in `app.rs` (Crux convention — not a separate `tests/` directory). Preserve existing helpers, factory functions, and test style.
 4. **Coverage requirements.** Every scenario; every shell-facing `Event` variant; every page transition (Loading → Main, Error → retry); every validation rule; every adapter's happy and error path; factory helpers for repeated setup.
@@ -28,7 +28,7 @@ Spawn in its own sub-agent with `PROJECT_DIR`, the spec path, and (in update mod
 Capture the baseline before the writers (update mode only):
 
 ```bash
-cd "$PROJECT_DIR" && cargo test 2>&1 | tee "/tmp/${SLICE_ID}-${FEATURE_NAME}-baseline.txt"
+cd "$PROJECT_DIR" && cargo test 2>&1 | tee "/tmp/${SLICE_ID}-${UNIT_NAME}-baseline.txt"
 ```
 
 Each iteration runs all four checks; if any fail, apply the targeted fix and start a new iteration.
