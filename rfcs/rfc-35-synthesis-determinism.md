@@ -1,6 +1,6 @@
 # RFC-35: Synthesis Determinism
 
-> Status: Draft · Depends: [RFC-27](done/rfc-27-synthesis.md), [RFC-25](done/rfc-25-workflow.md), [RFC-31](done/rfc-31-vectis-screenshots-loop.md) · Affects: `/spec:refine` skill, `specrun slice validate`, `specrun slice reconciliation`, synthesis references
+> Status: Draft · Depends: [RFC-27](done/rfc-27-synthesis.md), [RFC-25](done/rfc-25-workflow.md), [RFC-31](done/rfc-31-vectis-screenshots-loop.md) · Affects: `/spec:refine` skill, `specrun slice validate`, `specrun slice reconcile`, synthesis references
 
 ## Abstract
 
@@ -35,7 +35,7 @@ Each friction point observed in the run, with its fix mapped to a decision below
 | **D3** | Add `spec-format.md` to the refine skill's References section. | Edit `plugins/spec/skills/refine/SKILL.md`. |
 | **D4** | Note in `substeps.md` and refine skill step 4 that the spec file path is target-specific (Vectis `specs/<feature>/spec.md`; others may use `spec.md` at slice root) and the shape brief governs. | Edit `substeps.md` and `refine/SKILL.md`. |
 | **D5** | Change `substeps.md` "Required H2 sections" to "Default H2 sections" with: "When the target shape brief specifies different proposal sections, the shape brief takes precedence." | Edit `substeps.md`. |
-| **D6** | New `specrun slice reconciliation write` verb that derives `reconciliation.yaml` from `spec.md` + `evidence/*.yaml`. | New handler `crates/workflow/src/slice/reconciliation.rs`. |
+| **D6** | New `specrun slice reconcile` verb that derives `reconciliation.yaml` from `spec.md` + `evidence/*.yaml`. | New handler `crates/workflow/src/slice/reconciliation.rs`. |
 | **D7** | New `specrun journal emit` verb that appends one validated NDJSON event to `.specify/journal.jsonl`. | New handler `crates/workflow/src/journal/emit.rs`. |
 | **D8** | `specrun slice validate` distinguishes "no spec files at expected path" from "spec file found but heading not matching." | Update provenance-parser error paths in `crates/validate/src/`. |
 | **D9** | Add absolute `briefs_dir` to `specrun target resolve` and `specrun source resolve` JSON output. | Update JSON serialisation in `crates/workflow/src/adapter/`. |
@@ -67,10 +67,10 @@ Status: <agreed|unknown|conflict|divergence>
 
 `substeps.md` section 2 and refine skill step 4 gain a note: the target `shape` brief determines spec file organisation. Vectis uses `specs/<feature>/spec.md` (one per `## Crates` entry in `proposal.md`); other targets may use `spec.md` at the slice root. Consult the loaded shape brief before writing spec files.
 
-### D6 — `specrun slice reconciliation write`
+### D6 — `specrun slice reconcile`
 
 ```bash
-specrun slice reconciliation write app-shell --format json
+specrun slice reconcile app-shell --format json
 ```
 
 - Parses every `REQ-NNN` block (with `Sources:` lines) from `$SLICE_DIR/specs/*/spec.md` (or `$SLICE_DIR/spec.md`, per target).
@@ -125,7 +125,7 @@ Steps 1–3 are documentation-only in `augentic/specify`; 4–6 are CLI changes 
 1. Fix `substeps.md`: `#### Scenario:` H4 guidance (D1), target-governed proposal sections (D5), target-specific spec-path note (D4).
 2. Extend `requirement-block.md` with the scenario heading + WHEN/THEN example (D2).
 3. Update refine skill: add `spec-format.md` reference (D3); add shape-brief-governs-path note to step 4 (D4).
-4. Add `specrun slice reconciliation write` (D6); golden tests against existing synthesis fixtures.
+4. Add `specrun slice reconcile` (D6); golden tests against existing synthesis fixtures.
 5. Add `specrun journal emit` (D7) and the validator file-location diagnostics (D8).
 6. Add `briefs_dir` to both resolve outputs (D9).
 
@@ -134,7 +134,7 @@ Steps 1–3 are documentation-only in `augentic/specify`; 4–6 are CLI changes 
 ## Migration
 
 - **Skill authors:** Steps 1–3 break references citing the `## Scenarios` H2 guidance or the scenario-less `requirement-block.md` template; update them in the same PR (grep `## Scenarios`).
-- **CLI consumers:** `reconciliation write`, `journal emit`, and `briefs_dir` are all additive; existing hand-authoring and `printf` writes continue to work until adopted.
+- **CLI consumers:** `slice reconcile`, `journal emit`, and `briefs_dir` are all additive; existing hand-authoring and `printf` writes continue to work until adopted.
 - **Target authors:** The `specs.file-location` diagnostic (D8) reads the target manifest for the expected spec layout. Vectis already declares `specs/`; Omnia and contracts use the default `spec.md` at slice root.
 
 ## Alternatives considered

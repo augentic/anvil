@@ -11,22 +11,22 @@ Specify's architectural promise is a fan-in / fan-out workflow:
 
 This is the framework's "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project)). RFC-29 affirms it and does not extend the slice to multi-target.
 
-The gap is that several load-bearing fan-in steps — survey, extract, plan-time reconciliation, and the *reconciliation half* of slice synthesis — are still agent discipline rather than CLI-owned contract. The *prose half* of slice synthesis (cross-modal reconciliation of design prose, code, and screenshots into requirement statements, scenarios, and design narrative) is judgment work and stays with an LLM; this RFC puts a stable envelope around that step rather than claiming it away.
+The gap is that several load-bearing fan-in steps — survey, extract, and plan-time reconciliation — are still agent discipline rather than CLI-owned contract. Slice synthesis itself stays agent-led on purpose: cross-modal reconciliation of design prose, code, and screenshots into a coherent requirement set — deciding which requirements exist, how Evidence claims merge or split into them, what each draws on, and the statements, scenarios, and design narrative that express them — is the heart of synthesis and is judgment work. This RFC does not claim that away. What it makes CLI-owned is the *deterministic projection around* that judgment: RFC-27 authority resolution, REQ-id assignment, provenance projection into `reconciliation.yaml`, status derivation, and drift validation, all computed over the structure the agent proposes. The contribution to synthesis is the **envelope** — stable inputs, stable outputs, and a kernel that turns the agent's reconciliation into validated, provenance-tracked artifacts — not a deterministic reconstruction of the requirement set.
 
 This RFC turns the fan-in promise into an end-to-end contract by adding:
 
 1. **Executable source operations** - first-class `specrun source survey` and `specrun source extract` commands that run source adapters under the declared sandbox, cache, and journal contract.
 2. **Deterministic plan-time structural reconciliation** - a CLI-owned lead-reconciliation engine that proposes slice rows from `Lead[]`, preserving operator review for ambiguous joins and operator/agent judgment for target binding.
-3. **Slice synthesis engine** - a CLI-owned reconciliation kernel (authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml`, the deterministic-field skeleton of `model.yaml`, and drift validators) wrapped around an agent-driven prose-synthesis step running under a stable input/output envelope.
+3. **Slice synthesis engine** - an agent-led cross-modal synthesis step (which decides the requirement set, declares each requirement's sources, and authors its prose) running under a stable input/output envelope, wrapped by a CLI-owned reconciliation kernel that projects over the agent's structure: RFC-27 authority resolution, REQ-id assignment, status derivation, provenance projection into `reconciliation.yaml`, and drift validators.
 4. **Typed slice model** - a machine-readable, schema-pinned view of the slice emitted by refine and used by target builders, while the existing Markdown artifacts remain the human review surface and baseline merge input.
 5. **Target build contract** - target adapters consume the slice model through a stable per-slice build envelope, with per-slice validation, review findings, and merge gates.
-6. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice model -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`, and the kernel / envelope split proven by deterministic-field byte-equality plus prose target-neutrality.
+6. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice model -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`, and the kernel / envelope split proven by kernel-projection determinism over a fixed synthesis response, plus cross-target target-neutrality and semantic equivalence of the agent-authored requirement set.
 
 ## Motivation
 
 The current codebase can describe the fan-in/fan-out model, but it cannot yet prove it as a framework invariant: source operations are briefs not executable commands, plan-time lead reconciliation is agent-only, slice-time reconciliation has no production resolver, the machine-readable slice view is implicit, and target codegen is adapter-brief discipline with no stable envelope. The normative decisions below close each gap.
 
-The goal is not to remove agents but to move stable workflow, reconciliation, and data-shape obligations into the CLI so agents focus on judgment work — cross-modal Evidence reconciliation, repair, and domain-specific generation. Where judgment is unavoidable (prose synthesis is the canonical case), the contribution is the **envelope** around the agent step: stable inputs, stable outputs, schema validation, drift validation, journal events, and an explicit `executable | agent-fallback` execution mode.
+The goal is not to remove agents but to move stable workflow, data-shape, and bookkeeping obligations into the CLI so agents keep the judgment work — cross-modal Evidence reconciliation into a requirement set, repair, and domain-specific generation. Cross-modal reconciliation is the canonical case of unavoidable judgment and stays agent-led at the heart of synthesis; the CLI's contribution is the **envelope** around that step plus the deterministic *projection* over its output: stable inputs, stable outputs, RFC-27 authority resolution, REQ-id assignment, provenance projection, drift validation, journal events. The kernel never reconstructs the requirement set; it validates and provenance-tracks the one the agent proposes. Synthesis carries an explicit `agent | executable` execution mode whose default — and designed centre — is `agent`.
 
 ## Normative decisions
 
@@ -35,14 +35,14 @@ The goal is not to remove agents but to move stable workflow, reconciliation, an
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D1 Source operation runner**  | The CLI runs source adapter `survey` and `extract` operations.                                                                                                                                                                        | Add `specrun source survey` and `specrun source extract`; route through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events.                       |
 | **D2 Lead reconciliation engine**  | The CLI owns the **structural** `Lead[] -> lead groups` pass (rules 1–3 — exact id, exact alias, transitive cross-reference). **Target binding** (which group becomes which `(slice, target)` pair) stays agent-driven until a Lead target-axes hint lands. | Ship in two stages. Stage B1: `specrun plan propose --dry-run --format json` returns the structural groups as JSON without writing the plan. `/spec:plan` reads the JSON, decides target binding per group, and writes through the existing `specrun plan add` / `plan amend` writers. Stage B2 (deferred): once Lead target-axes are RFC'd, promote `propose` to a full writer that emits one `(group, target)` slice directly. |
-| **D3 Slice synthesis engine** | The CLI owns the reconciliation kernel (authority resolution, REQ-id assignment, provenance tracking, `reconciliation.yaml`, structural `model.yaml` projection, drift validation) and the synthesis envelope. Cross-modal prose synthesis of `Evidence[]` into `proposal.md` / `spec.md` / `design.md` / `tasks.md` and the prose fields of `model.yaml` is dispatched under that envelope and remains agent-driven by default. | Add `specrun slice synthesize <slice>`. The engine resolves authority via the RFC-27 resolver, computes the deterministic `model.yaml` skeleton, dispatches the prose-synthesis step (executable WASI tool when declared, otherwise agent-fallback per D10), then validates and persists. `/spec:refine` stops hand-coding reconciliation and shells out to the engine. |
+| **D3 Slice synthesis engine** | The agent-led synthesis step owns cross-modal reconciliation of `Evidence[]` into the requirement set — which requirements exist, how claims merge or split, each requirement's declared `sources`, its prose (`title` / `statement` / `scenarios` / `notes`), and the four Markdown artifacts. The CLI owns the reconciliation kernel that *projects over* that structure (RFC-27 authority resolution, REQ-id assignment, status derivation, provenance into `reconciliation.yaml`, drift validation) and the synthesis envelope. The kernel never reconstructs the requirement set. | Add `specrun slice synthesize <slice>`. The engine resolves authority via the RFC-27 resolver, dispatches the synthesis step (`agent` by default, or a declared `executable` synthesis tool per D10) with the Evidence map and resolved authority, then assigns ids, derives status, projects provenance, validates, and persists. `/spec:refine` stops hand-coding the reconciliation projection and shells out to the engine. |
 | **D4 Typed slice model**           | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`.                                                                                                                                                                       | Add `schemas/slice/model.schema.json`; `specrun slice validate` checks model/artifact/reconciliation drift; target build reads the slice model as its primary machine input.                                                     |
 | **D5 Per-slice fan-out**        | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`. RFC-29 introduces no per-output schema, lifecycle, or build envelope.                    | No `outputs[]` field on the slice model, build request, or build report. `plan.yaml.slices[].target` / `slices[].project` keep their existing shape and meaning. Cross-slice ordering uses the existing `slices[].depends-on`. |
 | **D6 Target build envelope**    | Target adapters receive a stable per-slice build request and return a stable per-slice build report.                                                                                                                                     | Add `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json`, keyed on `(slice, target)`; reports may include RFC-28 findings.                                                        |
 | **D7 Acceptance proof path**    | The release is not complete until an end-to-end fixture demonstrates fan-in and cross-slice fan-out together.                                                                                                                            | Add a cross-repo test in which two sources feed two slices (one targeting `contracts@v1`, one targeting `omnia@v1`), joined by `depends-on`; each slice independently synthesises, builds, and merges.                |
-| **D8 Shape-brief scope**        | Target `shape` briefs may parameterise the slice model's structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but MUST NOT influence `requirements[]`, `sources[]`, or any provenance-bearing field. | The reconciliation kernel computes the requirements section's **deterministic fields** (`id`, `sources`, `status`, ordering) from `(Evidence[], authority-overrides)` alone; those fields are byte-identical across slices that share Evidence and authority-overrides regardless of bound target. The agent-synthesised **prose fields** (`statement`, `title`, `scenarios[]`, `notes`) are not asserted byte-identical between runs or between targets; they are asserted target-neutral by construction (the synthesis envelope hides `target` from the prose-synthesis step's requirements-section inputs) and validated for cross-slice semantic alignment in §"Acceptance proof". |
+| **D8 Shape-brief scope**        | Target `shape` briefs may parameterise the slice model's structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but MUST NOT influence `requirements[]`, `sources[]`, or any provenance-bearing field. | The whole requirements section — entries, `sources`, statements, scenarios, ordering — is authored by the agent-led synthesis step, which the envelope walls off from `target` and `shape-brief` (`forbidden-inputs-for-requirements-reconciliation`); requirements are therefore **target-neutral by construction**, not by deterministic reconstruction. The kernel's **projection** over that structure (REQ-id assignment in declaration order, `status` derived from authority over each requirement's declared sources, `*.sources` provenance into `reconciliation.yaml`) is a pure, target-independent function of `(response structure, Evidence[], authority-overrides)` — byte-identical when re-run over a fixed response. Cross-target equivalence of the requirement set is validated semantically (§"Acceptance proof"), not as byte-equality. |
 | **D9 Adapter execution mode**   | Source adapters declare a closed `execution: executable | agent-fallback` field; first-party adapters MUST be `executable` before RFC-29 ships, third-party adapters MAY be `agent-fallback` indefinitely.                               | Extend `schemas/source.schema.json` and (symmetrically) `schemas/target.schema.json` with the closed enum. `agent-fallback` forces `cache: opt-out` and emits `source.execution.agent-fallback` per invocation.       |
-| **D10 Synthesis execution mode** | The synthesis step inside `specrun slice synthesize` carries the same closed `execution: executable | agent-fallback` enum as adapter operations. Cross-modal Evidence reconciliation is judgment work; first-party Specify ships with `execution: agent-fallback` as the honest default. An `execution: executable` path is reserved for future declared synthesis tools that admit it (e.g. single-source statement-quality Evidence). | Add the closed enum to slice-synthesis configuration. `agent-fallback` forces `cache: opt-out` for the prose-synthesis step (the reconciliation skeleton remains cached deterministically) and emits `slice.synthesize.agent-fallback` per invocation. The engine validates the result against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks regardless of execution mode. |
+| **D10 Synthesis execution mode** | The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | executable` enum. Unlike the adapter enum (D9), synthesis is **agent-first by design**: cross-modal Evidence reconciliation is judgment work, so `agent` is the default and the designed centre — not a fallback. An `execution: executable` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source statement-quality Evidence). | Add the closed enum to slice-synthesis configuration. `agent` forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic) and emits `slice.synthesize.agent` per invocation. The engine validates the result against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks regardless of execution mode. |
 
 
 ## Operator surface
@@ -249,12 +249,12 @@ The full form reconciles the structural pass with the target-binding pass and wr
 
 ### Two layers
 
-There is no deterministic function from `(design-prose, code-AST, vision-output)` to a single coherent `spec.md` requirement, so the engine splits cleanly into two layers:
+There is no deterministic function from `(design-prose, code-AST, vision-output)` to a coherent requirement set, so the engine splits cleanly into two layers — with the judgment layer first:
 
-1. **Reconciliation kernel (deterministic, CLI-owned).** Authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml`, the `model.yaml` *skeleton* (every deterministic field per §"Shape-brief scope (D8)"), and the six drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code and D8's structural invariants are enforced.
-2. **Prose synthesis (judgment, agent-with-envelope by default).** Filling in the prose fields — `requirements[].title` / `.statement` / `.scenarios[]` / `.notes`, `domain.types[].fields[].description`, `apis.surfaces[].operations[]` request/response/errors prose, `technical-logic.decisions[].statement` / `.rationale`, `observability[].description`, `tasks[].text` — plus rendering the four Markdown artifacts from the populated `model.yaml`.
+1. **Synthesis step (judgment, agent-led by default — the heart).** Cross-modal reconciliation of `Evidence[]` into the requirement set: deciding which requirements exist and how claims merge or split into them, declaring each requirement's contributing `sources`, authoring `requirements[].title` / `.statement` / `.scenarios[]` / `.notes`, populating the prose fields of the rest of the model (`domain.types[].fields[].description`, `apis.surfaces[].operations[]` request/response/errors prose, `technical-logic.decisions[].statement` / `.rationale`, `observability[].description`, `tasks[].text`), and rendering the four Markdown artifacts. This is the load-bearing judgment of synthesis and stays with the agent.
+2. **Reconciliation kernel (deterministic projection, CLI-owned).** RFC-27 authority resolution, REQ-id assignment in the agent's declaration order, `status` derivation from authority over each requirement's declared sources, provenance projection into `reconciliation.yaml`, and the six drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code; it projects over the structure the agent returns and never invents, drops, or re-groups requirements.
 
-The engine runs (1), runs (2) under the envelope defined in §"Synthesis envelope", then validates the merged result against `schemas/slice/model.schema.json` and the drift validators before the slice transitions to `refined`.
+The engine resolves authority, runs (1) under the envelope defined in §"Synthesis envelope", then runs (2) over the returned structure and validates the merged result against `schemas/slice/model.schema.json` and the drift validators before the slice transitions to `refined`.
 
 ### Command
 
@@ -273,9 +273,9 @@ The command reads:
 
 It produces, in order:
 
-1. The reconciliation skeleton — `reconciliation.yaml` plus the deterministic fields of `model.yaml` — entirely from `(Evidence[], authority-overrides, prior baseline)`. The bound target's `shape` brief is **not** an input to this layer.
-2. A synthesis request envelope (see below) handed to the synthesis step.
-3. After the synthesis step returns, the merged artifacts:
+1. Resolved authority — per-Evidence, per-claim effective authority from `(Evidence[], authority-overrides, prior baseline)` via the RFC-27 resolver. No requirement skeleton is pre-computed; the requirement set is the synthesis step's to decide.
+2. A synthesis request envelope (see below) handed to the synthesis step, carrying the Evidence map and resolved authority but **not** the bound target's `shape` brief for any requirements input.
+3. After the synthesis step returns its requirement set and prose, the kernel projects over that structure — assigning REQ-ids in declaration order, deriving `status` from authority over each requirement's declared sources, and writing `reconciliation.yaml` — then validates and persists the merged artifacts:
 
 ```text
 .specify/slices/<slice>/proposal.md
@@ -297,14 +297,15 @@ RFC-27's authority order becomes production code inside the reconciliation kerne
 3. document-level `authority`;
 4. tied effective authority -> `conflict`.
 
-The micro-resolver currently pinned in tests becomes black-box coverage for the production resolver. The kernel writes `reconciliation.yaml` directly from its output; the synthesis step never re-decides authority.
+The micro-resolver currently pinned in tests becomes black-box coverage for the production resolver. The kernel resolves authority **before** dispatch and passes the resolution into the envelope, so the synthesis step knows which claims win when it decides what each requirement draws on; the step never re-decides authority. After the step returns its requirement set with declared `sources`, the kernel projects the resolution over those declarations to write `reconciliation.yaml` and derive each requirement's `status`.
 
 ### Synthesis envelope
 
-The synthesis step receives a fixed-shape request and returns a fixed-shape response. The engine dispatches the request through a declared WASI tool when `execution: executable` is configured, otherwise to the operator's agent under `execution: agent-fallback` (D10). Either way, the envelope is stable:
+The synthesis step receives a fixed-shape request and returns a fixed-shape response. The engine dispatches the request to the operator's agent under `execution: agent` (the default and designed centre), or to a declared WASI tool when `execution: executable` is configured (D10). Either way, the envelope is stable:
 
 ```yaml
 version: 1
+kind: request
 slice: identity-service
 target: omnia@v1
 shape-brief: /.../adapters/targets/omnia/briefs/shape.md
@@ -315,22 +316,21 @@ evidence:
   legacy:
     path: .specify/slices/identity-service/evidence/legacy.yaml
     authority: behaviour
-reconciliation:
-  reconciliation-path: .specify/slices/identity-service/reconciliation.yaml
-  model-skeleton-path: .specify/.cache/synthesize/<slice>/model.skeleton.yaml
+authority:
+  resolved-path: .specify/.cache/synthesize/<slice>/authority.resolved.yaml
 prior-baseline:
   specs-dir: .specify/specs/
 constraints:
-  forbidden-inputs-for-requirements-prose: [target, shape-brief]
+  forbidden-inputs-for-requirements-reconciliation: [target, shape-brief]
 ```
 
-The `constraints.forbidden-inputs-for-requirements-prose` field is part of the contract: a conforming synthesis step computes `requirements[].statement` / `.title` / `.scenarios[]` / `.notes` from the Evidence map alone, never from `target` or `shape-brief`. This is the agent-with-envelope expression of D8's target-neutrality requirement; it is checked at the boundary by the cross-target invariant in §"Acceptance proof (D7)" and re-asserted by the synthesis prompt body shipped with first-party Specify.
+`authority.resolved-path` carries the kernel's pre-dispatch RFC-27 resolution so the synthesis step knows which claims win without re-deciding authority. The `constraints.forbidden-inputs-for-requirements-reconciliation` field is part of the contract: a conforming synthesis step reconciles the **entire requirements section** — entries, `sources`, `statement` / `title` / `scenarios[]` / `notes` — from the Evidence map and resolved authority alone, never from `target` or `shape-brief`. (`target` and `shape-brief` remain present in the envelope because they are legitimate inputs to the non-requirements sections of the model.) This is the agent-with-envelope expression of D8's target-neutrality requirement; it is checked at the boundary by the cross-target invariant in §"Acceptance proof (D7)" and re-asserted by the synthesis prompt body shipped with first-party Specify.
 
-The response is the populated `model.yaml` plus the four Markdown artifacts. The engine merges the response with the reconciliation skeleton, fails if the response touches any deterministic field, validates, and persists. The full request/response shape — including the closed `kind: request | response` discriminator that lets one file validate both directions — is committed verbatim as Schema E in §"Schemas added by this RFC".
+The response is the populated `model.yaml` (requirement set, declared `sources`, prose) plus the four Markdown artifacts. The synthesis step does not assign REQ-ids or `status` and does not write `reconciliation.yaml` — those are the kernel's. The engine projects the kernel over the returned structure (id assignment in declaration order, status derivation, provenance projection), rejects any response that pre-assigns ids or cites a source absent from the Evidence map, then validates and persists. The full request/response shape — including the closed `kind: request | response` discriminator that lets one file validate both directions — is committed verbatim as Schema E in §"Schemas added by this RFC".
 
 ### Shape-brief scope (D8)
 
-The bound target's `shape` brief is an input to the **prose-synthesis step only**, and only for the slice model's `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks` sections (e.g. surface-by-surface vs type-by-type grouping; which optional sub-fields are populated; how much narrative each design decision carries).
+The bound target's `shape` brief is an input to the **non-requirements sections of the synthesis step only** — the slice model's `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks` sections (e.g. surface-by-surface vs type-by-type grouping; which optional sub-fields are populated; how much narrative each design decision carries). It is never an input to the requirements section, which the synthesis step reconciles from Evidence and resolved authority alone.
 
 Shape briefs MUST NOT influence:
 
@@ -340,12 +340,12 @@ Shape briefs MUST NOT influence:
 
 The engine enforces D8 in two layers:
 
-- **Deterministic fields.** The reconciliation kernel computes `requirements[].{id, sources, status}` and every other `*.sources` field from `(Evidence[], authority-overrides)` alone, independently of the bound target. Two slices binding the same `(source-key -> lead)` map and the same `authority-overrides` produce reconciliation skeletons whose deterministic fields are **byte-identical** even when their `target` fields differ. This part of the invariant is testable as byte-equality (D7).
-- **Prose fields.** The synthesis envelope hides `target` and `shape-brief` from the inputs the synthesis step is permitted to use for `requirements[].{title, statement, scenarios, notes}`. The CLI cannot byte-test prose stability across runs of a non-deterministic model, but it can assert structural target-neutrality: re-running synthesis against the same Evidence map yields requirements with the **same ids, sources, status, and ordering**, and the prose-equivalence check in §"Acceptance proof (D7)" guarantees the requirement set conveys the same intent across two targets. Byte-equality is asserted only on the deterministic-field projection.
+- **Target-neutrality by construction (the requirement set).** The synthesis envelope hides `target` and `shape-brief` from every input the synthesis step is permitted to use for the requirements section — entries, `sources`, `id` candidates, `title`, `statement`, `scenarios[]`, `notes`. A conforming step therefore reconciles the same requirement set regardless of which target the slice binds. The CLI cannot byte-test a non-deterministic model across runs, so this layer is asserted *by construction* (the `forbidden-inputs-for-requirements-reconciliation` constraint plus the `slice-synthesize-forbidden-input-leak` probe) and validated for cross-target **semantic equivalence** in §"Acceptance proof (D7)" — not as byte-equality.
+- **Deterministic projection (the kernel over a fixed structure).** Given a fixed synthesis-step response, the kernel's projection — REQ-id assignment in declaration order, `status` derived from authority over each requirement's declared sources, and every `*.sources` projection into `reconciliation.yaml` — is a pure, target-independent function of `(response structure, Evidence[], authority-overrides)`. Re-running the kernel over the **same** response yields byte-identical `reconciliation.yaml` and id/status projection regardless of bound target; this is the byte-testable part of the invariant (D7) and matches the guarantee RFC-35 D6 makes for `reconciliation.yaml`. Byte-equality is asserted only on this projection, never on the agent-authored requirement set across live runs.
 
 ### Rendering
 
-The engine persists `model.yaml` and `reconciliation.yaml` deterministically. The Markdown artifacts are rendered by the synthesis step (which is the natural author of the prose they contain) and validated for drift against `model.yaml` on ingest. The engine does not parse its own Markdown output to recover state during the same run.
+The engine persists `reconciliation.yaml` and the kernel-owned fields of `model.yaml` (`requirements[].id`, `.status`, and every `*.sources` projection) deterministically; the requirement set and all prose in `model.yaml` are the synthesis step's, persisted as returned once they pass validation. The Markdown artifacts are rendered by the synthesis step (which is the natural author of the prose they contain) and validated for drift against `model.yaml` on ingest. The engine does not parse its own Markdown output to recover state during the same run.
 
 `spec.md` stays the behavioral review artifact and baseline merge input. `model.yaml` is the generated machine view used by target builds. `reconciliation.yaml` remains audit-only.
 
@@ -623,28 +623,28 @@ with `execution` added to the `required` list on both schemas. Manifests authore
 
 ## Synthesis execution mode (D10)
 
-The synthesis step inside `specrun slice synthesize` carries the same closed `execution: executable | agent-fallback` enum as adapter operations. Cross-modal Evidence reconciliation is judgment work; **first-party Specify ships with `execution: agent-fallback` as the honest default**. An `execution: executable` path is reserved for future declared synthesis tools that admit it (e.g. single-source slices where Evidence already carries statement-quality prose).
+The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | executable` enum. It deliberately does **not** mirror the adapter enum (D9): adapters aspire to `executable` and treat the agent path as a fallback, whereas synthesis is **agent-first by design**. Cross-modal Evidence reconciliation into a requirement set is the load-bearing judgment of the framework, so `agent` is the default and the designed centre — the two values are named as first-class peers, with no "fallback" connotation on the agent path. An `execution: executable` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source slices where Evidence already carries statement-quality prose).
 
 The configuration lives on the workspace, not on individual adapter manifests, because the synthesis step is core-owned and per-slice:
 
 ```yaml
-# project.yaml (one entry per project; defaults to agent-fallback)
+# project.yaml (one entry per project; defaults to agent)
 synthesize:
-  execution: agent-fallback     # or `executable`
+  execution: agent     # or `executable`
 ```
 
 The two values are:
 
-- `**agent-fallback**` — the engine computes the reconciliation skeleton, hands the synthesis envelope to the operator's agent, validates the returned `model.yaml` + Markdown against `schemas/slice/model.schema.json` and the six drift validators, and persists. This is the first-party default.
-- `**executable**` — the engine additionally requires a declared synthesis WASI tool to be configured (`synthesize.tool: { name, version }`), pipes the envelope on stdin, validates the returned response identically, and caches the result under a synthesis-specific fingerprint (Evidence sha256 set + authority-overrides + shape-brief sha256 + tool `name@version`). Reserved for future use.
+- `**agent**` — the engine resolves authority, hands the synthesis envelope to the operator's agent, then projects the kernel over the returned structure (id assignment, status derivation, `reconciliation.yaml`), validates the merged `model.yaml` + Markdown against `schemas/slice/model.schema.json` and the six drift validators, and persists. This is the first-party default and the designed centre of synthesis.
+- `**executable**` — the engine additionally requires a declared synthesis WASI tool to be configured (`synthesize.tool: { name, version }`), pipes the envelope on stdin, projects and validates the returned response identically, and caches the result under a synthesis-specific fingerprint (Evidence sha256 set + authority-overrides + shape-brief sha256 + tool `name@version`). Optional and reserved for narrow deterministic cases.
 
-When `execution: agent-fallback`, the engine:
+When `execution: agent`, the engine:
 
-1. emits a `slice.synthesize.agent-fallback` journal event on every invocation;
-2. forces `cache: opt-out` for the prose-synthesis step (the reconciliation skeleton remains cached deterministically under a kernel-only fingerprint of Evidence + authority-overrides);
-3. surfaces a `suggestion`-severity `slice-synthesize-agent-fallback` finding on the framework standards layer only when the operator has explicitly opted in to executable-only enforcement (`synthesize.enforce-executable: true`), and not at all by default — agent-fallback is the expected mode for cross-modal slices.
+1. emits a `slice.synthesize.agent` journal event on every invocation;
+2. forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic, and `reconciliation.yaml` is reproducible from a fixed response under a kernel-only fingerprint of structure + Evidence + authority-overrides);
+3. surfaces no finding by default — `agent` is the expected and recommended mode for cross-modal slices. A `suggestion`-severity `slice-synthesize-agent-mode` finding is raised only when an operator has explicitly opted in to tool-only enforcement (`synthesize.enforce-executable: true`), which is itself an unusual choice the framework does not encourage for cross-modal synthesis.
 
-Regardless of execution mode, the engine validates the response against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks before the slice transitions to `refined`. The execution mode does not relax any validation; it only changes who renders the prose.
+Regardless of execution mode, the engine validates the response against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks before the slice transitions to `refined`. The execution mode does not relax any validation; it only changes who authors the requirement set and prose.
 
 ## Acceptance proof (D7)
 
@@ -656,8 +656,10 @@ documentation + code-typescript
         -> plan propose --dry-run           (CLI proposes structural groups; agent binds each group to one or more targets and writes the slices via plan add)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
-             slice synthesize               (kernel: deterministic reconciliation;
-                                              envelope: agent-driven prose synthesis;
+             slice synthesize               (envelope: agent-led cross-modal reconciliation
+                                              into the requirement set + prose;
+                                              kernel: deterministic projection — ids, status,
+                                              provenance — over the returned structure;
                                               one Evidence map -> one slice model)
              model.yaml + artifacts + reconciliation.yaml
              target build (one target)
@@ -707,10 +709,10 @@ Required assertions:
 - `specrun slice validate` catches no provenance, reconciliation, or slice-model drift on either slice.
 - Each slice builds independently against its single bound target; `identity-service`'s build request carries a `prior-slices[]` entry pointing at `identity-contracts/build/report.yaml`.
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
-- Re-running the full flow with unchanged inputs produces byte-stable **reconciliation skeletons** (`reconciliation.yaml`, and the deterministic-field projection of `model.yaml` — see §"D8 invariant" below) except for explicitly timestamped journal entries. Prose fields of `model.yaml` and the Markdown artifacts are not asserted byte-stable; they are validated by schema + drift checks only.
-- **D8 invariant (deterministic-field projection).** Project both slices' `model.yaml` onto their deterministic-field projection (`requirements[].{id, sources, status}` and every other `*.sources` field, in declaration order). The two slices — which share the `docs:identity-api` lead and the same `authority-overrides` — produce projections whose shared prefix is **byte-identical**, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1` (and the latter additionally reconciles `legacy:identity-api`, which appears as extra `requirements[]` entries appended deterministically after the shared set). The shared-prefix assertion proves shape briefs and target binding do not leak into the deterministic part of the requirements section.
-- **D8 invariant (prose target-neutrality).** The two slices' `requirements[]` arrays carry the same `id` and `sources` for the shared lead's requirements, and their prose fields (`statement`, `title`, `scenarios[]`) are validated for **semantic equivalence** on the shared subset by a fixture-local check (golden text on the simplest cases; LLM-judge with a fixed grader prompt on the more elaborate cases). Byte-equality on prose is not asserted; target-neutrality of intent is.
-- **Synthesis envelope contract.** A fixture-local test re-runs `specrun slice synthesize` with a deliberately-corrupted synthesis-step response that touches a deterministic field (e.g. moves an `id`, changes a `sources` list, alters `status`). The engine rejects the response with `slice-synthesize-deterministic-field-mutation` rather than persisting it, proving the kernel layer is the final authority on every deterministic field.
+- **Kernel-projection determinism (over a fixed response).** Capture each slice's synthesis-step response as a golden fixture, then re-run only the kernel projection over that fixed response twice. The result — `reconciliation.yaml` and the kernel-owned projection of `model.yaml` (`requirements[].id`, `.status`, every `*.sources` field, in declaration order) — is **byte-identical** across runs and independent of the bound target, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1`. This is the byte-testable invariant and matches RFC-35 D6's guarantee for `reconciliation.yaml`. The full-flow run with a live agent is **not** asserted byte-stable on the requirement set or prose, because the requirement set is agent judgment; those are validated by schema + drift + semantic checks below.
+- **D8 invariant (requirement-set target-neutrality).** The two slices share the `docs:identity-api` lead and the same `authority-overrides`; `identity-service` additionally reconciles `legacy:identity-api`. On the shared lead's requirements, the two slices' `requirements[]` entries are validated for **semantic equivalence** — same intent, same declared `sources`, equivalent scenarios — by a fixture-local check (golden text on the simplest cases; LLM-judge with a fixed grader prompt on the more elaborate cases), even though the slices bind different targets. Byte-equality across targets is not asserted; target-neutrality of intent is. This proves shape briefs and target binding do not leak into the requirements section.
+- **Forbidden-input-leak probe.** A fixture-local test confirms the envelope walls `target` and `shape-brief` off from the requirements-reconciliation inputs: a probe response whose requirements demonstrably reference target- or shape-brief-specific content is flagged by `slice-synthesize-forbidden-input-leak`, proving the target-neutrality-by-construction layer of D8.
+- **Synthesis envelope contract.** A fixture-local test re-runs `specrun slice synthesize` with a deliberately-malformed synthesis-step response that usurps a kernel-owned field — pre-assigns a `REQ-NNN` id, sets `status`, or cites a `sources` key absent from the Evidence map. The engine rejects the response with `slice-synthesize-kernel-field-usurped` (id/status) or `slice-model-source-orphan` (orphan source) rather than persisting it, proving the kernel is the sole authority on id assignment, status derivation, and provenance projection while the agent remains the sole author of the requirement set.
 
 ## Schemas added by this RFC
 
@@ -1339,14 +1341,14 @@ Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is 
 
 ### Schema E — `schemas/slice/synthesis-envelope.schema.json`
 
-Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated by a closed `kind: request | response` field so the single `SYNTHESIS_ENVELOPE_JSON_SCHEMA` constant validates both directions through one `compile_schema` call. The request carries the Evidence map (keyed by source key), per-source authority, reconciliation paths, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-prose` constraint; `prior-baseline` is optional because baseline specs are passed only when available. The response embeds the populated slice model by `$ref` to `schemas/slice/model.schema.json` and carries the four rendered Markdown artifacts as inline content (the engine persists them, so the prose travels in the envelope rather than as paths). The `authorityClass` and `targetRef` `$defs` mirror `model.schema.json` byte-identically.
+Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated by a closed `kind: request | response` field so the single `SYNTHESIS_ENVELOPE_JSON_SCHEMA` constant validates both directions through one `compile_schema` call. The request carries the Evidence map (keyed by source key), per-source authority, the kernel's resolved-authority path, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint; `prior-baseline` is optional because baseline specs are passed only when available. No reconciliation skeleton is passed — the synthesis step authors the requirement set, and the kernel projects over it afterward. The response embeds the populated slice model by `$ref` to `schemas/slice/model.schema.json` and carries the four rendered Markdown artifacts as inline content (the engine persists them, so the prose travels in the envelope rather than as paths). The `authorityClass` and `targetRef` `$defs` mirror `model.schema.json` byte-identically.
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/slice/synthesis-envelope.schema.json",
   "title": "Specify slice synthesis envelope",
-  "description": "Validates the request/response envelope exchanged between the `specrun slice synthesize` engine and the prose-synthesis step per RFC-29 §Slice synthesis engine (D3) and §Synthesis execution mode (D10). The request (`kind: request`, written to `.specify/slices/<slice>/synthesis/request.yaml` or piped to a declared WASI tool on stdin) carries the Evidence map, per-source authority, reconciliation paths, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-prose` constraint. The response (`kind: response`, read from `.specify/slices/<slice>/synthesis/response.yaml` or the tool's stdout) carries the populated slice `model` plus the rendered Markdown artifacts. The engine merges the response with the deterministic reconciliation skeleton, rejecting any mutation of a deterministic field with `slice-synthesize-deterministic-field-mutation`. Closed shapes — unknown fields are rejected.",
+  "description": "Validates the request/response envelope exchanged between the `specrun slice synthesize` engine and the agent-led synthesis step per RFC-29 §Slice synthesis engine (D3) and §Synthesis execution mode (D10). The request (`kind: request`, written to `.specify/slices/<slice>/synthesis/request.yaml` or piped to a declared WASI tool on stdin) carries the Evidence map, per-source authority, the kernel's resolved-authority path, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint. The response (`kind: response`, read from `.specify/slices/<slice>/synthesis/response.yaml` or the tool's stdout) carries the populated slice `model` — the synthesis step's requirement set, declared sources, and prose — plus the rendered Markdown artifacts. The engine projects the kernel over the returned structure (REQ-id assignment, status derivation, provenance into `reconciliation.yaml`), rejecting any response that usurps a kernel-owned field with `slice-synthesize-kernel-field-usurped` or cites an orphan source with `slice-model-source-orphan`. Closed shapes — unknown fields are rejected.",
   "oneOf": [
     { "$ref": "#/$defs/request" },
     { "$ref": "#/$defs/response" }
@@ -1367,7 +1369,7 @@ Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated 
     "request": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["version", "kind", "slice", "target", "shape-brief", "evidence", "reconciliation", "constraints"],
+      "required": ["version", "kind", "slice", "target", "shape-brief", "evidence", "authority", "constraints"],
       "properties": {
         "version":     { "type": "integer", "minimum": 1, "maximum": 1 },
         "kind":        { "const": "request" },
@@ -1380,13 +1382,12 @@ Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated 
           "propertyNames": { "$ref": "#/$defs/kebabName" },
           "additionalProperties": { "$ref": "#/$defs/evidenceEntry" }
         },
-        "reconciliation": {
+        "authority": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["reconciliation-path", "model-skeleton-path"],
+          "required": ["resolved-path"],
           "properties": {
-            "reconciliation-path":         { "type": "string", "minLength": 1 },
-            "model-skeleton-path": { "type": "string", "minLength": 1 }
+            "resolved-path": { "type": "string", "minLength": 1 }
           }
         },
         "prior-baseline": {
@@ -1400,9 +1401,9 @@ Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated 
         "constraints": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["forbidden-inputs-for-requirements-prose"],
+          "required": ["forbidden-inputs-for-requirements-reconciliation"],
           "properties": {
-            "forbidden-inputs-for-requirements-prose": {
+            "forbidden-inputs-for-requirements-reconciliation": {
               "type": "array",
               "uniqueItems": true,
               "items": { "type": "string", "enum": ["target", "shape-brief"] }
@@ -1475,8 +1476,8 @@ The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` ga
 | `slice.extract.cache-miss`        | (Existing) Source-adapter `extract` ran.                                                                                                                     |
 | `slice.extract.completed`         | (Existing) Evidence file was successfully persisted.                                                                                                         |
 | `slice.synthesize.started`        | `specrun slice synthesize` began for a slice.                                                                                                                |
-| `slice.synthesize.skeleton-ready` | The reconciliation kernel completed and emitted `reconciliation.yaml` plus the deterministic-field skeleton of `model.yaml`. The synthesis envelope is about to be dispatched. |
-| `slice.synthesize.agent-fallback` | The synthesis step ran in `agent-fallback` mode (the first-party default). One event per invocation.                                                          |
+| `slice.synthesize.authority-resolved` | The reconciliation kernel resolved RFC-27 authority over `Evidence[]`. The synthesis envelope is about to be dispatched. No requirement skeleton is pre-computed. |
+| `slice.synthesize.agent`          | The synthesis step ran in `agent` mode (the first-party default and designed centre). One event per invocation.                                                |
 | `slice.synthesize.completed`      | `specrun slice synthesize` finished and all artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, `reconciliation.yaml`, `model.yaml`) validated and persisted. |
 | `slice.synthesize.failed`         | `specrun slice synthesize` aborted; prior artifacts left intact where possible.                                                                              |
 | `slice.build.started`             | `/spec:build` (or `specrun slice build`) began work on a slice.                                                                                              |
@@ -1511,8 +1512,8 @@ The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` ga
 | `adapter-execution-agent-fallback-cache-conflict` | 2    | An adapter manifest sets `execution: agent-fallback` together with any cache mode other than `opt-out`. |
 | `propose-target-binding-required`                 | 2    | `specrun plan propose` was invoked without `--dry-run` in v1; target binding stays agent-driven until Stage B2 ships. |
 | `slice-synthesize-execution-mode-required`        | 2    | A workspace declares `synthesize.execution: executable` without configuring `synthesize.tool: { name, version }`. |
-| `slice-synthesize-deterministic-field-mutation`   | 2    | A synthesis-step response mutated a deterministic field of `model.yaml` (`requirements[].{id, sources, status}`, ordering, or any `*.sources` field). The engine rejects the response rather than persisting it. |
-| `slice-synthesize-forbidden-input-leak`           | 2    | A synthesis-step response's `requirements[].{statement, title, scenarios, notes}` demonstrably referenced `target` or `shape-brief` content (detected by fixture-local target-neutrality probes). |
+| `slice-synthesize-kernel-field-usurped`           | 2    | A synthesis-step response set a kernel-owned field it does not author — a `requirements[].id` (`REQ-NNN`) or `requirements[].status` value. The engine assigns ids and derives status; it rejects the response rather than persisting it. (Orphan `sources` are caught separately by `slice-model-source-orphan`.) |
+| `slice-synthesize-forbidden-input-leak`           | 2    | A synthesis-step response's requirements section (entries, `sources`, `statement`, `title`, `scenarios`, `notes`) demonstrably referenced `target` or `shape-brief` content (detected by fixture-local target-neutrality probes). |
 
 
 `EXIT_VALIDATION_FAILED = 2` is the only new code RFC-29 needs. Adapter resolution failures, sandbox preopen failures, WASI tool runtime failures, and I/O errors keep the existing `EXIT_GENERIC_FAILURE = 1` mapping.
@@ -1545,15 +1546,15 @@ Stage B2 (full writer) is explicitly deferred — see §"Lead reconciliation eng
 ### Wave C - Synthesis engine and slice model
 
 1. Commit `schemas/slice/model.schema.json` and embed it as `SLICE_MODEL_JSON_SCHEMA` in the `specify-schema` crate alongside the existing `*_JSON_SCHEMA` constants.
-2. Add the production authority resolver and the reconciliation kernel to `specify-workflow`. The kernel emits `reconciliation.yaml` and the deterministic-field skeleton of `model.yaml` (every `id`, `sources`, `status`, ordering, and `*.sources` field) from `(Evidence[], authority-overrides)` alone. The kernel never reads the bound `target` or its `shape` brief.
-3. Commit `schemas/slice/synthesis-envelope.schema.json` (request + response) and embed it as `SYNTHESIS_ENVELOPE_JSON_SCHEMA`. The request carries the Evidence map, authority resolution, reconciliation path, model skeleton path, shape brief, and the closed `forbidden-inputs-for-requirements-prose` constraint list. The response carries the populated `model.yaml` plus the four Markdown artifacts.
-4. Implement the synthesis dispatcher: for `execution: executable`, pipe the request to a declared synthesis WASI tool on stdin; for `execution: agent-fallback` (the first-party default), write the request to `.specify/slices/<slice>/synthesis/request.yaml` and read the agent's response back from `.specify/slices/<slice>/synthesis/response.yaml`. In both modes, validate the response, reject any mutation of a deterministic field with `slice-synthesize-deterministic-field-mutation`, and merge with the skeleton.
-5. Enforce D8 in two layers. **Layer 1 (deterministic).** Unit-test the kernel: synthesise two slices binding different `target` values against the same Evidence map and assert the deterministic-field projection of `model.yaml` (every `id`, `sources`, `status`, ordering, every `*.sources` field) is **byte-identical** on the shared prefix. **Layer 2 (prose target-neutrality).** Integration-test the engine end-to-end: synthesise the same two slices via the real synthesis dispatcher (using a fixed-seed test stub for the agent) and assert prose target-neutrality by both (a) byte-equality on golden cases the stub renders deterministically, and (b) a fixture-local LLM-judge check with a fixed grader prompt on the more elaborate cases. Add the `slice-synthesize-forbidden-input-leak` probe as a separate fixture.
-6. Add `specrun slice synthesize` plus the `slice.synthesize.{started,skeleton-ready,agent-fallback,completed,failed}` journal events.
+2. Add the production authority resolver and the reconciliation kernel to `specify-workflow`. The kernel resolves RFC-27 authority over `Evidence[]` **before** dispatch, and — **after** the synthesis step returns its requirement set — projects over that structure: assigns `REQ-NNN` ids in declaration order, derives each requirement's `status` from authority over its declared `sources`, and writes `reconciliation.yaml`. The kernel never invents, drops, or re-groups requirements, and never reads the bound `target` or its `shape` brief.
+3. Commit `schemas/slice/synthesis-envelope.schema.json` (request + response) and embed it as `SYNTHESIS_ENVELOPE_JSON_SCHEMA`. The request carries the Evidence map, the resolved-authority path, shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint list (no reconciliation skeleton). The response carries the populated `model.yaml` — the agent-authored requirement set, declared `sources`, and prose — plus the four Markdown artifacts.
+4. Implement the synthesis dispatcher: for `execution: agent` (the first-party default), write the request to `.specify/slices/<slice>/synthesis/request.yaml` and read the agent's response back from `.specify/slices/<slice>/synthesis/response.yaml`; for `execution: executable`, pipe the request to a declared synthesis WASI tool on stdin. In both modes, reject any response that usurps a kernel-owned field with `slice-synthesize-kernel-field-usurped` or cites an orphan source with `slice-model-source-orphan`, then project the kernel over the returned structure and validate.
+5. Enforce D8 in two layers. **Layer 1 (kernel-projection determinism).** Unit-test the kernel over a captured, fixed synthesis-step response: project it twice and assert `reconciliation.yaml` and the kernel-owned projection of `model.yaml` (every `id`, `status`, `*.sources` field, in declaration order) are **byte-identical** and target-independent. **Layer 2 (requirement-set target-neutrality).** Integration-test the engine end-to-end: synthesise two slices binding different `target` values against the same Evidence map via the real dispatcher (using a fixed-seed test stub for the agent) and assert the shared-lead requirements are semantically equivalent across targets by both (a) byte-equality on golden cases the stub renders deterministically, and (b) a fixture-local LLM-judge check with a fixed grader prompt on the more elaborate cases. Add the `slice-synthesize-forbidden-input-leak` probe as a separate fixture.
+6. Add `specrun slice synthesize` plus the `slice.synthesize.{started,authority-resolved,agent,completed,failed}` journal events.
 7. Add `specrun slice model show <slice> [--format json]`.
-8. Update `/spec:refine` to call the CLI command. The engine handles the dispatch; the agent's contribution is rendering the prose-synthesis step's response, not driving the lifecycle.
+8. Update `/spec:refine` to call the CLI command. The engine handles the dispatch and the kernel projection; the agent's contribution is authoring the requirement set and prose, not driving the lifecycle.
 9. Extend `specrun slice validate` with the six slice-model drift checks and their `Error` variants (`slice-model-{schema,requirement-drift,reconciliation-drift,target-drift,source-orphan,cross-ref-orphan,id-grammar}`). Drift validation runs identically regardless of execution mode.
-10. Add the workspace-level `synthesize: { execution, tool?, enforce-executable? }` field to `schemas/workspace.schema.json` (or `project.yaml`'s schema where it lives today) and wire `slice-synthesize-execution-mode-required` rejection for `executable` without a declared tool.
+10. Add the workspace-level `synthesize: { execution, tool?, enforce-executable? }` field to `schemas/workspace.schema.json` (or `project.yaml`'s schema where it lives today), default `execution: agent`, and wire `slice-synthesize-execution-mode-required` rejection for `executable` without a declared tool.
 
 ### Wave D - Plan loader confirmation
 
@@ -1590,7 +1591,7 @@ Existing projects continue to work without any change to `plan.yaml`:
 - Target build briefs may initially read Markdown and ignore `model.yaml`, but first-party targets must migrate before RFC-29 is marked implemented.
 - Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
 - Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently. The companion `rfc-29-plan.md` PR list pins which adapters land each migration.
-- Slice synthesis ships with `synthesize.execution: agent-fallback` as the first-party default (D10). Projects that already have a `/spec:refine` agent workflow continue to use it; the change is that the agent now operates inside a CLI-orchestrated envelope rather than driving the lifecycle. There is no "first-party adapters must be executable" deadline for synthesis — the executable mode is reserved for future declared synthesis tools.
+- Slice synthesis ships with `synthesize.execution: agent` as the first-party default (D10). Projects that already have a `/spec:refine` agent workflow continue to use it; the change is that the agent now operates inside a CLI-orchestrated envelope — authoring the requirement set and prose while the kernel projects ids, status, and provenance over its output — rather than driving the lifecycle. There is no "synthesis must become executable" deadline; `executable` is an optional path reserved for future declared synthesis tools, and `agent` is the designed centre, not a stopgap.
 
 Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes required for that slice and drift validation applies.
 
@@ -1601,15 +1602,15 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 - No graph database or global knowledge store for synthesis.
 - No automatic merging of semantically similar leads without exact id, alias, or operator-seeded evidence.
 - **No multi-target slices.** A slice binds exactly one target adapter / project (D5). Cross-target fan-out is plan-level, achieved by decomposing a change into multiple slices joined by `slices[].depends-on`. RFC-29 introduces no `outputs[]` array, no per-output lifecycle, no per-output build envelope, no per-output `.metadata.yaml` keying, and no per-output journal events. A future RFC that wishes to re-open this question must first amend `docs/explanation/decision-log.md` §"One plan entry, one project" and account for the multi-baseline merge contract that decision deliberately rules out.
-- No target-specific behavior in the reconciliation kernel. The bound target's `shape` brief is an input to the prose-synthesis step only, and only for the non-requirements sections of the slice model (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
-- No claim of deterministic prose synthesis. Cross-modal Evidence reconciliation is judgment work and remains agent-driven under the envelope defined in §"Synthesis envelope" (D3) and the execution mode in §"Synthesis execution mode" (D10). RFC-29 commits to deterministic *reconciliation*, not deterministic *prose*.
+- No target-specific behavior in the reconciliation kernel. The bound target's `shape` brief is an input to the non-requirements sections of the synthesis step only (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
+- No claim of deterministic requirement reconciliation. Deciding which requirements exist and how Evidence claims merge or split into them is the heart of synthesis and remains agent judgment, under the envelope defined in §"Synthesis envelope" (D3) and the execution mode in §"Synthesis execution mode" (D10). RFC-29 commits to a deterministic *kernel projection* — id assignment, status derivation, and provenance — over the agent's structure, **not** to a deterministic reconstruction of the requirement set or its prose. Cross-target consistency of requirements is target-neutrality by construction plus semantic equivalence, not byte-equality.
 - No commitment to per-target determinism on day one. RFC-29 commits only to a stable build envelope and validation contract; per-target determinism milestones are tracked in each target adapter's manifest and changelog.
 
 ## Relationship to RFC-35
 
 [RFC-35](rfc-35-synthesis-determinism.md) is the near-term stepping stone; RFC-29 builds its kernel on top. RFC-35 should land first (small, additive, unblocks the current agent-driven loop). The two RFCs share modules rather than duplicating logic:
 
-- **Shared kernel.** RFC-35 D6's `specrun slice reconciliation write` is a thin standalone entry point onto the same reconciliation kernel RFC-29 D3 wraps inside `specrun slice synthesize`. Whichever RFC lands the module first, the other consumes it.
+- **Shared kernel, shared direction.** RFC-35 D6's `specrun slice reconcile` derives `reconciliation.yaml` *from* the agent-authored `spec.md` — agent-first. RFC-29 D3 now takes the same direction: the agent authors the requirement set and the kernel projects `reconciliation.yaml` over it, rather than computing a requirement skeleton up front. RFC-35 D6 is therefore a thin standalone entry point onto the same reconciliation kernel RFC-29 D3 wraps inside `specrun slice synthesize`. Whichever RFC lands the module first, the other consumes it.
 - **One journal emitter.** RFC-35 D7 `specrun journal emit` is the writer RFC-29's new `source.*` and `slice.synthesize.*` event kinds use; RFC-29 adds kinds to the closed `EventKind` taxonomy, not a second emission path.
 - **One brief-location surface.** RFC-35 D9 `briefs_dir` is the deterministic brief-location output RFC-29 D1 and D3 rely on instead of cache-path arithmetic.
 
@@ -1634,7 +1635,7 @@ Exactly one question is unresolved. RFC-29 deliberately does **not** answer it i
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
 - RFC-28: Engineering Standards — Codex Contract and Findings
 - RFC-32: Engineering Standards — Deterministic Enforcement
-- [RFC-35: Synthesis Determinism](rfc-35-synthesis-determinism.md) — the synthesis-determinism stepping stone; its `specrun slice reconciliation write` (D6) is the standalone entry point onto the reconciliation kernel RFC-29 D3 wraps (see §"Relationship to RFC-35")
+- [RFC-35: Synthesis Determinism](rfc-35-synthesis-determinism.md) — the synthesis-determinism stepping stone; its `specrun slice reconcile` (D6) is the standalone entry point onto the reconciliation kernel RFC-29 D3 wraps (see §"Relationship to RFC-35")
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim reconciliation](../../plugins/spec/references/synthesis/claim-reconciliation.md)
