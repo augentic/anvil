@@ -11,7 +11,7 @@ Specify's architectural promise is a fan-in / fan-out workflow:
 
 This is the framework's "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project)). RFC-29 affirms it and does not extend the slice to multi-target.
 
-The current system has source adapters, target adapters, `Lead`, `Evidence`, provenance, authority, `reconciliation.yaml`, target `shape` briefs, and the `refine -> build -> merge` loop. The gap is that several load-bearing fan-in steps — survey, extract, plan-time reconciliation, and the *reconciliation half* of slice synthesis — are still implemented as agent discipline rather than CLI-owned contract. The *prose half* of slice synthesis (cross-modal reconciliation of design prose, code, and screenshots into requirement statements, scenarios, and design narrative) is judgment work and stays with an LLM; this RFC's job is to put a stable envelope around that step, not to claim it away.
+The gap is that several load-bearing fan-in steps — survey, extract, plan-time reconciliation, and the *reconciliation half* of slice synthesis — are still agent discipline rather than CLI-owned contract. The *prose half* of slice synthesis (cross-modal reconciliation of design prose, code, and screenshots into requirement statements, scenarios, and design narrative) is judgment work and stays with an LLM; this RFC puts a stable envelope around that step rather than claiming it away.
 
 This RFC turns the fan-in promise into an end-to-end contract by adding:
 
@@ -24,30 +24,9 @@ This RFC turns the fan-in promise into an end-to-end contract by adding:
 
 ## Motivation
 
-The current codebase can describe the fan-in/fan-out model, but it cannot yet prove it as a framework invariant.
+The current codebase can describe the fan-in/fan-out model, but it cannot yet prove it as a framework invariant: source operations are briefs not executable commands, plan-time lead reconciliation is agent-only, slice-time reconciliation has no production resolver, the machine-readable slice view is implicit, and target codegen is adapter-brief discipline with no stable envelope. The normative decisions below close each gap.
 
-The findings this RFC resolves:
-
-
-| Finding                                                      | Current state                                                                                                                                | RFC-29 resolution                                                                                                                                                                                  |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source operations are briefs, not executable CLI operations. | `specrun source resolve` exists; `survey` and `extract` are agent-run instructions.                                                       | Add `specrun source survey` and `specrun source extract` with sandbox, cache, schema validation, and journal events.                                                                            |
-| Plan-time lead reconciliation is agent-only.                    | `/spec:plan`'s `propose` sub-step reads `discovery.md` and calls `specrun plan add`.                                                         | Split the step in two. Add a deterministic `specrun plan propose --dry-run --format json` (Stage B1) that emits structural lead groups. The `/spec:plan` agent step keeps target binding (per-slice fan-out, D5) and writes via `specrun plan add`. A full-writer Stage B2 is deferred behind a Lead target-axis vocabulary (open question 6). |
-| Slice-time reconciliation has no production resolver.        | CLI validates `spec.md`, Evidence, and `reconciliation.yaml`; it does not own authority resolution, REQ-id assignment, or model projection.          | Add a `specrun slice synthesize` engine. It owns reconciliation bookkeeping (`reconciliation.yaml`, REQ-id assignment, structural `model.yaml` projection, drift validation) and dispatches the cross-modal prose synthesis under a stable agent envelope. |
-| The machine-readable slice view is implicit.                 | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, Evidence, and `reconciliation.yaml` together act as the slice model, but target builders consume Markdown. | Add `.specify/slices/<slice>/model.yaml` as generated machine-readable build input, with drift validation against rendered artifacts.                                                                 |
-| Target codegen is adapter-brief discipline.                  | Target `build` briefs orchestrate generation, validation, and review, but no stable input/output envelope joins them to core synthesis.      | Add a per-slice target build envelope; each target reports structured status, generated paths, validation commands, and RFC-28 review findings.                                                    |
-
-
-The goal is not to remove agents from Specify. The goal is to move stable workflow, reconciliation, and data-shape obligations into the CLI so agents can focus on judgment work — cross-modal Evidence reconciliation, repair, and domain-specific generation — rather than reimplementing lifecycle and reconciliation rules. Where judgment is unavoidable (and prose synthesis is the canonical case), this RFC's contribution is the **envelope** around the agent step: stable inputs, stable outputs, schema validation, drift validation, journal events, and an explicit `executable | agent-fallback` execution mode.
-
-## Principles
-
-1. **Core owns reconciliation bookkeeping.** Authority resolution, REQ-id assignment, provenance tracking, `reconciliation.yaml`, structural `model.yaml` projection, and drift validation belong in the CLI. Cross-modal prose synthesis — reconciling a design-document section, a legacy code module, a screenshot, and other heterogeneous Evidence into coherent requirement statements, scenarios, design narrative, and tasks — is judgment work that stays with an LLM under a stable envelope.
-2. **Markdown remains reviewable.** `proposal.md`, `spec.md`, `design.md`, and `tasks.md` stay the operator-facing artifacts. `model.yaml` is the machine view emitted alongside them, with drift validation tying both views back to the same reconciliation kernel.
-3. **One slice, one lifecycle, one target.** Each slice binds exactly one target adapter / project and walks one `refining -> refined -> built -> merged` lifecycle. Cross-target fan-out is plan-level — a change decomposes into multiple slices joined by `depends-on`. RFC-29 does not introduce a second per-output lifecycle inside a slice (see [decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project)).
-4. **Targets consume, not synthesize.** Target adapters may shape synthesis and build outputs, but they do not create behavioral requirements or provenance.
-5. **Synthesis runs under a stable envelope.** Cross-modal Evidence reconciliation is the canonical agent-with-envelope case, not a fallback. The CLI computes the deterministic reconciliation skeleton, dispatches the agent synthesis step with a fixed input shape (Evidence map + authority resolution + shape brief) and a fixed output shape (`model.yaml` + Markdown artifacts), validates the result against schema + drift checks, and persists. The same envelope shape supports a future executable / no-LLM fast path where the inputs admit one (e.g. single-source slices with statement-quality Evidence).
-6. **Compatibility is additive.** Existing one-source, one-target plans keep working. New `model.yaml` and envelope fields ride alongside the unchanged `slices[].target` / `slices[].project` shape.
+The goal is not to remove agents but to move stable workflow, reconciliation, and data-shape obligations into the CLI so agents focus on judgment work — cross-modal Evidence reconciliation, repair, and domain-specific generation. Where judgment is unavoidable (prose synthesis is the canonical case), the contribution is the **envelope** around the agent step: stable inputs, stable outputs, schema validation, drift validation, journal events, and an explicit `executable | agent-fallback` execution mode.
 
 ## Normative decisions
 
@@ -268,12 +247,12 @@ The full form reconciles the structural pass with the target-binding pass and wr
 
 ## Slice synthesis engine (D3)
 
-### Why the engine is not a pure resolver
+### Two layers
 
-Cross-modal Evidence reconciliation — reconciling a design-document section, a TypeScript module, screenshots, captures, and other heterogeneous source material into one coherent set of requirement statements, scenarios, and design narrative — requires LLM judgment. There is no deterministic function from `(design-prose, code-AST, vision-output)` to a single coherent `spec.md` requirement. The engine therefore splits cleanly into two layers:
+There is no deterministic function from `(design-prose, code-AST, vision-output)` to a single coherent `spec.md` requirement, so the engine splits cleanly into two layers:
 
-1. **Reconciliation kernel (deterministic, CLI-owned).** Authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml`, the `model.yaml` *skeleton* (every deterministic field of `model.yaml` per §"Shape-brief scope (D8)" below), and the six drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code and where D8's structural invariants are enforced.
-2. **Prose synthesis (judgment, agent-with-envelope by default).** Filling in the prose fields — `requirements[].title` / `.statement` / `.scenarios[]` / `.notes`, `domain.types[].fields[].description`, `apis.surfaces[].operations[]` request/response/errors prose, `technical-logic.decisions[].statement` / `.rationale`, `observability[].description`, `tasks[].text` — plus rendering the four Markdown artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) from the populated `model.yaml`.
+1. **Reconciliation kernel (deterministic, CLI-owned).** Authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml`, the `model.yaml` *skeleton* (every deterministic field per §"Shape-brief scope (D8)"), and the six drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code and D8's structural invariants are enforced.
+2. **Prose synthesis (judgment, agent-with-envelope by default).** Filling in the prose fields — `requirements[].title` / `.statement` / `.scenarios[]` / `.notes`, `domain.types[].fields[].description`, `apis.surfaces[].operations[]` request/response/errors prose, `technical-logic.decisions[].statement` / `.rationale`, `observability[].description`, `tasks[].text` — plus rendering the four Markdown artifacts from the populated `model.yaml`.
 
 The engine runs (1), runs (2) under the envelope defined in §"Synthesis envelope", then validates the merged result against `schemas/slice/model.schema.json` and the drift validators before the slice transitions to `refined`.
 
@@ -461,8 +440,6 @@ Absence of `model.yaml` is allowed for pre-RFC-29 slices and rejected for slices
 Target builders consume `model.yaml` as their machine input and may also read rendered Markdown for context. If they disagree, `model.yaml` wins for generated code shape and `spec.md` wins for operator-facing behavior. The drift validator is responsible for keeping that situation rare and visible.
 
 ## Per-slice fan-out (D5)
-
-### Why this section is short
 
 Cross-target fan-out is **plan-level**, not slice-level, per the framework's standing decision (see [decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project) and `docs/reference/targets/index.md`). RFC-29 affirms that contract and adds nothing to extend a slice to multi-target. No `outputs[]` field, no per-output lifecycle, no per-output build envelope, no per-output metadata, no per-output journal events.
 
@@ -1614,7 +1591,6 @@ Existing projects continue to work without any change to `plan.yaml`:
 - Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
 - Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently. The companion `rfc-29-plan.md` PR list pins which adapters land each migration.
 - Slice synthesis ships with `synthesize.execution: agent-fallback` as the first-party default (D10). Projects that already have a `/spec:refine` agent workflow continue to use it; the change is that the agent now operates inside a CLI-orchestrated envelope rather than driving the lifecycle. There is no "first-party adapters must be executable" deadline for synthesis — the executable mode is reserved for future declared synthesis tools.
-- Cross-repo references that anticipated the dropped multi-output model — notably `rfcs/next/rfc-30-init.md`'s `slices[].target` migration line and `rfcs/roadmap.md` §RM-06's follow-on bullet — have been retracted to the per-slice fan-out form alongside this revision. Any future reference that re-introduces an `outputs[]` desugar must be rejected against this section.
 
 Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes required for that slice and drift validation applies.
 
@@ -1631,62 +1607,15 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 
 ## Relationship to RFC-35
 
-[RFC-35](rfc-35-synthesis-determinism.md) (synthesis determinism) and RFC-29 both touch `reconciliation.yaml` generation and the `/spec:refine` synthesis path, but they sit at different layers and are sequenced as **stepping stone -> kernel**, not as competitors. The overlap is intentional and reconciled here so neither RFC duplicates the reconciliation derivation.
+[RFC-35](rfc-35-synthesis-determinism.md) is the near-term stepping stone; RFC-29 builds its kernel on top. RFC-35 should land first (small, additive, unblocks the current agent-driven loop). The two RFCs share modules rather than duplicating logic:
 
-RFC-35 is the near-term, additive layer. It corrects synthesis-reference contradictions and adds two deterministic CLI verbs — `specrun slice reconciliation write` (RFC-35 D6) and `specrun journal emit` (RFC-35 D7) — plus validator diagnostics (RFC-35 D8) and a `briefs_dir` field on `specrun {source,target} resolve` (RFC-35 D9). RFC-35 explicitly does **not** alter the synthesis contract: synthesis stays agent-driven and `reconciliation.yaml` becomes CLI-derived from `spec.md` + Evidence.
+- **Shared kernel.** RFC-35 D6's `specrun slice reconciliation write` is a thin standalone entry point onto the same reconciliation kernel RFC-29 D3 wraps inside `specrun slice synthesize`. Whichever RFC lands the module first, the other consumes it.
+- **One journal emitter.** RFC-35 D7 `specrun journal emit` is the writer RFC-29's new `source.*` and `slice.synthesize.*` event kinds use; RFC-29 adds kinds to the closed `EventKind` taxonomy, not a second emission path.
+- **One brief-location surface.** RFC-35 D9 `briefs_dir` is the deterministic brief-location output RFC-29 D1 and D3 rely on instead of cache-path arithmetic.
 
-RFC-29 D3 **subsumes**, rather than replaces, RFC-35 D6. The reconciliation kernel inside `specrun slice synthesize` (authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml` derivation, structural `model.yaml` projection, drift validation) is the same mechanical derivation RFC-35 D6 ships standalone. Concretely:
-
-- **Shared kernel, not parallel logic.** RFC-35 D6's reconciliation-writer module is the kernel RFC-29 D3 wraps. `specrun slice synthesize` calls it as one step of the synthesis envelope; `specrun slice reconciliation write` remains a thin standalone entry point onto the same code, for re-deriving the audit index without re-running prose synthesis. Whichever RFC lands a given module first, the other consumes it — neither re-implements the derivation.
-- **One journal emitter.** RFC-35 D7 `specrun journal emit` is the writer that RFC-29's new `source.*` and `slice.synthesize.*` event kinds use. RFC-29 adds event kinds to the closed `EventKind` taxonomy; it does not add a second emission path.
-- **One brief-location surface.** RFC-35 D9 `briefs_dir` is the deterministic brief-location output that RFC-29 D1 (`survey` / `extract`) and D3 (shape-brief dispatch in the synthesis envelope) rely on instead of cache-path arithmetic.
-
-**Sequencing.** RFC-35 should land first: it is small, additive, and unblocks the current agent-driven loop without waiting on the RFC-29 kernel. RFC-29 then builds the synthesis kernel and envelope on top of RFC-35's verbs. If a module needed by both is authored under RFC-29 first, the matching RFC-35 verb is implemented as the standalone entry point onto RFC-29's kernel rather than as separate logic. Roadmap [RM-06](roadmap.md#rm-06-fan-infan-out-workflow-contract) tracks RFC-29; RFC-35 is the sequenced stepping stone ahead of it.
-
-## Alternatives considered
-
-### Keep reconciliation in skills
-
-Rejected. Authority resolution, REQ-id assignment, provenance projection, `reconciliation.yaml`, the deterministic-field skeleton of `model.yaml`, and the drift validators are mechanical work that the current skill-driven path implements as scattered prose discipline. They can be tested, cached, journaled, and reused as a framework guarantee, and the fan-in/fan-out promise depends on a stable reconciliation kernel.
-
-This RFC does **not**, however, claim the surrounding prose synthesis is mechanical. Cross-modal Evidence reconciliation — reconciling a design-document section, a legacy code module, screenshots, and other heterogeneous source material into one coherent set of requirement statements, scenarios, and design narrative — is judgment work and stays with an LLM under a stable envelope (D3, D10). Earlier drafts of this RFC overreached by claiming the CLI could own that prose step; this revision corrects that, splitting the work into a deterministic kernel and an agent-driven synthesis step under a stable input/output envelope. The framework guarantee is on the kernel and the envelope, not on prose determinism.
-
-### Deterministic cross-modal prose synthesis
-
-Rejected. There is no deterministic function from `(design-prose, code-AST, screenshot-vision-output)` to a single coherent requirement statement, scenario, or design narrative. Forcing the CLI to own that step would either (a) require Evidence to pre-render every prose field at `extract` time (pushing the same judgment work upstream into a different agent step without removing it), or (b) require the engine to pick prose verbatim from one Evidence claim (which discards the others and breaks reconciliation). Both are worse than the agent-with-envelope model in §"Synthesis envelope".
-
-### Make Markdown the only slice model
-
-Rejected. Markdown is excellent for review and version control, but target builders need structured requirements, sources, APIs, configuration, tasks, and examples. Parsing Markdown in every target would duplicate fragile logic and create inconsistent generators.
-
-### Make `reconciliation.yaml` the slice model
-
-Rejected. `reconciliation.yaml` answers "why did this requirement win?" not "what should targets build?" It remains an audit index.
-
-### Multi-output slices (one slice, many targets)
-
-Considered in an earlier draft of this RFC under "D5 Multi-output plan entries" and rejected. A single slice driving multiple targets would have required the per-slice lifecycle to manage multiple project roots, multiple `shape` briefs, multiple build reports, and (most awkwardly) multiple baseline merges inside one `refining -> refined -> built -> merged` walk. That contradicts the existing "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project), `docs/reference/targets/index.md`, and `docs/explanation/adapter-anatomy.md`) and would have forced rework of `specrun slice merge`'s single-baseline contract.
-
-The accepted model is per-slice fan-out (D5): one slice, one target, one baseline, one merge. Cross-target changes decompose into N slices joined by `depends-on`. This costs some duplicate Evidence extraction when two slices reconcile the same Lead, but the duplication is bounded by the extraction cache (RFC-27) and pays for a single, well-defined per-slice lifecycle.
-
-### Allow arbitrary semantic lead auto-merge
-
-Rejected for v1. It would move too much judgment into the framework. Exact ids and aliases are reviewable; textual similarity is advisory until an operator accepts it.
+Roadmap [RM-06](roadmap.md#rm-06-fan-infan-out-workflow-contract) tracks RFC-29.
 
 ## Open questions
-
-### Resolved in this revision
-
-Every open question from the original draft is now a normative decision; this section is the resolution log, not a list of unanswered questions.
-
-- **Slice-model on-disk format.** Resolved: YAML on disk; JSON only via `specrun slice model show <slice> --format json`. See §"Typed slice model (D4)".
-- **Shape-brief scope.** Resolved as **D8** — shape briefs may parameterise slice-model structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but not `requirements[]` or any provenance-bearing field. The reconciliation kernel never reads the shape brief; the prose-synthesis step reads it for non-requirements sections only. See §"Slice synthesis engine (D3) → Shape-brief scope (D8)".
-- **Per-target determinism.** Dropped from the RFC contract; tracked per target adapter. RFC-29 commits only to envelope and validation determinism. See §"Non-goals".
-- **Slice fan-out shape.** Resolved as **D5** — fan-out is plan-level (one slice per target, joined by `slices[].depends-on`). The dropped multi-output-per-slice form is documented in §"Alternatives considered → Multi-output slices". Cross-slice build context flows through `prior-slices[]` on the build envelope (§"Target build envelope (D6)").
-- **Adapter execution fallback.** Resolved as **D9** — closed `execution: executable | agent-fallback` enum on adapter manifests; first-party adapters must be `executable`, third-party adapters may be `agent-fallback` indefinitely. See §"Adapter execution mode (D9)".
-- **Synthesis execution mode.** Resolved as **D10** — closed `execution: executable | agent-fallback` enum at the workspace level for the slice-synthesis step inside `specrun slice synthesize`. First-party Specify defaults to `agent-fallback` (the honest default for cross-modal Evidence reconciliation); `executable` is reserved for future declared synthesis tools. The CLI owns the reconciliation kernel and the synthesis envelope; the agent owns prose synthesis. See §"Synthesis execution mode (D10)".
-
-### Remaining open question
 
 Exactly one question is unresolved. RFC-29 deliberately does **not** answer it in v1 and is fully implementable without it — the v1 decision is already pinned (option (d), per **D2 Stage B1**), and the question is only the prerequisite for the deferred **D2 Stage B2** full writer.
 
