@@ -14,7 +14,7 @@ Step  Session                                             Repo(s)               
 3     Vectis target brief alignment                       specify                 done         make check (passed) + focused rg clean
 4     Omnia target brief alignment                        specify                 done         make check (passed) + focused rg clean
 5     Contracts target brief alignment                    specify                 done         make check (passed) + focused rg clean
-6     Resolver JSON briefs-dir output                     specify-cli             not-started  source/target resolve tests
+6     Resolver JSON briefs-dir output                     specify-cli             done         source/target resolve tests
 7     Proposal Units validator rename                     specify-cli             not-started  validator tests + goldens
 8     Spec file-location diagnostics                      specify-cli             not-started  slice validate tests
 9     Cross-repo acceptance and operator notes            both                    not-started  make check + cargo make check/ci
@@ -347,6 +347,22 @@ Exit criteria:
 
 - Source and target resolve tests pass.
 - Run `cargo make check` if feasible; otherwise run the narrow integration tests and record why the full check was deferred.
+
+### Step 6 session notes
+
+Completed. `cargo make check` passes with zero failures. Source and target resolve integration tests both verify the new `briefs-dir` field is present, absolute, and correctly formed.
+
+Files changed:
+
+- `src/runtime/commands.rs` — added `briefs_dir: String` field to `ResolveBody` struct (serialises as `briefs-dir` via `rename_all = "kebab-case"`); populated in both `Axis::Source` and `Axis::Target` arms of `resolve_adapter` as `location.path().join("briefs")`; added `briefs-dir:` line to `write_resolve_text` for text-format output.
+- `tests/source.rs` — added assertions that `briefs-dir` ends with `/briefs`, contains the expected adapter path segment, and is absolute (verified against raw stdout before tempdir substitution).
+- `tests/target.rs` — same assertion pattern for the target adapter resolve test.
+
+The change is strictly additive: existing JSON parsers that do not read `briefs-dir` are unaffected. The text output gains one new `briefs-dir:` line after `location:`.
+
+Observations for future steps:
+
+- No changes required to the plan sequencing or scope of Steps 7–9.
 
 ## Step 7 - Proposal `Units` Validator Rename
 
