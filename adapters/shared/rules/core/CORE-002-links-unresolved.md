@@ -27,7 +27,7 @@ Every relative `[label](target)` markdown link under `adapters/`, `plugins/`, `d
 
 The path scope mirrors the retired imperative `links.unresolved` predicate: archival design-history trees and the proposals directory are excluded by design because they intentionally cite future or deferred work whose targets do not yet exist on disk.
 
-Broken links rot documentation: skill briefs, target adapter references, codex bodies, and AGENTS map files all rely on the fence-aware `[label](target)` shape that this rule covers. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced (`crates/specify-lints/src/lint/index/markdown.rs::extract_links` + `index.rs::resolve_link`), so the rule cost is one BTreeSet lookup per candidate file at lint time.
+Broken links rot documentation: skill briefs, target adapter references, codex bodies, and AGENTS map files all rely on the fence-aware `[label](target)` shape that this rule covers. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced (`crates/lints/src/lint/index/markdown.rs::extract_links` + `index.rs::resolve_link`), so the rule cost is one BTreeSet lookup per candidate file at lint time.
 
 ## Look For
 

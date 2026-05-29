@@ -101,7 +101,7 @@ Envelope shape:
 }
 ```
 
-The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/lint/lint-result.schema.json` for the envelope, `schemas/lint/finding.schema.json` for each `LintFinding`, and `crates/authoring/schemas/rule.schema.json` for rule authoring shape.
+The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/diagnostics/diagnostic-report.schema.json` for the envelope, `schemas/diagnostics/diagnostic.schema.json` for each `LintFinding`, and `crates/authoring/schemas/rule.schema.json` for rule authoring shape.
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 

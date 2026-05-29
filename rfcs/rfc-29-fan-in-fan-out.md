@@ -566,7 +566,7 @@ cache:
   outcome: miss
 ```
 
-`findings[]` items validate against `schemas/lint/finding.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding (`target-build-success-with-critical-finding`).
+`findings[]` items validate against `schemas/diagnostics/diagnostic.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding (`target-build-success-with-critical-finding`).
 
 The report is persisted at `.specify/slices/<slice>/build/report.yaml` and surfaces to downstream slices via their own request's `prior-slices[]` entries.
 
@@ -1174,7 +1174,7 @@ The slice-model, build-request, and build-report schemas key on `(slice, target)
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/target/build-report.schema.json",
   "title": "Specify target build report",
-  "description": "Validates the build-report envelope returned by a target adapter for one (slice, target) pair per RFC-29 §Target build envelope. One slice binds one target (D5 §Per-slice fan-out) — no `output-id` keying. Persisted at `.specify/slices/<slice>/build/report.yaml`. Closed top-level shape — unknown fields are rejected. `findings[]` entries are validated against `schemas/lint/finding.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding.",
+  "description": "Validates the build-report envelope returned by a target adapter for one (slice, target) pair per RFC-29 §Target build envelope. One slice binds one target (D5 §Per-slice fan-out) — no `output-id` keying. Persisted at `.specify/slices/<slice>/build/report.yaml`. Closed top-level shape — unknown fields are rejected. `findings[]` entries are validated against `schemas/diagnostics/diagnostic.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -1232,7 +1232,7 @@ The slice-model, build-request, and build-report schemas key on `(slice, target)
     "findings": {
       "type": "array",
       "items": {
-        "$ref": "https://github.com/augentic/specify-cli/schemas/lint/finding.schema.json"
+        "$ref": "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json"
       }
     },
     "evidence-cited": {
