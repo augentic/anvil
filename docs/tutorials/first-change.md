@@ -96,6 +96,6 @@ When all three entries are `done`:
 
 ## Next steps
 
-- [Bind multiple sources](../how-to/bind-multiple-sources.md) — fuse legacy code and docs at plan time
+- [Bind multiple sources](../how-to/bind-multiple-sources.md) — reconcile legacy code and docs at plan time
 - [Cross-repo changes](cross-repo-change.md) — workspace mode
 - [Lifecycle](../reference/lifecycle.md) — per-entry and slice state machines

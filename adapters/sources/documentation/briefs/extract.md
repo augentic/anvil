@@ -30,7 +30,7 @@ Closed for this adapter:
 | `decision` | `decision` | A design or product decision the docs record (often "Decision:" lines or paragraphs). |
 | `section` | (free-form) | A bounded prose section worth carrying into synthesis verbatim when no finer-grained claim fits. |
 
-`claim-id` is **required** on `requirement` and `criterion` kinds (deterministic fusion at synthesis time keys off it). `claim-id` is **optional** on `decision` and `section`. Other claim kinds in `schemas/evidence.schema.json` are out of scope for this adapter.
+`claim-id` is **required** on `requirement` and `criterion` kinds (deterministic reconciliation at synthesis time keys off it). `claim-id` is **optional** on `decision` and `section`. Other claim kinds in `schemas/evidence.schema.json` are out of scope for this adapter.
 
 ## `path` grammar
 

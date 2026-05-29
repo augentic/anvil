@@ -15,7 +15,7 @@ At plan time, bind a code source alongside or instead of documentation:
 /spec:plan legacy-migration source legacy=code-typescript:./vendor/monolith
 ```
 
-The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis fuses into `spec.md`.
+The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`.
 
 Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `/spec:execute` drives each slice through refine → build → merge.
 

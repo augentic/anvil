@@ -12,7 +12,7 @@ references:
 
 ## Rule
 
-Operator-provided documentation is the highest-fidelity input for `authority: documentation` Evidence; rephrasing it inside a claim silently weakens the authority hierarchy (`intent > documentation > behaviour`) and breaks fusion audit at synthesis time, because `spec.md` requirement bodies cite the claim text but reviewers verify it against the path anchor. `requirement.statement`, `criterion.criterion`, and `decision.decision` MUST quote the text at the cited `path` anchor. Light grammatical normalisation — capitalisation of the leading character, terminal punctuation, trimming surrounding whitespace — is permitted; reordering clauses, substituting vocabulary, collapsing bullet lists, or summarising prose is not. When a span of source text cannot be carried as a single behavioural claim, emit a `section` claim that preserves the bounded prose rather than paraphrasing it into a `requirement` or `criterion`.
+Operator-provided documentation is the highest-fidelity input for `authority: documentation` Evidence; rephrasing it inside a claim silently weakens the authority hierarchy (`intent > documentation > behaviour`) and breaks reconciliation audit at synthesis time, because `spec.md` requirement bodies cite the claim text but reviewers verify it against the path anchor. `requirement.statement`, `criterion.criterion`, and `decision.decision` MUST quote the text at the cited `path` anchor. Light grammatical normalisation — capitalisation of the leading character, terminal punctuation, trimming surrounding whitespace — is permitted; reordering clauses, substituting vocabulary, collapsing bullet lists, or summarising prose is not. When a span of source text cannot be carried as a single behavioural claim, emit a `section` claim that preserves the bounded prose rather than paraphrasing it into a `requirement` or `criterion`.
 
 ## Look For
 
@@ -24,4 +24,4 @@ Operator-provided documentation is the highest-fidelity input for `authority: do
 
 ## Spec Guidance
 
-When the documentation phrasing is genuinely ambiguous, contradictory, or silent, mark the resulting `spec.md` requirement with the appropriate tag (`[unknown]`, `[conflict]`, `[divergence]`) rather than smoothing the wording inside Evidence. Authority ordering depends on faithful provenance, not editorial polish — fusion will surface the gap to the operator, and a verbatim section claim plus a tagged requirement is always preferable to a confident paraphrase.
+When the documentation phrasing is genuinely ambiguous, contradictory, or silent, mark the resulting `spec.md` requirement with the appropriate tag (`[unknown]`, `[conflict]`, `[divergence]`) rather than smoothing the wording inside Evidence. Authority ordering depends on faithful provenance, not editorial polish — reconciliation will surface the gap to the operator, and a verbatim section claim plus a tagged requirement is always preferable to a confident paraphrase.

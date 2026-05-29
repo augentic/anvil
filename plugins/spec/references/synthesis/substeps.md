@@ -19,8 +19,8 @@ Behavioural requirements. **This is the only synthesised artifact the provenance
 
 Authoring loop:
 
-1. Group all claims across all Evidence by `claim-id` (deterministic on `requirement` / `criterion` per the Evidence schema; see [`claim-fusion.md`](claim-fusion.md) for how `decision` / `section` / `excerpt` / `type` / `call` / spatial / `intent` claims contribute).
-2. For each fused group, apply [`authority.md`](authority.md)'s decision table to pick `Status:`.
+1. Group all claims across all Evidence by `claim-id` (deterministic on `requirement` / `criterion` per the Evidence schema; see [`claim-reconciliation.md`](claim-reconciliation.md) for how `decision` / `section` / `excerpt` / `type` / `call` / spatial / `intent` claims contribute).
+2. For each reconciled group, apply [`authority.md`](authority.md)'s decision table to pick `Status:`.
 3. Emit one H3 requirement block per group, numbering `REQ-001`, `REQ-002`, … in source order (top of the highest-authority Evidence document down). Within one Evidence, keep claim order.
 4. For each block that carries a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 

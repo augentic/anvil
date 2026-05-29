@@ -6,7 +6,7 @@
 
 > Operator binds a legacy repo and a design-notes path on the same slice.
 
-**Stress-tests:** Synthesis end-to-end: serial `extract` per source; two-entry `Evidence[]`; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic fusion; lifecycle reaches `refined` cleanly when sources agree.
+**Stress-tests:** Synthesis end-to-end: serial `extract` per source; two-entry `Evidence[]`; `Sources:` line carrying both keys; `claim-id` correlation produces deterministic reconciliation; lifecycle reaches `refined` cleanly when sources agree.
 
 ## Run-summary
 

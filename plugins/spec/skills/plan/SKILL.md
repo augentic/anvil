@@ -1,12 +1,12 @@
 ---
 name: specify-plan
-description: Plan a Specify change end-to-end — pre-flight, scaffold `change.md` and `plan.yaml`, survey each bound source, write `discovery.md`, fuse leads into `slices[]` via the agent-driven `propose` sub-step, and exit at `pending` with the literal Gate-1 transition hint. Use when starting a fresh change from one or more bound sources (or pure intent); not when continuing an already-approved plan into execution (use `/spec:execute`).
+description: Plan a Specify change end-to-end — pre-flight, scaffold `change.md` and `plan.yaml`, survey each bound source, write `discovery.md`, reconcile leads into `slices[]` via the agent-driven `propose` sub-step, and exit at `pending` with the literal Gate-1 transition hint. Use when starting a fresh change from one or more bound sources (or pure intent); not when continuing an already-approved plan into execution (use `/spec:execute`).
 argument-hint: <name> [source]...
 ---
 
 # Plan Skill
 
-`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, fuses the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
+`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, reconciles the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
 
 N=1 is degenerate, not special. A single intent binding produces one lead, one slice with `sources: [intent]` shorthand, and the same Gate-1 hint. Multi-source planning differs only in step counts.
 
@@ -17,7 +17,7 @@ N=1 is degenerate, not special. A single intent binding produces one lead, one s
 3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey. The CLI validates `registry.yaml` first; a malformed registry is a hard failure.
 4. **Survey each source** — for every binding under `plan.yaml.sources.<key>`, run `specrun source resolve <adapter>` to locate the adapter root and the `briefs/survey.md` path, then execute the brief; the CLI exposes the bound `path` as the read-only `SOURCE_DIR` WASI preopen (bindings carrying `value:` get no `SOURCE_DIR` preopen). Append each emitted lead block under `## Lead inventory` in `discovery.md`. Re-running `/spec:plan` replaces same-source ids; new sources append fresh ids.
 5. **Write `discovery.md`** — the three-section form: `## Summary` (one-line counts), `## Source inventory` (one row per bound source), `## Lead inventory` (one block per lead). N=1 leaves `Summary` and `Source inventory` minimal. Template: [`../../references/discovery.md`](../../references/discovery.md).
-6. **Propose** — fuse leads into `slices[]` rows (see *Propose sub-step* below).
+6. **Propose** — reconcile leads into `slices[]` rows (see *Propose sub-step* below).
 7. **Validate (Gate 1 optional)** — `specrun plan validate --format json` before printing the closing hint when multi-slice or workspace plans need doctor output. Surface Error-level findings verbatim; Warnings are advisory.
 8. **Exit at `pending`** — print this closing hint exactly. Do not call `specrun plan transition`:
 
@@ -45,10 +45,10 @@ The skill forwards every binding to `specrun plan create --source <key>=<adapter
 The agent reads the full `## Lead inventory` in `discovery.md`, matches leads across sources by `id`, `summary`, and `sources[]`, and writes one `slices[]` row per unit of work:
 
 1. **Write the slice row** — `specrun plan add <slice> --sources <key>=<lead-id> ...`. Pass one `--sources` argument per contributing source. In workspace plans, also pass `--project <project>` to route the slice to its slot. The CLI writes the structured `{ key, lead }[]` shape; single-source intent slices may emit the bare `[intent]` shorthand.
-2. **Tentative annotations** — when fusion is uncertain (leads share intent but differ in scope), annotate the contributing blocks in `discovery.md` with a `tentative: true` bullet, and add a `## Tentative merges` block to `change.md` with one paragraph of reasoning per uncertain fusion. The plan still progresses to `pending`; the operator overrides via `specrun plan amend` at Gate 1.
+2. **Tentative annotations** — when reconciliation is uncertain (leads share intent but differ in scope), annotate the contributing blocks in `discovery.md` with a `tentative: true` bullet, and add a `## Tentative merges` block to `change.md` with one paragraph of reasoning per uncertain reconciliation. The plan still progresses to `pending`; the operator overrides via `specrun plan amend` at Gate 1.
 3. **`divergence: likely`** — when merged leads' `summary` strings materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), invoke `specrun plan amend <name> <slice> --divergence likely` for each affected slice. The CLI is the single writer of `plan.yaml.slices[].divergence` (any value) and fires `plan.amend.divergence` once per invocation. Also add a `## Likely divergences` block to `change.md` listing the contributing lead-pair summaries side by side; that operator-facing prose is still authored by the skill.
 
-Authority hierarchy does not apply at propose — without `Evidence`, fusion runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
+Authority hierarchy does not apply at propose — without `Evidence`, reconciliation runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
 
 ## Guardrails
 

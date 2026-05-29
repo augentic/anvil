@@ -55,11 +55,11 @@ claims:
 
 This adapter emits three kinds from the closed enum (`evidence.schema.json#/$defs/claimKind`):
 
-- **`excerpt`** — a behavioural code span. Use this for handler bodies, validation logic, error paths, and other behaviour the requirement / criterion synthesis will fuse on. One claim per span; spans should be focused (typically 5–80 lines of source) and accompanied by a short `excerpt:` field carrying enough context for the reader to understand the behaviour. **Do not dump raw file contents.** The `path:` anchor is the source of truth; the `excerpt:` field is short context, not a verbatim file paste.
+- **`excerpt`** — a behavioural code span. Use this for handler bodies, validation logic, error paths, and other behaviour the requirement / criterion synthesis will reconcile on. One claim per span; spans should be focused (typically 5–80 lines of source) and accompanied by a short `excerpt:` field carrying enough context for the reader to understand the behaviour. **Do not dump raw file contents.** The `path:` anchor is the source of truth; the `excerpt:` field is short context, not a verbatim file paste.
 - **`type`** — a declared interface, type alias, class declaration, or DTO. Use this when synthesis will need the shape of an input / output (e.g. `CreateUserDto`, `RegistrationResult`). The body field is `signature:` — the declaration's source spelling (one line preferred; multi-line acceptable for short class headers).
 - **`call`** — an observed cross-module call that contributes to the lead's behaviour. Use this when synthesis must know that a handler delegates to another module (the call is the wire). The body field is `callee:` — `<module>:<symbol>` matching the `handler` resolution rules from the survey brief (named export, `<ClassName>.<method>`, framework-suffixed inline arrow, etc.).
 
-`claim-id` is optional on `excerpt` / `type` / `call` (per `evidence.schema.json` — required only on `requirement` and `criterion`). You MAY carry it for deterministic cross-source fusion when the claim corresponds to a stable concept; otherwise omit it.
+`claim-id` is optional on `excerpt` / `type` / `call` (per `evidence.schema.json` — required only on `requirement` and `criterion`). You MAY carry it for deterministic cross-source reconciliation when the claim corresponds to a stable concept; otherwise omit it.
 
 ## Anchors and excerpts
 
@@ -101,7 +101,7 @@ claims:
     callee: "src/users/repository.ts:insertUser"
 ```
 
-Three claims, three anchors, no raw source bodies. Synthesis fuses these into `Status: agreed` requirements with `Sources: [legacy-monolith]` when no other source contributes; when documentation or intent also contributes, the authority hierarchy (`intent > documentation > behaviour`) decides.
+Three claims, three anchors, no raw source bodies. Synthesis reconciles these into `Status: agreed` requirements with `Sources: [legacy-monolith]` when no other source contributes; when documentation or intent also contributes, the authority hierarchy (`intent > documentation > behaviour`) decides.
 
 ## Path rules
 
@@ -113,7 +113,7 @@ Same skip-root and traversal rules as the survey brief: relative paths only, no 
 - **Speculative claims.** Do not infer behaviour the code does not exhibit. If the handler does not enforce uniqueness, do not emit a uniqueness `excerpt`. Synthesis tags unknowns; you do not.
 - **Tests-as-evidence.** Skip `*.test.*`, `*.spec.*`, `tests/`, `__tests__/`. Test files document expected behaviour; this adapter extracts observed behaviour from production source.
 - **Type-only `.d.ts` files.** A `.d.ts` declares ambient types, not behaviour. Use the originating `.ts` file when possible; emit no claim when only a `.d.ts` is reachable.
-- **Cross-source synthesis.** Do not fuse this lead's claims with another source's Evidence — that is core synthesis's job in `/spec:refine` after every `extract` returns. Emit Evidence purely from `$SOURCE_DIR`.
+- **Cross-source synthesis.** Do not reconcile this lead's claims with another source's Evidence — that is core synthesis's job in `/spec:refine` after every `extract` returns. Emit Evidence purely from `$SOURCE_DIR`.
 - **Whole-file paths without anchors.** A `path: src/users/register.ts` claim is legal under the schema but useless for synthesis. Always anchor to the smallest meaningful range.
 
 ## Failure modes

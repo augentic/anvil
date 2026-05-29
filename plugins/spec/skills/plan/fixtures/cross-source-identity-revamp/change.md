@@ -6,7 +6,7 @@ Reconstruct the identity surface against the latest design notes while preservin
 
 ## Scope
 
-Two slices, both fused by `propose` from a documentation source and a TypeScript legacy source. The propose sub-step matched `user-registration` cleanly across both sources; the `password-reset` row pairs the documentation lead with the legacy lead `account-pwd-reset` after a tentative match on intent.
+Two slices, both reconciled by `propose` from a documentation source and a TypeScript legacy source. The propose sub-step matched `user-registration` cleanly across both sources; the `password-reset` row pairs the documentation lead with the legacy lead `account-pwd-reset` after a tentative match on intent.
 
 ## Tentative merges
 

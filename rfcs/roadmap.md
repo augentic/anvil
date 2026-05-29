@@ -56,7 +56,7 @@ After the standards layer lands, three tracks run in parallel:
 **Goal:** Turn Specify's fan-in/fan-out promise into a CLI-owned end-to-end contract so reconciliation is a framework invariant, not agent discipline.
 **Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
-**Why now:** Vocabulary and lifecycle guards exist, but `enumerate`, `extract`, plan-time fusion, slice synthesis, typed IR, and multi-output fan-out are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
+**Why now:** Vocabulary and lifecycle guards exist, but `enumerate`, `extract`, plan-time reconciliation, slice synthesis, typed IR, and multi-output fan-out are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
 **First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
 
 ```bash
@@ -119,7 +119,7 @@ specrun plan impact --change <name>
 #### RM-12: Catalog import: Backstage adapter
 
 **Goal:** Enrich Specify planning from external catalogs without making Specify a developer portal.
-**Depends:** RM-06 (plan-time fusion and registry routing should consume stable candidate/slice shapes before catalog enrichment adds another input).
+**Depends:** RM-06 (plan-time reconciliation and registry routing should consume stable candidate/slice shapes before catalog enrichment adds another input).
 **Target surface:**
 
 ```bash

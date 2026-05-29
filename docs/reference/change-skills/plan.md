@@ -2,7 +2,7 @@
 <div class="eyebrow">Reference</div>
 <h1 class="hero-title">/spec:plan</h1>
 
-Survey bound sources, fuse leads into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
+Survey bound sources, reconcile leads into `slices[]`, validate the plan, and exit at Gate 1 (`pending`).
 
 <div class="meta-row">
 
@@ -70,7 +70,7 @@ Not for continuing an already-approved plan into execution — use [/spec:execut
 3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey.
 4. **Survey each source** — run each source adapter's `survey` brief; append lead blocks to `discovery.md`.
 5. **Write `discovery.md`** — three sections: Summary, Source inventory, Lead inventory.
-6. **Propose** — fuse leads into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when fusion is uncertain.
+6. **Propose** — reconcile leads into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when reconciliation is uncertain.
 7. **Validate** — `specrun plan validate --format json` when multi-slice or workspace plans need doctor output.
 8. **Exit at `pending`** — print the closing hint; never call `specrun plan transition`.
 

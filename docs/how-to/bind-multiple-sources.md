@@ -1,6 +1,6 @@
 # Bind multiple sources
 
-Fuse evidence from more than one source adapter at plan time.
+Reconcile evidence from more than one source adapter at plan time.
 
 **Prerequisites:** Completed [Quick start](../tutorials/quick-start.md).
 
@@ -24,7 +24,7 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 
 ## Multi-source slices
 
-At propose time, fuse leads across sources into one slice row:
+At propose time, reconcile leads across sources into one slice row:
 
 ```bash
 specrun plan add <slice> --sources legacy=<lead-id> --sources docs=<lead-id>
@@ -32,7 +32,7 @@ specrun plan add <slice> --sources legacy=<lead-id> --sources docs=<lead-id>
 
 Single-source intent slices may use the shorthand `sources: [intent]`.
 
-## Uncertain fusion
+## Uncertain reconciliation
 
 When leads align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `approved`.
 

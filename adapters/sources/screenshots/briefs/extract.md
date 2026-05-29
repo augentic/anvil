@@ -50,7 +50,7 @@ Spatial coordinates (when known) ride on a per-claim `bbox: { x, y, w, h }` body
 
 ## Claim-id grammar
 
-`claim-id` is **optional** on the spatial kinds (the Evidence schema only requires it on `requirement` and `criterion`). Include it anyway — downstream synthesis fuses claims across multiple Evidence documents using the `claim-id` as the deterministic key, and components in particular need stable ids across re-runs.
+`claim-id` is **optional** on the spatial kinds (the Evidence schema only requires it on `requirement` and `criterion`). Include it anyway — downstream synthesis reconciles claims across multiple Evidence documents using the `claim-id` as the deterministic key, and components in particular need stable ids across re-runs.
 
 Recommended pattern:
 

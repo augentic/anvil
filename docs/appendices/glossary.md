@@ -45,7 +45,7 @@ The operator-defined umbrella that coordinates one or more slices through `chang
 The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specrun workspace push` publishes them.
 
 **Claim**
-One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `claim-id` for deterministic fusion across sources.
+One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `claim-id` for deterministic reconciliation across sources.
 
 **Conflict**
 Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by hand-editing `spec.md` or by amending sources. Tags never park the slice.
@@ -118,7 +118,7 @@ The shared shape for either adapter role. Schemas `source.schema.json` / `target
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that fuses `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml`. Agent-default with operator override at Gate 1. Tentative merges annotate with `tentative: true`; materially-disagreeing summary pairs set `slices[].divergence: likely`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml`. Agent-default with operator override at Gate 1. Tentative merges annotate with `tentative: true`; materially-disagreeing summary pairs set `slices[].divergence: likely`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.

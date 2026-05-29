@@ -163,7 +163,7 @@ projects:
 **Created by:** `/spec:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
-Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead fusion) and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
+Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation) and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
 
 ```markdown
 # Identity revamp

@@ -80,7 +80,7 @@ claims:
     path: src/users/register.ts#L12-L87
 ```
 
-Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` for deterministic fusion. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
+Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
 
 ### Sandboxing
 
@@ -169,7 +169,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
     </div>
   </div>
   <p style="font-size: 12px; margin: 8px 0 0; font-family: ui-monospace, monospace;">
-    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes by reading the slice's <code>fusion.yaml</code>.
+    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes by reading the slice's <code>reconciliation.yaml</code>.
   </p>
 </div>
 

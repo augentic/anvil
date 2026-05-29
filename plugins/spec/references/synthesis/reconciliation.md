@@ -1,10 +1,10 @@
-# Reconciliation index (`fusion.yaml`)
+# Reconciliation index (`reconciliation.yaml`)
 
 The audit-only index per slice of every `REQ-*` id and the contributing `(source, claim-id)` pairs synthesis consulted plus the authority outcome. The resolution rules — per-kind precedence, per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only how to author the index that records which rule fired.
 
 ## When the skill writes it
 
-`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `fusion.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice fusion write` verb. After the atomic rename succeeds, emit the `slice.fusion.written` journal event.
+`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `reconciliation.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice reconciliation write` verb. After the atomic rename succeeds, emit the `slice.reconciliation.written` journal event.
 
 ## Block grammar
 
@@ -153,7 +153,7 @@ Boolean, optional:
 - **Absent** on every entry of an `agreed` block (`single-source` and `single-value-agreement`) — there is no winner / loser distinction.
 - **Absent** on every entry of a `tied-conflict` block — no winner exists.
 - **`true`** on the synthesis-selected entry of an `authority-resolved` or `per-slice-override` block.
-- **`false`** on every other contributing claim in an `authority-resolved` or `per-slice-override` block — every entry the index dropped survives in `fusion.yaml` so the operator can audit what was discarded.
+- **`false`** on every other contributing claim in an `authority-resolved` or `per-slice-override` block — every entry the index dropped survives in `reconciliation.yaml` so the operator can audit what was discarded.
 
 ## Resolution-trace step names
 
@@ -161,26 +161,26 @@ Boolean, optional:
 
 | `step` | When |
 | --- | --- |
-| `per-slice-authority-override` | The slice's `authority-override.<kind>` named a source key in the fused group; that source won. Paired with `resolution: per-slice-override`. |
+| `per-slice-authority-override` | The slice's `authority-override.<kind>` named a source key in the reconciled group; that source won. Paired with `resolution: per-slice-override`. |
 | `per-evidence-authority-override` | A contributing Evidence document's `authority-overrides.<kind>` resolved a strictly-greater authority class than the other contributors' effective class for this kind. Paired with `resolution: authority-resolved`. |
 | `document-authority-ordering` | Fallback to the document-level `authority:` enum (`intent > documentation > behaviour`); highest class won. Paired with `resolution: authority-resolved`. |
 
-The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `fusion.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specrun slice validate` will not refuse it.
+The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `reconciliation.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specrun slice validate` will not refuse it.
 
 ## Audit posture
 
-`fusion.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same audit-only posture used by plan summary metadata.
+`reconciliation.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same audit-only posture used by plan summary metadata.
 
-Operator hand-edits to `fusion.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
+Operator hand-edits to `reconciliation.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
 
 ## Drift detection
 
-`specrun slice validate` refuses with structured error `slice-fusion-drift` (exit 2) on either of two drift conditions:
+`specrun slice validate` refuses with structured error `slice-reconciliation-drift` (exit 2) on either of two drift conditions:
 
-1. **REQ-id parity drift.** The set of `REQ-*` ids in `spec.md` MUST equal the set of `requirements[].id` in `fusion.yaml`, with order preserved.
+1. **REQ-id parity drift.** The set of `REQ-*` ids in `spec.md` MUST equal the set of `requirements[].id` in `reconciliation.yaml`, with order preserved.
 2. **Contributing-claim → evidence drift.** Every `requirements[].contributing-claims[]` entry's `(source, claim-id)` MUST resolve to a real claim in the per-source `evidence/<source-key>.yaml`. A stale `claim-id` (the source's Evidence rewrote the id) or a stale `source` (the slice's `sources[]` binding was removed) both surface as drift.
 
-Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `fusion.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `fusion.yaml` re-aligns; running `specrun slice validate` alone will not regenerate the index.
+Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `reconciliation.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `reconciliation.yaml` re-aligns; running `specrun slice validate` alone will not regenerate the index.
 
 ## Worked example
 
@@ -250,6 +250,6 @@ REQ-001 is the agreed cross-source case (one shared statement; no winner / loser
 ## References
 
 - [`authority.md`](authority.md) — authority hierarchy, override surfaces, and the resolution-order taxonomy the `resolution-trace.step` names mirror.
-- [`claim-fusion.md`](claim-fusion.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
+- [`claim-reconciliation.md`](claim-reconciliation.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
 - [`tags.md`](tags.md) — tag / `Status:` coherence on the matching `spec.md` requirement block.
-- [`fusion.md`](fusion.md) — normative reconciliation-index shape and rationale.
+- [`reconciliation.md`](reconciliation.md) — normative reconciliation-index shape and rationale.

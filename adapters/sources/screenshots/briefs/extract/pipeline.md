@@ -112,7 +112,7 @@ Record uncertainty on the affected claim under a `notes:` map when:
 - An asset reference is expected but `assets.yaml` does not list the ID (`notes.todo: add image '<id>' to assets.yaml`).
 - A candidate component skeleton is borderline (`notes.candidate_component: <slug>` — see stage 6).
 
-Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthesis output as a `[unknown]` tag against the affected requirement during fusion.
+Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthesis output as a `[unknown]` tag against the affected requirement during reconciliation.
 
 ## Determinism
 
@@ -127,5 +127,5 @@ Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthe
 Re-runs are additive and conservative; the CLI replaces Evidence by `(<source-key>, <lead-id>)` tuple, but within a run:
 
 - A re-run against the same source images MAY refine previously emitted body fields when the same images still support the refinement.
-- Operator overrides committed at synthesis time (post-fusion edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `claim-id`s so the fusion layer can detect and preserve operator edits.
+- Operator overrides committed at synthesis time (post-reconciliation edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `claim-id`s so the reconciliation layer can detect and preserve operator edits.
 - When the new screenshots no longer contain a previously inferred element, simply do not emit its claim. The synthesis layer detects the drop via the missing `claim-id` and tags affected requirements with `[unknown]` / `[divergence]` — there is no `# stale-source:` annotation at the Evidence layer.

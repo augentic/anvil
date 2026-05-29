@@ -19,8 +19,8 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
 - **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
-- **fusion.yaml** — reconciliation index at `.specify/slices/<slice>/fusion.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [`plugins/spec/references/synthesis/fusion.md`](plugins/spec/references/synthesis/fusion.md) for the reconciliation-index shape and audit posture.
-- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, lead id). See [`plugins/spec/references/synthesis/claim-fusion.md`](plugins/spec/references/synthesis/claim-fusion.md) and the CLI extraction-cache implementation for the stable cache inputs.
+- **reconciliation.yaml** — reconciliation index at `.specify/slices/<slice>/reconciliation.yaml`. Audit-only; `spec.md` is the authoritative artifact. See [`plugins/spec/references/synthesis/reconciliation.md`](plugins/spec/references/synthesis/reconciliation.md) for the reconciliation-index shape and audit posture.
+- **cache fingerprints** — closed five-input key for the extraction cache (source path, adapter name@version, brief sha256, sorted tool versions, lead id). See [`plugins/spec/references/synthesis/claim-reconciliation.md`](plugins/spec/references/synthesis/claim-reconciliation.md) and the CLI extraction-cache implementation for the stable cache inputs.
 - **component catalog** — operator-curated file at `.specify/design-system/components.yaml` declaring shared UI components (`status: confirmed | rejected`). The Vectis target reads the catalog at build time and factors shared component code per shell tree. Follows the same pattern as `tokens.yaml` and `assets.yaml`. Opt-in; absent catalog means no component factoring. Validated by `specrun slice validate` (`slice-catalog-drift`) and `specrun tool run vectis -- validate composition` (catalog cross-reference check). See [docs/explanation/components.md](docs/explanation/components.md).
 
 ### Workflow nouns
@@ -44,14 +44,14 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 
 `specrun lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
-### Authority and fusion mechanics
+### Authority and reconciliation mechanics
 
-The full mechanics — per-kind authority overrides, per-slice operator overrides, fusion-index shape, cache-fingerprint inputs, extraction-cache layout — live in the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). The headline rules:
+The full mechanics — per-kind authority overrides, per-slice operator overrides, reconciliation-index shape, cache-fingerprint inputs, extraction-cache layout — live in the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). The headline rules:
 
 - **Authority resolution order** — per-slice override → per-Evidence per-kind override → Evidence document-level `authority:` → conflict. See [`plugins/spec/references/synthesis/authority.md`](plugins/spec/references/synthesis/authority.md) for the resolution order and override surfaces.
 - **`captures` source adapter** — consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`.
 - **Authority-override authoring** — `specrun plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specrun slice validate` with `slice-authority-override-orphan-source-key`.
-- **Fusion drift** — `specrun slice validate` catches REQ-id and contributing-claim drift under `slice-fusion-drift`.
+- **Reconciliation drift** — `specrun slice validate` catches REQ-id and contributing-claim drift under `slice-reconciliation-drift`.
 - **Adapter opt-out of extraction cache** — `cache: opt-out` on `adapter.yaml`.
 
 ## Workflow overview
@@ -59,7 +59,7 @@ The full mechanics — per-kind authority overrides, per-slice operator override
 The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:execute` → `/spec:finalize`. Slash commands operators reach for, in the order they appear in a project's life:
 
 - `/spec:init` — scaffold `.specify/`, run once per project.
-- `/spec:plan` — author `change.md` and `plan.yaml`: survey each bound source, propose `slices[]` rows by fusing leads across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> approved` command.
+- `/spec:plan` — author `change.md` and `plan.yaml`: survey each bound source, propose `slices[]` rows by reconciling leads across sources, validate the plan. Exits at `plan.lifecycle: pending` and prints the literal `specrun plan transition <name> approved` command.
 - `specrun plan transition <name> approved` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `approved` itself.
 - `/spec:execute` — refuses unless the plan is `approved`; loops `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` until every per-entry `status` is `done`.
 - `/spec:refine` — breakout: for one slice, run `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.

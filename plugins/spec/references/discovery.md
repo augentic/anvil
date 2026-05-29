@@ -20,7 +20,7 @@ The propose sub-step matches across sources using `id`, `summary`, and `sources[
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 
-When the agent's propose sub-step judges a fusion uncertain, it adds a `tentative: true` bullet to each contributing block in this section and reasons about it in `change.md` under `## Tentative merges`. The lead block keeps every other field unchanged.
+When the agent's propose sub-step judges a reconciliation uncertain, it adds a `tentative: true` bullet to each contributing block in this section and reasons about it in `change.md` under `## Tentative merges`. The lead block keeps every other field unchanged.
 
 ## N=1 degenerate form (`intent.survey`)
 
