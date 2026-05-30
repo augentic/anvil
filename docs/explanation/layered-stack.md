@@ -70,7 +70,7 @@ The matching CLI surface spans **`specrun plan {create, add, amend, transition, 
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `reviewed`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specrun plan amend` before any per-slice work runs.
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specrun plan amend` before any per-slice work runs.
 
 The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 

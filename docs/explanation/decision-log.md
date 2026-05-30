@@ -52,7 +52,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev lint` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 
-**Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
+**Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `approved` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 

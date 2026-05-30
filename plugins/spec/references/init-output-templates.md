@@ -38,7 +38,7 @@ Next steps:
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
 2. Run `/spec:plan initial-baseline source code-typescript=.` (or whichever `code-*` source matches the codebase) to survey leads
-3. Stamp Gate 1 with `specrun plan transition initial-baseline reviewed`, then run `/spec:execute` to drive `refine -> build -> merge`
+3. Stamp Gate 1 with `specrun plan transition initial-baseline approved`, then run `/spec:execute` to drive `refine -> build -> merge`
 4. Run `/spec:plan <name> ...` for future changes
 ```
 

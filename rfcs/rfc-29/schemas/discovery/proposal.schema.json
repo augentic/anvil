@@ -21,6 +21,30 @@
       "description": "Target adapter identifier, e.g. `omnia@v1` or `contracts@v1`. Mirrors `plan.schema.json` slice `target` pattern.",
       "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
     },
+    "projectRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One registered project from `registry.yaml`, surfaced into the request so the agent can bind each `(group, target)` row to a project by matching the row's domain and target against the project's `target` and `description`. Mirrors `registry.yaml#/projects[]`.",
+      "required": [
+        "name",
+        "target"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Registry project name (`registry.yaml#/projects[].name`); the value the kernel writes to `plan.yaml.slices[].project` and that build-time workspace routing resolves against the registry."
+        },
+        "target": {
+          "$ref": "#/$defs/targetRef",
+          "description": "The project's registered target adapter (`registry.yaml#/projects[].target`). A response row may only bind to a project whose registered `target` equals the row's `target`."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Single-sentence domain characterisation (`registry.yaml#/projects[].description`). The disambiguation surface the agent judges against when more than one project shares a target."
+        }
+      }
+    },
     "matchBasis": {
       "type": "string",
       "description": "How a member joined its group. `exact-id` / `exact-alias` / `cross-reference` are the deterministic structural floor the kernel computes; `semantic` is the agent's cross-source judgment and is surfaced for operator review.",
@@ -135,6 +159,13 @@
           "items": {
             "$ref": "#/$defs/targetRef"
           }
+        },
+        "projects": {
+          "type": "array",
+          "description": "Registry topology in workspace mode — every entry from `registry.yaml#/projects[]` (name + target + description). Absent in single-repo mode (no `registry.yaml`, an empty registry, or a single-entry registry that behaves like single-repo mode); present and non-empty when the agent must bind each row to a project. The kernel computes this pre-pass from the parsed registry so the agent never re-reads `registry.yaml`.",
+          "items": {
+            "$ref": "#/$defs/projectRef"
+          }
         }
       }
     },
@@ -198,7 +229,8 @@
           "description": "Derived slice names this row depends on (not group-ids). Each name must resolve to a projected `plan.yaml.slices[]` entry."
         },
         "project": {
-          "$ref": "#/$defs/kebabName"
+          "$ref": "#/$defs/kebabName",
+          "description": "Registry project this `(group, target)` row binds to, chosen by the agent from the request's `projects[]` by matching the row's domain and `target` against each project's `description` and registered `target`. Written verbatim to `plan.yaml.slices[].project` and resolved against `registry.yaml` by build-time workspace routing. Required on every row in workspace mode (request carried a non-empty `projects[]`); omitted in single-repo mode. The kernel rejects a value absent from `registry.yaml` (`plan-reconcile-project-orphan`) or whose registered target disagrees with the row's `target` (`plan-reconcile-project-target-mismatch`)."
         },
         "rationale": {
           "type": "string",

@@ -34,7 +34,7 @@ Every change flows through one rhythm:
 </div>
 
 <div class="callout">
-  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/spec:plan</code> exits at <code>pending</code>; you stamp <code>reviewed</code> explicitly. Nothing executes until that transition.
+  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/spec:plan</code> exits at <code>pending</code>; you stamp <code>approved</code> explicitly. Nothing executes until that transition.
 </div>
 
 ## Why artifacts matter

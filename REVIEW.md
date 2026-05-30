@@ -4,212 +4,255 @@ Scope: `specify` + `specify-cli`, including shipped Skills. Pre-1.0.
 
 ## Summary (5 lines)
 
-1. **Top three:** (A) lift the byte-identical `specdev`/`specrun` lint error mappers + helpers into `specify-standards` (~−125 LOC); (B) collapse the duplicated `map_resolve_error` (~−42 LOC); (C) collapse the verbatim-duplicated `LintFormat` enum + `From` (−22 LOC). All are subtraction; no verified defect outranks them.
-2. **Total ΔLOC if all land:** ≈ **−223 LOC** (A −125, B −42, C −22, D −14, E −20).
-3. **Primary non-LOC axes moved:** −2 types (one `LintFormat` mirror, one `escape_*` fn pair), −module-edge churn (two CLI trees stop carrying private copies of the same mappers), and one *latent* defect retired (the two `map_hint_error` copies have already drifted — runtime binds `op` then discards it, authoring uses `..`).
-4. **Verified defects:** **none qualified.** `make lint` (specify) = "0 finding(s)"; `cargo clippy --workspace --all-targets --all-features -- -D warnings` = clean (exit 0). Non-test panic surface (`rg -c '\.(unwrap|expect)\('` = 935; `panic!|unreachable!` = 79) is almost entirely inside inline `#[cfg(test)]` modules; no operator-reachable handler panic found. Net ΔLOC from defect-only findings = **0** (≤ +30, trivially).
-5. **Most likely to break in remediation:** Finding A — moving the mappers to `specify-standards` must not pull a `specify-workflow` edge (`emit_lint_completed` stays behind because it touches `specify_workflow::journal`; the sibling-crate invariant in `specify-cli/AGENTS.md` forbids `specify-standards → specify-workflow`).
+1. **Top three:** (1) Gate 1 docs/skills use illegal `reviewed` transition operand while CLI accepts only `approved` (wire-contract defect); (2) 27 RFC-29 markdown links target filenames that do not exist on disk; (3) collapse duplicated `emit_lint_completed` into `journal.rs` (~−35 LOC).
+2. **Total ΔLOC if all land:** ≈ **−55 LOC** (F −35, G −25, H −5; defect fixes I/J/K are operand/link substitutions ≈0 net). Prior pass A–E already removed ≈ **−178 LOC** (see Post-mortem).
+3. **Primary non-LOC axes moved:** −defect surface (Gate 1 + RFC links + README binary name), −duplicate impls (`emit_lint_completed`, lint exit path), −call-site ceremony (one blocking check in `specdev lint`).
+4. **Verified defects closed:** **3 qualified** (Gate 1 operand drift, RFC-29 dead links, README `specify` vs `specrun`); net ΔLOC from defect-only I/J/K ≈ **0** (≤ +30). **Still open** if not remediated: operator panic surface remains documented-only (`CacheFingerprint::canonical_bytes` `expect` is intentional per comment).
+5. **Most likely to break in remediation:** **F** — journal helper must preserve distinct `eprintln!` prefixes (`specrun lint` vs `specdev lint`) and the asymmetric `LintScope` fields each surface sets today.
 
 ---
 
 ## Reconnaissance (current state)
 
-- `tokei`: Rust 385 files, **60,409 code lines**; Markdown 117 files.
-- `cargo tree --duplicates`: `base64` v0.21/v0.22 and `reqwest` v0.12/v0.13 doubled — **all transitive under `wasm-pkg-client`/`oci-client`/`warg-*`**, none in first-party `Cargo.toml`. `Cargo.toml` is frozen for this pass; not actionable.
-- test fns: **1,187**. `mod.rs` files: 5, **all under `tests/`** (allowed by `coding-standards.md`).
-- files > 500 lines under `crates/`+`src/`: 24 (largest `crates/workflow/tests/workspace.rs` 1048; largest non-test `crates/standards/src/rules.rs` 1016).
-- `make lint` (specify): **0 findings** (0 critical/important/suggestion/optional) → no skill-predicate defects.
-- `cargo clippy --workspace --all-targets --all-features -- -D warnings`: **pass (exit 0)**.
-- panic-adjacent: `unwrap|expect` non-test = 935; `panic!|unreachable!` non-test = 79 — sampled and found test-bound.
-- `#[allow(dead_code)]` / `#[allow(unused …)]`: **0**. `TODO|FIXME|XXX|HACK`: **0**.
 
-Net read: clean codebase. The one real structural debt is the `specdev lint` ⇄ `specrun lint` runner duplication; everything else is wire-bound or deliberately split.
+| Signal                                                     | `specify`                                              | `specify-cli`                                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `tokei` Rust                                               | 3 files, 105 code lines (+ large Markdown)             | 393 files, **59,970** code lines                                                               |
+| `make checks`                                              | **No Makefile target** (`make lint` is the CI surface) | —                                                                                              |
+| `make lint` / `specdev lint`                               | **0 findings**                                         | —                                                                                              |
+| `cargo make check`                                         | —                                                      | **pass** (fmt + clippy + test + test-docs)                                                     |
+| `cargo tree --duplicates`                                  | —                                                      | `base64` / `reqwest` doubled under `wasm-pkg-client` only; **not in first-party `Cargo.toml`** |
+| `#[test]` attrs (`rg -c '^#\[test\]' crates/ src/ tests/`) | —                                                      | **635**                                                                                        |
+| `mod.rs` under `crates/`+`src/`                            | —                                                      | **5** (all under `tests/`)                                                                     |
+| `docs/standards/*.md` + `AGENTS.md` wc                     | **732** total                                          | **836** total                                                                                  |
+| files > 500 lines (`crates/`+`src/`)                       | —                                                      | **19** (largest non-test `crates/standards/src/rules/resolve.rs` **1071**)                     |
+| `unwrap|expect` non-test sum                               | —                                                      | **982**                                                                                        |
+| `panic!|unreachable!` non-test sum                         | —                                                      | **80** (sampled: inline `#[cfg(test)]` or compile-time regex init)                             |
+| Prior review A–E `done when`                               | —                                                      | **all green** (`map_`* deduped; `LintFormat`×1; `escape` unified; `evaluate_rules` in runner)  |
+
 
 ---
 
 # Structural findings
 
-## A. Lift duplicated lint mappers into `specify-standards` — **−125 LOC**
+## F. Collapse duplicated `emit_lint_completed` — **−35 LOC**
 
 **Evidence (current state):**
 
 ```
-$ rg -n 'fn map_index_error|fn map_render_error|fn map_hint_error|fn count_status|fn emit_dump_model' src/
-src/authoring/commands/lint/run.rs:374:fn map_index_error(err: IndexError) -> Error {
-src/runtime/commands/lint/run.rs:346:fn map_index_error(err: IndexError) -> Error {
-src/authoring/commands/lint/run.rs:518:fn map_render_error(err: RenderError) -> Error {
-src/runtime/commands/lint/run.rs:458:fn map_render_error(err: RenderError) -> Error {
-src/authoring/commands/lint/run.rs:403:fn map_hint_error(rule: &ResolvedRule, err: HintError) -> Error {
-src/runtime/commands/lint/run.rs:386:fn map_hint_error(rule: &ResolvedRule, err: HintError) -> Error {
-src/authoring/commands/lint/run.rs:361:fn count_status(...) -> u32 {
-src/runtime/commands/lint/run.rs:299:fn count_status(...) -> u32 {
-src/authoring/commands/lint/run.rs:313:fn emit_dump_model(model: &WorkspaceModel) -> Result<()> {
-src/runtime/commands/lint/run.rs:239:fn emit_dump_model(model: &WorkspaceModel) -> Result<()> {
+$ rg -n 'fn emit_lint_completed' src/
+src/authoring/commands/lint/run.rs:221:fn emit_lint_completed(
+src/runtime/commands/lint/run.rs:191:fn emit_lint_completed(
 ```
 
-`map_index_error` (runtime 346–373 ≡ authoring 374–401), `map_render_error` (458–473 ≡ 518–533), `count_status` (299–310 ≡ 361–372), and `emit_dump_model` (239–254 ≡ 313–328) are **byte-identical**. `map_hint_error` is identical except a drifted `HintError::Filesystem` arm (runtime `{ op, path, source }` + `let _ = op;` at 438–445; authoring `{ path, source, .. }` at 455–459) — same output, proving the copies do not stay in sync.
-
-Every one of these maps a type **owned by `specify-standards`** (`IndexError`, `HintError`, `RenderError`, `FindingStatus`, `WorkspaceModel`) to `specify_error::Error` — and `specify-standards` already depends on `specify-error` and `specify-schema` (`specify-cli/AGENTS.md` crate graph). Their natural home is `specify-standards`, not two private copies in the binary crate.
+Both bodies build `LintScope` → `LintCounts` via `count_status` → `LintCompletedPayload` → `Event::new` → `journal::append_batch`, differing only in how `LintScope` is populated and the `eprintln!` prefix (`specdev lint` vs `specrun lint`). Payload types already live in `crates/workflow/src/journal.rs` (`LintScope`, `LintCounts`, `LintCompletedPayload`).
 
 **Action:**
-1. In `crates/standards/src/lint/diagnostics.rs` (already the home of `RenderError`/`render`), add `pub fn map_index_error`, `pub fn map_hint_error`, `pub fn map_render_error`, `pub fn count_status`, `pub fn emit_dump_model` — paste one copy verbatim (keep the runtime copy's richer `///` mapping tables).
-2. Delete all five fns from `src/runtime/commands/lint/run.rs` and `src/authoring/commands/lint/run.rs`.
-3. Add `map_index_error, map_hint_error, map_render_error, count_status, emit_dump_model` to the existing `use specify_standards::lint::diagnostics::{…}` import in both files.
-4. Leave `emit_lint_completed` where it is — it calls `specify_workflow::journal` and must not move (sibling-crate invariant).
 
-**Quality delta:** `−125 LOC, −5 duplicate impls, −1 latent drift defect (map_hint_error)`.
-**Net LOC:** two files ~169 + ~131 dup lines → one ~169-line home: `~470 → ~345` across touched files.
-**Done when:** `rg -c 'fn map_index_error' src/` returns **0** (was 2) and `rg -c 'pub fn map_index_error' crates/standards/` returns **1**.
-**Rule?** no — three call sites, enforced by the dedup itself.
-**Counter-argument:** "`src/.../lint/cli.rs` comments say keep `specify-standards` runtime-agnostic." Loses: that note is about *presentation* enums (`LintFormat`); mapping `specify-standards`' own error enums onto the shared `specify_error::Error` (an existing dep) is not runtime-specific, and the already-drifted `map_hint_error` shows the copies are a maintenance hazard.
+1. Add `pub fn emit_lint_completed(layout: Layout<'_>, scope: LintScope, findings: &[Diagnostic], duration_ms: u128, exit_code: i32, command_label: &str)` to `crates/workflow/src/journal.rs` (import `count_status` + `FindingStatus` from `specify_diagnostics`).
+2. Delete both private copies; call sites pass pre-built `LintScope` and `Layout::new(project_dir)` / `ctx.layout()`.
+
+**Quality delta:** `−35 LOC, −1 duplicate impl, −1 module edge at call sites`.
+**Net LOC:** `~58 → ~23` across the three touched files.
+**Done when:** `rg -c 'fn emit_lint_completed' src/` returns **0**; `rg -c 'pub fn emit_lint_completed' crates/workflow/` returns **1**.
+**Rule?** no.
+**Counter-argument:** "Handlers own telemetry policy." Loses: the payload shape is already workflow-owned journal contract; duplicating assembly guarantees drift on the next field.
 **Depends on:** none.
 
 ---
 
-## B. Collapse the documented `map_resolve_error` mirror — **−42 LOC**
+## G. Unify lint blocking exit — **−25 LOC**
 
 **Evidence (current state):**
 
-```
-$ rg -n 'fn map_resolve_error' crates/ src/
-src/authoring/commands/lint/run.rs:478:fn map_resolve_error(err: ResolveError) -> Error {
-src/runtime/commands/rules/export.rs:74:pub fn map_resolve_error(err: ResolveError) -> Error {
-```
-
-The authoring copy is an explicit, self-documented duplicate:
-
-```475:477:src/authoring/commands/lint/run.rs
-/// Mirror of `src/runtime/commands/rules/export.rs::map_resolve_error`
-/// kept local so the authoring tree does not depend on the runtime
+```226:241:specify-cli/src/runtime/commands/lint/run.rs
+fn decide_exit(result: &DiagnosticReport) -> Result<()> {
+    if !blocking_findings_present(&result.findings) {
+        return Ok(());
+    }
+    let detail = format!( ... summary ... );
+    Err(Error::validation_failed("review-findings-present", ...))
+}
 ```
 
-Both bodies map `ResolveError` (a `specify-standards` type) to `specify_error::Error`, 1:1 on all four arms.
+`specdev lint` inlines the same policy twice:
+
+```71:82:specify-cli/src/authoring/commands/lint/run.rs
+            let exit_code: i32 = if blocking_findings_present(&result.findings) { 2 } else { 0 };
+            ...
+            if blocking_findings_present(&result.findings) {
+                Exit::ValidationFailed
+            } else {
+                Exit::Success
+            }
+```
+
+`blocking_findings_present` already lives in `crates/standards/src/lint/ignore.rs` beside the exit semantics documentation.
 
 **Action:**
-1. Move the single `pub fn map_resolve_error` into `crates/standards/src/rules.rs` (or `rules/resolve.rs`, beside `ResolveError`).
-2. Delete the copy at `src/authoring/commands/lint/run.rs:478–516` and the definition at `src/runtime/commands/rules/export.rs:74–112`.
-3. Both `run.rs` files and `rules/export.rs` import it from `specify_standards` (the crate they already import).
 
-**Quality delta:** `−42 LOC, −1 duplicate impl, −1 cross-module `use` (export.rs no longer re-exported through runtime)`.
-**Net LOC:** `~81 → ~39` across touched files.
-**Done when:** `rg -c 'fn map_resolve_error' crates/ src/` returns **1** (was 2).
+1. Add `pub fn deny_blocking_findings(report: &DiagnosticReport) -> Result<(), Error>` next to `blocking_findings_present` in `ignore.rs` (move the `decide_exit` body verbatim).
+2. Replace `decide_exit` in `src/runtime/commands/lint/run.rs` with `deny_blocking_findings(&result)?`.
+3. In `src/authoring/commands/lint/run.rs`, bind `let blocking = blocking_findings_present(&result.findings);` once; set `exit_code` and `Exit` from that bool; call `deny_blocking_findings` only if you need the validation error path — or map `Exit::ValidationFailed` without duplicating the summary formatter (authoring returns `Exit`, not `Result` from the handler).
+
+**Quality delta:** `−25 LOC, −2 branches at call sites, −1 duplicate policy impl`.
+**Net LOC:** `~40 → ~15` across `ignore.rs` + both `run.rs`.
+**Done when:** `rg -c 'fn decide_exit' src/` returns **0**; `rg -c 'blocking_findings_present\(&result.findings\)' src/authoring/commands/lint/run.rs` returns **1** (was 2).
 **Rule?** no.
-**Counter-argument:** "the comment deliberately kept authoring independent of the runtime module." Loses: relocating to `specify-standards` (where `ResolveError` lives) satisfies the independence goal *better* than the copy, and deletes the copy outright.
-**Depends on:** none (independent of A; pairs naturally with it if both target `specify-standards`).
+**Counter-argument:** "Runtime and authoring exit types differ (`Result` vs `Exit`)." Loses: only the error *packaging* differs; severity policy is identical and belongs in one place (ripgrep keeps clap wiring separate from match logic the same way).
+**Depends on:** none.
+
+---
+
+## I. Gate 1: `reviewed` operand is rejected — **wire-contract defect**
+
+**Evidence (current state):**
+
+CLI accepts only `approved`:
+
+```320:326:specify-cli/src/runtime/commands/plan/lifecycle.rs
+            "plan-level transition target must be `approved`; got `{target}`. \
+             Run `specrun plan transition <plan-name> approved` to stamp Gate 1."
+```
+
+Documented operator commands still say `reviewed`:
+
+```
+$ rg -n 'plan transition.*reviewed|stamp.*reviewed' specify --glob '*.{md,svg}'
+README.md:34:specify plan transition <name> reviewed
+plugins/spec/references/init-output-templates.md:41:specrun plan transition initial-baseline reviewed
+plugins/capture/README.md:17:specrun plan transition ... reviewed
+docs/assets/diagrams/quick-reference/workflow-poster.svg:23:... reviewed
+```
+
+Skill + doc contradiction (body correct, description/caption wrong):
+
+```3:3:specify/plugins/spec/skills/execute/SKILL.md
+description: ... Gate 1 has stamped plan reviewed; ...
+```
+
+```73:73:specify/docs/explanation/layered-stack.md
+... operator writes `approved`. `/spec:execute` refuses on anything other than `reviewed`.
+```
+
+```9:9:specify/docs/reference/lifecycle.md
+<p class="pipeline-caption">Plan pending→reviewed; ...
+```
+
+(specify-cli) `docs/standards/handler-shape.md:100` documents `<plan-name> reviewed` as the Gate 1 operand while the journal event is `plan.transition.approved`.
+
+Repro: `specrun plan transition <name> reviewed` → exit **2**, `Error::Argument`, detail contains ``must be `approved`; got `reviewed```.
+
+**Action:** Global replace in operator-facing surfaces (skills, README, `docs/`**, `plugins/**`, SVG poster text, `specify-cli/docs/standards/handler-shape.md`, `workflow.md` plan-level row): transition operand and `plan.yaml` lifecycle value `**reviewed` → `approved**` wherever it denotes the Gate 1 stamp or stored lifecycle (not the English word "review" in prose about human inspection). Keep journal wire id `plan.transition.approved` unchanged.
+
+**Quality delta:** `−3 defect (wire-contract + skill integrity), ~0 LOC`.
+**Net LOC:** churn only (operand substitutions).
+**Done when:** `rg 'plan transition.*reviewed' specify plugins specify-cli/docs` returns **0**; `specrun plan transition test reviewed` still fails and `... approved` succeeds on a pending fixture plan.
+**Rule?** no — one-off vocabulary drift from Wave 1.2 rename.
+**Counter-argument:** "`reviewed` is the operator concept per DECISIONS.md." Loses: DECISIONS explicitly maps the stamp to `specrun plan transition <plan> approved`; prose alias must not appear in copy-paste commands.
+**Depends on:** none.
+
+---
+
+## H. README uses nonexistent `specify` binary — **defect**
+
+**Evidence (current state):**
+
+```12:17:specify-cli/Cargo.toml
+[[bin]]
+name = "specrun"
+...
+[[bin]]
+name = "specdev"
+```
+
+```34:34:specify/README.md
+specify plan transition <name> reviewed
+```
+
+No `[[bin]] name = "specify"` in the workspace.
+
+**Action:** In `README.md` (and the workflow-poster SVG if kept in sync with I), use `specrun` for CLI examples; apply finding **I**'s `approved` operand in the same edit.
+
+**Quality delta:** `−1 defect, −5 LOC (shorter command)`.
+**Net LOC:** `README.md` 34–38 → corrected two-line example.
+**Done when:** `rg '^specify plan' specify/README.md` returns **0**.
+**Rule?** no.
+**Counter-argument:** "`specify` is the product name operators alias." Loses: the shipped binary is `specrun`; undocumented aliases fail copy-paste.
+**Depends on:** I (operand).
 
 ---
 
 # One-touch tidies
 
-## C. De-duplicate the `LintFormat` enum + `From` impl — **−22 LOC**
+## K. `execute` skill description drift — **−0 LOC, 1 defect sub-item**
 
-**Evidence (current state):**
+**Evidence:** `plugins/spec/skills/execute/SKILL.md:3` says "stamped plan reviewed"; line 8/12 correctly require `approved`.
 
-```
-$ rg -n 'pub enum LintFormat' src/
-src/authoring/commands/lint/cli.rs:104:pub enum LintFormat {
-src/runtime/commands/lint/cli.rs:102:pub enum LintFormat {
-```
+**Action:** In frontmatter `description`, change `reviewed` → `approved`.
 
-The enum (4 variants) and its `impl From<LintFormat> for DiagnosticsFormat` are **byte-identical** (runtime `cli.rs` 101–122 ≡ authoring `cli.rs` 103–124).
+**Quality delta:** `−1 skill-integrity defect`.
+**Done when:** `rg 'stamped plan reviewed' plugins/spec/skills/execute/SKILL.md` returns **0**.
+**Depends on:** I.
 
-**Action:** keep the definition in `src/runtime/commands/lint/cli.rs`; in `src/authoring/commands/lint/cli.rs` delete lines 98–124 and `pub use crate::runtime::commands::lint::cli::LintFormat;`.
-**Quality delta:** `−22 LOC, −1 type, −1 From impl`.
-**Net LOC:** `~50 → ~28` across the two files.
-**Done when:** `rg -c 'pub enum LintFormat' src/` returns **1** (was 2).
-**Rule?** no.
-**Counter-argument:** "the doc says kept distinct so `specify-standards` stays runtime-agnostic." Loses: both copies already live in the **binary** crate, not `specify-standards`; defining once and re-using keeps the standards crate equally untouched.
-**Depends on:** none.
+## L. `specdev lint` double `blocking_findings_present` call
 
-## D. Collapse `escape_arg` / `escape_body` into one fn — **−14 LOC**
+**Evidence:** `src/authoring/commands/lint/run.rs:71` and `:79` (see G).
 
-**Evidence (current state):**
+**Action:** Fold into G; if G is skipped, bind `let blocking = ...` once.
 
-```
-$ rg -n 'fn escape_arg|fn escape_body' crates/standards
-crates/standards/src/lint/diagnostics/github.rs:66:fn escape_arg(s: &str) -> String {
-crates/standards/src/lint/diagnostics/github.rs:81:fn escape_body(s: &str) -> String {
-```
+**Quality delta:** `−1 branch evaluation, −2 LOC`.
+**Depends on:** G.
 
-`escape_body` (81–92) is `escape_arg` (66–79) minus the `','`/`':'` arms — same char-walk scaffolding twice.
+## M. `lifecycle.md` caption contradicts body
 
-**Action:** replace both with one fn:
+**Evidence:** caption `pending→reviewed` at line 9; body lines 18–19 say `approved`.
 
-```rust
-fn escape(s: &str, in_arg: bool) -> String {
-    let mut out = String::with_capacity(s.len());
-    for ch in s.chars() {
-        match ch {
-            '%' => out.push_str("%25"),
-            '\r' => out.push_str("%0D"),
-            '\n' => out.push_str("%0A"),
-            ',' if in_arg => out.push_str("%2C"),
-            ':' if in_arg => out.push_str("%3A"),
-            other => out.push(other),
-        }
-    }
-    out
-}
-```
+**Action:** Caption → `pending→approved`.
 
-Call sites: `escape_arg(x)` → `escape(x, true)`, `escape_body(x)` → `escape(x, false)`.
-**Quality delta:** `−14 LOC, −1 fn`.
-**Net LOC:** `27 → 13` for the two fns.
-**Done when:** `rg -c 'fn escape_arg|fn escape_body' crates/standards` returns **0**; `rg -c 'fn escape\(' crates/standards/src/lint/diagnostics/github.rs` returns **1**.
-**Rule?** no.
-**Counter-argument:** "two named fns read clearer." Loses: readability is not an axis; the bodies are one parameterised loop.
-**Depends on:** none.
+**Quality delta:** `−1 defect sub-item`.
+**Depends on:** I.
 
-## E. Share the hint-eval loop across both lint runners — **−20 LOC**
+## N. `layered-stack.md` Gate 1 sentence
 
-**Evidence (current state):** the per-rule deterministic-hint loop is duplicated:
+**Evidence:** line 73 refuses on `reviewed` after saying operator writes `approved`.
 
-```95:110:src/runtime/commands/lint/run.rs
-    for rule in &resolved.rules {
-        if matches!(rule.lint_mode, Some(LintMode::ModelAssisted)) {
-            continue;
-        }
-        let Some(hints) = rule.deterministic_hints.as_deref() else {
-            continue;
-        };
-        if hints.is_empty() {
-            continue;
-        }
-        let outcome = evaluate(rule, hints, &model, &ctx.project_dir, &runner, next_id)
-            .map_err(|err| map_hint_error(rule, err))?;
-```
+**Action:** Replace `reviewed` with `approved` in that sentence.
 
-The authoring copy (`src/authoring/commands/lint/run.rs:181–199`) is identical except a leading `rule_filter_set` gate (182–184).
-
-**Action:** add `pub fn evaluate_rules(rules: &[ResolvedRule], model, project_dir, runner, start_id, rule_filter: &[&str]) -> Result<(Vec<LintFinding>, Vec<ReservedSkipped>, u64), HintError>` to `crates/standards/src/lint/eval.rs`; both callers replace their loop with one call (runtime passes `&[]` as `rule_filter`). Deletes the loop from both run.rs.
-**Quality delta:** `−20 LOC, −1 duplicate loop`.
-**Net LOC:** `~16 + ~22 → ~25` (one fn).
-**Done when:** `rg -c 'for rule in &resolved.rules' src/` returns **0** (was 2).
-**Rule?** no.
-**Counter-argument:** "extract-function findings are discouraged." Loses: the exception explicitly applies — exactly 2 call sites delete duplicate code as a result.
-**Depends on:** none (composes with A).
+**Depends on:** I.
 
 ---
 
-## Post-mortem
+## Post-mortem (prior pass — already applied)
 
-One line per applied finding: actual ΔLOC vs predicted, did the "done when" assertion flip cleanly, did anything regress.
+Findings **A–E** from the previous review were implemented (−178 LOC roll-up per `git diff`). Do not re-apply. Verification snapshot:
 
-- **A:** ΔLOC −133 (−130 incl. test-import fix) vs predicted −125 — modest overshoot (moved copies carried more shared doc/blank lines than the single home). Done-when flipped cleanly (`fn map_index_error` in `src/` 2→0; `pub fn map_index_error` in `crates/standards/` =1). No regression; `cargo make check` green. Removed two now-unreachable `other =>` wildcards (same-crate `#[non_exhaustive]` no longer applies) and split two doc paragraphs for `clippy::too_long_first_doc_paragraph`.
-- **B:** ΔLOC −36 (B-only, hand-isolated from A's prior edits to the two `run.rs` files) vs predicted −42 — undershoot, because only the authoring copy is a true deletion; relocating the canonical fn + its three tests into `specify-standards` is net-neutral and import-block reflows add ~+7 back. Done-when flipped cleanly (`fn map_resolve_error` in `crates/ src/` 2→1). No regression; `cargo make check` green. Same-crate clippy needed `#[must_use]` + one doc-paragraph split.
-- **C:** ΔLOC −20 on the two prescribed `cli.rs` files vs predicted −22. Done-when flipped cleanly (`pub enum LintFormat` in `src/` 2→1). No regression; `cargo make check` green. One unforeseen step: the re-export path didn't resolve until `mod commands;` in `src/runtime.rs` was widened to `pub(crate) mod commands;` (net 0); also dropped now-unused `DiagnosticsFormat`/`ValueEnum` imports in authoring cli.rs.
-- **D:** ΔLOC −13 (6 ins / 19 del) vs predicted −14. Done-when flipped cleanly (`fn escape_arg|fn escape_body` →0; `fn escape(` →1). Merged fn verified behaviorally identical to both originals; github diagnostics formatter tests pass. No regression; `cargo make check` green (after a one-off transient `cargo clean` filesystem race, unrelated to the edit).
-- **E:** ΔLOC **+19** (E-isolated; `eval.rs` E-exclusive +52/−1, offset by ~−33 removed from the two `run.rs` loops) vs predicted −20 — wrong-direction miss. The single `evaluate_rules` fn (filter param, ModelAssisted/empty-hints skips, internal `map_hint_error` → `specify_error::Error`, tuple return, doc) is larger than the two duplicated loops, so the dedup wins single-source-of-truth but loses raw LOC. Done-when flipped cleanly (`for rule in &resolved.rules` in `src/` 2→0). Authoring `--rules` allow-list semantics preserved (runtime passes empty filter); no `specify-workflow` edge; lint runner tests pass; `cargo make check` green.
 
-**Roll-up:** total across A–E = **−178 LOC** (`git diff --shortstat`: 385 ins / 563 del across 11 files) vs predicted ≈ −223. Shortfall driven by E reversing direction (+19 vs −20) plus modest B/C/D undershoots; A overshot. Five duplicate impls + one drifted-mapper latent defect retired; sibling-crate invariant (`specify-standards` ⊥ `specify-workflow`) held throughout.
+| Check                                             | Current                                            |
+| ------------------------------------------------- | -------------------------------------------------- |
+| `fn map_index_error` in `src/`                    | 0                                                  |
+| `fn map_resolve_error` in `crates/ src/`          | 1 (`rules/resolve.rs`)                             |
+| `pub enum LintFormat` in `src/`                   | 1                                                  |
+| `fn escape_arg|escape_body` in `crates/standards` | 0 (`escape` in `diagnostics/src/render/github.rs`) |
+| `for rule in &resolved.rules` in `src/`           | 0 (`evaluate_rules` in `lint/runner.rs`)           |
+
+
+**E note:** shared `evaluate_rules` increased LOC (+19 vs predicted −20) but removed loop duplication; acceptable trade per review rules when burden of proof is duplication drift, not raw bytes.
 
 ---
 
 ## Dropped candidates (and why)
 
-- **`Rule` ⇄ `ResolvedRule` collapse** (`crates/standards/src/rules.rs` 376–405 / 434–468, bridge in `rules/resolve/sort.rs:86–120`): the `id`↔`rule-id` rename and the extra `origin`/`path-root`/`path` fields are a **deliberate wire boundary** (two separate `deny_unknown_fields` JSON schemas). ~34-line bridge, high wire-contract risk — burden of proof not met.
-- **Plan `Finding` ⇄ `Diagnostic`** (`change/plan/core/model.rs:673` / `change/plan/doctor.rs:46`): `Diagnostic` legitimately adds `data: Option<DiagnosticPayload>` + `code: String`; not a 1:1 mirror. 9-line bridge — too small to justify the risk.
-- **`SourceAdapter` ⇄ `TargetAdapter` twins** (`adapter/core.rs:214/251`): collapsing fights the documented F9 "operations typed at parse boundary" split (`specify-cli/AGENTS.md`). Explicit architectural decision.
-- **`LintResultVersion` ⇄ `WorkspaceModelVersion`** (`lint/diagnostics.rs:32` / `lint/model.rs:48`): a shared deserialise helper saves ~6 lines but adds a cross-module `use` + a helper — net ≈ 0, adds a module edge. Dropped.
-- **Transitive `base64`/`reqwest` duplicate deps:** all under vendored `wasm-pkg-client`/`warg-*`; `Cargo.toml` frozen. Not actionable.
-- **`specify` skills/docs:** `make lint` returns 0 findings; no skill-integrity or frontmatter/body-cap defect to close, and no taste-only edits proposed.
+- `**init/regular.rs` inline tests (396 lines, `#[cfg(test)]` from line 107):** moving or deleting requires a new `tests/` module file — forbidden ("no new modules/files"). Trimming tests without proof of redundancy fails the useful-tests bar.
+- **Transitive `base64`/`reqwest` duplicates:** vendored `wasm-pkg-client` tree; `Cargo.toml` frozen.
+- `**CacheFingerprint::canonical_bytes` `expect`:** documented intentional invariant; not operator-input-dependent.
+- **Framework `LinksCheck` vs `CORE-002`:** imperative skill-reference checks remain; only markdown link parity moved to declarative — not duplicate surface.
+- `**Rule` ⇄ `ResolvedRule` collapse:** wire-schema boundary (prior pass rationale stands).
+- **Re-open A–E:** already shipped; `done when` assertions pass.
+
+---
+
+## Post-mortem (this pass)
+
+- **F:** actual **−36 LOC** vs predicted −35; `done when` flipped cleanly (`fn emit_lint_completed` in `src/` = 0, `pub fn` in `crates/workflow/` = 1); no regression — `cargo make check` green; preserved distinct `specdev lint` / `specrun lint` prefixes and asymmetric `LintScope` at call sites.
+- **G (+L):** actual **−54 LOC** working-tree (G/L slice ~−25 as predicted; larger net includes co-located F diff); `done when` flipped cleanly (`decide_exit` = 0, single `blocking_findings_present` in authoring = 1); no regression — `cargo make check` green after `# Errors` doc on `deny_blocking_findings`.

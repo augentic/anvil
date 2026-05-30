@@ -6,7 +6,7 @@ Specify 2.0 carries three stacked lifecycles. The plan lifecycle gates execution
 
 ![Lifecycle state machines](../assets/diagrams/lifecycle/state-machines.svg)
 
-<p class="pipeline-caption">Plan pending→reviewed; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
+<p class="pipeline-caption">Plan pending→approved; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
 </div>
 
 Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md).

@@ -84,7 +84,7 @@ Used for both entry transitions (`kind: "entry"`) and the plan-level review stam
 
 ```json
 {
-  "current": "reviewed",
+  "current": "approved",
   "kind": "plan",
   "name": "demo",
   "plan": {

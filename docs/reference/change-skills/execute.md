@@ -12,7 +12,7 @@ Takes no positional arguments and no flags. The active plan is the one at `.spec
 
 ## When to use
 
-- Gate 1 has stamped the plan `reviewed` and you want to drive every slice to completion.
+- Gate 1 has stamped the plan `approved` and you want to drive every slice to completion.
 - Re-entering after execute parks on a build failure or merge conflict (reads on-disk state; no resume flags).
 
 Not before Gate 1, nor after every per-entry status is `done` (use [/spec:finalize](finalize.md)).
