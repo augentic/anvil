@@ -1,6 +1,6 @@
 # RFC-29d: Target Build Envelope and Fan-Out Proof
 
-> Status: Draft — Milestone **M3** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29c](rfc-29c-synthesis-typed-model.md) (consumes its `model.yaml`), [RFC-29a](rfc-29a-source-operations.md) (D9 enum) — Unblocks: RM-18 hosted execute; the RFC-29 acceptance proof
+> Status: Draft — Milestone **M3** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29c](rfc-29c-synthesis.md) (consumes its `model.yaml`), [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (the `execution` enum, [durable spec in `specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-execution-mode-d9)) — Unblocks: RM-18 hosted execute; the RFC-29 acceptance proof
 
 This is the final independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). The build request/report envelopes and the first-party targets consume `model.yaml` from M2b; the end-to-end D7 fixture is the final release gate that proves fan-in twice and fan-out once. The build-envelope schemas are **authored during this milestone's implementation** (not shipped as drafts), and the cross-project artifact-handoff case is a deferred open question.
 
@@ -11,7 +11,7 @@ The cross-milestone wire contracts this milestone appends to are pinned in [RFC-
 | ID | Decision |
 | -- | -------- |
 | **D6 Target build envelope** | Target adapters receive a stable per-slice build request and return a stable per-slice build report, keyed on `(slice, target)`; reports may include RFC-28 findings. |
-| **D9 Adapter execution mode** (target side) | Target adapters adopt the closed `execution` enum (defined in [RFC-29a](rfc-29a-source-operations.md)) for `build` / `merge` dispatch. |
+| **D9 Adapter execution mode** (target side) | Target adapters adopt the closed `execution` enum (shipped in M1; durable spec in [`specify-cli` `DECISIONS.md` §"Adapter execution mode (D9)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-execution-mode-d9)) for `build` / `merge` dispatch. |
 | **D7 Acceptance proof path** | The release is not complete until an end-to-end fixture demonstrates fan-in and cross-slice fan-out together. |
 
 ## Target build envelope (D6)
@@ -105,7 +105,7 @@ The recommended implementation order is:
 
 ## Adapter execution mode (D9, target side)
 
-Target adapters declare the same closed `execution: tool | agent` field defined in [RFC-29a §"Adapter execution mode (D9)"](rfc-29a-source-operations.md). On the target side it governs `build` / `merge` dispatch:
+Target adapters declare the same closed `execution: tool | agent` field shipped in M1 ([`specify-cli` `DECISIONS.md` §"Adapter execution mode (D9)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-execution-mode-d9)). On the target side it governs `build` / `merge` dispatch:
 
 - `tool` — `build` and `merge` run through a declared WASI tool or deterministic Rust path; inputs/outputs validate against the build envelopes above.
 - `agent` — the target brief is agent-executed against the same sandbox; the CLI orchestrates inputs and validates outputs but does not cache, emits `target.execution.agent` per invocation, and forces `cache: opt-out`.
@@ -117,10 +117,10 @@ RFC-29 is complete only when the acceptance suite proves the full path — fan-i
 ```text
 documentation + code-typescript
         -> source survey                 (fan-in #1: Lead sets)
-        -> plan propose --dry-run           (kernel returns required groups + candidate blocks)
-        -> plan propose --from              (envelope: agent-led cross-source matching — required
+        -> plan propose --dry-run           (kernel returns locked + advisory blocks)
+        -> plan propose --from              (envelope: agent-led cross-source matching — locked
                                              + semantic — and per-concept target binding;
-                                             kernel: validate, partition/required-group invariants, concept-id
+                                             kernel: validate, partition/locked-block invariants, concept-id
                                              assignment, journal, plan writers)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
@@ -168,10 +168,10 @@ tests/fixtures/rfc-29/fan-in-fan-out/
 
 Required assertions:
 
-- `specrun source survey` produces schema-valid leads for both sources, including a deliberate semantic-only pair (`docs` lead `password-reset` and `legacy` lead `reset-password`) that shares no id, alias, or cross-reference but does share identity blocking keys for advisory candidate-block generation.
-- `specrun plan propose --dry-run --format json` returns a `kind: request` envelope whose `reconciliation.required-groups` contains one group for the shared `identity-api` lead (`match-basis: exact-id`), whose `reconciliation.candidate-blocks[]` includes the `password-reset` / `reset-password` pair under the shared identity blocking keys, and whose `projects[]` surfaces the two registry projects (`identity-contracts` → `contracts@v1`, `identity-service` → `omnia@v1`); it validates against `proposal.schema.json` and writes nothing.
-- The fixture's `/spec:plan` agent step (or the test harness simulating it) returns a `kind: response` whose `lead-groups[]` preserves the `identity-api` required group and **semantically merges** `password-reset` with `reset-password` (`match-basis: semantic`) into the same concept, whose `slice-candidates[]` binds that concept to targets with explicit `slice-name` values (`identity-contracts`, `identity-service`), and whose candidates are **bound to registry projects** (`identity-contracts` → `identity-contracts`, `identity-service` → `identity-service`); `specrun plan propose --from` writes two single-target slices each carrying its bound `project`, with `identity-service.depends-on: [identity-contracts]`, emits `plan.reconcile.agent` + `plan.reconcile.completed`, and the semantic merge is rendered into `change.md` for Gate-1 review.
-- `specrun plan propose --from` rejects a response that splits the `identity-api` required group (`plan-reconcile-required-group-split`), one that leaves a surveyed lead unaccounted for or double-counts one (`plan-reconcile-partition`), one that cites a `(source-key, lead-id)` absent from `discovery.md` (`plan-reconcile-lead-orphan`), one whose slice candidate cites no declared lead group (`plan-reconcile-concept-orphan`), one whose lead group has no slice candidate (`plan-reconcile-concept-unbound`), one that omits `project` on a workspace slice candidate (`plan-reconcile-project-binding-required`), one that binds a slice candidate to a `project` absent from `registry.yaml` (`plan-reconcile-project-orphan`), and one that binds the `contracts@v1` candidate to the `omnia@v1` project (`plan-reconcile-project-target-mismatch`); `specrun plan propose` with neither `--dry-run` nor `--from` exits non-zero with `plan-propose-missing-grouping`.
+- `specrun source survey` produces schema-valid leads for both sources, including a deliberate semantic-only pair (`docs` lead `password-reset` and `legacy` lead `reset-password`) that shares no id, alias, or cross-reference but does share identity blocking keys for advisory block generation.
+- `specrun plan propose --dry-run --format json` returns a `kind: request` envelope whose `blocks[]` contains a locked block for the shared `identity-api` lead (`block.basis: exact-id` on each lead) and an advisory block for the `password-reset` / `reset-password` pair with the shared identity keys under `blocks[].keys[]`, and whose `projects[]` surfaces the two registry projects (`identity-contracts` → `contracts@v1`, `identity-service` → `omnia@v1`); it validates against `proposal.schema.json` and writes nothing.
+- The fixture's `/spec:plan` agent step (or the test harness simulating it) returns a `kind: response` whose `lead-groups[]` preserves the `identity-api` locked block and **semantically merges** `password-reset` with `reset-password` (`match-basis: semantic`) into the same concept, whose `slice-candidates[]` binds that concept to targets with explicit `slice-name` values (`identity-contracts`, `identity-service`), and whose candidates are **bound to registry projects** (`identity-contracts` → `identity-contracts`, `identity-service` → `identity-service`); `specrun plan propose --from` writes two single-target slices each carrying its bound `project`, with `identity-service.depends-on: [identity-contracts]`, emits `plan.reconcile.agent` + `plan.reconcile.completed`, and the semantic merge is rendered into `change.md` for Gate-1 review.
+- `specrun plan propose --from` rejects a response that splits the `identity-api` locked block (`plan-reconcile-required-group-split`), one that leaves a surveyed lead unaccounted for or double-counts one (`plan-reconcile-partition`), one that cites a lead `key` absent from the request (`plan-reconcile-lead-orphan`), one whose slice candidate cites no declared lead group (`plan-reconcile-concept-orphan`), one whose lead group has no slice candidate (`plan-reconcile-concept-unbound`), one that omits `project` on a workspace slice candidate (`plan-reconcile-project-binding-required`), one that binds a slice candidate to a `project` absent from `registry.yaml` (`plan-reconcile-project-orphan`), and one that binds the `contracts@v1` candidate to the `omnia@v1` project (`plan-reconcile-project-target-mismatch`); `specrun plan propose` with neither `--dry-run` nor `--from` exits non-zero with `plan-propose-missing-grouping`.
 - `specrun source extract` writes schema-valid Evidence for every `(slice, source)` pair.
 - `specrun slice synthesize` writes valid artifacts, `provenance.yaml`, and `model.yaml` for each slice.
 - `specrun slice validate` catches no provenance or slice-model drift on either slice.

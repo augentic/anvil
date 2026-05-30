@@ -92,10 +92,12 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | ----------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
 | `$CAPABILITY_DIR` | read-only  | `.specify/.cache/manifests/sources/<adapter>/` — adapter manifest cache (mirrored `adapter.yaml` + briefs). |
-| `$SCRATCH_DIR`    | write-only | `.specify/.cache/extractions/<adapter>/<slice>/` — per-slice scratch under the per-source extraction tree. |
+| `$SCRATCH_DIR`    | write-only | Per-operation scratch under the extraction tree, disjoint from the fingerprint result cache: `extract` → `.specify/.cache/extractions/<adapter>/<slice>/scratch/`; `survey` (plan-time, no slice) → `.specify/.cache/extractions/<adapter>/survey/scratch/`. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
 Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
+
+Under `execution: agent` the runner dispatches the operation in two phases: `prepare` builds the sandbox above, scaffolds the output target, emits `source.execution.agent`, and prints a handoff envelope on stdout, then returns control; the agent runs the brief against the prepared directory; `finalize` validates the output before it becomes visible (lead set / Evidence schema), then merges it into `discovery.md` (`survey`) or persists `evidence/<source-key>.yaml` (`extract`) and writes the cache. Under `execution: tool` the operation is single-phase. The CLI never blocks on agent work.
 
 ## Target adapter contract
 

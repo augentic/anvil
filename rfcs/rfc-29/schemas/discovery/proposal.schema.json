@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify lead reconciliation envelope",
-  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 \u00a7Lead reconciliation engine (D2). Discriminated by closed `kind`. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a pure function of the parsed `discovery.md` carrying the lead catalog, deterministic required groups (exact id / exact alias / transitive cross-reference), advisory candidate blocks, unmatched leads, targets, and optional workspace projects. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `lead-groups[]` partitions surveyed leads exactly once, while `slice-candidates[]` references those concepts and binds each `(concept-id, target)` pair to one target and optional project. The kernel validates this shape, enforces the global lead-partition and required-group invariants, derives unique `plan.yaml.slices[]` names from optional `slice-name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic. Closed top-level shape \u2014 unknown fields are rejected.",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat lead catalog plus locked/advisory reconciliation blocks, targets, and optional workspace projects. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `lead-groups[]` partitions surveyed leads exactly once, while `slice-candidates[]` references those concepts and binds each `(concept-id, target)` pair to one target and optional project. The kernel validates this shape, enforces the global lead-partition and locked-block invariants, derives unique `plan.yaml.slices[]` names from optional `slice-name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic. Closed top-level shape: unknown fields are rejected.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -16,6 +16,11 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
     },
+    "leadKey": {
+      "type": "string",
+      "description": "Stable request lead key in `<source>:<id>` form.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$"
+    },
     "targetRef": {
       "type": "string",
       "description": "Target adapter identifier, e.g. `omnia@v1` or `contracts@v1`. Mirrors `plan.schema.json` slice `target` pattern.",
@@ -24,7 +29,7 @@
     "projectRef": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One registered project from `registry.yaml`, surfaced into the request so the agent can bind each slice candidate to a project by matching the candidate's concept and target against the project's `target` and `description`. Mirrors `registry.yaml#/projects[]`.",
+      "description": "One registered project from `registry.yaml`, surfaced into the request so the agent can bind each slice candidate to a project by matching the candidate's concept and target against the project's `target` and `description`.",
       "required": [
         "name",
         "target"
@@ -32,22 +37,22 @@
       "properties": {
         "name": {
           "$ref": "#/$defs/kebabName",
-          "description": "Registry project name (`registry.yaml#/projects[].name`); the value the kernel writes to `plan.yaml.slices[].project` and that build-time workspace routing resolves against the registry."
+          "description": "Registry project name; the value the kernel writes to `plan.yaml.slices[].project`."
         },
         "target": {
           "$ref": "#/$defs/targetRef",
-          "description": "The project's registered target adapter (`registry.yaml#/projects[].target`). A slice candidate may only bind to a project whose registered `target` equals the candidate's `target`."
+          "description": "The project's registered target adapter. A slice candidate may only bind to a project whose registered `target` equals the candidate's `target`."
         },
         "description": {
           "type": "string",
           "minLength": 1,
-          "description": "Single-sentence domain characterisation (`registry.yaml#/projects[].description`). The disambiguation surface the agent judges against when more than one project shares a target."
+          "description": "Single-sentence domain characterisation used by the agent when more than one project shares a target."
         }
       }
     },
     "matchBasis": {
       "type": "string",
-      "description": "How a lead joined its group. `exact-id` / `exact-alias` / `cross-reference` are deterministic kernel-computed matches; `semantic` is the agent's cross-source judgment and is surfaced for operator review.",
+      "description": "How a lead joined its final lead group. `exact-id` / `exact-alias` / `cross-reference` are deterministic kernel-computed matches; `semantic` is the agent's cross-source judgment and is surfaced for operator review.",
       "enum": [
         "exact-id",
         "exact-alias",
@@ -55,43 +60,55 @@
         "semantic"
       ]
     },
-    "requiredMatchBasis": {
+    "lockedBasis": {
       "type": "string",
-      "description": "Kernel-computed basis for a required group.",
+      "description": "Kernel-computed proof basis for membership in a locked block.",
       "enum": [
         "exact-id",
         "exact-alias",
         "cross-reference"
       ]
     },
-    "memberRef": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "source-key",
-        "lead-id"
-      ],
-      "properties": {
-        "source-key": {
-          "$ref": "#/$defs/kebabName"
-        },
-        "lead-id": {
-          "$ref": "#/$defs/kebabName"
-        }
-      }
-    },
     "blockingKey": {
       "type": "string",
-      "description": "Deterministic key used only to build advisory candidate blocks, namespaced as `<kind>:<value>` (for example `domain:identity`, `module:auth`, `entity:user`, or `route:/password/reset`).",
+      "description": "Deterministic key used only to build advisory blocks, namespaced as `<kind>:<value>` (for example `domain:identity`, `module:auth`, `entity:user`, `route:/password/reset`, or `token:reset`).",
       "pattern": "^[a-z][a-z0-9-]*:[A-Za-z0-9._/~:-]+$"
+    },
+    "blockRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Request-side assignment of this lead to one reconciliation block. `basis` appears only when the kernel proved locked-block membership.",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "basis": {
+          "$ref": "#/$defs/lockedBasis"
+        }
+      }
     },
     "leadCatalogEntry": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "key",
+        "source",
+        "id",
         "summary"
       ],
       "properties": {
+        "key": {
+          "$ref": "#/$defs/leadKey"
+        },
+        "source": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "id": {
+          "$ref": "#/$defs/kebabName"
+        },
         "summary": {
           "type": "string",
           "minLength": 1,
@@ -103,67 +120,35 @@
           "items": {
             "$ref": "#/$defs/kebabName"
           },
-          "description": "Optional aliases from the surveyed Lead, used for exact-alias required groups and lexical fallback."
+          "description": "Optional aliases from the surveyed Lead, used for exact-alias locked blocks and lexical fallback."
         },
-        "blocking-keys": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/blockingKey"
-          },
-          "description": "Optional deterministic blocking keys emitted by source survey or derived by the kernel. Shared keys create advisory candidate-block edges; they are never semantic matches by themselves."
+        "block": {
+          "$ref": "#/$defs/blockRef"
         }
       }
     },
-    "requiredGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "concept-id",
-        "match-basis",
-        "members"
-      ],
-      "properties": {
-        "concept-id": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Canonical concept id the required group is recorded under (the shared `id` for exact-id / cross-reference, the canonical id behind an alias for exact-alias)."
-        },
-        "match-basis": {
-          "$ref": "#/$defs/requiredMatchBasis"
-        },
-        "members": {
-          "type": "array",
-          "minItems": 2,
-          "items": {
-            "$ref": "#/$defs/memberRef"
-          }
-        }
-      }
-    },
-    "candidateBlockBasis": {
+    "blockConstraint": {
       "type": "string",
       "enum": [
-        "shared-blocking-key",
-        "lexical-fallback",
-        "split-limit",
-        "singleton"
+        "locked",
+        "advisory"
       ]
     },
-    "candidateBlock": {
+    "reconciliationBlock": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "block-id",
-        "basis",
-        "open-leads"
+        "id",
+        "constraint"
       ],
       "properties": {
-        "block-id": {
+        "id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Stable id for an advisory matching work queue. Response `lead-groups[].block-id` may cite it for review traceability."
+          "description": "Stable id for a request-side reconciliation block. Response `lead-groups[].block-id` may cite advisory blocks for review traceability."
         },
-        "basis": {
-          "$ref": "#/$defs/candidateBlockBasis"
+        "constraint": {
+          "$ref": "#/$defs/blockConstraint",
+          "description": "`locked` blocks are deterministic exact-id / exact-alias / cross-reference groups the agent may extend but not split. `advisory` blocks are search-space hints that do not constrain response membership."
         },
         "keys": {
           "type": "array",
@@ -171,55 +156,15 @@
           "items": {
             "$ref": "#/$defs/blockingKey"
           },
-          "description": "Blocking keys that caused the kernel to place these leads in one advisory block. Lexical fallback keys use the `token:<term>` namespace."
+          "description": "Block-level union of blocking keys that explain why the kernel formed this block. Lexical fallback keys use the `token:<term>` namespace."
         },
-        "required-groups": {
+        "adjacent-blocks": {
           "type": "array",
           "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/kebabName"
           },
-          "description": "Required-group concept ids included as possible extension anchors. The agent may extend such a group with open leads in the block but may not split the required group."
-        },
-        "open-leads": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/memberRef"
-          },
-          "description": "Open leads to consider together for semantic matching within this advisory block."
-        }
-      }
-    },
-    "reconciliationRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "required-groups",
-        "candidate-blocks",
-        "unmatched-leads"
-      ],
-      "properties": {
-        "required-groups": {
-          "type": "array",
-          "description": "Deterministic exact-id / exact-alias / cross-reference groups the kernel pre-computed. The agent may extend a required group with semantic members but the kernel refuses any response that splits one.",
-          "items": {
-            "$ref": "#/$defs/requiredGroup"
-          }
-        },
-        "candidate-blocks": {
-          "type": "array",
-          "description": "Advisory matching work queues generated deterministically from blocking keys and lexical fallback. These reduce agent search space but do not constrain the final lead-groups[] response.",
-          "items": {
-            "$ref": "#/$defs/candidateBlock"
-          }
-        },
-        "unmatched-leads": {
-          "type": "array",
-          "description": "Open leads with no useful deterministic candidate block. The agent may leave them as single-lead groups or merge them semantically if it has a reason.",
-          "items": {
-            "$ref": "#/$defs/memberRef"
-          }
+          "description": "Locked block ids adjacent to this advisory block because an open lead shares a blocking key with a locked-block member. Invitation to consider extension, not a match decision."
         }
       }
     },
@@ -229,10 +174,10 @@
       "required": [
         "version",
         "kind",
-        "sources",
-        "leads",
-        "reconciliation",
-        "targets"
+        "mode",
+        "targets",
+        "blocks",
+        "leads"
       ],
       "properties": {
         "version": {
@@ -243,25 +188,12 @@
         "kind": {
           "const": "request"
         },
-        "sources": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/kebabName"
-          }
-        },
-        "leads": {
-          "type": "object",
-          "description": "Map of source-key to that source's surveyed leads, including summary and optional deterministic blocking metadata used to build candidate blocks.",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/$defs/leadCatalogEntry"
-            }
-          }
-        },
-        "reconciliation": {
-          "$ref": "#/$defs/reconciliationRequest"
+        "mode": {
+          "type": "string",
+          "enum": [
+            "workspace",
+            "single-repo"
+          ]
         },
         "targets": {
           "type": "array",
@@ -272,9 +204,24 @@
         },
         "projects": {
           "type": "array",
-          "description": "Registry topology in workspace mode — every entry from `registry.yaml#/projects[]` (name + target + description). Absent in single-repo mode (no `registry.yaml`, an empty registry, or a single-entry registry that behaves like single-repo mode); present and non-empty when the agent must bind each slice candidate to a project. The kernel computes this pre-pass from the parsed registry so the agent never re-reads `registry.yaml`.",
+          "description": "Registry topology in workspace mode: every entry from `registry.yaml#/projects[]` (name + target + description). Absent in single-repo mode.",
           "items": {
             "$ref": "#/$defs/projectRef"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "description": "Request-side reconciliation blocks computed by the kernel before agent grouping.",
+          "items": {
+            "$ref": "#/$defs/reconciliationBlock"
+          }
+        },
+        "leads": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Flat lead catalog. Each lead names at most one request-side block; unmatched leads omit `block`.",
+          "items": {
+            "$ref": "#/$defs/leadCatalogEntry"
           }
         }
       }
@@ -283,16 +230,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "source-key",
-        "lead-id",
+        "key",
         "match-basis"
       ],
       "properties": {
-        "source-key": {
-          "$ref": "#/$defs/kebabName"
-        },
-        "lead-id": {
-          "$ref": "#/$defs/kebabName"
+        "key": {
+          "$ref": "#/$defs/leadKey"
         },
         "match-basis": {
           "$ref": "#/$defs/matchBasis"
@@ -317,7 +260,7 @@
         },
         "block-id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Optional id of the request candidate block that most directly explains this grouping. Review traceability only; the kernel does not constrain membership by block."
+          "description": "Optional id of the request advisory block that most directly explains this grouping. Review traceability only; the kernel does not constrain membership by block."
         },
         "members": {
           "type": "array",
@@ -351,7 +294,7 @@
         },
         "target": {
           "$ref": "#/$defs/targetRef",
-          "description": "Exactly one target per slice candidate (one slice per (concept, target) pair, per D5). The same concept may appear under more than one target."
+          "description": "Exactly one target per slice candidate (one slice per `(concept-id, target)` pair, per D5). The same concept may appear under more than one target."
         },
         "depends-on": {
           "type": "array",
@@ -362,7 +305,7 @@
         },
         "project": {
           "$ref": "#/$defs/kebabName",
-          "description": "Registry project this slice candidate binds to, chosen by the agent from the request's `projects[]` by matching the concept and `target` against each project's `description` and registered `target`. Written verbatim to `plan.yaml.slices[].project` and resolved against `registry.yaml` by build-time workspace routing. Required on every candidate in workspace mode (request carried a non-empty `projects[]`); omitted in single-repo mode. The kernel rejects a value absent from `registry.yaml` (`plan-reconcile-project-orphan`) or whose registered target disagrees with the candidate's `target` (`plan-reconcile-project-target-mismatch`)."
+          "description": "Registry project this slice candidate binds to, chosen by the agent from the request's `projects[]`. Required on every candidate in workspace mode; omitted in single-repo mode."
         },
         "rationale": {
           "type": "string",

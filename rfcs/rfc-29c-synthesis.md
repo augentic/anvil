@@ -1,6 +1,6 @@
 # RFC-29c: Slice Synthesis Engine and Typed Model
 
-> Status: Draft — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a](rfc-29a-source-operations.md) (consumes its surveyed/extracted Evidence), [RFC-29b](rfc-29b-lead-reconciliation.md) (consumes its plan rows) — Unblocks: RM-11 machine-readable producer/consumer impact; the M3 build input ([RFC-29d](rfc-29d-target-build-envelope.md))
+> Status: Draft — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (consumes its surveyed/extracted Evidence), [RFC-29b](rfc-29b-reconciliation.md) (consumes its plan rows) — Unblocks: RM-11 machine-readable producer/consumer impact; the M3 build input ([RFC-29d](rfc-29d-target.md))
 
 This is the third independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). Slice synthesis, the draft/persisted model split, kernel rendering into `spec.md`, and the drift validators form one contract over the Evidence the agent already produces; it consumes M1's surveys/Evidence and M2a's plan rows but not the build envelope. It owns the slice-time judgment/projection split, the typed `model.yaml`, the claim contract (`id` + `kind`), and the confirmation that per-slice fan-out keeps its one-target shape (D5).
 
