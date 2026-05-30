@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/slice/synthesis-draft-model.schema.json",
+  "title": "Specify slice synthesis draft model",
+  "description": "Validates the agent-authored `model` payload inside a synthesis envelope response per RFC-29 \u00a7Synthesis envelope and D3a. The synthesis step authors `requirements[].claims`, optional `requirements[].agreement`, requirement prose, and the non-requirements model sections; it MUST NOT set kernel-projected fields (`generated-at`, `generator`, top-level `sources`, `requirements[].id`, `.status`, `.sources`, `requirements[].tags`, or `claims[].winner`). The engine validates the response against this schema, rejects usurped kernel fields, projects the kernel, then validates the merged result against `model.schema.json`. Shared `$defs` are referenced from `model.schema.json` where shapes are identical.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "slice",
+    "target",
+    "requirements",
+    "domain",
+    "apis",
+    "configuration",
+    "technical-logic",
+    "observability",
+    "tasks"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "slice": {
+      "$ref": "model.schema.json#/$defs/kebabName"
+    },
+    "target": {
+      "$ref": "model.schema.json#/$defs/targetRef"
+    },
+    "project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/draftRequirement"
+      }
+    },
+    "domain": {
+      "$ref": "model.schema.json#/$defs/modelDomain"
+    },
+    "apis": {
+      "$ref": "model.schema.json#/$defs/modelApis"
+    },
+    "configuration": {
+      "type": "array",
+      "items": {
+        "$ref": "model.schema.json#/$defs/modelConfiguration"
+      }
+    },
+    "technical-logic": {
+      "$ref": "model.schema.json#/$defs/modelTechnicalLogic"
+    },
+    "observability": {
+      "type": "array",
+      "items": {
+        "$ref": "model.schema.json#/$defs/modelObservability"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "model.schema.json#/$defs/modelTask"
+      }
+    }
+  },
+  "$defs": {
+    "draftRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "statement",
+        "claims"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "$ref": "model.schema.json#/$defs/kebabName"
+        },
+        "agreement": {
+          "type": "string",
+          "enum": [
+            "agreed",
+            "disagreed"
+          ],
+          "description": "Required when more than one claim contributes; omitted for 0 or 1 claim."
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/draftClaim"
+          }
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "claims": {
+                "minItems": 2
+              }
+            },
+            "required": [
+              "claims"
+            ]
+          },
+          "then": {
+            "required": [
+              "agreement"
+            ]
+          }
+        }
+      ]
+    },
+    "draftClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "claim-id",
+        "kind"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "model.schema.json#/$defs/kebabName"
+        },
+        "claim-id": {
+          "$ref": "model.schema.json#/$defs/claimId"
+        },
+        "kind": {
+          "$ref": "model.schema.json#/$defs/claimKind"
+        }
+      }
+    }
+  }
+}
