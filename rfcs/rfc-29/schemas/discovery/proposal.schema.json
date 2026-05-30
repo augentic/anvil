@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify lead reconciliation envelope",
-  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md` plus locked/advisory reconciliation clusters, targets, and optional workspace projects. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `concepts[]` partitions the surveyed leads exactly once, while `slices[]` references those concepts and binds each `(concept-id, target)` pair to one target and optional project. The kernel validates this shape, enforces the global partition and locked-cluster invariants, derives unique `plan.yaml.slices[]` names from optional `name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic — cross-source unification is the agent's grouping in the response. Closed top-level shape: unknown fields are rejected.",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus targets and optional workspace projects. Each lead the kernel proved is the same work across sources by exact id or exact alias carries a `group` block naming the locked group it belongs to; open leads carry no `group`. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `concepts[]` partitions the surveyed leads exactly once, while `slices[]` references those concepts and binds each `(concept-id, target)` pair to one target and optional project. The kernel validates this shape, enforces the global partition and locked-group invariants, carries each locked member's proven `match-basis` forward, derives unique `plan.yaml.slices[]` names from optional `name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic — cross-source unification of open leads is the agent's grouping in the response. Closed top-level shape: unknown fields are rejected.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -45,43 +45,30 @@
         }
       }
     },
-    "matchBasis": {
+    "lockedMatchBasis": {
       "type": "string",
-      "description": "How a lead joined its final concept. `exact-id` / `exact-alias` are deterministic kernel-computed matches (the same `lead-id`, or an alias, surfaced across source keys); `semantic` is the agent's cross-source judgment and is surfaced for operator review.",
-      "enum": [
-        "exact-id",
-        "exact-alias",
-        "semantic"
-      ]
-    },
-    "lockedBasis": {
-      "type": "string",
-      "description": "Kernel-computed proof basis for a locked cluster binding: an exact `lead-id` or exact alias match across source keys.",
+      "description": "Kernel-computed proof basis for a locked group binding: the same `lead-id` (`exact-id`) or an exact alias (`exact-alias`) surfaced across source keys. The agent never authors these; the kernel carries them forward onto the response's locked members.",
       "enum": [
         "exact-id",
         "exact-alias"
       ]
     },
-    "sharedFacet": {
-      "type": "string",
-      "description": "Namespaced grouping facet, namespaced as `<kind>:<value>` (for example `domain:identity`, `module:auth`, `entity:user`, `route:/password/reset`, or lexical fallback `token:reset`). Survey metadata carries these on each lead as `blocking-keys[]`; cluster `shared-facets[]` is the union across member surfacings.",
-      "pattern": "^[a-z][a-z0-9-]*:[A-Za-z0-9._/~:-]+$"
-    },
-    "clusterBindingRef": {
+    "leadGroup": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Request-side binding of this catalog row to one reconciliation cluster. Unmatched rows omit `cluster-binding`.",
+      "description": "Request-side binding of this catalog row to one locked reconciliation group — a set of `(source-key, lead-id)` rows the kernel proved denote the same work by exact id or alias. Open leads omit `group`. A group is defined implicitly by the rows that share `group-id`; there is no separate group index.",
       "required": [
-        "cluster-id"
+        "group-id",
+        "match-basis"
       ],
       "properties": {
-        "cluster-id": {
+        "group-id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Reconciliation cluster this catalog row is bound to."
+          "description": "Canonical lead id of the locked group this catalog row belongs to (the shared `lead-id`, or the canonical id for an alias match). The kernel reads a group's members by filtering `leads[]` on this value."
         },
-        "basis": {
-          "$ref": "#/$defs/lockedBasis",
-          "description": "Kernel-computed proof for a locked cluster binding. Present only when `cluster-id` names a locked cluster; per-row, so one locked cluster may mix bases."
+        "match-basis": {
+          "$ref": "#/$defs/lockedMatchBasis",
+          "description": "Kernel-computed proof for this row's locked-group membership. Per-row, so one locked group may mix `exact-id` and `exact-alias` rows."
         }
       }
     },
@@ -105,7 +92,7 @@
         "summary": {
           "type": "string",
           "minLength": 1,
-          "description": "One-line per-source summary from this source's survey of the lead."
+          "description": "One-line per-source summary from this source's survey of the lead. This is the signal the agent groups open leads on."
         },
         "aliases": {
           "type": "array",
@@ -113,51 +100,10 @@
           "items": {
             "$ref": "#/$defs/kebabName"
           },
-          "description": "Optional aliases from the surveyed Lead, used for exact-alias locked clusters and lexical fallback."
+          "description": "Optional aliases from the surveyed Lead, the basis for exact-alias locked groups."
         },
-        "cluster-binding": {
-          "$ref": "#/$defs/clusterBindingRef"
-        }
-      }
-    },
-    "clusterConstraint": {
-      "type": "string",
-      "enum": [
-        "locked",
-        "advisory"
-      ]
-    },
-    "reconciliationCluster": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "constraint"
-      ],
-      "properties": {
-        "id": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Stable id for a request-side reconciliation cluster. Response `concepts[].from-cluster-id` may cite advisory clusters for review traceability."
-        },
-        "constraint": {
-          "$ref": "#/$defs/clusterConstraint",
-          "description": "`locked` clusters are deterministic exact-id / exact-alias clusters the agent may extend but not split. `advisory` clusters are search-space hints that do not constrain response membership."
-        },
-        "shared-facets": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/sharedFacet"
-          },
-          "description": "Union of grouping facets shared by this cluster's member surfacings. On advisory clusters, facets explain how the kernel bucketed open leads; on locked clusters, facets are annotative (union of member survey metadata). Lexical fallback facets use the `token:<term>` namespace."
-        },
-        "adjacent-clusters": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/kebabName"
-          },
-          "description": "Locked cluster ids adjacent to this advisory cluster because an open lead shares a facet with a locked-cluster member. Invitation to consider extension, not a match decision."
+        "group": {
+          "$ref": "#/$defs/leadGroup"
         }
       }
     },
@@ -169,14 +115,11 @@
         "kind",
         "mode",
         "targets",
-        "clusters",
         "leads"
       ],
       "properties": {
         "version": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1
+          "const": 1
         },
         "kind": {
           "const": "request"
@@ -202,17 +145,10 @@
             "$ref": "#/$defs/projectRef"
           }
         },
-        "clusters": {
-          "type": "array",
-          "description": "Request-side reconciliation clusters computed by the kernel before agent grouping.",
-          "items": {
-            "$ref": "#/$defs/reconciliationCluster"
-          }
-        },
         "leads": {
           "type": "array",
           "minItems": 1,
-          "description": "Flat lead catalog: one row per raw `(source-key, lead-id)` lead, read 1:1 from `discovery.md` (no expansion or cross-source merge). Each row names at most one request-side cluster via optional `cluster-binding`; unmatched rows omit `cluster-binding`. The `lead-id` field repeats across rows when multiple sources surface the same discovery id.",
+          "description": "Flat lead catalog: one row per raw `(source-key, lead-id)` lead, read 1:1 from `discovery.md` (no expansion or cross-source merge). Rows the kernel proved are the same work across sources carry a `group` block; open leads omit it. The `lead-id` field repeats across rows when multiple sources surface the same discovery id.",
           "items": {
             "$ref": "#/$defs/leadCatalogEntry"
           }
@@ -224,8 +160,7 @@
       "additionalProperties": false,
       "required": [
         "source-key",
-        "lead-id",
-        "match-basis"
+        "lead-id"
       ],
       "properties": {
         "source-key": {
@@ -237,11 +172,15 @@
           "description": "Discovery lead id; with `source-key`, must match a request catalog row."
         },
         "match-basis": {
-          "$ref": "#/$defs/matchBasis"
+          "type": "string",
+          "enum": [
+            "semantic"
+          ],
+          "description": "Set to `semantic` for an open lead the agent merged into this concept by cross-source judgment; surfaced for operator review at Gate 1. Omitted for members of a locked group — the kernel carries their proven `exact-id` / `exact-alias` basis forward during projection. The agent cannot author an `exact-*` basis, so it cannot forge or downgrade a locked match."
         },
         "tentative": {
           "type": "boolean",
-          "description": "Agent-flagged low-confidence membership; surfaced for operator review at Gate 1."
+          "description": "Agent-flagged low-confidence semantic membership; surfaced for operator review at Gate 1."
         }
       }
     },
@@ -256,10 +195,6 @@
         "concept-id": {
           "$ref": "#/$defs/kebabName",
           "description": "Concept id for a unit of work. Response `slices[]` entries reference this id; it is not necessarily the derived plan slice name."
-        },
-        "from-cluster-id": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Optional id of the request advisory cluster that most directly explains this concept. Review traceability only; the kernel does not constrain membership by cluster."
         },
         "members": {
           "type": "array",
@@ -324,9 +259,7 @@
       ],
       "properties": {
         "version": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1
+          "const": 1
         },
         "kind": {
           "const": "response"
