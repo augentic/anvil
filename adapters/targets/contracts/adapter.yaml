@@ -2,6 +2,7 @@
 name: contracts
 version: 1
 axis: target
+execution: agent
 description: API contract definition and validation
 briefs:
   shape: briefs/shape.md

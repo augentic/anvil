@@ -21,6 +21,7 @@ Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`
 name: omnia
 version: 1
 axis: target
+execution: agent
 description: Omnia Rust WASM target adapter.
 operations: [shape, build, merge]
 briefs:
@@ -34,6 +35,7 @@ briefs:
 | `name`        | yes      | Kebab-case target identifier. Must match the directory name under `adapters/targets/`. |
 | `version`     | yes      | Integer ≥ 1. Increments when the adapter ships breaking pipeline or contract changes. |
 | `axis`        | yes      | Must be `target`. |
+| `execution`   | yes      | Closed mode (`agent` \| `tool`). `agent` forces `cache: opt-out` and runs the brief via an agent; first-party targets currently declare `agent`. |
 | `description` | yes      | Single-sentence summary of the target's outcome domain. |
 | `operations`  | yes      | Closed list with exactly the three values `[shape, build, merge]`. |
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |

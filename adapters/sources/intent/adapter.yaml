@@ -2,6 +2,7 @@
 name: intent
 version: 1
 axis: source
+execution: agent
 description: >-
   Operator-supplied free-form intent. Degenerate N=1 source — one lead per
   slice, one `kind: intent` claim per Evidence — that backs every plan including

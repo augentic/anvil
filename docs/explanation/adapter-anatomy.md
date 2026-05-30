@@ -35,6 +35,7 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 name: code-typescript
 version: 1
 axis: source
+execution: agent
 briefs:
   survey: briefs/survey.md
   extract:   briefs/extract.md
@@ -45,13 +46,14 @@ briefs:
 name: omnia
 version: 1
 axis: target
+execution: agent
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; required closed `execution` mode (`agent` | `tool` — `agent` forces `cache: opt-out`); `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
