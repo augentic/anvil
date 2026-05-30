@@ -15,7 +15,7 @@ The cross-milestone wire contracts this milestone appends to are pinned in [RFC-
 | **D4 Typed slice model** | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`. |
 | **D5 Per-slice fan-out** | Each slice binds exactly one target adapter / project; cross-target changes decompose at plan time into multiple slices joined by `depends-on`. No `outputs[]`. |
 | **D8 Shape-brief scope** | Target `shape` briefs parameterise non-requirements model sections only. |
-| **D10 Synthesis execution mode** | The synthesis step carries a closed `execution: agent \| executable` enum; agent-first by design. |
+| **D10 Synthesis execution mode** | The synthesis step carries a closed `execution: agent \| tool` enum; agent-first by design. |
 | **D11 Standalone provenance projection** | `specrun slice provenance <slice>` is the standalone entry point onto the same projection kernel as D3. |
 | **D13 Claim contract (`id` + `kind`)** | Every contributing claim carries a stable `claim-id` and its `kind`; `model.yaml` claims carry `kind` so the kernel resolves per-kind authority. |
 
@@ -110,7 +110,7 @@ This makes the §"Status and provenance derivation" table's "unique top authorit
 
 ### Synthesis envelope
 
-The synthesis step receives a fixed-shape request and returns a fixed-shape response. The engine dispatches the request to the operator's agent under `execution: agent` (the default and designed centre), or to a declared WASI tool when `execution: executable` is configured (D10). Either way, the envelope is stable:
+The synthesis step receives a fixed-shape request and returns a fixed-shape response. The engine dispatches the request to the operator's agent under `execution: agent` (the default and designed centre), or to a declared WASI tool when `execution: tool` is configured (D10). Either way, the envelope is stable:
 
 ```yaml
 version: 1
@@ -365,26 +365,26 @@ Unchanged from RFC-25. The slice's `project` was bound at plan time by the D2 re
 
 ## Synthesis execution mode (D10)
 
-The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | executable` enum. It deliberately does **not** mirror the adapter enum (D9): adapters aspire to `executable` and treat the agent path as a fallback, whereas synthesis is **agent-first by design**. Cross-modal Evidence reconciliation into a requirement set is the load-bearing judgment of the framework, so `agent` is the default and the designed centre — the two values are named as first-class peers, with no "fallback" connotation on the agent path. An `execution: executable` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source slices where Evidence already carries statement-quality prose).
+The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | tool` enum. It shares the adapter enum's (D9) value names but not its emphasis: where a deterministic path exists, adapters lean toward `tool` (the framework nudges first-party adapters toward it), whereas synthesis is **agent-first by design**. Cross-modal Evidence reconciliation into a requirement set is the load-bearing judgment of the framework, so `agent` is the default and the designed centre — the two values are first-class peers, with no "fallback" connotation on the agent path. An `execution: tool` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source slices where Evidence already carries statement-quality prose).
 
 The configuration lives on the workspace, not on individual adapter manifests, because the synthesis step is core-owned and per-slice:
 
 ```yaml
 # project.yaml (one entry per project; defaults to agent)
 synthesize:
-  execution: agent     # or `executable`
+  execution: agent     # or `tool`
 ```
 
 The two values are:
 
 - `**agent**` — the engine resolves authority, hands the synthesis envelope to the operator's agent, validates the draft response, projects the kernel, validates the merged `model.yaml`, renders provenance into `spec.md`, runs drift validators, and persists. This is the first-party default and the designed centre of synthesis.
-- `**executable**` — the engine additionally requires a declared synthesis WASI tool to be configured (`synthesize.tool: { name, version }`), pipes the envelope on stdin, projects and validates the returned response identically, and caches the result under a synthesis-specific fingerprint (Evidence sha256 set + authority-overrides + shape-brief sha256 + tool `name@version`). Optional and reserved for narrow deterministic cases.
+- `**tool**` — the engine additionally requires a declared synthesis WASI tool to be configured (`synthesize.tool: { name, version }`), pipes the envelope on stdin, projects and validates the returned response identically, and caches the result under a synthesis-specific fingerprint (Evidence sha256 set + authority-overrides + shape-brief sha256 + tool `name@version`). Optional and reserved for narrow deterministic cases.
 
 When `execution: agent`, the engine:
 
 1. emits a `slice.synthesize.agent` journal event on every invocation;
 2. forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic, and `provenance.yaml` is reproducible from a fixed response under a kernel-only fingerprint of structure + Evidence + authority-overrides);
-3. surfaces no finding by default — `agent` is the expected and recommended mode for cross-modal slices. A `suggestion`-severity `slice-synthesize-agent-mode` finding is raised only when an operator has explicitly opted in to tool-only enforcement (`synthesize.enforce-executable: true`), which is itself an unusual choice the framework does not encourage for cross-modal synthesis.
+3. surfaces no finding by default — `agent` is the expected and recommended mode for cross-modal slices. A `suggestion`-severity `slice-synthesize-agent-mode` finding is raised only when an operator has explicitly opted in to tool-only enforcement (`synthesize.enforce-tool: true`), which is itself an unusual choice the framework does not encourage for cross-modal synthesis.
 
 Regardless of execution mode, the engine validates the draft response against `draft-model.schema.json`, the merged result against `model.schema.json`, and the drift checks before the slice transitions to `refined`. The execution mode does not relax any validation; it only changes who authors the requirement set and prose.
 

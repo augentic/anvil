@@ -10,7 +10,7 @@ The cross-milestone wire contracts this milestone appends to are pinned in [RFC-
 
 | ID | Decision |
 | -- | -------- |
-| **D2 Lead reconciliation engine** | Agent-led cross-source matching of `Lead[]` into lead groups — which leads describe the same unit of work (including semantic matches beyond exact id / alias / cross-reference), each group's `(source-key, lead-id)` members and per-member `match-basis`, each `(group-id, target)` row's target, and — workspace mode — its registry project. The CLI owns the projection kernel: the deterministic structural floor the agent may extend but never split, the registry pre-pass, schema validation, the global lead-partition invariant, project-binding validation, slice-name derivation, journal events, and the plan writers. Carries `execution: agent \| executable`; `agent` is the default and designed centre. |
+| **D2 Lead reconciliation engine** | Agent-led cross-source matching of `Lead[]` into lead groups — which leads describe the same unit of work (including semantic matches beyond exact id / alias / cross-reference), each group's `(source-key, lead-id)` members and per-member `match-basis`, each `(group-id, target)` row's target, and — workspace mode — its registry project. The CLI owns the projection kernel: the deterministic structural floor the agent may extend but never split, the registry pre-pass, schema validation, the global lead-partition invariant, project-binding validation, slice-name derivation, journal events, and the plan writers. Carries `execution: agent \| tool`; `agent` is the default and designed centre. |
 
 ## Two layers
 
@@ -41,7 +41,7 @@ The floor is a pure function of the parsed discovery document. The agent receive
 
 ## Reconciliation envelope
 
-The matching step receives a fixed-shape request and returns a fixed-shape response, dispatched to the operator's agent under `execution: agent` (the default and designed centre) or to a declared WASI tool under `execution: executable` (the D10-style mirror; see [RFC-29c §"Synthesis execution mode (D10)"](rfc-29c-synthesis-typed-model.md) for the agent-first rationale, which applies identically here). The request:
+The matching step receives a fixed-shape request and returns a fixed-shape response, dispatched to the operator's agent under `execution: agent` (the default and designed centre) or to a declared WASI tool under `execution: tool` (the D10-style mirror; see [RFC-29c §"Synthesis execution mode (D10)"](rfc-29c-synthesis-typed-model.md) for the agent-first rationale, which applies identically here). The request:
 
 ```yaml
 version: 1
@@ -144,6 +144,6 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 - **Operational validation codes (`Error::Validation`, not new enum variants):** `plan-reconcile-lead-orphan`, `plan-reconcile-partition`, `plan-reconcile-structural-floor-violated`, `plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`, `plan-reconcile-project-target-mismatch`, `plan-propose-missing-grouping` — single-signal `plan propose` aborts at exit 2. See [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
 - **Schema:** `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), request + response discriminated by closed `kind`.
 
-## Open question
+## Resolved question
 
-Optional lead target-axis *hints* (agent assist, not replacement) are deferred to a future RFC; v1 ships pure agent binding. See [RFC-29 §"Open questions"](rfc-29-fan-in-fan-out.md#open-questions) Q1.
+Optional lead target-axis *hints* (agent assist, not replacement) are **resolved**: option (a) is adopted as the chosen direction for a dedicated follow-on RFC, while v1 ships pure agent binding unchanged. See [RFC-29 §"Open questions"](rfc-29-fan-in-fan-out.md#open-questions) (Resolved — was Q1).

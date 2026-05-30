@@ -11,7 +11,7 @@ The cross-milestone wire contracts this milestone appends to (the closed `EventK
 | ID | Decision |
 | -- | -------- |
 | **D1 Source operation runner** | The CLI runs source adapter `survey` and `extract` operations: `specrun source survey` / `specrun source extract`, routed through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events. |
-| **D9 Adapter execution mode** (source side) | Source adapters declare a closed `execution: executable \| agent-fallback` field selecting deterministic dispatch vs an agent-run brief. (The symmetric target side lands in [RFC-29d](rfc-29d-target-build-envelope.md).) |
+| **D9 Adapter execution mode** (source side) | Source adapters declare a closed `execution: tool \| agent` field selecting deterministic dispatch vs an agent-run brief. (The symmetric target side lands in [RFC-29d](rfc-29d-target-build-envelope.md).) |
 | **D12 Journal emitter** | `specrun journal emit` is the schema-validated writer for agent-orchestrated phases with no deterministic emit command. |
 
 ## Operator surface
@@ -84,7 +84,7 @@ The existing `specrun source preview` (`src/runtime/commands/source/preview.rs`)
 - **Keep the surfaces distinct in role.** `source preview` stays the workflow-free dry run (adapter authoring / debugging, output under `--out`). `source survey` / `source extract` add the sandboxed `execution`-branched dispatch (D9), the RFC-27 cache fingerprint, the journal events, validate-before-visible, and the `discovery.md` merge (`survey`) / Evidence persist (`extract`). Equivalently, `preview` may be implemented as the `--dry-run --out <dir>` mode of the same runner so the dispatch code is literally shared.
 - **Align the "which lead(s)" surface.** `source preview` already takes `--lead <id>…`; `source extract` takes a positional `<lead-id>` plus `--slice`. The shared helper should use one spelling for lead selection across the family so the `preview` → `extract` path reads consistently.
 
-The genuinely-new machinery D1 introduces over today's `preview` — the sandbox preopens, the `executable` vs `agent-fallback` dispatch branch, the cache, the journal events, validate-before-visible, and the discovery/Evidence persistence — is what makes `survey` / `extract` workflow commands rather than a scaffolding helper; none of it should be re-implemented in `preview`.
+The genuinely-new machinery D1 introduces over today's `preview` — the sandbox preopens, the `tool` vs `agent` dispatch branch, the cache, the journal events, validate-before-visible, and the discovery/Evidence persistence — is what makes `survey` / `extract` workflow commands rather than a scaffolding helper; none of it should be re-implemented in `preview`.
 
 ## Adapter execution mode (D9)
 
@@ -92,19 +92,19 @@ Source and target adapters declare a closed `execution` field on their respectiv
 
 ```yaml
 # adapters/sources/<name>/adapter.yaml
-execution: executable     # or `agent-fallback`
+execution: tool     # or `agent`
 ```
 
 The two values are:
 
-- `**executable**` — `survey` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in the RFC-29 family.
-- `**agent-fallback**` — the adapter's brief is executed by an agent against the same sandbox preopens. The CLI orchestrates inputs and validates outputs against the same schemas, but does not cache the result.
+- `**tool**` — `survey` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a built-in deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in the RFC-29 family.
+- `**agent**` — the adapter's brief is executed by an agent against the same sandbox preopens. The CLI orchestrates inputs and validates outputs against the same schemas, but does not cache the result.
 
-When `execution: agent-fallback`, the CLI:
+When `execution: agent`, the CLI:
 
-1. emits a `source.execution.agent-fallback` (sources) or `target.execution.agent-fallback` (targets) journal event on every operation invocation;
-2. forces `cache: opt-out` regardless of the adapter's declared cache mode (rejected at parse time as `adapter-execution-agent-fallback-cache-conflict` if the manifest declares any other cache mode);
-3. surfaces a `suggestion`-severity `adapter-execution-agent-fallback` finding on the framework standards layer for first-party adapters, and not at all for third-party adapters.
+1. emits a `source.execution.agent` (sources) or `target.execution.agent` (targets) journal event on every operation invocation;
+2. forces `cache: opt-out` regardless of the adapter's declared cache mode (rejected at parse time as `adapter-execution-agent-cache-conflict` if the manifest declares any other cache mode);
+3. surfaces a `suggestion`-severity `adapter-execution-agent` finding on the framework standards layer for first-party adapters, and not at all for third-party adapters.
 
 The schema additions are mechanical extensions of `schemas/source.schema.json` and `schemas/target.schema.json`:
 
@@ -112,7 +112,7 @@ The schema additions are mechanical extensions of `schemas/source.schema.json` a
 {
   "execution": {
     "type": "string",
-    "enum": ["executable", "agent-fallback"],
+    "enum": ["tool", "agent"],
     "description": "Closed adapter execution mode per RFC-29 D9."
   }
 }
@@ -142,6 +142,6 @@ This keeps a **single emission path and a single closed taxonomy**: deterministi
 
 The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This milestone appends:
 
-- **Journal events:** `source.survey.cache-hit`, `source.survey.cache-miss`, `source.execution.agent-fallback`, plus the `specrun journal emit` front door (D12) onto the whole taxonomy.
-- **Operational validation codes (`Error::Validation`, not new enum variants):** `adapter-execution-mode-required`, `adapter-execution-agent-fallback-cache-conflict`, `journal-emit-unknown-event`, `journal-emit-payload-schema` — single-signal aborts at adapter load / `journal emit`, exit 2. See [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
+- **Journal events:** `source.survey.cache-hit`, `source.survey.cache-miss`, `source.execution.agent`, plus the `specrun journal emit` front door (D12) onto the whole taxonomy.
+- **Operational validation codes (`Error::Validation`, not new enum variants):** `adapter-execution-mode-required`, `adapter-execution-agent-cache-conflict`, `journal-emit-unknown-event`, `journal-emit-payload-schema` — single-signal aborts at adapter load / `journal emit`, exit 2. See [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
 - **Schema edits:** the `execution` enum added (and `required`) on `schemas/source.schema.json` and `schemas/target.schema.json`. The loader rejects a manifest that omits `execution` with `adapter-execution-mode-required` rather than defaulting silently.

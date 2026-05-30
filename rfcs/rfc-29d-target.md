@@ -20,7 +20,7 @@ The build request and build report are both closed-shape YAML envelopes, keyed o
 
 ### Build request
 
-`/spec:build` constructs one build request per slice and either pipes it on stdin to a declared WASI tool (when the target's `execution: executable`) or writes it to `.specify/slices/<slice>/build/request.yaml` (when `execution: agent-fallback`):
+`/spec:build` constructs one build request per slice and either pipes it on stdin to a declared WASI tool (when the target's `execution: tool`) or writes it to `.specify/slices/<slice>/build/request.yaml` (when `execution: agent`):
 
 ```yaml
 version: 1
@@ -42,7 +42,7 @@ briefs:
   shape: /.../adapters/targets/omnia/briefs/shape.md
   build: /.../adapters/targets/omnia/briefs/build.md
 execution:
-  mode: executable
+  mode: tool
   tool:
     name: omnia
     version: v1.4.2
@@ -105,10 +105,10 @@ The recommended implementation order is:
 
 ## Adapter execution mode (D9, target side)
 
-Target adapters declare the same closed `execution: executable | agent-fallback` field defined in [RFC-29a §"Adapter execution mode (D9)"](rfc-29a-source-operations.md). On the target side it governs `build` / `merge` dispatch:
+Target adapters declare the same closed `execution: tool | agent` field defined in [RFC-29a §"Adapter execution mode (D9)"](rfc-29a-source-operations.md). On the target side it governs `build` / `merge` dispatch:
 
-- `executable` — `build` and `merge` run through a declared WASI tool or deterministic Rust path; inputs/outputs validate against the build envelopes above.
-- `agent-fallback` — the target brief is agent-executed against the same sandbox; the CLI orchestrates inputs and validates outputs but does not cache, emits `target.execution.agent-fallback` per invocation, and forces `cache: opt-out`.
+- `tool` — `build` and `merge` run through a declared WASI tool or deterministic Rust path; inputs/outputs validate against the build envelopes above.
+- `agent` — the target brief is agent-executed against the same sandbox; the CLI orchestrates inputs and validates outputs but does not cache, emits `target.execution.agent` per invocation, and forces `cache: opt-out`.
 
 ## Acceptance proof (D7)
 
@@ -186,7 +186,7 @@ Required assertions:
 
 The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This milestone appends:
 
-- **Journal events:** `slice.build.started`, `slice.build.succeeded`, `slice.build.failed`, `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `target.execution.agent-fallback`.
+- **Journal events:** `slice.build.started`, `slice.build.succeeded`, `slice.build.failed`, `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `target.execution.agent`.
 - **Operational validation codes (`Error::Validation`, not new enum variants):** `target-build-request-schema`, `target-build-report-schema`, `target-build-success-with-critical-finding` — single-signal build-envelope aborts at exit 2. See [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
 - **Schemas (authored in this milestone):** `schemas/target/build-request.schema.json` (`BUILD_REQUEST_JSON_SCHEMA`), `schemas/target/build-report.schema.json` (`BUILD_REPORT_JSON_SCHEMA`).
 
