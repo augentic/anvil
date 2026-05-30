@@ -6,7 +6,7 @@ This milestone closes plan-time fan-in. It turns the surveyed `Lead[]` from mult
 
 The important split is simple:
 
-- The **agent** decides which leads describe the same work, which target slices to emit, and, in workspace mode, which registry project owns each slice.
+- The **agent** decides which leads describe the same work, which target slices to emit, and which project owns each slice.
 - The **CLI** supplies deterministic locked groups, validates the agent's response, derives slice names, emits journal events, and writes the plan. The agent never hand-edits `plan.yaml`.
 
 Three nouns carry the milestone; keep them distinct:
@@ -22,7 +22,7 @@ The shared wire contracts this milestone extends are pinned in [RFC-29 §"Shared
 
 | ID                         | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **D2 Lead reconciliation** | `specrun plan propose` wraps agent-led lead reconciliation in a CLI-owned projection kernel. **The agent** partitions surveyed leads into `concepts[]`, then emits one or more `slices[]` rows per concept by binding each `(concept-id, target)` pair to one target and, in workspace mode, one registry project. **The kernel** computes deterministic locked groups (exact id / alias), validates the response schema, enforces the global lead partition, prevents locked groups from being split, carries each locked member's proven `match-basis` forward, validates project bindings, derives slice names, emits journal events, and writes `plan.yaml.slices[]`. |
+| **D2 Lead reconciliation** | `specrun plan propose` wraps agent-led lead reconciliation in a CLI-owned projection kernel. **The agent** partitions surveyed leads into `concepts[]`, then emits one or more `slices[]` rows per concept by binding each `(concept-id, target)` pair to one target and one project. **The kernel** computes deterministic locked groups (exact id / alias), validates the response schema, enforces the global lead partition, prevents locked groups from being split, carries each locked member's proven `match-basis` forward, validates project bindings, derives slice names, emits journal events, and writes `plan.yaml.slices[]`. |
 
 
 ## Operator Surface
@@ -32,18 +32,18 @@ specrun plan propose --dry-run --format json
 specrun plan propose --from <response.json> [--format json]
 ```
 
-`--dry-run` writes nothing. It reads `plan.yaml.sources`, the surveyed `discovery.md` lead inventory, operator-authored aliases, targets, and, in workspace mode, `registry.yaml`. It returns a request envelope for the agent.
+`--dry-run` writes nothing. It reads `plan.yaml.sources`, the surveyed `discovery.md` lead inventory, operator-authored aliases, targets, and the project topology (`registry.yaml` for a hub, or the sole project synthesized from `project.yaml`). It returns a request envelope for the agent.
 
 `--from` is the only writer. It validates the agent response, enforces the invariants below, derives slice names, emits reconciliation events, and writes slices through the existing `crates/workflow/src/change/plan/` writers.
 
 ## Reconciliation Flow
 
 1. `/spec:plan` runs `specrun plan propose --dry-run --format json`.
-2. The CLI returns a flat `leads[]` catalog — one row per raw `(source-key, lead-id)` lead read 1:1 from `discovery.md`, each optionally carrying a `group` block when the kernel proved it is the same work across sources (rows without one being open leads) — plus `targets[]` and, in workspace mode, `projects[]`.
+2. The CLI returns a flat `leads[]` catalog — one row per raw `(source-key, lead-id)` lead read 1:1 from `discovery.md`, each optionally carrying a `group` block when the kernel proved it is the same work across sources (rows without one being open leads) — plus `targets[]` and `projects[]`.
 3. The agent groups the open leads by judgment but returns one global `concepts[]` partition plus `slices[]`. Concepts partition the surveyed leads; slices fan those concepts out to targets and projects.
 4. `/spec:plan` submits that response with `specrun plan propose --from <response.json>`.
 5. The CLI validates and writes `plan.yaml.slices[]`.
-6. The agent renders semantic and tentative matches into `change.md` so Gate 1 can review them.
+6. The agent renders semantic matches into `change.md` so Gate 1 can review them.
 
 The agent owns judgment. The CLI owns projection and persistence.
 
@@ -53,8 +53,6 @@ Before the agent sees the inventory, the kernel computes conservative locked gro
 
 1. Exact `lead-id` match across source keys — the same `lead-id` surfaced by more than one source binding (`match-basis: exact-id`).
 2. Exact alias match across source keys, recorded under the canonical `lead-id` (`match-basis: exact-alias`).
-
-(A former third basis, "transitive cross-reference through `Lead.sources[]`", is dropped: leads are now raw and per-source, so a lead carries a single `source-key` rather than a `sources[]` list, and cross-source identity is subsumed by basis 1.)
 
 A locked group is a pure function of `discovery.md` and is defined implicitly by the catalog rows that share a `group.group-id`; there is no separate group index and no kernel-maintained reverse membership list. The agent may extend a locked group with semantically matched open leads inside a single concept, but `propose --from` rejects any response that splits a locked group across concepts with `plan-reconcile-locked-group-split`.
 
@@ -68,7 +66,7 @@ Every surveyed lead must appear exactly once across `concepts[].members[]`. Miss
 
 The request and response are both validated by `schemas/discovery/proposal.schema.json`, embedded as `PROPOSAL_JSON_SCHEMA`, with a closed `kind: request | response` discriminator.
 
-The request is lead-centric: a flat `leads[]` catalog carries one row per raw `(source-key, lead-id)` lead, and each row that the kernel proved is the same work across sources names its locked group via an optional `group` block. The flat `leads[]` list is canonical and the sole source of group membership: per-row `group` records both the group assignment (`group.group-id`) and the locked-match proof (`group.match-basis`), and a group's members are read by filtering `leads[]` on `group.group-id`. There is no top-level group index and no reverse membership list. Rows without `group` are open leads for the agent to place.
+The request is lead-centric: a flat `leads[]` catalog carries one row per raw `(source-key, lead-id)` lead, and each row that the kernel proved is the same work across sources names its locked group via an optional `group` block. The flat `leads[]` list is canonical and the sole source of group membership: per-row `group` records both the group assignment (`group.group-id`) and the locked-match proof (`group.match-basis`), and a group's members are read by filtering `leads[]` on `group.group-id`. Rows without `group` are open leads for the agent to place.
 
 The kernel reads each raw, unmerged lead from `discovery.md` 1:1 into one catalog row — there is no expansion or cross-source merge at survey or request time, so each source's per-source summary and match basis survives into reconciliation intact. The `lead-id` field is the discovery lead id; it is **not** globally unique across `leads[]` when multiple sources surface the same id (for example `identity-api` from both `docs` and `legacy`). Identity is the `(source-key, lead-id)` pair. The envelope and `plan.yaml` slice bindings name the same `{ source-key, lead-id }` shape.
 
@@ -77,7 +75,6 @@ Example request:
 ```yaml
 version: 1
 kind: request
-mode: workspace                       # workspace | single-repo
 targets: [contracts@v1, omnia@v1]
 projects:
   - name: identity-contracts
@@ -103,7 +100,7 @@ leads:
     summary: "Legacy reset-password flow."
 ```
 
-`mode` declares the reconciliation mode (`workspace` or `single-repo`); `projects[]` is present only in workspace mode. Each catalog row carries a `source-key` binding, a discovery `lead-id`, the per-source surveyed `summary`, an optional `aliases[]` list, and optionally a `group` block:
+`projects[]` lists every project the agent may bind a slice to and always carries at least one entry (a single regular project is synthesized from `project.yaml`). Each catalog row carries a `source-key` binding, a discovery `lead-id`, the per-source surveyed `summary`, an optional `aliases[]` list, and optionally a `group` block:
 
 - `group.group-id` is the canonical lead id of the locked group this row belongs to. The kernel reads a group's members by filtering `leads[]` on this value.
 - `group.match-basis` records this row's proof basis (`exact-id` or `exact-alias`; per-row, so one locked group may mix bases).
@@ -121,7 +118,7 @@ concepts:
       - { source-key: docs, lead-id: identity-api }
       - { source-key: legacy, lead-id: identity-api }
       - { source-key: docs, lead-id: password-reset, match-basis: semantic }
-      - { source-key: legacy, lead-id: reset-password, match-basis: semantic, tentative: true }
+      - { source-key: legacy, lead-id: reset-password, match-basis: semantic }
     rationale: "identity API plus semantic password reset merge"
 slices:
   - concept-id: identity-api
@@ -135,7 +132,7 @@ slices:
     depends-on: [identity-contracts]
 ```
 
-`concepts[]` is the partition of the surveyed leads. Each member references a catalog row by `{ source-key, lead-id }`. A member of a locked group omits `match-basis` — the kernel carries its proven `exact-id` / `exact-alias` basis forward during projection, so the agent can neither forge nor downgrade a locked match; the agent sets `match-basis: semantic` (and optional `tentative`) only on open leads it merged by judgment. `slices[]` is the plan-row projection surface: each slice names a `concept-id`, target, optional project, optional explicit `name`, and optional dependencies. A `concept-id` may appear in multiple slices when the same concept fans out to multiple targets, but the members are declared once under `concepts[]`. `depends-on` names derived slice names, not concept ids. The kernel projects each concept's members into `plan.yaml.slices[].sources[]` as `{ source-key: <source-key>, lead-id: <lead-id> }`.
+`concepts[]` is the partition of the surveyed leads. Each member references a catalog row by `{ source-key, lead-id }`. A member of a locked group omits `match-basis` — the kernel carries its proven `exact-id` / `exact-alias` basis forward during projection, so the agent can neither forge nor downgrade a locked match; the agent sets `match-basis: semantic` only on open leads it merged by judgment. `slices[]` is the plan-row projection surface: each slice names a `concept-id`, target, optional project, optional explicit `name`, and optional dependencies. A `concept-id` may appear in multiple slices when the same concept fans out to multiple targets, but the members are declared once under `concepts[]`. `depends-on` names derived slice names, not concept ids. The kernel projects each concept's members into `plan.yaml.slices[].sources[]` as `{ source-key: <source-key>, lead-id: <lead-id> }`, and writes each slice's `target` verbatim. Target-adapter resolvability is enforced by the existing plan writers (and by the project↔target equality check below); the reconciliation kernel adds no separate target-membership code.
 
 ## Slice Names
 
@@ -147,19 +144,21 @@ Each `slices[]` entry becomes one `plan.yaml.slices[]` entry. The kernel assigns
 
 After deriving all names, the kernel validates every `depends-on` entry against that name set.
 
+Because `depends-on` resolves against names derived only after submission, set an explicit `name` on any slice another slice depends on. An explicit name pins the reference regardless of derivation order and avoids a dangling `depends-on` when rule 3 derives a `<concept-id>-<adapter-slug>` fallback the agent did not anticipate.
+
 ## Project Binding
 
-Workspace mode adds one more agent decision: which registry project owns each slice.
+Every slice resolves to exactly one project. The dry-run request always carries `projects[]` as `{ name, target, description }` — for a hub it is the validated registry's projects; for a single regular project the CLI synthesizes one entry from `project.yaml` (`name`, the project's target adapter, and `domain` as the description). There is no separate single-repo path: a lone project is just a `projects[]` of length one.
 
-In workspace mode, the dry-run request includes `projects[]` from the validated registry as `{ name, target, description }`. The agent must choose one project for every slice, using the concept, target, and registry descriptions. The CLI does not choose a project, even when only one registry project matches the target.
+The agent binds a `project` on each slice by matching the concept, target, and project descriptions. As a convenience, when `projects[]` has exactly one entry the agent may omit `project` and the kernel auto-binds the sole project — binding the only candidate is not a judgment. When `projects[]` offers more than one project the agent must name one explicitly; the CLI never chooses among multiple candidates.
 
 Before writing, the kernel enforces:
 
-1. A workspace request requires `project` on every slice; a single-repo request forbids it. Failure: `plan-reconcile-project-binding-required`.
-2. The named project must exist in the registry. Failure: `plan-reconcile-project-orphan`.
-3. The project's registered `target` must equal the slice's `target`. Failure: `plan-reconcile-project-target-mismatch`.
+1. A slice may omit `project` only when exactly one project exists (the kernel then auto-binds it); when more than one project is offered, every slice must name one. Failure: `plan-reconcile-project-binding-required`.
+2. The named (or auto-bound) project must exist in `projects[]`. Failure: `plan-reconcile-project-orphan`.
+3. The project's `target` must equal the slice's `target`. Failure: `plan-reconcile-project-target-mismatch`.
 
-The validated value is written verbatim to `plan.yaml.slices[].project`. Build-time workspace routing resolves it against `registry.yaml` as described by [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md).
+The resolved value is written verbatim to `plan.yaml.slices[].project`. Build-time routing resolves a hub project against `registry.yaml` as described by [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md); a synthesized single project names the repo itself.
 
 ## Match Basis And Review
 
@@ -168,7 +167,7 @@ A reconciled member resolves to one of three match bases, split by who authors i
 - `exact-id`, `exact-alias` — kernel-computed locked-group proof. The agent omits `match-basis` on these members; the kernel carries the proven basis forward from the request `group` block during projection.
 - `semantic` — the agent's cross-source judgment over open leads, authored explicitly on the member.
 
-`semantic` and `tentative: true` are review signals. The agent renders them into `change.md` for Gate 1 so the operator can accept the grouping, split it, or promote recurring semantic matches into aliases with `specrun plan amend --add-alias` (which makes them locked on the next survey).
+`semantic` matches are review signals. The agent renders them into `change.md` for Gate 1 so the operator can accept the grouping, split it, or promote recurring semantic matches into aliases with `specrun plan amend --add-alias` (which makes them locked on the next survey).
 
 The kernel does not decide whether a semantic match is correct. It only proves that the response is well-formed, partitions the lead set, preserves locked groups, and binds valid targets/projects.
 
@@ -179,10 +178,10 @@ During `/spec:plan`, the agent:
 1. Calls `specrun plan propose --dry-run --format json`.
 2. Groups the open leads (rows without `group`) by judgment from their `summary`, optionally merging them into the concept that holds a related locked group — without splitting that locked group across concepts.
 3. Binds each concept to one or more targets, producing one slice per `(concept-id, target)` pair.
-4. Adds `rationale`, `tentative` flags, `depends-on`, and optional `name`.
-5. In workspace mode, binds every slice to a compatible `project`; in single-repo mode, omits `project`.
+4. Adds `rationale`, `depends-on`, and optional `name`.
+5. Binds every slice to a compatible `project` — or omits it when exactly one project exists, letting the kernel auto-bind.
 6. Calls `specrun plan propose --from <response.json>`.
-7. Renders semantic and tentative matches into `change.md` for Gate 1 review.
+7. Renders semantic matches into `change.md` for Gate 1 review.
 
 The agent never writes `plan.yaml`, never writes `discovery.md`, and never decides authority.
 
@@ -191,7 +190,7 @@ The agent never writes `plan.yaml`, never writes `discovery.md`, and never decid
 The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This milestone appends:
 
 - **Journal events:** `plan.reconcile.agent`, `plan.reconcile.completed`.
-- **Operational validation codes:** `plan-reconcile-lead-orphan`, `plan-reconcile-partition`, `plan-reconcile-locked-group-split`, `plan-reconcile-concept-orphan`, `plan-reconcile-concept-unbound`, `plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`, `plan-reconcile-project-target-mismatch`, `plan-propose-missing-grouping`. These are `Error::Validation` outcomes and abort with exit 2.
+- **Operational validation codes:** `plan-reconcile-lead-orphan`, `plan-reconcile-partition`, `plan-reconcile-locked-group-split`, `plan-reconcile-concept-orphan`, `plan-reconcile-concept-unbound`, `plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`, `plan-reconcile-project-target-mismatch`, `plan-propose-missing-grouping`. These are `Error::Validation` outcomes and abort with exit 2. The `plan-reconcile-*` codes name response-invariant failures; `plan-propose-missing-grouping` carries the `plan-propose-` prefix because it guards command-argument selection (neither `--dry-run` nor `--from`), not a reconciliation invariant.
 - **Schema:** `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), covering request and response envelopes.
 
 ## Resolved Question

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify lead reconciliation envelope",
-  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus targets and optional workspace projects. Each lead the kernel proved is the same work across sources by exact id or exact alias carries a `group` block naming the locked group it belongs to; open leads carry no `group`. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `concepts[]` partitions the surveyed leads exactly once, while `slices[]` references those concepts and binds each `(concept-id, target)` pair to one target and optional project. The kernel validates this shape, enforces the global partition and locked-group invariants, carries each locked member's proven `match-basis` forward, derives unique `plan.yaml.slices[]` names from optional `name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic — cross-source unification of open leads is the agent's grouping in the response. Closed top-level shape: unknown fields are rejected.",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus targets and the `projects[]` topology (always at least one project). Each lead the kernel proved is the same work across sources by exact id or exact alias carries a `group` block naming the locked group it belongs to; open leads carry no `group`. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `concepts[]` partitions the surveyed leads exactly once, while `slices[]` references those concepts and binds each `(concept-id, target)` pair to one target and one project (the kernel auto-binds the sole project when only one exists). The kernel validates this shape, enforces the global partition and locked-group invariants, carries each locked member's proven `match-basis` forward, derives unique `plan.yaml.slices[]` names from optional `name` or concept/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic — cross-source unification of open leads is the agent's grouping in the response. Closed top-level shape: unknown fields are rejected.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -24,7 +24,7 @@
     "projectRef": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One registered project from `registry.yaml`, surfaced into the request so the agent can bind each response slice to a project by matching the slice's concept and target against the project's `target` and `description`.",
+      "description": "One project the agent can bind a response slice to. For a hub this is a `registry.yaml#/projects[]` entry; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice's concept and target against the project's `target` and `description`.",
       "required": [
         "name",
         "target"
@@ -113,8 +113,8 @@
       "required": [
         "version",
         "kind",
-        "mode",
         "targets",
+        "projects",
         "leads"
       ],
       "properties": {
@@ -123,13 +123,6 @@
         },
         "kind": {
           "const": "request"
-        },
-        "mode": {
-          "type": "string",
-          "enum": [
-            "workspace",
-            "single-repo"
-          ]
         },
         "targets": {
           "type": "array",
@@ -140,7 +133,8 @@
         },
         "projects": {
           "type": "array",
-          "description": "Registry topology in workspace mode: every entry from `registry.yaml#/projects[]` (name + target + description). Absent in single-repo mode.",
+          "minItems": 1,
+          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub this is every entry from `registry.yaml#/projects[]`; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain).",
           "items": {
             "$ref": "#/$defs/projectRef"
           }
@@ -177,10 +171,6 @@
             "semantic"
           ],
           "description": "Set to `semantic` for an open lead the agent merged into this concept by cross-source judgment; surfaced for operator review at Gate 1. Omitted for members of a locked group — the kernel carries their proven `exact-id` / `exact-alias` basis forward during projection. The agent cannot author an `exact-*` basis, so it cannot forge or downgrade a locked match."
-        },
-        "tentative": {
-          "type": "boolean",
-          "description": "Agent-flagged low-confidence semantic membership; surfaced for operator review at Gate 1."
         }
       }
     },
@@ -239,7 +229,7 @@
         },
         "project": {
           "$ref": "#/$defs/kebabName",
-          "description": "Registry project this slice binds to, chosen by the agent from the request's `projects[]`. Required on every slice in workspace mode; omitted in single-repo mode."
+          "description": "Project this slice binds to, chosen by the agent from the request's `projects[]`. Required on every slice when the request offers more than one project; optional when exactly one project exists, in which case the kernel auto-binds it."
         },
         "rationale": {
           "type": "string",
