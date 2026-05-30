@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
+  "title": "Specify lead reconciliation envelope",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 \u00a7Lead reconciliation engine (D2). Discriminated by closed `kind`. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a pure function of the parsed `discovery.md` carrying the full lead inventory and the deterministic structural floor (exact id / exact alias / transitive cross-reference), handed to the agent so it never re-derives trivial matches. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: each group declares its `(source-key, lead-id)` members with a per-member `match-basis` (including agent-only `semantic` matches), a single bound `target` per group (one slice per `(group, target)` pair, per D5), optional `depends-on`, optional per-group `rationale`, and optional per-member `tentative` flag for operator review at Gate 1. The kernel validates this shape, enforces the lead-partition and structural-floor invariants, assigns/validates group ids, and writes through the existing plan writers; it never auto-merges on its own heuristic. Closed top-level shape \u2014 unknown fields are rejected.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    }
+  ],
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "targetRef": {
+      "type": "string",
+      "description": "Target adapter identifier, e.g. `omnia@v1` or `contracts@v1`.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*@v[0-9]+$"
+    },
+    "matchBasis": {
+      "type": "string",
+      "description": "How a member joined its group. `exact-id` / `exact-alias` / `cross-reference` are the deterministic structural floor the kernel computes; `semantic` is the agent's cross-source judgment and is surfaced for operator review.",
+      "enum": [
+        "exact-id",
+        "exact-alias",
+        "cross-reference",
+        "semantic"
+      ]
+    },
+    "memberRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source-key",
+        "lead-id"
+      ],
+      "properties": {
+        "source-key": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "lead-id": {
+          "$ref": "#/$defs/kebabName"
+        }
+      }
+    },
+    "floorGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group-id",
+        "rule",
+        "members"
+      ],
+      "properties": {
+        "group-id": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Canonical id the floor group is recorded under (the shared `id` for exact-id / cross-reference, the canonical id behind an alias for exact-alias)."
+        },
+        "rule": {
+          "type": "string",
+          "enum": [
+            "exact-id",
+            "exact-alias",
+            "cross-reference"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/memberRef"
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "sources",
+        "lead-inventory",
+        "structural-floor",
+        "ungrouped",
+        "bound-targets"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "kind": {
+          "const": "request"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          }
+        },
+        "lead-inventory": {
+          "type": "object",
+          "description": "Map of source-key to that source's surveyed lead ids.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/kebabName"
+            }
+          }
+        },
+        "structural-floor": {
+          "type": "array",
+          "description": "Deterministic exact-id / exact-alias / cross-reference groups the kernel pre-computed. The agent may extend a floor group with semantic members but the kernel refuses any response that splits one.",
+          "items": {
+            "$ref": "#/$defs/floorGroup"
+          }
+        },
+        "ungrouped": {
+          "type": "array",
+          "description": "Leads that matched nothing on the structural floor \u2014 the agent's semantic-matching surface.",
+          "items": {
+            "$ref": "#/$defs/memberRef"
+          }
+        },
+        "bound-targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/targetRef"
+          }
+        }
+      }
+    },
+    "responseMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source-key",
+        "lead-id",
+        "match-basis"
+      ],
+      "properties": {
+        "source-key": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "lead-id": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "match-basis": {
+          "$ref": "#/$defs/matchBasis"
+        },
+        "tentative": {
+          "type": "boolean",
+          "description": "Agent-flagged low-confidence membership; surfaced for operator review at Gate 1."
+        }
+      }
+    },
+    "responseGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group-id",
+        "members",
+        "target"
+      ],
+      "properties": {
+        "group-id": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Proposed slice name. Validated against the slice-name grammar by the kernel; the agent proposes it, the kernel does not invent it."
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/responseMember"
+          }
+        },
+        "target": {
+          "$ref": "#/$defs/targetRef",
+          "description": "Exactly one target per group (one slice per (group, target) pair, per D5). The same lead group may appear under more than one target."
+        },
+        "depends-on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          }
+        },
+        "project": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent's reason for the grouping; rendered into change.md for operator review, most useful on semantic merges."
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "groups"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "kind": {
+          "const": "response"
+        },
+        "groups": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/responseGroup"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/slice/synthesis-envelope.schema.json",
+  "title": "Specify slice synthesis envelope",
+  "description": "Validates the request/response envelope exchanged between the `specrun slice synthesize` engine and the agent-led synthesis step per RFC-29 \u00a7Slice synthesis engine (D3) and \u00a7Synthesis execution mode (D10). The request (`kind: request`, written to `.specify/slices/<slice>/synthesis/request.yaml` or piped to a declared WASI tool on stdin) carries the Evidence map, per-source authority, the kernel's resolved-authority path, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint. The response (`kind: response`, read from `.specify/slices/<slice>/synthesis/response.yaml` or the tool's stdout) carries the populated slice `model` \u2014 the synthesis step's requirement set, each requirement's `(source, claim-id)` claims, its `agreement` verdict, and prose \u2014 plus the rendered Markdown artifacts. The engine projects the kernel over the returned structure (REQ-id assignment, `sources`/winner/status derivation, claim-level provenance into `provenance.yaml`), rejecting any response that usurps a kernel-owned field (`id`, `sources`, `status`, `winner`) with `slice-synthesize-kernel-field-usurped` or cites a `(source, claim-id)` absent from the Evidence map with `slice-model-source-orphan`. Closed shapes \u2014 unknown fields are rejected.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    }
+  ],
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "targetRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
+    },
+    "authorityClass": {
+      "type": "string",
+      "enum": [
+        "intent",
+        "documentation",
+        "behaviour"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "slice",
+        "target",
+        "shape-brief",
+        "evidence",
+        "authority",
+        "constraints"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "kind": {
+          "const": "request"
+        },
+        "slice": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "target": {
+          "$ref": "#/$defs/targetRef"
+        },
+        "shape-brief": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/evidenceEntry"
+          }
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "resolved-path"
+          ],
+          "properties": {
+            "resolved-path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "prior-baseline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "specs-dir"
+          ],
+          "properties": {
+            "specs-dir": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "forbidden-inputs-for-requirements-reconciliation"
+          ],
+          "properties": {
+            "forbidden-inputs-for-requirements-reconciliation": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "target",
+                  "shape-brief"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "authority"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authority": {
+          "$ref": "#/$defs/authorityClass"
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "slice",
+        "model",
+        "artifacts"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "kind": {
+          "const": "response"
+        },
+        "slice": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "model": {
+          "$ref": "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/artifacts"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal",
+        "design",
+        "tasks",
+        "specs"
+      ],
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tasks": {
+          "type": "string",
+          "minLength": 1
+        },
+        "specs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit",
+              "content"
+            ],
+            "properties": {
+              "unit": {
+                "$ref": "#/$defs/kebabName"
+              },
+              "content": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

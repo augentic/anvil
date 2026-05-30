@@ -95,13 +95,13 @@ All commands are run from the repository root:
 - `make lint` — forwards to `specdev lint` (`cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`) for documentation and workflow consistency checks.
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
-The `specify-lints` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-lints` framework); this repo's CI runs only `make lint` against the live tree.
+The `specify-standards` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-standards` framework); this repo's CI runs only `make lint` against the live tree.
 
 Full acceptance guidance, including the manual cross-repo scenario, lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-lints` crate in `augentic/specify-cli`. Enforced strictly by `specdev lint` (`make lint` locally) — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-standards` crate in `augentic/specify-cli`. Enforced strictly by `specdev lint` (`make lint` locally) — every predicate fails on the first violation, with no per-file grandfathering.
 
 ## Gotchas
 

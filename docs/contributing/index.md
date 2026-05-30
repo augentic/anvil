@@ -22,9 +22,9 @@ Two audiences share this repository:
 | Audience | Typical edits | Rust required locally? |
 |----------|---------------|------------------------|
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
-| **Tooling contributors** | `specify-lints` framework predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
-Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-lints` framework predicate suite) before opening a PR.
+Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-standards` framework predicate suite) before opening a PR.
 
 ## Development environment
 
@@ -33,7 +33,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
 
-**For tooling work** (`specify-cli` repo, `crates/lints/`):
+**For tooling work** (`specify-cli` repo, `crates/standards/`):
 
 - Rust stable toolchain
 - A sibling checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when running framework checks locally from this repo

@@ -93,6 +93,6 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
 3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../../../targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../../../targets/vectis/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
-4. Run `make lint` (which forwards to `specdev lint --framework-root .`). The relevant predicate is `framework::check::rules` in `specify-lints`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
+4. Run `make lint` (which forwards to `specdev lint --framework-root .`). The relevant predicate is `framework::check::rules` in `specify-standards`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

@@ -2,7 +2,7 @@
 
 The acceptance surface has two layers:
 
-1. **Static repository checks** — `make lint` runs `specdev lint --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-lints` framework predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-lints` framework — so this repo does not re-run it.
+1. **Static repository checks** — `make lint` runs `specdev lint --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-standards` framework predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-standards` framework — so this repo does not re-run it.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specdev lint` does **not** pin synthesised bytes.
 
 ## Running checks locally
@@ -17,13 +17,13 @@ Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--fr
 
 - `make lint` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
 - `make ci` runs `make lint`.
-- The `specify-lints` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
+- The `specify-standards` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 
 ## Synthesis byte-replay (deferred)
 
-The harness in the `specify-lints` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+The harness in the `specify-standards` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
 
 - a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
 - a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.

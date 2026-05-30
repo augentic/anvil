@@ -1,6 +1,6 @@
 # RFC-29: Fan-In/Fan-Out Code Contract
 
-> Status: Draft - Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../done/rfc-28-standards-contract.md) - Relates: [RFC-35](done/rfc-35-synthesis-determinism.md) (landed; RFC-35 corrected the synthesis references, sharpened `specrun slice validate` diagnostics, and added `briefs-dir` to resolve output, but deliberately **deferred** the `specrun slice provenance` writer and **rejected** a `specrun journal emit` verb — so RFC-29 owns both as D11/D12; see §"Relationship to RFC-35") - Enables: provable multi-source fan-in and plan-level multi-slice fan-out, with one target per slice (see §D5)
+> Status: Draft — Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../done/rfc-28-standards-contract.md) — Relates: [RFC-35](done/rfc-35-synthesis-determinism.md) (see §"Relationship to RFC-35") — Enables: provable multi-source fan-in and plan-level multi-slice fan-out (D5)
 
 ## Abstract
 
@@ -11,24 +11,22 @@ Specify's architectural promise is a fan-in / fan-out workflow:
 
 This is the framework's "one plan entry, one project" decision (see [decision log](../docs/explanation/decision-log.md#one-plan-entry-one-project)). RFC-29 affirms it and does not extend the slice to multi-target.
 
-The gap is that several load-bearing fan-in steps — survey, extract, and plan-time reconciliation — are still agent discipline rather than CLI-owned contract. Slice synthesis itself stays agent-led on purpose: cross-modal reconciliation of design prose, code, and screenshots into a coherent requirement set — deciding which requirements exist, how Evidence claims merge or split into them, which `(source, claim-id)` claims each draws on, whether those claims agree, and the statements, scenarios, and design narrative that express them — is the heart of synthesis and is judgment work. This RFC does not claim that away. What it makes CLI-owned is the *deterministic projection around* that judgment: RFC-27 authority resolution, REQ-id assignment, provenance projection into `provenance.yaml`, status derivation, and drift validation, all computed over the **claim-level** structure the agent proposes — each requirement's `(source, claim-id)` claims plus an `agreement` verdict. The contribution to synthesis is the **envelope** — stable inputs, stable outputs, and a kernel that turns the agent's reconciliation into validated, provenance-tracked artifacts — not a deterministic reconstruction of the requirement set.
-
-The split rests on one observation that earlier drafts blurred: `provenance.yaml` is **claim-level** (it names the winning and losing `(source, claim-id)` claims behind each requirement), so it cannot be recovered from a source-key list. Synthesis therefore returns claim-level provenance and a per-requirement agreement verdict as first-class output; the kernel projects `sources`, REQ-ids, winner markers, `status`, and `provenance.yaml` from that, rather than asking the agent to hand-author the audit file or asking the kernel to reconstruct claim mappings it never saw. This is the resolution of the RFC-29-vs-RFC-35 tension recorded in §"Relationship to RFC-35": **agreement is judgment (agent); winner selection among disagreements is authority mechanics (kernel).**
+The gap is that several load-bearing fan-in steps — survey, extract, and plan-time lead reconciliation — are still uncontracted agent discipline rather than agent judgment running under a CLI-owned envelope. Both lead reconciliation (plan time) and slice synthesis (slice time) stay agent-led, because both are cross-source judgment with no deterministic function; in each case the CLI owns the **envelope** and the **projection kernel** around that judgment (see §"Lead reconciliation engine (D2)", §"Slice synthesis engine (D3)", and §"Relationship to RFC-35").
 
 This RFC turns the fan-in promise into an end-to-end contract by adding:
 
 1. **Executable source operations** - first-class `specrun source survey` and `specrun source extract` commands that run source adapters under the declared sandbox, cache, and journal contract.
-2. **Deterministic plan-time structural reconciliation** - a CLI-owned lead-reconciliation engine that proposes slice rows from `Lead[]`, preserving operator review for ambiguous joins and operator/agent judgment for target binding.
+2. **Agent-led plan-time lead reconciliation** - an agent-led cross-source matching step that groups each source's `Lead[]` into unified slice candidates (including semantic matches that exact id / alias cannot catch) and binds each group to a target, running under a stable input/output envelope wrapped by a CLI-owned projection kernel: a deterministic structural floor, schema validation, the lead-partition invariant, group-id assignment, journal events, and the existing plan writers.
 3. **Slice synthesis engine** - an agent-led cross-modal synthesis step (which decides the requirement set, declares each requirement's `(source, claim-id)` claims and an `agreement` verdict, and authors its prose) running under a stable input/output envelope, wrapped by a CLI-owned projection kernel that projects over the agent's structure: RFC-27 authority resolution, REQ-id assignment, `sources` and winner-marker derivation, status derivation, provenance projection into `provenance.yaml`, and drift validators.
 4. **Typed slice model** - a machine-readable, schema-pinned view of the slice emitted by refine and used by target builders, while the existing Markdown artifacts remain the human review surface and baseline merge input.
 5. **Target build contract** - target adapters consume the slice model through a stable per-slice build envelope, with per-slice validation, review findings, and merge gates.
-6. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice model -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`, and the kernel / envelope split proven by kernel-projection determinism over a fixed synthesis response, plus cross-target target-neutrality and semantic equivalence of the agent-authored requirement set.
+6. **Proof fixtures** - acceptance coverage that exercises `N sources -> one slice model -> 1 target per slice`, with cross-target fan-out proven across multiple slices joined by `depends-on`, and the kernel / envelope split proven by two **deterministic** gates: kernel-projection determinism over a fixed synthesis response, and an envelope-construction proof that the requirements-relevant inputs are byte-identical across target bindings (no LLM judge in any gate).
 
 ## Motivation
 
-The current codebase can describe the fan-in/fan-out model, but it cannot yet prove it as a framework invariant: source operations are briefs not executable commands, plan-time lead reconciliation is agent-only, slice-time reconciliation has no production resolver, the machine-readable slice view is implicit, and target codegen is adapter-brief discipline with no stable envelope. The normative decisions below close each gap.
+The current codebase can describe the fan-in/fan-out model, but it cannot yet prove it as a framework invariant: source operations are briefs not executable commands, plan-time lead reconciliation is uncontracted agent work (no envelope, no validation, no journal trail), slice-time reconciliation has no production resolver, the machine-readable slice view is implicit, and target codegen is adapter-brief discipline with no stable envelope. The normative decisions below close each gap.
 
-The goal is not to remove agents but to move stable workflow, data-shape, and bookkeeping obligations into the CLI so agents keep the judgment work — cross-modal Evidence reconciliation into a requirement set, claim grouping, the agreement verdict, repair, and domain-specific generation. Cross-modal reconciliation is the canonical case of unavoidable judgment and stays agent-led at the heart of synthesis; the CLI's contribution is the **envelope** around that step plus the deterministic *projection* over its output: stable inputs, stable outputs, RFC-27 authority resolution, REQ-id assignment, `sources`/winner derivation, status derivation, provenance projection, drift validation, journal events. The kernel never reconstructs the requirement set; it validates and provenance-tracks the one the agent proposes. Synthesis carries an explicit `agent | executable` execution mode whose default — and designed centre — is `agent`.
+The goal is not to remove agents but to wrap the agent's judgment in a stable envelope and to move stable workflow, data-shape, and bookkeeping obligations into the CLI. The two cross-source judgment steps — lead reconciliation (D2) and slice synthesis (D3/D10) — both default to `execution: agent`; see §"Lead reconciliation engine (D2)" and §"Slice synthesis engine (D3)" for the matching agent/kernel split.
 
 ## Normative decisions
 
@@ -36,17 +34,18 @@ The goal is not to remove agents but to move stable workflow, data-shape, and bo
 | ID                              | Decision                                                                                                                                                                                                                                 | Implementation consequence                                                                                                                                                                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D1 Source operation runner**  | The CLI runs source adapter `survey` and `extract` operations.                                                                                                                                                                        | Add `specrun source survey` and `specrun source extract`; route through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events.                       |
-| **D2 Lead reconciliation engine**  | The CLI owns the **structural** `Lead[] -> lead groups` pass (rules 1–3 — exact id, exact alias, transitive cross-reference). **Target binding** (which group becomes which `(slice, target)` pair) stays agent-driven until a Lead target-axes hint lands. | Ship in two stages. Stage B1: `specrun plan propose --dry-run --format json` returns the structural groups as JSON without writing the plan. `/spec:plan` reads the JSON, decides target binding per group, and writes through the existing `specrun plan add` / `plan amend` writers. Stage B2 (deferred): once Lead target-axes are RFC'd, promote `propose` to a full writer that emits one `(group, target)` slice directly. |
+| **D2 Lead reconciliation engine**  | The agent-led reconciliation step owns cross-source matching of `Lead[]` into lead groups — deciding which leads across sources describe the same unit of work (including semantic matches beyond exact id / alias / cross-reference), declaring each group's `(source-key, lead-id)` members and per-member `match-basis`, and binding each group to a target. The CLI owns the projection kernel around that judgment: a deterministic **structural floor** (exact id, exact alias, transitive cross-reference) the agent's grouping may extend but never split, schema validation of the proposed grouping, the lead-partition invariant, group-id assignment, journal events, and the existing plan writers. The kernel never invents or drops a lead, never merges on its own heuristic, and never overrides a structural-floor match. Carries `execution: agent \| executable`, mirroring D10's agent-first stance; `agent` is the default and designed centre. | Add `specrun plan propose`. `specrun plan propose --dry-run --format json` returns the **reconciliation request envelope** (full lead inventory + the deterministic structural floor) without writing the plan; the agent extends it into a grouping + target binding; `specrun plan propose --from <response.json>` runs the kernel (validate → partition/floor invariants → group-id assignment → `plan.reconcile.agent` → plan writers) and writes `plan.yaml.slices[]` through the existing `crates/workflow/src/change/plan/` writers. The agent never hand-edits `plan.yaml`. |
 | **D3 Slice synthesis engine** | The agent-led synthesis step owns cross-modal reconciliation of `Evidence[]` into the requirement set — which requirements exist, how claims merge or split, each requirement's `(source, claim-id)` claims, an `agreement` verdict (`agreed` / `disagreed`) over those claims, its prose (`title` / `statement` / `scenarios` / `notes`), and the four Markdown artifacts. The CLI owns the projection kernel that *projects over* that structure (RFC-27 authority resolution, REQ-id assignment, `sources` and winner-marker derivation, status derivation, provenance into `provenance.yaml`, drift validation) and the synthesis envelope. The kernel never reconstructs the requirement set, never picks a winner the resolved authority did not, and never overrides the agent's agreement verdict. | Add `specrun slice synthesize <slice>`. The engine resolves authority via the RFC-27 resolver, dispatches the synthesis step (`agent` by default, or a declared `executable` synthesis tool per D10) with the Evidence map and resolved authority, then derives each requirement's `sources` from its claims, applies authority to mark winners and derive `status` from the agreement verdict, assigns ids, projects `provenance.yaml`, validates, and persists. `/spec:refine` stops hand-coding the reconciliation projection (and stops hand-authoring `provenance.yaml`) and shells out to the engine. |
 | **D4 Typed slice model**           | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`.                                                                                                                                                                       | Add `schemas/slice/model.schema.json`; `specrun slice validate` checks model/artifact/provenance drift; target build reads the slice model as its primary machine input.                                                     |
 | **D5 Per-slice fan-out**        | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`. RFC-29 introduces no per-output schema, lifecycle, or build envelope.                    | No `outputs[]` field on the slice model, build request, or build report. `plan.yaml.slices[].target` / `slices[].project` keep their existing shape and meaning. Cross-slice ordering uses the existing `slices[].depends-on`. |
 | **D6 Target build envelope**    | Target adapters receive a stable per-slice build request and return a stable per-slice build report.                                                                                                                                     | Add `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json`, keyed on `(slice, target)`; reports may include RFC-28 findings.                                                        |
 | **D7 Acceptance proof path**    | The release is not complete until an end-to-end fixture demonstrates fan-in and cross-slice fan-out together.                                                                                                                            | Add a cross-repo test in which two sources feed two slices (one targeting `contracts@v1`, one targeting `omnia@v1`), joined by `depends-on`; each slice independently synthesises, builds, and merges.                |
-| **D8 Shape-brief scope**        | Target `shape` briefs may parameterise the slice model's structure for `domain` / `apis` / `configuration` / `technical-logic` / `observability` / `tasks` but MUST NOT influence `requirements[]`, `claims`, `agreement`, `sources[]`, or any provenance-bearing field. | The whole requirements section — entries, claims, agreement verdicts, statements, scenarios, ordering — is authored by the agent-led synthesis step, which the envelope walls off from `target` and `shape-brief` (`forbidden-inputs-for-requirements-reconciliation`); requirements are therefore **target-neutral by construction**, not by deterministic reconstruction. The kernel's **projection** over that structure (REQ-id assignment in declaration order, `sources` and winner markers derived from the claims, `status` derived from the agreement verdict plus authority over those claims, claim-level provenance into `provenance.yaml`) is a pure, target-independent function of `(response structure, Evidence[], authority-overrides)` — byte-identical when re-run over a fixed response. Cross-target equivalence of the requirement set is validated semantically (§"Acceptance proof"), not as byte-equality. |
+| **D8 Shape-brief scope** | Target `shape` briefs parameterise non-requirements model sections only; they MUST NOT influence `requirements[]`, claims, agreement, `sources[]`, or any provenance-bearing field. | Envelope walls off `target` and `shape-brief` from requirements reconciliation (`forbidden-inputs-for-requirements-reconciliation`). Target-neutrality is proven by the envelope-construction gate (§"Acceptance proof (D7)"); kernel projection is target-independent over a fixed response. |
 | **D9 Adapter execution mode**   | Source adapters declare a closed `execution: executable | agent-fallback` field; first-party adapters MUST be `executable` before RFC-29 ships, third-party adapters MAY be `agent-fallback` indefinitely.                               | Extend `schemas/source.schema.json` and (symmetrically) `schemas/target.schema.json` with the closed enum. `agent-fallback` forces `cache: opt-out` and emits `source.execution.agent-fallback` per invocation.       |
-| **D10 Synthesis execution mode** | The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | executable` enum. Unlike the adapter enum (D9), synthesis is **agent-first by design**: cross-modal Evidence reconciliation is judgment work, so `agent` is the default and the designed centre — not a fallback. An `execution: executable` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source statement-quality Evidence). | Add the closed enum to slice-synthesis configuration. `agent` forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic) and emits `slice.synthesize.agent` per invocation. The engine validates the result against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks regardless of execution mode. |
-| **D11 Standalone provenance projection** | `specrun slice provenance <slice>` is the thin standalone entry point onto the **same projection kernel D3 wraps inside `specrun slice synthesize`**: given the slice's `model.yaml` (its agent-authored `requirements[].claims` + `agreement` verdicts) plus `Evidence[]` and authority-overrides, it projects `provenance.yaml` deterministically. RFC-35 (landed) deferred this writer verb on the grounds that the claim→requirement mapping is synthesis judgment, not mechanically derivable from `Sources:` lines; RFC-29 supplies the missing claim-level input (D3), so the projection becomes faithful rather than lossy and RFC-29 owns the verb. | Add `specrun slice provenance <slice> [--format json]`. It shares the D3 projection kernel module — it never re-decides the requirement set, never picks a winner the resolved authority did not, and never overrides the agreement verdict — and emits the byte-identical `provenance.yaml` the **landed** `slice-provenance-drift` gate already validates. No schema change: `schemas/slice/provenance.schema.json` is unchanged. |
-| **D12 Journal emitter** | `specrun journal emit` is the single schema-validated writer onto the closed `EventKind` taxonomy in `crates/workflow/src/journal.rs`, for the **agent-orchestrated** phases that have no deterministic command of their own to emit from (agent-mode synthesis, `agent-fallback` source/target operations, agent-driven `/spec:build` / `/spec:merge`). RFC-35 (landed) rejected this verb because, for the steps it touched, the deterministic command that owns a transition can emit directly; RFC-29 introduces agent-orchestrated steps that cannot, and the F6 friction (agents hand-rolling NDJSON with `printf`/`date`) recurs across every such step. | Add `specrun journal emit <event-id> [--payload <json>] [--format json]`; reject unknown event ids (`journal-emit-unknown-event`) and payloads that fail the per-kind shape (`journal-emit-payload-schema`). Deterministic commands keep emitting directly; the verb is the well-formed path for agent-run steps and the single emission point RFC-29's new `source.*` / `slice.synthesize.*` / `slice.build.*` / `slice.merge.*` kinds flow through when an agent is the orchestrator. |
+| **D10 Synthesis execution mode** | The synthesis step inside `specrun slice synthesize` carries a closed `execution: agent | executable` enum. Unlike the adapter enum (D9), synthesis is **agent-first by design**: cross-modal Evidence reconciliation is judgment work, so `agent` is the default and the designed centre — not a fallback. An `execution: executable` path is optional, reserved for future declared synthesis tools that admit narrow deterministic cases (e.g. single-source statement-quality Evidence). | Add the closed enum to slice-synthesis configuration. `agent` forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic) and emits `slice.synthesize.agent` per invocation. The engine validates the result against `schemas/slice/model.schema.json` and the seven `slice-model-*` drift checks regardless of execution mode. |
+| **D11 Standalone provenance projection** | `specrun slice provenance <slice>` is the standalone entry point onto the same projection kernel as D3, reading persisted `model.yaml` claims + agreement verdicts. | Add `specrun slice provenance <slice> [--format json]`; shares the D3 kernel; no change to `schemas/slice/provenance.schema.json`. See §"Relationship to RFC-35". |
+| **D12 Journal emitter** | `specrun journal emit` is the schema-validated writer for agent-orchestrated phases with no deterministic emit command (D2/D9/D10 agent paths, agent-driven build/merge). | Add `specrun journal emit <event-id> [--payload <json>] [--format json]` with `journal-emit-unknown-event` / `journal-emit-payload-schema` rejection. See §"Journal emitter (D12)" and §"Relationship to RFC-35". |
+| **D13 Claim contract (`id` + `kind`)** | Every claim that contributes to a requirement carries a stable `claim-id` **and** its `kind`. RFC-29 (a) tightens `schemas/evidence.schema.json` so `claim-id` is required on **every** claim kind (closing the pre-RFC-29 gap where it was required only on `requirement` / `criterion` / `example`), and (b) carries `kind` on `model.yaml.requirements[].claims[]` so the projection kernel resolves per-kind authority (see §"Authority over mixed-kind claims") and populates the `kind`-bearing `provenance.yaml` `contributing-claims[]` **without re-reading Evidence**. | Add `kind` (required, mirrors `evidence.schema.json#/$defs/claimKind`) to `modelClaim` in `schemas/slice/model.schema.json`. Make `claim-id` unconditionally `required` in `evidence.schema.json#/$defs/claim`. `specrun slice validate` adds `slice-model-claim-kind-mismatch` when a claim's `kind` disagrees with the kind recorded for that `(source, claim-id)` in Evidence; `slice-model-source-orphan` still catches a `(source, claim-id)` absent from Evidence. |
 
 
 ## Operator surface
@@ -65,14 +64,15 @@ The new CLI surfaces are lower-level breakouts:
 ```bash
 specrun source survey docs --format json
 specrun source extract docs password-reset --slice identity-password-reset --format json
-specrun plan propose --dry-run --format json     # Stage B1 structural grouper (returns groups, never writes plan.yaml)
+specrun plan propose --dry-run --format json                 # D2 reconciliation request envelope (floor + inventory; never writes plan.yaml)
+specrun plan propose --from grouping.json --format json      # D2 kernel: validate agent grouping, enforce invariants, write slices
 specrun slice synthesize identity-password-reset --format json
 specrun slice provenance identity-password-reset --format json   # D11 standalone projection onto the D3 kernel
 specrun slice model show identity-password-reset --format json
 specrun journal emit slice.synthesize.agent --payload '{"slice":"identity-password-reset"}'   # D12 agent-orchestrated emitter
 ```
 
-`specrun plan propose` without `--dry-run` is reserved for the deferred Stage B2 full writer (see §"Lead reconciliation engine (D2)"); in v1 it returns `propose-target-binding-required` and points at the dry-run form. Target binding stays with the `/spec:plan` agent step, which calls `specrun plan add` per `(group, target)` pair.
+Cross-source lead matching and target binding are the `/spec:plan` agent step's judgment (D2); `specrun plan propose --dry-run` seeds it with the deterministic structural floor, and `specrun plan propose --from` is the kernel that validates the grouping and writes the slices through the existing plan writers.
 
 Cross-target changes are planned as multiple slices, each bound to one target, joined by `depends-on`:
 
@@ -87,20 +87,9 @@ specrun plan add identity-service \
   --depends-on identity-contracts
 ```
 
-Each entry keeps its existing one-target shape:
+Each entry keeps its existing one-target shape (see §"Per-slice fan-out (D5)"). In the default flow these rows are written by the D2 reconciliation kernel (`specrun plan propose --from`) projecting the agent's grouping through these same `plan add` writers; the explicit `plan add` form above stays available for manual authoring and illustrates the resulting plan shape.
 
-```yaml
-slices:
-  - name: identity-contracts
-    target: contracts@v1
-    project: identity-contracts
-  - name: identity-service
-    target: omnia@v1
-    project: identity-service
-    depends-on: [identity-contracts]
-```
-
-A downstream slice that needs another slice's build report (e.g. `omnia` consuming the `contracts` schema) reads it through `prior-slices[]` on its own build request (see §"Target build envelope"). No multi-output, multi-target shape is added to a single slice — the plan layer is the only place fan-out happens.
+A downstream slice that needs another slice's output (e.g. `omnia` consuming the `contracts` schema) declares the edge with `depends-on` at the plan layer; `specrun plan next` merges the upstream slice before the dependent starts, and the dependent target reads the upstream output from the merged working tree (see §"Target build envelope"). No multi-output, multi-target shape is added to a single slice — the plan layer is the only place fan-out happens.
 
 ## Source operation runner (D1)
 
@@ -152,104 +141,112 @@ source identity + adapter name@version + brief sha256 + sorted tool versions + l
 
 `lead id` is absent for `survey` and present for `extract`.
 
-Journal events:
+Survey cache events (`source.survey.cache-hit`, `source.survey.cache-miss`) are new; extract cache events already exist in RFC-27. Full event taxonomy: §"Journal events".
 
+### Relationship to `specrun source preview`
 
-| Event                         | When                                      |
-| ----------------------------- | ----------------------------------------- |
-| `source.survey.cache-hit`  | Lead set was read from cache.        |
-| `source.survey.cache-miss` | Adapter `survey` ran.                  |
-| `slice.extract.cache-hit`     | Evidence was read from cache.             |
-| `slice.extract.cache-miss`    | Adapter `extract` ran.                    |
-| `slice.extract.completed`     | Evidence file was successfully persisted. |
+The existing `specrun source preview` (`src/runtime/commands/source/preview.rs`) already resolves a source adapter, validates the `--source` path, scaffolds an `--out/evidence/` subtree, and surfaces brief paths — but it is **workflow-free**: no `.specify/` writes, no cache, no journal events, no `discovery.md` merge, and it does not dispatch the briefs (the agent runs them by hand against the prepared directory). The D1 runner is the **workflow-integrated** counterpart of that same operation. To keep one source-operation contract rather than two that drift:
 
+- **Share the environment prep.** Factor a single internal helper — adapter resolution, brief-directory resolution (the landed RFC-35 D9 `briefs-dir`), the four-root sandbox preopen layout (`$SOURCE_DIR` / `$CAPABILITY_DIR` / `$SCRATCH_DIR` / `$PROJECT_DIR`), and `evidence/` scaffolding — and have **both** `source preview` and `source survey` / `source extract` consume it. The runner is then a thin layer that adds the workflow-integrated behaviour on top of the shared prep.
+- **Keep the surfaces distinct in role.** `source preview` stays the workflow-free dry run (adapter authoring / debugging, output under `--out`). `source survey` / `source extract` add the sandboxed `execution`-branched dispatch (D9), the RFC-27 cache fingerprint, the journal events, validate-before-visible, and the `discovery.md` merge (`survey`) / Evidence persist (`extract`). Equivalently, `preview` may be implemented as the `--dry-run --out <dir>` mode of the same runner so the dispatch code is literally shared.
+- **Align the "which lead(s)" surface.** `source preview` already takes `--lead <id>…`; `source extract` takes a positional `<lead-id>` plus `--slice`. The shared helper should use one spelling for lead selection across the family so the `preview` → `extract` path reads consistently.
 
-`slice.extract.cache-*` already exists in RFC-27; this RFC adds the survey equivalents.
+The genuinely-new machinery D1 introduces over today's `preview` — the sandbox preopens, the `executable` vs `agent-fallback` dispatch branch, the cache, the journal events, validate-before-visible, and the discovery/Evidence persistence — is what makes `survey` / `extract` workflow commands rather than a scaffolding helper; none of it should be re-implemented in `preview`.
 
 ## Lead reconciliation engine (D2)
 
-D2 splits a single conceptual step — `Lead[] -> plan entries` — into two halves:
+### Two layers
 
-1. **Structural reconciliation** (rules 1–3 below): exact id, exact alias, transitive cross-reference. Deterministic, pure data, no judgment. **CLI-owned from day one (Stage B1).**
-2. **Target binding**: deciding which target adapter(s) each lead group becomes a slice for, under the per-slice fan-out model (D5). Inherently judgment work until Leads carry target-axis hints. **Agent-driven in v1, promoted to the CLI later (Stage B2).**
+There is no deterministic function from `Lead[]` across heterogeneous sources to a coherent set of slice candidates — deciding that the documentation lead `password-reset` and the legacy-code lead `reset-password` describe the same unit of work is exactly the cross-source judgment call the framework exists to make. So D2 mirrors D3: the judgment layer is agent-led and first, the projection layer is CLI-owned and deterministic.
 
-This split lets RFC-29 land the deterministic half without blocking on a target-axes design.
+1. **Lead-matching step (judgment, agent-led — the heart).** Cross-source reconciliation of `Lead[]` into lead groups: deciding which leads across sources describe the same unit of work, including **semantic** matches that exact id / alias / cross-reference cannot catch, declaring each group's `(source-key, lead-id)` members with a `match-basis` per member (`exact-id` | `exact-alias` | `cross-reference` | `semantic`), binding each group to exactly one target (one slice per `(group, target)` pair, per D5), authoring the per-group rationale and any `tentative` low-confidence flags the operator should eyeball, and rendering the "Lead inventory" / "Tentative merges" prose into `change.md`. This is the load-bearing judgment of plan-time fan-in and stays with the agent.
+2. **Projection kernel (deterministic projection, CLI-owned).** A structural **floor** — exact id, exact alias, transitive cross-reference (rules 1–3 below) — computed deterministically and handed to the agent in the request envelope; schema validation of the returned grouping; the **lead-partition invariant** (every surveyed lead lands in exactly one group, no orphan or duplicate members, every cited `(source, lead-id)` exists in `discovery.md`); structural-floor preservation (the agent may *extend* a floor group with a semantic member but may not *split* a floor match); group-id assignment; journal events; and the write of `plan.yaml.slices[]` through the existing `crates/workflow/src/change/plan/` writers. The kernel projects over the structure the agent returns; it never invents, drops, or re-groups leads on its own heuristic, never merges on textual similarity by itself, and never overrides a structural-floor match.
 
-### Stage B1 — Structural grouper (CLI)
+### Command
 
 ```bash
-specrun plan propose --dry-run --format json
+specrun plan propose --dry-run --format json          # returns the reconciliation request envelope (floor + inventory); writes nothing
+specrun plan propose --from <response.json> [--format json]   # kernel: validate → partition/floor invariants → group-id assignment → journal → plan writers
 ```
 
-`propose --dry-run` reads:
+`propose --dry-run` reads `plan.yaml.sources`, the `discovery.md` lead inventory (via the in-place `crates/model/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_lead` already cover the join surface), and optional operator-authored aliases. It writes **nothing** to disk and returns the request envelope. `propose --from` consumes the agent's grouping response and is the only writer; the agent never hand-edits `plan.yaml`.
 
-- `plan.yaml.sources`;
-- `discovery.md` lead inventory (via the in-place `crates/model/src/discovery/` model — `Discovery::parse` + `Discovery::resolve_lead` already cover the join surface);
-- optional operator-authored aliases.
+### Structural floor (kernel)
 
-It writes **nothing** to disk. It returns a JSON document describing the proposed groups:
+The kernel's deterministic pre-pass is intentionally conservative — it is a *floor*, not the final grouping:
 
-```json
-{
-  "version": 1,
-  "groups": [
-    {
-      "group-id": "identity-api",
-      "rule": "exact-id",
-      "members": [
-        { "source-key": "docs",   "lead-id": "identity-api" },
-        { "source-key": "legacy", "lead-id": "identity-api" }
-      ],
-      "tentative-merges": []
-    }
-  ],
-  "tentative-merges": [
-    {
-      "left":  { "source-key": "docs",   "lead-id": "password-reset" },
-      "right": { "source-key": "legacy", "lead-id": "reset-password" },
-      "reason": "no alias or exact id match exists; textual similarity 0.82"
-    }
-  ]
-}
+1. Exact canonical `id` match across source keys -> one floor group.
+2. Exact alias match -> one floor group, recorded under the canonical id.
+3. One lead's `sources` list transitively names another source's lead id (the existing `Lead.sources[]` cross-reference field) -> one floor group.
+4. Otherwise each lead starts ungrouped.
+
+The floor is a pure function of the parsed discovery document. The agent receives it pre-computed so it never has to re-derive the trivial matches and can spend its judgment on the semantic joins (rule 4 leftovers). The kernel later refuses any response that *splits* a floor group (`plan-reconcile-structural-floor-violated`); the agent may only add semantic members on top.
+
+### Reconciliation envelope
+
+The matching step receives a fixed-shape request and returns a fixed-shape response, dispatched to the operator's agent under `execution: agent` (the default and designed centre) or to a declared WASI tool under `execution: executable` (the D10-style mirror; see §"Synthesis execution mode (D10)" for the agent-first rationale, which applies identically here). The request:
+
+```yaml
+version: 1
+kind: request
+sources: [docs, legacy]
+lead-inventory:
+  docs:    [identity-api, password-reset]
+  legacy:  [identity-api, reset-password]
+structural-floor:
+  - group-id: identity-api
+    rule: exact-id
+    members:
+      - { source-key: docs,   lead-id: identity-api }
+      - { source-key: legacy, lead-id: identity-api }
+ungrouped:
+  - { source-key: docs,   lead-id: password-reset }
+  - { source-key: legacy, lead-id: reset-password }
+bound-targets: [contracts@v1, omnia@v1]
 ```
 
-The schema lives at `schemas/discovery/proposal.schema.json` (committed alongside the existing `schemas/discovery/lead.schema.json`, reproduced verbatim as Schema D in §"Schemas added by this RFC") and embeds in the `specify-schema` crate as `PROPOSAL_JSON_SCHEMA`. `propose --dry-run` validates its own output before returning so callers can rely on the shape.
+The response declares the final grouping and target binding:
 
-### Matching algorithm (B1)
+```yaml
+version: 1
+kind: response
+groups:
+  - group-id: identity-api          # preserved from the floor; kernel forbids splitting it
+    members:
+      - { source-key: docs,   lead-id: identity-api,   match-basis: exact-id }
+      - { source-key: legacy, lead-id: identity-api,   match-basis: exact-id }
+    target: contracts@v1
+  - group-id: identity-api          # same lead group may feed more than one target (fan-in, not fan-out)
+    members:
+      - { source-key: docs,   lead-id: identity-api,   match-basis: exact-id }
+      - { source-key: legacy, lead-id: identity-api,   match-basis: exact-id }
+    target: omnia@v1
+    depends-on: [identity-contracts]
+  - group-id: password-reset        # the agent's semantic merge across sources
+    members:
+      - { source-key: docs,   lead-id: password-reset, match-basis: semantic }
+      - { source-key: legacy, lead-id: reset-password, match-basis: semantic, tentative: true }
+    rationale: "docs 'password-reset' and legacy 'reset-password' describe one reset flow"
+    target: omnia@v1
+```
 
-The structural pass is intentionally conservative:
+`group-id` on the response is the agent's proposed slice name; the kernel validates it against the slice-name grammar but does not invent it. The synthesis envelope's id/winner/status fields have no analogue here — the kernel owns only group-id *validation*, the partition and floor invariants, and the journal/write. Full request/response shape: [`rfc-29/schemas/discovery/proposal.schema.json`](rfc-29/schemas/discovery/proposal.schema.json) (`kind: request | response` discriminator), embedded as `PROPOSAL_JSON_SCHEMA`. `propose --dry-run` validates its own request output before returning; `propose --from` validates the response before projecting.
 
-1. Exact canonical `id` match across source keys -> one group.
-2. Exact alias match -> one group, persisted under the canonical id.
-3. One lead's `sources` list transitively names another source's lead id (the existing `Lead.sources[]` cross-reference field) -> one group.
-4. Otherwise each lead stays in its own group.
+### Match basis and operator review
 
-Textual-similarity may surface as a diagnostic under `tentative-merges[]`, but never auto-merges in v1. That keeps Stage B1 a pure function of the parsed discovery document.
+`match-basis: semantic` (and any member flagged `tentative: true`) is the structured form of the "Tentative merges" Markdown block the agent renders into `change.md` for the operator. Semantic merges are the agent's judgment, surfaced for operator review at Gate 1 — the operator may accept them as-is, run `specrun plan amend --add-alias` to promote a recurring semantic match into a durable alias (so the next survey resolves it on the structural floor), or split the slice. The kernel does not adjudicate whether a semantic merge is *correct*; it only proves the grouping is a well-formed partition that respects the floor. The agent may also call `specrun plan amend --divergence likely` against any written slice whose bound leads carry materially disagreeing summaries; that writer path already exists.
 
-### Agent role under Stage B1
+### Agent role
 
 `/spec:plan`'s `propose` sub-step:
 
-1. Calls `specrun plan propose --dry-run --format json` to obtain the structural groups.
-2. For each `groups[]` entry, decides which bound target(s) the group should become a slice for. Cross-target work expands to one slice per `(group, target)` pair, per D5. This is the only structural decision the agent still owns.
-3. For each `(group, target)` pair, emits one `specrun plan add <slice-name> --sources <key>=<lead-id>… --target <name@vN> [--project <slug>] [--depends-on <other-slice>]` call.
-4. For each `tentative-merges[]` entry, raises the diagnostic for operator review at Gate 1 (or runs `specrun plan amend --add-alias` to accept the merge).
+1. Calls `specrun plan propose --dry-run --format json` to obtain the request envelope (floor + lead inventory + bound targets).
+2. Matches the `ungrouped` leads across sources by judgment — extending floor groups with semantic members and forming new groups — without ever splitting a floor group.
+3. Binds each group to one or more targets, expanding to one `(group, target)` slice per binding (cross-target work uses `depends-on`, per D5), and authors per-group `rationale` plus `tentative` flags.
+4. Submits the grouping with `specrun plan propose --from <response.json>`, which validates, enforces the invariants, assigns group ids, emits `plan.reconcile.agent`, and writes the slices through the existing plan writers.
+5. Renders the semantic / `tentative` merges into `change.md` for operator review at Gate 1.
 
-Every plan mutation flows through the existing CLI writers in `crates/workflow/src/change/plan/`. The agent never hand-edits `plan.yaml`, never writes `discovery.md`, never decides authority — its scope is target binding and tentative-merge adjudication.
-
-### Stage B2 — Full writer (deferred)
-
-Once Leads carry deterministic target-axis hints (see §"Open questions" below), promote `specrun plan propose` to a full writer:
-
-```bash
-specrun plan propose [--format json]
-```
-
-The full form reconciles the structural pass with the target-binding pass and writes `plan.yaml.slices[]` directly. Stage B2 is **not** in scope for RFC-29 implementation; it ships in a follow-up RFC that nails down the target-axis vocabulary on `schemas/discovery/lead.schema.json`. Until then, `specrun plan propose` without `--dry-run` returns a `propose-target-binding-required` error directing the caller at the Stage B1 form.
-
-### Review annotations
-
-`tentative-merges[]` is the structured form of the "Tentative merges" Markdown block the agent renders into `change.md` for the operator. The agent may also call `specrun plan amend --divergence likely` against any subsequently-written slice when its bound leads carry materially disagreeing summaries; that writer path already exists.
+The agent never hand-edits `plan.yaml`, never writes `discovery.md` directly, and never decides authority — its scope is cross-source matching, target binding, and rationale.
 
 ## Slice synthesis engine (D3)
 
@@ -258,7 +255,7 @@ The full form reconciles the structural pass with the target-binding pass and wr
 There is no deterministic function from `(design-prose, code-AST, vision-output)` to a coherent requirement set, so the engine splits cleanly into two layers — with the judgment layer first:
 
 1. **Synthesis step (judgment, agent-led by default — the heart).** Cross-modal reconciliation of `Evidence[]` into the requirement set: deciding which requirements exist and how claims merge or split into them, declaring each requirement's `(source, claim-id)` claims and an `agreement` verdict (`agreed` when the contributors agree on value after semantic comparison, `disagreed` when they do not — the irreducibly-judgment call), authoring `requirements[].title` / `.statement` / `.scenarios[]` / `.notes`, recording which spec `unit` each requirement renders into, populating the prose fields of the rest of the model (`domain.types[].fields[].description`, `apis.surfaces[].operations[]` request/response/errors prose, `technical-logic.decisions[].statement` / `.rationale`, `observability[].description`, `tasks[].text`), and rendering the four Markdown artifacts. This is the load-bearing judgment of synthesis and stays with the agent.
-2. **Projection kernel (deterministic projection, CLI-owned).** RFC-27 authority resolution, REQ-id assignment in the agent's declaration order, derivation of each requirement's `sources` (the unique source keys of its claims), winner-marker and `status` derivation from the agreement verdict plus authority over those claims, claim-level provenance projection into `provenance.yaml`, and the six drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code; it projects over the structure the agent returns and never invents, drops, or re-groups requirements, never selects a winner the resolved authority did not, and never overrides the agent's agreement verdict.
+2. **Projection kernel (deterministic projection, CLI-owned).** RFC-27 authority resolution, REQ-id assignment in the agent's declaration order, derivation of each requirement's `sources` (the unique source keys of its claims), winner-marker and `status` derivation from the agreement verdict plus authority over those claims, claim-level provenance projection into `provenance.yaml`, and the seven drift validators in §"Drift validation". This is where RFC-27's authority resolver becomes production code; it projects over the structure the agent returns and never invents, drops, or re-groups requirements, never selects a winner the resolved authority did not, and never overrides the agent's agreement verdict.
 
 The engine resolves authority, runs (1) under the envelope defined in §"Synthesis envelope", then runs (2) over the returned structure and validates the merged result against `schemas/slice/model.schema.json` and the drift validators before the slice transitions to `refined`.
 
@@ -307,7 +304,7 @@ The micro-resolver currently pinned in tests becomes black-box coverage for the 
 
 ### Status and provenance derivation
 
-`status` is the join of two responsibilities the earlier drafts conflated: **agreement classification** is judgment (does "30 minutes" agree with "1800 seconds"? semantic, agent-owned), while **winner selection among disagreements** is authority mechanics (deterministic, kernel-owned). The synthesis step supplies the agreement verdict per requirement; the kernel applies the resolved authority and projects the rest. The mapping is closed:
+`status` joins two responsibilities: **agreement classification** is judgment (does "30 minutes" agree with "1800 seconds"? semantic, agent-owned), while **winner selection among disagreements** is authority mechanics (deterministic, kernel-owned). The synthesis step supplies the agreement verdict per requirement; the kernel applies the resolved authority and projects the rest. The mapping is closed:
 
 | `claims` | `agreement` | Kernel `status` | `provenance.yaml` `resolution` | Winner markers |
 | --- | --- | --- | --- | --- |
@@ -320,6 +317,16 @@ The micro-resolver currently pinned in tests becomes black-box coverage for the 
 The agent never names the winning claim; the kernel selects it from the RFC-27 resolution it computed before dispatch, so authority resolution stays the single source of truth (RFC-27) and an agent cannot smuggle in a winner the authority order forbids. The losing claims survive in `provenance.yaml` (`winner: false`) for audit, exactly as [`provenance.md`](../../plugins/spec/references/synthesis/provenance.md) specifies.
 
 The agent's agreement verdict is authoritative for `agreed`-vs-not — value agreement is semantic and the CLI does not adjudicate it. As a non-blocking guard, the kernel runs a cheap normalised-string inequality check over the claims of any requirement the agent marked `agreed`; a mismatch emits a `review`-kind finding (`slice-synthesize-agreement-suspect`, advisory, never a transition blocker) so an operator can eyeball a possible mislabel without the CLI re-litigating semantics.
+
+### Authority over mixed-kind claims
+
+RFC-27 authority is resolved **per claim kind**: the per-Evidence `authority-overrides` map is keyed by `ClaimKind`, and the per-slice `authority-override <kind>=<key>` map likewise pins a class for one kind. A single requirement, however, may draw on claims of **different kinds** (e.g. a `criterion` from `docs` disagreeing with an `example` from `legacy`). The kernel therefore resolves authority at the **claim** granularity, not by assuming one kind per requirement. Because each `model.yaml` claim now carries its own `kind` (D13), the reduction is well-defined and needs no re-read of Evidence to recover kinds:
+
+1. **Per-claim effective class.** For each claim `(source, claim-id, kind)` the kernel computes the effective authority class by the RFC-27 order: per-slice `authority-override[kind]` (if it names this claim's source) → the claim's Evidence `authority-overrides[kind]` → the Evidence document-level `authority` → the workflow default `intent > documentation > behaviour`.
+2. **Requirement winner.** Among a `disagreed` requirement's claims, the winner is the claim with the strictly-greatest effective class. The kernel marks it `winner: true` and every other claim `winner: false`, yielding `status: divergence` and `resolution: authority-resolved` (or `per-slice-override` when step 1 fired a per-slice override).
+3. **Tie at the top class.** When two or more claims share the strictly-greatest effective class (regardless of kind), the requirement is a `conflict` with `resolution: tied-conflict` and no winner markers — identical to the same-class tie the single-kind table already specifies.
+
+This makes the §"Status and provenance derivation" table's "unique top authority" / "top authority class ties" rows precise for the multi-kind case: "top authority" means the maximum **per-claim** effective class across the requirement's claims, and a per-kind override changes only the effective class of claims of that kind. The micro-resolver pinned in `crates/model/src/evidence/authority.rs` tests already resolves one kind at a time; the production kernel applies it per claim and then takes the strict maximum, so the four pinned scenarios remain black-box coverage of step 1.
 
 ### Synthesis envelope
 
@@ -348,7 +355,7 @@ constraints:
 
 `authority.resolved-path` carries the kernel's pre-dispatch RFC-27 resolution so the synthesis step knows which claims win without re-deciding authority. The `constraints.forbidden-inputs-for-requirements-reconciliation` field is part of the contract: a conforming synthesis step reconciles the **entire requirements section** — entries, `sources`, `statement` / `title` / `scenarios[]` / `notes` — from the Evidence map and resolved authority alone, never from `target` or `shape-brief`. (`target` and `shape-brief` remain present in the envelope because they are legitimate inputs to the non-requirements sections of the model.) This is the agent-with-envelope expression of D8's target-neutrality requirement; it is checked at the boundary by the cross-target invariant in §"Acceptance proof (D7)" and re-asserted by the synthesis prompt body shipped with first-party Specify.
 
-The response is the populated `model.yaml` (requirement set, per-requirement `(source, claim-id)` claims, `agreement` verdict, `unit`, prose) plus the four Markdown artifacts. The synthesis step does not assign REQ-ids, does not derive `sources`, does not mark winners, does not derive `status`, and does not write `provenance.yaml` — those are the kernel's. The engine projects the kernel over the returned structure (id assignment in declaration order, `sources`/winner/status derivation, provenance projection), rejects any response that usurps a kernel-owned field (a pre-assigned id, `status`, `sources`, or `winner`) or cites a `(source, claim-id)` absent from the Evidence map, then validates and persists. The full request/response shape — including the closed `kind: request | response` discriminator that lets one file validate both directions — is committed verbatim as Schema E in §"Schemas added by this RFC".
+The response is the populated `model.yaml` (requirement set, per-requirement `(source, claim-id)` claims, `agreement` verdict, `unit`, prose) plus the four Markdown artifacts. The synthesis step does not assign REQ-ids, does not derive `sources`, does not mark winners, does not derive `status`, and does not write `provenance.yaml` — those are the kernel's. The engine projects the kernel over the returned structure (id assignment in declaration order, `sources`/winner/status derivation, provenance projection), rejects any response that usurps a kernel-owned field (a pre-assigned id, `status`, `sources`, or `winner`) or cites a `(source, claim-id)` absent from the Evidence map, then validates and persists. Full request/response shape: [`rfc-29/schemas/slice/synthesis-envelope.schema.json`](rfc-29/schemas/slice/synthesis-envelope.schema.json) (`kind: request | response` discriminator).
 
 ### Shape-brief scope (D8)
 
@@ -360,10 +367,12 @@ Shape briefs MUST NOT influence:
 - `requirements[].claims`, `requirements[].agreement`, `requirements[].sources`, or any `sources` field elsewhere in the slice model;
 - `domain.types[].sources`, `apis.surfaces[].operations[].sources`, `technical-logic.decisions[].sources`, or any other provenance-bearing field.
 
-The engine enforces D8 in two layers:
+The engine enforces D8 with two deterministic gates (see §"Acceptance proof (D7)"):
 
-- **Target-neutrality by construction (the requirement set).** The synthesis envelope hides `target` and `shape-brief` from every input the synthesis step is permitted to use for the requirements section — entries, `claims`, `agreement`, `id` candidates, `title`, `statement`, `scenarios[]`, `notes`. A conforming step therefore reconciles the same requirement set regardless of which target the slice binds. The CLI cannot byte-test a non-deterministic model across runs, so this layer is asserted *by construction* (the `forbidden-inputs-for-requirements-reconciliation` constraint plus the `slice-synthesize-forbidden-input-leak` probe) and validated for cross-target **semantic equivalence** in §"Acceptance proof (D7)" — not as byte-equality.
-- **Deterministic projection (the kernel over a fixed structure).** Given a fixed synthesis-step response, the kernel's projection — REQ-id assignment in declaration order, `sources` and winner markers derived from each requirement's claims, `status` derived from the agreement verdict plus authority over those claims, and the claim-level projection into `provenance.yaml` — is a pure, target-independent function of `(response structure, Evidence[], authority-overrides)`. Re-running the kernel over the **same** response yields byte-identical `provenance.yaml` and id/sources/status projection regardless of bound target; this is the byte-testable part of the invariant (D7) and is exactly the determinism guarantee the standalone `specrun slice provenance` verb (D11) makes for `provenance.yaml`. Byte-equality is asserted only on this projection, never on the agent-authored requirement set across live runs.
+1. **Envelope-construction proof** — requirements-relevant synthesis request inputs (`evidence`, resolved authority, `forbidden-inputs-for-requirements-reconciliation`) are byte-identical across target bindings.
+2. **Kernel-projection determinism** — given a fixed synthesis response, kernel output (`provenance.yaml`, ids, sources, status, winners) is byte-identical and target-independent.
+
+The `slice-synthesize-forbidden-input-leak` probe (mechanical set-difference) complements gate 1. An optional LLM-judge equivalence check over live agent runs MAY run as a non-gating `review` diagnostic but is never a release gate.
 
 ### Rendering
 
@@ -381,11 +390,12 @@ specrun slice provenance <slice> [--format json]
 
 `specrun slice provenance` reads the slice's already-persisted `model.yaml` (the agent-authored `requirements[].claims` and `agreement` verdicts), the slice's `Evidence[]`, and the per-slice / per-Evidence authority-overrides, then runs the **identical** projection D3 wraps — RFC-27 authority resolution, winner-marker derivation, `status` derivation from the agreement verdict, and the claim-level projection into `provenance.yaml`. It writes `.specify/slices/<slice>/provenance.yaml` and nothing else. Re-running it over an unchanged `model.yaml` is byte-stable (it is the same pure function of `(model structure, Evidence[], authority-overrides)` described in §"Shape-brief scope (D8)").
 
-This verb exists for three reasons:
+Uses:
 
-1. **Regeneration without re-synthesis.** An operator who hand-edits `model.yaml`'s requirement claims (or whose `model.yaml` predates a provenance-schema fix) can re-project `provenance.yaml` without paying for a full agent synthesis run.
-2. **A single kernel, two entry points.** `specrun slice synthesize` and `specrun slice provenance` call the same kernel module; the standalone verb is the natural unit-test and golden-fixture seam for the kernel-projection-determinism assertion in §"Acceptance proof (D7)".
-3. **Closing RFC-35's deferred verb faithfully.** [RFC-35](done/rfc-35-synthesis-determinism.md) deferred a `specrun slice provenance` writer because the claim→requirement mapping "is not mechanically derivable from `Sources:` lines alone and remains synthesis judgment." That objection was correct *for RFC-35's inputs* — a source-key list loses the losing claims and cannot tell `agreed` from `divergence`/`conflict`. RFC-29 supplies the missing input (the per-requirement `(source, claim-id)` claims and `agreement` verdict on `model.yaml`), so the projection is now **faithful rather than lossy**, and the verb becomes a deterministic projection rather than a reconstruction. RFC-29 therefore owns it; the on-disk `provenance.yaml` schema is unchanged and the landed `slice-provenance-drift` gate guards parity.
+1. Regenerate `provenance.yaml` without re-synthesis after hand-editing `model.yaml` claims.
+2. Single kernel module shared with `specrun slice synthesize`; natural seam for kernel-projection determinism tests (D7).
+
+RFC-35 deferral rationale and how claim-level input resolves it: §"Relationship to RFC-35".
 
 `specrun slice provenance` never reads the bound `target` or its `shape` brief, never re-decides the requirement set, never selects a winner the resolved authority did not, and never overrides the agreement verdict — the same kernel constraints D3 lists.
 
@@ -401,7 +411,7 @@ The slice model is generated by `specrun slice synthesize` and regenerated whole
 
 ### Shape
 
-The full machine shape is committed at `specify-cli/schemas/slice/model.schema.json` and reproduced verbatim in §"Schemas added by this RFC" below. The slice model is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
+Normative schema: [`rfc-29/schemas/slice/model.schema.json`](rfc-29/schemas/slice/model.schema.json) (lands in `specify-cli` as `schemas/slice/model.schema.json`). The slice model is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
 
 Sketch of the on-disk shape (illustrative; the schema is normative):
 
@@ -428,8 +438,8 @@ requirements:
     sources: [docs, legacy]
     agreement: agreed
     claims:
-      - { source: docs,   claim-id: password-reset.request }
-      - { source: legacy, claim-id: users.password-reset.request }
+      - { source: docs,   claim-id: password-reset.request,         kind: requirement }
+      - { source: legacy, claim-id: users.password-reset.request,   kind: example }
     statement: The system lets a registered user request a password reset link by email.
     scenarios:
       - Given REQ-001 and a registered email, when the user requests a reset, then the system accepts the request.
@@ -440,8 +450,8 @@ requirements:
     sources: [docs, legacy]
     agreement: disagreed
     claims:
-      - { source: docs,   claim-id: password-reset.expiry, winner: true }
-      - { source: legacy, claim-id: password-reset.expiry, winner: false }
+      - { source: docs,   claim-id: password-reset.expiry, kind: criterion, winner: true }
+      - { source: legacy, claim-id: password-reset.expiry, kind: example,   winner: false }
     statement: The system expires password reset links 30 minutes after issue.
     tags: [divergence]
 domain:
@@ -478,7 +488,7 @@ All seven grammars are enforced by `schemas/slice/model.schema.json`. The synthe
 
 ### Drift validation
 
-`specrun slice validate` adds six checks:
+`specrun slice validate` adds seven checks:
 
 
 | Finding                      | Meaning                                                                                                      |
@@ -489,6 +499,7 @@ All seven grammars are enforced by `schemas/slice/model.schema.json`. The synthe
 | `slice-model-target-drift`      | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.      |
 | `slice-model-source-orphan`     | A `claims[]` entry references a `(source, claim-id)` whose source key is absent from `model.yaml.sources[].key` or whose claim id is absent from that source's Evidence.                        |
 | `slice-model-cross-ref-orphan`  | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                     |
+| `slice-model-claim-kind-mismatch` | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, claim-id)` in the source's Evidence.                                     |
 
 
 Absence of `model.yaml` is allowed for pre-RFC-29 slices and rejected for slices synthesized by an RFC-29-aware CLI.
@@ -499,7 +510,7 @@ Target builders consume `model.yaml` as their machine input and may also read re
 
 ## Per-slice fan-out (D5)
 
-Cross-target fan-out is **plan-level**, not slice-level, per the framework's standing decision (see [decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project) and `docs/reference/targets/index.md`). RFC-29 affirms that contract and adds nothing to extend a slice to multi-target. No `outputs[]` field, no per-output lifecycle, no per-output build envelope, no per-output metadata, no per-output journal events.
+Cross-target fan-out is **plan-level**, not slice-level (D5; [decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project)).
 
 ### Plan schema
 
@@ -554,7 +565,7 @@ Unchanged from RFC-25. `/spec:build` for a workspace-routed slice resolves the s
 
 ## Target build envelope (D6)
 
-The build request and build report are both closed-shape YAML envelopes, keyed on `(slice, target)`. The full schemas are committed at `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json` and reproduced verbatim in §"Schemas added by this RFC" below. The summaries below are illustrative; the schemas are normative.
+The build request and build report are both closed-shape YAML envelopes, keyed on `(slice, target)`. Normative schemas — `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json` — are authored during implementation (M3, Wave E). Examples below are illustrative.
 
 ### Build request
 
@@ -584,14 +595,10 @@ execution:
   tool:
     name: omnia
     version: v1.4.2
-prior-slices:
-  - slice: identity-contracts
-    target: contracts@v1
-    report-path: /workspace/.specify/slices/identity-contracts/build/report.yaml
 cache-fingerprint: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 ```
 
-`prior-slices[]` carries the build reports of slices listed in the current slice's `plan.yaml.slices[].depends-on`. This is the cross-slice analogue of the dropped `prior-outputs[]` field — the canonical use case is the `identity-service` slice (targeting `omnia`) reading the `identity-contracts` slice's report (which lists the generated `.yaml`) before generating the service crate. Each entry's `report-path` is the persisted build report path of a `merged` (or `built` in the current execution window) depended-on slice.
+A slice builds against the **merged working tree**, not against a cross-slice data channel. When a slice depends on another slice's output — e.g. `identity-service` (omnia) consuming `identity-contracts`' generated schema — the dependency is declared at the plan layer via `plan.yaml.slices[].depends-on`, and `specrun plan next` orders execution so the depended-on slice reaches `done` (merged into the baseline) before the dependent slice starts. The dependent target then reads the upstream output from the working tree as ordinary files, the way its build tooling already resolves dependencies. No per-request cross-slice channel is introduced; see §"Open questions" for the deferred cross-project (workspace-mode) artifact-handoff case.
 
 ### Build report
 
@@ -626,7 +633,7 @@ cache:
 
 `findings[]` items validate against `schemas/diagnostics/diagnostic.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding (`target-build-success-with-critical-finding`).
 
-The report is persisted at `.specify/slices/<slice>/build/report.yaml` and surfaces to downstream slices via their own request's `prior-slices[]` entries.
+The report is persisted at `.specify/slices/<slice>/build/report.yaml` as the slice-local record of its own build; it is not consumed by other slices' build requests.
 
 ### Target adapter responsibilities
 
@@ -693,7 +700,7 @@ synthesize:
 
 The two values are:
 
-- `**agent**` — the engine resolves authority, hands the synthesis envelope to the operator's agent, then projects the kernel over the returned structure (id assignment, status derivation, `provenance.yaml`), validates the merged `model.yaml` + Markdown against `schemas/slice/model.schema.json` and the six drift validators, and persists. This is the first-party default and the designed centre of synthesis.
+- `**agent**` — the engine resolves authority, hands the synthesis envelope to the operator's agent, then projects the kernel over the returned structure (id assignment, status derivation, `provenance.yaml`), validates the merged `model.yaml` + Markdown against `schemas/slice/model.schema.json` and the seven drift validators, and persists. This is the first-party default and the designed centre of synthesis.
 - `**executable**` — the engine additionally requires a declared synthesis WASI tool to be configured (`synthesize.tool: { name, version }`), pipes the envelope on stdin, projects and validates the returned response identically, and caches the result under a synthesis-specific fingerprint (Evidence sha256 set + authority-overrides + shape-brief sha256 + tool `name@version`). Optional and reserved for narrow deterministic cases.
 
 When `execution: agent`, the engine:
@@ -702,7 +709,7 @@ When `execution: agent`, the engine:
 2. forces `cache: opt-out` for the synthesis step (the kernel's projection over the returned structure remains deterministic, and `provenance.yaml` is reproducible from a fixed response under a kernel-only fingerprint of structure + Evidence + authority-overrides);
 3. surfaces no finding by default — `agent` is the expected and recommended mode for cross-modal slices. A `suggestion`-severity `slice-synthesize-agent-mode` finding is raised only when an operator has explicitly opted in to tool-only enforcement (`synthesize.enforce-executable: true`), which is itself an unusual choice the framework does not encourage for cross-modal synthesis.
 
-Regardless of execution mode, the engine validates the response against `schemas/slice/model.schema.json` and the six `slice-model-*` drift checks before the slice transitions to `refined`. The execution mode does not relax any validation; it only changes who authors the requirement set and prose.
+Regardless of execution mode, the engine validates the response against `schemas/slice/model.schema.json` and the seven `slice-model-*` drift checks before the slice transitions to `refined`. The execution mode does not relax any validation; it only changes who authors the requirement set and prose.
 
 ## Acceptance proof (D7)
 
@@ -711,7 +718,11 @@ RFC-29 is complete only when the acceptance suite proves the full path — fan-i
 ```text
 documentation + code-typescript
         -> source survey                 (fan-in #1: Lead sets)
-        -> plan propose --dry-run           (CLI proposes structural groups; agent binds each group to one or more targets and writes the slices via plan add)
+        -> plan propose --dry-run           (kernel returns the structural floor + lead inventory)
+        -> plan propose --from              (envelope: agent-led cross-source matching — structural
+                                             + semantic — and per-group target binding;
+                                             kernel: validate, partition/floor invariants, group-id
+                                             assignment, journal, plan writers)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
              slice synthesize               (envelope: agent-led cross-modal reconciliation
@@ -753,811 +764,44 @@ tests/fixtures/rfc-29/fan-in-fan-out/
       tasks.md
       provenance.yaml
       model.yaml                                # target: omnia@v1; sources include docs + legacy
-      build/report.yaml                      # prior-slices cites identity-contracts/build/report.yaml
+      build/report.yaml                      # slice-local build record
 ```
 
 Required assertions:
 
-- `specrun source survey` produces schema-valid leads for both sources.
-- `specrun plan propose --dry-run --format json` returns one structural group for the shared lead (`rule: exact-id`), validates against `proposal.schema.json`, and writes nothing.
-- The fixture's `/spec:plan` agent step (or the test harness simulating it) consumes the JSON, decides the per-group target binding (`contracts@v1` + `omnia@v1`), and issues two `specrun plan add` calls producing two single-target slices with `identity-service.depends-on: [identity-contracts]`.
-- `specrun plan propose` without `--dry-run` exits non-zero with `propose-target-binding-required` (proves Stage B2 is gated).
+- `specrun source survey` produces schema-valid leads for both sources, including a deliberate semantic-only pair (`docs` lead `password-reset` and `legacy` lead `reset-password`) that shares no id, alias, or cross-reference.
+- `specrun plan propose --dry-run --format json` returns a `kind: request` envelope whose `structural-floor` contains one group for the shared `identity-api` lead (`rule: exact-id`) and whose `ungrouped` list contains the `password-reset` / `reset-password` pair; it validates against `proposal.schema.json` and writes nothing.
+- The fixture's `/spec:plan` agent step (or the test harness simulating it) returns a `kind: response` that preserves the `identity-api` floor group, **semantically merges** `password-reset` with `reset-password` (`match-basis: semantic`), and binds each group to its target (`contracts@v1` + `omnia@v1`); `specrun plan propose --from` writes two single-target slices with `identity-service.depends-on: [identity-contracts]`, emits `plan.reconcile.agent` + `plan.reconcile.completed`, and the semantic merge is rendered into `change.md` for Gate-1 review.
+- `specrun plan propose --from` rejects a response that splits the `identity-api` floor group (`plan-reconcile-structural-floor-violated`), one that leaves a surveyed lead unaccounted for or double-counts one (`plan-reconcile-partition`), and one that cites a `(source-key, lead-id)` absent from `discovery.md` (`plan-reconcile-lead-orphan`); `specrun plan propose` with neither `--dry-run` nor `--from` exits non-zero with `plan-propose-missing-grouping`.
 - `specrun source extract` writes schema-valid Evidence for every `(slice, source)` pair.
 - `specrun slice synthesize` writes valid artifacts, `provenance.yaml`, and `model.yaml` for each slice.
 - `specrun slice validate` catches no provenance or slice-model drift on either slice.
-- Each slice builds independently against its single bound target; `identity-service`'s build request carries a `prior-slices[]` entry pointing at `identity-contracts/build/report.yaml`.
+- Each slice builds independently against its single bound target; `identity-service` reads `identity-contracts`' merged output from the working tree (the dependency is ordered by `depends-on` + `plan next`, not carried on the build request).
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
-- **Kernel-projection determinism (over a fixed response).** Capture each slice's synthesis-step response as a golden fixture, then re-run only the kernel projection over that fixed response twice. The result — `provenance.yaml` and the kernel-owned projection of `model.yaml` (`requirements[].id`, `.status`, every `*.sources` field, in declaration order) — is **byte-identical** across runs and independent of the bound target, even though `identity-contracts` binds `contracts@v1` and `identity-service` binds `omnia@v1`. This is the byte-testable invariant and matches the determinism guarantee of the standalone `specrun slice provenance` verb (D11), which re-projects the same kernel over a fixed `model.yaml`. The full-flow run with a live agent is **not** asserted byte-stable on the requirement set or prose, because the requirement set is agent judgment; those are validated by schema + drift + semantic checks below.
-- **D8 invariant (requirement-set target-neutrality).** The two slices share the `docs:identity-api` lead and the same `authority-overrides`; `identity-service` additionally reconciles `legacy:identity-api`. On the shared lead's requirements, the two slices' `requirements[]` entries are validated for **semantic equivalence** — same intent, same `(source, claim-id)` claims and agreement verdict, equivalent scenarios — by a fixture-local check (golden text on the simplest cases; LLM-judge with a fixed grader prompt on the more elaborate cases), even though the slices bind different targets. Byte-equality across targets is not asserted; target-neutrality of intent is. This proves shape briefs and target binding do not leak into the requirements section.
-- **Forbidden-input-leak probe.** A fixture-local test confirms the envelope walls `target` and `shape-brief` off from the requirements-reconciliation inputs: a probe response whose requirements demonstrably reference target- or shape-brief-specific content is flagged by `slice-synthesize-forbidden-input-leak`, proving the target-neutrality-by-construction layer of D8.
+- **Kernel-projection determinism.** Re-run kernel projection twice over a golden synthesis response; `provenance.yaml` and kernel-owned `model.yaml` fields are byte-identical and target-independent (D11). Live agent runs are not byte-stable on requirement set or prose.
+- **D8 envelope-construction proof.** Synthesis request requirements-relevant inputs are byte-identical across `contracts@v1` and `omnia@v1` bindings; `target` / `shape-brief` differ only in non-requirements fields.
+- **Forbidden-input-leak probe (deterministic).** A fixture-local test confirms the envelope walls `target` and `shape-brief` off from the requirements section: a probe response whose requirements section contains a token present in `target` or the `shape-brief` file but in **no** cited Evidence claim is flagged by `slice-synthesize-forbidden-input-leak` via a mechanical set-difference test (not a semantic judgement), proving the target-neutrality-by-construction layer of D8.
 - **Synthesis envelope contract.** A fixture-local test re-runs `specrun slice synthesize` with a deliberately-malformed synthesis-step response that usurps a kernel-owned field — pre-assigns a `REQ-NNN` id, sets `status`, `sources`, or a per-claim `winner`, or cites a `(source, claim-id)` absent from the Evidence map. The engine rejects the response with `slice-synthesize-kernel-field-usurped` (id/status/sources/winner) or `slice-model-source-orphan` (orphan claim) rather than persisting it, proving the kernel is the sole authority on id assignment, `sources` derivation, winner selection, status derivation, and provenance projection while the agent remains the sole author of the requirement set, its claims, and its agreement verdict.
 
 ## Schemas added by this RFC
 
-Five new JSON Schemas are committed alongside this RFC. All are embedded in the `specify-schema` crate as `SLICE_MODEL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, and `SYNTHESIS_ENVELOPE_JSON_SCHEMA` constants and reached through the existing `compile_schema` / `validate_value` plumbing. Field names are kebab-case on disk; top-level shapes are closed (`additionalProperties: false`); reusable closed enums (`kebabName`, `targetRef`, `requirementStatus`, `authorityClass`, the seven id grammars) live under `$defs` and are mirrored byte-identically with the matching `$defs` blocks in `evidence.schema.json`, `provenance.schema.json`, and `plan.schema.json`.
+Three new JSON Schemas ship as draft files alongside this RFC under [`rfc-29/schemas/`](rfc-29/schemas/); the two build-envelope schemas (D6) are authored during implementation (M3, Wave E) rather than shipped as drafts. Implementation copies the draft files into `specify-cli/schemas/` and embeds all five in `specify-schema` as `SLICE_MODEL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, and `SYNTHESIS_ENVELOPE_JSON_SCHEMA`. Field names are kebab-case on disk; top-level shapes are closed (`additionalProperties: false`).
 
-The fifth schema, `schemas/slice/synthesis-envelope.schema.json`, pins the request/response shape exchanged between the engine and the synthesis step (D3, D10) and is reproduced verbatim as Schema E below. The request and response halves share one file discriminated by a closed `kind: request | response` field, so the single `SYNTHESIS_ENVELOPE_JSON_SCHEMA` constant validates both directions; the request's `evidence` map is keyed by source key, and the response embeds the slice model by `$ref` to `schemas/slice/model.schema.json` and carries the four rendered Markdown artifacts as inline content.
+| Schema | RFC draft path | `specify-cli` path | Embed constant | Used by |
+| --- | --- | --- | --- | --- |
+| Slice model | [`slice/model.schema.json`](rfc-29/schemas/slice/model.schema.json) | `schemas/slice/model.schema.json` | `SLICE_MODEL_JSON_SCHEMA` | D3, D4, D6 build input |
+| Build request | _authored in M3 (Wave E)_ | `schemas/target/build-request.schema.json` | `BUILD_REQUEST_JSON_SCHEMA` | D6 |
+| Build report | _authored in M3 (Wave E)_ | `schemas/target/build-report.schema.json` | `BUILD_REPORT_JSON_SCHEMA` | D6 |
+| Reconciliation envelope | [`discovery/proposal.schema.json`](rfc-29/schemas/discovery/proposal.schema.json) | `schemas/discovery/proposal.schema.json` | `PROPOSAL_JSON_SCHEMA` | D2 (request + response) |
+| Synthesis envelope | [`slice/synthesis-envelope.schema.json`](rfc-29/schemas/slice/synthesis-envelope.schema.json) | `schemas/slice/synthesis-envelope.schema.json` | `SYNTHESIS_ENVELOPE_JSON_SCHEMA` | D3, D10 |
 
-The slice-model, build-request, and build-report schemas key on `(slice, target)` per D5 — none of them carries an `outputs[]` or `output-id` field. A future RFC that re-opens multi-target slices would need to widen all three schemas and revisit the lifecycle / merge contract.
-
-`schemas/discovery/proposal.schema.json` (returned by `specrun plan propose --dry-run`) is reproduced verbatim as Schema D below. It is intentionally smaller than the other four — it carries no target binding — because target binding is agent-driven in v1.
-
-### Schema A — `schemas/slice/model.schema.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json",
-  "title": "Specify slice model.yaml",
-  "description": "Validates a slice's typed machine-readable model per RFC-29 §Typed slice model. Generated by `specrun slice synthesize` and regenerated whole on re-synthesis. Operators edit `spec.md` / `design.md` / `tasks.md`; `model.yaml` is the machine view target builders consume. One slice binds one target (RFC-29 D5 §Per-slice fan-out) — `target` is a scalar, not an array. `requirements[].claims` and `requirements[].agreement` are the agent-authored judgment inputs; `requirements[].id`, `.sources`, `.status`, and each claim's `winner` marker are kernel-projected (RFC-29 §Status and provenance derivation). Drift between `model.yaml.requirements[].id` and `spec.md` `REQ-*` ids is reported as `slice-model-requirement-drift`; drift between `model.yaml.requirements[].claims` and `provenance.yaml` (compared at `(source, claim-id)` granularity) is reported as `slice-model-provenance-drift`; drift between `model.yaml.target` / `model.yaml.project` and `plan.yaml.slices[<slice>].target` / `.project` is reported as `slice-model-target-drift`. Closed top-level shape — unknown fields are rejected.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "version",
-    "slice",
-    "generated-at",
-    "generator",
-    "sources",
-    "target",
-    "requirements",
-    "domain",
-    "apis",
-    "configuration",
-    "technical-logic",
-    "observability",
-    "tasks"
-  ],
-  "properties": {
-    "version": { "type": "integer", "minimum": 1, "maximum": 1 },
-    "slice": { "$ref": "#/$defs/kebabName" },
-    "generated-at": { "type": "string", "format": "date-time" },
-    "generator": { "type": "string", "minLength": 1 },
-    "sources": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/modelSource" }
-    },
-    "target": { "$ref": "#/$defs/targetRef" },
-    "project": { "type": ["string", "null"] },
-    "requirements": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/modelRequirement" }
-    },
-    "domain": { "$ref": "#/$defs/modelDomain" },
-    "apis": { "$ref": "#/$defs/modelApis" },
-    "configuration": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/modelConfiguration" }
-    },
-    "technical-logic": { "$ref": "#/$defs/modelTechnicalLogic" },
-    "observability": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/modelObservability" }
-    },
-    "tasks": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/modelTask" }
-    }
-  },
-  "$defs": {
-    "kebabName": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "claimId": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
-      "description": "Dotted Evidence claim id (e.g. `password-reset.expiry`); mirrors the claim-id grammar in `evidence.schema.json`."
-    },
-    "reqId":         { "type": "string", "pattern": "^REQ-[0-9]{3}$" },
-    "taskId":        { "type": "string", "pattern": "^TASK-[0-9]{3}$" },
-    "decisionId":    { "type": "string", "pattern": "^DEC-[0-9]{3}$" },
-    "typeId":        { "type": "string", "pattern": "^TYP-[0-9]{3}$" },
-    "operationId":   { "type": "string", "pattern": "^OP-[0-9]{3}$" },
-    "configId":      { "type": "string", "pattern": "^CFG-[0-9]{3}$" },
-    "observabilityId": { "type": "string", "pattern": "^OBS-[0-9]{3}$" },
-    "targetRef": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*@v\\d+$",
-      "description": "Mirrors `plan.schema.json` slice `target` pattern."
-    },
-    "authorityClass": {
-      "type": "string",
-      "enum": ["intent", "documentation", "behaviour"]
-    },
-    "requirementStatus": {
-      "type": "string",
-      "enum": ["agreed", "unknown", "conflict", "divergence"]
-    },
-    "modelSource": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["key", "adapter", "lead", "authority"],
-      "properties": {
-        "key":           { "$ref": "#/$defs/kebabName" },
-        "adapter":       { "$ref": "#/$defs/kebabName" },
-        "lead":     { "$ref": "#/$defs/kebabName" },
-        "authority":     { "$ref": "#/$defs/authorityClass" },
-        "evidence-path": { "type": "string" }
-      }
-    },
-    "modelRequirement": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "title", "status", "sources", "statement", "claims"],
-      "properties": {
-        "id":        { "$ref": "#/$defs/reqId" },
-        "title":     { "type": "string", "minLength": 1 },
-        "status":    { "$ref": "#/$defs/requirementStatus" },
-        "unit":      { "$ref": "#/$defs/kebabName" },
-        "agreement": {
-          "type": "string",
-          "enum": ["agreed", "disagreed"],
-          "description": "Agent-authored value-agreement verdict over `claims`. Required when more than one claim contributes; omitted for 0 or 1 claim. The kernel derives `status` and winner markers from this verdict plus RFC-27 authority (RFC-29 §Status and provenance derivation)."
-        },
-        "claims": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/modelClaim" },
-          "description": "Agent-authored claim-level provenance: every `(source, claim-id)` claim that fed this requirement, winners and losers alike. Empty for an `unknown` requirement. The `winner` marker on each entry is kernel-projected."
-        },
-        "sources":   {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebabName" },
-          "description": "Kernel-derived: the unique source keys of `claims`, ordered by resolved authority then alpha. Not authored by the synthesis step."
-        },
-        "statement": { "type": "string", "minLength": 1 },
-        "scenarios": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "tags": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "enum": ["divergence", "conflict", "unknown"]
-          }
-        },
-        "notes": { "type": "string" }
-      }
-    },
-    "modelClaim": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["source", "claim-id"],
-      "properties": {
-        "source":   { "$ref": "#/$defs/kebabName" },
-        "claim-id": { "$ref": "#/$defs/claimId" },
-        "winner":   {
-          "type": "boolean",
-          "description": "Kernel-projected. Present (`true` on the authority-resolved winner, `false` on every dropped loser) only for a `divergence` requirement; absent for `agreed` and `conflict` requirements, matching `provenance.yaml` winner semantics."
-        }
-      }
-    },
-    "modelDomain": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["types"],
-      "properties": {
-        "types": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["id", "name", "fields"],
-            "properties": {
-              "id":   { "$ref": "#/$defs/typeId" },
-              "name": { "type": "string", "minLength": 1 },
-              "kind": {
-                "type": "string",
-                "enum": ["record", "enum", "alias", "newtype"],
-                "default": "record"
-              },
-              "fields": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["name", "type"],
-                  "properties": {
-                    "name":        { "type": "string", "minLength": 1 },
-                    "type":        { "type": "string", "minLength": 1 },
-                    "optional":    { "type": "boolean", "default": false },
-                    "description": { "type": "string" }
-                  }
-                }
-              },
-              "sources": {
-                "type": "array",
-                "uniqueItems": true,
-                "items": { "$ref": "#/$defs/kebabName" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "modelApis": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["surfaces"],
-      "properties": {
-        "surfaces": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["id", "kind", "operations"],
-            "properties": {
-              "id":   { "$ref": "#/$defs/kebabName" },
-              "kind": {
-                "type": "string",
-                "enum": ["rest", "graphql", "grpc", "asyncapi", "cli", "library", "ui"]
-              },
-              "operations": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["id", "name"],
-                  "properties": {
-                    "id":        { "$ref": "#/$defs/operationId" },
-                    "name":      { "type": "string", "minLength": 1 },
-                    "request":   { "type": "string" },
-                    "response":  { "type": "string" },
-                    "errors": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "sources": {
-                      "type": "array",
-                      "uniqueItems": true,
-                      "items": { "$ref": "#/$defs/kebabName" }
-                    },
-                    "satisfies": {
-                      "type": "array",
-                      "uniqueItems": true,
-                      "items": { "$ref": "#/$defs/reqId" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "modelConfiguration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "key", "type"],
-      "properties": {
-        "id":          { "$ref": "#/$defs/configId" },
-        "key":         { "type": "string", "minLength": 1 },
-        "type":        { "type": "string", "minLength": 1 },
-        "default":     { "type": ["string", "null"] },
-        "description": { "type": "string" },
-        "sources": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebabName" }
-        }
-      }
-    },
-    "modelTechnicalLogic": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["decisions"],
-      "properties": {
-        "decisions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["id", "statement"],
-            "properties": {
-              "id":        { "$ref": "#/$defs/decisionId" },
-              "statement": { "type": "string", "minLength": 1 },
-              "rationale": { "type": "string" },
-              "sources": {
-                "type": "array",
-                "uniqueItems": true,
-                "items": { "$ref": "#/$defs/kebabName" }
-              },
-              "satisfies": {
-                "type": "array",
-                "uniqueItems": true,
-                "items": { "$ref": "#/$defs/reqId" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "modelObservability": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "kind", "name"],
-      "properties": {
-        "id":   { "$ref": "#/$defs/observabilityId" },
-        "kind": {
-          "type": "string",
-          "enum": ["metric", "trace", "log", "alert"]
-        },
-        "name":        { "type": "string", "minLength": 1 },
-        "description": { "type": "string" },
-        "sources": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/kebabName" }
-        }
-      }
-    },
-    "modelTask": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "text"],
-      "properties": {
-        "id":   { "$ref": "#/$defs/taskId" },
-        "text": { "type": "string", "minLength": 1 },
-        "depends-on": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/taskId" }
-        },
-        "satisfies": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/reqId" }
-        }
-      }
-    }
-  }
-}
-```
-
-### Schema B — `schemas/target/build-request.schema.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/target/build-request.schema.json",
-  "title": "Specify target build request",
-  "description": "Validates the build-request envelope produced by `specrun slice build` for one (slice, target) pair per RFC-29 §Target build envelope. One slice binds one target (D5 §Per-slice fan-out) — no `output-id` keying. Sent to a target adapter's declared WASI tool on stdin (when `execution: executable`) or written to `.specify/slices/<slice>/build/request.yaml` (when `execution: agent-fallback`). All filesystem paths are absolute under `project-root`. Closed top-level shape — unknown fields are rejected.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "version",
-    "slice",
-    "target",
-    "phase",
-    "project-root",
-    "slice-dir",
-    "model-path",
-    "artifacts",
-    "briefs",
-    "execution"
-  ],
-  "properties": {
-    "version":        { "type": "integer", "minimum": 1, "maximum": 1 },
-    "slice":          { "$ref": "#/$defs/kebabName" },
-    "target":         { "$ref": "#/$defs/targetRef" },
-    "phase": {
-      "type": "string",
-      "enum": ["build", "merge"]
-    },
-    "project-root":   { "type": "string" },
-    "workspace-root": { "type": "string" },
-    "slice-dir":      { "type": "string" },
-    "model-path":        { "type": "string" },
-    "artifacts":      { "$ref": "#/$defs/artifacts" },
-    "briefs":         { "$ref": "#/$defs/briefs" },
-    "execution":      { "$ref": "#/$defs/execution" },
-    "prior-slices": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/priorSlice" }
-    },
-    "rules": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "resolved-path": { "type": "string" }
-      }
-    },
-    "cache-fingerprint": {
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$"
-    }
-  },
-  "$defs": {
-    "kebabName": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "targetRef": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
-    },
-    "artifacts": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["proposal", "design", "tasks", "specs"],
-      "properties": {
-        "proposal": { "$ref": "#/$defs/relativeArtifactPath" },
-        "design":   { "$ref": "#/$defs/relativeArtifactPath" },
-        "tasks":    { "$ref": "#/$defs/relativeArtifactPath" },
-        "specs": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/relativeArtifactPath" }
-        },
-        "provenance":   { "$ref": "#/$defs/relativeArtifactPath" }
-      }
-    },
-    "relativeArtifactPath": {
-      "type": "string",
-      "minLength": 1
-    },
-    "briefs": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["build"],
-      "properties": {
-        "shape": { "type": "string" },
-        "build": { "type": "string" },
-        "merge": { "type": "string" }
-      }
-    },
-    "execution": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mode"],
-      "properties": {
-        "mode": {
-          "type": "string",
-          "enum": ["executable", "agent-fallback"]
-        },
-        "tool": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["name", "version"],
-          "properties": {
-            "name":      { "$ref": "#/$defs/kebabName" },
-            "version":   { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
-            "wasm-path": { "type": "string" }
-          }
-        },
-        "tools": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "version"],
-            "properties": {
-              "name":    { "$ref": "#/$defs/kebabName" },
-              "version": { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" }
-            }
-          }
-        }
-      }
-    },
-    "priorSlice": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["slice", "target", "report-path"],
-      "properties": {
-        "slice":       { "$ref": "#/$defs/kebabName" },
-        "target":      { "$ref": "#/$defs/targetRef" },
-        "report-path": { "type": "string" }
-      }
-    }
-  }
-}
-```
-
-### Schema C — `schemas/target/build-report.schema.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/target/build-report.schema.json",
-  "title": "Specify target build report",
-  "description": "Validates the build-report envelope returned by a target adapter for one (slice, target) pair per RFC-29 §Target build envelope. One slice binds one target (D5 §Per-slice fan-out) — no `output-id` keying. Persisted at `.specify/slices/<slice>/build/report.yaml`. Closed top-level shape — unknown fields are rejected. `findings[]` entries are validated against `schemas/diagnostics/diagnostic.schema.json` (RFC-28). The CLI rejects `status: success` reports carrying any `critical`-severity finding.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "version",
-    "slice",
-    "target",
-    "phase",
-    "status",
-    "started-at",
-    "finished-at",
-    "generator"
-  ],
-  "properties": {
-    "version":      { "type": "integer", "minimum": 1, "maximum": 1 },
-    "slice":        { "$ref": "#/$defs/kebabName" },
-    "target":       { "$ref": "#/$defs/targetRef" },
-    "phase": {
-      "type": "string",
-      "enum": ["build", "merge"]
-    },
-    "status": {
-      "type": "string",
-      "enum": ["success", "failure"]
-    },
-    "started-at":   { "type": "string", "format": "date-time" },
-    "finished-at":  { "type": "string", "format": "date-time" },
-    "generator":    { "type": "string", "minLength": 1 },
-    "generated-paths": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": { "type": "string", "minLength": 1 }
-    },
-    "validation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["commands"],
-      "properties": {
-        "commands": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["command", "exit-code"],
-            "properties": {
-              "command":     { "type": "string", "minLength": 1 },
-              "exit-code":   { "type": "integer" },
-              "duration-ms": { "type": "integer", "minimum": 0 },
-              "stdout-tail": { "type": "string" },
-              "stderr-tail": { "type": "string" }
-            }
-          }
-        }
-      }
-    },
-    "findings": {
-      "type": "array",
-      "items": {
-        "$ref": "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json"
-      }
-    },
-    "evidence-cited": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/kebabName" }
-    },
-    "cache": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-        "outcome":     { "type": "string", "enum": ["miss", "hit", "skipped"] }
-      }
-    },
-    "notes": { "type": "string" }
-  },
-  "$defs": {
-    "kebabName": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "targetRef": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
-    }
-  }
-}
-```
-
-### Schema D — `schemas/discovery/proposal.schema.json`
-
-Returned by `specrun plan propose --dry-run --format json` (D2 Stage B1). It is intentionally the smallest of the five schemas: it carries the structural groups and advisory tentative merges only — no target binding, because target binding stays agent-driven in v1 (D2, open question 6). Each `groups[]` entry records how its members reconciled via the closed `rule` enum, covering all four branches of the §"Matching algorithm (B1)" pass (`exact-id`, `exact-alias`, `transitive-cross-reference`, and `singleton` for a lead that matched nothing). `tentative-merges[]` carries the advisory textual-similarity diagnostics that never auto-merge in v1; it appears both per-group and at the top level, sharing one `tentativeMerge` shape.
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
-  "title": "Specify plan propose structural grouping",
-  "description": "Validates the structural lead-grouping document returned by `specrun plan propose --dry-run --format json` per RFC-29 §Lead reconciliation engine (D2) Stage B1. A pure function of the parsed `discovery.md`; the command writes nothing to disk and validates this shape before returning. Each `groups[]` entry records how its members reconciled (`rule`): `exact-id` (rule 1), `exact-alias` (rule 2), `transitive-cross-reference` (rule 3), or `singleton` (rule 4, a lead that matched nothing). Textual-similarity matches never auto-merge in v1; they surface as advisory `tentative-merges[]` for operator/agent adjudication at Gate 1. Target binding is NOT present here — it stays agent-driven until Stage B2. Closed top-level shape — unknown fields are rejected.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["version", "groups", "tentative-merges"],
-  "properties": {
-    "version": { "type": "integer", "minimum": 1, "maximum": 1 },
-    "groups": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/group" }
-    },
-    "tentative-merges": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/tentativeMerge" }
-    }
-  },
-  "$defs": {
-    "kebabName": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "group": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["group-id", "rule", "members"],
-      "properties": {
-        "group-id": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Canonical id the group is persisted under (the shared `id` for rules 1/3, the canonical id behind an alias for rule 2, or the lone lead's id for a singleton)."
-        },
-        "rule": {
-          "type": "string",
-          "enum": ["exact-id", "exact-alias", "transitive-cross-reference", "singleton"]
-        },
-        "members": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/memberRef" }
-        },
-        "tentative-merges": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/tentativeMerge" }
-        }
-      }
-    },
-    "memberRef": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["source-key", "lead-id"],
-      "properties": {
-        "source-key":   { "$ref": "#/$defs/kebabName" },
-        "lead-id": { "$ref": "#/$defs/kebabName" }
-      }
-    },
-    "tentativeMerge": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["left", "right", "reason"],
-      "properties": {
-        "left":   { "$ref": "#/$defs/memberRef" },
-        "right":  { "$ref": "#/$defs/memberRef" },
-        "reason": { "type": "string", "minLength": 1 }
-      }
-    }
-  }
-}
-```
-
-### Schema E — `schemas/slice/synthesis-envelope.schema.json`
-
-Pins both halves of the synthesis exchange (D3, D10) in one file, discriminated by a closed `kind: request | response` field so the single `SYNTHESIS_ENVELOPE_JSON_SCHEMA` constant validates both directions through one `compile_schema` call. The request carries the Evidence map (keyed by source key), per-source authority, the kernel's resolved-authority path, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint; `prior-baseline` is optional because baseline specs are passed only when available. No reconciliation skeleton is passed — the synthesis step authors the requirement set, declaring each requirement's `(source, claim-id)` claims and an `agreement` verdict, and the kernel projects `sources`, winner markers, `status`, and `provenance.yaml` over it afterward. The response embeds the populated slice model by `$ref` to `schemas/slice/model.schema.json` and carries the four rendered Markdown artifacts as inline content (the engine persists them, so the prose travels in the envelope rather than as paths). Because the response model `$ref`s the persisted `model.schema.json`, the engine additionally enforces that the synthesis step left the kernel-owned fields (`id`, `sources`, `status`, per-claim `winner`) unset; setting any of them is rejected with `slice-synthesize-kernel-field-usurped`. The `authorityClass` and `targetRef` `$defs` mirror `model.schema.json` byte-identically.
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/slice/synthesis-envelope.schema.json",
-  "title": "Specify slice synthesis envelope",
-  "description": "Validates the request/response envelope exchanged between the `specrun slice synthesize` engine and the agent-led synthesis step per RFC-29 §Slice synthesis engine (D3) and §Synthesis execution mode (D10). The request (`kind: request`, written to `.specify/slices/<slice>/synthesis/request.yaml` or piped to a declared WASI tool on stdin) carries the Evidence map, per-source authority, the kernel's resolved-authority path, the bound target's shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint. The response (`kind: response`, read from `.specify/slices/<slice>/synthesis/response.yaml` or the tool's stdout) carries the populated slice `model` — the synthesis step's requirement set, each requirement's `(source, claim-id)` claims, its `agreement` verdict, and prose — plus the rendered Markdown artifacts. The engine projects the kernel over the returned structure (REQ-id assignment, `sources`/winner/status derivation, claim-level provenance into `provenance.yaml`), rejecting any response that usurps a kernel-owned field (`id`, `sources`, `status`, `winner`) with `slice-synthesize-kernel-field-usurped` or cites a `(source, claim-id)` absent from the Evidence map with `slice-model-source-orphan`. Closed shapes — unknown fields are rejected.",
-  "oneOf": [
-    { "$ref": "#/$defs/request" },
-    { "$ref": "#/$defs/response" }
-  ],
-  "$defs": {
-    "kebabName": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "targetRef": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
-    },
-    "authorityClass": {
-      "type": "string",
-      "enum": ["intent", "documentation", "behaviour"]
-    },
-    "request": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["version", "kind", "slice", "target", "shape-brief", "evidence", "authority", "constraints"],
-      "properties": {
-        "version":     { "type": "integer", "minimum": 1, "maximum": 1 },
-        "kind":        { "const": "request" },
-        "slice":       { "$ref": "#/$defs/kebabName" },
-        "target":      { "$ref": "#/$defs/targetRef" },
-        "shape-brief": { "type": "string", "minLength": 1 },
-        "evidence": {
-          "type": "object",
-          "minProperties": 1,
-          "propertyNames": { "$ref": "#/$defs/kebabName" },
-          "additionalProperties": { "$ref": "#/$defs/evidenceEntry" }
-        },
-        "authority": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["resolved-path"],
-          "properties": {
-            "resolved-path": { "type": "string", "minLength": 1 }
-          }
-        },
-        "prior-baseline": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["specs-dir"],
-          "properties": {
-            "specs-dir": { "type": "string", "minLength": 1 }
-          }
-        },
-        "constraints": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["forbidden-inputs-for-requirements-reconciliation"],
-          "properties": {
-            "forbidden-inputs-for-requirements-reconciliation": {
-              "type": "array",
-              "uniqueItems": true,
-              "items": { "type": "string", "enum": ["target", "shape-brief"] }
-            }
-          }
-        }
-      }
-    },
-    "evidenceEntry": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "authority"],
-      "properties": {
-        "path":      { "type": "string", "minLength": 1 },
-        "authority": { "$ref": "#/$defs/authorityClass" }
-      }
-    },
-    "response": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["version", "kind", "slice", "model", "artifacts"],
-      "properties": {
-        "version": { "type": "integer", "minimum": 1, "maximum": 1 },
-        "kind":    { "const": "response" },
-        "slice":   { "$ref": "#/$defs/kebabName" },
-        "model": {
-          "$ref": "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json"
-        },
-        "artifacts": { "$ref": "#/$defs/artifacts" }
-      }
-    },
-    "artifacts": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["proposal", "design", "tasks", "specs"],
-      "properties": {
-        "proposal": { "type": "string", "minLength": 1 },
-        "design":   { "type": "string", "minLength": 1 },
-        "tasks":    { "type": "string", "minLength": 1 },
-        "specs": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["unit", "content"],
-            "properties": {
-              "unit":    { "$ref": "#/$defs/kebabName" },
-              "content": { "type": "string", "minLength": 1 }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+All slice-model, build-request, and build-report schemas key on `(slice, target)` per D5 — none carries `outputs[]` or `output-id`. `proposal.schema.json` discriminates request vs response via closed `kind: request | response`: the request carries the lead inventory and the deterministic structural floor, the response carries the agent's lead groups (members with `match-basis`, per-group `target`, optional `tentative` flags and `depends-on`). `synthesis-envelope.schema.json` discriminates request vs response via closed `kind: request | response`; the response `$ref`s the slice model schema.
 
 ## Journal emitter (D12)
 
-RFC-29 adds event kinds (below) that are emitted from two kinds of caller:
+Deterministic commands emit their own events; agent-orchestrated steps (D2/D9/D10 agent paths, agent-driven build/merge) use the guarded emitter below. Why RFC-35 rejected this verb and why RFC-29 adds it: §"Relationship to RFC-35".
 
-- **Deterministic commands** — `specrun source survey/extract`, `specrun slice synthesize` (the kernel side), `specrun slice build/merge` — emit their own events directly, exactly as today's commands do. These callers do **not** need a generic emitter; the command that owns the transition owns its event.
-- **Agent-orchestrated steps** — the `agent` synthesis path (D10), the `agent-fallback` source/target operations (D9), and any agent-driven `/spec:build` / `/spec:merge` breakout — have no deterministic command of their own at the moment the event must fire. Today an agent in this position hand-rolls NDJSON with `printf` and `date`, which RFC-35 F6 recorded as a recurring, error-prone friction (wrong field names, wrong wire ids, wrong timestamp format).
-
-[RFC-35](done/rfc-35-synthesis-determinism.md) **rejected** a generic `specrun journal emit` verb on the grounds that "journal events should be emitted by the deterministic command that owns the state change." That holds for every step RFC-35 touched. RFC-29 is the first RFC to introduce *agent-orchestrated* phases as a first-class, supported execution mode (D9/D10), so the rejection's premise no longer covers the whole surface. RFC-29 therefore introduces the verb:
+RFC-29 introduces:
 
 ```bash
 specrun journal emit <event-id> [--payload <json>] [--format json]
@@ -1581,6 +825,8 @@ The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` ga
 | `source.survey.cache-hit`      | Lead set was read from cache.                                                                                                                           |
 | `source.survey.cache-miss`     | Source-adapter `survey` ran.                                                                                                                              |
 | `source.execution.agent-fallback` | A source-adapter operation ran in `agent-fallback` mode (`survey` or `extract`).                                                                          |
+| `plan.reconcile.agent`         | The lead-matching step (D2) ran in `agent` mode (the default and designed centre). One event per `specrun plan propose --from` invocation.              |
+| `plan.reconcile.completed`     | `specrun plan propose --from` validated the agent grouping, enforced the partition / structural-floor invariants, assigned group ids, and wrote `plan.yaml.slices[]`. |
 | `slice.extract.cache-hit`         | (Existing) Evidence was read from cache.                                                                                                                     |
 | `slice.extract.cache-miss`        | (Existing) Source-adapter `extract` ran.                                                                                                                     |
 | `slice.extract.completed`         | (Existing) Evidence file was successfully persisted.                                                                                                         |
@@ -1612,14 +858,17 @@ The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` ga
 | `slice-model-target-drift`                           | 2    | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`. |
 | `slice-model-source-orphan`                          | 2    | A `claims[]` entry references a `(source, claim-id)` whose source key is absent from `model.yaml.sources[].key` or whose claim id is absent from that source's Evidence.                   |
 | `slice-model-cross-ref-orphan`                       | 2    | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                |
+| `slice-model-claim-kind-mismatch`                    | 2    | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, claim-id)` in Evidence. |
 | `slice-model-id-grammar`                             | 2    | A REQ / TASK / DEC / TYP / OP / CFG / OBS id does not match its closed three-digit grammar.             |
 | `target-build-request-schema`                     | 2    | A build request fails `schemas/target/build-request.schema.json`.                                       |
 | `target-build-report-schema`                      | 2    | A build report fails `schemas/target/build-report.schema.json`.                                         |
 | `target-build-success-with-critical-finding`      | 2    | A build report sets `status: success` while carrying a finding at severity `critical`.                  |
-| `target-build-prior-slice-not-built`              | 2    | A build request's `prior-slices[]` entry names a slice that has not produced a persisted build report.  |
 | `adapter-execution-mode-required`                 | 2    | An adapter manifest does not declare `execution`.                                                       |
 | `adapter-execution-agent-fallback-cache-conflict` | 2    | An adapter manifest sets `execution: agent-fallback` together with any cache mode other than `opt-out`. |
-| `propose-target-binding-required`                 | 2    | `specrun plan propose` was invoked without `--dry-run` in v1; target binding stays agent-driven until Stage B2 ships. |
+| `plan-reconcile-lead-orphan`                      | 2    | A `specrun plan propose --from` response cites a `(source-key, lead-id)` absent from the surveyed `discovery.md` lead inventory. |
+| `plan-reconcile-partition`                        | 2    | A `specrun plan propose --from` response is not a well-formed partition: a surveyed lead is unaccounted for, or a `(source-key, lead-id)` appears in more than one group for the same target. |
+| `plan-reconcile-structural-floor-violated`        | 2    | A `specrun plan propose --from` response splits a deterministic structural-floor group (exact id / alias / cross-reference). The agent may extend a floor group with semantic members but may not split it. |
+| `plan-propose-missing-grouping`                   | 2    | `specrun plan propose` was invoked without `--dry-run` and without `--from`; one of the two modes is required. |
 | `slice-synthesize-execution-mode-required`        | 2    | A workspace declares `synthesize.execution: executable` without configuring `synthesize.tool: { name, version }`. |
 | `slice-synthesize-kernel-field-usurped`           | 2    | A synthesis-step response set a kernel-owned field it does not author — a `requirements[].id` (`REQ-NNN`), `requirements[].status`, `requirements[].sources`, or a `claims[].winner` value. The engine derives ids, sources, winners, and status; it rejects the response rather than persisting it. (Orphan `(source, claim-id)` claims are caught separately by `slice-model-source-orphan`.) |
 | `slice-synthesize-forbidden-input-leak`           | 2    | A synthesis-step response's requirements section (entries, `claims`, `agreement`, `statement`, `title`, `scenarios`, `notes`) demonstrably referenced `target` or `shape-brief` content (detected by fixture-local target-neutrality probes). |
@@ -1633,64 +882,41 @@ The closed `Event` / `EventKind` taxonomy in `crates/workflow/src/journal.rs` ga
 
 A PR-sized breakdown of these waves lands in a companion `rfc-29-plan.md` (mirroring the [rfc-34-core-rules.md](./rfc-34-core-rules.md) / [rfc-34-plan.md](./rfc-34-plan.md) split). Each wave owns a defined set of new schemas, error variants, and journal events from the tables above.
 
-### Wave A - Source runner and cache integration
+### Landing as independently shippable milestones
 
-1. Add the closed `execution: executable | agent-fallback` field to `schemas/source.schema.json`; thread it through `SourceAdapter` parse and add `adapter-execution-mode-required` / `adapter-execution-agent-fallback-cache-conflict` `Error` variants.
-2. Add CLI DTOs and clap surfaces for `specrun source survey` and `specrun source extract`.
-3. Reuse `SourceAdapter::resolve` and `SourceOperation::artifact_name`; branch dispatch on `execution`.
-4. Route `executable` operations through declared WASI tools; route `agent-fallback` operations through the existing agent-run path but force `cache: opt-out` and emit `source.execution.agent-fallback`.
-5. Validate lead output against `lead.schema.json` and Evidence output against `evidence.schema.json` before writes.
-6. Add `source.survey.cache-{hit,miss}` cache events and update `specrun source resolve --explain` to show both operations.
-7. Pin the `survey` cache fingerprint inputs explicitly in code and tests: source identity (path or value sha256) + adapter `name@version` + `survey` brief sha256 + sorted declared-tool versions.
-8. Land the **D12 journal emitter** (`specrun journal emit <event-id> [--payload <json>]`) as a prerequisite for `agent-fallback` emission: add the clap surface, validate `<event-id>` against the closed `EventKind` taxonomy (`journal-emit-unknown-event`) and `--payload` against the named kind's required-field shape (`journal-emit-payload-schema`), and have it stamp the timestamp and append one well-formed line through the existing journal writer. `agent-fallback` source operations (step 4) emit `source.execution.agent-fallback` through this verb; deterministic commands keep emitting directly.
+RFC-29 is large — it spans an executable source runner, an agent-led lead-reconciliation engine, a synthesis kernel, a typed slice model, a build envelope, and several new verbs. It is **not** meant to land as one PR or even one branch. The waves below group into three **independently shippable milestones**, each of which is a defensible release on its own and each of which gets its **own** `rfc-29-<milestone>-plan.md` companion (same `rfc-34` precedent). A milestone may graduate into its own numbered RFC if its scope or open questions grow; this document stays the source of truth for the contracts they share.
 
-### Wave B - Plan propose (Stage B1 only)
+| Milestone | Waves / decisions | Lands independently because… | Unblocks |
+| --- | --- | --- | --- |
+| **M1 — Executable source operations** | Wave A (D1, D9 source side, D12 emitter) | `specrun source survey` / `extract` are useful the day they ship — they make `/spec:refine` extraction CLI-owned and give acceptance (RM-05) a durable seam — without depending on synthesis or build changes. | RM-05 durable proof; M2 inputs. |
+| **M2 — Synthesis kernel + typed model** | Wave B (D2 reconciliation engine), Wave C (D3, D4, D10, D11, D13), Wave D (D5 confirmation) | The two judgment-plus-kernel engines (lead reconciliation, slice synthesis), `model.yaml`, `specrun plan propose`, `specrun slice synthesize`, and `specrun slice provenance` form one coherent contract over Leads and Evidence the agent already produces; it consumes M1's surveys/Evidence but does not need the build envelope. | RM-11 machine-readable producer/consumer impact; M3 build input. |
+| **M3 — Target build envelope** | Wave E (D6, D9 target side), Wave F (D7, docs) | The build request/report and the first-party target migrations consume `model.yaml` from M2; the end-to-end D7 fixture is the final release gate that proves fan-in twice and fan-out once. | RM-18 hosted execute; the RFC-29 acceptance proof. |
 
-Stage B2 (full writer) is explicitly deferred — see §"Lead reconciliation engine (D2) → Stage B2" and the new "Lead target-axis vocabulary" open question.
+Ordering is **M1 → M2 → M3** (each consumes the prior), but each milestone is reviewable, testable, and releasable on its own; nothing in M1 has to wait for M2's design to settle, and the deferred optional lead target-axis hints (see §"Open questions" Q1) block none of them. The shared contracts that must stay stable across milestone boundaries are the five schemas in [`rfc-29/schemas/`](rfc-29/schemas/), the closed `EventKind` additions, and the `Error` discriminants — all pinned in this document so a later milestone cannot silently redefine an earlier one's wire shape.
 
-1. Reuse the existing `Discovery` model in `crates/model/src/discovery/` (parse, `resolve_lead`, `check_alias_collisions` are already implemented and tested). No new parsing.
-2. Implement the structural grouper as a pure function: `discovery::propose::group(&Discovery) -> Vec<Group>` covering rules 1 (exact id), 2 (exact alias), and 3 (transitive cross-reference). Surface diagnostic-only textual-similarity matches under `tentative_merges`.
-3. Commit `schemas/discovery/proposal.schema.json` and embed it as `PROPOSAL_JSON_SCHEMA` in `specify-schema`.
-4. Add `specrun plan propose --dry-run --format json` that runs the grouper, validates the output against `proposal.schema.json`, and prints. Reject every other `propose` form with `propose-target-binding-required` until Stage B2 lands.
-5. Update `/spec:plan` to call `specrun source survey` per source, then `specrun plan propose --dry-run`, then issue one `specrun plan add` per `(group, target)` pair the agent decides on. `specrun plan add` continues to be the only writer.
-6. Add fixtures for exact match, alias match, transitive cross-reference, tentative non-match, and per-group multi-target fan-out (the agent emits two `plan add` calls — the fixture asserts both slices land with the expected `target` and `depends-on`).
+### Wave A — Source runner (D1, D9 source, D12)
 
-### Wave C - Synthesis engine and slice model
+Ship `specrun source survey` / `extract`, adapter `execution` enum, survey cache events, and `specrun journal emit`. Factor the shared source-operation environment prep (adapter resolve, `briefs-dir`, sandbox preopens, `evidence/` scaffolding) so `source preview` and the new runners consume one helper rather than forking (§"Relationship to `specrun source preview`"). Details in companion `rfc-29-m1-plan.md`.
 
-1. Commit `schemas/slice/model.schema.json` and embed it as `SLICE_MODEL_JSON_SCHEMA` in the `specify-schema` crate alongside the existing `*_JSON_SCHEMA` constants.
-2. Add the production authority resolver and the projection kernel to `specify-workflow`. The kernel resolves RFC-27 authority over `Evidence[]` **before** dispatch, and — **after** the synthesis step returns its requirement set, each requirement's `(source, claim-id)` claims, and its `agreement` verdict — projects over that structure: assigns `REQ-NNN` ids in declaration order, derives each requirement's `sources` from its claims, applies authority to mark winners and derive `status` from the agreement verdict (per §"Status and provenance derivation"), and writes `provenance.yaml`. The kernel never invents, drops, or re-groups requirements, never selects a winner the resolved authority did not, never overrides the agreement verdict, and never reads the bound `target` or its `shape` brief. It also emits the advisory `slice-synthesize-agreement-suspect` `review`-kind finding when an `agreed` requirement's claim values differ under cheap normalised-string comparison.
-3. Commit `schemas/slice/synthesis-envelope.schema.json` (request + response) and embed it as `SYNTHESIS_ENVELOPE_JSON_SCHEMA`. The request carries the Evidence map, the resolved-authority path, shape brief, and the closed `forbidden-inputs-for-requirements-reconciliation` constraint list (no reconciliation skeleton). The response carries the populated `model.yaml` — the agent-authored requirement set, each requirement's `(source, claim-id)` claims, its `agreement` verdict, `unit`, and prose — plus the four Markdown artifacts.
-4. Implement the synthesis dispatcher: for `execution: agent` (the first-party default), write the request to `.specify/slices/<slice>/synthesis/request.yaml` and read the agent's response back from `.specify/slices/<slice>/synthesis/response.yaml`; for `execution: executable`, pipe the request to a declared synthesis WASI tool on stdin. In both modes, reject any response that usurps a kernel-owned field (`id`, `sources`, `status`, `winner`) with `slice-synthesize-kernel-field-usurped` or cites a `(source, claim-id)` absent from Evidence with `slice-model-source-orphan`, then project the kernel over the returned structure and validate.
-5. Enforce D8 in two layers. **Layer 1 (kernel-projection determinism).** Unit-test the kernel over a captured, fixed synthesis-step response: project it twice and assert `provenance.yaml` and the kernel-owned projection of `model.yaml` (every `id`, `sources`, `status`, and per-claim `winner`, in declaration order) are **byte-identical** and target-independent. **Layer 2 (requirement-set target-neutrality).** Integration-test the engine end-to-end: synthesise two slices binding different `target` values against the same Evidence map via the real dispatcher (using a fixed-seed test stub for the agent) and assert the shared-lead requirements (entries, claims, agreement verdicts) are semantically equivalent across targets by both (a) byte-equality on golden cases the stub renders deterministically, and (b) a fixture-local LLM-judge check with a fixed grader prompt on the more elaborate cases. Add the `slice-synthesize-forbidden-input-leak` probe as a separate fixture.
-6. Add `specrun slice synthesize` plus the `slice.synthesize.{started,authority-resolved,agent,completed,failed}` journal events. Synthesis in `agent` mode emits `slice.synthesize.agent` via the D12 emitter when the orchestrator is the agent; the deterministic kernel side emits the surrounding `started` / `authority-resolved` / `completed` / `failed` events directly.
-7. Add the **D11 standalone projection verb** `specrun slice provenance <slice> [--format json]` as a thin wrapper that calls the *same* projection kernel module from step 2 over an already-persisted `model.yaml` (reading `Evidence[]` and authority-overrides), writing only `provenance.yaml`. Factor the kernel so `specrun slice synthesize` and `specrun slice provenance` share one code path; make the kernel-projection-determinism unit test in step 5 drive the kernel through this verb. No schema change — `schemas/slice/provenance.schema.json` is unchanged.
-8. Add `specrun slice model show <slice> [--format json]`.
-9. Update `/spec:refine` to call the CLI command. The engine handles the dispatch and the kernel projection; the agent's contribution is authoring the requirement set, its claims, its agreement verdict, and prose — not driving the lifecycle, not deriving `sources`/`status`/winners, and no longer hand-authoring `provenance.yaml`.
-10. Extend `specrun slice validate` with the six slice-model drift checks and their `Error` variants (`slice-model-{schema,requirement-drift,provenance-drift,target-drift,source-orphan,cross-ref-orphan,id-grammar}`). Drift validation runs identically regardless of execution mode.
-11. Add the workspace-level `synthesize: { execution, tool?, enforce-executable? }` field to `schemas/workspace.schema.json` (or `project.yaml`'s schema where it lives today), default `execution: agent`, and wire `slice-synthesize-execution-mode-required` rejection for `executable` without a declared tool.
+### Wave B — Lead reconciliation engine (D2)
 
-### Wave D - Plan loader confirmation
+Deterministic structural floor + reconciliation envelope (`proposal.schema.json`, request + response), `specrun plan propose --dry-run` (floor + inventory) and `specrun plan propose --from` (kernel: validate, partition / floor invariants, group-id assignment, `plan.reconcile.*` events, plan writers). Agent-led matching + binding by design; optional lead target-axis hints deferred (§"Open questions" Q1). Details in `rfc-29-m2-plan.md`.
 
-No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay singular per D5. This wave is a small chassis confirmation, not a feature:
+### Wave C — Synthesis kernel + typed model (D3, D4, D8, D10, D11, D13)
 
-1. Add a parser regression test asserting that `plan.yaml.slices[]` rejects an `outputs[]` field if a stray draft ever introduces one. This pins D5 in code rather than only in this RFC.
-2. Confirm `specrun plan add` / `specrun plan amend` continue to refuse an `--output` flag; the only legal target binding is `--target <name@vN> [--project <slug>]`.
-3. Confirm `specrun plan propose --dry-run` (Wave B / Stage B1) emits one structural group per matched lead set and that `/spec:plan`'s agent step issues one `specrun plan add` call per `(group, target)` pair with `depends-on` edges populated from operator-declared ordering hints in `discovery.md`.
+Copy schemas from [`rfc-29/schemas/`](rfc-29/schemas/); ship projection kernel, `specrun slice synthesize` / `provenance`, drift validators. Enforce D8 gates per §"Acceptance proof (D7)". Details in `rfc-29-m2-plan.md`.
 
-### Wave E - Target build envelope
+### Wave D — Plan loader confirmation (D5)
 
-1. Commit `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json` and embed both as `BUILD_REQUEST_JSON_SCHEMA` / `BUILD_REPORT_JSON_SCHEMA` in `specify-schema`. Both are keyed on `(slice, target)`; no `output-id`.
-2. Add the closed `execution: executable | agent-fallback` field to `schemas/target.schema.json` symmetric with the source side; thread it through `TargetAdapter` parse.
-3. Add `slice.build.{started,succeeded,failed}`, `slice.merge.{started,succeeded,failed}`, and `target.execution.agent-fallback` journal events.
-4. Wire `prior-slices[]` population in the build-request builder: for each entry in the current slice's `plan.yaml.slices[].depends-on`, resolve the depended-on slice's `build/report.yaml` path and reject (`target-build-prior-slice-not-built`) when missing.
-5. Update `contracts` build to consume the build request and emit a report (executable mode via WASI tool).
-6. Update `omnia` build to consume `model.yaml` for crate/test/guest generation, read `prior-slices[]` to pick up upstream contract schemas, and emit a report (executable mode where deterministic; `agent-fallback` for the model-assisted phases that remain).
-7. Update `vectis` build after the slice model has enough UI/layout structure.
-8. Integrate RFC-28 findings into build reports; enforce `target-build-success-with-critical-finding` at the CLI boundary.
+Parser regression: reject stray `outputs[]` on `plan.yaml.slices[]`; confirm singular `--target` binding.
 
-### Wave F - Proof fixtures and docs
+### Wave E — Target build envelope (D6, D9 target)
 
-1. Add the RFC-29 end-to-end fixture (D7): two slices over two sources, joined by `depends-on`, each binding one target. Include the D8 invariant assertion (the two slices share a lead; the shared-prefix of their `requirements[]` arrays is byte-identical).
+Author the `schemas/target/build-request.schema.json` and `schemas/target/build-report.schema.json` envelopes; migrate first-party targets (`contracts`, `omnia`, `vectis`). Cross-slice dependencies build against the merged working tree in `depends-on` order (`plan next`); no per-request cross-slice channel ships in v1. Details in `rfc-29-m3-plan.md`.
+
+### Wave F — Proof fixtures and docs
+
+1. Add the RFC-29 end-to-end fixture (D7): two slices over two sources, joined by `depends-on`, each binding one target. Assert D8 envelope-construction proof and kernel-projection determinism per §"Acceptance proof (D7)".
 2. Update `docs/explanation/concepts.md` and `docs/explanation/adapter-anatomy.md` to distinguish source fan-in (Leads + Evidence) from slice fan-out (plan-level decomposition with `depends-on`). Reaffirm "one slice, one target" alongside the existing `docs/explanation/decision-log.md` entry.
 3. Update CLI reference pages for source, plan, slice, and target build reports — none of them gain an `outputs[]` field.
 4. Update acceptance docs with the new proof command sequence (two `specrun plan add` calls, one per target, second with `--depends-on`).
@@ -1699,13 +925,14 @@ No plan-schema change. `plan.yaml.slices[].target` / `slices[].project` stay sin
 
 Existing projects continue to work without any change to `plan.yaml`:
 
-- `plan.yaml.slices[]` keeps its existing one-`target`, optional-`project` shape. There is no `outputs[]` desugar to perform, and no `primary` literal to reserve. Any draft pre-RFC-29 plan referring to `outputs[]` is rejected as an unknown field on the existing plan schema.
+- `plan.yaml.slices[]` keeps one `target`, optional `project` (D5).
 - Slices without `model.yaml` validate under the pre-RFC-29 compatibility path unless re-synthesised.
 - Target build briefs may initially read Markdown and ignore `model.yaml`, but first-party targets must migrate before RFC-29 is marked implemented.
 - Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
 - Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently. The companion `rfc-29-plan.md` PR list pins which adapters land each migration.
-- Slice synthesis ships with `synthesize.execution: agent` as the first-party default (D10). Projects that already have a `/spec:refine` agent workflow continue to use it; the change is that the agent now operates inside a CLI-orchestrated envelope — authoring the requirement set, claims, agreement verdicts, and prose while the kernel projects ids, `sources`, winners, status, and `provenance.yaml` over its output — rather than driving the lifecycle or hand-authoring the audit file. There is no "synthesis must become executable" deadline; `executable` is an optional path reserved for future declared synthesis tools, and `agent` is the designed centre, not a stopgap.
-- The on-disk `provenance.yaml` schema is unchanged from the RFC-35 (landed) shape. Under RFC-35 the `/spec:refine` skill still hand-authors `provenance.yaml` (RFC-35 deferred the writer verb); under RFC-29 the projection kernel — reachable through `specrun slice synthesize` (D3) or the standalone `specrun slice provenance` (D11) — projects the byte-identical schema from the structured response. Because the artifact is unchanged, the cutover is seamless and the landed `slice-provenance-drift` gate guards parity throughout the transition.
+- Synthesis defaults to `execution: agent` (D10); `/spec:refine` shells out to `specrun slice synthesize`.
+- `provenance.yaml` schema unchanged; D3/D11 projection replaces hand-authoring. See §"Relationship to RFC-35".
+- **Claim contract (D13).** `schemas/evidence.schema.json` is tightened so `claim-id` is required on **every** claim kind (it was previously required only on `requirement` / `criterion` / `example`). This is the one breaking schema change RFC-29 makes to an already-landed artifact: any source adapter that emits an id-less claim of another kind must add a `claim-id` before re-extracting. First-party adapters already emit ids for the kinds that feed requirements; the change formalises it so every `(source, claim-id)` cited by a requirement resolves. Existing Evidence that predates the tightening keeps validating until re-extracted (the stricter rule applies on the next `specrun source extract`); `model.yaml` only ever cites claims, so a slice re-synthesised by an RFC-29-aware CLI carries `kind` on every claim and is checked by `slice-model-claim-kind-mismatch`.
 
 Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes required for that slice and drift validation applies.
 
@@ -1714,43 +941,40 @@ Once a slice has been synthesized by an RFC-29-aware CLI, `model.yaml` becomes r
 - No hosted execution or cloud runner. RFC-29 is local-first.
 - No replacement of `spec.md` as the human behavioral artifact or baseline merge input.
 - No graph database or global knowledge store for synthesis.
-- No automatic merging of semantically similar leads without exact id, alias, or operator-seeded evidence.
-- **No multi-target slices.** A slice binds exactly one target adapter / project (D5). Cross-target fan-out is plan-level, achieved by decomposing a change into multiple slices joined by `slices[].depends-on`. RFC-29 introduces no `outputs[]` array, no per-output lifecycle, no per-output build envelope, no per-output `.metadata.yaml` keying, and no per-output journal events. A future RFC that wishes to re-open this question must first amend `docs/explanation/decision-log.md` §"One plan entry, one project" and account for the multi-baseline merge contract that decision deliberately rules out.
-- No target-specific behavior in the projection kernel. The bound target's `shape` brief is an input to the non-requirements sections of the synthesis step only (D8). Shape briefs MUST NOT influence `requirements[]` or any provenance-bearing field.
-- No claim of deterministic requirement reconciliation. Deciding which requirements exist, how Evidence claims merge or split into them, and whether the claims agree is the heart of synthesis and remains agent judgment, under the envelope defined in §"Synthesis envelope" (D3) and the execution mode in §"Synthesis execution mode" (D10). RFC-29 commits to a deterministic *kernel projection* — id assignment, `sources`/winner derivation, status derivation, and provenance — over the agent's structure, **not** to a deterministic reconstruction of the requirement set or its prose. Cross-target consistency of requirements is target-neutrality by construction plus semantic equivalence, not byte-equality.
+- No *kernel-side* heuristic auto-merge of semantically similar leads. Semantic cross-source matching is the agent's judgment under the D2 envelope (`match-basis: semantic`), surfaced for operator review at Gate 1; the CLI kernel never merges leads on textual similarity by itself, only validates the agent's grouping against the partition and structural-floor invariants.
+- **No multi-target slices (D5).** Fan-out is plan-level via `depends-on`; reopening requires amending the decision log.
+- No target-specific behavior in the projection kernel (D8).
+- No deterministic requirement reconciliation (D3/D10). Kernel projection and envelope-construction proof only; see §"Acceptance proof (D7)".
 - No CLI adjudication of semantic value agreement. The `agreement` verdict is the agent's; the kernel applies authority to it but never re-decides whether two claim values mean the same thing. The advisory `slice-synthesize-agreement-suspect` finding is a non-blocking nudge, not a semantic judge.
 - No commitment to per-target determinism on day one. RFC-29 commits only to a stable build envelope and validation contract; per-target determinism milestones are tracked in each target adapter's manifest and changelog.
 
 ## Relationship to RFC-35
 
-[RFC-35](done/rfc-35-synthesis-determinism.md) has **landed**. It corrected the synthesis references (scenario headings, proposal sections, `specs/<unit>/spec.md` layout), sharpened `specrun slice validate` diagnostics, and added `briefs-dir` to `specrun source resolve` / `specrun target resolve`. Critically for RFC-29, it **deferred** the `specrun slice provenance` writer verb and **rejected** a generic `specrun journal emit` verb — its own non-goals list says so verbatim. RFC-29 does **not** inherit those two surfaces from RFC-35; it owns them (D11, D12). The relationship is therefore: RFC-29 reuses the one surface RFC-35 actually shipped (`briefs-dir`) and builds the two RFC-35 deferred:
+[RFC-35](done/rfc-35-synthesis-determinism.md) has **landed**. It corrected synthesis references, sharpened `specrun slice validate` diagnostics, and added `briefs-dir` to resolve output. It **deferred** `specrun slice provenance` and **rejected** `specrun journal emit`. RFC-29 owns both (D11, D12) and reuses `briefs-dir`.
 
-- **Provenance projection — RFC-29 owns the kernel and its standalone verb (D11).** RFC-35 (landed) deliberately keeps `provenance.yaml` agent-authored and adds drift validation only: it found that the claim→requirement mapping "is not mechanically derivable from `Sources:` lines alone and remains synthesis judgment," so it deferred any writer verb. RFC-29's earlier draft *also* over-reached in the other direction — it had the kernel *derive* `provenance.yaml` and `status` from each requirement's source-key `sources`, which a source-key list cannot support (it loses the losing claims and cannot tell `agreed` from `divergence`/`conflict`). This revision resolves both: the synthesis **response** now carries the per-requirement `claims` (the `(source, claim-id)` pairs behind each requirement) and an `agreement` verdict, so the kernel projects `provenance.yaml`, `sources`, winners, and `status` *faithfully* (agreement is judgment; winner selection is authority mechanics — see §"Status and provenance derivation"). RFC-35's "no writer verb" stance was correct *for its inputs*; RFC-29 supplies the claim-level input that turns the projection from a lossy reconstruction into a faithful one, and therefore introduces `specrun slice provenance` itself as **D11** — the thin standalone entry point onto the same projection kernel D3 wraps inside `specrun slice synthesize`. Both entry points produce the byte-identical `provenance.yaml` schema the **landed** `slice-provenance-drift` gate already enforces; the on-disk schema is unchanged.
-- **Journal emitter — RFC-29 owns it (D12).** RFC-35 rejected a generic `specrun journal emit` verb because, for the steps it touched, the deterministic command that owns a transition can emit directly. RFC-29 introduces *agent-orchestrated* phases (agent-mode synthesis, `agent-fallback` source/target operations) that have no such command at emit time, so it introduces `specrun journal emit` as the single guarded front door onto the closed `EventKind` taxonomy (see §"Journal emitter (D12)"). RFC-29 adds event kinds to that one taxonomy, not a second emission path.
-- **Brief-location surface — the one thing RFC-29 genuinely reuses.** RFC-35 D9 `briefs-dir` (landed) is the deterministic brief-location field on `specrun source resolve` / `specrun target resolve` JSON output that RFC-29 D1 and D3 rely on instead of cache-path arithmetic.
+**Provenance (D11).** RFC-35 kept `provenance.yaml` agent-authored because claim→requirement mapping is not recoverable from `Sources:` lines alone. RFC-29's synthesis response carries per-requirement `(source, claim-id)` claims and an `agreement` verdict on `model.yaml`, so the kernel projects `provenance.yaml`, `sources`, winners, and `status` faithfully. Agreement is judgment (agent); winner selection among disagreements is authority mechanics (kernel) — see §"Status and provenance derivation". `specrun slice provenance` is the standalone entry point onto the same kernel as D3; the on-disk provenance schema is unchanged.
 
-Roadmap [RM-06](roadmap.md#rm-06-fan-infan-out-workflow-contract) tracks RFC-29; its "stepping stone already landed the kernel/emitter" framing predates this revision and should be read as "RFC-29 owns D11/D12."
+**Journal emitter (D12).** RFC-35 rejected a generic emitter because deterministic commands can emit directly. RFC-29 introduces agent-orchestrated phases (D9/D10) without such a command at emit time, so `specrun journal emit` is the guarded front door onto the closed `EventKind` taxonomy (§"Journal emitter (D12)").
 
 ## Open questions
 
-Exactly one question is unresolved. RFC-29 deliberately does **not** answer it in v1 and is fully implementable without it — the v1 decision is already pinned (option (d), per **D2 Stage B1**), and the question is only the prerequisite for the deferred **D2 Stage B2** full writer.
+Two questions are deliberately left open. RFC-29 does **not** answer either in v1 and is fully implementable without them — each v1 decision is already pinned, and the open questions are prerequisites for deferred follow-on work.
 
-**Q1. Lead target-axis vocabulary (Stage B2 prerequisite).** Under D5, promoting `specrun plan propose` to a full writer would need a deterministic policy for turning a lead group into `(group, target)` slices. The four leads considered are:
+**Q1. Optional lead target-axis *hints* (agent assist, not replacement).** D2 makes cross-source matching and target binding the agent's judgment by design — the same stance D10 takes for synthesis — so there is no deterministic "full writer" to gate on, and no arbitrary CLI heuristic to design. The only open question is whether leads should *optionally* carry target-axis hints to **assist** the agent (narrowing the candidate targets it considers), never to replace its binding. Options considered:
 
-   - **(a) Target hints on Leads.** Source adapters tag each lead with a closed `axes: [api, service, ui, …]` enum at `survey` time; `propose` cross-products groups by their members' union of axes. Cleanest long-term shape; requires extending `schemas/discovery/lead.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
-   - **(b) Cross-product over plan-bound targets.** Emit `|groups| × |bound-targets|` slices and let the operator delete the irrelevant ones at Gate 1. Over-generates badly at scale; not viable past a handful of targets.
-   - **(c) Operator post-amend.** `propose` emits `target: null` rows; operator runs `specrun plan amend --target` per slice. Pushes mechanical work onto the operator.
-   - **(d) Status quo: agent decides — the v1 decision.** Per the **D2 Stage B1** decision in this revision, this is what v1 does. Honest about the judgment involved; keeps the CLI free of an arbitrary heuristic. Costs us a deterministic acceptance assertion on `plan.yaml.slices[]` byte-stability and keeps target binding out of the CLI's audit / journal trail.
+   - **(a) Optional target hints on Leads.** Source adapters tag each lead with a closed `axes: [api, service, ui, …]` enum at `survey` time; the request envelope surfaces them so the agent's binding starts from a narrowed candidate set. Cleanest assist; requires extending `schemas/discovery/lead.schema.json` and per-source-adapter authoring discipline. Probably needs its own RFC.
+   - **(b) No hints — pure agent binding (the v1 decision).** The agent binds each group to a target from `bound-targets` using the lead summaries and rationale alone, exactly as it semantically matches leads. Honest about the judgment involved and consistent with the D2/D3 agent-first stance; the journal records every binding via `plan.reconcile.agent`, so binding is *not* outside the audit trail.
 
-   v1 ships option (d). This question is the explicit — and only — blocker for **D2 Stage B2** (`specrun plan propose` as a full writer), which is deferred to its own future RFC once a Lead target-axis vocabulary (option (a)) is designed. It blocks no other RFC-29 wave; D1, D3, D4, D5, D6, and D7 all land against the Stage B1 + agent form.
+   v1 ships option (b): agent binding is the designed centre, not a stopgap. Option (a) is a **purely additive optimization** — an optional hint that prunes the agent's candidate set — and is deferred to a future RFC once a lead target-axis vocabulary is designed. It blocks no RFC-29 wave; D1, D2, D3, D4, D5, D6, and D7 all land against the agent-binding form.
+
+**Q2. Cross-project artifact handoff (workspace mode).** When two slices in a fan-out are bound to *different projects* (the worked example binds `identity-contracts` and `identity-service` to separate `--project` slots), the dependent slice's target cannot read the upstream output from a shared working tree — workspace mode materialises each project into an independent `.specify/workspace/<project>/` slot synced and pushed on its own branch, with no build-time cross-slot artifact path. The idiomatic channel is a published package / schema artifact (a versioned `contracts` crate, npm package, or schema-registry entry) that the dependent project consumes through its own dependency manifest, exactly as it would consume any third-party dependency. v1 deliberately ships **no** Specify-specific cross-slice channel: an earlier draft's `prior-slices[]` build-request field was cut because it carried only the upstream *build report* (metadata), not the artifacts the dependent actually needs, and because plan-level `depends-on` + `plan next` ordering already covers the same-tree case. Designing the cross-project handoff — artifact resolution, versioning, and cache-fingerprint participation — is deferred to a future RFC and is to be undertaken only when a first-party target has a concrete cross-project consuming dependency. It blocks no RFC-29 wave.
 
 ## References
 
 - [RFC-25: Workflow](../done/rfc-25-workflow.md)
 - [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
-- RFC-28: Engineering Standards — Codex Contract and Findings
-- RFC-32: Engineering Standards — Deterministic Enforcement
-- [RFC-35: Synthesis Determinism](done/rfc-35-synthesis-determinism.md) — landed; corrected synthesis references and validator diagnostics and added `briefs-dir`, but deferred the `specrun slice provenance` writer and rejected `specrun journal emit`. RFC-29 owns both (D11, D12); see §"Relationship to RFC-35"
+- [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
+- [RFC-35: Synthesis Determinism](done/rfc-35-synthesis-determinism.md) — see §"Relationship to RFC-35"
 - [Core concepts](../../docs/explanation/concepts.md)
 - [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
 - [Claim reconciliation](../../plugins/spec/references/synthesis/claim-reconciliation.md)
