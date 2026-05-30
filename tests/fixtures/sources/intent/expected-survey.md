@@ -1,5 +1,4 @@
 ### add-search-filter
 
-- id: add-search-filter
-- sources: [intent]
+- lead-id: add-search-filter
 - summary: Add a search filter to the user list.

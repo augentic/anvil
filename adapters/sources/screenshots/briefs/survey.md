@@ -5,7 +5,7 @@ Walk `$SOURCE_DIR` (a read-only preopen of an operator-bound directory of screen
 ## Inputs
 
 - `$SOURCE_DIR` — read-only directory holding the bound screen-image set. Never write here.
-- `<source-key>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in and this brief embeds it in every `sources:` list.
+- `<source-key>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in for context and stamps each lead's `source-key` itself, so this brief does not emit it.
 - `$SCRATCH_DIR` — per-slice write-only scratch space; use only for unavoidable intermediate state (e.g. cropped staging files when chrome cropping is required to disambiguate a screen).
 
 ## Vision prerequisite
@@ -39,22 +39,21 @@ Skip images that contain no application content (orphan splash screens, full-scr
 
 ## Lead id and summary
 
-- `id`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `id`, so stability matters more than prettiness.
+- `lead-id`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `(source-key, lead-id)`, so stability matters more than prettiness.
 - `summary`: a one-line description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Keep it under 200 characters. Do not invent content the screens do not show.
 
 ## Output
 
-Return one block per lead, in alphabetical `id` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
+Return one block per lead, in alphabetical `lead-id` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
 
 ```markdown
 ### task-list
 
-- id: task-list
-- sources: [<source-key>]
+- lead-id: task-list
 - summary: Task list: today's open tasks for the signed-in user.
 ```
 
-Field order is fixed (`id`, `sources`, `summary`). `sources:` always carries exactly the supplied `<source-key>` for this adapter; cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job. Do not set `tentative`.
+Field order is fixed (`lead-id`, `summary`). Do not emit `source-key`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job. Do not set `tentative`.
 
 ## Worked example
 
@@ -66,19 +65,17 @@ task-list-empty.png       # same header / chrome; empty-state illustration
 archive.png               # visible header: "Archive"; archived tasks list
 ```
 
-Expected output (alphabetically by `id`; `task-list-populated.png` and `task-list-empty.png` collapse into a single lead by visual similarity):
+Expected output (alphabetically by `lead-id`; `task-list-populated.png` and `task-list-empty.png` collapse into a single lead by visual similarity):
 
 ```markdown
 ### archive
 
-- id: archive
-- sources: [<source-key>]
+- lead-id: archive
 - summary: Archive: completed tasks the user has archived.
 
 ### task-list
 
-- id: task-list
-- sources: [<source-key>]
+- lead-id: task-list
 - summary: Task list: today's open tasks for the signed-in user.
 ```
 
@@ -86,8 +83,8 @@ A full input / output fixture for this example lives at [`tests/fixtures/sources
 
 ## Determinism
 
-- Emit leads sorted alphabetically by `id`.
-- Field order inside each block is fixed: `id`, `sources`, `summary`.
+- Emit leads sorted alphabetically by `lead-id`.
+- Field order inside each block is fixed: `lead-id`, `summary`.
 - No timestamps, host paths, or other run-state in the output — re-running against unchanged inputs produces byte-identical blocks.
 - Triage of state variants into the same lead MUST be reproducible. When two images are equally plausible as the dominant variant of a screen, pick the one whose filename sorts first lexicographically.
 

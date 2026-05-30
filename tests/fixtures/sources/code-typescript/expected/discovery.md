@@ -15,8 +15,8 @@
 
 ## Lead inventory
 
-### user-registration
+### legacy-monolith:user-registration
 
-- id: user-registration
-- sources: [legacy-monolith]
+- lead-id: user-registration
+- source-key: legacy-monolith
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.

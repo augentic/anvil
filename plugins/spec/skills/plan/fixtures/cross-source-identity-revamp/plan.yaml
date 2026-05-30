@@ -11,16 +11,16 @@ slices:
   - name: identity-user-registration
     target: omnia
     sources:
-      - key: identity-design-notes
-        lead: user-registration
-      - key: legacy-monolith
-        lead: user-registration
+      - source-key: identity-design-notes
+        lead-id: user-registration
+      - source-key: legacy-monolith
+        lead-id: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia
     sources:
-      - key: identity-design-notes
-        lead: password-reset
-      - key: legacy-monolith
-        lead: account-pwd-reset
+      - source-key: identity-design-notes
+        lead-id: password-reset
+      - source-key: legacy-monolith
+        lead-id: account-pwd-reset
     status: pending

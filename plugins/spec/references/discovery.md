@@ -4,21 +4,23 @@
 
 1. `## Summary` — one-line counts (`Sources`, `Leads`). Adapter-specific tallies are permitted.
 2. `## Source inventory` — one row per bound source under `plan.yaml.sources.<key>`: key, adapter, path or value.
-3. `## Lead inventory` — one fenced or list block per lead. Stable `id` is the handle re-survey writes against; `sources[]` lists every source that surfaced the lead.
+3. `## Lead inventory` — one fenced or list block per **raw, unmerged lead**. Each block is one lead as surfaced by one source: a kebab-case `lead-id` and the scalar `source-key` that surfaced it. Identity is the `(source-key, lead-id)` pair, so the same `lead-id` MAY appear under different source keys.
 
-Re-surveying the same source key replaces leads by `id`. Surveying a different source key appends new ids. No `leads.yaml` exists in v1 — `discovery.md` is the only persisted lead artifact.
+Re-surveying the same source key replaces that source's leads by `(source-key, lead-id)` and leaves every other source's blocks untouched. `survey` never merges across sources — cross-source unification is `/spec:plan`'s `propose` sub-step. No `leads.yaml` exists in v1 — `discovery.md` is the only persisted lead artifact.
 
 ## Minimal lead block
 
-The propose sub-step matches across sources using `id`, `summary`, and `sources[]` on these blocks:
+The propose sub-step matches across sources using `lead-id`, `aliases[]`, `summary`, and `source-key` on these blocks:
 
 ```markdown
-### user-registration
+### legacy-monolith:user-registration
 
-- id: user-registration
-- sources: [legacy-monolith]
+- lead-id: user-registration
+- source-key: legacy-monolith
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
+
+The heading is `### <source-key>:<lead-id>` so two sources surfacing the same `lead-id` stay distinct blocks. Survey lead-sets MAY omit `source-key` (the CLI stamps it from the survey binding); the persisted `discovery.md` always carries it.
 
 When the agent's propose sub-step judges a reconciliation uncertain, it adds a `tentative: true` bullet to each contributing block in this section and reasons about it in `change.md` under `## Tentative merges`. The lead block keeps every other field unchanged.
 
@@ -41,25 +43,31 @@ Sources: 1. Leads: 1.
 
 ## Lead inventory
 
-### fix-typo
+### intent:fix-typo
 
-- id: fix-typo
-- sources: [intent]
+- lead-id: fix-typo
+- source-key: intent
 - summary: fix typo in user.rs
 ```
 
-The slice row `propose` writes against this lead uses the bare-string shorthand `sources: [intent]` (which the CLI normalises to `{ key: intent, lead: fix-typo }`).
+The slice row `propose` writes against this lead uses the bare-string shorthand `sources: [intent]` (which the CLI normalises to `{ source-key: intent, lead-id: fix-typo }`).
 
 ## Multi-source skeleton
 
-When two source adapters surface the same unit of work, both lead blocks share an `id` and each lists every source that surfaced it. The propose sub-step then writes one `slices[]` row with both bindings:
+When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead-id` appears once per source, each with its own `source-key` and per-source `summary`. The propose sub-step matches them by exact `lead-id` (or alias) across source keys and writes one `slices[]` row with both bindings:
 
 ```markdown
-### user-registration
+### identity-design-notes:user-registration
 
-- id: user-registration
-- sources: [identity-design-notes, legacy-monolith]
+- lead-id: user-registration
+- source-key: identity-design-notes
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
+
+### legacy-monolith:user-registration
+
+- lead-id: user-registration
+- source-key: legacy-monolith
+- summary: POST /users handler validating email + password and inserting the new user record.
 ```
 
-When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them, invokes `specrun plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. The lead block itself keeps the consensus or last-written summary; pair-level detail lives in `change.md`.
+When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specrun plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source summary; pair-level detail lives in `change.md`.

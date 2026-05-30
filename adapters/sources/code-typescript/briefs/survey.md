@@ -7,7 +7,7 @@ JavaScript sources (`.js`, `.mjs`, `.cjs`, `.jsx`) fold into this brief: the fra
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the operator-bound source root (the `path:` from `plan.yaml.sources.<key>`). Walk this tree; resolve `tsconfig.json` `paths` mappings relative to it.
-- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). Echoed into every lead's `sources:` list.
+- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). The CLI stamps each lead's `source-key` from it; this brief does not emit it.
 
 The bound directory is the only filesystem grant; `$PROJECT_DIR` is unreachable. Treat the tree as read-only — no writes back into `$SOURCE_DIR`.
 
@@ -16,14 +16,13 @@ The bound directory is the only filesystem grant; `$PROJECT_DIR` is unreachable.
 Emit one fenced block per identified unit, in the shape the CLI appends under `## Lead inventory`:
 
 ```markdown
-### <id>
+### <lead-id>
 
-- id: <id>
-- sources: [<source-key>]
+- lead-id: <lead-id>
 - summary: <one-line description>
 ```
 
-`id` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against. The block validates against `schemas/discovery/lead.schema.json` (kebab-case `id`, non-empty `sources[]`, one-line `summary`). One block per lead; no `tentative:` field at survey time (set later by `/spec:plan`'s `propose` sub-step).
+`lead-id` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source-key, lead-id)`). After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead-id`, scalar `source-key`, one-line `summary`). One block per lead; no `tentative:` field at survey time (set later by `/spec:plan`'s `propose` sub-step).
 
 ## Internal staging
 
@@ -96,8 +95,7 @@ Union LOC stays well below 1000 → Decision 2 (size check) emits one source-lev
 ```markdown
 ### user-registration
 
-- id: user-registration
-- sources: [legacy-monolith]
+- lead-id: user-registration
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 

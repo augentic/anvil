@@ -1,13 +1,13 @@
 ## Lead inventory
 
-### account
+### product-notes:account
 
-- id: account
-- sources: [product-notes]
+- lead-id: account
+- source-key: product-notes
 - summary: Account service that stores per-user identity, credential, and notification preferences.
 
-### password-reset
+### product-notes:password-reset
 
-- id: password-reset
-- sources: [product-notes]
+- lead-id: password-reset
+- source-key: product-notes
 - summary: Account service that lets a registered user request a password reset link by email.

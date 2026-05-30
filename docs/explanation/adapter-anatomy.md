@@ -59,13 +59,13 @@ Shared rules: kebab-case `name` unique per axis; required closed `execution` mod
 
 A source adapter participates in two places in the lifecycle.
 
-**`survey(Source) → Lead[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized lead under `## Lead inventory` in `discovery.md`. Each block carries a stable `id` and a `sources[]` list. Re-surveying the same source replaces blocks by `id`; surveying a different source appends new ids. The lead grammar:
+**`survey(Source) → Lead[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized **raw lead** under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead-id` and the scalar `source-key` that surfaced it; identity is the `(source-key, lead-id)` pair. Re-surveying the same source replaces that source's blocks by `(source-key, lead-id)` and never merges across sources — cross-source unification is `/spec:plan`'s `propose` sub-step. The lead grammar:
 
 ```markdown
-### user-registration
+### legacy-monolith:user-registration
 
-- id: user-registration
-- sources: [legacy-monolith]
+- lead-id: user-registration
+- source-key: legacy-monolith
 - summary: Registration endpoint accepting email + password with email-format validation.
 ```
 

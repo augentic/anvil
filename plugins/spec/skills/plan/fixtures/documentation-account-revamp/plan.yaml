@@ -8,18 +8,18 @@ slices:
   - name: account-registration
     target: omnia
     sources:
-      - key: docs
-        lead: account-registration
+      - source-key: docs
+        lead-id: account-registration
     status: pending
   - name: password-reset
     target: omnia
     sources:
-      - key: docs
-        lead: password-reset
+      - source-key: docs
+        lead-id: password-reset
     status: pending
   - name: account-audit-log
     target: omnia
     sources:
-      - key: docs
-        lead: account-audit-log
+      - source-key: docs
+        lead-id: account-audit-log
     status: pending
