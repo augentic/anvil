@@ -255,4 +255,6 @@ Findings **A–E** from the previous review were implemented (−178 LOC roll-up
 ## Post-mortem (this pass)
 
 - **F:** actual **−36 LOC** vs predicted −35; `done when` flipped cleanly (`fn emit_lint_completed` in `src/` = 0, `pub fn` in `crates/workflow/` = 1); no regression — `cargo make check` green; preserved distinct `specdev lint` / `specrun lint` prefixes and asymmetric `LintScope` at call sites.
-- **G (+L):** actual **−54 LOC** working-tree (G/L slice ~−25 as predicted; larger net includes co-located F diff); `done when` flipped cleanly (`decide_exit` = 0, single `blocking_findings_present` in authoring = 1); no regression — `cargo make check` green after `# Errors` doc on `deny_blocking_findings`.
+- **G (+L):** actual **−54 LOC** working-tree (G/L slice ~−25 as predicted); `done when` flipped cleanly (`decide_exit` = 0, single `blocking_findings_present` in authoring = 1); no regression — `cargo make check` green after `# Errors` doc on `deny_blocking_findings`.
+- **I (+K,M,N):** actual **~0 LOC** (operand substitutions across 17 files) vs predicted ~0; `done when` flipped cleanly (`plan transition.*reviewed` = 0 outside REVIEW.md); no regression — `cargo make check` green; `make lint` still fails only on pre-existing REVIEW.md CORE-016.
+- **H:** actual **~0 LOC** (README + workflow-poster SVG binary rename); `done when` flipped cleanly (`^specify plan` in README = 0); no regression — collateral fix `a approved` → `an approved` in execute skill description.

@@ -1,6 +1,6 @@
 ---
 name: specify-execute
-description: Drive a approved plan through refine → build → merge per entry under an exclusive plan lock. Use when Gate 1 has stamped plan approved; not before Gate 1, nor after all entries are done.
+description: Drive an approved plan through refine → build → merge per entry under an exclusive plan lock. Use when Gate 1 has stamped plan approved; not before Gate 1, nor after all entries are done.
 ---
 
 # Specify Execute

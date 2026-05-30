@@ -2,7 +2,7 @@
 
 > Status: Draft — Milestone **M3** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29c](rfc-29c-synthesis-typed-model.md) (consumes its `model.yaml`), [RFC-29a](rfc-29a-source-operations.md) (D9 enum) — Unblocks: RM-18 hosted execute; the RFC-29 acceptance proof
 
-This is the final independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). The build request/report envelopes and the first-party target migrations consume `model.yaml` from M2b; the end-to-end D7 fixture is the final release gate that proves fan-in twice and fan-out once. The build-envelope schemas are **authored during this milestone's implementation** (not shipped as drafts), and the cross-project artifact-handoff case is a deferred open question.
+This is the final independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). The build request/report envelopes and the first-party targets consume `model.yaml` from M2b; the end-to-end D7 fixture is the final release gate that proves fan-in twice and fan-out once. The build-envelope schemas are **authored during this milestone's implementation** (not shipped as drafts), and the cross-project artifact-handoff case is a deferred open question.
 
 The cross-milestone wire contracts this milestone appends to are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This document is the source of truth for D6, the target side of D9, and D7.
 
@@ -95,9 +95,9 @@ Target `build` briefs change from "read Markdown and decide what to do" to "cons
 - `merge` consumes build reports and target-specific validation state.
 - Any agent-generated code must still pass target-local validation before `status: success`.
 
-### First-party target migration
+### First-party target build order
 
-The first migration path should be:
+The recommended implementation order is:
 
 1. `contracts` first, because API contracts are already structured outputs.
 2. `omnia` second, because Rust crate generation benefits most from typed requirements, APIs, configuration, and replay examples.
@@ -107,7 +107,7 @@ The first migration path should be:
 
 Target adapters declare the same closed `execution: executable | agent-fallback` field defined in [RFC-29a §"Adapter execution mode (D9)"](rfc-29a-source-operations.md). On the target side it governs `build` / `merge` dispatch:
 
-- `executable` — `build` and `merge` run through a declared WASI tool or deterministic Rust path; inputs/outputs validate against the build envelopes above. Required for first-party targets before RFC-29 ships.
+- `executable` — `build` and `merge` run through a declared WASI tool or deterministic Rust path; inputs/outputs validate against the build envelopes above.
 - `agent-fallback` — the target brief is agent-executed against the same sandbox; the CLI orchestrates inputs and validates outputs but does not cache, emits `target.execution.agent-fallback` per invocation, and forces `cache: opt-out`.
 
 ## Acceptance proof (D7)

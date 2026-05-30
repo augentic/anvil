@@ -11,7 +11,7 @@ The cross-milestone wire contracts this milestone appends to (the closed `EventK
 | ID | Decision |
 | -- | -------- |
 | **D1 Source operation runner** | The CLI runs source adapter `survey` and `extract` operations: `specrun source survey` / `specrun source extract`, routed through `SourceAdapter::resolve`, declared tools, sandbox preopens, extraction cache, schema validation, and journal events. |
-| **D9 Adapter execution mode** (source side) | Source adapters declare a closed `execution: executable \| agent-fallback` field; first-party adapters MUST be `executable` before RFC-29 ships, third-party adapters MAY be `agent-fallback` indefinitely. (The symmetric target side lands in [RFC-29d](rfc-29d-target-build-envelope.md).) |
+| **D9 Adapter execution mode** (source side) | Source adapters declare a closed `execution: executable \| agent-fallback` field selecting deterministic dispatch vs an agent-run brief. (The symmetric target side lands in [RFC-29d](rfc-29d-target-build-envelope.md).) |
 | **D12 Journal emitter** | `specrun journal emit` is the schema-validated writer for agent-orchestrated phases with no deterministic emit command. |
 
 ## Operator surface
@@ -97,8 +97,8 @@ execution: executable     # or `agent-fallback`
 
 The two values are:
 
-- `**executable**` — `survey` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in the RFC-29 family. Required for first-party adapters before RFC-29 ships.
-- `**agent-fallback**` — the adapter's brief is executed by an agent against the same sandbox preopens. The CLI orchestrates inputs and validates outputs against the same schemas, but does not cache the result. Permitted for third-party adapters indefinitely.
+- `**executable**` — `survey` and `extract` (sources) or `build` and `merge` (targets) are dispatched through a declared WASI tool or a deterministic Rust adapter path. Inputs and outputs validate against the schemas committed in the RFC-29 family.
+- `**agent-fallback**` — the adapter's brief is executed by an agent against the same sandbox preopens. The CLI orchestrates inputs and validates outputs against the same schemas, but does not cache the result.
 
 When `execution: agent-fallback`, the CLI:
 
@@ -118,7 +118,7 @@ The schema additions are mechanical extensions of `schemas/source.schema.json` a
 }
 ```
 
-with `execution` added to the `required` list on both schemas. Manifests authored before RFC-29 must add the field at first read; the loader rejects missing values rather than defaulting silently.
+with `execution` added to the `required` list on both schemas. The loader rejects a manifest that omits `execution` rather than defaulting silently.
 
 ## Journal emitter (D12)
 
@@ -144,11 +144,4 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 
 - **Journal events:** `source.survey.cache-hit`, `source.survey.cache-miss`, `source.execution.agent-fallback`, plus the `specrun journal emit` front door (D12) onto the whole taxonomy.
 - **Operational validation codes (`Error::Validation`, not new enum variants):** `adapter-execution-mode-required`, `adapter-execution-agent-fallback-cache-conflict`, `journal-emit-unknown-event`, `journal-emit-payload-schema` — single-signal aborts at adapter load / `journal emit`, exit 2. See [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
-- **Schema edits:** the `execution` enum added (and `required`) on `schemas/source.schema.json` and `schemas/target.schema.json`.
-
-## Migration
-
-- Source adapters may initially keep agent-run briefs, but first-party adapters must declare `execution: executable` before RFC-29 is marked implemented. Third-party adapters MAY remain `execution: agent-fallback` indefinitely.
-- Existing first-party adapter manifests must add the new `execution` field at first read; the loader rejects missing values with `adapter-execution-mode-required` rather than defaulting silently.
-
-See [RFC-29 §"Migration"](rfc-29-fan-in-fan-out.md#migration) for the family-wide migration posture.
+- **Schema edits:** the `execution` enum added (and `required`) on `schemas/source.schema.json` and `schemas/target.schema.json`. The loader rejects a manifest that omits `execution` with `adapter-execution-mode-required` rather than defaulting silently.

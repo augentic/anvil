@@ -302,7 +302,7 @@ All seven grammars are enforced by `schemas/slice/model.schema.json`. The synthe
 | `slice-model-claim-kind-mismatch` | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, claim-id)` in the source's Evidence.                                     |
 
 
-Absence of `model.yaml` is allowed for pre-RFC-29 slices and rejected for slices synthesized by an RFC-29-aware CLI.
+Every synthesized slice carries `model.yaml`; its absence is rejected.
 
 ### Build input
 
@@ -392,7 +392,7 @@ Regardless of execution mode, the engine validates the draft response against `d
 
 Every claim that contributes to a requirement carries a stable `claim-id` **and** its `kind`:
 
-- `schemas/evidence.schema.json` is tightened so `claim-id` is required on **every** claim kind (it was previously required only on `requirement` / `criterion` / `example`). This is the one breaking schema change the RFC-29 family makes to an already-landed artifact; the migration posture is in [RFC-29 §"Migration"](rfc-29-fan-in-fan-out.md#migration).
+- `schemas/evidence.schema.json` requires `claim-id` on **every** claim kind, so every `(source, claim-id)` cited by a requirement resolves.
 - `model.yaml.requirements[].claims[]` carries `kind` (required, mirrors `evidence.schema.json#/$defs/claimKind`) so the projection kernel resolves per-kind authority (§"Authority over mixed-kind claims") and populates the `kind`-bearing `provenance.yaml` `contributing-claims[]` **without re-reading Evidence**.
 
 `specrun slice validate` adds `slice-model-claim-kind-mismatch` when a claim's `kind` disagrees with the kind recorded for that `(source, claim-id)` in Evidence; `slice-model-source-orphan` still catches a `(source, claim-id)` absent from Evidence.
@@ -404,4 +404,4 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 - **Journal events:** `slice.synthesize.started`, `slice.synthesize.authority-resolved`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.model.show.requested`.
 - **Validation findings (`Diagnostic` codes, validate surface):** `slice-model-schema`, `slice-spec-provenance-stale`, `slice-model-provenance-drift`, `slice-model-target-drift`, `slice-model-source-orphan`, `slice-model-cross-ref-orphan`, `slice-model-claim-kind-mismatch`, `slice-model-id-grammar`, `slice-synthesize-forbidden-input-leak` — emitted by `specrun slice validate` as a `DiagnosticReport`; blocking findings gate the transition at exit 2.
 - **Operational validation codes (`Error::Validation`):** `slice-synthesize-kernel-field-usurped`, `slice-synthesize-execution-mode-required` — single-signal `specrun slice synthesize` aborts (the former rejects a draft that usurps a kernel-owned field, before projection). Neither tier adds a new `Error` enum variant; see [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
-- **Schemas:** `schemas/slice/model.schema.json` (`SLICE_MODEL_JSON_SCHEMA`), `schemas/slice/draft-model.schema.json` (`DRAFT_MODEL_JSON_SCHEMA`), `schemas/slice/synthesis.schema.json` (`SYNTHESIS_JSON_SCHEMA`) — registered together so relative `$ref`s compile without a registry lookup. Plus the D13 tightening of `schemas/evidence.schema.json`.
+- **Schemas:** `schemas/slice/model.schema.json` (`SLICE_MODEL_JSON_SCHEMA`), `schemas/slice/draft-model.schema.json` (`DRAFT_MODEL_JSON_SCHEMA`), `schemas/slice/synthesis.schema.json` (`SYNTHESIS_JSON_SCHEMA`) — registered together so relative `$ref`s compile without a registry lookup. Plus the D13 `claim-id` requirement on `schemas/evidence.schema.json`.
