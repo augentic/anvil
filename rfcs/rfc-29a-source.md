@@ -46,12 +46,12 @@ Both commands locate adapter brief bodies through the `briefs-dir` field on `spe
 `survey` runs the source adapter's `briefs.survey` operation under the source-adapter sandbox:
 
 
-| Root              | Mode       | Contents                                                              |
-| ----------------- | ---------- | --------------------------------------------------------------------- |
-| `$SOURCE_DIR`     | read-only  | Bound source path when the source uses `path:`.                       |
-| `$CAPABILITY_DIR` | read-only  | Resolved source adapter manifest cache.                               |
-| `$SCRATCH_DIR`    | write-only | Per-operation scratch under the extraction tree (see below).          |
-| `$PROJECT_DIR`    | none       | Not visible to the adapter operation.                                 |
+| Root              | Mode       | Contents                                                     |
+| ----------------- | ---------- | ------------------------------------------------------------ |
+| `$SOURCE_DIR`     | read-only  | Bound source path when the source uses `path:`.              |
+| `$CAPABILITY_DIR` | read-only  | Resolved source adapter manifest cache.                      |
+| `$SCRATCH_DIR`    | write-only | Per-operation scratch under the extraction tree (see below). |
+| `$PROJECT_DIR`    | none       | Not visible to the adapter operation.                        |
 
 
 `$SCRATCH_DIR` nests under the existing per-adapter extraction tree (`.specify/.cache/extractions/<adapter>/`), disjoint from the fingerprint result cache so a scratch write never pollutes a cache artifact. Because `survey` runs at plan time and carries no slice, the scratch path is keyed per operation: `extract` uses `.specify/.cache/extractions/<adapter>/<slice>/scratch/`; `survey` uses `.specify/.cache/extractions/<adapter>/survey/scratch/`. This supersedes the looser `<adapter>/` wording carried in earlier drafts and aligns with the per-slice shape in [docs/explanation/adapter-anatomy.md](../docs/explanation/adapter-anatomy.md).
@@ -135,7 +135,7 @@ The schema additions are mechanical extensions of `schemas/source.schema.json` a
 {
   "execution": {
     "type": "string",
-    "enum": ["tool", "agent"],
+    "enum": ["agent", "tool"],
     "description": "Closed adapter execution mode per RFC-29 D9."
   }
 }
@@ -177,15 +177,17 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 
 M1 lands as a stepped sequence, mirroring the RFC-35 implementation-plan format. Each step is independently reviewable; CLI work precedes the skill edits that depend on it.
 
-| Step | Work                                                                                                                          | Repo(s)     |
-| ---- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 0    | Preflight inventory; pin `$SCRATCH_DIR` shape, the agent prepare/finalize handoff, and the M1 journal payload variants       | both        |
-| 1    | Add `briefs-dir` to `source` / `target resolve` JSON output                                                                  | specify-cli |
-| 2    | `execution` schema enum + loader rejection + `agent`/cache conflict check + stamp all eight first-party manifests            | both        |
-| 3    | M1 typed `EventKind` variants + `specrun journal emit` serde-guard                                                           | specify-cli |
-| 4    | Shared sandbox-prep helper; refactor `source preview` onto it                                                                | specify-cli |
-| 5    | `specrun source survey` + `Discovery::merge_survey`                                                                          | specify-cli |
-| 6    | `specrun source extract` + Evidence persist + value-binding envelope                                                         | specify-cli |
-| 7    | Skill updates (`refine` step 3, `plan` survey path)                                                                          | specify     |
-| 8    | Acceptance scenario `5j` (source-adapter sandbox path-denied)                                                                | both        |
+
+| Step | Work                                                                                                                   | Repo(s)     |
+| ---- | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0    | Preflight inventory; pin `$SCRATCH_DIR` shape, the agent prepare/finalize handoff, and the M1 journal payload variants | both        |
+| 1    | Add `briefs-dir` to `source` / `target resolve` JSON output                                                            | specify-cli |
+| 2    | `execution` schema enum + loader rejection + `agent`/cache conflict check + stamp all eight first-party manifests      | both        |
+| 3    | M1 typed `EventKind` variants + `specrun journal emit` serde-guard                                                     | specify-cli |
+| 4    | Shared sandbox-prep helper; refactor `source preview` onto it                                                          | specify-cli |
+| 5    | `specrun source survey` + `Discovery::merge_survey`                                                                    | specify-cli |
+| 6    | `specrun source extract` + Evidence persist + value-binding envelope                                                   | specify-cli |
+| 7    | Skill updates (`refine` step 3, `plan` survey path)                                                                    | specify     |
+| 8    | Acceptance scenario `5j` (source-adapter sandbox path-denied)                                                          | both        |
+
 
