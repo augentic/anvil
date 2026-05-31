@@ -224,7 +224,7 @@
             "agreed",
             "disagreed"
           ],
-          "description": "Agent-authored value-agreement verdict over `claims`. Required when more than one claim contributes; omitted for 0 or 1 claim. The kernel derives `status` and winner markers from this verdict plus RFC-27 authority (RFC-29 \u00a7Status and provenance derivation)."
+          "description": "Agent-authored value-agreement verdict over `claims`. Required when more than one claim contributes; omitted for 0 or 1 claim. The kernel derives `status` and winner markers from this verdict plus authority resolution (RFC-29c \u00a7Status derivation)."
         },
         "claims": {
           "type": "array",
