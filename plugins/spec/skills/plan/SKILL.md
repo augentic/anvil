@@ -8,12 +8,12 @@ argument-hint: <name> [source]...
 
 `/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, reconciles the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
 
-N=1 is degenerate, not special. A single intent binding produces one lead, one slice with `sources: [intent]` shorthand, and the same Gate-1 hint. Multi-source planning differs only in step counts.
+N=1 is degenerate, not special. A single intent binding produces one lead; `propose --from` writes one slice (often with `sources: [intent]` shorthand after projection). Multi-source planning differs only in step counts.
 
 ## Critical Path
 
 1. **Pre-flight** — validate `<name>` as kebab-case (the CLI rejects malformed names). Read `.specify/project.yaml`. When `workspace: true`, rely on `specrun plan create` to refuse if a workspace plan is already active from a project root; surface the structured error verbatim.
-2. **Scaffold** — `specrun plan create <name> --source <key>=<adapter>:<binding> ...` (repeatable per bound source). The CLI writes `change.md` and `plan.yaml` atomically. When the operator passes no `source` tokens, elicit a one-line intent and scaffold with `--source intent=intent:value:<elicited intent>`.
+2. **Scaffold** — `specrun plan create <name> --source <key>=<adapter>:<binding> ...` (repeatable per bound source). The CLI writes `change.md` and `plan.yaml` atomically with an empty `slices:` list — slice rows land later via `propose --from`. When the operator passes no `source` tokens, elicit a one-line intent and scaffold with `--source intent=intent:value:<elicited intent>`.
 3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey. The CLI validates `registry.yaml` first; a malformed registry is a hard failure.
 4. **Survey each source** — for every binding under `plan.yaml.sources.<key>`, run the two-phase `specrun source survey <source-key>` handoff: `--phase prepare` resolves the bound source adapter, builds the sandbox (the bound `path` mounts read-only as the `SOURCE_DIR` preopen; `value:` bindings get no `SOURCE_DIR` preopen), emits `source.execution.agent`, and prints the handoff envelope. Execute the adapter's `survey` brief against that prepared sandbox, then `--phase finalize` validates the lead set and merges it under `## Lead inventory` in `discovery.md`; `tool`-execution adapters run the whole operation in a single call with no `--phase`. The merge is CLI-owned, so re-running `/spec:plan` replaces same-source ids and preserves operator aliases while new sources append fresh ids.
 5. **Write `discovery.md`** — the three-section form: `## Summary` (one-line counts), `## Source inventory` (one row per bound source), `## Lead inventory` (one block per lead). N=1 leaves `Summary` and `Source inventory` minimal. Template: [`../../references/discovery.md`](../../references/discovery.md).
@@ -36,7 +36,7 @@ The operator appends zero or more `source <key>=<adapter>:<binding>` positionals
 - `<key>` is a kebab-case identifier used as the slot in `plan.yaml.sources.<key>`.
 - `<adapter>` is the kebab-case name of the bound source adapter (e.g. `intent`, `documentation`, `code-typescript`, `screenshots`).
 - `<binding>` is either a path (e.g. `documentation:./design-notes/identity`, `code-typescript:./vendor/legacy-monolith`) or the literal form `value:<literal>` (e.g. `intent:value:fix typo in user.rs`). Exactly one of `path` or `value` is required per binding.
-- When the operator passes no `source` tokens, elicit a one-line intent in step 2 and scaffold with `--source intent=intent:value:<elicited intent>`. The scaffolded slice carries `sources: [intent]` (shorthand for `{ key: intent, lead: <slice.name> }`).
+- When the operator passes no `source` tokens, elicit a one-line intent in step 2 and scaffold with `--source intent=intent:value:<elicited intent>`. Slice rows are written by `propose --from`, not at create time.
 
 The skill forwards every binding to `specrun plan create --source <key>=<adapter>:<binding>`; the CLI canonicalises it into the structured `plan.yaml.sources.<key>: { adapter, path? | value? }` shape.
 
@@ -49,13 +49,13 @@ Reconcile leads through the D2 envelope ([RFC-29b §"Reconciliation Flow"](../..
 3. **Submit** — `specrun plan propose --from <response.json>` validates against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project.
 4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <plan> <slice> --divergence likely` so the CLI stamps `slices[].divergence`.
 
-Manual fallback: `specrun plan add <slice> --sources <key>=<lead-id> ...` with optional `--project` remains available; the default flow uses `propose --from`.
+Manual fallback: `specrun plan add`, `specrun plan amend`, and `specrun plan remove` remain available for headless Gate 1 curation; the default flow uses `propose --from`.
 
 Authority hierarchy does not apply at propose — without `Evidence`, reconciliation runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
 
 ## Guardrails
 
-- **Single-writer for `plan.yaml`.** Slice rows land through `specrun plan propose --from` (default) or `specrun plan add` / `plan amend` (manual fallback); `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
+- **Single-writer for `plan.yaml`.** Slice rows land through `specrun plan propose --from` (default) or `specrun plan add` / `plan amend` / `plan remove` (manual Gate 1 fallback); `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
 - **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specrun plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
 - **Never invent verbs.** Creation/amend paths fold schema validation into `specrun plan add` / `plan amend`; validation after writes may call `specrun plan validate` for structural/health diagnostics. Confirm the plan parses by re-reading `plan.yaml` after every write.
 - **Never bypass the sandbox.** Source adapter `survey` briefs run with the bound `path` mounted read-only as the `SOURCE_DIR` preopen; the CLI denies access outside the granted preopens as `source-survey-path-denied`.

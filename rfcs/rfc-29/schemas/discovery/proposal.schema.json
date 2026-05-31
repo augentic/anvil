@@ -157,7 +157,7 @@
         "rationale": {
           "type": "string",
           "minLength": 1,
-          "description": "Agent's reason for the cross-source match in this scope. The agent renders it into `change.md` for Gate 1 review; the kernel additionally echoes it into the `plan.reconcile.agent` journal payload for audit/replay. Recommended when the match is not obvious from shared slugs or alias hints."
+          "description": "Agent's reason for the cross-source match in this scope. Scope-level — attach on any one slice in a fan-out group; the kernel dedupes by `scope` for the `plan.reconcile.agent` journal payload and `change.md`. The agent renders it into `change.md` for Gate 1 review. Recommended when the match is not obvious from shared slugs or alias hints."
         },
         "depends-on": {
           "type": "array",

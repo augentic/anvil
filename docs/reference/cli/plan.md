@@ -9,6 +9,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
+| [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> approved`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
@@ -83,6 +84,16 @@ Edit non-status fields on an existing entry.
 ```bash
 specrun plan amend <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
 ```
+
+### specrun plan remove
+
+Drop a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 only — defers the entry's lead(s) without re-surveying `discovery.md`.
+
+```bash
+specrun plan remove <entry>
+```
+
+Refuses with `plan-remove-plan-not-replaceable` when the plan is approved or any entry is non-pending. Refuses with `plan-remove-entry-referenced` when another entry lists `<entry>` in `depends-on`.
 
 ### specrun plan transition
 
