@@ -70,7 +70,7 @@ Not for continuing an already-approved plan into execution — use [/spec:execut
 3. **Workspace sync** (workspace plans only) — `specrun workspace sync` before survey.
 4. **Survey each source** — run each source adapter's `survey` brief; append lead blocks to `discovery.md`.
 5. **Write `discovery.md`** — three sections: Summary, Source inventory, Lead inventory.
-6. **Propose** — reconcile leads into `slices[]` via `specrun plan add`; annotate tentative merges and `divergence: likely` when reconciliation is uncertain.
+6. **Propose** — run `specrun plan propose --dry-run --format json` for the flat lead catalog and project topology, group the leads into scopes and bind each slice's `project` (auto-bound when only one project exists), then submit with `specrun plan propose --from <response.json>` — the default slice writer, which validates the partition, derives slice names and per-slice `target`, and wholesale-replaces `plan.yaml.slices[]`. Render uncertain cross-source merges into `change.md`'s `## Tentative merges`; stage `divergence: likely` with `specrun plan amend <entry> --divergence likely` after propose (slices do not exist until `--from` runs).
 7. **Validate** — `specrun plan validate --format json` when multi-slice or workspace plans need doctor output.
 8. **Exit at `pending`** — print the closing hint; never call `specrun plan transition`.
 
@@ -89,6 +89,7 @@ The skill never auto-stamps `approved`. The operator runs the literal transition
 | Operation | CLI verb |
 | --------- | -------- |
 | Scaffold plan | `specrun plan create` |
+| Request lead catalog (dry-run) | `specrun plan propose --dry-run` |
 | Reconcile leads → slices | `specrun plan propose --from` |
 | Add slice row | `specrun plan add` |
 | Amend entry (scalpel) | `specrun plan amend <entry>` |

@@ -21,7 +21,7 @@ Two stored states. The plan lifecycle does not move further during execution —
 
 Each row under `plan.yaml.slices[]` carries its own status:
 
-- `pending` is written by `specrun plan add` and `specrun plan amend`.
+- `pending` is written by `specrun plan propose --from` (the default slice writer, which replaces all rows on a replaceable plan), `specrun plan add`, and `specrun plan amend`.
 - `in-progress` is written only by `specrun plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
 - `done` is written only by `specrun slice merge` after a successful merge.
 - Build failures and merge conflicts leave the active entry `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.

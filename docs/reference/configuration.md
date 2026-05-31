@@ -62,7 +62,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 
 **Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
 **Created by:** `/spec:plan` (via `specrun plan create`)
-**Modified by:** `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
+**Modified by:** `specrun plan propose --from`, `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 
@@ -82,19 +82,19 @@ slices:
     target: omnia
     project: identity-svc
     sources:
-      - key: identity-design-notes
-        lead: user-registration
-      - key: legacy-monolith
-        lead: user-registration
+      - source-key: identity-design-notes
+        lead-id: user-registration
+      - source-key: legacy-monolith
+        lead-id: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia
     project: identity-svc
     sources:
-      - key: identity-design-notes
-        lead: password-reset
-      - key: legacy-monolith
-        lead: account-pwd-reset
+      - source-key: identity-design-notes
+        lead-id: password-reset
+      - source-key: legacy-monolith
+        lead-id: account-pwd-reset
     divergence: likely
     status: pending
 ```
@@ -104,7 +104,7 @@ slices:
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
 | `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
-| `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].key`. |
+| `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source-key`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
 | Field (per slice)        | Required | Description |
@@ -112,9 +112,9 @@ slices:
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
 | `target`                 | Yes      | Target adapter identifier for the slice (or the plan-level default). |
 | `project`                | No       | Workspace project name (workspace mode only). |
-| `sources`                | Yes      | List of `{ key, lead }` bindings; cardinality ≥ 1. Bare `<key>` shorthand allowed when the lead id equals the slice's `name`. |
+| `sources`                | Yes      | List of `{ source-key, lead-id }` bindings; cardinality ≥ 1. Bare `<source-key>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
-| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` (set by propose), `accepted` / `rejected` (set by `plan amend --divergence`). Advisory metadata in v1. |
+| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specrun plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must be `done` first. |
 | `context`                | No       | List of baseline paths relevant to the slice; used as a focus hint by briefs. |
 | `description`            | No       | What this slice does (human-readable). |

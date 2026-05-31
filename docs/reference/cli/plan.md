@@ -10,6 +10,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
+| [`propose`](#specrun-plan-propose) | Reconcile surveyed leads into `slices[]`: `--dry-run` emits the request envelope; `--from <response.json>` is the slice writer that validates the agent grouping and replaces `slices[]` on a replaceable plan. |
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> approved`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
@@ -101,6 +102,42 @@ specrun plan remove <entry>
 ```
 
 Refuses with `plan-remove-plan-not-replaceable` when the plan is approved or any entry is non-pending. Refuses with `plan-remove-entry-referenced` when another entry lists `<entry>` in `depends-on`.
+
+### specrun plan propose
+
+Reconcile the surveyed `discovery.md` leads into the plan's `slices[]` grouping. Two modes; exactly one is required.
+
+```bash
+specrun plan propose --dry-run [--format json]
+specrun plan propose --from <response.json> [--format json]
+```
+
+- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
+- `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces the partition invariants, derives slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits the paired `plan.reconcile.agent` and `plan.reconcile.completed` journal events. It never trusts a prior dry-run snapshot — `discovery.md` and the topology are re-read every invocation.
+
+Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
+
+**Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise it fails with `plan-reconcile-plan-not-replaceable`. Re-proposing on a still-pending plan wholesale-replaces every slice. Each slice's registry project is bound by the agent inside the response, not by a later assignment pass — see [Project binding happens in the propose response](../../explanation/decision-log.md#project-binding-happens-in-the-propose-response).
+
+Validation codes (all exit 2):
+
+| Code | Meaning |
+|------|---------|
+| `plan-propose-mode-required` | Neither `--dry-run` nor `--from` was given. |
+| `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
+| `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
+| `plan-reconcile-lead-orphan` | A cited `(source-key, lead-id)` is not in the surveyed catalog. |
+| `plan-reconcile-partition` | The grouped leads do not partition the catalog exactly once — a surveyed lead is unaccounted for, or one lead lands in two scopes. |
+| `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
+| `plan-reconcile-fanout-source-mismatch` | Slices sharing a `scope` carry differing `sources[]` sets. |
+| `plan-reconcile-slice-duplicate` | Two slices map to the same `(scope, project)` pair. |
+| `plan-reconcile-slice-name-collision` | Two slices resolve to the same derived plan slice name. |
+| `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
+| `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
+| `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
+| `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
+
+Both envelopes validate against [`schemas/discovery/proposal.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/proposal.schema.json) (`kind: request` for `--dry-run`, `kind: response` for the `--from` input). See [CLI output shapes](../cli-output-shapes.md) for the `--format json` request and success-summary bodies.
 
 ### specrun plan transition
 

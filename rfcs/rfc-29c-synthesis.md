@@ -8,16 +8,18 @@ The cross-milestone wire contracts this milestone appends to are pinned in [RFC-
 
 ## Decisions owned by this milestone
 
-| ID | Decision |
-| -- | -------- |
-| **D3 Slice synthesis engine** | Agent-led cross-modal reconciliation of `Evidence[]` into the requirement set; CLI owns the synthesis envelope and the projection kernel over that structure. |
-| **D3a Draft vs persisted model** | Synthesis response validates against `draft-model.schema.json`; persisted `model.yaml` validates against `model.schema.json`. |
-| **D4 Typed slice model** | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`. |
-| **D5 Per-slice fan-out** | Each slice binds exactly one target adapter / project; cross-target changes decompose at plan time into multiple slices joined by `depends-on`. No `outputs[]`. |
-| **D8 Shape-brief scope** | Target `shape` briefs parameterise non-requirements model sections only. |
-| **D10 Synthesis execution mode** | The synthesis step carries a closed `execution: agent \| tool` enum; agent-first by design. |
-| **D11 Standalone provenance projection** | `specrun slice provenance <slice>` is the standalone entry point onto the same projection kernel as D3. |
-| **D13 Claim contract (`id` + `kind`)** | Every contributing claim carries a stable `claim-id` and its `kind`; `model.yaml` claims carry `kind` so the kernel resolves per-kind authority. |
+
+| ID                                       | Decision                                                                                                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D3 Slice synthesis**                   | Agent-led cross-modal reconciliation of `Evidence[]` into the requirement set; CLI owns the synthesis envelope and the projection kernel over that structure.   |
+| **D3a Draft vs persisted**               | Synthesis response validates against `draft-model.schema.json`; persisted `model.yaml` validates against `model.schema.json`.                                   |
+| **D4 Typed slice**                       | Every synthesized slice carries `.specify/slices/<slice>/model.yaml`.                                                                                           |
+| **D5 Per-slice fan-out**                 | Each slice binds exactly one target adapter / project; cross-target changes decompose at plan time into multiple slices joined by `depends-on`. No `outputs[]`. |
+| **D8 Shape-brief scope**                 | Target `shape` briefs parameterise non-requirements model sections only.                                                                                        |
+| **D10 Synthesis execution mode**         | The synthesis step carries a closed `execution: agent                                                                                                           |
+| **D11 Standalone provenance projection** | `specrun slice provenance <slice>` is the standalone entry point onto the same projection kernel as D3.                                                         |
+| **D13 Claim contract (`id` + `kind`)**   | Every contributing claim carries a stable `claim-id` and its `kind`; `model.yaml` claims carry `kind` so the kernel resolves per-kind authority.                |
+
 
 ## Slice synthesis engine (D3)
 
@@ -86,15 +88,17 @@ The micro-resolver currently pinned in tests becomes black-box coverage for the 
 
 `status` joins two responsibilities: **agreement classification** is judgment (does "30 minutes" agree with "1800 seconds"? semantic, agent-owned), while **winner selection among disagreements** is authority mechanics (deterministic, kernel-owned). The synthesis step supplies the agreement verdict per requirement; the kernel applies the resolved authority and projects the rest. The mapping is closed:
 
-| `claims` | `agreement` | Kernel `status` | `provenance.yaml` `resolution` | Winner markers |
-| --- | --- | --- | --- | --- |
-| 0 | _(omitted)_ | `unknown` | `unknown-no-evidence` | none |
-| 1 | _(omitted)_ | `agreed` | `single-source` | none |
-| ≥2 | `agreed` | `agreed` | `single-value-agreement` | none |
-| ≥2 | `disagreed`, unique top authority (or operator override) | `divergence` | `authority-resolved` / `per-slice-override` | kernel marks the authority-resolved winner `true`, every loser `false` |
-| ≥2 | `disagreed`, top authority class ties | `conflict` | `tied-conflict` | none |
 
-The agent never names the winning claim; the kernel selects it from the RFC-27 resolution it computed before dispatch, so authority resolution stays the single source of truth (RFC-27) and an agent cannot smuggle in a winner the authority order forbids. The losing claims survive in `provenance.yaml` (`winner: false`) for audit, exactly as [`provenance.md`](../../plugins/spec/references/synthesis/provenance.md) specifies.
+| `claims` | `agreement`                                              | Kernel `status` | `provenance.yaml` `resolution`              | Winner markers                                                         |
+| -------- | -------------------------------------------------------- | --------------- | ------------------------------------------- | ---------------------------------------------------------------------- |
+| 0        | *(omitted)*                                              | `unknown`       | `unknown-no-evidence`                       | none                                                                   |
+| 1        | *(omitted)*                                              | `agreed`        | `single-source`                             | none                                                                   |
+| ≥2       | `agreed`                                                 | `agreed`        | `single-value-agreement`                    | none                                                                   |
+| ≥2       | `disagreed`, unique top authority (or operator override) | `divergence`    | `authority-resolved` / `per-slice-override` | kernel marks the authority-resolved winner `true`, every loser `false` |
+| ≥2       | `disagreed`, top authority class ties                    | `conflict`      | `tied-conflict`                             | none                                                                   |
+
+
+The agent never names the winning claim; the kernel selects it from the RFC-27 resolution it computed before dispatch, so authority resolution stays the single source of truth (RFC-27) and an agent cannot smuggle in a winner the authority order forbids. The losing claims survive in `provenance.yaml` (`winner: false`) for audit, exactly as `[provenance.md](../../plugins/spec/references/synthesis/provenance.md)` specifies.
 
 The agent's agreement verdict is authoritative for `agreed`-vs-not — value agreement is semantic and the CLI does not adjudicate it. As a non-blocking guard, the kernel runs a cheap normalised-string inequality check over the claims of any requirement the agent marked `agreed`; a mismatch emits a `review`-kind finding (`slice-synthesize-agreement-suspect`, advisory, never a transition blocker) so an operator can eyeball a possible mislabel without the CLI re-litigating semantics.
 
@@ -135,7 +139,7 @@ constraints:
 
 `authority.resolved-path` carries the kernel's pre-dispatch RFC-27 resolution so the synthesis step knows which claims win without re-deciding authority. The `constraints.forbidden-inputs-for-requirements-reconciliation` field is part of the contract: a conforming synthesis step reconciles the **entire requirements section** — entries, `sources`, `statement` / `title` / `scenarios[]` / `notes` — from the Evidence map and resolved authority alone, never from `target` or `shape-brief`. (`target` and `shape-brief` remain present in the envelope because they are legitimate inputs to the non-requirements sections of the model.) This is the agent-with-envelope expression of D8's target-neutrality requirement; it is checked at the boundary by the cross-target invariant in [RFC-29d §"Acceptance proof (D7)"](rfc-29d-target-build-envelope.md) and re-asserted by the synthesis prompt body shipped with first-party Specify.
 
-The response carries a **draft model** (requirement set, per-requirement `(source, claim-id)` claims, `agreement` verdict, `unit`, prose — validated against [`draft-model.schema.json`](rfc-29/schemas/slice/draft-model.schema.json)) plus **prose-only** Markdown artifacts. The synthesis step does not assign REQ-ids, does not derive `sources`, does not mark winners, does not derive `status`, does not set `generated-at` / `generator`, and does not write `provenance.yaml` — those are the kernel's. The engine validates the draft, projects the kernel (id assignment in declaration order, `sources`/winner/status derivation, provenance projection), rejects any response that usurps a kernel-owned field or cites a `(source, claim-id)` absent from the Evidence map, validates the merged `model.yaml` against [`model.schema.json`](rfc-29/schemas/slice/model.schema.json), renders provenance lines into `spec.md`, then persists. Full request/response shape: [`rfc-29/schemas/slice/synthesis.schema.json`](rfc-29/schemas/slice/synthesis.schema.json) (`kind: request | response` discriminator); the response `model` `$ref`s the draft schema, not the persisted one (D3a).
+The response carries a **draft model** (requirement set, per-requirement `(source, claim-id)` claims, `agreement` verdict, `unit`, prose — validated against `[draft-model.schema.json](rfc-29/schemas/slice/draft-model.schema.json)`) plus **prose-only** Markdown artifacts. The synthesis step does not assign REQ-ids, does not derive `sources`, does not mark winners, does not derive `status`, does not set `generated-at` / `generator`, and does not write `provenance.yaml` — those are the kernel's. The engine validates the draft, projects the kernel (id assignment in declaration order, `sources`/winner/status derivation, provenance projection), rejects any response that usurps a kernel-owned field or cites a `(source, claim-id)` absent from the Evidence map, validates the merged `model.yaml` against `[model.schema.json](rfc-29/schemas/slice/model.schema.json)`, renders provenance lines into `spec.md`, then persists. Full request/response shape: `[rfc-29/schemas/slice/synthesis.schema.json](rfc-29/schemas/slice/synthesis.schema.json)` (`kind: request | response` discriminator); the response `model` `$ref`s the draft schema, not the persisted one (D3a).
 
 ### Shape-brief scope (D8)
 
@@ -158,11 +162,13 @@ The `slice-synthesize-forbidden-input-leak` probe (mechanical set-difference) co
 
 Synthesis persist is a three-phase pipeline:
 
-| Phase | Author | Output |
-| --- | --- | --- |
-| **Synthesis step** | Agent | Draft model (`claims`, `agreement`, prose fields) + prose-only Markdown (`proposal.md`, `design.md`, `tasks.md`, spec requirement bodies without provenance lines) |
-| **Projection kernel** | CLI | Full `model.yaml`, `provenance.yaml` |
-| **Render step** | CLI | Injects kernel-owned `ID:` / `Sources:` / `Status:` lines (and status tags in requirement headlines) into `specs/<unit>/spec.md` from projected `model.yaml`, merging agent-authored requirement prose |
+
+| Phase                 | Author | Output                                                                                                                                                                                                 |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Synthesis step**    | Agent  | Draft model (`claims`, `agreement`, prose fields) + prose-only Markdown (`proposal.md`, `design.md`, `tasks.md`, spec requirement bodies without provenance lines)                                     |
+| **Projection kernel** | CLI    | Full `model.yaml`, `provenance.yaml`                                                                                                                                                                   |
+| **Render step**       | CLI    | Injects kernel-owned `ID:` / `Sources:` / `Status:` lines (and status tags in requirement headlines) into `specs/<unit>/spec.md` from projected `model.yaml`, merging agent-authored requirement prose |
+
 
 The kernel stamps `generated-at`, `generator`, top-level `sources`, `requirements[].id`, `.sources`, `.status`, `requirements[].tags`, and each claim's `winner` marker deterministically. The requirement set, claims, agreement verdicts, and behavioral prose are the synthesis step's, persisted once they pass draft validation.
 
@@ -174,9 +180,9 @@ Re-running `specrun slice synthesize` overwrites `model.yaml`, `provenance.yaml`
 
 RFC-29 keeps three on-disk surfaces that encode requirement/provenance state:
 
-- **`model.yaml`** — machine source of truth for structure, claims, agreement, and kernel-projected status/sources.
-- **`spec.md`** — human review and merge input; provenance lines are **rendered from** `model.yaml`, not independently authored by the agent.
-- **`provenance.yaml`** — audit index **projected from** `model.yaml` claims + authority (D11).
+- `**model.yaml`** — machine source of truth for structure, claims, agreement, and kernel-projected status/sources.
+- `**spec.md`** — human review and merge input; provenance lines are **rendered from** `model.yaml`, not independently authored by the agent.
+- `**provenance.yaml`** — audit index **projected from** `model.yaml` claims + authority (D11).
 
 Bidirectional drift between three independently-authored copies was the RFC-35 failure mode. Rendering provenance into `spec.md` and projecting `provenance.yaml` from the same kernel output collapses most parity checks to internal consistency (`model` ↔ `provenance.yaml`, by construction) plus one re-sync gate when operators hand-edit provenance lines in `spec.md`.
 
@@ -211,7 +217,7 @@ The slice model is generated by `specrun slice synthesize` and regenerated whole
 
 ### Shape
 
-Normative schema: [`rfc-29/schemas/slice/model.schema.json`](rfc-29/schemas/slice/model.schema.json) (lands in `specify-cli` as `schemas/slice/model.schema.json`). The slice model is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
+Normative schema: `[rfc-29/schemas/slice/model.schema.json](rfc-29/schemas/slice/model.schema.json)` (lands in `specify-cli` as `schemas/slice/model.schema.json`). The slice model is closed at the top level (`additionalProperties: false`) and uses kebab-case field names on disk; required top-level fields are `version`, `slice`, `generated-at`, `generator`, `sources`, `target`, `requirements`, `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. The `project` field is optional (mirroring `plan.yaml.slices[].project`).
 
 Sketch of the on-disk shape (illustrative; the schema is normative):
 
@@ -278,7 +284,7 @@ tasks:
 | `REQ-NNN`  | `^REQ-[0-9]{3}$`  | `requirements[].id`, plus `satisfies[]` references from operations / decisions / tasks. |
 | `TASK-NNN` | `^TASK-[0-9]{3}$` | `tasks[].id`, plus `tasks[].depends-on[]`.                                              |
 | `DEC-NNN`  | `^DEC-[0-9]{3}$`  | `technical-logic.decisions[].id`.                                                       |
-| `TYP-NNN`  | `^TYP-[0-9]{3}$`  | `domain.types[].id`.                                                              |
+| `TYP-NNN`  | `^TYP-[0-9]{3}$`  | `domain.types[].id`.                                                                    |
 | `OP-NNN`   | `^OP-[0-9]{3}$`   | `apis.surfaces[].operations[].id`.                                                      |
 | `CFG-NNN`  | `^CFG-[0-9]{3}$`  | `configuration[].id`.                                                                   |
 | `OBS-NNN`  | `^OBS-[0-9]{3}$`  | `observability[].id`.                                                                   |
@@ -291,22 +297,22 @@ All seven grammars are enforced by `schemas/slice/model.schema.json`. The synthe
 `specrun slice validate` adds seven checks for RFC-29 slices:
 
 
-| Finding                      | Meaning                                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `slice-model-schema`            | `model.yaml` does not match `schemas/slice/model.schema.json`.                                                     |
-| `slice-spec-provenance-stale` | Kernel-rendered provenance lines in `spec.md` (`ID:`, `Sources:`, `Status:`, status tags) disagree with projected `model.yaml` — typically an operator hand-edit without re-synthesis. |
-| `slice-model-provenance-drift`      | `model.yaml.requirements[].claims` disagrees with `provenance.yaml`, compared at `(source, claim-id)` granularity, for any matching `REQ-*`.                      |
-| `slice-model-target-drift`      | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.      |
-| `slice-model-source-orphan`     | A `claims[]` entry references a `(source, claim-id)` whose source key is absent from `model.yaml.sources[].key` or whose claim id is absent from that source's Evidence.                        |
-| `slice-model-cross-ref-orphan`  | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                     |
-| `slice-model-claim-kind-mismatch` | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, claim-id)` in the source's Evidence.                                     |
+| Finding                           | Meaning                                                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slice-model-schema`              | `model.yaml` does not match `schemas/slice/model.schema.json`.                                                                                                                         |
+| `slice-spec-provenance-stale`     | Kernel-rendered provenance lines in `spec.md` (`ID:`, `Sources:`, `Status:`, status tags) disagree with projected `model.yaml` — typically an operator hand-edit without re-synthesis. |
+| `slice-model-provenance-drift`    | `model.yaml.requirements[].claims` disagrees with `provenance.yaml`, compared at `(source, claim-id)` granularity, for any matching `REQ-*`.                                           |
+| `slice-model-target-drift`        | `model.yaml.target` (or `model.yaml.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.                                                                          |
+| `slice-model-source-orphan`       | A `claims[]` entry references a `(source, claim-id)` whose source key is absent from `model.yaml.sources[].key` or whose claim id is absent from that source's Evidence.               |
+| `slice-model-cross-ref-orphan`    | A `satisfies[]` `REQ-*` reference does not exist in `requirements[].id`.                                                                                                               |
+| `slice-model-claim-kind-mismatch` | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, claim-id)` in the source's Evidence.                                                             |
 
 
 Every synthesized slice carries `model.yaml`; its absence is rejected.
 
 ### Build input
 
-Target builders consume `model.yaml` as their machine input and may also read rendered Markdown for behavioral context. **`model.yaml` is authoritative for structure and provenance** (ids, status, sources, claims). **`spec.md` is authoritative for behavioral prose** after operator review. Kernel-rendered provenance lines in `spec.md` must match `model.yaml` or `slice-spec-provenance-stale` fires; operators who need to change provenance outcomes edit claims/agreement in a re-synthesis path or amend authority overrides — not provenance lines directly.
+Target builders consume `model.yaml` as their machine input and may also read rendered Markdown for behavioral context. `**model.yaml` is authoritative for structure and provenance** (ids, status, sources, claims). `**spec.md` is authoritative for behavioral prose** after operator review. Kernel-rendered provenance lines in `spec.md` must match `model.yaml` or `slice-spec-provenance-stale` fires; operators who need to change provenance outcomes edit claims/agreement in a re-synthesis path or amend authority overrides — not provenance lines directly.
 
 ## Per-slice fan-out (D5)
 
@@ -405,3 +411,4 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 - **Validation findings (`Diagnostic` codes, validate surface):** `slice-model-schema`, `slice-spec-provenance-stale`, `slice-model-provenance-drift`, `slice-model-target-drift`, `slice-model-source-orphan`, `slice-model-cross-ref-orphan`, `slice-model-claim-kind-mismatch`, `slice-model-id-grammar`, `slice-synthesize-forbidden-input-leak` — emitted by `specrun slice validate` as a `DiagnosticReport`; blocking findings gate the transition at exit 2.
 - **Operational validation codes (`Error::Validation`):** `slice-synthesize-kernel-field-usurped`, `slice-synthesize-execution-mode-required` — single-signal `specrun slice synthesize` aborts (the former rejects a draft that usurps a kernel-owned field, before projection). Neither tier adds a new `Error` enum variant; see [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts) for the error-tiering model.
 - **Schemas:** `schemas/slice/model.schema.json` (`SLICE_MODEL_JSON_SCHEMA`), `schemas/slice/draft-model.schema.json` (`DRAFT_MODEL_JSON_SCHEMA`), `schemas/slice/synthesis.schema.json` (`SYNTHESIS_JSON_SCHEMA`) — registered together so relative `$ref`s compile without a registry lookup. Plus the D13 `claim-id` requirement on `schemas/evidence.schema.json`.
+

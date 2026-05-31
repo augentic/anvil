@@ -18,7 +18,7 @@ The configuration surfaces:
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [survey, extract]`).
 - **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, and the `plan.yaml` schema.
+- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and the `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
@@ -66,7 +66,7 @@ The plan is the change's table of contents. `/spec:plan` produces it by surveyin
 
 `/spec:execute` consumes the approved plan by picking the next eligible slice (`specrun plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-The matching CLI surface spans **`specrun plan {create, add, amend, transition, next, finalize}`**, **`specrun workspace {sync, push, prepare}`** for multi-repo changes, and **`specrun tool run`** for declared WASI helpers.
+The matching CLI surface spans **`specrun plan {create, propose, add, amend, remove, transition, next, finalize}`**, **`specrun workspace {sync, push, prepare}`** for multi-repo changes, and **`specrun tool run`** for declared WASI helpers.
 
 ### Gate 1: the operator review seam
 

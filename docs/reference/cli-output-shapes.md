@@ -78,6 +78,38 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
+### `specrun plan propose --dry-run`
+
+Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source-key, lead-id)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none; per-lead `aliases` appears only when non-empty.
+
+```json
+{
+  "version": 1,
+  "kind": "request",
+  "projects": [
+    { "name": "identity-contracts", "target": "contracts@v1", "description": "Versioned API contracts crate for the identity domain." },
+    { "name": "identity-service", "target": "omnia@v1", "description": "Omnia identity service implementing auth and password flows." }
+  ],
+  "leads": [
+    { "source-key": "docs", "lead-id": "identity-api", "summary": "Identity API contract for authentication and account access." },
+    { "source-key": "legacy", "lead-id": "identity-api", "summary": "Legacy identity endpoints." }
+  ]
+}
+```
+
+### `specrun plan propose --from`
+
+Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the derived slice set in response order; `slice-count` is its length and `scope-count` is the number of distinct reconciled scopes.
+
+```json
+{
+  "plan": { "name": "identity-revamp", "path": "/abs/path/to/plan.yaml" },
+  "slice-names": ["identity-contracts", "identity-service", "password-reset"],
+  "slice-count": 3,
+  "scope-count": 2
+}
+```
+
 ### `specrun plan transition`
 
 Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.

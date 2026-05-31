@@ -76,6 +76,7 @@ specrun target resolve <value>                           # validate a target ada
 
 # Plan management
 specrun plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
+specrun plan propose --dry-run --format json                   # request the flat lead catalog + project topology
 specrun plan propose --from <response.json>                    # default slice writer after survey
 specrun plan add <entry> --sources <key>=<lead-id> --target <adapter@vN> --project <name>
 specrun plan amend <entry> --add-source <key>=<lead-id> --remove-source <key> --divergence accepted

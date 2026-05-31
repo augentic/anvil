@@ -96,11 +96,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Project assignment is a framework concern
+## Project binding happens in the propose response
 
-**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside adapter-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
+**Decision:** Each slice's registry project is bound by the **agent inside the `specrun plan propose --from` response**, not by a separate post-propose assignment step. The dry-run request (`specrun plan propose --dry-run`) carries a `projects[]` topology (always at least one project; a single regular project synthesized from `project.yaml`, each entry carrying its normalized `target` adapter), and the agent names a `project` on each response slice. When exactly one project exists the agent may omit `project` and the kernel auto-binds it; the kernel then derives each slice's `target` from the bound project. Propose is the slice writer — no project-less entries linger for a later assignment pass.
 
-**Rationale:** A multi-repo plan spans projects with different adapters, so assignment is inherently a cross-adapter concern. Placing it in individual propose briefs would duplicate the logic across adapters and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
+**Rationale:** Cross-source lead matching and project binding are the same agent judgment over the same request envelope, so splitting binding into a second skill step would re-read state the agent already holds and reintroduce an ordering problem. Folding binding into the propose response keeps the projection kernel the single writer of `plan.yaml.slices[].project` and `.target`, and keeps the N=1 case ergonomic via auto-bind. The earlier "assignment runs after propose in the plan skill" framing predates the agent-led `propose --from` kernel and is superseded.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 

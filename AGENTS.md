@@ -14,7 +14,7 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 ### Synthesis terms
 
-- **lead** — slice-sized unit emitted by `survey`; one block per lead under `## Lead inventory` in `discovery.md`, with stable `id` and `sources[]`.
+- **lead** — slice-sized unit emitted by `survey`; one raw, unmerged block per lead under `## Lead inventory` in `discovery.md`, each identified by its `(source-key, lead-id)` pair (`lead-id` is unique only within a `source-key`).
 - **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
