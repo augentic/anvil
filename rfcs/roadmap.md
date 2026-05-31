@@ -64,7 +64,7 @@ specrun source survey <source-key> [--format json]
 specrun source extract <source-key> <candidate-id> --slice <name> [--format json]
 ```
 
-**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (Stage B1 locked-group prepass; target binding stays agent-driven, Stage B2 full writer deferred); D3 `specrun slice synthesize` (projection kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
+**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (flat lead catalog envelope; target binding stays agent-driven); D3 `specrun slice synthesize` (projection kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
 **Unblocks:** RM-05 durable proof path, RM-11 compatibility gates, RM-14 meaningful workflow telemetry, RM-18 hosted execute.
 
 #### RM-05: Multi-repo acceptance suite

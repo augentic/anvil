@@ -54,7 +54,7 @@ The slice row `propose` writes against this lead uses the bare-string shorthand 
 
 ## Multi-source skeleton
 
-When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead-id` appears once per source, each with its own `source-key` and per-source `summary`. The propose sub-step matches them by exact `lead-id` (or alias) across source keys — kernel-locked when provable, semantic when not — and writes one or more `slices[]` rows via `specrun plan propose --from`:
+When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead-id` may appear once per source, each with its own `source-key` and per-source `summary`. The propose sub-step groups them by agent judgment (shared slug, alias hints, or summary) — not kernel lock — and writes one or more `slices[]` rows via `specrun plan propose --from`. The operator reviews cross-source merges at Gate 1:
 
 ```markdown
 ### identity-design-notes:user-registration

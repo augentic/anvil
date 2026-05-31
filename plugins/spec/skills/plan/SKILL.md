@@ -44,10 +44,10 @@ The skill forwards every binding to `specrun plan create --source <key>=<adapter
 
 Reconcile leads through the D2 envelope ([RFC-29b §"Reconciliation Flow"](../../rfcs/rfc-29b-reconciliation.md)):
 
-1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the lead catalog (with kernel-locked groups), `projects[]`, and open leads.
-2. **Agent grouping** — partition leads into `scopes[]` and bind each scope to one or more projects in `slices[]`. Set `match-basis: semantic` on open leads merged by judgment; add `rationale`, `depends-on`, and optional `name` as needed.
+1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the flat lead catalog and `projects[]`.
+2. **Agent grouping** — partition all leads into `scopes[]` by judgment from `summary`, shared slugs, and optional `aliases[]` hints; bind each scope to one or more projects in `slices[]`. Add `rationale`, `depends-on`, and optional `name` as needed.
 3. **Submit** — `specrun plan propose --from <response.json>` validates against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project.
-4. **Gate 1 review prose** — render semantic and locked pairings into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <plan> <slice> --divergence likely` so the CLI stamps `slices[].divergence`.
+4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <plan> <slice> --divergence likely` so the CLI stamps `slices[].divergence`.
 
 Manual fallback: `specrun plan add <slice> --sources <key>=<lead-id> ...` with optional `--project` remains available; the default flow uses `propose --from`.
 

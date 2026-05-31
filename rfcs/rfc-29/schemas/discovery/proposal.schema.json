@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify lead reconciliation envelope",
-  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus the `projects[]` topology (always at least one project; each entry carries the target adapter the kernel writes to `plan.yaml` at projection time). Each lead the kernel proved is the same work across sources by exact id or exact alias carries a `group` block naming the locked group it belongs to; open leads carry no `group`. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `scopes[]` partitions the surveyed leads exactly once, while `slices[]` references those scopes and binds each `(scope-id, project)` pair to one project from the request (the kernel auto-binds the sole project when only one exists and derives each slice's `target` from the bound project's `projects[].target`). The kernel validates this shape, enforces the global partition and locked-group invariants, carries each locked member's proven `match-basis` forward, derives unique `plan.yaml.slices[]` names from optional `name` or scope/target fallback, and writes through the existing plan writers; it never auto-merges on its own heuristic — cross-source unification of open leads is the agent's grouping in the response. Closed top-level shape: unknown fields are rejected.",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus the `projects[]` topology (always at least one project; each entry carries the normalized target adapter the kernel writes to `plan.yaml` at projection time). Optional `aliases[]` on each row are hints from `discovery.md`; the kernel does not lock or auto-merge on them. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: `scopes[]` partitions the surveyed leads exactly once, while `slices[]` references those scopes and binds each `(scope-id, project)` pair to one project from the request (the kernel auto-binds the sole project when only one exists and derives each slice's `target` from the bound project's `projects[].target`). The kernel validates this shape, enforces the global partition invariant, derives unique `plan.yaml.slices[]` names from optional `name` or scope/target fallback, and writes through the existing plan writers only when the plan is still replaceable; cross-source matching is agent judgment surfaced for Gate 1 review — the kernel never auto-merges leads. Closed top-level shape: unknown fields are rejected.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -45,33 +45,6 @@
         }
       }
     },
-    "lockedMatchBasis": {
-      "type": "string",
-      "description": "Kernel-computed proof basis for a locked group binding: the same `lead-id` (`exact-id`) or an exact alias (`exact-alias`) surfaced across source keys. The agent never authors these; the kernel carries them forward onto the response's locked members.",
-      "enum": [
-        "exact-id",
-        "exact-alias"
-      ]
-    },
-    "leadGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Request-side binding of this catalog row to one locked reconciliation group — a set of `(source-key, lead-id)` rows the kernel proved denote the same work by exact id or alias. Open leads omit `group`. A group is defined implicitly by the rows that share `group-id`; there is no separate group index.",
-      "required": [
-        "group-id",
-        "match-basis"
-      ],
-      "properties": {
-        "group-id": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Canonical lead id of the locked group this catalog row belongs to (the shared `lead-id`, or the canonical id for an alias match). The kernel reads a group's members by filtering `leads[]` on this value."
-        },
-        "match-basis": {
-          "$ref": "#/$defs/lockedMatchBasis",
-          "description": "Kernel-computed proof for this row's locked-group membership. Per-row, so one locked group may mix `exact-id` and `exact-alias` rows."
-        }
-      }
-    },
     "leadCatalogEntry": {
       "type": "object",
       "additionalProperties": false,
@@ -87,12 +60,12 @@
         },
         "lead-id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Discovery lead id surfaced by this source binding. Identity is the `(source-key, lead-id)` pair; `lead-id` is not unique across `leads[]` when multiple sources surface the same id."
+          "description": "Discovery lead id surfaced by this source binding. Identity is the `(source-key, lead-id)` pair; `lead-id` is not unique across `leads[]` when multiple sources surface the same slug."
         },
         "summary": {
           "type": "string",
           "minLength": 1,
-          "description": "One-line per-source summary from this source's survey of the lead. This is the signal the agent groups open leads on."
+          "description": "One-line per-source summary from this source's survey of the lead. Primary signal for agent cross-source grouping."
         },
         "aliases": {
           "type": "array",
@@ -100,10 +73,7 @@
           "items": {
             "$ref": "#/$defs/kebabName"
           },
-          "description": "Optional aliases from the surveyed Lead, the basis for exact-alias locked groups."
-        },
-        "group": {
-          "$ref": "#/$defs/leadGroup"
+          "description": "Optional alias hints from `discovery.md` (survey-time or operator-authored via `specrun plan amend --add-alias`). The agent may use these when grouping; the kernel does not lock on them."
         }
       }
     },
@@ -126,7 +96,7 @@
         "projects": {
           "type": "array",
           "minItems": 1,
-          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub this is every entry from `registry.yaml#/projects[]`; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain).",
+          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub this is every entry from `registry.yaml#/projects[]`; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + resolved target adapter + domain). Persisted project configuration is normalized into this envelope-local shape.",
           "items": {
             "$ref": "#/$defs/projectRef"
           }
@@ -134,7 +104,7 @@
         "leads": {
           "type": "array",
           "minItems": 1,
-          "description": "Flat lead catalog: one row per raw `(source-key, lead-id)` lead, read 1:1 from `discovery.md` (no expansion or cross-source merge). Rows the kernel proved are the same work across sources carry a `group` block; open leads omit it. The `lead-id` field repeats across rows when multiple sources surface the same discovery id.",
+          "description": "Flat lead catalog: one row per raw `(source-key, lead-id)` lead, read 1:1 from `discovery.md` (no expansion or cross-source merge). The `lead-id` field repeats across rows when multiple sources surface the same slug.",
           "items": {
             "$ref": "#/$defs/leadCatalogEntry"
           }
@@ -156,13 +126,6 @@
         "lead-id": {
           "$ref": "#/$defs/kebabName",
           "description": "Discovery lead id; with `source-key`, must match a request catalog row."
-        },
-        "match-basis": {
-          "type": "string",
-          "enum": [
-            "semantic"
-          ],
-          "description": "Set to `semantic` for an open lead the agent merged into this scope by cross-source judgment; surfaced for operator review at Gate 1. Omitted for members of a locked group — the kernel carries their proven `exact-id` / `exact-alias` basis forward during projection. The agent cannot author an `exact-*` basis, so it cannot forge or downgrade a locked match."
         }
       }
     },
@@ -176,7 +139,7 @@
       "properties": {
         "scope-id": {
           "$ref": "#/$defs/kebabName",
-          "description": "Scope id for a unit of work. Response `slices[]` entries reference this id; it is not necessarily the derived plan slice name."
+          "description": "Scope id for a unit of work. Response `slices[]` entries reference this id; it is not necessarily the derived plan slice name. Scope ids must be unique across `scopes[]`; the kernel enforces this as `plan-reconcile-scope-duplicate`."
         },
         "members": {
           "type": "array",
@@ -188,7 +151,7 @@
         "rationale": {
           "type": "string",
           "minLength": 1,
-          "description": "Agent's reason for the scope membership; rendered into change.md for operator review, most useful on semantic merges."
+          "description": "Agent's reason for the scope membership; rendered into `change.md` for Gate 1 review. Recommended when the grouping is not obvious from shared slugs or alias hints."
         }
       }
     },
@@ -221,7 +184,7 @@
         "rationale": {
           "type": "string",
           "minLength": 1,
-          "description": "Agent's reason for project binding when the choice is not obvious; rendered into change.md for operator review."
+          "description": "Agent's reason for project binding when the choice is not obvious; rendered into `change.md` for Gate 1 review."
         }
       }
     },
