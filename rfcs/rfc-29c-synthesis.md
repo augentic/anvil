@@ -337,7 +337,7 @@ slices:
         lead: identity-api
 ```
 
-The same `Lead` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Lead reconciliation (D2) proposes one slice per `(scope-id, project)` response row, each binding a `scope-id` to one project (the kernel derives `target` from the bound project); the operator may split or merge proposed slices at Gate 1.
+The same `Lead` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Lead reconciliation (D2) proposes one slice per `(scope, project)` response row, each carrying its matched `sources[]` and binding one project (the kernel derives `target` from the bound project); the operator may split or merge proposed slices at Gate 1.
 
 ### Lifecycle
 

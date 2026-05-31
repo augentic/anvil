@@ -10,8 +10,8 @@ This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sou
 
 Two nouns:
 
-- **scope** — the agent's unit of work. `scopes[]` partition surveyed leads exactly once; cross-source merging is agent judgment from per-source `summary`, optional `aliases[]` hints, and shared slugs — never kernel-enforced.
-- **slice** — one `plan.yaml.slices[]` row from a `(scope, project)` pair. One scope may fan out to multiple slices (each project's `target` is written at projection time).
+- **scope** — the reconciled unit of work: the set of leads the agent judges to be the same piece of work, **at most one lead per source**. A scope is expressed by a shared `scope` id across one or more `slices[]` rows that carry identical `sources[]`. Cross-source matching is agent judgment from per-source `summary`, optional `aliases[]` hints, and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1.
+- **slice** — one `plan.yaml.slices[]` row: a `(scope, project)` pair carrying its own `sources[]` inline. A 1:1 scope is one slice; a scope may fan out to multiple slices (each project's `target` is written at projection time).
 
 Shared wire contracts are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This document is the source of truth for D2.
 
@@ -19,7 +19,7 @@ Shared wire contracts are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 
 | ID | Decision |
 | -- | -------- |
-| **D2 Lead reconciliation** | `specrun plan propose` wraps agent-led lead reconciliation in a CLI-owned projection kernel. **The agent** partitions surveyed leads into `scopes[]`, then emits one or more `slices[]` rows per scope by binding each `(scope-id, project)` pair to a project from `projects[]`. **The kernel** validates the response schema, enforces the global lead partition, resolves each slice's `target` from the bound project, derives slice names, emits journal events, and writes `plan.yaml.slices[]`. Cross-source matching is agent judgment; human curation happens at Gate 1 after propose. |
+| **D2 Lead reconciliation** | `specrun plan propose` wraps agent-led lead reconciliation in a CLI-owned projection kernel. **The agent** emits `slices[]`, each carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` from `projects[]`. **The kernel** validates the response schema, enforces the global lead partition over scopes, rejects same-source fusion, resolves each slice's `target` from the bound project, derives slice names, emits journal events, and writes `plan.yaml.slices[]`. Cross-source matching is agent judgment; human curation happens at Gate 1 after propose. |
 
 ## Operator Surface
 
@@ -40,7 +40,7 @@ A plan is replaceable only while `plan.lifecycle` is `pending` and every existin
 
 1. `/spec:plan` runs `specrun plan propose --dry-run --format json`.
 2. The CLI returns a flat `leads[]` catalog — one row per `(source-key, lead-id)` from `discovery.md`, plus `projects[]` (each entry carries the target adapter the agent may bind).
-3. The agent returns a global `scopes[]` partition and `slices[]`. Scopes partition leads; slices fan scopes out to projects (the kernel derives each row's `target` from the bound project).
+3. The agent returns `slices[]`. Each slice carries a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project`. Scopes partition the surveyed leads exactly once; fan-out is multiple slices sharing one `scope` (the kernel derives each row's `target` from the bound project).
 4. `/spec:plan` submits the response with `specrun plan propose --from <response.json>`.
 5. The CLI re-reads `discovery.md`, rebuilds the catalog, validates, and **replaces** all `plan.yaml.slices[]` rows.
 6. The agent renders cross-source merge review prose into `change.md`.
@@ -58,15 +58,17 @@ The agent decides which rows belong in the same scope:
 - **Alias hints** — `aliases[]` on a row may bridge to another source's `lead-id`. The agent may use these when grouping; `specrun plan amend --add-alias` records operator knowledge on `discovery.md` for future replans.
 - **Summary judgment** — when ids and aliases do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source summaries.
 
-The kernel enforces shape only: every surveyed lead appears exactly once across `scopes[].members[]`. It does not auto-merge, cluster, or forbid splits.
+**At most one lead per source.** A scope matches leads *across* sources; it never fuses two leads from the *same* source. Each surveyed lead is that source adapter's candidate slice — a sizing judgment made with full visibility of the legacy code, documentation, or capture the agent does not have. Merging two same-source leads would override that sizing and risk a slice too large to execute, so the kernel rejects it (`plan-reconcile-slice-source-collision`). When a source genuinely over-fragments, the fix is a better source adapter or an operator `specrun plan amend` merge at Gate 1 — where a human owns the sizing risk — not an agent propose-time fusion.
 
-The partition is **total**: propose must place every surveyed lead into some scope, and every scope into at least one slice. Deferring a lead — choosing not to plan it in this change — is an operator action at Gate 1 (`specrun plan amend` drops the slice), not an agent propose-time choice. There is no "unscoped" or "deferred" bucket in the response, and a dropped lead resurfaces on the next `propose --from` unless `discovery.md` is re-surveyed without it. A future RFC may add an explicit agent-side defer bucket if total partition proves too strict; until then this is a deliberate "account for every lead" invariant.
+The kernel enforces shape only: collapsing `slices[]` by `scope` id, every surveyed lead appears exactly once across the resulting scopes, and no scope names two leads from the same source. It does not auto-merge, cluster, or forbid cross-source splits.
+
+The partition is **total**: propose must place every surveyed lead into some scope's `sources[]` (every scope necessarily has at least one slice, since scopes exist only as `slices[]` rows). Deferring a lead — choosing not to plan it in this change — is an operator action at Gate 1 (`specrun plan amend` drops the slice), not an agent propose-time choice. There is no "unscoped" or "deferred" bucket in the response, and a dropped lead resurfaces on the next `propose --from` unless `discovery.md` is re-surveyed without it. A future RFC may add an explicit agent-side defer bucket if total partition proves too strict; until then this is a deliberate "account for every lead" invariant.
 
 The survey-time `tentative` flag a source adapter may set on its own lead (`lead.schema.json`) is **not** surfaced in the request catalog. Grouping uncertainty is the agent's to express through `## Tentative merges` prose in `change.md`, not a per-lead input signal; keeping it off the wire avoids conflating source-side and grouping-side uncertainty.
 
 ### Partition invariants
 
-Missing or duplicate members fail with `plan-reconcile-partition`; a `(source-key, lead-id)` pair naming no current catalog row fails with `plan-reconcile-lead-orphan`. `scopes[].scope-id` values must be unique (`plan-reconcile-scope-duplicate`). Every `slices[].scope-id` must name a declared scope (`plan-reconcile-scope-orphan`), and every scope must have at least one slice (`plan-reconcile-scope-unbound`). Duplicate `(scope-id, project)` pairs fail with `plan-reconcile-slice-duplicate`. Colliding derived slice names fail with `plan-reconcile-slice-name-collision`. A cyclic `depends-on` graph fails with `plan-reconcile-depends-on-cycle`.
+Collapsing `slices[]` by `scope` yields the scope partition: a missing or double-counted lead across scopes fails with `plan-reconcile-partition`; a `(source-key, lead-id)` pair naming no current catalog row fails with `plan-reconcile-lead-orphan`. A scope that names two leads from the same source fails with `plan-reconcile-slice-source-collision`. Slices that share a `scope` id but carry differing `sources[]` fail with `plan-reconcile-fanout-source-mismatch`. Duplicate `(scope, project)` pairs fail with `plan-reconcile-slice-duplicate`. Colliding agent-supplied explicit slice names fail with `plan-reconcile-slice-name-collision`. A cyclic `depends-on` graph fails with `plan-reconcile-depends-on-cycle`.
 
 ## Envelope
 
@@ -133,12 +135,11 @@ Response:
 ```yaml
 version: 1
 kind: response
-scopes:
-  - scope-id: fix-typo
-    members:
-      - { source-key: intent, lead-id: fix-typo }
 slices:
-  - scope-id: fix-typo
+  - name: fix-typo
+    scope: fix-typo
+    sources:
+      - { source-key: intent, lead-id: fix-typo }
 ```
 
 The kernel auto-binds `my-app`, derives `target: omnia@v1`, and writes one slice whose `sources[]` carries the explicit `{ source-key: intent, lead-id: fix-typo }` binding. The kernel always emits the structured `{ source-key, lead-id }` form; the bare `[intent]` shorthand stays available for hand-authoring via `specrun plan add`, but the projection kernel never depends on the slice name matching a lead-id.
@@ -148,37 +149,45 @@ Example response (multi-source):
 ```yaml
 version: 1
 kind: response
-scopes:
-  - scope-id: identity-api
-    members:
+slices:
+  - name: identity-contracts
+    scope: identity-api
+    sources:
       - { source-key: docs, lead-id: identity-api }
       - { source-key: legacy, lead-id: identity-api }
-      - { source-key: docs, lead-id: password-reset }
-      - { source-key: legacy, lead-id: reset-password }
-    rationale: "identity API by shared slug; password reset merged from per-source summaries"
-slices:
-  - scope-id: identity-api
-    name: identity-contracts
     project: identity-contracts
-  - scope-id: identity-api
-    name: identity-service
+    rationale: "identity API surface matched by shared slug across docs + legacy"
+  - name: identity-service
+    scope: identity-api
+    sources:
+      - { source-key: docs, lead-id: identity-api }
+      - { source-key: legacy, lead-id: identity-api }
     project: identity-service
     depends-on: [identity-contracts]
+  - name: password-reset
+    scope: password-reset
+    sources:
+      - { source-key: docs, lead-id: password-reset }
+      - { source-key: legacy, lead-id: reset-password }
+    project: identity-service
+    rationale: "password-reset (docs) and reset-password (legacy) are the same flow by summary judgment"
 ```
 
-`scopes[]` partitions surveyed leads. Each member references a catalog row by `{ source-key, lead-id }`. Multi-member scopes SHOULD carry `rationale` when the grouping is not obvious; the agent renders it into `change.md` and the kernel echoes it into the `plan.reconcile.agent` journal payload. `slices[]` is the plan-row projection: each slice names a `scope-id`, optional `project`, optional explicit `name`, and optional dependencies. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. There is no slice-level `rationale`: project-binding reasoning is review prose the agent writes into `change.md`, not an envelope field. A `scope-id` may appear in multiple slices when fanning out to projects; members are declared once under `scopes[]`. `depends-on` names derived slice names, not scope ids. The kernel projects members into `plan.yaml.slices[].sources[]` as the structured `{ source-key, lead-id }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
+The two same-source leads `docs:password-reset` and `docs:identity-api` stay in **separate** scopes — the agent matches across sources, never fusing one source's candidate slices. `identity-api` fans out (one body of work → a contracts crate and an omnia service), so two slices share that `scope` id and carry identical `sources[]`; `password-reset` is a 1:1 scope bound to a single project.
+
+`slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source-key, lead-id }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. A scope SHOULD carry `rationale` when the cross-source match is not obvious; the agent renders it into `change.md` and the kernel echoes it into the `plan.reconcile.agent` journal payload. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source-key, lead-id }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
 
 ## Slice Names
 
-Each `slices[]` entry becomes one `plan.yaml.slices[]` entry. The derivation is keyed on the `(scope-id, project)` pair, which the partition kernel already proves unique (`plan-reconcile-slice-duplicate`), so every derived name is collision-free by construction:
+Each `slices[]` entry becomes one `plan.yaml.slices[]` entry. The derivation is keyed on the `(scope, project)` pair, which the partition kernel already proves unique (`plan-reconcile-slice-duplicate`), so every derived name is collision-free by construction:
 
 1. If the agent provides `name`, validate and use it.
-2. Else if the slice's `scope-id` projects to exactly one slice (a 1:1 scope, no fan-out), use `scope-id`.
-3. Else (a scope fanning out to more than one project) use `<scope-id>-<project>` for **every** slice in that fan-out. Deriving from the bound `project` — not the target adapter — keeps fan-out names unique even when two projects share one adapter, and makes the result symmetric and independent of response order.
+2. Else if the slice's `scope` projects to exactly one slice (a 1:1 scope, no fan-out), use `scope`.
+3. Else (a scope fanning out to more than one project) use `<scope>-<project>` for **every** slice in that fan-out. Deriving from the bound `project` — not the target adapter — keeps fan-out names unique even when two projects share one adapter, and makes the result symmetric and independent of response order.
 
 After deriving all names, the kernel validates every `depends-on` entry against that name set and rejects cyclic graphs with `plan-reconcile-depends-on-cycle`.
 
-Because derived names are collision-free, `plan-reconcile-slice-name-collision` fires only when the agent supplies two explicit `name` values that clash. Set an explicit `name` on any slice another slice depends on — `depends-on` resolves against names derived only after submission, so a fanned-out slice you depend on is easier to reference by an explicit name than by its `<scope-id>-<project>` derivation.
+Because derived names are collision-free, `plan-reconcile-slice-name-collision` fires only when the agent supplies two explicit `name` values that clash. Set an explicit `name` on any slice another slice depends on — `depends-on` resolves against names derived only after submission, so a fanned-out slice you depend on is easier to reference by an explicit name than by its `<scope>-<project>` derivation.
 
 ## Project Binding
 
@@ -220,12 +229,12 @@ These plan-time signals stay in the skill layer and existing CLI amend paths:
 During `/spec:plan`, the agent:
 
 1. Calls `specrun plan propose --dry-run --format json`.
-2. Partitions all catalog rows into `scopes[]` by judgment from `summary`, shared slugs, and optional `aliases[]` hints.
-3. Binds each scope to one or more projects, producing one slice per `(scope-id, project)` pair (or omits `project` when exactly one exists).
-4. Adds `rationale` on non-obvious multi-member scopes, plus `depends-on` and optional `name` on slices.
+2. Matches catalog rows across sources by judgment from `summary`, shared slugs, and optional `aliases[]` hints — at most one lead per source per scope, never fusing two leads from the same source.
+3. Emits one `slices[]` row per `(scope, project)` pair: assigns a `scope` id, lists the matched `sources[]`, and binds a `project` (or omits it when exactly one exists). Fan-out repeats the `scope` id and identical `sources[]` across the rows.
+4. Adds `rationale` on non-obvious cross-source matches, plus `depends-on` and optional `name` on slices.
 5. Calls `specrun plan propose --from <response.json>`.
-6. Renders cross-source merge review prose into `change.md` for Gate 1.
-7. When summaries materially disagree on a merged slice, invokes `specrun plan amend <plan> <slice> --divergence likely`.
+6. Renders cross-source match review prose into `change.md` for Gate 1.
+7. When summaries materially disagree on a matched slice, invokes `specrun plan amend <plan> <slice> --divergence likely`.
 
 The agent never writes `plan.yaml`, never writes `discovery.md`, and never decides authority.
 
@@ -233,8 +242,8 @@ The agent never writes `plan.yaml`, never writes `discovery.md`, and never decid
 
 Canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This milestone appends:
 
-- **Journal events:** `plan.reconcile.agent` (its payload echoes each multi-member scope's `rationale` for audit/replay), `plan.reconcile.completed`.
-- **Operational validation codes:** `plan-reconcile-lead-orphan`, `plan-reconcile-partition`, `plan-reconcile-scope-duplicate`, `plan-reconcile-scope-orphan`, `plan-reconcile-scope-unbound`, `plan-reconcile-slice-duplicate`, `plan-reconcile-slice-name-collision`, `plan-reconcile-depends-on-cycle`, `plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`, `plan-reconcile-plan-not-replaceable`, `plan-propose-mode-required`. These are `Error::Validation` outcomes and abort with exit 2. The `plan-reconcile-*` codes name response-invariant failures; `plan-propose-mode-required` guards command-mode selection (neither `--dry-run` nor `--from`). `plan-reconcile-slice-name-collision` fires only on clashing agent-supplied explicit `name` values — derived names are unique by construction.
+- **Journal events:** `plan.reconcile.agent` (its payload echoes each scope's `rationale` for audit/replay), `plan.reconcile.completed`.
+- **Operational validation codes:** `plan-reconcile-lead-orphan`, `plan-reconcile-partition`, `plan-reconcile-slice-source-collision`, `plan-reconcile-fanout-source-mismatch`, `plan-reconcile-slice-duplicate`, `plan-reconcile-slice-name-collision`, `plan-reconcile-depends-on-cycle`, `plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`, `plan-reconcile-plan-not-replaceable`, `plan-propose-mode-required`. These are `Error::Validation` outcomes and abort with exit 2. The `plan-reconcile-*` codes name response-invariant failures; `plan-propose-mode-required` guards command-mode selection (neither `--dry-run` nor `--from`). `plan-reconcile-slice-source-collision` fires when one scope names two leads from the same source; `plan-reconcile-fanout-source-mismatch` when slices sharing a `scope` carry differing `sources[]`; `plan-reconcile-slice-name-collision` fires only on clashing agent-supplied explicit `name` values — derived names are unique by construction.
 - **Schema:** `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`).
 
 ## Appendix: Deferred Work

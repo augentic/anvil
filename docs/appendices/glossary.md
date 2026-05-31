@@ -118,10 +118,10 @@ The shared shape for either adapter role. Schemas `source.schema.json` / `target
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specrun plan propose`. The agent returns `scopes[]` (one scoped body of work per partition of surveyed leads) and `slices[]` (one row per `(scope-id, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source merges surface in `change.md` under `## Tentative merges`; materially-disagreeing summary pairs set `slices[].divergence: likely` via `specrun plan amend`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specrun plan propose`. The agent returns `slices[]`, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` (one row per `(scope, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing summary pairs set `slices[].divergence: likely` via `specrun plan amend`.
 
 **Scope (reconciliation)**
-Plan-time grouping of surveyed leads before per-project slice fan-out. The agent declares every `(source-key, lead-id)` exactly once under `scopes[]` in the `specrun plan propose` response; one scope may fan out to multiple `plan.yaml.slices[]` rows across projects. Distinct from proposal "in scope" wording and from the [Core concepts](../explanation/concepts.md) doc title.
+The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specrun plan propose` response `slices[]` rows that carry identical `sources[]`. The per-scope source sets declare every `(source-key, lead-id)` exactly once; one scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording and from the [Core concepts](../explanation/concepts.md) doc title.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
