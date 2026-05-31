@@ -1,5 +1,6 @@
   - name: identity-session-expiry
-    target: omnia
+    target: omnia@v1
+    project: identity-svc
     sources:
       - source-key: identity-design-notes
         lead-id: session-expiry

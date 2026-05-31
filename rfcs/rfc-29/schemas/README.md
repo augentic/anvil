@@ -12,3 +12,5 @@ Normative JSON Schema drafts for the [RFC-29](../rfc-29-fan-in-fan-out.md) famil
 | `target/build-report.schema.json` | `specify-cli/schemas/target/build-report.schema.json` |
 
 Embed constants: `SLICE_MODEL_JSON_SCHEMA`, `DRAFT_MODEL_JSON_SCHEMA`, `SYNTHESIS_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`.
+
+Shipped so far: `discovery/proposal.schema.json` has landed in `augentic/specify-cli` at `schemas/discovery/proposal.schema.json`, embedded as the `PROPOSAL_JSON_SCHEMA` constant in `specify-schema` and compiled through `crate::schema::validate_proposal_json` (the gate `specrun plan propose --from` runs over the agent response). The remaining constants land with their owning sub-RFC.

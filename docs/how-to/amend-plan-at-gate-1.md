@@ -12,7 +12,7 @@ Gate 1 is the operator review step between plan authoring and execution. `/spec:
 | --- | --- |
 | Rethink cross-source grouping | Re-run `specrun plan propose --from` (replaces all slices) |
 | Defer a lead out of this change | `specrun plan remove <entry>` |
-| Split or merge entries | `specrun plan add` + `specrun plan amend` + `specrun plan remove` — see [RFC-29b Gate 1 recipes](../../rfcs/rfc-29b-reconciliation.md#gate-1-recipes) |
+| Split or merge entries | `specrun plan add` + `specrun plan amend` + `specrun plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Divergence stamp, authority override, single-source fix | `specrun plan amend <entry>` (the scalpel) |
 
 There is one active `plan.yaml` per project. `specrun plan amend` takes **one positional — the entry (slice) name** — not a plan name plus entry name.

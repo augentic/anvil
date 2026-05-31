@@ -77,4 +77,4 @@ When a reconciled `claim-id` group carries claims from multiple authorities, [`a
 
 ## Plan-time reconciliation is a separate playbook
 
-Plan-time `Lead[]` reconciliation — the `propose` sub-step inside `/spec:plan` that writes `slices[]` rows — is specified by [RFC-29b §"Plan-Time Lead Reconciliation"](../../rfcs/rfc-29b-reconciliation.md). Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates at Gate 1 via `change.md` and `specrun plan amend`.
+Plan-time `Lead[]` reconciliation — the `propose` sub-step inside `/spec:plan` that writes `slices[]` rows — is documented by [`specrun plan propose`](../../../../docs/reference/cli/plan.md#specrun-plan-propose). Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates at Gate 1 via `change.md` and `specrun plan amend`.

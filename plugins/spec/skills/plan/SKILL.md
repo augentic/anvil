@@ -8,7 +8,7 @@ argument-hint: <name> [source]...
 
 `/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, reconciles the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specrun plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
 
-N=1 is degenerate, not special. A single intent binding produces one lead; `propose --from` writes one slice (often with `sources: [intent]` shorthand after projection). Multi-source planning differs only in step counts.
+N=1 is degenerate, not special. A single intent binding produces one lead; `propose --from` writes one slice — one structured `{ source-key, lead-id }` binding under the auto-bound sole project. Multi-source planning differs only in step counts.
 
 ## Critical Path
 
@@ -42,12 +42,12 @@ The skill forwards every binding to `specrun plan create --source <key>=<adapter
 
 ## Propose sub-step
 
-Reconcile leads through the D2 envelope ([RFC-29b §"Reconciliation Flow"](../../rfcs/rfc-29b-reconciliation.md)):
+Reconcile leads through the D2 envelope (see [`specrun plan propose`](../../../../docs/reference/cli/plan.md#specrun-plan-propose)):
 
-1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the flat lead catalog and `projects[]`.
-2. **Agent grouping** — match leads across sources by judgment from `summary`, shared slugs, and optional `aliases[]` hints (at most one lead per source per scope — never fuse two leads from the same source), then emit one `slices[]` row per `(scope, project)` pair carrying a `scope` id, its matched `sources[]`, and a bound `project`. Fan-out repeats the `scope` id and identical `sources[]`. Add `rationale`, `depends-on`, and optional `name` as needed.
-3. **Submit** — `specrun plan propose --from <response.json>` validates against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project.
-4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <entry> --divergence likely` so the CLI stamps `slices[].divergence`.
+1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the flat lead catalog and `projects[]`. Read-only — nothing is written and no journal event fires.
+2. **Agent grouping** — match leads across sources by judgment from `summary`, shared slugs, and optional `aliases[]` hints (at most one lead per source per scope — never fuse two leads from the same source), then emit one `slices[]` row per `(scope, project)` pair carrying a `scope` id, its matched `sources[]`, and a bound `project`. Fan-out repeats the `scope` id and identical `sources[]`. Add `rationale`, `depends-on`, and optional `name` as needed. The response shape is pinned by [`proposal.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/proposal.schema.json).
+3. **Submit** — `specrun plan propose --from <response.json>` schema-gates the response against `proposal.schema.json`, validates it against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project. The command emits the paired `plan.reconcile.agent` + `plan.reconcile.completed` journal events itself, in one atomic batch — the skill never runs `specrun journal emit` for D2.
+4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <entry> --divergence likely` (after `propose --from`, the only slice writer) so the CLI stamps `slices[].divergence`.
 
 Manual fallback: `specrun plan add`, `specrun plan amend <entry>`, and `specrun plan remove` remain available for headless Gate 1 curation; the default flow uses `propose --from`. Use **re-propose** or **remove** for grouping and deferral; reserve **amend** for divergence stamps, authority overrides, and refine-time source binding fixes.
 
@@ -65,4 +65,4 @@ Authority hierarchy does not apply at propose — without `Evidence`, reconcilia
 | Reference | Purpose |
 |---|---|
 | [`../../references/discovery.md`](../../references/discovery.md) | Three-section form for `discovery.md`; minimal lead block; N=1 `intent` minimal form |
-| [`fixtures/`](fixtures/) | Scenario goldens: pure-intent N=1, documentation multi-slice, cross-source propose merge, `plan.amend.divergence` journal event |
+| [`fixtures/`](fixtures/) | Scenario goldens: pure-intent N=1, documentation multi-slice, cross-source propose merge, `plan.reconcile.*` and `plan.amend.divergence` journal events |
