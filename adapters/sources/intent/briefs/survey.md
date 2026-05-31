@@ -22,8 +22,7 @@ Rules:
 
 - `lead-id` MUST equal `slice-name`. The bare-string `Slice.sources` shorthand `[<source-key>]` in `plan.yaml` only normalises cleanly when the lead-id matches the slice name.
 - Do not emit `source-key`. The CLI stamps each lead's `source-key` from the survey binding (the key the source was registered under, typically `intent`); attribution is CLI-owned.
-- `summary` MUST be the operator's intent string on a single line. Collapse internal whitespace to single spaces; do not paraphrase, truncate, or annotate. If the operator supplied multi-line prose, fold it to one line.
-- Do not set `tentative`. The intent source surfaces exactly one lead per slice; cross-source merge ambiguity is a `/spec:plan` propose-time concern, not a survey concern.
+- `summary` MUST be the operator's intent string, verbatim. Collapse internal whitespace to single spaces; do not paraphrase, truncate, or annotate. A multi-line intent MAY stay multi-line when folding to one line would lose discriminating content the operator wrote.
 
 ## Worked example
 

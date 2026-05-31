@@ -51,7 +51,7 @@ Emit one fenced block per identified handler, in the shape the CLI appends under
 - summary: <one-line description>
 ```
 
-Field order is fixed (`lead-id`, `summary`). `lead-id` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source-key`; the CLI stamps it from the survey binding. `summary` is a single line that names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json`.
+Field order is fixed (`lead-id`, `summary`). `lead-id` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source-key`; the CLI stamps it from the survey binding. `summary` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json`.
 
 Emit blocks sorted alphabetically by `lead-id` so re-survey produces byte-stable diffs.
 

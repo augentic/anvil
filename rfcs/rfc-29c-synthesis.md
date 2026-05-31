@@ -1,6 +1,6 @@
 # RFC-29c: Slice Synthesis Engine and Typed Model
 
-> Status: Draft — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (consumes its surveyed/extracted Evidence), [RFC-29b](rfc-29b-reconciliation.md) (consumes its plan rows) — Unblocks: RM-11 machine-readable producer/consumer impact; the M3 build input ([RFC-29d](rfc-29d-target.md))
+> Status: Draft — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (consumes its surveyed/extracted Evidence), [RFC-29b M2a (shipped)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) (consumes its plan rows) — Unblocks: RM-11 machine-readable producer/consumer impact; the M3 build input ([RFC-29d](rfc-29d-target.md))
 
 This is the third independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). Slice synthesis, the draft/persisted model split, kernel rendering into `spec.md`, and the drift validators form one contract over the Evidence the agent already produces; it consumes M1's surveys/Evidence and M2a's plan rows but not the build envelope. It owns the slice-time judgment/projection split, the typed `model.yaml`, the claim contract (`id` + `kind`), and the confirmation that per-slice fan-out keeps its one-target shape (D5).
 
@@ -367,7 +367,7 @@ build-report-path: build/report.yaml
 
 ### Workspace routing
 
-Unchanged from RFC-25. The slice's `project` was bound at plan time by the D2 reconciliation step ([RFC-29b §"Project Binding"](rfc-29b-reconciliation.md#project-binding)) and stored on `plan.yaml.slices[].project`; build-time routing only *resolves* that already-chosen name. `/spec:build` for a workspace-routed slice resolves the slice's `project` against the registry, prepares that project slot, writes target-specific files, records generated paths in the build report, and restores CWD to the workspace root. The plan lock stays at the workspace root. Cross-slice ordering — e.g. building `identity-contracts` before `identity-service` because the latter `depends-on` the former — is enforced by `specrun plan next`, not by anything inside a slice.
+Unchanged from RFC-25. The slice's `project` was bound at plan time by the D2 reconciliation step ([`specify-cli` `DECISIONS.md` §"Lead reconciliation (D2)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2), "Project binding and target derivation") and stored on `plan.yaml.slices[].project`; build-time routing only *resolves* that already-chosen name. `/spec:build` for a workspace-routed slice resolves the slice's `project` against the registry, prepares that project slot, writes target-specific files, records generated paths in the build report, and restores CWD to the workspace root. The plan lock stays at the workspace root. Cross-slice ordering — e.g. building `identity-contracts` before `identity-service` because the latter `depends-on` the former — is enforced by `specrun plan next`, not by anything inside a slice.
 
 ## Synthesis execution mode (D10)
 

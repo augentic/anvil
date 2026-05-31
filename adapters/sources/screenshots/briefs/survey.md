@@ -40,7 +40,7 @@ Skip images that contain no application content (orphan splash screens, full-scr
 ## Lead id and summary
 
 - `lead-id`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `(source-key, lead-id)`, so stability matters more than prettiness.
-- `summary`: a one-line description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Keep it under 200 characters. Do not invent content the screens do not show.
+- `summary`: a content-bearing description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Name the screen's surface and its salient content so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the screens do not show.
 
 ## Output
 
@@ -53,7 +53,7 @@ Return one block per lead, in alphabetical `lead-id` order. The CLI appends them
 - summary: Task list: today's open tasks for the signed-in user.
 ```
 
-Field order is fixed (`lead-id`, `summary`). Do not emit `source-key`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job. Do not set `tentative`.
+Field order is fixed (`lead-id`, `summary`). Do not emit `source-key`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
 
 ## Worked example
 

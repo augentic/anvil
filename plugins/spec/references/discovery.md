@@ -22,7 +22,7 @@ The propose sub-step matches across sources using `lead-id`, `aliases[]`, `summa
 
 The heading is `### <source-key>:<lead-id>` so two sources surfacing the same `lead-id` stay distinct blocks. Survey lead-sets MAY omit `source-key` (the CLI stamps it from the survey binding); the persisted `discovery.md` always carries it.
 
-Survey adapters MAY set `tentative: true` on a lead block when the source itself is uncertain about scope. That survey-time flag is **not** surfaced on the `specrun plan propose --dry-run` request wire — grouping uncertainty is the agent's to express in `change.md`, not a field the request catalog carries. The `/spec:plan` propose sub-step never edits `discovery.md` — uncertain **cross-source** reconciliations are recorded in `change.md` under `## Tentative merges` instead (see [`specrun plan propose`](../../../docs/reference/cli/plan.md#specrun-plan-propose)).
+Each `summary` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the `/spec:plan` propose sub-step never edits `discovery.md` (see [`specrun plan propose`](../../../docs/reference/cli/plan.md#specrun-plan-propose)).
 
 ## N=1 degenerate form (`intent.survey`)
 

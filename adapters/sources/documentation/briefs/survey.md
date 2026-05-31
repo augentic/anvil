@@ -20,7 +20,7 @@ Skip files that contain no behavioural content (e.g. tables of contents, license
 ## Lead id and summary
 
 - `lead-id`: kebab-case slug derived from the concept's heading. Lowercase, strip punctuation, replace whitespace with `-`. Example: `# Password reset` -> `password-reset`. Re-surveying the same source replaces by `(source-key, lead-id)`, so stability matters more than prettiness.
-- `summary`: one line lifted (or lightly compressed) from the concept's opening paragraph — the first non-heading, non-list paragraph after the heading. Keep it under 200 characters. Do not invent content the docs do not state.
+- `summary`: a content-bearing description lifted (or lightly compressed) from the concept's opening paragraph — the first non-heading, non-list paragraph after the heading. Name the concept's behaviour and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the docs do not state, and never spill slice-time detail here — that is `documentation.extract`'s job.
 
 ## Output
 

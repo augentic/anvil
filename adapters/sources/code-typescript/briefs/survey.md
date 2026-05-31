@@ -22,7 +22,9 @@ Emit one fenced block per identified unit, in the shape the CLI appends under `#
 - summary: <one-line description>
 ```
 
-`lead-id` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source-key, lead-id)`). After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead-id`, scalar `source-key`, one-line `summary`). One block per lead; no `tentative:` field at survey time (set later by `/spec:plan`'s `propose` sub-step).
+`lead-id` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source-key, lead-id)`). After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead-id`, scalar `source-key`, content-bearing `summary`). One block per lead.
+
+`summary` SHOULD name the handler's surface (route + method, queue + job, topic) and its salient behaviour/constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. It stays plan-time headline material — slice-time behaviour belongs in `code-typescript.extract` claims, not here.
 
 ## Internal staging
 
