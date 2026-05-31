@@ -51,7 +51,7 @@
       "required": [
         "source",
         "lead",
-        "summary"
+        "synopsis"
       ],
       "properties": {
         "source": {
@@ -62,10 +62,10 @@
           "$ref": "#/$defs/kebabName",
           "description": "Discovery lead id surfaced by this source binding. Identity is the `(source, lead)` pair; `lead` is not unique across `leads[]` when multiple sources surface the same slug."
         },
-        "summary": {
+        "synopsis": {
           "type": "string",
           "minLength": 1,
-          "description": "One-line per-source summary from this source's survey of the lead. Primary signal for agent cross-source grouping."
+          "description": "Reconciliation-grade per-source headline from this source's survey of the lead. Primary signal for agent cross-source grouping — SHOULD name the operation/surface and salient constraint; MAY span more than one line when one is too thin."
         },
         "aliases": {
           "type": "array",

@@ -19,12 +19,12 @@ Emit one fenced block per identified unit, in the shape the CLI appends under `#
 ### <lead>
 
 - lead: <lead>
-- summary: <one-line description>
+- synopsis: <reconciliation-grade headline>
 ```
 
-`lead` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source, lead)`). After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead`, scalar `source`, content-bearing `summary`). One block per lead.
+`lead` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source, lead)`). After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead`, scalar `source`, content-bearing `synopsis`). One block per lead.
 
-`summary` SHOULD name the handler's surface (route + method, queue + job, topic) and its salient behaviour/constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. It stays plan-time headline material — slice-time behaviour belongs in `code-typescript.extract` claims, not here.
+`synopsis` SHOULD name the handler's surface (route + method, queue + job, topic) and its salient behaviour/constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. It stays plan-time headline material — slice-time behaviour belongs in `code-typescript.extract` claims, not here.
 
 ## Internal staging
 
@@ -98,7 +98,7 @@ Union LOC stays well below 1000 → Decision 2 (size check) emits one source-lev
 ### user-registration
 
 - lead: user-registration
-- summary: Registration endpoint accepting email + password with RFC-5322 validation.
+- synopsis: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 
 When a larger source decomposes into multiple leads, emit one block per surface (or per merged cluster) in source order (alphabetical by handler path within the source) so re-survey produces stable diffs.
@@ -120,4 +120,4 @@ When a larger source decomposes into multiple leads, emit one block per surface 
 | `$SOURCE_DIR` empty / no recognised framework imports  | Return zero leads. Operator reviews in `discovery.md`.                                                                     |
 | Read denied outside `$SOURCE_DIR`                      | Host runner returns `source-survey-path-denied`; the slice stays `refining`.                                                 |
 | Internal staged JSON malformed                         | Repair within the run; the lead algorithm is the final consumer, not an external schema check.                             |
-| Surface uses an out-of-scope framework (tRPC, gRPC, …) | Skip it. Return whatever in-scope leads the tree has; document the gap in the summary of the relevant source-level lead. |
+| Surface uses an out-of-scope framework (tRPC, gRPC, …) | Skip it. Return whatever in-scope leads the tree has; document the gap in the synopsis of the relevant source-level lead. |

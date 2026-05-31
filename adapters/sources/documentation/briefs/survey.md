@@ -17,10 +17,10 @@ One discrete, slice-sized behaviour the docs describe. Two recognition rules, in
 
 Skip files that contain no behavioural content (e.g. tables of contents, license boilerplate, glossaries). When in doubt, emit the lead — `propose` and the operator at Gate 1 reconcile false positives.
 
-## Lead id and summary
+## Lead id and synopsis
 
 - `lead`: kebab-case slug derived from the concept's heading. Lowercase, strip punctuation, replace whitespace with `-`. Example: `# Password reset` -> `password-reset`. Re-surveying the same source replaces by `(source, lead)`, so stability matters more than prettiness.
-- `summary`: a content-bearing description lifted (or lightly compressed) from the concept's opening paragraph — the first non-heading, non-list paragraph after the heading. Name the concept's behaviour and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the docs do not state, and never spill slice-time detail here — that is `documentation.extract`'s job.
+- `synopsis`: a content-bearing description lifted (or lightly compressed) from the concept's opening paragraph — the first non-heading, non-list paragraph after the heading. Name the concept's behaviour and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the docs do not state, and never spill slice-time detail here — that is `documentation.extract`'s job.
 
 ## Output
 
@@ -30,10 +30,10 @@ Return one block per lead, in alphabetical `lead` order. The CLI appends them un
 ### password-reset
 
 - lead: password-reset
-- summary: Account service that lets a registered user request a password reset link by email.
+- synopsis: Account service that lets a registered user request a password reset link by email.
 ```
 
-Field order is fixed (`lead`, `summary`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
+Field order is fixed (`lead`, `synopsis`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
 
 ## Worked example
 
@@ -50,12 +50,12 @@ Expected output (alphabetically by `lead`):
 ### account
 
 - lead: account
-- summary: Account service that stores per-user identity, credential, and notification preferences.
+- synopsis: Account service that stores per-user identity, credential, and notification preferences.
 
 ### password-reset
 
 - lead: password-reset
-- summary: Account service that lets a registered user request a password reset link by email.
+- synopsis: Account service that lets a registered user request a password reset link by email.
 ```
 
 A full input/output fixture for this example lives at [`tests/fixtures/sources/documentation/`](../../../../tests/fixtures/sources/documentation/) in the repo.
@@ -63,7 +63,7 @@ A full input/output fixture for this example lives at [`tests/fixtures/sources/d
 ## Determinism
 
 - Emit leads sorted alphabetically by `lead`.
-- Field order inside each block is fixed: `lead`, `summary`.
+- Field order inside each block is fixed: `lead`, `synopsis`.
 - No timestamps, host paths, or other run-state in the output — re-running against unchanged inputs produces byte-identical blocks.
 
 ## Guardrails

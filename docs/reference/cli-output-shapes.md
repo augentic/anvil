@@ -91,8 +91,8 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
     { "name": "identity-service", "target": "omnia@v1", "description": "Omnia identity service implementing auth and password flows." }
   ],
   "leads": [
-    { "source": "docs", "lead": "identity-api", "summary": "Identity API contract for authentication and account access." },
-    { "source": "legacy", "lead": "identity-api", "summary": "Legacy identity endpoints." }
+    { "source": "docs", "lead": "identity-api", "synopsis": "Identity API contract for authentication and account access." },
+    { "source": "legacy", "lead": "identity-api", "synopsis": "Legacy identity endpoints." }
   ]
 }
 ```
@@ -283,7 +283,7 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
       "title": "Uses imperative language for motivation"
     }
   ],
-  "summary": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
+  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
   "version": 1
 }
 ```

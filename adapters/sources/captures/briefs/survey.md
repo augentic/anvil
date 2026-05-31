@@ -48,10 +48,10 @@ Emit one fenced block per identified handler, in the shape the CLI appends under
 ### <handler-id>
 
 - lead: <handler-id>
-- summary: <one-line description>
+- synopsis: <reconciliation-grade headline>
 ```
 
-Field order is fixed (`lead`, `summary`). `lead` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source`; the CLI stamps it from the survey binding. `summary` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json`.
+Field order is fixed (`lead`, `synopsis`). `lead` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source`; the CLI stamps it from the survey binding. `synopsis` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json`.
 
 Emit blocks sorted alphabetically by `lead` so re-survey produces byte-stable diffs.
 
@@ -59,8 +59,8 @@ Emit blocks sorted alphabetically by `lead` so re-survey produces byte-stable di
 
 1. **Walk `tests/data/replays/`.** Survey immediate subdirectories. Skip `samples/` (shared payloads, not handlers) and any directory whose name begins with `.` or `_`.
 2. **Per handler, inventory scenarios.** List `<handler>/*.json`. Skip the optional per-handler `INSTRUCTIONS.md` — the brief is not authoritative for surface naming. Zero-scenario handler directories are skipped silently (the operator drops them upstream).
-3. **Identify the surface.** Inspect one or two scenario files to derive the route / topic / job identifier and method (e.g. `POST /users`, queue `user.created`, cron `0 */5 * * *`). When scenarios disagree, prefer the most common surface and note the spread in `summary`.
-4. **Emit one lead block per handler.** Sort by `lead`. Each block carries the handler `lead` and a one-line summary; the CLI stamps `source` from the survey binding.
+3. **Identify the surface.** Inspect one or two scenario files to derive the route / topic / job identifier and method (e.g. `POST /users`, queue `user.created`, cron `0 */5 * * *`). When scenarios disagree, prefer the most common surface and note the spread in `synopsis`.
+4. **Emit one lead block per handler.** Sort by `lead`. Each block carries the handler `lead` and a reconciliation-grade synopsis; the CLI stamps `source` from the survey binding.
 
 ## Path rules
 
@@ -96,18 +96,18 @@ Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 ### password-reset
 
 - lead: password-reset
-- summary: POST /accounts/reset observed in 2 captures; both return 202 with no body.
+- synopsis: POST /accounts/reset observed in 2 captures; both return 202 with no body.
 
 ### user-registration
 
 - lead: user-registration
-- summary: POST /users observed in 3 captures; happy path publishes `user.created`, error paths return 400 and 409.
+- synopsis: POST /users observed in 3 captures; happy path publishes `user.created`, error paths return 400 and 409.
 ```
 
 ## Determinism
 
 - Emit leads sorted alphabetically by `lead`.
-- Field order inside each block is fixed: `lead`, `summary`.
+- Field order inside each block is fixed: `lead`, `synopsis`.
 - Quote concrete scenario counts and surface identifiers the captures verify; do not embed timestamps, host paths, or other run-state.
 - Re-running against an unchanged capture tree produces byte-identical blocks.
 
@@ -125,7 +125,7 @@ Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 | `$SOURCE_DIR` empty or missing `tests/data/replays/` | Return zero leads. Operator reviews in `discovery.md`. |
 | `tests/data/replays/<handler>/` contains no `*.json` files | Skip the handler silently. |
 | Read denied outside `$SOURCE_DIR` | Host runner returns `source-survey-path-denied`; slice stays `refining`. |
-| Capture JSON unparseable during surface identification | Continue with the remaining scenarios; surface ambiguity surfaces in the `summary` line. |
+| Capture JSON unparseable during surface identification | Continue with the remaining scenarios; surface ambiguity surfaces in the `synopsis` line. |
 
 ## References
 

@@ -15,14 +15,14 @@ Append (or replace by `lead`) one block under `## Lead inventory` in `discovery.
 ### <slice-name>
 
 - lead: <slice-name>
-- summary: <Source.value, one line, verbatim>
+- synopsis: <Source.value, one line, verbatim>
 ```
 
 Rules:
 
 - `lead` MUST equal `slice-name`. The bare-string `Slice.sources` shorthand `[<source>]` in `plan.yaml` only normalises cleanly when the lead matches the slice name.
 - Do not emit `source`. The CLI stamps each lead's `source` from the survey binding (the key the source was registered under, typically `intent`); attribution is CLI-owned.
-- `summary` MUST be the operator's intent string, verbatim. Collapse internal whitespace to single spaces; do not paraphrase, truncate, or annotate. A multi-line intent MAY stay multi-line when folding to one line would lose discriminating content the operator wrote.
+- `synopsis` MUST be the operator's intent string, verbatim. Collapse internal whitespace to single spaces; do not paraphrase, truncate, or annotate. A multi-line intent MAY stay multi-line when folding to one line would lose discriminating content the operator wrote.
 
 ## Worked example
 
@@ -40,10 +40,10 @@ Output — block appended under `## Lead inventory` in `discovery.md`:
 ### add-search-filter
 
 - lead: add-search-filter
-- summary: Add a search filter to the user list.
+- synopsis: Add a search filter to the user list.
 ```
 
 ## Notes
 
-- Re-running `intent.survey` against the same source replaces the lead by its `(source, lead)` pair. Editing the intent string and re-running yields the same lead with an updated summary.
+- Re-running `intent.survey` against the same source replaces the lead by its `(source, lead)` pair. Editing the intent string and re-running yields the same lead with an updated synopsis.
 - `discovery.md`'s `## Summary` and `## Source inventory` sections are owned by `/spec:plan`, not this brief; this brief only writes inside `## Lead inventory`.

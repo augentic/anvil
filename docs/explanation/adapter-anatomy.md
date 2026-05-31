@@ -66,7 +66,7 @@ A source adapter participates in two places in the lifecycle.
 
 - lead: user-registration
 - source: legacy-monolith
-- summary: Registration endpoint accepting email + password with email-format validation.
+- synopsis: Registration endpoint accepting email + password with email-format validation.
 ```
 
 **`extract(Lead, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`:

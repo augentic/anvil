@@ -16,4 +16,4 @@ Sources: 1. Leads: 1.
 
 - lead: fix-typo
 - source: intent
-- summary: fix typo in user.rs
+- synopsis: fix typo in user.rs

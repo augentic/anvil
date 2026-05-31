@@ -8,10 +8,10 @@
 
 - lead: archive
 - source: screens
-- summary: Archive: completed tasks the user has archived.
+- synopsis: Archive: completed tasks the user has archived.
 
 ### screens:task-list
 
 - lead: task-list
 - source: screens
-- summary: Task list: today's open tasks for the signed-in user.
+- synopsis: Task list: today's open tasks for the signed-in user.

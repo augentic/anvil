@@ -87,7 +87,7 @@ Operator reconciliation required before /spec:build.
 
 ### No contributing Evidence (`[unknown]`)
 
-A requirement the slice's proposal calls for (e.g. covered by the lead `summary`) that no source supplied a claim for. Synthesis still authors the block so the operator sees the gap:
+A requirement the slice's proposal calls for (e.g. covered by the lead `synopsis`) that no source supplied a claim for. Synthesis still authors the block so the operator sees the gap:
 
 ```markdown
 ### Requirement: Reset link single-use [unknown]

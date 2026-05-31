@@ -4,7 +4,7 @@
 
 ## 1. `proposal.md`
 
-Carries the slice's *why*. Author from the lead `summary` (in `discovery.md`) plus the contributing Evidence:
+Carries the slice's *why*. Author from the lead `synopsis` (in `discovery.md`) plus the contributing Evidence:
 
 - **Single-source intent** — `## Why` is a one- to three-paragraph restatement of the `intent` claim's `statement`. `## Units` lists the operator's requested deliverable as a single kebab-case slug with a short scope summary; non-goals are inferred from the absence of language ("not …", "without …").
 - **Single-source documentation** — `## Why` comes from `decision` and top-level `section` claims; `## Units` lists the distinct deliverable surfaces identified from `requirement` claim subjects (one kebab-case slug per surface); non-goals are any `decision` claim that explicitly rules a path out.

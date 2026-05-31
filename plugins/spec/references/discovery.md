@@ -10,19 +10,19 @@ Re-surveying the same source key replaces that source's leads by `(source, lead)
 
 ## Minimal lead block
 
-The propose sub-step matches across sources using `lead`, `aliases[]`, `summary`, and `source` on these blocks:
+The propose sub-step matches across sources using `lead`, `aliases[]`, `synopsis`, and `source` on these blocks:
 
 ```markdown
 ### legacy-monolith:user-registration
 
 - lead: user-registration
 - source: legacy-monolith
-- summary: Registration endpoint accepting email + password with RFC-5322 validation.
+- synopsis: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 
 The heading is `### <source>:<lead>` so two sources surfacing the same `lead` stay distinct blocks. Survey lead-sets MAY omit `source` (the CLI stamps it from the survey binding); the persisted `discovery.md` always carries it.
 
-Each `summary` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the `/spec:plan` propose sub-step never edits `discovery.md` (see [`specrun plan propose`](../../../docs/reference/cli/plan.md#specrun-plan-propose)).
+Each `synopsis` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the `/spec:plan` propose sub-step never edits `discovery.md` (see [`specrun plan propose`](../../../docs/reference/cli/plan.md#specrun-plan-propose)).
 
 ## N=1 degenerate form (`intent.survey`)
 
@@ -47,27 +47,27 @@ Sources: 1. Leads: 1.
 
 - lead: fix-typo
 - source: intent
-- summary: fix typo in user.rs
+- synopsis: fix typo in user.rs
 ```
 
 `propose --from` writes the slice row against this lead as the structured binding `{ source: intent, lead: fix-typo }` under the auto-bound sole project; the bare-string shorthand `sources: [intent]` is the equivalent hand-authored sugar (lead defaults to the slice name).
 
 ## Multi-source skeleton
 
-When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead` may appear once per source, each with its own `source` and per-source `summary`. The propose sub-step groups them by agent judgment (shared slug, alias hints, or summary) — not kernel lock — and writes one or more `slices[]` rows via `specrun plan propose --from`. The operator reviews cross-source merges at Gate 1:
+When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead` may appear once per source, each with its own `source` and per-source `synopsis`. The propose sub-step groups them by agent judgment (shared slug, alias hints, or synopsis) — not kernel lock — and writes one or more `slices[]` rows via `specrun plan propose --from`. The operator reviews cross-source merges at Gate 1:
 
 ```markdown
 ### identity-design-notes:user-registration
 
 - lead: user-registration
 - source: identity-design-notes
-- summary: Registration endpoint accepting email + password with RFC-5322 validation.
+- synopsis: Registration endpoint accepting email + password with RFC-5322 validation.
 
 ### legacy-monolith:user-registration
 
 - lead: user-registration
 - source: legacy-monolith
-- summary: POST /users handler validating email + password and inserting the new user record.
+- synopsis: POST /users handler validating email + password and inserting the new user record.
 ```
 
-When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specrun plan amend <entry> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source summary; pair-level detail lives in `change.md`.
+When the two surfacing sources disagree on the synopsis materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specrun plan amend <entry> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side synopses in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source synopsis; pair-level detail lives in `change.md`.

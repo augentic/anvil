@@ -10,7 +10,7 @@ This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sou
 
 Two nouns:
 
-- **scope** — the reconciled unit of work: the set of leads the agent judges to be the same piece of work, **at most one lead per source**. A scope is expressed by a shared `scope` id across one or more `slices[]` rows that carry identical `sources[]`. Cross-source matching is agent judgment from per-source `summary`, optional `aliases[]` hints, and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1.
+- **scope** — the reconciled unit of work: the set of leads the agent judges to be the same piece of work, **at most one lead per source**. A scope is expressed by a shared `scope` id across one or more `slices[]` rows that carry identical `sources[]`. Cross-source matching is agent judgment from per-source `synopsis`, optional `aliases[]` hints, and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1.
 - **slice** — one `plan.yaml.slices[]` row: a `(scope, project)` pair carrying its own `sources[]` inline. A 1:1 scope is one slice; a scope may fan out to multiple slices (each project's `target` is written at projection time).
 
 Shared wire contracts are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This document is the source of truth for D2.
@@ -51,13 +51,13 @@ The agent owns judgment during propose. The CLI owns projection and persistence.
 
 ## Cross-Source Matching
 
-Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source, lead)` lead with its per-source `summary` and optional `aliases[]` (operator-authored hints from `discovery.md`; the kernel does not interpret them as locks).
+Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source, lead)` lead with its per-source `synopsis` and optional `aliases[]` (operator-authored hints from `discovery.md`; the kernel does not interpret them as locks).
 
 The agent decides which rows belong in the same scope:
 
 - **Shared slug** — two sources may emit the same `lead` (e.g. both surface `identity-api`). That overlap is a hint, not a kernel lock. The agent may merge or keep them separate; accidental slug collision is resolved at Gate 1, not forced at propose time.
 - **Alias hints** — `aliases[]` on a row may bridge to another source's `lead`. The agent may use these when grouping; `specrun plan amend --add-alias` records operator knowledge on `discovery.md` for future replans.
-- **Summary judgment** — when ids and aliases do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source summaries.
+- **Synopsis judgment** — when ids and aliases do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source synopses.
 
 **At most one lead per source.** A scope matches leads *across* sources; it never fuses two leads from the *same* source. Each surveyed lead is that source adapter's candidate slice — a sizing judgment made with full visibility of the legacy code, documentation, or capture the agent does not have. Merging two same-source leads would override that sizing and risk a slice too large to execute, so the propose kernel rejects it (`plan-reconcile-slice-source-collision`). When a source genuinely over-fragments, the fix is a better source adapter or an operator Gate 1 merge via `specrun plan amend --sources` — where a human owns the sizing risk — not an agent propose-time fusion.
 
@@ -79,7 +79,7 @@ The kernel could derive scope without an agent-supplied id by grouping slices th
 
 Request and response validate against `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), with a closed `kind: request | response` discriminator.
 
-The request is lead-centric: flat `leads[]` carries one row per raw `(source, lead)` lead. Each catalog row carries `source`, `lead`, per-source `summary`, and optional `aliases[]`.
+The request is lead-centric: flat `leads[]` carries one row per raw `(source, lead)` lead. Each catalog row carries `source`, `lead`, per-source `synopsis`, and optional `aliases[]`.
 
 Each raw lead from `discovery.md` becomes one catalog row — no expansion or cross-source merge at survey or request time. `lead` is unique only within a `source`; the same slug under different sources is legal. Catalog identity is the `(source, lead)` pair. Envelope and `plan.yaml` slice bindings use the same shape.
 
@@ -98,19 +98,19 @@ projects:
 leads:
   - source: docs
     lead: identity-api
-    summary: "Identity API contract for authentication and account access."
+    synopsis: "Identity API contract for authentication and account access."
   - source: legacy
     lead: identity-api
-    summary: "Legacy identity endpoints."
+    synopsis: "Legacy identity endpoints."
   - source: docs
     lead: password-reset
-    summary: "Users can request a password reset email."
+    synopsis: "Users can request a password reset email."
   - source: legacy
     lead: reset-password
-    summary: "Legacy reset-password flow."
+    synopsis: "Legacy reset-password flow."
 ```
 
-The agent may merge `docs:identity-api` with `legacy:identity-api` by shared slug, and `password-reset` with `reset-password` by summary — both are judgment calls surfaced for Gate 1 review.
+The agent may merge `docs:identity-api` with `legacy:identity-api` by shared slug, and `password-reset` with `reset-password` by synopsis — both are judgment calls surfaced for Gate 1 review.
 
 `projects[]` lists every project the agent may bind and always carries at least one entry (a single regular project is synthesized from `project.yaml`). Available targets come from `projects[].target` — there is no separate request-level `targets[]`.
 
@@ -132,7 +132,7 @@ projects:
 leads:
   - source: intent
     lead: fix-typo
-    summary: "fix typo in user.rs"
+    synopsis: "fix typo in user.rs"
 ```
 
 Response:
@@ -175,7 +175,7 @@ slices:
       - { source: docs, lead: password-reset }
       - { source: legacy, lead: reset-password }
     project: identity-service
-    rationale: "password-reset (docs) and reset-password (legacy) are the same flow by summary judgment"
+    rationale: "password-reset (docs) and reset-password (legacy) are the same flow by synopsis judgment"
 ```
 
 The two same-source leads `docs:password-reset` and `docs:identity-api` stay in **separate** scopes — the agent matches across sources, never fusing one source's candidate slices. `identity-api` fans out (one body of work → a contracts crate and an omnia service), so two slices share that `scope` id and carry identical `sources[]`; `password-reset` is a 1:1 scope bound to a single project.
@@ -281,7 +281,7 @@ Recurring cross-source pairings the operator accepts may be promoted to aliases 
 These plan-time signals stay in the skill layer and existing CLI amend/remove paths:
 
 - **`## Tentative merges` in `change.md`** — uncertain groupings; the agent never edits `discovery.md`.
-- **`## Likely divergences` in `change.md`** — materially disagreeing per-source summaries after `propose --from` succeeds.
+- **`## Likely divergences` in `change.md`** — materially disagreeing per-source synopses after `propose --from` succeeds.
 - **`plan.yaml.slices[].divergence: likely`** — staged after `propose --from` by `specrun plan amend <entry> --divergence likely`, because `propose --from` is the slice writer and slices do not exist until it runs. This is the only writer of the `divergence` field; `plan create` scaffolds an empty plan and never stamps divergence.
 
 D2 partition invariants (total lead coverage, at-most-one-lead-per-source per scope, fan-out `sources[]` consistency) are enforced only by `propose --from`. Gate 1 edits through `plan add`, `plan amend`, and `plan remove` may violate those invariants deliberately — including same-source fusion via `plan amend --sources` — because the operator owns that risk before stamping `approved`.
@@ -291,12 +291,12 @@ D2 partition invariants (total lead coverage, at-most-one-lead-per-source per sc
 During `/spec:plan`, the agent:
 
 1. Calls `specrun plan propose --dry-run --format json`.
-2. Matches catalog rows across sources by judgment from `summary`, shared slugs, and optional `aliases[]` hints — at most one lead per source per scope, never fusing two leads from the same source.
+2. Matches catalog rows across sources by judgment from `synopsis`, shared slugs, and optional `aliases[]` hints — at most one lead per source per scope, never fusing two leads from the same source.
 3. Emits one `slices[]` row per `(scope, project)` pair: assigns a `scope` id, lists the matched `sources[]`, and binds a `project` (or omits it when exactly one exists). Fan-out repeats the `scope` id and identical `sources[]` across the rows.
 4. Adds `rationale` on non-obvious cross-source matches, plus `depends-on` and optional `name` on slices.
 5. Calls `specrun plan propose --from <response.json>`.
 6. Renders cross-source match review prose into `change.md` for Gate 1.
-7. When summaries materially disagree on a matched slice, invokes `specrun plan amend <entry> --divergence likely`.
+7. When synopses materially disagree on a matched slice, invokes `specrun plan amend <entry> --divergence likely`.
 
 The agent never writes `plan.yaml`, never writes `discovery.md`, and never decides authority.
 

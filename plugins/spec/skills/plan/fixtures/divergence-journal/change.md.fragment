@@ -2,7 +2,7 @@
 
 ### identity-session-expiry
 
-| source                | summary                                                               |
+| source                | synopsis                                                              |
 |-----------------------|-----------------------------------------------------------------------|
 | identity-design-notes | Session tokens expire after 60 minutes of inactivity.                 |
 | legacy-monolith       | Session tokens expire after 24 hours of absolute lifetime.            |
