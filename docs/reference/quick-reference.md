@@ -75,10 +75,12 @@ specrun source resolve <name>                            # validate a source ada
 specrun target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specrun plan create <name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specrun plan add <name> --sources <key>=<lead-id> --target <name> --project <name>
-specrun plan amend <name> --add-source <key>=<lead-id> --remove-source <key> --divergence accepted
-specrun plan transition <name> approved                  # Gate 1; operator-only
+specrun plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
+specrun plan propose --from <response.json>                    # default slice writer after survey
+specrun plan add <entry> --sources <key>=<lead-id> --target <adapter@vN> --project <name>
+specrun plan amend <entry> --add-source <key>=<lead-id> --remove-source <key> --divergence accepted
+specrun plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
+specrun plan transition <plan-name> approved                 # Gate 1; operator-only
 specrun plan next                                        # active in-progress, or pick next pending
 specrun plan archive
 

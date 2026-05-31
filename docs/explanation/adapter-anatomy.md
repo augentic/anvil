@@ -120,11 +120,11 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
-CLI entry points: `specrun source resolve <name>` and `specrun target resolve <value>` load and validate the manifest on first use. `specrun plan add` / `specrun plan amend --add-source / --remove-source` write source bindings into `plan.yaml`.
+CLI entry points: `specrun source resolve <name>` and `specrun target resolve <value>` load and validate the manifest on first use. `specrun plan add`, `specrun plan amend <entry> --add-source / --remove-source`, and `specrun plan propose --from` write slice bindings into `plan.yaml`.
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend --authority-override <slice> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>

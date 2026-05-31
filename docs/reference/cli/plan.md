@@ -47,7 +47,7 @@ Health diagnostics layered on top — first triage step when `/spec:execute` rep
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
-| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <name> --depends-on …` to break the cycle, then re-run validate. |
+| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
 | `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
 | `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specrun workspace sync` to refresh the clone. |
 
@@ -79,11 +79,18 @@ Creates the entry in `pending` state.
 
 ### specrun plan amend
 
-Edit non-status fields on an existing entry.
+Edit non-status fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, and surgical source/project/depends-on edits. For grouping changes prefer `specrun plan propose --from`; for deferral use `specrun plan remove`.
 
 ```bash
-specrun plan amend <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
+specrun plan amend <entry> [--project <name>] [--description "<text>"] [--depends-on <entry>...]
+specrun plan amend <entry> --add-source <key>=<lead-id>
+specrun plan amend <entry> --remove-source <key>
+specrun plan amend <entry> --divergence likely|accepted|rejected
+specrun plan amend <entry> --authority-override <entry> <kind>=<source-key>
+specrun plan amend <entry> --add-alias <lead-id>=<alias>
 ```
+
+Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 ### specrun plan remove
 

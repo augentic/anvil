@@ -89,8 +89,10 @@ The skill never auto-stamps `approved`. The operator runs the literal transition
 | Operation | CLI verb |
 | --------- | -------- |
 | Scaffold plan | `specrun plan create` |
+| Reconcile leads → slices | `specrun plan propose --from` |
 | Add slice row | `specrun plan add` |
-| Amend entries | `specrun plan amend` |
+| Amend entry (scalpel) | `specrun plan amend <entry>` |
+| Remove entry (defer) | `specrun plan remove <entry>` |
 | Validate plan | `specrun plan validate` |
 
 ## Error modes

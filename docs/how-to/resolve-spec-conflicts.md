@@ -40,7 +40,7 @@ Optionally amend the plan to drop a misleading source before re-refining.
 When you know which source should win for a claim kind:
 
 ```bash
-specrun plan amend <plan> --authority-override <slice> <kind>=<source-key>
+specrun plan amend <entry> --authority-override <entry> <kind>=<source-key>
 ```
 
 Re-run refine after amending.

@@ -184,7 +184,7 @@ Both drift conditions are cleared by re-running `/spec:refine` — synthesis wri
 
 ## Worked example
 
-A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specrun plan amend identity-revamp identity-password-reset --authority-override criterion=runtime`. Three requirements illustrate the common shapes:
+A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specrun plan amend identity-password-reset --authority-override identity-password-reset criterion=runtime`. Three requirements illustrate the common shapes:
 
 ```yaml
 version: 1

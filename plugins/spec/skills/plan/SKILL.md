@@ -47,9 +47,9 @@ Reconcile leads through the D2 envelope ([RFC-29b §"Reconciliation Flow"](../..
 1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the flat lead catalog and `projects[]`.
 2. **Agent grouping** — match leads across sources by judgment from `summary`, shared slugs, and optional `aliases[]` hints (at most one lead per source per scope — never fuse two leads from the same source), then emit one `slices[]` row per `(scope, project)` pair carrying a `scope` id, its matched `sources[]`, and a bound `project`. Fan-out repeats the `scope` id and identical `sources[]`. Add `rationale`, `depends-on`, and optional `name` as needed.
 3. **Submit** — `specrun plan propose --from <response.json>` validates against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project.
-4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <plan> <slice> --divergence likely` so the CLI stamps `slices[].divergence`.
+4. **Gate 1 review prose** — render cross-source merges into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <entry> --divergence likely` so the CLI stamps `slices[].divergence`.
 
-Manual fallback: `specrun plan add`, `specrun plan amend`, and `specrun plan remove` remain available for headless Gate 1 curation; the default flow uses `propose --from`.
+Manual fallback: `specrun plan add`, `specrun plan amend <entry>`, and `specrun plan remove` remain available for headless Gate 1 curation; the default flow uses `propose --from`. Use **re-propose** or **remove** for grouping and deferral; reserve **amend** for divergence stamps, authority overrides, and refine-time source binding fixes.
 
 Authority hierarchy does not apply at propose — without `Evidence`, reconciliation runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
 

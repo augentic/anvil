@@ -153,10 +153,10 @@ Rules:
 - Operators author the map via the CLI; the synthesis playbook never asks an agent to hand-edit `plan.yaml`:
 
 ```bash
-specrun plan amend <plan> <slice> --authority-override <claim-kind>=<source-key>
-specrun plan amend <plan> <slice> --clear-authority-override <claim-kind>
-specrun plan amend <plan> <slice> --clear-authority-overrides
-specrun plan add   <plan> <slice> --authority-override <claim-kind>=<source-key>   # repeatable on create
+specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source-key>
+specrun plan amend <entry> --clear-authority-override <entry> <claim-kind>
+specrun plan amend <entry> --clear-authority-overrides
+specrun plan add   <entry> --authority-override <claim-kind>=<source-key>   # repeatable on create
 ```
 
 ### Resolution order

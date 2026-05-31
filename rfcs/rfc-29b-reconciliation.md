@@ -71,6 +71,10 @@ The survey-time `tentative` flag a source adapter may set on its own lead (`lead
 
 Collapsing `slices[]` by `scope` yields the scope partition: a missing or double-counted lead across scopes fails with `plan-reconcile-partition`; a `(source-key, lead-id)` pair naming no current catalog row fails with `plan-reconcile-lead-orphan`. A scope that names two leads from the same source fails with `plan-reconcile-slice-source-collision`. Slices that share a `scope` id but carry differing `sources[]` fail with `plan-reconcile-fanout-source-mismatch`. Duplicate `(scope, project)` pairs fail with `plan-reconcile-slice-duplicate`. Colliding agent-supplied explicit slice names fail with `plan-reconcile-slice-name-collision`. A cyclic `depends-on` graph fails with `plan-reconcile-depends-on-cycle`.
 
+### Why `scope` is an explicit field
+
+The kernel could derive scope without an agent-supplied id by grouping slices that carry an identical `sources[]` set — under the total partition, two slices with identical `sources[]` reference identical leads and can therefore only be the same scope. That derivation would drop the `scope` field from the response and make `plan-reconcile-fanout-source-mismatch` impossible by construction (the shared `sources[]` set *is* the group). It is deliberately **rejected**: an explicit `scope` id is the only collision-free **name stem** when matched leads carry different slugs. `docs:password-reset` and `legacy:reset-password` reconcile to one slice, but there is no non-arbitrary derived name for it unless the agent names the scope (`password-reset`) — deriving from either source's slug would privilege one source over the other. The explicit id additionally anchors the scope-level `rationale` and the deduped `plan.reconcile.agent` journal payload. The cost of keeping it is exactly one extra invariant — `plan-reconcile-fanout-source-mismatch`, that slices sharing a `scope` carry identical `sources[]` — plus the agent's obligation to mint a stable id and reuse it verbatim across a fan-out group. `scope` is propose-time only; it is never written to `plan.yaml` (slice identity on disk is the derived `name`, and fan-out membership is recoverable from identical `sources[]`).
+
 ## Envelope
 
 Request and response validate against `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), with a closed `kind: request | response` discriminator.
@@ -209,11 +213,12 @@ Human curation happens **after** propose and **before** execution. `/spec:plan` 
 
 The agent renders cross-source merges into `change.md` so Gate 1 can review them. The kernel does not judge grouping correctness — it validates partition shape, derives names, and writes slices.
 
-Operator override paths at Gate 1 (see [decision log §"Automated propose"](../docs/explanation/decision-log.md)):
+Operator override paths at Gate 1 (see [decision log §"Automated propose"](../docs/explanation/decision-log.md)). **Grouping and deferral** use re-propose, `plan add`, `plan remove`, or the recipes below. **`plan amend`** is the scalpel for divergence, authority overrides, and single-field / single-source fixes:
 
-- **`specrun plan amend`** — relabel, rebind sources/project/depends-on, accept or reject divergence; compose with `plan add` / `plan remove` for split and merge
-- **`specrun plan remove <entry>`** — drop a pending entry to defer its lead(s) out of this change (replaceable plan only)
-- **`specrun plan amend --add-alias`** — record a cross-source bridge on `discovery.md` for the next replan (not a propose-time lock)
+- **`specrun plan propose --from`** — re-run agent grouping (replaces all slices on a replaceable plan)
+- **`specrun plan add` / `specrun plan remove`** — append or drop pending entries (structural edits)
+- **`specrun plan amend <entry>`** — relabel, rebind sources/project/depends-on, accept or reject divergence; compose with `plan add` / `plan remove` for split and merge
+- **`specrun plan amend --add-alias`** — record a cross-source bridge on `discovery.md` for the next replan (not a propose-time lock; requires an existing `<entry>` positional even though the write targets `discovery.md`)
 - **Re-propose** — re-run `propose --from` on a still-pending plan after fixing `discovery.md` or adjusting the agent response
 
 ### Gate 1 recipes
@@ -236,7 +241,7 @@ These plan-time signals stay in the skill layer and existing CLI amend/remove pa
 
 - **`## Tentative merges` in `change.md`** — uncertain groupings; the agent never edits `discovery.md`.
 - **`## Likely divergences` in `change.md`** — materially disagreeing per-source summaries after `propose --from` succeeds.
-- **`plan.yaml.slices[].divergence: likely`** — staged after `propose --from` by `specrun plan amend <plan> <slice> --divergence likely`, because `propose --from` is the slice writer and slices do not exist until it runs. This is the only writer of the `divergence` field; `plan create` scaffolds an empty plan and never stamps divergence.
+- **`plan.yaml.slices[].divergence: likely`** — staged after `propose --from` by `specrun plan amend <entry> --divergence likely`, because `propose --from` is the slice writer and slices do not exist until it runs. This is the only writer of the `divergence` field; `plan create` scaffolds an empty plan and never stamps divergence.
 
 D2 partition invariants (total lead coverage, at-most-one-lead-per-source per scope, fan-out `sources[]` consistency) are enforced only by `propose --from`. Gate 1 edits through `plan add`, `plan amend`, and `plan remove` may violate those invariants deliberately — including same-source fusion via `plan amend --sources` — because the operator owns that risk before stamping `approved`.
 
@@ -250,7 +255,7 @@ During `/spec:plan`, the agent:
 4. Adds `rationale` on non-obvious cross-source matches, plus `depends-on` and optional `name` on slices.
 5. Calls `specrun plan propose --from <response.json>`.
 6. Renders cross-source match review prose into `change.md` for Gate 1.
-7. When summaries materially disagree on a matched slice, invokes `specrun plan amend <plan> <slice> --divergence likely`.
+7. When summaries materially disagree on a matched slice, invokes `specrun plan amend <entry> --divergence likely`.
 
 The agent never writes `plan.yaml`, never writes `discovery.md`, and never decides authority.
 

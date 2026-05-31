@@ -62,7 +62,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 
 **Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
 **Created by:** `/spec:plan` (via `specrun plan create`)
-**Modified by:** `specrun plan add`, `specrun plan amend`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
+**Modified by:** `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 

@@ -40,7 +40,7 @@ Each slice's `.metadata.yaml` tracks an independent lifecycle:
 | `merged`   | Specs applied to baseline; slice archived                               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specrun plan amend --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
+`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specrun plan amend <entry> --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
 
 ## Transitions
 

@@ -37,7 +37,7 @@ hint: Resolve the baseline conflict by editing the slice's delta specs (or
       /spec:execute. The plan entry stays in-progress until the merge lands.
 ```
 
-Re-entry contract: the next `/spec:execute` resumes at `/spec:merge` (slice lifecycle is still `built`). If the operator chose to drop the slice instead, they run `/spec:drop <slice> reason "<rationale>"`, amend the plan entry via `specrun plan amend <plan> <slice> ...` as needed to unblock the queue, then re-run `specrun plan next` (or `/spec:execute`) — not `specrun plan transition <slice> done`, which is reserved for successful merges.
+Re-entry contract: the next `/spec:execute` resumes at `/spec:merge` (slice lifecycle is still `built`). If the operator chose to drop the slice instead, they run `/spec:drop <slice> reason "<rationale>"`, amend the plan entry via `specrun plan amend <entry> ...` as needed to unblock the queue, then re-run `specrun plan next` (or `/spec:execute`) — not `specrun plan transition <slice> done`, which is reserved for successful merges.
 
 ## 3. Drained
 

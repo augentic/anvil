@@ -70,4 +70,4 @@ When two source adapters surface the same unit of work, each survey writes its *
 - summary: POST /users handler validating email + password and inserting the new user record.
 ```
 
-When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specrun plan amend <name> <slice> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source summary; pair-level detail lives in `change.md`.
+When the two surfacing sources disagree on the summary materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specrun plan amend <entry> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side summaries in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source summary; pair-level detail lives in `change.md`.
