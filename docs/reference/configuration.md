@@ -79,7 +79,6 @@ sources:
     path: ./vendor/legacy-monolith
 slices:
   - name: identity-user-registration
-    target: omnia
     project: identity-svc
     sources:
       - source: identity-design-notes
@@ -88,7 +87,6 @@ slices:
         lead: user-registration
     status: pending
   - name: identity-password-reset
-    target: omnia
     project: identity-svc
     sources:
       - source: identity-design-notes
@@ -110,8 +108,7 @@ slices:
 | Field (per slice)        | Required | Description |
 | ------------------------ | -------- | ----------- |
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
-| `target`                 | Yes      | Target adapter identifier for the slice (or the plan-level default). |
-| `project`                | No       | Workspace project name (workspace mode only). |
+| `project`                | No       | Project this slice binds. Required when the registry declares multiple projects; optional for single-project setups (an omitted value resolves to the sole topology project). The target adapter is resolved on demand from this project — it is not stored per slice. |
 | `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
 | `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specrun plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |

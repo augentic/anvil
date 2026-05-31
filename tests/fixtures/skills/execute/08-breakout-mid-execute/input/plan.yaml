@@ -7,14 +7,11 @@ sources:
     value: "Roll the search-filter component out across the user, group, and audit list views."
 slices:
   - name: user-list-search-filter
-    target: omnia
     sources: [intent]
     status: done
   - name: group-list-search-filter
-    target: omnia
     sources: [intent]
     status: in-progress
   - name: audit-list-search-filter
-    target: omnia
     sources: [intent]
     status: pending

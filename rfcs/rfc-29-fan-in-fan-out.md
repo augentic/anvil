@@ -89,22 +89,22 @@ specrun slice model show identity-password-reset --format json                  
 specrun journal emit slice.synthesize.agent --payload '{"slice":"identity-password-reset"}'   # 29a (D12 emitter)
 ```
 
-Cross-source lead matching and project binding are the `/spec:plan` agent step's judgment (D2); `specrun plan propose --dry-run` seeds it with a flat lead catalog, and `specrun plan propose --from` is the kernel that validates the grouping, derives each slice's target from the bound project, and writes the slices through the existing plan writers. The operator curates at Gate 1 before `approved`.
+Cross-source lead matching and project binding are the `/spec:plan` agent step's judgment (D2); `specrun plan propose --dry-run` seeds it with a flat lead catalog, and `specrun plan propose --from` is the kernel that validates the grouping, binds each slice to a project (its target resolves on demand from that project), and writes the slices through the existing plan writers. The operator curates at Gate 1 before `approved`.
 
 Cross-target changes are planned as multiple slices, each bound to one target, joined by `depends-on`:
 
 ```bash
 specrun plan add identity-contracts \
   --sources docs=identity-api \
-  --target contracts@v1 --project identity-contracts
+  --project identity-contracts
 
 specrun plan add identity-service \
   --sources docs=identity-api,legacy=identity-api \
-  --target omnia@v1 --project identity-service \
+  --project identity-service \
   --depends-on identity-contracts
 ```
 
-Each entry keeps its existing one-target shape (see [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md)). In the default flow these rows are written by the D2 reconciliation kernel (`specrun plan propose --from`) projecting the agent's grouping through these same `plan add` writers; the explicit `plan add` form above stays available for manual authoring and illustrates the resulting plan shape.
+Each entry binds one project, which resolves to one target (see [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md)). In the default flow these rows are written by the D2 reconciliation kernel (`specrun plan propose --from`) projecting the agent's grouping through these same `plan add` writers; the explicit `plan add` form above stays available for manual authoring and illustrates the resulting plan shape.
 
 A downstream slice that needs another slice's output (e.g. `omnia` consuming the `contracts` schema) declares the edge with `depends-on` at the plan layer; `specrun plan next` merges the upstream slice before the dependent starts, and the dependent target reads the upstream output from the merged working tree (see [RFC-29d §"Target build envelope (D6)"](rfc-29d-target.md)). No multi-output, multi-target shape is added to a single slice — the plan layer is the only place fan-out happens.
 
@@ -127,7 +127,7 @@ Four JSON Schemas ship as draft files alongside this RFC under `[rfc-29/schemas/
 | Synthesis               | `[slice/synthesis.schema.json](rfc-29/schemas/slice/synthesis.schema.json)`       | `schemas/slice/synthesis.schema.json`      | `SYNTHESIS_JSON_SCHEMA`     | D3, D10                                          |
 
 
-All slice-model, build-request, and build-report schemas key on `(slice, target)` per D5 — none carries `outputs[]` or `output-id`. `proposal.schema.json` discriminates request vs response via closed `kind: request | response`: the request carries `leads[]` (one row per raw `(source, lead)` lead, with synopsis and optional `aliases[]` hints from `discovery.md`) and the `projects[]` topology (always at least one project; a single regular project is synthesized from `project.yaml`; each project entry carries its normalized `target` adapter); the response carries a single `slices[]` list, each row binding a `scope` id, its matched `sources[]` (members as `{ source, lead }`, at most one per source), an optional scope `rationale`, an optional `name`, `depends-on` in derived slice names, and the bound `project` — optional when only one project exists, since the kernel auto-binds it; the kernel derives each slice's `target` from the bound project's `projects[].target`. Slices sharing a `scope` id form a fan-out group and carry identical `sources[]`; the per-scope set partitions the surveyed leads exactly once. `propose --from` re-reads current `discovery.md`, rebuilds the lead catalog, and may replace `plan.yaml.slices[]` only while the plan is still replaceable (`lifecycle: pending` and all existing entries `pending`). `synthesis.schema.json` discriminates request vs response via closed `kind: request | response`; the response `model` `$ref`s `**draft-model.schema.json`**, not the persisted model (D3a).
+All slice-model, build-request, and build-report schemas key on `(slice, target)` per D5 — none carries `outputs[]` or `output-id`. `proposal.schema.json` discriminates request vs response via closed `kind: request | response`: the request carries `leads[]` (one row per raw `(source, lead)` lead, with synopsis and optional `aliases[]` hints from `discovery.md`) and the `projects[]` topology (always at least one project; a single regular project is synthesized from `project.yaml`; each project entry carries its normalized `target` adapter); the response carries a single `slices[]` list, each row binding a `scope` id, its matched `sources[]` (members as `{ source, lead }`, at most one per source), an optional scope `rationale`, an optional `name`, `depends-on` in derived slice names, and the bound `project` — optional when only one project exists, since the kernel auto-binds it; the kernel resolves each slice's target on demand from the bound project's `projects[].target` and does not write it to `plan.yaml`. Slices sharing a `scope` id form a fan-out group and carry identical `sources[]`; the per-scope set partitions the surveyed leads exactly once. `propose --from` re-reads current `discovery.md`, rebuilds the lead catalog, and may replace `plan.yaml.slices[]` only while the plan is still replaceable (`lifecycle: pending` and all existing entries `pending`). `synthesis.schema.json` discriminates request vs response via closed `kind: request | response`; the response `model` `$ref`s `**draft-model.schema.json`**, not the persisted model (D3a).
 
 ### Journal events
 
@@ -182,7 +182,7 @@ Emitted by `specrun slice validate` as a `DiagnosticReport`; a report carrying a
 | `slice-model-schema`                    | M2b       | `model.yaml` does not match `schemas/slice/model.schema.json`.                                                                                                                                                                                |
 | `slice-spec-provenance-stale`           | M2b       | Kernel-rendered provenance lines in `spec.md` disagree with projected `model.yaml` (operator hand-edit or stale render).                                                                                                                      |
 | `slice-model-provenance-drift`          | M2b       | `model.yaml.requirements[].claims` disagrees with `provenance.yaml` at `(source, id)` granularity.                                                                                                                                      |
-| `slice-model-target-drift`              | M2b       | `model.yaml.target` (or `.project`) disagrees with `plan.yaml.slices[<slice>].target` / `.project`.                                                                                                                                           |
+| `slice-model-target-drift`              | M2b       | `model.yaml.project` disagrees with `plan.yaml.slices[<slice>].project`, or `model.yaml.target` disagrees with the target resolved from that bound project.                                                                                                                                           |
 | `slice-model-source-orphan`             | M2b       | A `claims[]` entry references a `(source, id)` whose source key is absent from the slice binding / Evidence map, or whose claim id is absent from that source's Evidence. Also raised as a `specrun slice synthesize` abort before projection. |
 | `slice-model-cross-ref-orphan`          | M2b       | A `satisfies[]` `REQ-`* reference does not exist in `requirements[].id`.                                                                                                                                                                      |
 | `slice-model-claim-kind-mismatch`       | M2b       | A `claims[]` entry's `kind` (D13) disagrees with the kind recorded for that `(source, id)` in Evidence.                                                                                                                                 |

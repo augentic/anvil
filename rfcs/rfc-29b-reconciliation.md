@@ -11,7 +11,7 @@ This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sou
 Two nouns:
 
 - **scope** — the reconciled unit of work: the set of leads the agent judges to be the same piece of work, **at most one lead per source**. A scope is expressed by a shared `scope` id across one or more `slices[]` rows that carry identical `sources[]`. Cross-source matching is agent judgment from per-source `synopsis`, optional `aliases[]` hints, and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1.
-- **slice** — one `plan.yaml.slices[]` row: a `(scope, project)` pair carrying its own `sources[]` inline. A 1:1 scope is one slice; a scope may fan out to multiple slices (each project's `target` is written at projection time).
+- **slice** — one `plan.yaml.slices[]` row: a `(scope, project)` pair carrying its own `sources[]` inline. A 1:1 scope is one slice; a scope may fan out to multiple slices (each slice binds a project; its target is resolved on demand, not written to disk).
 
 Shared wire contracts are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This document is the source of truth for D2.
 
@@ -114,7 +114,7 @@ The agent may merge `docs:identity-api` with `legacy:identity-api` by shared slu
 
 `projects[]` lists every project the agent may bind and always carries at least one entry (a single regular project is synthesized from `project.yaml`). Available targets come from `projects[].target` — there is no separate request-level `targets[]`.
 
-The dry-run envelope normalizes project topology into `{ name, target, description }`: hub projects read the registry target adapter field; a single regular project resolves `.specify/project.yaml.adapter` through the target adapter resolver into a `name@vN` ref. The normalized `projects[].target` is envelope-local and is written to `plan.yaml.slices[].target`.
+The dry-run envelope normalizes project topology into `{ name, target, description }`: hub projects read the registry target adapter field; a single regular project resolves `.specify/project.yaml.adapter` through the target adapter resolver into a `name@vN` ref. The normalized `projects[].target` is envelope-local; the kernel uses it only to resolve a bound slice's target on demand and never writes it to `plan.yaml` — a slice persists only its `project`.
 
 ### N=1 degenerate example
 
@@ -147,7 +147,7 @@ slices:
       - { source: intent, lead: fix-typo }
 ```
 
-The kernel auto-binds `my-app`, derives `target: omnia@v1`, and writes one slice whose `sources[]` carries the explicit `{ source: intent, lead: fix-typo }` binding. The kernel always emits the structured `{ source, lead }` form; the bare `[intent]` shorthand stays available for hand-authoring via `specrun plan add`, but the projection kernel never depends on the slice name matching a lead.
+The kernel auto-binds `my-app` and writes one slice whose `sources[]` carries the explicit `{ source: intent, lead: fix-typo }` binding; the target (`omnia@v1`) is resolved on demand from the bound project, not persisted. The kernel always emits the structured `{ source, lead }` form; the bare `[intent]` shorthand stays available for hand-authoring via `specrun plan add`, but the projection kernel never depends on the slice name matching a lead.
 
 Example response (multi-source):
 
@@ -180,11 +180,11 @@ slices:
 
 The two same-source leads `docs:password-reset` and `docs:identity-api` stay in **separate** scopes — the agent matches across sources, never fusing one source's candidate slices. `identity-api` fans out (one body of work → a contracts crate and an omnia service), so two slices share that `scope` id and carry identical `sources[]`; `password-reset` is a 1:1 scope bound to a single project.
 
-`slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source, lead }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. **`rationale` is scope-level**: attach it on any one slice in a fan-out group (not on every row). The kernel dedupes by `scope` when echoing into the `plan.reconcile.agent` journal payload and when the agent renders `change.md`. A scope SHOULD carry `rationale` when the cross-source match is not obvious. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source, lead }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
+`slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source, lead }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. **`rationale` is scope-level**: attach it on any one slice in a fan-out group (not on every row). The kernel dedupes by `scope` when echoing into the `plan.reconcile.agent` journal payload and when the agent renders `change.md`. A scope SHOULD carry `rationale` when the cross-source match is not obvious. There is no response-level `target` — the kernel resolves it on demand from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source, lead }` form and writes `project`; the target is never written to disk.
 
 ### Persisted `plan.yaml`
 
-Projecting that multi-source response writes the following `plan.yaml` at the repo root. `scope` and `rationale` are propose-time only — neither reaches disk; the kernel derives each slice's `target` from its bound project and stamps every entry `pending`:
+Projecting that multi-source response writes the following `plan.yaml` at the repo root. `scope` and `rationale` are propose-time only — neither reaches disk; the kernel writes only each slice's bound `project` and stamps every entry `pending`. The target adapter is resolved on demand from that project and is not persisted:
 
 ```yaml
 name: identity-platform
@@ -199,14 +199,12 @@ sources:
 slices:
   - name: identity-contracts
     status: pending
-    target: contracts@v1
     project: identity-contracts
     sources:
       - { source: docs, lead: identity-api }
       - { source: legacy, lead: identity-api }
   - name: identity-service
     status: pending
-    target: omnia@v1
     project: identity-service
     depends-on: [identity-contracts]
     sources:
@@ -214,14 +212,13 @@ slices:
       - { source: legacy, lead: identity-api }
   - name: password-reset
     status: pending
-    target: omnia@v1
     project: identity-service
     sources:
       - { source: docs, lead: password-reset }
       - { source: legacy, lead: reset-password }
 ```
 
-The top-level `name` is the change name (kebab-case; the archive filename prefix). `lifecycle` carries the two stored gate states (`pending | approved`) — `currently executing` and `drained` are computed from per-entry `status` at read time. Top-level `sources` is the named-source map each slice's `sources[]` resolves against; each value is the structured `{ adapter, path? | value? }` object with exactly one of `path` or `value`. Per slice, `status` walks the collapsed `pending → in-progress → done` enum, and each entry declares at least one of `target` (`name@vN`) or `project`. Optional per-slice fields not shown here: `divergence` (`likely | accepted | rejected`), the per-slice `authority-override` map keyed by claim kind ([RFC-29c §"Authority resolution"](rfc-29c-synthesis.md)), `context`, and `description`. The normative shape is `schemas/plan/plan.schema.json`.
+The top-level `name` is the change name (kebab-case; the archive filename prefix). `lifecycle` carries the two stored gate states (`pending | approved`) — `currently executing` and `drained` are computed from per-entry `status` at read time. Top-level `sources` is the named-source map each slice's `sources[]` resolves against; each value is the structured `{ adapter, path? | value? }` object with exactly one of `path` or `value`. Per slice, `status` walks the collapsed `pending → in-progress → done` enum, and each entry binds a `project` (optional on disk — an omitted value resolves to the sole topology project; the target adapter is resolved on demand from that project, not stored per slice). Optional per-slice fields not shown here: `divergence` (`likely | accepted | rejected`), the per-slice `authority-override` map keyed by claim kind ([RFC-29c §"Authority resolution"](rfc-29c-synthesis.md)), `context`, and `description`. The normative shape is `schemas/plan/plan.schema.json`.
 
 ## Slice Names
 
@@ -246,7 +243,7 @@ Before writing, the kernel enforces:
 1. A slice may omit `project` only when exactly one project exists; otherwise every slice must name one (`plan-reconcile-project-binding-required`).
 2. The named (or auto-bound) project must exist in `projects[]` (`plan-reconcile-project-orphan`).
 
-The kernel writes `project` verbatim to `plan.yaml.slices[].project` and `target` from that project's `projects[].target` entry. Build-time routing resolves a hub project against `registry.yaml` as described in [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md).
+The kernel writes `project` verbatim to `plan.yaml.slices[].project`; the target adapter is resolved on demand from that project's `projects[].target` entry and is not persisted. Build-time routing resolves a hub project against `registry.yaml` as described in [RFC-29c §"Per-slice fan-out (D5)"](rfc-29c-synthesis.md).
 
 ## Gate 1 Review
 

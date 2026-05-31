@@ -7,14 +7,11 @@ sources:
     value: "Modernise identity: rotate password hashing, harden session cookies, retire legacy reset flow."
 slices:
   - name: password-hash-rotate
-    target: omnia
     sources: [intent]
     status: done
   - name: session-cookie-harden
-    target: omnia
     sources: [intent]
     status: in-progress
   - name: reset-flow-retire
-    target: omnia
     sources: [intent]
     status: pending

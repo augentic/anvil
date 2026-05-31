@@ -109,7 +109,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 ## P
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, archive}` only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, archive}` only.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.

@@ -131,7 +131,6 @@ Each `plan.yaml.slices[]` entry MAY carry an optional `authority-override: { <cl
 ```yaml
 slices:
   - name: identity-user-registration
-    target: omnia
     project: identity-svc
     sources:
       - key: identity-design-notes
@@ -178,7 +177,6 @@ Slice `identity-password-reset` binds three sources. `identity-design-notes` (au
 # plan.yaml fragment
 slices:
   - name: identity-password-reset
-    target: omnia
     project: identity-svc
     sources:
       - key: identity-design-notes

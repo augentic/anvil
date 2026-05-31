@@ -107,7 +107,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis. They contribute t
 - **`build`** — implementation drive: read `spec.md` + `design.md`, write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation.
 - **`merge`** — landing gate: validate the slice's output against the baseline, surface conflicts, drive the target's verification commands (e.g. `cargo build --target wasm32-wasip2 --release`).
 
-Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Specify artifacts and do not need a fourth capability. `Slice.target` in `plan.yaml` selects the target; v1 supports one target per project.
+Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Specify artifacts and do not need a fourth capability. Each slice binds a `project` in `plan.yaml`; the target adapter is resolved on demand from that project (it is not stored per slice). v1 supports one target per project.
 
 ## Resolver and cache
 

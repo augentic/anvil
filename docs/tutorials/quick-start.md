@@ -105,7 +105,6 @@ sources:
     value: "fix typo in user.rs"
 slices:
   - name: fix-typo
-    target: omnia
     sources: [intent]
     status: pending
 ```

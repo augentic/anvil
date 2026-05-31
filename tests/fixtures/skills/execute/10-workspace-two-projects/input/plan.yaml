@@ -8,12 +8,10 @@ sources:
     value: "Roll the platform-v2 changes out across the API and worker projects."
 slices:
   - name: api-platform-v2-upgrade
-    target: omnia
     project: project-a
     sources: [intent]
     status: pending
   - name: worker-platform-v2-upgrade
-    target: omnia
     project: project-b
     sources: [intent]
     status: pending

@@ -7,7 +7,6 @@ sources:
     path: ./design-notes/identity
 slices:
   - name: identity-user-registration
-    target: omnia
     sources:
       - key: identity-design-notes
         lead: user-registration

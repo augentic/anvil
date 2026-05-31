@@ -36,7 +36,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 
 ## Behavior
 
-1. **Resolve target and sources** — read `plan.yaml.slices[<slice>]` for `target:` and `sources[]`; cross-resolve against `discovery.md` lead inventory.
+1. **Resolve target and sources** — take the resolved `target` from `specrun plan next` (the plan stores no per-slice `target`) and read `sources[]` from `plan.yaml.slices[<slice>]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
 4. **Synthesize** — load target `shape` brief; write `proposal.md → specs/<unit>/spec.md → design.md → tasks.md` in fixed order.

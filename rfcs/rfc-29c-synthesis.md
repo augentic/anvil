@@ -419,7 +419,7 @@ Ids are assigned in declaration order within each section, never reused across s
 | `slice-model-schema`              | `model.yaml` does not match schema.                                          |
 | `slice-spec-provenance-stale`     | Kernel-rendered provenance in `spec.md` disagrees with `model.yaml`.         |
 | `slice-model-provenance-drift`    | `model.yaml` claims disagree with `provenance.yaml` at `(source, id)`. |
-| `slice-model-target-drift`        | `model.yaml.target` / `.project` disagrees with `plan.yaml`.                 |
+| `slice-model-target-drift`        | `model.yaml.project` disagrees with `plan.yaml`, or `model.yaml.target` disagrees with the target resolved from that bound project. |
 | `slice-model-source-orphan`       | Claim references absent source key or Evidence claim id.                     |
 | `slice-model-cross-ref-orphan`    | `satisfies[]` `REQ-*` reference missing from `requirements[].id`.            |
 | `slice-model-claim-kind-mismatch` | Claim `kind` disagrees with Evidence (D13).                                  |
@@ -432,22 +432,20 @@ Target builders consume `model.yaml` for structure and provenance, and the rende
 
 ## Per-slice fan-out (D5)
 
-Cross-target fan-out happens at the plan layer, not within a slice: each plan entry binds exactly one target adapter and an optional project ([decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project)). Each slice then follows the lifecycle `refining → refined → built → merged`.
+Cross-target fan-out happens at the plan layer, not within a slice: each plan entry binds one project, and that project resolves to exactly one target adapter ([decision log §"One plan entry, one project"](../docs/explanation/decision-log.md#one-plan-entry-one-project)). Each slice then follows the lifecycle `refining → refined → built → merged`.
 
-Every `plan.yaml.slices[]` entry carries exactly one `target` and an optional `project`:
+Every `plan.yaml.slices[]` entry binds a `project` (optional on disk — an omitted value resolves to the sole topology project); the target adapter is resolved on demand from that project and is not stored per slice:
 
 ```yaml
 slices:
   - name: identity-contracts
     status: pending
-    target: contracts@v1
     project: identity-contracts
     sources:
       - source: docs
         lead: identity-api
   - name: identity-service
     status: pending
-    target: omnia@v1
     project: identity-service
     depends-on: [identity-contracts]
     sources:

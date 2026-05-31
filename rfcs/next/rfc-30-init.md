@@ -232,7 +232,7 @@ The first concrete migrator is `V1ToV2`, covering the breaking changes called ou
 - monolithic `adapter.yaml` → `adapters/sources/<name>/adapter.yaml` + `adapters/targets/<name>/adapter.yaml`;
 - retired `change:` slash-namespace references in `AGENTS.md`-style operator notes;
 - `discovery.md` legacy candidate format → `## Candidate inventory` block with stable `id`;
-- `plan.yaml` `slices[].target` keeps its existing one-target shape under RFC-29 (per-slice fan-out, no `outputs[]`); no migration is required for this field.
+- `plan.yaml` slices bind a `project` only; the per-slice `target` field was dropped under RFC-29 (the target adapter is resolved on demand from the bound project). A V1→V2 migrator must strip any persisted `slices[].target` and ensure each slice carries a resolvable `project`.
 
 ### Atomicity
 
@@ -449,7 +449,7 @@ For the CLI: `specify init --upgrade` replaces the implicit `$UPGRADE=true` runb
 
 - [RFC-13: Extensibility](../done/rfc-13-extensibility.md) — adapter resolution and `specify init` shape.
 - [RFC-25: Workflow](../done/rfc-25-workflow.md) — closed lifecycle vocabulary the migrator preserves.
-- [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — per-slice fan-out keeps `slices[].target` unchanged (no `outputs[]`), so the `V1ToV2` migrator needs no plan-shape change for it.
+- [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — per-slice fan-out drops `slices[].target` (the target resolves on demand from the bound `project`), so the `V1ToV2` migrator strips that field and binds `project`.
 - [Specify CLI `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — current exit-code table and the "2.0 is a hard cut" policy this RFC softens.
 - [Specify CLI `DECISIONS.md` — Exit codes](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#exit-codes) — long-form rationale for the existing codes 0–3.
 - [Roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events) — downstream consumer of the new journal events.

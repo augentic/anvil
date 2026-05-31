@@ -1,5 +1,4 @@
   - name: identity-session-expiry
-    target: omnia@v1
     project: identity-svc
     sources:
       - source: identity-design-notes
