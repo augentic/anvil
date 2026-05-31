@@ -30,14 +30,12 @@ Sources: 2. Leads: 5.
 - lead-id: password-reset
 - source-key: identity-design-notes
 - summary: Registered users request a password-reset link by email; unknown emails receive the same outward response; links expire after 30 minutes.
-- tentative: true
 
 ### legacy-monolith:account-pwd-reset
 
 - lead-id: account-pwd-reset
 - source-key: legacy-monolith
 - summary: Account password-reset handler; emits a 24-hour reset token via the transactional email service.
-- tentative: true
 
 ### legacy-monolith:identity-audit-events
 

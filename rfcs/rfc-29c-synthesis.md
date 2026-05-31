@@ -337,7 +337,7 @@ slices:
         lead: identity-api
 ```
 
-The same `Lead` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Lead reconciliation (D2) proposes one slice per `(concept-id, target)` response row, each binding a `concept-id` to one target; the operator may split or merge proposed slices at Gate 1.
+The same `Lead` may appear in more than one slice's `sources[]` when both slices need the same Evidence — this is the fan-in side, not fan-out. Lead reconciliation (D2) proposes one slice per `(scope-id, project)` response row, each binding a `scope-id` to one project (the kernel derives `target` from the bound project); the operator may split or merge proposed slices at Gate 1.
 
 ### Lifecycle
 
@@ -361,7 +361,7 @@ build-report-path: build/report.yaml
 
 ### Workspace routing
 
-Unchanged from RFC-25. The slice's `project` was bound at plan time by the D2 reconciliation step ([RFC-29b §"Project selection"](rfc-29b-lead-reconciliation.md)) and stored on `plan.yaml.slices[].project`; build-time routing only *resolves* that already-chosen name. `/spec:build` for a workspace-routed slice resolves the slice's `project` against the registry, prepares that project slot, writes target-specific files, records generated paths in the build report, and restores CWD to the workspace root. The plan lock stays at the workspace root. Cross-slice ordering — e.g. building `identity-contracts` before `identity-service` because the latter `depends-on` the former — is enforced by `specrun plan next`, not by anything inside a slice.
+Unchanged from RFC-25. The slice's `project` was bound at plan time by the D2 reconciliation step ([RFC-29b §"Project Binding"](rfc-29b-reconciliation.md#project-binding)) and stored on `plan.yaml.slices[].project`; build-time routing only *resolves* that already-chosen name. `/spec:build` for a workspace-routed slice resolves the slice's `project` against the registry, prepares that project slot, writes target-specific files, records generated paths in the build report, and restores CWD to the workspace root. The plan lock stays at the workspace root. Cross-slice ordering — e.g. building `identity-contracts` before `identity-service` because the latter `depends-on` the former — is enforced by `specrun plan next`, not by anything inside a slice.
 
 ## Synthesis execution mode (D10)
 

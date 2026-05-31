@@ -22,7 +22,7 @@ The propose sub-step matches across sources using `lead-id`, `aliases[]`, `summa
 
 The heading is `### <source-key>:<lead-id>` so two sources surfacing the same `lead-id` stay distinct blocks. Survey lead-sets MAY omit `source-key` (the CLI stamps it from the survey binding); the persisted `discovery.md` always carries it.
 
-When the agent's propose sub-step judges a reconciliation uncertain, it adds a `tentative: true` bullet to each contributing block in this section and reasons about it in `change.md` under `## Tentative merges`. The lead block keeps every other field unchanged.
+Survey adapters MAY set `tentative: true` on a lead block when the source itself is uncertain about scope. The `/spec:plan` propose sub-step never edits `discovery.md` — uncertain **cross-source** reconciliations are recorded in `change.md` under `## Tentative merges` instead (see [RFC-29b §"Out of kernel scope"](../../rfcs/rfc-29b-reconciliation.md)).
 
 ## N=1 degenerate form (`intent.survey`)
 
@@ -54,7 +54,7 @@ The slice row `propose` writes against this lead uses the bare-string shorthand 
 
 ## Multi-source skeleton
 
-When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead-id` appears once per source, each with its own `source-key` and per-source `summary`. The propose sub-step matches them by exact `lead-id` (or alias) across source keys and writes one `slices[]` row with both bindings:
+When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead-id` appears once per source, each with its own `source-key` and per-source `summary`. The propose sub-step matches them by exact `lead-id` (or alias) across source keys — kernel-locked when provable, semantic when not — and writes one or more `slices[]` rows via `specrun plan propose --from`:
 
 ```markdown
 ### identity-design-notes:user-registration

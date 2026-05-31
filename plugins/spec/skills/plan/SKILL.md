@@ -42,17 +42,20 @@ The skill forwards every binding to `specrun plan create --source <key>=<adapter
 
 ## Propose sub-step
 
-The agent reads the full `## Lead inventory` in `discovery.md`, matches leads across sources by `id`, `summary`, and `sources[]`, and writes one `slices[]` row per unit of work:
+Reconcile leads through the D2 envelope ([RFC-29b §"Reconciliation Flow"](../../rfcs/rfc-29b-reconciliation.md)):
 
-1. **Write the slice row** — `specrun plan add <slice> --sources <key>=<lead-id> ...`. Pass one `--sources` argument per contributing source. In workspace plans, also pass `--project <project>` to route the slice to its slot. The CLI writes the structured `{ key, lead }[]` shape; single-source intent slices may emit the bare `[intent]` shorthand.
-2. **Tentative annotations** — when reconciliation is uncertain (leads share intent but differ in scope), annotate the contributing blocks in `discovery.md` with a `tentative: true` bullet, and add a `## Tentative merges` block to `change.md` with one paragraph of reasoning per uncertain reconciliation. The plan still progresses to `pending`; the operator overrides via `specrun plan amend` at Gate 1.
-3. **`divergence: likely`** — when merged leads' `summary` strings materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), invoke `specrun plan amend <name> <slice> --divergence likely` for each affected slice. The CLI is the single writer of `plan.yaml.slices[].divergence` (any value) and fires `plan.amend.divergence` once per invocation. Also add a `## Likely divergences` block to `change.md` listing the contributing lead-pair summaries side by side; that operator-facing prose is still authored by the skill.
+1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the lead catalog (with kernel-locked groups), `projects[]`, and open leads.
+2. **Agent grouping** — partition leads into `scopes[]` and bind each scope to one or more projects in `slices[]`. Set `match-basis: semantic` on open leads merged by judgment; add `rationale`, `depends-on`, and optional `name` as needed.
+3. **Submit** — `specrun plan propose --from <response.json>` validates against a fresh catalog recomputed from `discovery.md`, replaces all `plan.yaml.slices[]` rows, and derives each slice's `target` from the bound project.
+4. **Gate 1 review prose** — render semantic and locked pairings into `change.md`. When reconciliation is uncertain, add `## Tentative merges` (never edit `discovery.md`). When merged summaries materially disagree, add `## Likely divergences` and invoke `specrun plan amend <plan> <slice> --divergence likely` so the CLI stamps `slices[].divergence`.
+
+Manual fallback: `specrun plan add <slice> --sources <key>=<lead-id> ...` with optional `--project` remains available; the default flow uses `propose --from`.
 
 Authority hierarchy does not apply at propose — without `Evidence`, reconciliation runs on headlines alone. Authority activates at slice-time synthesis (`/spec:refine`).
 
 ## Guardrails
 
-- **Single-writer for `plan.yaml`.** Every value in `plan.yaml` lands through a `specrun plan create` / `plan add` / `plan amend` call; `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
+- **Single-writer for `plan.yaml`.** Slice rows land through `specrun plan propose --from` (default) or `specrun plan add` / `plan amend` (manual fallback); `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
 - **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specrun plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
 - **Never invent verbs.** Creation/amend paths fold schema validation into `specrun plan add` / `plan amend`; validation after writes may call `specrun plan validate` for structural/health diagnostics. Confirm the plan parses by re-reading `plan.yaml` after every write.
 - **Never bypass the sandbox.** Source adapter `survey` briefs run with the bound `path` mounted read-only as the `SOURCE_DIR` preopen; the CLI denies access outside the granted preopens as `source-survey-path-denied`.
