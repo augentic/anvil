@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/slice/draft-model.schema.json",
   "title": "Specify slice draft model",
-  "description": "Validates the agent-authored `model` payload inside a synthesis envelope response per RFC-29 \u00a7Synthesis envelope and D3a. The synthesis step authors `requirements[].claims`, optional `requirements[].agreement`, requirement prose, and the non-requirements model sections; it MUST NOT set kernel-projected fields (`generated-at`, `generator`, top-level `sources`, `requirements[].id`, `.status`, `.sources`, `requirements[].tags`, or `claims[].winner`). The engine validates the response against this schema, rejects usurped kernel fields, projects the kernel, then validates the merged result against `model.schema.json`. Shared `$defs` are referenced from `model.schema.json` where shapes are identical.",
+  "description": "Validates the agent-authored `model` payload inside a synthesis envelope response per RFC-29 \u00a7Synthesis envelope and D3a. The synthesis step authors `requirements[].claims`, optional `requirements[].agreement`, requirement prose, and the non-requirements model sections; it MUST NOT set kernel-projected fields (`requirements[].id`, `.status`, or `claims[].winner`). The engine validates the response against this schema, rejects usurped kernel fields, projects the kernel, then validates the merged result against `model.schema.json`. Shared `$defs` are referenced from `model.schema.json` where shapes are identical.",
   "type": "object",
   "additionalProperties": false,
   "required": [
