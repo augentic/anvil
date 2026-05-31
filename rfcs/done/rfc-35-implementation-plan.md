@@ -180,7 +180,7 @@ Files changed:
 - `plugins/spec/rules/spec.mdc` — refine breakout summary updated.
 - `docs/reference/artifact-format.md` — "Crates (or Adapters)" → "Units"; "per adapter" → "per unit".
 - `docs/explanation/augentic-specify-usage.md` — "Crates" section → "Units"; "per adapter or crate" → "per unit".
-- `tests/fixtures/skills/refine/README.md` — layout template uses `specs/<unit>/spec.md`; fixed pre-existing source-key typo in matrix.
+- `tests/fixtures/skills/refine/README.md` — layout template uses `specs/<unit>/spec.md`; fixed pre-existing source typo in matrix.
 - All 5 fixture `expected/proposal.md` — `## Motivation` → `## Why`, `## Scope` → `## Units` (with `- <slug> — <summary>` bullet format).
 - All 5 fixture `expected/spec.md` — moved to `expected/specs/<unit>/spec.md`. Unit slugs: `user-list`, `user-registration`, `password-reset`, `password-reset-expiry`, `audit-trail-retention`.
 - `combined-docs-and-legacy` spec fixture — converted `## Scenarios` H2 to inline `#### Scenario:` H4 headings per the Step 1 reference correction.

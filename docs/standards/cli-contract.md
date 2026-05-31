@@ -82,7 +82,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 - `registry-amendment-required` — `/spec:execute` phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specrun registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specrun plan validate` health diagnostics.
+- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specrun plan validate` health diagnostics.
 - `no-branch` — `specrun workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 

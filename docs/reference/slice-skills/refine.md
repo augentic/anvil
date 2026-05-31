@@ -27,7 +27,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 | Artifact | Location | Content |
 | -------- | -------- | ------- |
 | Slice metadata | `.specify/slices/<name>/.metadata.yaml` | Lifecycle `refining` → `refined` |
-| Evidence | `.specify/slices/<name>/evidence/<source-key>.yaml` | Per-source extract output |
+| Evidence | `.specify/slices/<name>/evidence/<source>.yaml` | Per-source extract output |
 | Proposal | `.specify/slices/<name>/proposal.md` | Why the slice exists; scope |
 | Spec | `.specify/slices/<name>/specs/<unit>/spec.md` | Behavioral requirements |
 | Design | `.specify/slices/<name>/design.md` | Technical shape |

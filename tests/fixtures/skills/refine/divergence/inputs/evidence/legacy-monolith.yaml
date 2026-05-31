@@ -4,10 +4,10 @@ authority: behaviour
 lead: account-pwd-reset
 claims:
   - kind: excerpt
-    claim-id: password-reset.request
+    id: password-reset.request
     path: src/account/pwd-reset.ts#L12-L48
     excerpt: "Handler accepts { email } body; looks up the user by email; if found, persists a reset token row and dispatches an email; returns 202 in both branches so unknown emails cannot be enumerated."
   - kind: criterion
-    claim-id: password-reset.expiry
+    id: password-reset.expiry
     path: src/account/pwd-reset.ts#L52-L58
     criterion: "Reset links expire after 24 hours (computed from the persisted token row's `createdAt` plus a 24h TTL constant)."

@@ -10,14 +10,14 @@ Authority is a property of the **Evidence document** by default. Two narrow over
 
 ## Agreement → `Status` decision table
 
-Apply this table per requirement after [claim reconciliation](claim-reconciliation.md) has grouped contributing claims by `claim-id`:
+Apply this table per requirement after [claim reconciliation](claim-reconciliation.md) has grouped contributing claims by `id`:
 
 | Agreement                                  | `Status:`     | Tag in headline | Body shape                                                                            |
 | ------------------------------------------ | ------------- | --------------- | ------------------------------------------------------------------------------------- |
 | Single contributing source                 | `agreed`      | (none)          | One paragraph stating the requirement.                                                |
 | Multiple sources, all agree                | `agreed`      | (none)          | One paragraph; `Sources:` lists every contributing key, highest authority first.      |
-| Multiple sources disagree, one wins authority | `divergence` | `[divergence]`  | Winning value as the requirement; loser preserved as `Note: <source-key> observed …`. |
-| Multiple sources disagree, tied top authority | `conflict`   | `[conflict]`    | Both values preserved inline as `Note: <source-key> says …` lines; no winner.         |
+| Multiple sources disagree, one wins authority | `divergence` | `[divergence]`  | Winning value as the requirement; loser preserved as `Note: <source> observed …`. |
+| Multiple sources disagree, tied top authority | `conflict`   | `[conflict]`    | Both values preserved inline as `Note: <source> says …` lines; no winner.         |
 | No contributing Evidence at all            | `unknown`     | `[unknown]`     | One-line placeholder noting that no source supplied a claim for this requirement.    |
 
 The tag in the headline MUST match `Status:` per the coherence rule in [`tags.md`](tags.md). The provenance parser (consumed by `specrun slice validate`) refuses output where a `[…]` headline tag and `Status:` disagree.
@@ -26,7 +26,7 @@ The tag in the headline MUST match `Status:` per the coherence rule in [`tags.md
 
 ### Single source
 
-One `documentation` Evidence contributing one `requirement` claim with `claim-id: password-reset.request`:
+One `documentation` Evidence contributing one `requirement` claim with `id: password-reset.request`:
 
 ```markdown
 ### Requirement: Password reset request
@@ -70,7 +70,7 @@ Note: legacy-monolith observed 24-hour expiry; the documentation authority overr
 
 ### Disagree, tied top authority (`[conflict]`)
 
-Two `documentation` Evidence contribute claims with the same `claim-id` but contradictory values. No winner exists at the authority level:
+Two `documentation` Evidence contribute claims with the same `id` but contradictory values. No winner exists at the authority level:
 
 ```markdown
 ### Requirement: Reset link expiry [conflict]
@@ -126,7 +126,7 @@ Rules:
 
 ### Per-slice overrides on `plan.yaml`
 
-Each `plan.yaml.slices[]` entry MAY carry an optional `authority-override: { <claim-kind>: <source-key> }` map. Keys are the closed claim-kind enum; values are source keys that MUST already appear in the slice's own `sources[]` list.
+Each `plan.yaml.slices[]` entry MAY carry an optional `authority-override: { <claim-kind>: <source> }` map. Keys are the closed claim-kind enum; values are source keys that MUST already appear in the slice's own `sources[]` list.
 
 ```yaml
 slices:
@@ -149,19 +149,19 @@ slices:
 Rules:
 
 - Plan-wide and project-wide overrides are out of scope; the map is scoped to a single slice.
-- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specrun slice validate` with the structured error `slice-authority-override-orphan-source-key` before `/spec:refine` runs.
+- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specrun slice validate` with the structured error `slice-authority-override-orphan-source` before `/spec:refine` runs.
 - Operators author the map via the CLI; the synthesis playbook never asks an agent to hand-edit `plan.yaml`:
 
 ```bash
-specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source-key>
+specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>
 specrun plan amend <entry> --clear-authority-override <entry> <claim-kind>
 specrun plan amend <entry> --clear-authority-overrides
-specrun plan add   <entry> --authority-override <claim-kind>=<source-key>   # repeatable on create
+specrun plan add   <entry> --authority-override <claim-kind>=<source>   # repeatable on create
 ```
 
 ### Resolution order
 
-When synthesis reconciles claims for a single `claim-id` group and the contributing claims disagree, it walks the following ordered steps. The first step that yields a winner stops the walk; the chosen step name is recorded in `provenance.yaml` at `requirements[].resolution-trace.step` so the operator can audit which surface broke the tie.
+When synthesis reconciles claims for a single `id` group and the contributing claims disagree, it walks the following ordered steps. The first step that yields a winner stops the walk; the chosen step name is recorded in `provenance.yaml` at `requirements[].resolution-trace.step` so the operator can audit which surface broke the tie.
 
 1. **`per-slice-authority-override`** — the slice's `authority-override.<kind>` names a source key that appears in the reconciled group's contributing sources. That source wins; the requirement block carries `Status: divergence` (or `agreed` when the override happens to align with a shared value), and the runner-up survives as a `Note:` line.
 2. **`per-evidence-authority-override`** — at least one contributing Evidence carries `authority-overrides.<kind>` that resolves to a strictly-greater authority class than the other contributors' effective class for this kind. That class wins.
@@ -172,7 +172,7 @@ Steps 1–3 produce `Status: divergence` when the chosen source disagrees with a
 
 ### Worked example — both overrides at play
 
-Slice `identity-password-reset` binds three sources. `identity-design-notes` (authority `documentation`) and `runtime` (authority `behaviour`) both contribute a `criterion` claim with `claim-id: password-reset.expiry`. The documentation says expiry is 30 minutes; the runtime captures show the production handler issuing links that expire after 24 hours. The operator wants the production observation to win on this slice and pins `runtime` via per-slice override:
+Slice `identity-password-reset` binds three sources. `identity-design-notes` (authority `documentation`) and `runtime` (authority `behaviour`) both contribute a `criterion` claim with `id: password-reset.expiry`. The documentation says expiry is 30 minutes; the runtime captures show the production handler issuing links that expire after 24 hours. The operator wants the production observation to win on this slice and pins `runtime` via per-slice override:
 
 ```yaml
 # plan.yaml fragment

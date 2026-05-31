@@ -80,7 +80,7 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 
 ### `specrun plan propose --dry-run`
 
-Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source-key, lead-id)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none; per-lead `aliases` appears only when non-empty.
+Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none; per-lead `aliases` appears only when non-empty.
 
 ```json
 {
@@ -91,8 +91,8 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
     { "name": "identity-service", "target": "omnia@v1", "description": "Omnia identity service implementing auth and password flows." }
   ],
   "leads": [
-    { "source-key": "docs", "lead-id": "identity-api", "summary": "Identity API contract for authentication and account access." },
-    { "source-key": "legacy", "lead-id": "identity-api", "summary": "Legacy identity endpoints." }
+    { "source": "docs", "lead": "identity-api", "summary": "Identity API contract for authentication and account access." },
+    { "source": "legacy", "lead": "identity-api", "summary": "Legacy identity endpoints." }
   ]
 }
 ```

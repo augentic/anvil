@@ -140,14 +140,14 @@
       "additionalProperties": false,
       "required": [
         "source",
-        "claim-id",
+        "id",
         "kind"
       ],
       "properties": {
         "source": {
           "$ref": "model.schema.json#/$defs/kebabName"
         },
-        "claim-id": {
+        "id": {
           "$ref": "model.schema.json#/$defs/claimId"
         },
         "kind": {

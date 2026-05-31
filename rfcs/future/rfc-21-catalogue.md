@@ -68,7 +68,7 @@ Schema rules:
 | Field | Required | Notes |
 |---|---|---|
 | `version` | yes | `1` only. |
-| `sources[].key` | yes | Kebab-case, unique within the file. Used as `<source-key>` everywhere a plan source binding key is accepted. |
+| `sources[].key` | yes | Kebab-case, unique within the file. Used as `<source>` everywhere a plan source binding key is accepted. |
 | `sources[].url` | yes | Same shape as `registry.yaml:projects[].url` — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, `git+http(s)://`, `git+ssh://`. Stored verbatim. |
 | `sources[].language` | no | Free-form kebab-case (`typescript`, `python`, `csharp`, …). Advisory; surfaces in survey. |
 | `sources[].description` | no | Single-line free text. |
@@ -144,13 +144,13 @@ The closed-enum kind validation is unchanged. Unknown `<key>` against the catalo
 
 This is what makes Scenario 2 tractable: declare 80 repos once via `specify source add` (or generate from a manifest), then plan with `--source @legacy-billing --source @legacy-identity --source @legacy-shared` instead of three URL-bearing flags.
 
-The RFC-25 `change.md` plan brief gains a sibling input form too: an entry with `source_key: <key>` (instead of `path: ...`) resolves through the catalogue. The closed-enum source kind suffix remains the same.
+The RFC-25 `change.md` plan brief gains a sibling input form too: an entry with `source: <key>` (instead of `path: ...`) resolves through the catalogue. The closed-enum source kind suffix remains the same.
 
 ### Scaling the enumerate fan-out (`--enumerate-concurrency`)
 
 With `sources.yaml` and the shared tier-1 cache in place, `/spec:plan` gains a *parallel* fan-out: source adapter `enumerate` invocations per source are independent and feed the shared `discovery.md` candidate inventory. The plan skill may dispatch up to `--enumerate-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
 
-The byte-stable output contract is unchanged: `/spec:plan` sorts source-key blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each `enumerate` result is merged only after all invocations have completed.
+The byte-stable output contract is unchanged: `/spec:plan` sorts source blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each `enumerate` result is merged only after all invocations have completed.
 
 This is a plan-skill scheduling change, not a new source adapter operation. The `--enumerate-concurrency` knob lives on `/spec:plan` and is recorded in the change's planning context only for reproducibility.
 
@@ -187,7 +187,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 5. **Plan source binding resolution.** When `/spec:plan` resolves `--source @<key>`, materialise the cache slot if needed and lower it to the normal RFC-25 source binding shape before source adapter `enumerate` runs.
 6. **Archive snapshot.** Update `specify plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `specify-cli/schemas/archive-snapshot/schema.json`.
 7. **`--source @<key>` selector parsing.** Update `/spec:plan` invocation grammar and the CLI flag handler. Hard-fail on unknown keys.
-8. **`change.md` source-key form.** Additive plan-brief input update for `source_key: <key>`. Update brief readers.
+8. **`change.md` source form.** Additive plan-brief input update for `source: <key>`. Update brief readers.
 9. **`--enumerate-concurrency` knob.** Plan-skill change: update the enumeration step to fan out via a small concurrency primitive. Default `4`. Document trade-offs (network bandwidth, CPU) in `references/runbook.md`.
 10. **Tutorials and references.** New tutorial `docs/tutorials/multi-repo-legacy-migration.md`. Update `docs/explanation/workspace-tiers.md` to describe the shared tier-1 cache and the symlink view.
 11. **Acceptance.** Extend the cross-repo Deno acceptance suite with: an N=10 multi-source plan using `--source @<key>` (asserting catalogue lookup, cache materialisation, and enumerate concurrency); a `specify source remove` refusal when the key is in use.

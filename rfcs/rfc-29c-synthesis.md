@@ -17,7 +17,7 @@ The shared RFC-29 wire-contract registry — schemas, journal events, and valida
 | Area | IDs | Decision |
 | ---- | --- | -------- |
 | Synthesis contract | **D3**, **D3a**, **D10** | Agent-led reconciliation of `Evidence[]` runs behind a closed request/response envelope. Responses validate as `draft-model.schema.json`; persisted output validates as `model.schema.json`. Dispatch is `execution: agent | tool`, defaulting to `agent`. |
-| Projection kernel | **D8**, **D11**, **D13** | The CLI derives authority, ids, status, rendered source lists, winners, rendered provenance lines, and `provenance.yaml`. Shape briefs may influence only non-requirements sections. Claims are traceable by stable `(source, claim-id, kind)`. |
+| Projection kernel | **D8**, **D11**, **D13** | The CLI derives authority, ids, status, rendered source lists, winners, rendered provenance lines, and `provenance.yaml`. Shape briefs may influence only non-requirements sections. Claims are traceable by stable `(source, id, kind)`. |
 | Slice output | **D4** | Every synthesized slice carries `.specify/slices/<slice>/model.yaml` beside the Markdown artifacts. |
 | Planning boundary | **D5** | Each slice binds exactly one target adapter / project. Cross-target changes decompose at plan time into multiple slices joined by `depends-on`; there is no `outputs[]`. |
 
@@ -35,7 +35,7 @@ The flow is:
 
 ### Agent and kernel responsibilities
 
-1. **The synthesis step (agent).** The agent reconciles source adapter `Evidence[]` into the requirement set: which requirements exist and how claims merge or split. For each requirement it records the contributing `(source, claim-id)` claims, an `agreement` verdict (`agreed` or `disagreed`), the behavioral prose (`title`, `statement`, `scenarios[]`, `notes`), and the owning `unit`. It also authors the prose for the non-requirements model sections and the prose-only Markdown artifacts — `proposal.md`, `design.md`, `tasks.md`, and the spec bodies, the last of these written **without** `ID:` / `Sources:` / `Status:` lines.
+1. **The synthesis step (agent).** The agent reconciles source adapter `Evidence[]` into the requirement set: which requirements exist and how claims merge or split. For each requirement it records the contributing `(source, id)` claims, an `agreement` verdict (`agreed` or `disagreed`), the behavioral prose (`title`, `statement`, `scenarios[]`, `notes`), and the owning `unit`. It also authors the prose for the non-requirements model sections and the prose-only Markdown artifacts — `proposal.md`, `design.md`, `tasks.md`, and the spec bodies, the last of these written **without** `ID:` / `Sources:` / `Status:` lines.
 2. **The projection kernel (CLI).** The kernel projects deterministically over whatever structure the agent returns. It resolves authority (§"Authority resolution"), assigns `REQ` ids in declaration order, derives rendered source lists, winner markers, and `status` from the claims, agreement verdict, and resolved authority, projects `provenance.yaml`, renders provenance lines into `spec.md`, and runs the drift validators (§"Drift validation"). It never invents, drops, or re-groups requirements; it never selects a winner the resolved authority did not; and it never overrides the agent's agreement verdict.
 
 ### Command
@@ -61,7 +61,7 @@ End to end, the command resolves authority, builds the synthesis request envelop
 
 ### Evidence input
 
-Each bound source contributes one Evidence document at `evidence/<source-key>.yaml` — the per-source result of `extract`, whose normative shape is `schemas/evidence.schema.json` (distributed with the CLI, not under `rfc-29/schemas/`). Every claim carries a stable `claim-id` and a closed `kind`; per-kind body fields (`statement`, `criterion`, `replay-digest`, …) are open. The two documents the `identity-service` envelope binds below are:
+Each bound source contributes one Evidence document at `evidence/<source>.yaml` — the per-source result of `extract`, whose normative shape is `schemas/evidence.schema.json` (distributed with the CLI, not under `rfc-29/schemas/`). Every claim carries a stable `id` and a closed `kind`; per-kind body fields (`statement`, `criterion`, `replay-digest`, …) are open. The two documents the `identity-service` envelope binds below are:
 
 ```yaml
 # evidence/docs.yaml
@@ -70,11 +70,11 @@ adapter: documentation
 authority: documentation
 lead: password-reset
 claims:
-  - claim-id: password-reset.request
+  - id: password-reset.request
     kind: requirement
     statement: The system lets a registered user request a password reset link by email.
     path: docs/identity/reset.md#L4
-  - claim-id: password-reset.expiry
+  - id: password-reset.expiry
     kind: criterion
     criterion: Reset links expire after 30 minutes.
     path: docs/identity/reset.md#L7
@@ -87,12 +87,12 @@ adapter: captures
 authority: behaviour
 lead: password-reset
 claims:
-  - claim-id: users.password-reset.request
+  - id: users.password-reset.request
     kind: example
     replay-digest: sha256:9f2b…
     output: "POST /password-reset returns 202 and queues an email."
     path: src/users/reset.ts#L42
-  - claim-id: password-reset.expiry
+  - id: password-reset.expiry
     kind: example
     output: "expiresAt = createdAt + 24h"
     path: src/users/reset.ts#L88
@@ -102,11 +102,11 @@ The kernel resolves authority per claim from these documents' `authority` fields
 
 ### Claim contract (D13)
 
-The claim contract keeps every requirement traceable to its Evidence by `(source, claim-id)` and by `kind`:
+The claim contract keeps every requirement traceable to its Evidence by `(source, id)` and by `kind`:
 
-- `schemas/evidence.schema.json` requires `claim-id` on every claim kind.
+- `schemas/evidence.schema.json` requires `id` on the `requirement`, `criterion`, and `example` claim kinds (optional on other kinds).
 - `model.yaml.requirements[].claims[]` requires `kind` (mirroring `claimKind`) so the kernel can resolve per-kind authority and populate `provenance.yaml`.
-- `slice-model-claim-kind-mismatch` fires on kind drift, and `slice-model-source-orphan` fires on an absent `(source, claim-id)`.
+- `slice-model-claim-kind-mismatch` fires on kind drift, and `slice-model-source-orphan` fires on an absent `(source, id)`.
 
 ### Synthesis execution mode (D10)
 
@@ -177,8 +177,8 @@ model:                              # draft-model.schema.json — agent-authored
       unit: password-reset
       agreement: agreed
       claims:
-        - { source: docs,   claim-id: password-reset.request,       kind: requirement }
-        - { source: legacy, claim-id: users.password-reset.request, kind: example }
+        - { source: docs,   id: password-reset.request,       kind: requirement }
+        - { source: legacy, id: users.password-reset.request, kind: example }
       statement: The system lets a registered user request a password reset link by email.
       scenarios:
         - Given a registered email, when the user requests a reset, then the system accepts it.
@@ -213,7 +213,7 @@ Authority is resolved before dispatch and passed into the envelope. The resoluti
 
 The synthesis step never re-decides authority or marks winners. Once it returns the claims and `agreement` verdict, the kernel projects the winners and derives `status` plus rendered source lists from them.
 
-**Per-claim resolution (mixed kinds).** Authority is keyed by `ClaimKind`, so a single requirement can mix claim kinds. For each claim `(source, claim-id, kind)` the kernel walks the same order — per-slice `authority-override[kind]` → Evidence `authority-overrides[kind]` → document-level `authority` → the default `intent > documentation > behaviour`. Among `disagreed` claims, the winner is the strictly-greatest effective class; a tie at the top class yields `conflict` with no winner markers.
+**Per-claim resolution (mixed kinds).** Authority is keyed by `ClaimKind`, so a single requirement can mix claim kinds. For each claim `(source, id, kind)` the kernel walks the same order — per-slice `authority-override[kind]` → Evidence `authority-overrides[kind]` → document-level `authority` → the default `intent > documentation > behaviour`. Among `disagreed` claims, the winner is the strictly-greatest effective class; a tie at the top class yields `conflict` with no winner markers.
 
 The two operator override surfaces are both keyed by `ClaimKind` but differ in shape. The per-slice `authority-override` on `plan.yaml` maps a kind directly to the winning **source key** (authored via `specrun plan amend --authority-override`); the per-Evidence `authority-overrides` raises a kind's **authority class** for one Evidence document only, and loses to the per-slice surface:
 
@@ -317,8 +317,8 @@ requirements:
     status: agreed       # kernel
     unit: password-reset
     claims:
-      - { source: docs,   claim-id: password-reset.request,       kind: requirement }
-      - { source: legacy, claim-id: users.password-reset.request, kind: example }
+      - { source: docs,   id: password-reset.request,       kind: requirement }
+      - { source: legacy, id: users.password-reset.request, kind: example }
     statement: The system lets a registered user request a password reset link by email.
     scenarios:
       - Given REQ-001 and a registered email, when the user requests a reset, then the system accepts the request.
@@ -355,12 +355,12 @@ requirements:
     sources: [docs, legacy]
     contributing-claims:
       - source: docs
-        claim-id: password-reset.request
+        id: password-reset.request
         kind: requirement
         value: "The system lets a registered user request a password reset link by email."
         path: docs/identity/reset.md#L4
       - source: legacy
-        claim-id: users.password-reset.request
+        id: users.password-reset.request
         kind: example
         value: "POST /password-reset returns 202 and queues an email."
         path: src/users/reset.ts#L42
@@ -370,13 +370,13 @@ requirements:
     sources: [docs, legacy]
     contributing-claims:
       - source: docs
-        claim-id: password-reset.expiry
+        id: password-reset.expiry
         kind: criterion
         value: "Reset links expire after 30 minutes."
         path: docs/identity/reset.md#L7
         winner: true
       - source: legacy
-        claim-id: password-reset.expiry
+        id: password-reset.expiry
         kind: example
         value: "expiresAt = createdAt + 24h"
         path: src/users/reset.ts#L88
@@ -418,7 +418,7 @@ Ids are assigned in declaration order within each section, never reused across s
 | --------------------------------- | ---------------------------------------------------------------------------- |
 | `slice-model-schema`              | `model.yaml` does not match schema.                                          |
 | `slice-spec-provenance-stale`     | Kernel-rendered provenance in `spec.md` disagrees with `model.yaml`.         |
-| `slice-model-provenance-drift`    | `model.yaml` claims disagree with `provenance.yaml` at `(source, claim-id)`. |
+| `slice-model-provenance-drift`    | `model.yaml` claims disagree with `provenance.yaml` at `(source, id)`. |
 | `slice-model-target-drift`        | `model.yaml.target` / `.project` disagrees with `plan.yaml`.                 |
 | `slice-model-source-orphan`       | Claim references absent source key or Evidence claim id.                     |
 | `slice-model-cross-ref-orphan`    | `satisfies[]` `REQ-*` reference missing from `requirements[].id`.            |
@@ -443,7 +443,7 @@ slices:
     target: contracts@v1
     project: identity-contracts
     sources:
-      - key: docs
+      - source: docs
         lead: identity-api
   - name: identity-service
     status: pending
@@ -451,9 +451,9 @@ slices:
     project: identity-service
     depends-on: [identity-contracts]
     sources:
-      - key: docs
+      - source: docs
         lead: identity-api
-      - key: legacy
+      - source: legacy
         lead: identity-api
 ```
 
@@ -466,5 +466,5 @@ The following are registered in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in
 - **Journal events:** `slice.synthesize.started`, `slice.synthesize.authority-resolved`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.model.show.requested`.
 - **Validation findings:** `slice-model-schema`, `slice-spec-provenance-stale`, `slice-model-provenance-drift`, `slice-model-target-drift`, `slice-model-source-orphan`, `slice-model-cross-ref-orphan`, `slice-model-claim-kind-mismatch`, `slice-model-id-grammar`, `slice-synthesize-forbidden-input-leak` — blocking findings gate the transition at exit 2.
 - **Operational validation codes:** `slice-synthesize-kernel-field-usurped`, `slice-synthesize-execution-mode-required` — these abort `specrun slice synthesize` before projection.
-- **Schemas:** `schemas/slice/model.schema.json`, `schemas/slice/draft-model.schema.json`, `schemas/slice/synthesis.schema.json` — registered together so relative `$ref`s resolve. Plus the D13 `claim-id` requirement on `schemas/evidence.schema.json`.
+- **Schemas:** `schemas/slice/model.schema.json`, `schemas/slice/draft-model.schema.json`, `schemas/slice/synthesis.schema.json` — registered together so relative `$ref`s resolve. Plus the D13 `id` requirement on `schemas/evidence.schema.json`.
 

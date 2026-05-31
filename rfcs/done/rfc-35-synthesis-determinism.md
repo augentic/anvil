@@ -96,7 +96,7 @@ Replace with:
 ### Requirement: <Human-readable name>[ <tag>]
 
 ID: REQ-<NNN>
-Sources: [<source-key>, <source-key>, …]
+Sources: [<source>, <source>, …]
 Status: <agreed|unknown|conflict|divergence>
 
 <Requirement body — one or more paragraphs.>
@@ -162,7 +162,7 @@ This RFC does not add `specrun slice provenance` or `specrun journal emit`. F5 a
 - `provenance.yaml` records synthesis judgment: which Evidence claims contributed to each requirement and how disagreements resolved. The existing schema and `specrun slice validate` drift gate already catch malformed or stale output. The immediate fix is to keep the authoring contract explicit and improve diagnostics where they point at the wrong cause.
 - Journal events should be emitted by the deterministic command that owns the state transition or validation pass. A generic skill-facing emitter would move event-shape responsibility into call sites and create a broad API from one low-cost observation.
 
-`provenance.yaml` authoring guidance should stay minimal: one top-level `version`, `slice`, `generated-at`, `generator`, and ordered `requirements[]`; one requirement row per `REQ-*`; each row mirrors `spec.md`'s `Status:` and `Sources:` lines, lists every consulted `(source, claim-id, kind)` under `contributing-claims`, and records one existing `resolution` enum value. The file remains validated by the existing schema and drift checks; this RFC does not change the schema.
+`provenance.yaml` authoring guidance should stay minimal: one top-level `version`, `slice`, `generated-at`, `generator`, and ordered `requirements[]`; one requirement row per `REQ-*`; each row mirrors `spec.md`'s `Status:` and `Sources:` lines, lists every consulted `(source, id, kind)` under `contributing-claims`, and records one existing `resolution` enum value. The file remains validated by the existing schema and drift checks; this RFC does not change the schema.
 
 If repeated `/spec:execute` runs still show `provenance.yaml` or journal authoring as the dominant source of retries after D1-D5 and D8-D9 land, a later RFC can propose the smallest specific writer surface with fresh evidence.
 

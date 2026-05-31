@@ -1,6 +1,6 @@
 # Runtime capture extract
 
-`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `captures`. Your job: for a single `(source-key, lead-id)` pair, locate the matching `tests/data/replays/<handler>/` directory under `$SOURCE_DIR`, read every scenario capture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `captures`. Your job: for a single `(source, lead)` pair, locate the matching `tests/data/replays/<handler>/` directory under `$SOURCE_DIR`, read every scenario capture, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`.
 
 ## Binding
 
@@ -25,8 +25,8 @@ Load both references — they own everything the brief does not spell out.
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the bound capture root.
-- **`<lead-id>`** — the kebab-case id of the `## Lead inventory` block this binding resolves to. It matches the `tests/data/replays/<lead-id>/` directory name verbatim.
-- **`<source-key>`** — the plan-level binding key under `plan.yaml.sources.<key>`.
+- **`<lead>`** — the kebab-case id of the `## Lead inventory` block this binding resolves to. It matches the `tests/data/replays/<lead>/` directory name verbatim.
+- **`<source>`** — the plan-level binding key under `plan.yaml.sources.<key>`.
 - **`$SCRATCH_DIR`** — per-slice write-only scratch space; use only for unavoidable intermediate state.
 
 `$PROJECT_DIR` is unreachable, host env is unreadable, the network is denied. Writes back into `$SOURCE_DIR` are denied.
@@ -40,14 +40,14 @@ One `kind: example` claim per scenario file. A handler directory with 47 `<scena
 Emit Evidence YAML per [`extraction-mapping.md`](../references/extraction-mapping.md). Minimal shape:
 
 ```yaml
-source: <source-key>
+source: <source>
 adapter: captures
 authority: behaviour
-lead: <lead-id>
+lead: <lead>
 claims:
   - kind: example
-    claim-id: <lead-id>.<scenario-stem>
-    path: tests/data/replays/<lead-id>/<scenario>.json
+    id: <lead>.<scenario-stem>
+    path: tests/data/replays/<lead>/<scenario>.json
     replay-digest: sha256:<hex>
     statement: "<single-line summary>"
     input: { ... }

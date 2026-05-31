@@ -4,7 +4,7 @@ authority: behaviour
 lead: user-registration
 claims:
   - kind: excerpt
-    claim-id: users.register.email-validation
+    id: users.register.email-validation
     path: src/users/register.ts#L12-L34
     excerpt: "Handler validates email against an RFC-5322 regex; returns 400 with { error: \"invalid-email\" } on failure, otherwise inserts the user and returns 201 with the persisted record."
   - kind: type

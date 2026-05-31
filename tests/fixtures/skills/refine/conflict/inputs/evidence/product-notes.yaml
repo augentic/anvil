@@ -4,6 +4,6 @@ authority: documentation
 lead: password-reset-expiry
 claims:
   - kind: requirement
-    claim-id: password-reset.expiry
+    id: password-reset.expiry
     path: password-reset.md#L5
     statement: "Reset links expire after 30 minutes."

@@ -14,8 +14,8 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 ### Synthesis terms
 
-- **lead** — slice-sized unit emitted by `survey`; one raw, unmerged block per lead under `## Lead inventory` in `discovery.md`, each identified by its `(source-key, lead-id)` pair (`lead-id` is unique only within a `source-key`).
-- **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+- **lead** — slice-sized unit emitted by `survey`; one raw, unmerged block per lead under `## Lead inventory` in `discovery.md`, each identified by its `(source, lead)` pair (`lead` is unique only within a `source`).
+- **evidence** — per-source result of `extract`; structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`.
 - **provenance** — the sources behind one requirement (the `Sources:` list in `spec.md`).
 - **conflict / divergence** — unresolvable vs authority-resolved disagreement; surfaced inline as `[conflict]` / `[divergence]` tags on requirement headers.
 - **authority** — closed enum (`intent` > `documentation` > `behaviour`) controlling who wins a disagreement.
@@ -50,7 +50,7 @@ The full mechanics — per-kind authority overrides, per-slice operator override
 
 - **Authority resolution order** — per-slice override → per-Evidence per-kind override → Evidence document-level `authority:` → conflict. See [`plugins/spec/references/synthesis/authority.md`](plugins/spec/references/synthesis/authority.md) for the resolution order and override surfaces.
 - **`captures` source adapter** — consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`.
-- **Authority-override authoring** — `specrun plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specrun slice validate` with `slice-authority-override-orphan-source-key`.
+- **Authority-override authoring** — `specrun plan amend --authority-override <slice> <kind>=<key>`; orphan source keys are rejected by `specrun slice validate` with `slice-authority-override-orphan-source`.
 - **Reconciliation drift** — `specrun slice validate` catches REQ-id and contributing-claim drift under `slice-provenance-drift`.
 - **Adapter opt-out of extraction cache** — `cache: opt-out` on `adapter.yaml`.
 
@@ -74,7 +74,7 @@ N=1 is degenerate, not special: `intent.survey` produces one lead, the operator 
 
 Phase skills are agent-driven orchestrators. Every deterministic operation — manifest validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, baseline conflict detection, delta merge, archive move — runs through the `specify` CLI. Skill markdown drives the agent-side work: eliciting operator intent, reading brief bodies, writing evidence and synthesized artifacts, invoking specialist skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
-The CLI surface skills depend on is documented in [`specify` `--help`](https://github.com/augentic/specify-cli). The headline groups: `specrun init`, `specrun source {resolve, survey, extract}`, `specrun target {resolve}`, `specrun slice {create, transition, validate, merge}`, `specrun plan {create, add, amend, transition, next, archive}`, `specrun workspace {sync, push, prepare}`, `specrun tool run` (WASI tool dispatch — `contract`, `vectis`, …), and `specrun journal emit` (the guarded front door onto the closed journal taxonomy for agent-orchestrated phases). `specrun source survey`/`extract` resolve `<source-key>` against `plan.yaml.sources.<key>` and run the bound source adapter under the declared `execution` mode.
+The CLI surface skills depend on is documented in [`specify` `--help`](https://github.com/augentic/specify-cli). The headline groups: `specrun init`, `specrun source {resolve, survey, extract}`, `specrun target {resolve}`, `specrun slice {create, transition, validate, merge}`, `specrun plan {create, add, amend, transition, next, archive}`, `specrun workspace {sync, push, prepare}`, `specrun tool run` (WASI tool dispatch — `contract`, `vectis`, …), and `specrun journal emit` (the guarded front door onto the closed journal taxonomy for agent-orchestrated phases). `specrun source survey`/`extract` resolve `<source>` against `plan.yaml.sources.<key>` and run the bound source adapter under the declared `execution` mode.
 
 Never hand-edit `.metadata.yaml`, `project.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, or `targets.yaml`; never `mkdir -p .specify/...`; never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal lifecycle set and validates inputs in one place for humans, agents, and CI.
 

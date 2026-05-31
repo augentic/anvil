@@ -1,4 +1,4 @@
-# Expected Evidence for lead `archive` under `<source-key>: screens`.
+# Expected Evidence for lead `archive` under `<source>: screens`.
 # The `archive` screen reuses the `task-row` group skeleton from `task-list`;
 # stage 6 of `screenshots.extract` promotes the second occurrence to
 # `component: task-row` (and back-fills the same slug on the first when the
@@ -11,20 +11,20 @@ lead: archive
 
 claims:
   - kind: region
-    claim-id: archive.header
+    id: archive.header
     path: task-list-two-screen.png
     screen: archive
     region: header
     title: Archive
 
   - kind: region
-    claim-id: archive.body
+    id: archive.body
     path: task-list-two-screen.png
     screen: archive
     region: body
 
   - kind: region
-    claim-id: archive.states.empty
+    id: archive.states.empty
     path: task-list-two-screen.png
     screen: archive
     region: states.empty
@@ -32,7 +32,7 @@ claims:
     state_replaces: body
 
   - kind: container
-    claim-id: archive.header.leading
+    id: archive.header.leading
     path: task-list-two-screen.png
     screen: archive
     region: header
@@ -41,7 +41,7 @@ claims:
     direction: row
 
   - kind: container
-    claim-id: archive.body.tasks
+    id: archive.body.tasks
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -51,7 +51,7 @@ claims:
     style: plain
 
   - kind: container
-    claim-id: archive.body.tasks.task-row
+    id: archive.body.tasks.task-row
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -64,7 +64,7 @@ claims:
     align: center
 
   - kind: container
-    claim-id: archive.body.tasks.task-row.title-stack
+    id: archive.body.tasks.task-row.title-stack
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -76,7 +76,7 @@ claims:
       width: fill
 
   - kind: container
-    claim-id: archive.states.empty.hero
+    id: archive.states.empty.hero
     path: task-list-two-screen.png
     screen: archive
     region: states.empty
@@ -89,7 +89,7 @@ claims:
     justify: center
 
   - kind: leaf
-    claim-id: archive.header.leading.back
+    id: archive.header.leading.back
     path: task-list-two-screen.png
     screen: archive
     region: header
@@ -99,7 +99,7 @@ claims:
     label: Back
 
   - kind: leaf
-    claim-id: archive.body.tasks.task-row.checkbox
+    id: archive.body.tasks.task-row.checkbox
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -108,7 +108,7 @@ claims:
     label: Restore task
 
   - kind: leaf
-    claim-id: archive.body.tasks.task-row.title-stack.title
+    id: archive.body.tasks.task-row.title-stack.title
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -118,7 +118,7 @@ claims:
     style: body
 
   - kind: leaf
-    claim-id: archive.body.tasks.task-row.title-stack.subtitle
+    id: archive.body.tasks.task-row.title-stack.subtitle
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -128,7 +128,7 @@ claims:
     color: on-surface-variant
 
   - kind: leaf
-    claim-id: archive.body.tasks.task-row.chevron
+    id: archive.body.tasks.task-row.chevron
     path: task-list-two-screen.png
     screen: archive
     region: body
@@ -138,7 +138,7 @@ claims:
     color: on-surface-variant
 
   - kind: leaf
-    claim-id: archive.states.empty.hero.title
+    id: archive.states.empty.hero.title
     path: task-list-two-screen.png
     screen: archive
     region: states.empty
@@ -148,7 +148,7 @@ claims:
     style: title
 
   - kind: leaf
-    claim-id: archive.states.empty.hero.subtitle
+    id: archive.states.empty.hero.subtitle
     path: task-list-two-screen.png
     screen: archive
     region: states.empty

@@ -5,7 +5,7 @@ Walk `$SOURCE_DIR` (a read-only preopen of the operator-bound docs path) and emi
 ## Inputs
 
 - `$SOURCE_DIR` — read-only directory holding the bound documentation set. Never write here.
-- `<source-key>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in for context and stamps each lead's `source-key` itself, so this brief does not emit it.
+- `<source>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in for context and stamps each lead's `source` itself, so this brief does not emit it.
 - `$SCRATCH_DIR` — per-slice write-only scratch space; use only if intermediate state is unavoidable.
 
 ## What is a top-level concept
@@ -19,21 +19,21 @@ Skip files that contain no behavioural content (e.g. tables of contents, license
 
 ## Lead id and summary
 
-- `lead-id`: kebab-case slug derived from the concept's heading. Lowercase, strip punctuation, replace whitespace with `-`. Example: `# Password reset` -> `password-reset`. Re-surveying the same source replaces by `(source-key, lead-id)`, so stability matters more than prettiness.
+- `lead`: kebab-case slug derived from the concept's heading. Lowercase, strip punctuation, replace whitespace with `-`. Example: `# Password reset` -> `password-reset`. Re-surveying the same source replaces by `(source, lead)`, so stability matters more than prettiness.
 - `summary`: a content-bearing description lifted (or lightly compressed) from the concept's opening paragraph — the first non-heading, non-list paragraph after the heading. Name the concept's behaviour and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the docs do not state, and never spill slice-time detail here — that is `documentation.extract`'s job.
 
 ## Output
 
-Return one block per lead, in alphabetical `lead-id` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
+Return one block per lead, in alphabetical `lead` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
 
 ```markdown
 ### password-reset
 
-- lead-id: password-reset
+- lead: password-reset
 - summary: Account service that lets a registered user request a password reset link by email.
 ```
 
-Field order is fixed (`lead-id`, `summary`). Do not emit `source-key`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
+Field order is fixed (`lead`, `summary`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
 
 ## Worked example
 
@@ -44,17 +44,17 @@ account.md          # top heading: "Account"
 password-reset.md   # top heading: "Password reset"
 ```
 
-Expected output (alphabetically by `lead-id`):
+Expected output (alphabetically by `lead`):
 
 ```markdown
 ### account
 
-- lead-id: account
+- lead: account
 - summary: Account service that stores per-user identity, credential, and notification preferences.
 
 ### password-reset
 
-- lead-id: password-reset
+- lead: password-reset
 - summary: Account service that lets a registered user request a password reset link by email.
 ```
 
@@ -62,8 +62,8 @@ A full input/output fixture for this example lives at [`tests/fixtures/sources/d
 
 ## Determinism
 
-- Emit leads sorted alphabetically by `lead-id`.
-- Field order inside each block is fixed: `lead-id`, `summary`.
+- Emit leads sorted alphabetically by `lead`.
+- Field order inside each block is fixed: `lead`, `summary`.
 - No timestamps, host paths, or other run-state in the output — re-running against unchanged inputs produces byte-identical blocks.
 
 ## Guardrails

@@ -17,7 +17,7 @@ expected/
 
 ## Bindings assumed by the fixture
 
-- `<source-key>` = `product-notes`
+- `<source>` = `product-notes`
 - `$SOURCE_DIR` = `input/`
 - Two lead ids: `account`, `password-reset` (alphabetical order)
 

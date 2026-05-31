@@ -12,26 +12,26 @@ lead: task-list
 
 claims:
   - kind: region
-    claim-id: task-list.header
+    id: task-list.header
     path: task-list-two-screen.png
     screen: task-list
     region: header
     title: Today
 
   - kind: region
-    claim-id: task-list.body
+    id: task-list.body
     path: task-list-two-screen.png
     screen: task-list
     region: body
 
   - kind: region
-    claim-id: task-list.fab
+    id: task-list.fab
     path: task-list-two-screen.png
     screen: task-list
     region: fab
 
   - kind: region
-    claim-id: task-list.states.empty
+    id: task-list.states.empty
     path: task-list-two-screen.png
     screen: task-list
     region: states.empty
@@ -39,7 +39,7 @@ claims:
     state_replaces: body
 
   - kind: region
-    claim-id: task-list.overlays.delete-confirm
+    id: task-list.overlays.delete-confirm
     path: task-list-two-screen.png
     screen: task-list
     region: overlays.delete-confirm
@@ -47,7 +47,7 @@ claims:
     title: Delete task?
 
   - kind: container
-    claim-id: task-list.header.trailing
+    id: task-list.header.trailing
     path: task-list-two-screen.png
     screen: task-list
     region: header
@@ -56,7 +56,7 @@ claims:
     direction: row
 
   - kind: container
-    claim-id: task-list.body.tasks
+    id: task-list.body.tasks
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -66,7 +66,7 @@ claims:
     style: plain
 
   - kind: container
-    claim-id: task-list.body.tasks.task-row
+    id: task-list.body.tasks.task-row
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -79,7 +79,7 @@ claims:
     align: center
 
   - kind: container
-    claim-id: task-list.body.tasks.task-row.title-stack
+    id: task-list.body.tasks.task-row.title-stack
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -91,7 +91,7 @@ claims:
       width: fill
 
   - kind: container
-    claim-id: task-list.states.empty.hero
+    id: task-list.states.empty.hero
     path: task-list-two-screen.png
     screen: task-list
     region: states.empty
@@ -104,7 +104,7 @@ claims:
     justify: center
 
   - kind: container
-    claim-id: task-list.overlays.delete-confirm.actions
+    id: task-list.overlays.delete-confirm.actions
     path: task-list-two-screen.png
     screen: task-list
     region: overlays.delete-confirm
@@ -115,7 +115,7 @@ claims:
     justify: end
 
   - kind: leaf
-    claim-id: task-list.header.trailing.settings
+    id: task-list.header.trailing.settings
     path: task-list-two-screen.png
     screen: task-list
     region: header
@@ -125,7 +125,7 @@ claims:
     label: Open settings
 
   - kind: leaf
-    claim-id: task-list.body.tasks.task-row.checkbox
+    id: task-list.body.tasks.task-row.checkbox
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -134,7 +134,7 @@ claims:
     label: Mark task complete
 
   - kind: leaf
-    claim-id: task-list.body.tasks.task-row.title-stack.title
+    id: task-list.body.tasks.task-row.title-stack.title
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -144,7 +144,7 @@ claims:
     style: body
 
   - kind: leaf
-    claim-id: task-list.body.tasks.task-row.title-stack.subtitle
+    id: task-list.body.tasks.task-row.title-stack.subtitle
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -154,7 +154,7 @@ claims:
     color: on-surface-variant
 
   - kind: leaf
-    claim-id: task-list.body.tasks.task-row.chevron
+    id: task-list.body.tasks.task-row.chevron
     path: task-list-two-screen.png
     screen: task-list
     region: body
@@ -164,7 +164,7 @@ claims:
     color: on-surface-variant
 
   - kind: leaf
-    claim-id: task-list.fab.action
+    id: task-list.fab.action
     path: task-list-two-screen.png
     screen: task-list
     region: fab
@@ -173,7 +173,7 @@ claims:
     name: plus
 
   - kind: leaf
-    claim-id: task-list.fab.action.label
+    id: task-list.fab.action.label
     path: task-list-two-screen.png
     screen: task-list
     region: fab
@@ -182,7 +182,7 @@ claims:
     content: Add task
 
   - kind: leaf
-    claim-id: task-list.states.empty.hero.illustration
+    id: task-list.states.empty.hero.illustration
     path: task-list-two-screen.png
     screen: task-list
     region: states.empty
@@ -191,7 +191,7 @@ claims:
     name: empty-tasks-hero
 
   - kind: leaf
-    claim-id: task-list.states.empty.hero.title
+    id: task-list.states.empty.hero.title
     path: task-list-two-screen.png
     screen: task-list
     region: states.empty
@@ -201,7 +201,7 @@ claims:
     style: title
 
   - kind: leaf
-    claim-id: task-list.states.empty.hero.subtitle
+    id: task-list.states.empty.hero.subtitle
     path: task-list-two-screen.png
     screen: task-list
     region: states.empty
@@ -212,7 +212,7 @@ claims:
     color: on-surface-variant
 
   - kind: leaf
-    claim-id: task-list.overlays.delete-confirm.message
+    id: task-list.overlays.delete-confirm.message
     path: task-list-two-screen.png
     screen: task-list
     region: overlays.delete-confirm
@@ -221,7 +221,7 @@ claims:
     content: This task will be removed permanently.
 
   - kind: leaf
-    claim-id: task-list.overlays.delete-confirm.actions.cancel
+    id: task-list.overlays.delete-confirm.actions.cancel
     path: task-list-two-screen.png
     screen: task-list
     region: overlays.delete-confirm
@@ -231,7 +231,7 @@ claims:
     style: text
 
   - kind: leaf
-    claim-id: task-list.overlays.delete-confirm.actions.delete
+    id: task-list.overlays.delete-confirm.actions.delete
     path: task-list-two-screen.png
     screen: task-list
     region: overlays.delete-confirm

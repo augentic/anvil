@@ -9,20 +9,20 @@ slices:
     target: omnia@v1
     project: account-svc
     sources:
-      - source-key: docs
-        lead-id: account-registration
+      - source: docs
+        lead: account-registration
     status: pending
   - name: password-reset
     target: omnia@v1
     project: account-svc
     sources:
-      - source-key: docs
-        lead-id: password-reset
+      - source: docs
+        lead: password-reset
     status: pending
   - name: account-audit-log
     target: omnia@v1
     project: account-svc
     sources:
-      - source-key: docs
-        lead-id: account-audit-log
+      - source: docs
+        lead: account-audit-log
     status: pending

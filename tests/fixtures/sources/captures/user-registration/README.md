@@ -17,14 +17,14 @@ expected/
 
 ## Bindings assumed by the fixture
 
-- `<source-key>` = `runtime`
+- `<source>` = `runtime`
 - `$SOURCE_DIR` = `inputs/`
 - Lead id: `user-registration` (matches the handler directory name verbatim)
 - Slice name (for the `provenance.yaml` sample): `user-registration`
 
 ## Validation
 
-The `expected/evidence.yaml` document validates against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) (the capture-backed replay workflow widened `claimKind` with `example` and requires `claim-id` on every `kind: example` claim). The `expected/provenance.yaml` document validates against [`schemas/slice/provenance.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/slice/provenance.schema.json) (workflow §D4 provenance index). The lead block in `expected/discovery.md` follows the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/lead.schema.json).
+The `expected/evidence.yaml` document validates against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) (the capture-backed replay workflow widened `claimKind` with `example` and requires `id` on every `kind: example` claim). The `expected/provenance.yaml` document validates against [`schemas/slice/provenance.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/slice/provenance.schema.json) (workflow §D4 provenance index). The lead block in `expected/discovery.md` follows the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/lead.schema.json).
 
 `replay-digest` values are real `sha256` over the on-disk capture bytes. Re-running `shasum -a 256 inputs/tests/data/replays/user-registration/*.json` MUST reproduce the digests written into `expected/evidence.yaml`.
 

@@ -62,7 +62,7 @@ Before stamping `approved`, read:
 Amend if needed:
 
 ```bash
-specrun plan amend <entry> --add-source <key>=<lead-id>
+specrun plan amend <entry> --add-source <key>=<lead>
 specrun plan transition account-revamp approved
 ```
 

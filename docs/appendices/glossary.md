@@ -45,7 +45,7 @@ The operator-defined umbrella that coordinates one or more slices through `chang
 The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specrun workspace push` publishes them.
 
 **Claim**
-One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `claim-id` for deterministic reconciliation across sources.
+One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
 
 **Conflict**
 Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by hand-editing `spec.md` or by amending sources. Tags never park the slice.
@@ -70,7 +70,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`.
 
 **Evidence**
-The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source-key>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
+The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
 
 **Execute**
 The supervised driver skill (`/spec:execute`) that loops per slice: `specrun plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
@@ -109,7 +109,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 ## P
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source-key bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, archive}` only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `target`, `project`, `sources[]`, `status`, optional `divergence`), and `lifecycle`. Written through `specrun plan {create, add, amend, transition, next, archive}` only.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
@@ -121,7 +121,7 @@ The `project` field on a slice entry that names the workspace project a slice ta
 The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specrun plan propose`. The agent returns `slices[]`, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` (one row per `(scope, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing summary pairs set `slices[].divergence: likely` via `specrun plan amend`.
 
 **Scope (reconciliation)**
-The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specrun plan propose` response `slices[]` rows that carry identical `sources[]`. The per-scope source sets declare every `(source-key, lead-id)` exactly once; one scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording and from the [Core concepts](../explanation/concepts.md) doc title.
+The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specrun plan propose` response `slices[]` rows that carry identical `sources[]`. The per-scope source sets declare every `(source, lead)` exactly once; one scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording and from the [Core concepts](../explanation/concepts.md) doc title.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.

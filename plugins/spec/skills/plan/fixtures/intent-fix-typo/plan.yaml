@@ -9,6 +9,6 @@ slices:
     target: omnia@v1
     project: my-app
     sources:
-      - source-key: intent
-        lead-id: fix-typo
+      - source: intent
+        lead: fix-typo
     status: pending

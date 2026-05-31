@@ -39,7 +39,7 @@ contracts/                                  # Baseline API contracts
 │       ├── design.md                       # Technical design
 │       ├── tasks.md                        # Implementation checklist
 │       ├── evidence/                       # Per-source extract output (managed by CLI)
-│       │   └── <source-key>.yaml
+│       │   └── <source>.yaml
 │       ├── specs/                          # Behavioral specs (one per unit)
 │       │   └── <unit>/spec.md
 │       └── contracts/                      # Per-slice contract delta (when API interactions exist)
@@ -76,7 +76,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specrun slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specrun plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the per-source `evidence/<source-key>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 

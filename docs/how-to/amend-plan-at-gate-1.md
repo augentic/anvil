@@ -33,7 +33,7 @@ Use CLI verbs — never hand-edit `plan.yaml`:
 
 ```bash
 # Add a source binding to an existing entry
-specrun plan amend <entry> --add-source <key>=<lead-id>
+specrun plan amend <entry> --add-source <key>=<lead>
 
 # Remove a source binding
 specrun plan amend <entry> --remove-source <key>
@@ -45,7 +45,7 @@ specrun plan amend <entry> --divergence likely
 specrun plan amend <entry> --divergence accepted
 
 # Override authority for a claim kind on this entry
-specrun plan amend <entry> --authority-override <entry> <kind>=<source-key>
+specrun plan amend <entry> --authority-override <entry> <kind>=<source>
 
 # Defer an entry's lead(s) without re-surveying discovery.md
 specrun plan remove <entry>

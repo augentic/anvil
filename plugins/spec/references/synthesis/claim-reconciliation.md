@@ -8,14 +8,14 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 
 | Kind            | Carrying authority class    | Where it lands                                                                                  | Reconciliation key                                |
 | --------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `requirement`   | `documentation`             | spec files (`specs/<unit>/spec.md`) — one requirement block per `claim-id` group.               | `claim-id` (required by the schema).      |
-| `criterion`     | `documentation`             | spec files — folds into the requirement block whose `claim-id` shares the same `<requirement>.*` prefix as a `#### Scenario:` H4 inline within that block; when no requirement prefix matches, attaches to the nearest requirement by source order. | `claim-id` (required by the schema).      |
-| `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source-key>)`. | None (free-form; not reconciled).              |
+| `requirement`   | `documentation`             | spec files (`specs/<unit>/spec.md`) — one requirement block per `id` group.               | `id` (required by the schema).      |
+| `criterion`     | `documentation`             | spec files — folds into the requirement block whose `id` shares the same `<requirement>.*` prefix as a `#### Scenario:` H4 inline within that block; when no requirement prefix matches, attaches to the nearest requirement by source order. | `id` (required by the schema).      |
+| `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source>)`. | None (free-form; not reconciled).              |
 | `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Why` when the section names the slice's *why*. | None (free-form; not reconciled).              |
-| `excerpt`       | `behaviour`                 | Primarily `design.md` `## Technical logic` (paraphrased). When no other source contributes a requirement on the same behaviour, also drives a `spec.md` requirement with `Status: agreed`. When a `documentation` claim contradicts, becomes commentary on the resulting `[divergence]` block. | Optional `claim-id`; fall back to grouping by handler name extracted from `path`. |
-| `type`          | `behaviour`                 | `design.md` `## Domain model` — render the `signature` field verbatim as the type's canonical shape. | Optional `claim-id`; fall back to the type name from `signature`. |
-| `call`          | `behaviour`                 | `design.md` `## APIs and integrations` (external surfaces) or `## Technical logic` (internal delegation). | Optional `claim-id`; fall back to `callee`. |
-| `example`       | `behaviour`                 | `spec.md` — folds into the requirement block whose `claim-id` shares the same prefix as the example's `claim-id` (e.g. `users.register.happy-path` corroborates the `users.register` requirement); when no requirement prefix matches, drives its own `spec.md` requirement with `Status: agreed`. `design.md` `## Technical logic` references the fixture path for the operator to inspect concrete I/O. | Required `claim-id` (per the per-kind body shape owned by `adapters/sources/captures/briefs/extract.md`). |
+| `excerpt`       | `behaviour`                 | Primarily `design.md` `## Technical logic` (paraphrased). When no other source contributes a requirement on the same behaviour, also drives a `spec.md` requirement with `Status: agreed`. When a `documentation` claim contradicts, becomes commentary on the resulting `[divergence]` block. | Optional `id`; fall back to grouping by handler name extracted from `path`. |
+| `type`          | `behaviour`                 | `design.md` `## Domain model` — render the `signature` field verbatim as the type's canonical shape. | Optional `id`; fall back to the type name from `signature`. |
+| `call`          | `behaviour`                 | `design.md` `## APIs and integrations` (external surfaces) or `## Technical logic` (internal delegation). | Optional `id`; fall back to `callee`. |
+| `example`       | `behaviour`                 | `spec.md` — folds into the requirement block whose `id` shares the same prefix as the example's `id` (e.g. `users.register.happy-path` corroborates the `users.register` requirement); when no requirement prefix matches, drives its own `spec.md` requirement with `Status: agreed`. `design.md` `## Technical logic` references the fixture path for the operator to inspect concrete I/O. | Required `id` (per the per-kind body shape owned by `adapters/sources/captures/briefs/extract.md`). |
 | `region`        | `documentation` (spatial)   | `design.md` `## UI / layout` — top-level layout regions per screen.                             | None (positional; not reconciled).             |
 | `container`     | `documentation` (spatial)   | `design.md` `## UI / layout` — grouping within a region.                                        | None (positional; not reconciled).             |
 | `leaf`          | `documentation` (spatial)   | `design.md` `## UI / layout` — individual UI element.                                           | None (positional; not reconciled).             |
@@ -23,15 +23,15 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 | `diagram`       | source-dependent            | `design.md` under the most relevant H2.                                                         | None.                                     |
 | `contract`      | source-dependent            | `design.md` `## APIs and integrations`.                                                         | None.                                     |
 
-### Deterministic reconciliation on `claim-id`
+### Deterministic reconciliation on `id`
 
-`requirement` and `criterion` claims MUST carry `claim-id` (enforced by `schemas/evidence.schema.json`). Synthesis groups every contributing claim by exact `claim-id` match across all Evidence documents — that is the cross-source reconciliation key.
+`requirement` and `criterion` claims MUST carry `id` (enforced by `schemas/evidence.schema.json`). Synthesis groups every contributing claim by exact `id` match across all Evidence documents — that is the cross-source reconciliation key.
 
-- All claims sharing one `claim-id` collapse into one `spec.md` requirement block.
+- All claims sharing one `id` collapse into one `spec.md` requirement block.
 - The `Sources:` list of the block enumerates every source key that contributed, highest authority first.
 - The block's `Status:` is decided by [`authority.md`](authority.md)'s table over the contributing authorities and the agreement state of the claim bodies.
 
-When two contributing claims share `claim-id` but their `statement:` / `criterion:` strings *agree* (after trivial whitespace normalisation), the body is the shared text and `Status: agreed`. When they *disagree*, apply the per-authority resolution below.
+When two contributing claims share `id` but their `statement:` / `criterion:` strings *agree* (after trivial whitespace normalisation), the body is the shared text and `Status: agreed`. When they *disagree*, apply the per-authority resolution below.
 
 ### Behaviour claims as corroboration
 
@@ -46,7 +46,7 @@ When two contributing claims share `claim-id` but their `statement:` / `criterio
 
 - **Default precedence vs other behaviour-class claims.** `example`, `excerpt`, and `call` are siblings at the same authority class. Operators tie-break across them via per-slice `authority-override.<kind>` on `plan.yaml` (see [`authority.md` §Per-slice overrides](authority.md#per-slice-overrides-on-planyaml)). The synthesis playbook does not silently prefer one over another.
 - **Per-Evidence override.** A `captures` Evidence document MAY emit `authority-overrides: { example: documentation }` to lift its `example` claims above the document-level `behaviour` default — rare, but useful when the captured data encodes an explicit contract the operator wants treated as documentation-class.
-- **Per-kind body.** `example` claims carry `claim-id`, `path` (the on-disk capture anchor), `replay-digest` (a `sha256:` fingerprint the cache keys against), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `adapters/sources/captures/briefs/extract.md` (the current captures reference); refer to that brief rather than mirroring the fields here.
+- **Per-kind body.** `example` claims carry `id`, `path` (the on-disk capture anchor), `replay-digest` (a `sha256:` fingerprint the cache keys against), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `adapters/sources/captures/briefs/extract.md` (the current captures reference); refer to that brief rather than mirroring the fields here.
 
 ### Spatial claims fold into design
 
@@ -62,12 +62,12 @@ The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1
 
 ## Per-authority resolution (slice-time)
 
-When a reconciled `claim-id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s [§Resolution order](authority.md#resolution-order) picks the winning Status. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
+When a reconciled `id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s [§Resolution order](authority.md#resolution-order) picks the winning Status. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
 
 - **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
-- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `claim-id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
+- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
 - **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `code-typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
-- **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `claim-id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
+- **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
 
 ## Order and stability
 

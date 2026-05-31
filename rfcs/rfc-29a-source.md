@@ -33,11 +33,11 @@ specrun journal emit slice.synthesize.agent --payload '{"slice":"identity-passwo
 Add two commands under the existing `specify source` family:
 
 ```bash
-specrun source survey <source-key> [--plan <name>] [--phase prepare|finalize] [--format json]
-specrun source extract <source-key> <lead-id> --slice <slice> [--phase prepare|finalize] [--format json]
+specrun source survey <source> [--plan <name>] [--phase prepare|finalize] [--format json]
+specrun source extract <source> <lead> --slice <slice> [--phase prepare|finalize] [--format json]
 ```
 
-`<source-key>` resolves against `plan.yaml.sources.<key>`, not against adapter name. The command then resolves the adapter from `SourceBinding.adapter`.
+`<source>` resolves against `plan.yaml.sources.<key>`, not against adapter name. The command then resolves the adapter from `SourceBinding.adapter`.
 
 Both commands locate adapter brief bodies through the `briefs-dir` field on `specrun source resolve --format json` (RFC-35 D9). M1 added `briefs-dir` (the absolute path to the resolved adapter's `briefs/` directory) to the resolve JSON envelope.
 
@@ -58,14 +58,14 @@ Both commands locate adapter brief bodies through the `briefs-dir` field on `spe
 
 For value-bound sources such as `intent`, `$SOURCE_DIR` is absent and the value is passed through a minimal source request envelope: `path:` bindings carry `source-path`, value bindings carry `value-inline: <string>`. The cache layer already distinguishes the two through `FingerprintSource::{Path, Value}` (the value variant keys on the sha256 of the literal body), so no new cache machinery is required. M1 does **not** adopt the full RFC-29d build-request schema — a two-field source envelope is sufficient and keeps `intent` (the degenerate N=1 entry point) working.
 
-Output is a lead set, validated against `schemas/discovery/lead.schema.json`, then merged into `discovery.md` by a CLI-owned merge helper (`Discovery::merge_survey`). `discovery.md` stores **raw, unmerged, per-source leads**: each block is one lead as surfaced by one source, identified by its `(source-key, lead-id)` pair (the runner stamps `source-key` from the surveyed source). "Merge into `discovery.md`" is a **per-source re-survey fold**, not cross-source collapse — the same `lead-id` may legally appear under different source keys, and cross-source unification is deferred to plan time (D2 lead reconciliation, [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2)), where `specrun plan propose --dry-run` reads the lead inventory 1:1 into a flat `leads[]` catalog. Re-running `survey` for the same source replaces that source's blocks by `(source-key, lead-id)`, preserves operator-authored `aliases[]` on surviving ids, and keeps deterministic ordering; alias-collision scoping is per `source-key`. The merge fails the whole operation on any `check_alias_collisions` hit so no partial state lands on disk. Kernel-side advisory clustering on survey metadata (for example `blocking-keys[]`) was considered for D2 and **deferred** — see the D2 deferred-work record ([`specify-cli` `DECISIONS.md` §"Lead reconciliation (D2)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2), "Deferred (rejected for D2)").
+Output is a lead set, validated against `schemas/discovery/lead.schema.json`, then merged into `discovery.md` by a CLI-owned merge helper (`Discovery::merge_survey`). `discovery.md` stores **raw, unmerged, per-source leads**: each block is one lead as surfaced by one source, identified by its `(source, lead)` pair (the runner stamps `source` from the surveyed source). "Merge into `discovery.md`" is a **per-source re-survey fold**, not cross-source collapse — the same `lead` may legally appear under different source keys, and cross-source unification is deferred to plan time (D2 lead reconciliation, [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2)), where `specrun plan propose --dry-run` reads the lead inventory 1:1 into a flat `leads[]` catalog. Re-running `survey` for the same source replaces that source's blocks by `(source, lead)`, preserves operator-authored `aliases[]` on surviving ids, and keeps deterministic ordering; alias-collision scoping is per `source`. The merge fails the whole operation on any `check_alias_collisions` hit so no partial state lands on disk. Kernel-side advisory clustering on survey metadata (for example `blocking-keys[]`) was considered for D2 and **deferred** — see the D2 deferred-work record ([`specify-cli` `DECISIONS.md` §"Lead reconciliation (D2)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2), "Deferred (rejected for D2)").
 
 ### `extract`
 
-`extract` runs the source adapter's `briefs.extract` operation for one `(source-key, lead-id)` pair and writes:
+`extract` runs the source adapter's `briefs.extract` operation for one `(source, lead)` pair and writes:
 
 ```text
-.specify/slices/<slice>/evidence/<source-key>.yaml
+.specify/slices/<slice>/evidence/<source>.yaml
 ```
 
 The CLI validates the Evidence document against `schemas/evidence.schema.json` before the write becomes visible to later synthesis. Failure leaves the slice in `refining`.
@@ -88,13 +88,13 @@ The existing `specrun source preview` (`src/runtime/commands/source/preview.rs`)
 
 - **Share the environment prep.** Factor a single internal helper — adapter resolution, brief-directory resolution (the landed RFC-35 D9 `briefs-dir`), the four-root sandbox preopen layout (`$SOURCE_DIR` / `$CAPABILITY_DIR` / `$SCRATCH_DIR` / `$PROJECT_DIR`), and `evidence/` scaffolding — and have **both** `source preview` and `source survey` / `source extract` consume it. The runner is then a thin layer that adds the workflow-integrated behaviour on top of the shared prep.
 - **Keep the surfaces distinct in role.** `source preview` stays the workflow-free dry run (adapter authoring / debugging, output under `--out`). `source survey` / `source extract` add the sandboxed `execution`-branched dispatch (D9), the RFC-27 cache fingerprint, the journal events, validate-before-visible, and the `discovery.md` merge (`survey`) / Evidence persist (`extract`). Equivalently, `preview` may be implemented as the `--dry-run --out <dir>` mode of the same runner so the dispatch code is literally shared.
-- **Align the "which lead(s)" surface.** `source preview` already takes `--lead <id>…`; `source extract` takes a positional `<lead-id>` plus `--slice`. The shared helper should use one spelling for lead selection across the family so the `preview` → `extract` path reads consistently.
+- **Align the "which lead(s)" surface.** `source preview` already takes `--lead <id>…`; `source extract` takes a positional `<lead>` plus `--slice`. The shared helper should use one spelling for lead selection across the family so the `preview` → `extract` path reads consistently.
 
 The genuinely-new machinery D1 introduces over today's `preview` — the sandbox preopens, the `tool` vs `agent` dispatch branch, the cache, the journal events, validate-before-visible, and the discovery/Evidence persistence — is what makes `survey` / `extract` workflow commands rather than a scaffolding helper; none of it should be re-implemented in `preview`.
 
 ## Skill integration
 
-The `/spec:refine` and `/spec:plan` skills call the new verbs. `refine/SKILL.md` step 3 invokes `specrun source extract <source-key> <lead-id> --slice <slice>`; the plan skill's survey path calls `specrun source survey <source-key>`. Under `execution: agent` the skill runs the brief against the prepared sandbox (`--phase prepare` then `--phase finalize`) and the CLI owns validate, persist, and journal.
+The `/spec:refine` and `/spec:plan` skills call the new verbs. `refine/SKILL.md` step 3 invokes `specrun source extract <source> <lead> --slice <slice>`; the plan skill's survey path calls `specrun source survey <source>`. Under `execution: agent` the skill runs the brief against the prepared sandbox (`--phase prepare` then `--phase finalize`) and the CLI owns validate, persist, and journal.
 
 ## Adapter execution mode (D9)
 
@@ -161,7 +161,7 @@ The emitter is deliberately thin and closed:
 - `--payload` is validated against the per-kind payload shape before the line is appended; a payload that fails its kind's required fields is rejected with `journal-emit-payload-schema` (exit 2).
 - The CLI stamps the `timestamp` (second-precision UTC) and appends one well-formed line to `.specify/journal.jsonl`. The agent never composes the envelope, the timestamp, or the wire id by hand.
 
-The "per-kind payload shape" is the closed `EventKind` enum itself — there is no parallel JSON-schema registry. The three M1 events become first-class typed variants alongside the existing `SliceExtractCacheHit` template, e.g. `SourceSurveyCacheHit { source-key, adapter, fingerprint }`, `SourceSurveyCacheMiss { source-key, adapter, fingerprint, reason }`, and `SourceExecutionAgent { source-key, adapter, operation }`. The `journal emit` guard is then a single serde round-trip: deserialize `<event-id>` + `--payload` into `EventKind`; an unknown tag yields `journal-emit-unknown-event`, a required-field failure yields `journal-emit-payload-schema`. This keeps "one closed taxonomy, one writer" with no second validation mechanism. The `reason` field reuses the closed `CacheMissReason` enum; confirm it carries the `adapter-opt-out` variant the cache-miss path references and add it if absent.
+The "per-kind payload shape" is the closed `EventKind` enum itself — there is no parallel JSON-schema registry. The three M1 events become first-class typed variants alongside the existing `SliceExtractCacheHit` template, e.g. `SourceSurveyCacheHit { source, adapter, fingerprint }`, `SourceSurveyCacheMiss { source, adapter, fingerprint, reason }`, and `SourceExecutionAgent { source, adapter, operation }`. The `journal emit` guard is then a single serde round-trip: deserialize `<event-id>` + `--payload` into `EventKind`; an unknown tag yields `journal-emit-unknown-event`, a required-field failure yields `journal-emit-payload-schema`. This keeps "one closed taxonomy, one writer" with no second validation mechanism. The `reason` field reuses the closed `CacheMissReason` enum; confirm it carries the `adapter-opt-out` variant the cache-miss path references and add it if absent.
 
 This keeps a **single emission path and a single closed taxonomy**: deterministic commands and the agent-facing verb both write the same `Event` shape through the same writer, so there is no second NDJSON format to drift. The emitter adds no new event kinds of its own — it is purely a guarded front door onto the kinds defined in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts).
 

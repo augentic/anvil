@@ -51,7 +51,7 @@ Emit one `kind: container` claim per `group`-style node organising content insid
 
 Recover layout properties when they are visually unambiguous: `gap`, `padding`, `align`, `justify`, `size: { width: fill | hug | <px> }`, `background`, `corner_radius`, `elevation`. Prefer schema-permitted scalar values (`md`, `lg`, `16`) plus a `notes.todo: tokenise <prop> <value>` on the claim over inventing a token name. The token-reference rules in [../extract.md](../extract.md) forbid inventing token names entirely.
 
-Every container claim carries a `parent:` reference to the enclosing region (or enclosing container) claim's `claim-id`, so synthesis can rebuild the hierarchy.
+Every container claim carries a `parent:` reference to the enclosing region (or enclosing container) claim's `id`, so synthesis can rebuild the hierarchy.
 
 ## 5. Infer leaves
 
@@ -67,7 +67,7 @@ Emit one `kind: leaf` claim per leaf element. Closed leaf kinds:
 
 For each leaf, copy the visible text content into `content:` / `label:` (preserving casing). If the text is unreadable or visibly truncated, emit `content: "<unreadable>"` plus a `notes.todo: confirm text` and a top-level `gaps:` entry under the same claim.
 
-Every leaf claim carries a `parent:` reference to its enclosing container or region claim's `claim-id`.
+Every leaf claim carries a `parent:` reference to its enclosing container or region claim's `id`.
 
 ## 5b. Resolve variant families
 
@@ -94,7 +94,7 @@ Walk every container claim produced in stage 4 and compare every `container: gro
 
 Apply the conservative emission policy:
 
-- Promote a container claim to `component: <slug>` only when **either** the operator confirms a candidate (a previous accepted Evidence carries the slug already) **or** the brief observes ≥2 structurally identical groups across screens of the *same run* (within `<lead-id>` plus any prior leads extracted for the same plan — synthesis aggregates across leads).
+- Promote a container claim to `component: <slug>` only when **either** the operator confirms a candidate (a previous accepted Evidence carries the slug already) **or** the brief observes ≥2 structurally identical groups across screens of the *same run* (within `<lead>` plus any prior leads extracted for the same plan — synthesis aggregates across leads).
 - Otherwise leave `component:` unset on the claim and add `notes.candidate_component: <slug>` so the operator can promote it explicitly later.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). Reserved region names (`header`, `body`, `footer`, `fab`) MUST NOT be used as slugs.
 - Derive slugs from visible content (`task-row`, `setting-row`, `chip-tag`) — never from layout shape (`row-1`, `card-2`).
@@ -117,15 +117,15 @@ Each `notes.todo` and `notes.candidate_component` surfaces in the slice's synthe
 ## Determinism
 
 - Emit claims in pipeline order: regions first (in the closed-region order above), then containers (in pre-order tree walk under each region), then leaves (in pre-order tree walk under each container).
-- `claim-id`s follow the dotted-kebab grammar defined in [../extract.md](../extract.md). Re-running against unchanged inputs produces byte-identical Evidence.
+- `id`s follow the dotted-kebab grammar defined in [../extract.md](../extract.md). Re-running against unchanged inputs produces byte-identical Evidence.
 - Quote `content` / `label` / `title` verbatim from the screen where legible. Light grammatical normalisation (terminal punctuation) is allowed; rephrasing is not.
 - Do not invent layout properties. Omit `gap` / `padding` / `align` / `size` when measurement is unconfident; emit `notes.todo` instead.
 - Do not include timestamps, host paths, or other run-state in the output.
 
 ## Idempotence
 
-Re-runs are additive and conservative; the CLI replaces Evidence by `(<source-key>, <lead-id>)` tuple, but within a run:
+Re-runs are additive and conservative; the CLI replaces Evidence by `(<source>, <lead>)` tuple, but within a run:
 
 - A re-run against the same source images MAY refine previously emitted body fields when the same images still support the refinement.
-- Operator overrides committed at synthesis time (post-reconciliation edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `claim-id`s so the reconciliation layer can detect and preserve operator edits.
-- When the new screenshots no longer contain a previously inferred element, simply do not emit its claim. The synthesis layer detects the drop via the missing `claim-id` and tags affected requirements with `[unknown]` / `[divergence]` — there is no `# stale-source:` annotation at the Evidence layer.
+- Operator overrides committed at synthesis time (post-reconciliation edits in `spec.md` / `design.md`) are NOT visible to `extract`; the brief only sees the source images. Use stable `id`s so the reconciliation layer can detect and preserve operator edits.
+- When the new screenshots no longer contain a previously inferred element, simply do not emit its claim. The synthesis layer detects the drop via the missing `id` and tags affected requirements with `[unknown]` / `[divergence]` — there is no `# stale-source:` annotation at the Evidence layer.

@@ -12,17 +12,17 @@ slices:
     target: omnia@v1
     project: identity-svc
     sources:
-      - source-key: identity-design-notes
-        lead-id: user-registration
-      - source-key: legacy-monolith
-        lead-id: user-registration
+      - source: identity-design-notes
+        lead: user-registration
+      - source: legacy-monolith
+        lead: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia@v1
     project: identity-svc
     sources:
-      - source-key: identity-design-notes
-        lead-id: password-reset
-      - source-key: legacy-monolith
-        lead-id: account-pwd-reset
+      - source: identity-design-notes
+        lead: password-reset
+      - source: legacy-monolith
+        lead: account-pwd-reset
     status: pending

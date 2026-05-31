@@ -40,7 +40,7 @@ A plan is replaceable only while `plan.lifecycle` is `pending` and every existin
 ## Reconciliation Flow
 
 1. `/spec:plan` runs `specrun plan propose --dry-run --format json`.
-2. The CLI returns a flat `leads[]` catalog — one row per `(source-key, lead-id)` from `discovery.md`, plus `projects[]` (each entry carries the target adapter the agent may bind).
+2. The CLI returns a flat `leads[]` catalog — one row per `(source, lead)` from `discovery.md`, plus `projects[]` (each entry carries the target adapter the agent may bind).
 3. The agent returns `slices[]`. Each slice carries a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project`. Scopes partition the surveyed leads exactly once; fan-out is multiple slices sharing one `scope` (the kernel derives each row's `target` from the bound project).
 4. `/spec:plan` submits the response with `specrun plan propose --from <response.json>`.
 5. The CLI re-reads `discovery.md`, rebuilds the catalog, validates, and **replaces** all `plan.yaml.slices[]` rows.
@@ -51,12 +51,12 @@ The agent owns judgment during propose. The CLI owns projection and persistence.
 
 ## Cross-Source Matching
 
-Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source-key, lead-id)` lead with its per-source `summary` and optional `aliases[]` (operator-authored hints from `discovery.md`; the kernel does not interpret them as locks).
+Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source, lead)` lead with its per-source `summary` and optional `aliases[]` (operator-authored hints from `discovery.md`; the kernel does not interpret them as locks).
 
 The agent decides which rows belong in the same scope:
 
-- **Shared slug** — two sources may emit the same `lead-id` (e.g. both surface `identity-api`). That overlap is a hint, not a kernel lock. The agent may merge or keep them separate; accidental slug collision is resolved at Gate 1, not forced at propose time.
-- **Alias hints** — `aliases[]` on a row may bridge to another source's `lead-id`. The agent may use these when grouping; `specrun plan amend --add-alias` records operator knowledge on `discovery.md` for future replans.
+- **Shared slug** — two sources may emit the same `lead` (e.g. both surface `identity-api`). That overlap is a hint, not a kernel lock. The agent may merge or keep them separate; accidental slug collision is resolved at Gate 1, not forced at propose time.
+- **Alias hints** — `aliases[]` on a row may bridge to another source's `lead`. The agent may use these when grouping; `specrun plan amend --add-alias` records operator knowledge on `discovery.md` for future replans.
 - **Summary judgment** — when ids and aliases do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source summaries.
 
 **At most one lead per source.** A scope matches leads *across* sources; it never fuses two leads from the *same* source. Each surveyed lead is that source adapter's candidate slice — a sizing judgment made with full visibility of the legacy code, documentation, or capture the agent does not have. Merging two same-source leads would override that sizing and risk a slice too large to execute, so the propose kernel rejects it (`plan-reconcile-slice-source-collision`). When a source genuinely over-fragments, the fix is a better source adapter or an operator Gate 1 merge via `specrun plan amend --sources` — where a human owns the sizing risk — not an agent propose-time fusion.
@@ -69,7 +69,7 @@ The survey-time `tentative` flag a source adapter may set on its own lead (`lead
 
 ### Partition invariants
 
-Collapsing `slices[]` by `scope` yields the scope partition: a missing or double-counted lead across scopes fails with `plan-reconcile-partition`; a `(source-key, lead-id)` pair naming no current catalog row fails with `plan-reconcile-lead-orphan`. A scope that names two leads from the same source fails with `plan-reconcile-slice-source-collision`. Slices that share a `scope` id but carry differing `sources[]` fail with `plan-reconcile-fanout-source-mismatch`. Duplicate `(scope, project)` pairs fail with `plan-reconcile-slice-duplicate`. Colliding agent-supplied explicit slice names fail with `plan-reconcile-slice-name-collision`. A cyclic `depends-on` graph fails with `plan-reconcile-depends-on-cycle`.
+Collapsing `slices[]` by `scope` yields the scope partition: a missing or double-counted lead across scopes fails with `plan-reconcile-partition`; a `(source, lead)` pair naming no current catalog row fails with `plan-reconcile-lead-orphan`. A scope that names two leads from the same source fails with `plan-reconcile-slice-source-collision`. Slices that share a `scope` id but carry differing `sources[]` fail with `plan-reconcile-fanout-source-mismatch`. Duplicate `(scope, project)` pairs fail with `plan-reconcile-slice-duplicate`. Colliding agent-supplied explicit slice names fail with `plan-reconcile-slice-name-collision`. A cyclic `depends-on` graph fails with `plan-reconcile-depends-on-cycle`.
 
 ### Why `scope` is an explicit field
 
@@ -79,9 +79,9 @@ The kernel could derive scope without an agent-supplied id by grouping slices th
 
 Request and response validate against `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), with a closed `kind: request | response` discriminator.
 
-The request is lead-centric: flat `leads[]` carries one row per raw `(source-key, lead-id)` lead. Each catalog row carries `source-key`, `lead-id`, per-source `summary`, and optional `aliases[]`.
+The request is lead-centric: flat `leads[]` carries one row per raw `(source, lead)` lead. Each catalog row carries `source`, `lead`, per-source `summary`, and optional `aliases[]`.
 
-Each raw lead from `discovery.md` becomes one catalog row — no expansion or cross-source merge at survey or request time. `lead-id` is unique only within a `source-key`; the same slug under different sources is legal. Catalog identity is the `(source-key, lead-id)` pair. Envelope and `plan.yaml` slice bindings use the same shape.
+Each raw lead from `discovery.md` becomes one catalog row — no expansion or cross-source merge at survey or request time. `lead` is unique only within a `source`; the same slug under different sources is legal. Catalog identity is the `(source, lead)` pair. Envelope and `plan.yaml` slice bindings use the same shape.
 
 Example request:
 
@@ -96,17 +96,17 @@ projects:
     target: omnia@v1
     description: "Omnia identity service implementing auth and password flows."
 leads:
-  - source-key: docs
-    lead-id: identity-api
+  - source: docs
+    lead: identity-api
     summary: "Identity API contract for authentication and account access."
-  - source-key: legacy
-    lead-id: identity-api
+  - source: legacy
+    lead: identity-api
     summary: "Legacy identity endpoints."
-  - source-key: docs
-    lead-id: password-reset
+  - source: docs
+    lead: password-reset
     summary: "Users can request a password reset email."
-  - source-key: legacy
-    lead-id: reset-password
+  - source: legacy
+    lead: reset-password
     summary: "Legacy reset-password flow."
 ```
 
@@ -130,8 +130,8 @@ projects:
     target: omnia@v1
     description: "Single Omnia service for this repository."
 leads:
-  - source-key: intent
-    lead-id: fix-typo
+  - source: intent
+    lead: fix-typo
     summary: "fix typo in user.rs"
 ```
 
@@ -144,10 +144,10 @@ slices:
   - name: fix-typo
     scope: fix-typo
     sources:
-      - { source-key: intent, lead-id: fix-typo }
+      - { source: intent, lead: fix-typo }
 ```
 
-The kernel auto-binds `my-app`, derives `target: omnia@v1`, and writes one slice whose `sources[]` carries the explicit `{ source-key: intent, lead-id: fix-typo }` binding. The kernel always emits the structured `{ source-key, lead-id }` form; the bare `[intent]` shorthand stays available for hand-authoring via `specrun plan add`, but the projection kernel never depends on the slice name matching a lead-id.
+The kernel auto-binds `my-app`, derives `target: omnia@v1`, and writes one slice whose `sources[]` carries the explicit `{ source: intent, lead: fix-typo }` binding. The kernel always emits the structured `{ source, lead }` form; the bare `[intent]` shorthand stays available for hand-authoring via `specrun plan add`, but the projection kernel never depends on the slice name matching a lead.
 
 Example response (multi-source):
 
@@ -158,29 +158,29 @@ slices:
   - name: identity-contracts
     scope: identity-api
     sources:
-      - { source-key: docs, lead-id: identity-api }
-      - { source-key: legacy, lead-id: identity-api }
+      - { source: docs, lead: identity-api }
+      - { source: legacy, lead: identity-api }
     project: identity-contracts
     rationale: "identity API surface matched by shared slug across docs + legacy"
   - name: identity-service
     scope: identity-api
     sources:
-      - { source-key: docs, lead-id: identity-api }
-      - { source-key: legacy, lead-id: identity-api }
+      - { source: docs, lead: identity-api }
+      - { source: legacy, lead: identity-api }
     project: identity-service
     depends-on: [identity-contracts]
   - name: password-reset
     scope: password-reset
     sources:
-      - { source-key: docs, lead-id: password-reset }
-      - { source-key: legacy, lead-id: reset-password }
+      - { source: docs, lead: password-reset }
+      - { source: legacy, lead: reset-password }
     project: identity-service
     rationale: "password-reset (docs) and reset-password (legacy) are the same flow by summary judgment"
 ```
 
 The two same-source leads `docs:password-reset` and `docs:identity-api` stay in **separate** scopes — the agent matches across sources, never fusing one source's candidate slices. `identity-api` fans out (one body of work → a contracts crate and an omnia service), so two slices share that `scope` id and carry identical `sources[]`; `password-reset` is a 1:1 scope bound to a single project.
 
-`slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source-key, lead-id }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. **`rationale` is scope-level**: attach it on any one slice in a fan-out group (not on every row). The kernel dedupes by `scope` when echoing into the `plan.reconcile.agent` journal payload and when the agent renders `change.md`. A scope SHOULD carry `rationale` when the cross-source match is not obvious. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source-key, lead-id }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
+`slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source, lead }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. **`rationale` is scope-level**: attach it on any one slice in a fan-out group (not on every row). The kernel dedupes by `scope` when echoing into the `plan.reconcile.agent` journal payload and when the agent renders `change.md`. A scope SHOULD carry `rationale` when the cross-source match is not obvious. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source, lead }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
 
 ### Persisted `plan.yaml`
 
@@ -202,23 +202,23 @@ slices:
     target: contracts@v1
     project: identity-contracts
     sources:
-      - { source-key: docs, lead-id: identity-api }
-      - { source-key: legacy, lead-id: identity-api }
+      - { source: docs, lead: identity-api }
+      - { source: legacy, lead: identity-api }
   - name: identity-service
     status: pending
     target: omnia@v1
     project: identity-service
     depends-on: [identity-contracts]
     sources:
-      - { source-key: docs, lead-id: identity-api }
-      - { source-key: legacy, lead-id: identity-api }
+      - { source: docs, lead: identity-api }
+      - { source: legacy, lead: identity-api }
   - name: password-reset
     status: pending
     target: omnia@v1
     project: identity-service
     sources:
-      - { source-key: docs, lead-id: password-reset }
-      - { source-key: legacy, lead-id: reset-password }
+      - { source: docs, lead: password-reset }
+      - { source: legacy, lead: reset-password }
 ```
 
 The top-level `name` is the change name (kebab-case; the archive filename prefix). `lifecycle` carries the two stored gate states (`pending | approved`) — `currently executing` and `drained` are computed from per-entry `status` at read time. Top-level `sources` is the named-source map each slice's `sources[]` resolves against; each value is the structured `{ adapter, path? | value? }` object with exactly one of `path` or `value`. Per slice, `status` walks the collapsed `pending → in-progress → done` enum, and each entry declares at least one of `target` (`name@vN`) or `project`. Optional per-slice fields not shown here: `divergence` (`likely | accepted | rejected`), the per-slice `authority-override` map keyed by claim kind ([RFC-29c §"Authority resolution"](rfc-29c-synthesis.md)), `context`, and `description`. The normative shape is `schemas/plan/plan.schema.json`.
@@ -268,7 +268,7 @@ D2 partition invariants apply only to `propose --from`. `plan add`, `plan amend`
 
 | Goal | Commands |
 | --- | --- |
-| **Relabel / rebind** | `specrun plan amend <entry> --sources <key>=<lead-id> ...` (plus `--project`, `--depends-on` as needed) |
+| **Relabel / rebind** | `specrun plan amend <entry> --sources <key>=<lead> ...` (plus `--project`, `--depends-on` as needed) |
 | **Split** | `specrun plan add <new-entry> --sources ...` then `specrun plan amend <original> --sources ...` (narrow bindings); `specrun plan remove <original>` when the original entry is empty |
 | **Merge (cross-source)** | `specrun plan amend <keep> --sources ...` (union of bindings) then `specrun plan remove <drop>` |
 | **Merge (same-source sizing override)** | Same as merge — allowed at Gate 1 only; propose kernel forbids this |
@@ -312,6 +312,6 @@ Canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in
 
 Items intentionally out of scope for this milestone:
 
-1. **Kernel-side token-intersection locks** — auto-merging rows when `{lead-id} ∪ aliases[]` intersects across source keys. Rejected for D2: shared slugs are unattested (collision risk), and Gate 1 is the human curation step after agent propose.
+1. **Kernel-side token-intersection locks** — auto-merging rows when `{lead} ∪ aliases[]` intersects across source keys. Rejected for D2: shared slugs are unattested (collision risk), and Gate 1 is the human curation step after agent propose.
 2. **Kernel-side advisory clustering of open leads** — facet edges, lexical fallback, connected-component bucketing. Would require per-lead `blocking-keys[]` survey metadata not produced by current `lead.schema.json`.
 3. **Optional lead target-axis hints** — deferred to a follow-on RFC. `target` is always kernel-derived from the bound project.

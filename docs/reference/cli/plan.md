@@ -12,7 +12,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [`propose`](#specrun-plan-propose) | Reconcile surveyed leads into `slices[]`: `--dry-run` emits the request envelope; `--from <response.json>` is the slice writer that validates the agent grouping and replaces `slices[]` on a replaceable plan. |
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> approved`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
-| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
 
@@ -49,7 +49,7 @@ Health diagnostics layered on top — first triage step when `/spec:execute` rep
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
 | `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
-| `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
+| `orphan-source` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
 | `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specrun workspace sync` to refresh the clone. |
 
 JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone`). Base validate findings carry no `data` field; the three health diagnostics always do.
@@ -84,11 +84,11 @@ Edit non-status fields on an existing **entry** (one positional — the slice na
 
 ```bash
 specrun plan amend <entry> [--project <name>] [--description "<text>"] [--depends-on <entry>...]
-specrun plan amend <entry> --add-source <key>=<lead-id>
+specrun plan amend <entry> --add-source <key>=<lead>
 specrun plan amend <entry> --remove-source <key>
 specrun plan amend <entry> --divergence likely|accepted|rejected
-specrun plan amend <entry> --authority-override <entry> <kind>=<source-key>
-specrun plan amend <entry> --add-alias <lead-id>=<alias>
+specrun plan amend <entry> --authority-override <entry> <kind>=<source>
+specrun plan amend <entry> --add-alias <lead>=<alias>
 ```
 
 Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
@@ -112,7 +112,7 @@ specrun plan propose --dry-run [--format json]
 specrun plan propose --from <response.json> [--format json]
 ```
 
-- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source-key, lead-id)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
+- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
 - `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces the partition invariants, derives slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits the paired `plan.reconcile.agent` and `plan.reconcile.completed` journal events. It never trusts a prior dry-run snapshot — `discovery.md` and the topology are re-read every invocation.
 
 Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
@@ -126,7 +126,7 @@ Validation codes (all exit 2):
 | `plan-propose-mode-required` | Neither `--dry-run` nor `--from` was given. |
 | `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
 | `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
-| `plan-reconcile-lead-orphan` | A cited `(source-key, lead-id)` is not in the surveyed catalog. |
+| `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
 | `plan-reconcile-partition` | The grouped leads do not partition the catalog exactly once — a surveyed lead is unaccounted for, or one lead lands in two scopes. |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
 | `plan-reconcile-fanout-source-mismatch` | Slices sharing a `scope` carry differing `sources[]` sets. |

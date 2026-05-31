@@ -17,6 +17,6 @@
 
 ### legacy-monolith:user-registration
 
-- lead-id: user-registration
-- source-key: legacy-monolith
+- lead: user-registration
+- source: legacy-monolith
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.

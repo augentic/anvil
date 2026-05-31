@@ -82,19 +82,19 @@ slices:
     target: omnia
     project: identity-svc
     sources:
-      - source-key: identity-design-notes
-        lead-id: user-registration
-      - source-key: legacy-monolith
-        lead-id: user-registration
+      - source: identity-design-notes
+        lead: user-registration
+      - source: legacy-monolith
+        lead: user-registration
     status: pending
   - name: identity-password-reset
     target: omnia
     project: identity-svc
     sources:
-      - source-key: identity-design-notes
-        lead-id: password-reset
-      - source-key: legacy-monolith
-        lead-id: account-pwd-reset
+      - source: identity-design-notes
+        lead: password-reset
+      - source: legacy-monolith
+        lead: account-pwd-reset
     divergence: likely
     status: pending
 ```
@@ -104,7 +104,7 @@ slices:
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
 | `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
-| `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source-key`. |
+| `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
 | Field (per slice)        | Required | Description |
@@ -112,7 +112,7 @@ slices:
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
 | `target`                 | Yes      | Target adapter identifier for the slice (or the plan-level default). |
 | `project`                | No       | Workspace project name (workspace mode only). |
-| `sources`                | Yes      | List of `{ source-key, lead-id }` bindings; cardinality ≥ 1. Bare `<source-key>` shorthand allowed when the lead id equals the slice's `name`. |
+| `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
 | `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specrun plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must be `done` first. |

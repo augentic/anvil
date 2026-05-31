@@ -2,9 +2,9 @@
     target: omnia@v1
     project: identity-svc
     sources:
-      - source-key: identity-design-notes
-        lead-id: session-expiry
-      - source-key: legacy-monolith
-        lead-id: session-expiry
+      - source: identity-design-notes
+        lead: session-expiry
+      - source: legacy-monolith
+        lead: session-expiry
     divergence: likely
     status: pending

@@ -1,6 +1,6 @@
 # Provenance index (`provenance.yaml`)
 
-The audit-only index per slice of every `REQ-*` id and the contributing `(source, claim-id)` pairs synthesis consulted plus the authority outcome. The resolution rules — per-kind precedence, per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only how to author the index that records which rule fired.
+The audit-only index per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. The resolution rules — per-kind precedence, per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only how to author the index that records which rule fired.
 
 ## When the skill writes it
 
@@ -20,7 +20,7 @@ One contributing claim only; `status: agreed`.
   sources: [identity-design-notes]
   contributing-claims:
     - source: identity-design-notes
-      claim-id: password-reset.request
+      id: password-reset.request
       kind: requirement
       value: "The system lets a registered user request a password reset link by email."
       path: docs/identity/reset.md#L4
@@ -37,12 +37,12 @@ Multiple contributors; bodies match after whitespace normalisation; `status: agr
   sources: [identity-design-notes, runtime]
   contributing-claims:
     - source: identity-design-notes
-      claim-id: users.register.email-validation
+      id: users.register.email-validation
       kind: requirement
       value: "The system accepts a registration request when the email field is RFC-5322 valid."
       path: docs/identity/register.md#L12
     - source: runtime
-      claim-id: users.register.email-validation
+      id: users.register.email-validation
       kind: example
       value: "Registering with a fresh email returns 201 and publishes user.created."
       path: tests/data/replays/users-register/happy.json
@@ -59,13 +59,13 @@ Multiple contributors disagree; the default authority ordering (or a per-Evidenc
   sources: [identity-design-notes, legacy-monolith]
   contributing-claims:
     - source: identity-design-notes
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: criterion
       value: "Reset links expire after 30 minutes."
       path: docs/identity/reset.md#L7
       winner: true
     - source: legacy-monolith
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: criterion
       value: "expiresAt = createdAt + 24h"
       path: src/users/reset.ts#L42
@@ -86,13 +86,13 @@ A per-slice `authority-override.<kind>` on `plan.yaml.slices[]` picked the winne
   sources: [runtime, identity-design-notes]
   contributing-claims:
     - source: runtime
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: example
       value: "Captured handler issues links that expire after 24 hours."
       path: tests/data/replays/password-reset/expiry.json
       winner: true
     - source: identity-design-notes
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: criterion
       value: "Reset links expire after 30 minutes."
       path: docs/identity/reset.md#L7
@@ -126,12 +126,12 @@ Multiple contributors disagree at the same authority class after every override 
   sources: [product-notes, identity-design-notes]
   contributing-claims:
     - source: product-notes
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: criterion
       value: "Reset links expire after 30 minutes."
       path: docs/product/reset.md#L12
     - source: identity-design-notes
-      claim-id: password-reset.expiry
+      id: password-reset.expiry
       kind: criterion
       value: "Reset links expire after 60 minutes."
       path: docs/identity/reset.md#L4
@@ -140,7 +140,7 @@ Multiple contributors disagree at the same authority class after every override 
 
 ## Inline `value` truncation
 
-`value` is a single-line string. The full per-kind body (an `example` claim's `input` / `output` blocks, a `decision` claim's free-form rationale) stays in the source `evidence/<source-key>.yaml`, linked by `path`.
+`value` is a single-line string. The full per-kind body (an `example` claim's `input` / `output` blocks, a `decision` claim's free-form rationale) stays in the source `evidence/<source>.yaml`, linked by `path`.
 
 - Multi-line claim bodies collapse to the **first non-empty line** with a trailing `…` indicator.
 - Over-cap bodies truncate at a **whitespace boundary** and append `…`. The cap is **16 KiB** per `value`, enforced by the writer.
@@ -178,7 +178,7 @@ Operator hand-edits to `provenance.yaml` do not survive re-refine: `/spec:refine
 `specrun slice validate` refuses with structured error `slice-provenance-drift` (exit 2) on either of two drift conditions:
 
 1. **REQ-id parity drift.** The set of `REQ-*` ids in `spec.md` MUST equal the set of `requirements[].id` in `provenance.yaml`, with order preserved.
-2. **Contributing-claim → evidence drift.** Every `requirements[].contributing-claims[]` entry's `(source, claim-id)` MUST resolve to a real claim in the per-source `evidence/<source-key>.yaml`. A stale `claim-id` (the source's Evidence rewrote the id) or a stale `source` (the slice's `sources[]` binding was removed) both surface as drift.
+2. **Contributing-claim → evidence drift.** Every `requirements[].contributing-claims[]` entry's `(source, id)` MUST resolve to a real claim in the per-source `evidence/<source>.yaml`. A stale `id` (the source's Evidence rewrote the id) or a stale `source` (the slice's `sources[]` binding was removed) both surface as drift.
 
 Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `provenance.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `provenance.yaml` re-aligns; running `specrun slice validate` alone will not regenerate the index.
 
@@ -197,12 +197,12 @@ requirements:
     sources: [identity-design-notes, runtime]
     contributing-claims:
       - source: identity-design-notes
-        claim-id: password-reset.request
+        id: password-reset.request
         kind: requirement
         value: "Registered user requests a password reset link by email."
         path: docs/identity/reset.md#L4
       - source: runtime
-        claim-id: users.password-reset.request
+        id: users.password-reset.request
         kind: example
         value: "POST /password-reset returns 202 and queues an email."
         path: tests/data/replays/password-reset/happy.json
@@ -212,13 +212,13 @@ requirements:
     sources: [runtime, identity-design-notes]
     contributing-claims:
       - source: runtime
-        claim-id: password-reset.expiry
+        id: password-reset.expiry
         kind: example
         value: "Captured handler issues links that expire after 24 hours."
         path: tests/data/replays/password-reset/expiry.json
         winner: true
       - source: identity-design-notes
-        claim-id: password-reset.expiry
+        id: password-reset.expiry
         kind: criterion
         value: "Reset links expire after 30 minutes."
         path: docs/identity/reset.md#L7
@@ -233,12 +233,12 @@ requirements:
     sources: [product-notes, identity-design-notes]
     contributing-claims:
       - source: product-notes
-        claim-id: password-reset.single-use
+        id: password-reset.single-use
         kind: criterion
         value: "Each reset link is consumed on first use."
         path: docs/product/reset.md#L19
       - source: identity-design-notes
-        claim-id: password-reset.single-use
+        id: password-reset.single-use
         kind: criterion
         value: "Reset links remain valid until expiry, even after a successful reset."
         path: docs/identity/reset.md#L22

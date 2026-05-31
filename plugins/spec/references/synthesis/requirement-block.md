@@ -8,7 +8,7 @@ Every requirement in a spec file (`specs/<unit>/spec.md`) is one H3 block with t
 ### Requirement: <Human-readable name>[ <tag>]
 
 ID: REQ-<NNN>
-Sources: [<source-key>, <source-key>, …]
+Sources: [<source>, <source>, …]
 Status: <agreed|unknown|conflict|divergence>
 
 <Requirement body — one or more paragraphs, optionally followed by `Note: …` lines for conflict/divergence commentary.>

@@ -7,7 +7,7 @@ JavaScript sources (`.js`, `.mjs`, `.cjs`, `.jsx`) fold into this brief: the fra
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the operator-bound source root (the `path:` from `plan.yaml.sources.<key>`). Walk this tree; resolve `tsconfig.json` `paths` mappings relative to it.
-- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). The CLI stamps each lead's `source-key` from it; this brief does not emit it.
+- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). The CLI stamps each lead's `source` from it; this brief does not emit it.
 
 The bound directory is the only filesystem grant; `$PROJECT_DIR` is unreachable. Treat the tree as read-only — no writes back into `$SOURCE_DIR`.
 
@@ -16,13 +16,13 @@ The bound directory is the only filesystem grant; `$PROJECT_DIR` is unreachable.
 Emit one fenced block per identified unit, in the shape the CLI appends under `## Lead inventory`:
 
 ```markdown
-### <lead-id>
+### <lead>
 
-- lead-id: <lead-id>
+- lead: <lead>
 - summary: <one-line description>
 ```
 
-`lead-id` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source-key, lead-id)`). After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead-id`, scalar `source-key`, content-bearing `summary`). One block per lead.
+`lead` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source, lead)`). After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead`, scalar `source`, content-bearing `summary`). One block per lead.
 
 `summary` SHOULD name the handler's surface (route + method, queue + job, topic) and its salient behaviour/constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. It stays plan-time headline material — slice-time behaviour belongs in `code-typescript.extract` claims, not here.
 
@@ -72,7 +72,7 @@ A symlink inside `$SOURCE_DIR` pointing outside the bound root is denied at cano
 
 ## Working JSON shape
 
-For internal staging only (not an artifact). Top-level: `{ version: 1, source-key, language, surfaces[] }`. Each surface: `{ id, kind, identifier, handler, touches[], declared-at[] }`. `kind` is one of `http-route | message-pub | message-sub | ws-handler | scheduled-job | cli-command | ui-route | external-call-out`. `handler` is `<file>:<symbol>` (named export, `<ClassName>.<method>`, verb export, `<file>:<line>` for inline arrows, `<file>:<framework>-handler-<n>` when the framework provides no name). `touches[]` is a static, file-level reach analysis: import-graph walk from the handler file through relative + `tsconfig.json` `paths`-aliased imports, stopping at bare module specifiers; include the handler file itself. `declared-at[]` carries the registration site (`<file>` or `<file>:<line>`).
+For internal staging only (not an artifact). Top-level: `{ version: 1, source, language, surfaces[] }`. Each surface: `{ id, kind, identifier, handler, touches[], declared-at[] }`. `kind` is one of `http-route | message-pub | message-sub | ws-handler | scheduled-job | cli-command | ui-route | external-call-out`. `handler` is `<file>:<symbol>` (named export, `<ClassName>.<method>`, verb export, `<file>:<line>` for inline arrows, `<file>:<framework>-handler-<n>` when the framework provides no name). `touches[]` is a static, file-level reach analysis: import-graph walk from the handler file through relative + `tsconfig.json` `paths`-aliased imports, stopping at bare module specifiers; include the handler file itself. `declared-at[]` carries the registration site (`<file>` or `<file>:<line>`).
 
 You never publish this shape. The lead algorithm reads from it; only the lead blocks reach `discovery.md`.
 
@@ -97,7 +97,7 @@ Union LOC stays well below 1000 → Decision 2 (size check) emits one source-lev
 ```markdown
 ### user-registration
 
-- lead-id: user-registration
+- lead: user-registration
 - summary: Registration endpoint accepting email + password with RFC-5322 validation.
 ```
 

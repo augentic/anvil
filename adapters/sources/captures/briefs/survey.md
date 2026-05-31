@@ -30,7 +30,7 @@ Operators with a non-conforming layout adapt the directory or write a thin wrapp
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the operator-bound capture root. Walk this tree; never write into it.
-- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). The CLI stamps each lead's `source-key` from it; this brief does not emit it.
+- **Source key** — kebab-case identifier passed in via the runner (the `<key>` from `plan.yaml.sources.<key>`). The CLI stamps each lead's `source` from it; this brief does not emit it.
 
 The bound directory is the only filesystem grant — `$PROJECT_DIR` is unreachable, host env is unreadable, the network is denied. Use `$SCRATCH_DIR` for unavoidable intermediate state.
 
@@ -38,7 +38,7 @@ The bound directory is the only filesystem grant — `$PROJECT_DIR` is unreachab
 
 One lead per observed handler — that is, one per `tests/data/replays/<handler>/` directory. Each directory groups every captured scenario for one HTTP route, message handler, scheduled job, or WebSocket handler. The slice grain operators reason about is the handler, not the individual capture; per-scenario detail lives in `extract`-time claims (one `kind: example` claim per scenario file).
 
-The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead-id`. When two sources surface the same handler under different names (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), the operator adds an `aliases:` row at plan time through `specrun plan amend --add-alias`; do not invent aliases here.
+The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead`. When two sources surface the same handler under different names (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), the operator adds an `aliases:` row at plan time through `specrun plan amend --add-alias`; do not invent aliases here.
 
 ## Output: lead blocks
 
@@ -47,20 +47,20 @@ Emit one fenced block per identified handler, in the shape the CLI appends under
 ```markdown
 ### <handler-id>
 
-- lead-id: <handler-id>
+- lead: <handler-id>
 - summary: <one-line description>
 ```
 
-Field order is fixed (`lead-id`, `summary`). `lead-id` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source-key`; the CLI stamps it from the survey binding. `summary` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source-key`, the block validates against `schemas/discovery/lead.schema.json`.
+Field order is fixed (`lead`, `summary`). `lead` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source`; the CLI stamps it from the survey binding. `summary` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json`.
 
-Emit blocks sorted alphabetically by `lead-id` so re-survey produces byte-stable diffs.
+Emit blocks sorted alphabetically by `lead` so re-survey produces byte-stable diffs.
 
 ## Algorithm
 
 1. **Walk `tests/data/replays/`.** Survey immediate subdirectories. Skip `samples/` (shared payloads, not handlers) and any directory whose name begins with `.` or `_`.
 2. **Per handler, inventory scenarios.** List `<handler>/*.json`. Skip the optional per-handler `INSTRUCTIONS.md` — the brief is not authoritative for surface naming. Zero-scenario handler directories are skipped silently (the operator drops them upstream).
 3. **Identify the surface.** Inspect one or two scenario files to derive the route / topic / job identifier and method (e.g. `POST /users`, queue `user.created`, cron `0 */5 * * *`). When scenarios disagree, prefer the most common surface and note the spread in `summary`.
-4. **Emit one lead block per handler.** Sort by `lead-id`. Each block carries the handler `lead-id` and a one-line summary; the CLI stamps `source-key` from the survey binding.
+4. **Emit one lead block per handler.** Sort by `lead`. Each block carries the handler `lead` and a one-line summary; the CLI stamps `source` from the survey binding.
 
 ## Path rules
 
@@ -90,24 +90,24 @@ tests/data/replays/
     └── argon2-hashes.json
 ```
 
-Expected output (alphabetically by `lead-id`; the CLI stamps `source-key: runtime`):
+Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 
 ```markdown
 ### password-reset
 
-- lead-id: password-reset
+- lead: password-reset
 - summary: POST /accounts/reset observed in 2 captures; both return 202 with no body.
 
 ### user-registration
 
-- lead-id: user-registration
+- lead: user-registration
 - summary: POST /users observed in 3 captures; happy path publishes `user.created`, error paths return 400 and 409.
 ```
 
 ## Determinism
 
-- Emit leads sorted alphabetically by `lead-id`.
-- Field order inside each block is fixed: `lead-id`, `summary`.
+- Emit leads sorted alphabetically by `lead`.
+- Field order inside each block is fixed: `lead`, `summary`.
 - Quote concrete scenario counts and surface identifiers the captures verify; do not embed timestamps, host paths, or other run-state.
 - Re-running against an unchanged capture tree produces byte-identical blocks.
 

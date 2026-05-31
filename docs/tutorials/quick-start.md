@@ -121,8 +121,8 @@ Sources: 1. Leads: 1.
 
 ### intent:fix-typo
 
-- lead-id: fix-typo
-- source-key: intent
+- lead: fix-typo
+- source: intent
 - summary: fix typo in user.rs
 ```
 

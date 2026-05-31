@@ -59,17 +59,17 @@ Shared rules: kebab-case `name` unique per axis; required closed `execution` mod
 
 A source adapter participates in two places in the lifecycle.
 
-**`survey(Source) → Lead[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized **raw lead** under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead-id` and the scalar `source-key` that surfaced it; identity is the `(source-key, lead-id)` pair. Re-surveying the same source replaces that source's blocks by `(source-key, lead-id)` and never merges across sources — cross-source unification is `/spec:plan`'s `propose` sub-step. The lead grammar:
+**`survey(Source) → Lead[]`** runs inside `/spec:plan`. It reads the operator-bound source path or value and emits one block per slice-sized **raw lead** under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead` and the scalar `source` that surfaced it; identity is the `(source, lead)` pair. Re-surveying the same source replaces that source's blocks by `(source, lead)` and never merges across sources — cross-source unification is `/spec:plan`'s `propose` sub-step. The lead grammar:
 
 ```markdown
 ### legacy-monolith:user-registration
 
-- lead-id: user-registration
-- source-key: legacy-monolith
+- lead: user-registration
+- source: legacy-monolith
 - summary: Registration endpoint accepting email + password with email-format validation.
 ```
 
-**`extract(Lead, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`:
+**`extract(Lead, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`:
 
 ```yaml
 source: legacy-monolith
@@ -78,11 +78,11 @@ authority: behaviour
 lead: user-registration
 claims:
   - kind: excerpt
-    claim-id: users.register.email-validation
+    id: users.register.email-validation
     path: src/users/register.ts#L12-L87
 ```
 
-Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `claim-id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
+Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
 
 ### Sandboxing
 
@@ -97,7 +97,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 
 Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
 
-Under `execution: agent` the runner dispatches the operation in two phases: `prepare` builds the sandbox above, scaffolds the output target, emits `source.execution.agent`, and prints a handoff envelope on stdout, then returns control; the agent runs the brief against the prepared directory; `finalize` validates the output before it becomes visible (lead set / Evidence schema), then merges it into `discovery.md` (`survey`) or persists `evidence/<source-key>.yaml` (`extract`) and writes the cache. Under `execution: tool` the operation is single-phase. The CLI never blocks on agent work.
+Under `execution: agent` the runner dispatches the operation in two phases: `prepare` builds the sandbox above, scaffolds the output target, emits `source.execution.agent`, and prints a handoff envelope on stdout, then returns control; the agent runs the brief against the prepared directory; `finalize` validates the output before it becomes visible (lead set / Evidence schema), then merges it into `discovery.md` (`survey`) or persists `evidence/<source>.yaml` (`extract`) and writes the cache. Under `execution: tool` the operation is single-phase. The CLI never blocks on agent work.
 
 ## Target adapter contract
 
@@ -124,7 +124,7 @@ CLI entry points: `specrun source resolve <name>` and `specrun target resolve <v
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source-key>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>
