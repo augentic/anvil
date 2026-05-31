@@ -247,7 +247,7 @@ Ordering is **M1 → M2a → M2b → M3** (each consumes the prior), but each mi
 | Milestone                                      | Readiness                                                                                                                  |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **M1** (shipped — [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1))          | **Shipped.** D1/D9-source/D12 landed across both repos; durable spec lives in `DECISIONS.md` (§"Source operations (D1)", §"Adapter execution mode (D9)", §"`specrun journal emit` — guarded front door (D12)") and `docs/standards/workflow.md`.                                      |
-| **M2a** ([RFC-29b](rfc-29b-reconciliation.md)) | **Ready.** D2 identity model, slice-name derivation, project-binding validation, and `targetRef` unification are pinned. |
+| **M2a** (shipped — [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2)) | **Shipped.** D2 lead-partition kernel, slice-name derivation, project-binding validation, and the `propose --dry-run`/`--from` envelope landed across both repos; durable spec lives in `DECISIONS.md` §"Lead reconciliation (D2)" and `docs/standards/workflow.md`. |
 | **M2b** ([RFC-29c](rfc-29c-synthesis.md))      | **Ready.** Draft vs persisted model split (D3a), rendering pipeline, and D13 read-path guarantee are pinned.               |
 | **M3** ([RFC-29d](rfc-29d-target.md))          | **Deferred by design.** Build envelopes authored during M3 implementation; cross-project handoff is an open question (Q2). |
 
@@ -277,7 +277,7 @@ RFC-29 is fully implementable without this question being resolved.
 ## References
 
 - RFC-29a: Executable Source Operations — M1, **shipped**; durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
-- [RFC-29b: Plan-Time Lead Reconciliation](rfc-29b-reconciliation.md) — M2a
+- RFC-29b: Plan-Time Lead Reconciliation — M2a, **shipped**; durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
 - [RFC-29c: Slice Synthesis Engine and Typed Model](rfc-29c-synthesis.md) — M2b
 - [RFC-29d: Target Build Envelope and Fan-Out Proof](rfc-29d-target.md) — M3
 - [RFC-25: Workflow](../done/rfc-25-workflow.md)
