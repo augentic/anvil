@@ -182,6 +182,47 @@ The two same-source leads `docs:password-reset` and `docs:identity-api` stay in 
 
 `slices[]` is the only list. Each slice carries a `scope` id, its matched `sources[]` (each a catalog row referenced by `{ source-key, lead-id }`, at most one per source), an optional `project`, optional explicit `name`, optional `rationale`, and optional dependencies. Every slice sharing a `scope` id MUST carry an identical `sources[]` set — that shared set is the reconciled scope, and the per-scope sets partition the surveyed leads exactly once. **`rationale` is scope-level**: attach it on any one slice in a fan-out group (not on every row). The kernel dedupes by `scope` when echoing into the `plan.reconcile.agent` journal payload and when the agent renders `change.md`. A scope SHOULD carry `rationale` when the cross-source match is not obvious. There is no response-level `target` — the kernel resolves it from the bound project's `projects[].target`. A `scope` id appears in multiple slices only when fanning out to projects; `depends-on` names derived slice names, not scope ids. The kernel writes each slice's `sources[]` to `plan.yaml.slices[].sources[]` as the structured `{ source-key, lead-id }` form, writes `project`, and writes `target` from the matching `projects[]` entry.
 
+### Persisted `plan.yaml`
+
+Projecting that multi-source response writes the following `plan.yaml` at the repo root. `scope` and `rationale` are propose-time only — neither reaches disk; the kernel derives each slice's `target` from its bound project and stamps every entry `pending`:
+
+```yaml
+name: identity-platform
+lifecycle: pending
+sources:
+  docs:
+    adapter: documentation
+    path: docs/identity/
+  legacy:
+    adapter: code-typescript
+    path: src/
+slices:
+  - name: identity-contracts
+    status: pending
+    target: contracts@v1
+    project: identity-contracts
+    sources:
+      - { source-key: docs, lead-id: identity-api }
+      - { source-key: legacy, lead-id: identity-api }
+  - name: identity-service
+    status: pending
+    target: omnia@v1
+    project: identity-service
+    depends-on: [identity-contracts]
+    sources:
+      - { source-key: docs, lead-id: identity-api }
+      - { source-key: legacy, lead-id: identity-api }
+  - name: password-reset
+    status: pending
+    target: omnia@v1
+    project: identity-service
+    sources:
+      - { source-key: docs, lead-id: password-reset }
+      - { source-key: legacy, lead-id: reset-password }
+```
+
+The top-level `name` is the change name (kebab-case; the archive filename prefix). `lifecycle` carries the two stored gate states (`pending | approved`) — `currently executing` and `drained` are computed from per-entry `status` at read time. Top-level `sources` is the named-source map each slice's `sources[]` resolves against; each value is the structured `{ adapter, path? | value? }` object with exactly one of `path` or `value`. Per slice, `status` walks the collapsed `pending → in-progress → done` enum, and each entry declares at least one of `target` (`name@vN`) or `project`. Optional per-slice fields not shown here: `divergence` (`likely | accepted | rejected`), the per-slice `authority-override` map keyed by claim kind ([RFC-29c §"Authority resolution"](rfc-29c-synthesis.md)), `context`, and `description`. The normative shape is `schemas/plan/plan.schema.json`.
+
 ## Slice Names
 
 Each `slices[]` entry becomes one `plan.yaml.slices[]` entry. The derivation is keyed on the `(scope, project)` pair, which the partition kernel already proves unique (`plan-reconcile-slice-duplicate`), so every derived name is collision-free by construction:
