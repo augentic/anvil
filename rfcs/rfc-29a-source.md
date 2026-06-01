@@ -120,6 +120,8 @@ When `execution: agent`, the CLI:
 
 All five first-party source adapters (`intent`, `documentation`, `code-typescript`, `screenshots`, `captures`) shipped `execution: agent` in M1 — none has a WASI tool, so `agent` is the truthful value. The `tool` dispatch branch is wired and schema-valid but unexercised by first-party manifests until a source gains a real deterministic tool. Because `execution: agent` forces `cache: opt-out` (rule 2 above), each stamped source adapter is a guaranteed cache miss under `agent`; that trade-off is intentional.
 
+**The extraction cache and the `tool` dispatch path are dormant today.** Until the first `execution: tool` adapter exists, no first-party survey/extract can produce a cache hit and the RFC-27 five-input fingerprint and the `source.survey.cache-hit` event never fire. This is deliberate future-proofing of a seam, not active behaviour — reviewers should read the cache machinery as the latent half of the `tool`/`agent` split, not as a path the framework currently exercises. No *further* cache ceremony (new cache events, cache-tuning surfaces) should be added until a `tool` adapter actually exercises the path.
+
 ### Agent dispatch is two-phase
 
 The `tool` path is **single-phase**: the CLI dispatches the WASI tool and captures its output synchronously within one process. The `agent` path is **two-phase**, reusing the `specrun source preview` scaffolding (equivalently, the `--dry-run --out <dir>` mode of the shared runner):

@@ -112,7 +112,7 @@ specrun plan propose --from <response.json> [--format json]
 ```
 
 - `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
-- `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces the partition invariants, derives slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits the paired `plan.reconcile.agent` and `plan.reconcile.completed` journal events. It never trusts a prior dry-run snapshot — `discovery.md` and the topology are re-read every invocation.
+- `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates the explicit slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits a single `plan.reconcile.completed` journal event. It never trusts a prior dry-run snapshot — `discovery.md` and the topology are re-read every invocation.
 
 Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
 
@@ -126,11 +126,10 @@ Validation codes (all exit 2):
 | `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
 | `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
-| `plan-reconcile-partition` | The grouped leads do not partition the catalog exactly once — a surveyed lead is unaccounted for, or one lead lands in two scopes. |
+| `plan-reconcile-partition` | The grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. (A lead referenced by more than one slice is legal fan-out.) |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
-| `plan-reconcile-fanout-source-mismatch` | Slices sharing a `scope` carry differing `sources[]` sets. |
-| `plan-reconcile-slice-duplicate` | Two slices map to the same `(scope, project)` pair. |
-| `plan-reconcile-slice-name-collision` | Two slices resolve to the same derived plan slice name. |
+| `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
+| `plan-reconcile-slice-name-collision` | Two slices resolve to the same plan slice name. |
 | `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
 | `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
 | `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |

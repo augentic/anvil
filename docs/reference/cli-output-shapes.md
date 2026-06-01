@@ -99,14 +99,13 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
 
 ### `specrun plan propose --from`
 
-Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the derived slice set in response order; `slice-count` is its length and `scope-count` is the number of distinct reconciled scopes.
+Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
 
 ```json
 {
   "plan": { "name": "identity-revamp", "path": "/abs/path/to/plan.yaml" },
   "slice-names": ["identity-contracts", "identity-service", "password-reset"],
-  "slice-count": 3,
-  "scope-count": 2
+  "slice-count": 3
 }
 ```
 

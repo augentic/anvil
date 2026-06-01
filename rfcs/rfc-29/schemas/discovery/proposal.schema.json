@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
   "title": "Specify lead reconciliation envelope",
-  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source, lead)` leads read 1:1 from `discovery.md`, plus the `projects[]` topology (always at least one project; each entry carries the normalized target adapter the kernel resolves on demand at read time — it is never written to `plan.yaml`). Optional `aliases[]` on each row are hints from `discovery.md`; the kernel does not lock or auto-merge on them. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: a single `slices[]` list, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` from the request (the kernel auto-binds the sole project when only one exists and resolves each slice's `target` on demand from the bound project's `projects[].target` rather than persisting it). Slices sharing a `scope` id form a fan-out group and MUST carry an identical `sources[]` set; that per-scope set partitions the surveyed leads exactly once and a scope never names two leads from the same source. The kernel validates this shape, enforces the global partition invariant, rejects same-source fusion, derives unique `plan.yaml.slices[]` names from the optional `name` or a `scope` / `scope`-plus-`project` fallback, and writes the structured `{ source, lead }` source bindings through the existing plan writers only when the plan is still replaceable; cross-source matching is agent judgment surfaced for Gate 1 review — the kernel never auto-merges leads. Closed top-level shape: unknown fields are rejected.",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source, lead)` leads read 1:1 from `discovery.md`, plus the `projects[]` topology (always at least one project; each entry carries the normalized target adapter the kernel resolves on demand at read time — it is never written to `plan.yaml`). Optional `aliases[]` on each row are hints from `discovery.md`; the kernel does not lock or auto-merge on them. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: a single `slices[]` list, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project` from the request (the kernel auto-binds the sole project when only one exists and resolves each slice's `target` on demand from the bound project's `projects[].target` rather than persisting it). The `scope` noun was removed (RFC-29 review F3): there is no kernel fan-out grouping, so a body of work spanning more than one project is expressed as multiple slices joined by `depends-on`, and a lead may legally be referenced by more than one slice. The kernel validates this shape, enforces total lead coverage (every surveyed lead referenced by at least one slice), rejects same-source fusion per slice, enforces unique kebab-case slice names, and writes the structured `{ source, lead }` source bindings through the existing plan writers only when the plan is still replaceable; cross-source matching is agent judgment surfaced for Gate 1 review — the kernel never auto-merges leads. Closed top-level shape: unknown fields are rejected.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -24,7 +24,7 @@
     "projectRef": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One project the agent can bind a response slice to. For a hub this is projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice's scope against the project's `target`, `description`, and `capabilities`.",
+      "description": "One project the agent can bind a response slice to. For a hub this is projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice against the project's `target`, `description`, and `capabilities`.",
       "required": [
         "name",
         "target"
@@ -50,7 +50,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "Capability tags this project owns (e.g. `auth`, `billing`), authored in its `project.yaml` per RFC-36. The agent matches a scope against these when binding a slice to a project. Empty stays off the wire."
+          "description": "Capability tags this project owns (e.g. `auth`, `billing`), authored in its `project.yaml` per RFC-36. The agent matches a slice against these when binding it to a project. Empty stays off the wire."
         },
         "keywords": {
           "type": "array",
@@ -151,17 +151,13 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "scope",
+        "name",
         "sources"
       ],
       "properties": {
         "name": {
           "$ref": "#/$defs/kebabName",
-          "description": "Optional explicit plan slice name for this `(scope, project)` row — the slice's identity and the natural top field of a response slice. When omitted, the kernel derives a unique slice name deterministically from `scope` (or `scope`-plus-`project` on fan-out)."
-        },
-        "scope": {
-          "$ref": "#/$defs/kebabName",
-          "description": "Logical id of the reconciled unit of work this slice belongs to. It is the slice-name basis and the fan-out grouping key, not necessarily the derived plan slice name. A `scope` id repeats across response slices only when the same scope fans out to multiple projects; every slice sharing it MUST carry an identical `sources[]` set (the kernel enforces this as `plan-reconcile-fanout-source-mismatch`)."
+          "description": "Explicit plan slice name — required. The `scope` noun was removed (RFC-29 review F3): with no kernel grouping the agent names every slice directly and the kernel writes the name verbatim to `plan.yaml.slices[].name`. A body of work that spans more than one project is expressed as multiple slices (which may legally reference the same lead) joined by `depends-on`, distinguished by their names."
         },
         "sources": {
           "type": "array",
@@ -170,19 +166,19 @@
           "items": {
             "$ref": "#/$defs/responseMember"
           },
-          "description": "Matched catalog rows for this slice, each referenced by `{ source, lead }`. At most one entry per `source`: a scope matches leads across sources but never fuses two leads from the same source (the kernel enforces this as `plan-reconcile-slice-source-collision`). Slices sharing a `scope` id repeat this set verbatim. The kernel writes it to `plan.yaml.slices[].sources[]`."
+          "description": "Matched catalog rows for this slice, each referenced by `{ source, lead }`. At most one entry per `source`: a slice matches leads across sources but never fuses two leads from the same source (the kernel enforces this as `plan-reconcile-slice-source-collision`). A lead may appear in more than one slice — that is fan-out, not a double-count. The kernel writes the set to `plan.yaml.slices[].sources[]`."
         },
         "rationale": {
           "type": "string",
           "minLength": 1,
-          "description": "Agent's reason for the cross-source match in this scope. Scope-level — attach on any one slice in a fan-out group; the kernel dedupes by `scope` for the `plan.reconcile.agent` journal payload and `change.md`. The agent renders it into `change.md` for Gate 1 review. Recommended when the match is not obvious from shared slugs or alias hints."
+          "description": "Agent's reason for the cross-source match in this slice. The agent renders it into `change.md` for Gate 1 review; the kernel ignores it and does not echo it into the journal. Recommended when the match is not obvious from shared slugs or alias hints."
         },
         "depends-on": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/kebabName"
           },
-          "description": "Derived slice names this row depends on (not scope ids). Each name must resolve to a projected `plan.yaml.slices[]` entry."
+          "description": "Slice names this row depends on. Each name must resolve to a projected `plan.yaml.slices[]` entry."
         },
         "project": {
           "$ref": "#/$defs/kebabName",

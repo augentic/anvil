@@ -37,7 +37,6 @@ artifacts:
   tasks: tasks.md
   specs:
     - specs/identity/spec.md
-  provenance: provenance.yaml
 briefs:
   shape: /.../adapters/targets/omnia/briefs/shape.md
   build: /.../adapters/targets/omnia/briefs/build.md
@@ -124,11 +123,11 @@ documentation + code-typescript
                                              derivation, journal, plan writers)
         -> per slice:
              source extract                 (fan-in #2: Evidence per source)
-             slice synthesize               (envelope: agent-led cross-modal reconciliation
+             slice synthesize               (agent: cross-modal reconciliation
                                               into the requirement set + prose;
-                                              kernel: deterministic projection — ids, status,
-                                              inline provenance — over the returned structure;
-                                              one Evidence map -> one slice model)
+                                              kernel: deterministic projection — authority,
+                                              ids, status, inline provenance — over the
+                                              returned response; one Evidence map -> one slice model)
              model.yaml + artifacts          (provenance projected on demand, not persisted)
              target build (one target)
              slice merge (one baseline)
@@ -176,8 +175,7 @@ Required assertions:
 - Each slice builds independently against its single bound target; `identity-service` reads `identity-contracts`' merged output from the working tree (the dependency is ordered by `depends-on` + `plan next`, not carried on the build request).
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
 - **Primary build gate (ground truth).** The release is gated on the *generated output behaving correctly*, not on the envelope: each slice's `target build` produces code that passes the target's replay/golden suite and `cargo check` / `cargo test` (per target adapter). A slice whose build output fails replay/golden or `cargo` is not done, regardless of how clean its envelope was. This ground-truth gate is the load-bearing acceptance signal; the envelope and determinism properties below are corroborating, not blocking.
-- **Kernel-projection determinism (non-blocking property).** Re-running kernel projection twice over a golden synthesis response yields byte-identical, target-independent kernel-owned `model.yaml` fields and the projected provenance view (D8 kernel determinism). Live agent runs are not byte-stable on requirement set or prose. A determinism regression is a defect to investigate, not a release gate.
-- **D8 envelope-construction proof (non-blocking property).** Synthesis request requirements-relevant inputs are byte-identical across `contracts@v1` and `omnia@v1` bindings; `target` / `shape-brief` differ only in non-requirements fields. This documents target-neutrality-by-construction; it corroborates but does not gate the release.
+- **Kernel-projection determinism (non-blocking property).** Re-running kernel projection twice over a golden synthesis response yields byte-identical, target-independent kernel-owned `model.yaml` fields and the projected provenance view (D8 kernel determinism). Live agent runs are not byte-stable on requirement set or prose. A determinism regression is a defect to investigate, not a release gate. Target-neutrality of the requirements-relevant inputs is a by-construction property of the kernel (the shape brief is resolved from `target` and feeds only non-requirements sections), corroborated by this gate and the ground-truth gate above; D5 binds one slice to one target, so there is no cross-target comparison fixture to build.
 - **Slice-model normalization + orphan rejection.** A fixture-local test re-runs `specrun slice synthesize` with a synthesis-step response that pre-assigns a `REQ-NNN` id, sets `status`, or marks a per-claim `winner`: the kernel **ignores and re-derives** every kernel-owned field (normalize, never reject). A response citing a `(source, id)` absent from the Evidence map is rejected with `slice-model-source-orphan` before projection. Together these prove the kernel is the sole authority on id assignment, rendered source list derivation, winner selection, status derivation, and inline provenance, while the agent remains the sole author of the requirement set, its claims, and its agreement verdict.
 
 ## Wire contracts introduced by this milestone
