@@ -26,7 +26,7 @@ target: https://github.com/augentic/specify/targets/omnia
 sources: [intent, documentation, code-typescript]
 specify-version: "2.0.0"
 workspace: false
-domain: |
+description: |
   Brief description of the project's domain, purpose, and
   technical constraints. This context is available to all
   briefs during artifact generation.
@@ -39,7 +39,9 @@ domain: |
 | `sources`         | No                     | List of source adapters available for `/spec:plan` to bind. Defaults to the first-party set when omitted. |
 | `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
-| `domain`          | No                     | Free-form domain description available to briefs. |
+| `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. |
+| `capabilities`    | No                     | Authoring-only capability tags (e.g. `auth`, `billing`) characterising what the project owns. Inert today — declared for future slice-to-project routing but not yet read by any consumer. |
+| `keywords`        | No                     | Authoring-only free-form keyword tags supplementing `capabilities`. Inert today, same status as `capabilities`. |
 
 ### Hub shape
 

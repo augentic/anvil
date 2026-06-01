@@ -108,8 +108,6 @@ The document-level `authority:` rule is the default. Two override surfaces sharp
 Each Evidence document MAY carry an optional `authority-overrides: { <claim-kind>: <authority-class> }` map. Keys are the closed claim-kind enum from `schemas/evidence.schema.json` (`requirement`, `criterion`, `decision`, `section`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`, `intent`, `diagram`, `contract`, `example`); values are the closed `authority:` enum (`intent`, `documentation`, `behaviour`).
 
 ```yaml
-source: legacy-monolith
-adapter: code-typescript
 authority: behaviour            # document-level default (applied when no per-kind override matches)
 authority-overrides:
   decision: documentation       # decisions extracted from comments outrank decision claims from elsewhere

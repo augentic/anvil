@@ -40,8 +40,6 @@ One `kind: example` claim per scenario file. A handler directory with 47 `<scena
 Emit Evidence YAML per [`extraction-mapping.md`](../references/extraction-mapping.md). Minimal shape:
 
 ```yaml
-source: <source>
-adapter: captures
 authority: behaviour
 lead: <lead>
 claims:
@@ -53,5 +51,7 @@ claims:
     input: { ... }
     output: { ... }
 ```
+
+The CLI persists this at `.specify/slices/<slice>/evidence/<source>.yaml`, deriving the `(slice, source)` identity from the path and the adapter from `plan.yaml.sources.<source>.adapter`; neither is written in-document.
 
 See the references for the full field table, the worked three-scenario example, determinism rules, the 64 KiB inline cap, path rules, anti-patterns, and failure modes.

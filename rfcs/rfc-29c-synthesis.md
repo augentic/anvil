@@ -61,12 +61,10 @@ End to end, the command resolves authority, builds the synthesis request envelop
 
 ### Evidence input
 
-Each bound source contributes one Evidence document at `evidence/<source>.yaml` — the per-source result of `extract`, whose normative shape is `schemas/evidence.schema.json` (distributed with the CLI, not under `rfc-29/schemas/`). Every claim carries a stable `id` and a closed `kind`; per-kind body fields (`statement`, `criterion`, `replay-digest`, …) are open. The two documents the `identity-service` envelope binds below are:
+Each bound source contributes one Evidence document at `evidence/<source>.yaml` — the per-source result of `extract`, whose normative shape is `schemas/evidence.schema.json` (distributed with the CLI, not under `rfc-29/schemas/`). The document's `(slice, source)` identity is carried by its on-disk path (the slice directory plus the `<source>.yaml` filename) and its adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is duplicated in-document — the top-level keys are just `authority`, `lead`, `claims`, and the optional `authority-overrides`. Every claim carries a stable `id` and a closed `kind`; per-kind body fields (`statement`, `criterion`, `replay-digest`, …) are open. The two documents the `identity-service` envelope binds below are:
 
 ```yaml
 # evidence/docs.yaml
-source: docs
-adapter: documentation
 authority: documentation
 lead: password-reset
 claims:
@@ -82,8 +80,6 @@ claims:
 
 ```yaml
 # evidence/legacy.yaml
-source: legacy
-adapter: captures
 authority: behaviour
 lead: password-reset
 claims:
@@ -99,6 +95,8 @@ claims:
 ```
 
 The kernel resolves authority per claim from these documents' `authority` fields (and any `authority-overrides`); the synthesis step then reconciles the claims across both into the requirement set. These are exactly the claims REQ-001 and REQ-002 cite in the `model.yaml` and `provenance.yaml` sketches below.
+
+The synthesis request embeds each document's `lead` and `claims` inline rather than a path to `evidence/<source>.yaml` (§"Synthesis envelope"), so the dispatched synthesis step needs no host filesystem access. Because the kernel resolves authority before dispatch, the document-level `authority` / `authority-overrides` are consumed there and are not echoed into the envelope; the on-disk Evidence document remains the kernel's source of truth for projection, provenance, and drift validation.
 
 ### Claim contract (D13)
 
@@ -137,6 +135,8 @@ The `slice-synthesize-forbidden-input-leak` finding complements gate 1 by flaggi
 
 The synthesis step communicates with the kernel over a closed request/response envelope, dispatched under `execution: agent` (default) or `execution: tool` (D10). Its schema is `[synthesis.schema.json](rfc-29/schemas/slice/synthesis.schema.json)`, discriminated by `kind: request | response`; the response `model` `$ref`s `[draft-model.schema.json](rfc-29/schemas/slice/draft-model.schema.json)` rather than the persisted schema (D3a).
 
+Each `evidence.<source>` entry embeds that source's `extract` output inline — its `lead` and `claims` — rather than a path to `evidence/<source>.yaml`, so the dispatched step (agent or WASI tool) reconciles without host filesystem access. The on-disk Evidence document stays the kernel's source of truth for projection, `provenance.yaml`, and drift validation; the per-document `authority` / `authority-overrides` are **not** echoed per source, because the kernel resolves authority out of band before dispatch and passes the result via `authority.resolved-path`.
+
 A request looks like this:
 
 ```yaml
@@ -147,13 +147,33 @@ target: omnia@v1
 shape-brief: /.../adapters/targets/omnia/briefs/shape.md
 evidence:
   docs:
-    path: .specify/slices/identity-service/evidence/docs.yaml
-    authority: documentation
+    lead: password-reset
+    claims:
+      - id: password-reset.request
+        kind: requirement
+        statement: The system lets a registered user request a password reset link by email.
+        path: docs/identity/reset.md#L4
+      - id: password-reset.expiry
+        kind: criterion
+        criterion: Reset links expire after 30 minutes.
+        path: docs/identity/reset.md#L7
   legacy:
-    path: .specify/slices/identity-service/evidence/legacy.yaml
-    authority: behaviour
+    lead: password-reset
+    claims:
+      - id: users.password-reset.request
+        kind: example
+        replay-digest: sha256:9f2b…
+        output: "POST /password-reset returns 202 and queues an email."
+        path: src/users/reset.ts#L42
+      - id: password-reset.expiry
+        kind: example
+        output: "expiresAt = createdAt + 24h"
+        path: src/users/reset.ts#L88
 authority:
-  resolved-path: .specify/.cache/synthesize/<slice>/authority.resolved.yaml
+  resolved:
+    - { source: docs,   kind: requirement, class: documentation }
+    - { source: docs,   kind: criterion,   class: documentation }
+    - { source: legacy, kind: example,     class: behaviour }
 prior-baseline:
   specs-dir: .specify/specs/
 constraints:

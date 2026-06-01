@@ -92,14 +92,14 @@ Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI 
 
 ### 5. Collect project metadata and invoke `specrun init`
 
-Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
+Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DESCRIPTION` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DESCRIPTION` if the user hasn't supplied one. An empty `$DESCRIPTION` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
 
 **Regular invocation** (adapter is the required first positional):
 
 ```bash
 specrun init "$PROFILE" \
   --name "$PROJECT_NAME" \
-  ${DOMAIN:+--domain "$DOMAIN"}
+  ${DESCRIPTION:+--description "$DESCRIPTION"}
 ```
 
 **Hub invocation** (when `$HUB_MODE=true` — no positional, `--hub` is the discriminator):
@@ -107,7 +107,7 @@ specrun init "$PROFILE" \
 ```bash
 specrun init --hub \
   --name "$PROJECT_NAME" \
-  ${DOMAIN:+--domain "$DOMAIN"}
+  ${DESCRIPTION:+--description "$DESCRIPTION"}
 ```
 
 Never combine the two: `specrun init "$PROFILE" --hub` exits `2` with clap's argument-conflict diagnostic. `specrun init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
@@ -129,7 +129,7 @@ For a **regular** init, tell the user:
 
 - "Specify initialized. Config written to `.specify/project.yaml`."
 - "Generated starter context at `AGENTS.md`; inspect the file directly for later review."
-- "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
+- "Edit the `description` field to describe your project's tech stack, architecture, and testing approach."
 - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/manifests/targets/<adapter>/adapter.yaml`."
 
 For a **hub** init, tell the user:

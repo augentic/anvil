@@ -4,11 +4,9 @@ Maps runtime capture JSON fields to `kind: example` claim fields emitted by the 
 
 ## Output: Evidence YAML
 
-Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source>.yaml`; the brief produces the body. Top-level field order is fixed (`source`, `adapter`, `authority`, `lead`, `claims`):
+Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source>.yaml`; the brief produces the body. Top-level field order is fixed (`authority`, `lead`, `claims`):
 
 ```yaml
-source: <source>
-adapter: captures
 authority: behaviour
 lead: <lead>
 claims:
@@ -29,7 +27,7 @@ claims:
           payload-shape: { ... }
 ```
 
-`adapter` is the literal `captures`. `authority` is the literal `behaviour` for every Evidence document this adapter emits; per-kind overrides via `authority-overrides:` are rarely needed (runtime captures are behaviour by definition). `id`, `path`, `replay-digest`, and `statement` are required on every `kind: example` claim; `input`, `output`, and any other observed shape are open per-kind body fields documented below.
+The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document. `authority` is the literal `behaviour` for every Evidence document this adapter emits; per-kind overrides via `authority-overrides:` are rarely needed (runtime captures are behaviour by definition). `id`, `path`, `replay-digest`, and `statement` are required on every `kind: example` claim; `input`, `output`, and any other observed shape are open per-kind body fields documented below.
 
 ## Claim fields
 
@@ -87,8 +85,6 @@ Bound lead `user-registration` against the capture tree from the `survey` brief'
 Resulting Evidence YAML:
 
 ```yaml
-source: runtime
-adapter: captures
 authority: behaviour
 lead: user-registration
 claims:

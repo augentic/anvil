@@ -1,5 +1,3 @@
-source: runtime
-adapter: captures
 authority: behaviour
 lead: user-registration
 claims:

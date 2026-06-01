@@ -1,5 +1,3 @@
-source: legacy-monolith
-adapter: code-typescript
 authority: behaviour
 lead: account-pwd-reset
 claims:

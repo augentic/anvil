@@ -4,8 +4,6 @@
 # `component: task-row` (and back-fills the same slug on the first when the
 # brief sees both leads in the same run).
 
-source: screens
-adapter: screenshots
 authority: documentation
 lead: archive
 

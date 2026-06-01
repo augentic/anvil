@@ -5,8 +5,8 @@ Scaffold the `.specify/` project structure and starter agent context.
 ## Synopsis
 
 ```bash
-specrun init <adapter> [--name <project-name>] [--domain "<description>"]
-specrun init --hub [--name <project-name>] [--domain "<description>"]
+specrun init <adapter> [--name <project-name>] [--description "<description>"]
+specrun init --hub [--name <project-name>] [--description "<description>"]
 ```
 
 ## Description
@@ -30,7 +30,7 @@ This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/i
 |--------|-------------|
 | `<adapter>` (positional) | Adapter identifier or URL to fetch or copy before scaffolding. Accepts a bare name (e.g. `omnia`), an `https://…` adapter directory URL, a `file:///…` URI, and `@ref` suffixes for version pinning. Required unless `--hub` is set. |
 | `--name` | Project name (defaults to the project directory basename). For hub mode, must be kebab-case (the CLI bakes it into `change.md`'s frontmatter). |
-| `--domain` | Free-form domain description for the project |
+| `--description` | Free-form project description (tech stack, architecture, testing) |
 | `--hub` | Scaffold a registry-only platform hub instead of a regular project. Refuses to run when `.specify/` already exists. Mutually exclusive with the `<adapter>` positional. |
 | `--format` | Global output format: `json` for structured automation output |
 

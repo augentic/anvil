@@ -10,8 +10,6 @@ task-list-empty.png       # same header / chrome; empty-state illustration repla
 Resulting Evidence (only one task row's claims shown for brevity):
 
 ```yaml
-source: screens
-adapter: screenshots
 authority: documentation
 lead: task-list
 claims:

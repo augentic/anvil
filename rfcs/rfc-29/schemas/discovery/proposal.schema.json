@@ -24,7 +24,7 @@
     "projectRef": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One project the agent can bind a response slice to. For a hub this is a `registry.yaml#/projects[]` entry; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice's scope against the project's `target` and `description`.",
+      "description": "One project the agent can bind a response slice to. For a hub this is projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice's scope against the project's `target`, `description`, and `capabilities`.",
       "required": [
         "name",
         "target"
@@ -42,6 +42,22 @@
           "type": "string",
           "minLength": 1,
           "description": "Single-sentence domain characterisation used by the agent when more than one project shares a target."
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "description": "Capability tags this project owns (e.g. `auth`, `billing`), authored in its `project.yaml` per RFC-36. The agent matches a scope against these when binding a slice to a project. Empty stays off the wire."
+        },
+        "keywords": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "description": "Free-form keyword tags supplementing `capabilities`, authored in the project's `project.yaml`. Empty stays off the wire."
         }
       }
     },
@@ -96,7 +112,7 @@
         "projects": {
           "type": "array",
           "minItems": 1,
-          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub this is every entry from `registry.yaml#/projects[]`; for a single regular project the CLI synthesizes one entry from `project.yaml` (name + resolved target adapter + domain). Persisted project configuration is normalized into this envelope-local shape.",
+          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub the entries are projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + resolved target adapter + domain). Persisted project configuration is normalized into this envelope-local shape.",
           "items": {
             "$ref": "#/$defs/projectRef"
           }

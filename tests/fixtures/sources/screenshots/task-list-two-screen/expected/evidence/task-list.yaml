@@ -9,8 +9,6 @@
 # walk under each container). `id`s follow the
 # `<screen>.<region>.<role>.<sub-role>` dotted-kebab grammar.
 
-source: screens
-adapter: screenshots
 authority: documentation
 lead: task-list
 

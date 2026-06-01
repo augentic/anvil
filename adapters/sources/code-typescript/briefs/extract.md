@@ -33,8 +33,6 @@ Load on demand when the lead's surface needs deeper analysis. The bodies are Typ
 Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source>.yaml`; you produce the body. Top-level fields are required:
 
 ```yaml
-source: <source>
-adapter: code-typescript
 authority: behaviour
 lead: <lead>
 claims:
@@ -49,7 +47,7 @@ claims:
     callee: "<module>:<symbol>"
 ```
 
-`authority` is fixed at `behaviour` for this adapter. `source`, `adapter`, and `lead` are kebab-case (validated by `evidence.schema.json` against `^[a-z0-9]+(-[a-z0-9]+)*$`). `claims: []` is valid when the lead has no in-scope code under `$SOURCE_DIR` — failure surfaces as a host-runner error, not as an empty file.
+`authority` is fixed at `behaviour` for this adapter. `lead` is kebab-case (validated by `evidence.schema.json` against `^[a-z0-9]+(-[a-z0-9]+)*$`). The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document. `claims: []` is valid when the lead has no in-scope code under `$SOURCE_DIR` — failure surfaces as a host-runner error, not as an empty file.
 
 ## Claim kinds
 
@@ -85,8 +83,6 @@ Source files in scope (per the lead's surface in the staged JSON):
 Resulting Evidence YAML:
 
 ```yaml
-source: legacy-monolith
-adapter: code-typescript
 authority: behaviour
 lead: user-registration
 claims:

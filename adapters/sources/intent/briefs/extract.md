@@ -13,8 +13,6 @@ Emit one `Evidence` document carrying a single `kind: intent` claim. The `intent
 Return one `Evidence` document for `/spec:refine` to persist at `.specify/slices/<slice>/evidence/<source>.yaml`:
 
 ```yaml
-source: <source>
-adapter: intent
 authority: intent
 lead: <lead>
 claims:
@@ -22,10 +20,10 @@ claims:
     statement: "<Source.value, verbatim>"
 ```
 
+The document's `(slice, source)` identity is carried by its on-disk path — the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`, deriving the `<source>.yaml` filename from the binding — and the adapter resolves from `plan.yaml.sources.<source>.adapter`. Neither is written in-document.
+
 Rules:
 
-- `source` MUST equal the binding's `source` (referencing the top-level `plan.yaml.sources.<key>` entry). It is the source key, not the adapter name.
-- `adapter` MUST be the literal string `intent`.
 - `authority` MUST be the literal string `intent`. The `intent` adapter is the only first-party source that emits this authority class; `documentation` and code adapters emit `documentation` or `behaviour` per the authority hierarchy.
 - `lead` MUST equal the `Lead` argument (the lead id, not the slice name; the two are equal under the degenerate intent path).
 - `claims` MUST contain exactly one entry with `kind: intent` and a `statement:` field carrying the operator's intent string verbatim. `id` is optional on `kind: intent` — the Evidence schema only requires it on `requirement` and `criterion` kinds. Omit it unless the operator supplies a stable id.
@@ -43,8 +41,6 @@ Input:
 Output — `Evidence` document:
 
 ```yaml
-source: intent
-adapter: intent
 authority: intent
 lead: add-search-filter
 claims:

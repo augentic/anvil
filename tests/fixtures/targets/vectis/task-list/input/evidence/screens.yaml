@@ -5,8 +5,6 @@
 # Replace with the live extractor output once W2.4 + W2.6 land together
 # (W5.3 acceptance sweep).
 
-source: screens
-adapter: screenshots
 authority: documentation
 lead: task-list
 

@@ -44,11 +44,9 @@ Line numbers are 1-indexed against the file at extract time. Choose the tightest
 
 ## Output
 
-Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`source`, `adapter`, `authority`, `lead`, `claims`).
+Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`authority`, `lead`, `claims`).
 
 ```yaml
-source: <source>
-adapter: documentation
 authority: documentation
 lead: <lead>
 claims:
@@ -65,7 +63,7 @@ claims:
     decision: "..."
 ```
 
-`adapter` is always the literal `documentation`. `authority` is always the literal `documentation` (operator-provided written product/technical intent — see the authority hierarchy `intent > documentation > behaviour`). `source` is the supplied `<source>`. `lead` is the supplied `<lead>`.
+`authority` is always the literal `documentation` (operator-provided written product/technical intent — see the authority hierarchy `intent > documentation > behaviour`). `lead` is the supplied `<lead>`. The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
 
 ## Worked example
 
@@ -83,11 +81,9 @@ Acceptance:
 Decision: use the existing transactional email provider rather than introducing a new notification service.
 ```
 
-Output (Evidence for `lead: password-reset`, bound under `source: product-notes`):
+Output (Evidence for `lead: password-reset`, bound under `source: product-notes`, persisted at `evidence/product-notes.yaml`):
 
 ```yaml
-source: product-notes
-adapter: documentation
 authority: documentation
 lead: password-reset
 claims:

@@ -62,13 +62,13 @@ Keep the dotted segments kebab-case. Re-running `extract` against the same sourc
 
 ## Output
 
-Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`source`, `adapter`, `authority`, `lead`, `claims`). Each claim's body fields depend on its `kind`:
+Return one Evidence document matching `schemas/evidence.schema.json`. Field order is fixed (`authority`, `lead`, `claims`). Each claim's body fields depend on its `kind`:
 
 - **region** — `screen`, `region` (closed enum: `header | body | footer | fab | states.<name> | overlays.<name> | platforms.<platform>.<region>`); optional `bbox`, `title`, `overlay_kind`, `state_when`, `state_replaces`, `notes.cropped_chrome`.
 - **container** — `screen`, `region`, `parent`, `container` (closed enum: `group | list | grid | form | card | surface | divider`); optional `direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`, `each`, `columns`, `rows`, `style`, `component`, `notes.candidate_component`, `notes.todo`.
 - **leaf** — `screen`, `region`, `parent`, `leaf` (closed enum: `text | button | icon-button | link | icon | image | field | checkbox | switch | radio | slider | segmented-control | progress-indicator | badge | chip | divider | spacer`); optional `content`, `label`, `style`, `role`, `name`, `color`, `notes.todo`.
 
-`adapter` is always the literal `screenshots`. `authority` is always the literal `documentation` (operator-provided written product / technical intent — see the authority hierarchy `intent > documentation > behaviour`).
+`authority` is always the literal `documentation` (operator-provided written product / technical intent — see the authority hierarchy `intent > documentation > behaviour`). The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
 
 Worked example: [`references/examples/task-list.md`](../references/examples/task-list.md) — a `task-list` lead with populated and empty-state images, ending in a candidate-component note that promotes to `component: task-row` on the next pass.
 

@@ -72,8 +72,6 @@ A source adapter participates in two places in the lifecycle.
 **`extract(Lead, Source) → Evidence`** runs inside `/spec:refine`. It returns a structured document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`:
 
 ```yaml
-source: legacy-monolith
-adapter: code-typescript
 authority: behaviour
 lead: user-registration
 claims:
@@ -82,7 +80,7 @@ claims:
     path: src/users/register.ts#L12-L87
 ```
 
-Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. `id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
+Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. The document's `(slice, source)` identity is path-borne (slice directory + `<source>.yaml` filename) and its adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document. `id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
 
 ### Sandboxing
 
