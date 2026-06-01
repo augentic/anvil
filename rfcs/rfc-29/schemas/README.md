@@ -1,16 +1,15 @@
 # RFC-29 draft schemas
 
-Normative JSON Schema drafts for the [RFC-29](../rfc-29-fan-in-fan-out.md) family. These are the **shared wire contracts** pinned by the umbrella (see [RFC-29 §"Shared wire contracts"](../rfc-29-fan-in-fan-out.md#shared-wire-contracts)); each schema is owned by the sub-RFC that ships it: `discovery/proposal.schema.json` by RFC-29b (M2a, **shipped** — durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2)); `slice/model.schema.json`, `slice/draft-model.schema.json`, and `slice/synthesis.schema.json` by [RFC-29c](../rfc-29c-synthesis.md) (M2b); the `target/build-*.schema.json` envelopes are authored during [RFC-29d](../rfc-29d-target.md) (M3). Implementation copies these into `augentic/specify-cli/schemas/` and embeds them in `specify-schema`. Register `model.schema.json`, `draft-model.schema.json`, and `synthesis.schema.json` together so relative `$ref`s compile without a registry lookup (same pattern as the adapter loader's inlined `$defs`).
+Normative JSON Schema drafts for the [RFC-29](../rfc-29-fan-in-fan-out.md) family. These are the **shared wire contracts** pinned by the umbrella (see [RFC-29 §"Shared wire contracts"](../rfc-29-fan-in-fan-out.md#shared-wire-contracts)); each schema is owned by the sub-RFC that ships it: `discovery/proposal.schema.json` by RFC-29b (M2a, **shipped** — durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2)); `slice/model.schema.json` and `slice/synthesis.schema.json` by [RFC-29c](../rfc-29c-synthesis.md) (M2b); the `target/build-*.schema.json` envelopes are authored during [RFC-29d](../rfc-29d-target.md) (M3). Implementation copies these into `augentic/specify-cli/schemas/` and embeds them in `specify-schema`. Register `model.schema.json` and `synthesis.schema.json` together so relative `$ref`s compile without a registry lookup (same pattern as the adapter loader's inlined `$defs`). A single `model.schema.json` validates both the agent synthesis response `model` and the persisted `model.yaml`: kernel-owned and header fields are optional, so the agent omits them and the kernel re-derives/stamps them on projection. There is no separate draft-model schema and no separate `provenance.yaml` schema — provenance is carried inline in `model.yaml` and projected on demand by `specrun slice provenance`.
 
 | File | Lands at |
 | --- | --- |
 | `slice/model.schema.json` | `specify-cli/schemas/slice/model.schema.json` |
-| `slice/draft-model.schema.json` | `specify-cli/schemas/slice/draft-model.schema.json` |
 | `slice/synthesis.schema.json` | `specify-cli/schemas/slice/synthesis.schema.json` |
 | `discovery/proposal.schema.json` | `specify-cli/schemas/discovery/proposal.schema.json` |
 | `target/build-request.schema.json` | `specify-cli/schemas/target/build-request.schema.json` |
 | `target/build-report.schema.json` | `specify-cli/schemas/target/build-report.schema.json` |
 
-Embed constants: `SLICE_MODEL_JSON_SCHEMA`, `DRAFT_MODEL_JSON_SCHEMA`, `SYNTHESIS_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`.
+Embed constants: `SLICE_MODEL_JSON_SCHEMA`, `SYNTHESIS_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`.
 
 Shipped so far: `discovery/proposal.schema.json` has landed in `augentic/specify-cli` at `schemas/discovery/proposal.schema.json`, embedded as the `PROPOSAL_JSON_SCHEMA` constant in `specify-schema` and compiled through `crate::schema::validate_proposal_json` (the gate `specrun plan propose --from` runs over the agent response). The remaining constants land with their owning sub-RFC.

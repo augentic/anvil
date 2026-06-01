@@ -32,17 +32,16 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 | Spec | `.specify/slices/<name>/specs/<unit>/spec.md` | Behavioral requirements |
 | Design | `.specify/slices/<name>/design.md` | Technical shape |
 | Tasks | `.specify/slices/<name>/tasks.md` | Implementation sequence |
-| Provenance index | `.specify/slices/<name>/provenance.yaml` | Audit-only provenance index |
+| Slice model | `.specify/slices/<name>/model.yaml` | Single structured artifact; carries provenance inline (M2b synthesis kernel) |
 
 ## Behavior
 
 1. **Resolve target and sources** — take the resolved `target` from `specrun plan next` (the plan stores no per-slice `target`) and read `sources[]` from `plan.yaml.slices[<slice>]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
-4. **Synthesize** — load target `shape` brief; write `proposal.md → specs/<unit>/spec.md → design.md → tasks.md` in fixed order.
-5. **Write `provenance.yaml`** — atomic provenance index per `REQ-*` id.
-6. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
-7. **Transition** — `specrun slice transition <name> refined`.
+4. **Synthesize** — load target `shape` brief; write `proposal.md → specs/<unit>/spec.md → design.md → tasks.md` in fixed order. Provenance is carried inline in the single `model.yaml` artifact (written by the M2b synthesis kernel), never as a hand-authored `provenance.yaml`; `specrun slice provenance` projects the audit view on demand.
+5. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
+6. **Transition** — `specrun slice transition <name> refined`.
 
 Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
 
@@ -67,7 +66,7 @@ On extract failure, the slice stays `refining` with amend-plan guidance. On vali
 | `refine-no-active-slice` | No `in-progress` entry and no slice argument | Run `/spec:execute` or pass slice name |
 | `refine-binding-unresolved` | Source key or lead id not in plan/discovery | Fix plan bindings |
 | Extract failure | Source path denied or brief error | Amend plan sources; re-run refine |
-| Validation failure | Provenance drift | Fix `specs/<unit>/spec.md` or `provenance.yaml`; re-validate |
+| Validation failure | Spec provenance parse / staleness / orphan claim | Fix `specs/<unit>/spec.md`; re-validate |
 
 ## Examples
 

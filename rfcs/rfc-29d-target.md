@@ -127,9 +127,9 @@ documentation + code-typescript
              slice synthesize               (envelope: agent-led cross-modal reconciliation
                                               into the requirement set + prose;
                                               kernel: deterministic projection — ids, status,
-                                              provenance — over the returned structure;
+                                              inline provenance — over the returned structure;
                                               one Evidence map -> one slice model)
-             model.yaml + artifacts + provenance.yaml
+             model.yaml + artifacts          (provenance projected on demand, not persisted)
              target build (one target)
              slice merge (one baseline)
         -> validate cross-slice ordering via depends-on
@@ -151,8 +151,7 @@ tests/fixtures/rfc-29/fan-in-fan-out/
       specs/identity/spec.md
       design.md
       tasks.md
-      provenance.yaml
-      model.yaml                                # target: contracts@v1
+      model.yaml                                # target: contracts@v1; provenance inline
       build/report.yaml
     slices/identity-service/
       evidence/docs.yaml
@@ -161,8 +160,7 @@ tests/fixtures/rfc-29/fan-in-fan-out/
       specs/identity/spec.md
       design.md
       tasks.md
-      provenance.yaml
-      model.yaml                                # target: omnia@v1; sources include docs + legacy
+      model.yaml                                # target: omnia@v1; sources include docs + legacy; provenance inline
       build/report.yaml                      # slice-local build record
 ```
 
@@ -173,14 +171,14 @@ Required assertions:
 - The fixture's `/spec:plan` agent step (or the test harness simulating it) returns a `kind: response` whose `slices[]` matches `docs:identity-api` with `legacy:identity-api` by shared slug under `scope: identity-api` (fanned out to two slices with explicit `name` values `identity-contracts` and `identity-service` and **bound registry projects** `identity-contracts`, `identity-service`, both carrying identical `sources[]`) and matches `password-reset` with `reset-password` by synopsis judgment under a separate `scope: password-reset`; `specrun plan propose --from` writes the single-target slices each carrying its bound `project` (the target is resolved on demand from that project, not written to `plan.yaml`), with `identity-service.depends-on: [identity-contracts]`, emits `plan.reconcile.agent` + `plan.reconcile.completed`, and the cross-source matches are rendered into `change.md` for Gate-1 review.
 - `specrun plan propose --from` rejects a response that leaves a surveyed lead unaccounted for or double-counts one across scopes (`plan-reconcile-partition`), one that cites a `(source, lead)` pair absent from the **recomputed** catalog (`plan-reconcile-lead-orphan`), one whose scope names two leads from the same source (`plan-reconcile-slice-source-collision`), one whose slices share a `scope` id but carry differing `sources[]` (`plan-reconcile-fanout-source-mismatch`), one with duplicate `(scope, project)` rows (`plan-reconcile-slice-duplicate`), one whose agent-supplied explicit `name` values collide (`plan-reconcile-slice-name-collision`), one whose `depends-on` graph cycles (`plan-reconcile-depends-on-cycle`), one that omits `project` on a slice when more than one project is offered (`plan-reconcile-project-binding-required`), one that binds a slice to a `project` absent from the request's `projects[]` (`plan-reconcile-project-orphan`), and one that would replace an approved or partially executed plan (`plan-reconcile-plan-not-replaceable`); `specrun plan propose` with neither `--dry-run` nor `--from` exits non-zero with `plan-propose-mode-required`.
 - `specrun source extract` writes schema-valid Evidence for every `(slice, source)` pair.
-- `specrun slice synthesize` writes valid artifacts, `provenance.yaml`, and `model.yaml` for each slice.
-- `specrun slice validate` catches no provenance or slice-model drift on either slice.
+- `specrun slice synthesize` writes valid artifacts and `model.yaml` (provenance inline) for each slice; `specrun slice provenance` projects an audit view from `model.yaml` on demand.
+- `specrun slice validate` catches no slice-model staleness on either slice.
 - Each slice builds independently against its single bound target; `identity-service` reads `identity-contracts`' merged output from the working tree (the dependency is ordered by `depends-on` + `plan next`, not carried on the build request).
 - `specrun plan next` orders execution so `identity-contracts` reaches `merged` before `identity-service` starts.
-- **Kernel-projection determinism.** Re-run kernel projection twice over a golden synthesis response; `provenance.yaml` and kernel-owned `model.yaml` fields are byte-identical and target-independent (D11). Live agent runs are not byte-stable on requirement set or prose.
-- **D8 envelope-construction proof.** Synthesis request requirements-relevant inputs are byte-identical across `contracts@v1` and `omnia@v1` bindings; `target` / `shape-brief` differ only in non-requirements fields.
-- **Forbidden-input-leak probe (deterministic).** A fixture-local test confirms the envelope walls `target` and `shape-brief` off from the requirements section: a probe response whose requirements section contains a token present in `target` or the `shape-brief` file but in **no** cited Evidence claim is flagged by `slice-synthesize-forbidden-input-leak` via a mechanical set-difference test (not a semantic judgement), proving the target-neutrality-by-construction layer of D8.
-- **Synthesis envelope contract.** A fixture-local test re-runs `specrun slice synthesize` with a deliberately-malformed synthesis-step response that usurps a kernel-owned field — pre-assigns a `REQ-NNN` id, sets `status`, marks a per-claim `winner`, or cites a `(source, id)` absent from the Evidence map. The engine rejects the draft with `slice-synthesize-kernel-field-usurped` (kernel fields) or `slice-model-source-orphan` (orphan claim) **before** projection, proving the kernel is the sole authority on id assignment, rendered source list derivation, winner selection, status derivation, and provenance projection while the agent remains the sole author of the requirement set, its claims, and its agreement verdict.
+- **Primary build gate (ground truth).** The release is gated on the *generated output behaving correctly*, not on the envelope: each slice's `target build` produces code that passes the target's replay/golden suite and `cargo check` / `cargo test` (per target adapter). A slice whose build output fails replay/golden or `cargo` is not done, regardless of how clean its envelope was. This ground-truth gate is the load-bearing acceptance signal; the envelope and determinism properties below are corroborating, not blocking.
+- **Kernel-projection determinism (non-blocking property).** Re-running kernel projection twice over a golden synthesis response yields byte-identical, target-independent kernel-owned `model.yaml` fields and the projected provenance view (D8 kernel determinism). Live agent runs are not byte-stable on requirement set or prose. A determinism regression is a defect to investigate, not a release gate.
+- **D8 envelope-construction proof (non-blocking property).** Synthesis request requirements-relevant inputs are byte-identical across `contracts@v1` and `omnia@v1` bindings; `target` / `shape-brief` differ only in non-requirements fields. This documents target-neutrality-by-construction; it corroborates but does not gate the release.
+- **Slice-model normalization + orphan rejection.** A fixture-local test re-runs `specrun slice synthesize` with a synthesis-step response that pre-assigns a `REQ-NNN` id, sets `status`, or marks a per-claim `winner`: the kernel **ignores and re-derives** every kernel-owned field (normalize, never reject). A response citing a `(source, id)` absent from the Evidence map is rejected with `slice-model-source-orphan` before projection. Together these prove the kernel is the sole authority on id assignment, rendered source list derivation, winner selection, status derivation, and inline provenance, while the agent remains the sole author of the requirement set, its claims, and its agreement verdict.
 
 ## Wire contracts introduced by this milestone
 

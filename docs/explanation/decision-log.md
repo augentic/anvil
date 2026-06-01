@@ -379,3 +379,35 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Rationale:** Operator-driven lead reconciliation at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## One slice-model artifact, provenance inline
+
+**Decision (revises RFC-29 D3a/D4):** A synthesized slice carries exactly one structured artifact, `.specify/slices/<slice>/model.yaml`, which carries provenance **inline** (`requirements[].claims[]` with `winner`, plus `resolution`). `provenance.yaml` is no longer a persisted file; the same shape is generated on demand by `specrun slice provenance`. There is a single `model.schema.json` (the retired `draft-model.schema.json` is gone): the agent's synthesis response and the persisted file validate against the same schema, with kernel-owned fields (`requirements[].id`, `.status`, `claims[].winner`) optional. The kernel re-derives those fields and ignores anything the agent supplied — **normalize, never reject** — so the `slice-synthesize-kernel-field-usurped` abort and the `slice-model-provenance-drift` finding both retire.
+
+**Rationale:** Three representations of the same provenance facts (`model.yaml`, `provenance.yaml`, and the rendered `spec.md` lines) plus drift validators to keep them in sync is complexity manufactured by materializing a projection. One source of truth with on-read projections cannot drift from itself. A dual draft/persisted schema plus a rejection finding is a firewall around fields the kernel overwrites anyway; normalizing is cheaper and removes a failure mode and an entire schema. `provenance.yaml` was audit-only and unread by downstream verbs, so persisting it bought nothing a projection does not.
+
+**Source:** RFC-29c simplification refactor.
+
+## Ground-truth validation over envelope firewalls
+
+**Decision (rescopes RFC-29 D8):** Build success is gated primarily on ground truth — replay/golden behavioral equivalence plus target-local checks (`cargo check`/`test`) — rather than on structural firewalls around the synthesis envelope. The `slice-synthesize-forbidden-input-leak` set-difference probe retires. D8's shape-brief wall is preserved as guidance and proven by the kernel-determinism property (kernel output is byte-identical and target-independent given a fixed response), which is a non-blocking property rather than a runtime finding.
+
+**Rationale:** Policing the agent's intermediate reasoning with a token set-difference test is a weaker signal than checking the result: does the regenerated code reproduce the captured behavior and pass its tests. Every closed enum and probe the agent must satisfy is more surface to get wrong and more validators to maintain. Trust the agent loosely; verify the output brutally.
+
+**Source:** RFC-29c / RFC-29d simplification refactor.
+
+## Authority: document-level plus one override (v1)
+
+**Decision (simplifies RFC-29c authority resolution):** v1 resolves authority at document level (the closed `intent` > `documentation` > `behaviour` enum) with a single operator override surface — the per-slice `authority-override` on `plan.yaml`, keyed by claim kind, naming the winning source. The per-Evidence `authority-overrides` surface and per-kind class-lifting are deferred to a future RFC.
+
+**Rationale:** Two override surfaces with different shapes and a four-tier precedence is generality designed ahead of demonstrated demand. Document-level authority plus one override covers the common case; the finer-grained surfaces can be earned back when a real slice needs them.
+
+**Source:** RFC-29c simplification refactor.
+
+## History via git plus an outcome ledger, not a slice graveyard
+
+**Decision (revises archive posture):** The durable record of merged work is git history of the committed `.specify/specs/` baseline plus an append-only outcome ledger (the `slice.archive.created` journal entries: slice, touched-specs, outcome summary, merge SHA). The archived slice folder under `.specify/archive/YYYY-MM-DD-<slice>/` becomes a prunable convenience cache governed by `specrun archive prune`, not the system of record.
+
+**Rationale:** A date-stamped folder of dead slices in the live tree is simultaneously a worse VCS and a worse database than the tools already present: git already records every artifact at the merge commit, and a structured ledger answers "what merged, when, with what outcome" better than spec-delta fragments that no longer compose. Retaining the folder forever ages into misleading cruft; demoting it to a prunable cache while recording the real history in git + ledger keeps the audit story and clears the graveyard.
+
+**Source:** RFC-29 simplification refactor.

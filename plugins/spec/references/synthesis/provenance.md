@@ -1,10 +1,10 @@
-# Provenance index (`provenance.yaml`)
+# Provenance projection (`specrun slice provenance`)
 
-The audit-only index per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. The resolution rules — per-kind precedence, per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only how to author the index that records which rule fired.
+The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specrun slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only the shape of the projected view that records which rule fired.
 
-## When the skill writes it
+## How it's produced
 
-`/spec:refine` step 5 (between the `tasks.md` write and `specrun slice validate`). Atomic: write to a sibling temp file, then rename. The file is regenerated whole on each re-refine — operator hand-edits to `provenance.yaml` do not survive, the same posture `spec.md` has against re-refine. The skill body is the writer; there is no `specrun slice provenance` verb. After the atomic rename succeeds, emit the `slice.provenance.written` journal event.
+The kernel writes provenance inline on each `model.yaml` requirement during `specrun slice synthesize` (claim `value` / `path` / `winner`, `resolution`, `resolution-trace`). The skill writes no `provenance.yaml` file. To inspect the audit view, run `specrun slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below. Because the view is a pure projection of `model.yaml`, it can never drift from the model and there is no `slice.provenance.written` event.
 
 ## Block grammar
 
@@ -51,7 +51,7 @@ Multiple contributors; bodies match after whitespace normalisation; `status: agr
 
 ### `authority-resolved`
 
-Multiple contributors disagree; the default authority ordering (or a per-Evidence per-kind override) broke the tie. `status: divergence`. `resolution-trace.step` is `document-authority-ordering` (default ordering won) or `per-evidence-authority-override` (a per-Evidence `authority-overrides.<kind>` resolved a stronger class for the loser).
+Multiple contributors disagree; the document-level authority ordering broke the tie. `status: divergence`. `resolution-trace.step` is `document-authority-ordering` (the document-level `authority:` ordering won).
 
 ```yaml
 - id: REQ-007
@@ -153,7 +153,7 @@ Boolean, optional:
 - **Absent** on every entry of an `agreed` block (`single-source` and `single-value-agreement`) — there is no winner / loser distinction.
 - **Absent** on every entry of a `tied-conflict` block — no winner exists.
 - **`true`** on the synthesis-selected entry of an `authority-resolved` or `per-slice-override` block.
-- **`false`** on every other contributing claim in an `authority-resolved` or `per-slice-override` block — every entry the index dropped survives in `provenance.yaml` so the operator can audit what was discarded.
+- **`false`** on every other contributing claim in an `authority-resolved` or `per-slice-override` block — every entry the kernel dropped survives inline in `model.yaml` (and in the projected view) so the operator can audit what was discarded.
 
 ## Resolution-trace step names
 
@@ -162,25 +162,21 @@ Boolean, optional:
 | `step` | When |
 | --- | --- |
 | `per-slice-authority-override` | The slice's `authority-override.<kind>` named a source key in the reconciled group; that source won. Paired with `resolution: per-slice-override`. |
-| `per-evidence-authority-override` | A contributing Evidence document's `authority-overrides.<kind>` resolved a strictly-greater authority class than the other contributors' effective class for this kind. Paired with `resolution: authority-resolved`. |
 | `document-authority-ordering` | Fallback to the document-level `authority:` enum (`intent > documentation > behaviour`); highest class won. Paired with `resolution: authority-resolved`. |
+
+> The deferred per-Evidence `authority-overrides` surface (a future RFC — see [`authority.md`](authority.md)) would add a `per-evidence-authority-override` step here. It is out of scope for v1.
 
 The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specrun slice validate` will not refuse it.
 
 ## Audit posture
 
-`provenance.yaml` is inspected directly when an operator needs to audit source reconciliation. It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The index is audit-only, the same audit-only posture used by plan summary metadata.
+The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specrun slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
-Operator hand-edits to `provenance.yaml` do not survive re-refine: `/spec:refine` re-runs regenerate the file whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back through provenance) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
+The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
 
-## Drift detection
+## No drift surface
 
-`specrun slice validate` refuses with structured error `slice-provenance-drift` (exit 2) on either of two drift conditions:
-
-1. **REQ-id parity drift.** The set of `REQ-*` ids in `spec.md` MUST equal the set of `requirements[].id` in `provenance.yaml`, with order preserved.
-2. **Contributing-claim → evidence drift.** Every `requirements[].contributing-claims[]` entry's `(source, id)` MUST resolve to a real claim in the per-source `evidence/<source>.yaml`. A stale `id` (the source's Evidence rewrote the id) or a stale `source` (the slice's `sources[]` binding was removed) both surface as drift.
-
-Both drift conditions are cleared by re-running `/spec:refine` — synthesis writes a fresh `provenance.yaml` from the current `spec.md` + `evidence/*.yaml`. Operators who hand-edit `spec.md` between refine runs (the common case for reconciling a `[conflict]` tag) MUST re-run `/spec:refine` afterwards so `provenance.yaml` re-aligns; running `specrun slice validate` alone will not regenerate the index.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift, and the retired `slice-provenance-drift` validator is gone. `specrun slice validate` still checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
 
 ## Worked example
 

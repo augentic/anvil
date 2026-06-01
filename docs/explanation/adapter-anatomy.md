@@ -122,17 +122,16 @@ CLI entry points: `specrun source resolve <name>` and `specrun target resolve <v
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks four steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. Per-Evidence overrides use optional `authority-overrides:` maps on each `evidence/*.yaml` file. Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>
   <p style="font-size: 13px; margin: 0 0 10px;">
-    When two claims of the same kind disagree, synthesis walks four steps in order. Pick a scenario to see which step fires.
+    When two claims of the same kind disagree, synthesis walks three steps in order. Pick a scenario to see which step fires.
   </p>
   <div class="auth-controls" id="auth-ctl">
     <button type="button" class="on" data-scenario="slice">Per-slice override set</button>
-    <button type="button" data-scenario="evidence">Only per-Evidence override set</button>
-    <button type="button" data-scenario="default">No overrides, classes differ</button>
+    <button type="button" data-scenario="default">No override, classes differ</button>
     <button type="button" data-scenario="tied">All same authority class</button>
   </div>
 
@@ -148,21 +147,13 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
     <div class="auth-step" data-step="2">
       <div class="n">2</div>
       <div class="label">
-        <strong>Per-Evidence <code>authority-overrides.&lt;kind&gt;</code></strong>
-        <div class="desc">Resolves a per-kind authority that breaks the tie → that class wins.</div>
-      </div>
-      <div class="verdict">class winner</div>
-    </div>
-    <div class="auth-step" data-step="3">
-      <div class="n">3</div>
-      <div class="label">
         <strong>Default ordering</strong>
         <div class="desc"><code>intent &gt; documentation &gt; behaviour</code> on document-level <code>authority:</code>.</div>
       </div>
       <div class="verdict">default winner</div>
     </div>
-    <div class="auth-step" data-step="4">
-      <div class="n">4</div>
+    <div class="auth-step" data-step="3">
+      <div class="n">3</div>
       <div class="label">
         <strong>Still tied</strong>
         <div class="desc"><span class="pill conflict">conflict</span> Status: <code>conflict</code> + <code>[conflict]</code> inline tag.</div>
@@ -171,7 +162,7 @@ When two claims of the same kind disagree, core synthesis walks four steps in or
     </div>
   </div>
   <p style="font-size: 12px; margin: 8px 0 0; font-family: ui-monospace, monospace;">
-    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes by reading the slice's <code>provenance.yaml</code>.
+    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes with <code>specrun slice provenance</code> (projected on demand from <code>model.yaml</code>).
   </p>
 </div>
 

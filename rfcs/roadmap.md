@@ -56,7 +56,7 @@ After the standards layer lands, two tracks run in parallel:
 **Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
 **Why now:** Vocabulary and lifecycle guards exist, but `survey`, `extract`, plan-time lead reconciliation, slice synthesis, the typed slice model, and the target build envelope are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
-**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic verbs (`specrun slice provenance`, `specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the projection kernel and journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
+**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic surfaces (`specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
 **First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
 
 ```bash
