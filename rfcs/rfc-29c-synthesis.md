@@ -57,7 +57,7 @@ It **writes** the following artifacts. All writes are staged, and the prior arti
 .specify/slices/<slice>/model.yaml
 ```
 
-End to end, the command resolves authority, builds the synthesis request envelope (Evidence plus resolved authority — and **no** shape brief for the requirements section), dispatches the synthesis step, receives the draft, projects the kernel-owned fields, renders provenance into Markdown, validates drift, and then persists the staged artifacts.
+End to end, the command resolves authority, builds the synthesis request envelope (inline Evidence plus the resolved `authority` array — the shape brief is resolved from `target`, not carried), dispatches the synthesis step, receives the draft, projects the kernel-owned fields, renders provenance into Markdown, validates drift, and then persists the staged artifacts.
 
 ### Evidence input
 
@@ -124,18 +124,20 @@ Both modes validate the draft against `draft-model.schema.json`, validate the me
 
 The shape brief parameterises the **non-requirements** sections only — `domain`, `apis`, `configuration`, `technical-logic`, `observability`, and `tasks`. It MUST NOT influence `requirements[]`, claims, `agreement`, rendered source lists, or any provenance-bearing field.
 
+The shape brief is **not** carried in the synthesis envelope. `specrun slice synthesize` resolves it from the bound `target` (`TargetAdapter::resolve`) and reads it during synthesis, keeping target resolution a CLI responsibility and the envelope free of host paths. Under `execution: agent` the synthesis step already has the resolved brief in hand; if `execution: tool` later needs it in-sandbox it would be inlined as content at that point (deferred — YAGNI today).
+
 Two gates enforce this (see [RFC-29d §"Acceptance proof (D7)"](rfc-29d-target.md#acceptance-proof-d7)):
 
 1. **Envelope proof** — the requirements-relevant request inputs are byte-identical across target bindings.
 2. **Kernel determinism** — given a fixed synthesis response, kernel output is byte-identical and target-independent.
 
-The `slice-synthesize-forbidden-input-leak` finding complements gate 1 by flagging a response whose requirements section references `target` or `shape-brief` content.
+The `slice-synthesize-forbidden-input-leak` finding complements gate 1 by flagging a response whose requirements section references `target` or shape-brief content.
 
 ### Synthesis envelope
 
 The synthesis step communicates with the kernel over a closed request/response envelope, dispatched under `execution: agent` (default) or `execution: tool` (D10). Its schema is `[synthesis.schema.json](rfc-29/schemas/slice/synthesis.schema.json)`, discriminated by `kind: request | response`; the response `model` `$ref`s `[draft-model.schema.json](rfc-29/schemas/slice/draft-model.schema.json)` rather than the persisted schema (D3a).
 
-Each `evidence.<source>` entry embeds that source's `extract` output inline — its `lead` and `claims` — rather than a path to `evidence/<source>.yaml`, so the dispatched step (agent or WASI tool) reconciles without host filesystem access. The on-disk Evidence document stays the kernel's source of truth for projection, `provenance.yaml`, and drift validation; the per-document `authority` / `authority-overrides` are **not** echoed per source, because the kernel resolves authority before dispatch and embeds the result inline as the `authority` array (§"Authority resolution"). Together with inline Evidence this makes the whole request hermetic — the dispatched step needs no filesystem reads at all.
+Each `evidence.<source>` entry embeds that source's `extract` output inline — its `lead` and `claims` — rather than a path to `evidence/<source>.yaml`, so the dispatched step (agent or WASI tool) reconciles without host filesystem access. The on-disk Evidence document stays the kernel's source of truth for projection, `provenance.yaml`, and drift validation; the per-document `authority` / `authority-overrides` are **not** echoed per source, because the kernel resolves authority before dispatch and embeds the result inline as the `authority` array (§"Authority resolution"). Together with inline Evidence, the requirements-reconciliation inputs are fully self-contained in the envelope — deciding the requirement set needs no filesystem access. The non-requirements sections additionally draw on the target's shape brief, which the synthesis step resolves from `target` rather than receiving as an envelope field (§"Shape-brief scope (D8)").
 
 A request looks like this:
 
@@ -144,7 +146,6 @@ version: 1
 kind: request
 slice: identity-service
 target: omnia@v1
-shape-brief: /.../adapters/targets/omnia/briefs/shape.md
 evidence:
   docs:
     lead: password-reset
@@ -175,7 +176,7 @@ authority:
   - { source: legacy, kind: example,     class: behaviour }
 ```
 
-Requirements reconciliation may draw only on Evidence and the resolved authority; `target` and `shape-brief` are valid inputs for the non-requirements model sections but never for requirements. This wall is not carried as a wire field — it is enforced by the envelope proof (gate 1) and the `slice-synthesize-forbidden-input-leak` finding (§"Shape-brief scope (D8)"). The response carries the draft model plus the prose-only Markdown; the kernel-owned fields it must not set are listed in §"Agent and kernel responsibilities".
+Requirements reconciliation may draw only on Evidence and the resolved authority; `target` and the target's shape brief (resolved from `target`, not carried in the envelope) are valid inputs for the non-requirements model sections but never for requirements. This wall is not carried as a wire field — it is enforced by the envelope proof (gate 1) and the `slice-synthesize-forbidden-input-leak` finding (§"Shape-brief scope (D8)"). The response carries the draft model plus the prose-only Markdown; the kernel-owned fields it must not set are listed in §"Agent and kernel responsibilities".
 
 The matching response carries the draft `model` — validated against `draft-model.schema.json` (D3a), so requirements carry no kernel-owned fields — and the prose-only Markdown under `artifacts`:
 
