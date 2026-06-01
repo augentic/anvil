@@ -5,7 +5,7 @@ Walk `$SOURCE_DIR` (a read-only preopen of an operator-bound directory of screen
 ## Inputs
 
 - `$SOURCE_DIR` — read-only directory holding the bound screen-image set. Never write here.
-- `<source-key>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in and this brief embeds it in every `sources:` list.
+- `<source>` — the plan-level binding key under `plan.yaml.sources.<key>`; the CLI passes it in for context and stamps each lead's `source` itself, so this brief does not emit it.
 - `$SCRATCH_DIR` — per-slice write-only scratch space; use only for unavoidable intermediate state (e.g. cropped staging files when chrome cropping is required to disambiguate a screen).
 
 ## Vision prerequisite
@@ -37,24 +37,23 @@ Triage authority: explicit `state <slug>:<name>=<path>` and `group <slug>:<paths
 
 Skip images that contain no application content (orphan splash screens, full-screen brand marks, internal QA cards). When in doubt, emit the lead — `propose` and the operator at Gate 1 reconcile false positives.
 
-## Lead id and summary
+## Lead id and synopsis
 
-- `id`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `id`, so stability matters more than prettiness.
-- `summary`: a one-line description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Keep it under 200 characters. Do not invent content the screens do not show.
+- `lead`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `(source, lead)`, so stability matters more than prettiness.
+- `synopsis`: a content-bearing description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Name the screen's surface and its salient content so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the screens do not show.
 
 ## Output
 
-Return one block per lead, in alphabetical `id` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
+Return one block per lead, in alphabetical `lead` order. The CLI appends them under the existing `## Lead inventory` heading in `discovery.md`; this brief never writes the heading itself.
 
 ```markdown
 ### task-list
 
-- id: task-list
-- sources: [<source-key>]
-- summary: Task list: today's open tasks for the signed-in user.
+- lead: task-list
+- synopsis: Task list: today's open tasks for the signed-in user.
 ```
 
-Field order is fixed (`id`, `sources`, `summary`). `sources:` always carries exactly the supplied `<source-key>` for this adapter; cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job. Do not set `tentative`.
+Field order is fixed (`lead`, `synopsis`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job.
 
 ## Worked example
 
@@ -66,28 +65,26 @@ task-list-empty.png       # same header / chrome; empty-state illustration
 archive.png               # visible header: "Archive"; archived tasks list
 ```
 
-Expected output (alphabetically by `id`; `task-list-populated.png` and `task-list-empty.png` collapse into a single lead by visual similarity):
+Expected output (alphabetically by `lead`; `task-list-populated.png` and `task-list-empty.png` collapse into a single lead by visual similarity):
 
 ```markdown
 ### archive
 
-- id: archive
-- sources: [<source-key>]
-- summary: Archive: completed tasks the user has archived.
+- lead: archive
+- synopsis: Archive: completed tasks the user has archived.
 
 ### task-list
 
-- id: task-list
-- sources: [<source-key>]
-- summary: Task list: today's open tasks for the signed-in user.
+- lead: task-list
+- synopsis: Task list: today's open tasks for the signed-in user.
 ```
 
 A full input / output fixture for this example lives at [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../../tests/fixtures/sources/screenshots/task-list-two-screen/) in the repo.
 
 ## Determinism
 
-- Emit leads sorted alphabetically by `id`.
-- Field order inside each block is fixed: `id`, `sources`, `summary`.
+- Emit leads sorted alphabetically by `lead`.
+- Field order inside each block is fixed: `lead`, `synopsis`.
 - No timestamps, host paths, or other run-state in the output — re-running against unchanged inputs produces byte-identical blocks.
 - Triage of state variants into the same lead MUST be reproducible. When two images are equally plausible as the dominant variant of a screen, pick the one whose filename sorts first lexicographically.
 

@@ -12,8 +12,8 @@ Sources: 1. Leads: 1.
 
 ## Lead inventory
 
-### fix-typo
+### intent:fix-typo
 
-- id: fix-typo
-- sources: [intent]
-- summary: fix typo in user.rs
+- lead: fix-typo
+- source: intent
+- synopsis: fix typo in user.rs

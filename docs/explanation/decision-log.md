@@ -12,11 +12,21 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Pass/Fail/Deferred validation
+## Pass/Fail/Deferred validation (superseded by the shared `Diagnostic` substrate)
 
-**Decision:** The validation engine classifies checks into three outcomes: Pass (check passed), Fail (must fix), Deferred (requires semantic judgment, flagged for agent review).
+**Decision (superseded):** The validation engine classified checks into three outcomes: Pass (check passed), Fail (must fix), Deferred (requires semantic judgment, flagged for agent review).
 
-**Rationale:** Some checks are purely structural (file exists, format correct) and can be answered definitively by the CLI. Others require understanding context ("is this design adequate?"). The three-way classification lets the CLI handle what it can and explicitly flags what needs agent judgment, rather than pretending everything is binary.
+**Superseded by:** Every check surface now emits one neutral `Diagnostic` / `DiagnosticReport` currency with two orthogonal axes — `source` (`deterministic | model-assisted | hybrid | human | tool`) and `kind` (`violation` vs `review`). A clean check simply emits no `violation` finding; the former `Deferred` outcome is now `kind: review` (a deterministically-raised request for agent judgment), and lint's `lint-mode: model-assisted` rules surface as `review` too. "Needs judgment" became a first-class, queryable concept across both surfaces rather than a per-validate enum value. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
+
+**Rationale (unchanged):** Some checks are purely structural (file exists, format correct) and can be answered definitively by the CLI. Others require understanding context ("is this design adequate?"). The split lets the CLI handle what it can and explicitly flags what needs agent judgment, rather than pretending everything is binary — now expressed via the `kind` axis instead of a dedicated validation-only enum.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Lint and validate share a substrate but stay distinct surfaces
+
+**Decision:** `lint` and `validate` are unified onto one `Diagnostic` substrate (data type, fingerprint, validator, renderer, blocking predicate) but remain conceptually distinct surfaces with different authority. `validate` gates a lifecycle transition (`refining → refined`): workflow-owned, non-negotiable, non-silenceable. `lint` is standards/policy compliance: codex-owned, versioned, lifecycle-neutral (may block CI, never transitions a slice), silenceable with an in-source rationale.
+
+**Rationale:** The analogy is LSP — `rustc`, `clippy`, and `rust-analyzer` all emit one `Diagnostic` with a `source` without becoming the same tool. Convergence applies to the substrate, never to the concepts or their gate policies. The neutrality is encoded one layer down at the crate graph: the shared machinery lives in a neutral `specify-diagnostics` leaf, and the litmus test is that `validate` (or any non-lint producer) must not depend on anything named `lint`. A uniform blocking predicate (`kind == violation && status == open && severity ∈ {critical, important}`) serves both surfaces; they differ only in whether ignore directives apply (lint: yes; validate: no).
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -42,7 +52,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev lint` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 
-**Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `reviewed` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
+**Rationale:** CI-native standards enforcement (`specrun lint`, RM-10) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `approved` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -68,6 +78,24 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what adapter they use, what domain they own). Sync-workspace runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
+**Superseded in part by:** the registry no longer authors a project's adapter/description/capabilities for topology purposes (it carries membership + location plus an optional greenfield adapter seed). Those facets are authored in each project's `project.yaml` and projected into the committed `.specify/topology.lock`. See "Project facets are authored in project.yaml" and "Topology cache (lockfile) for plan-time availability" below.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Project facets are authored in project.yaml; registry is a pointer
+
+**Decision:** Project-describing facets (`adapter`, `description`, `capabilities`, `keywords`) are authored solely in each project's `.specify/project.yaml`. `registry.yaml` is reduced to membership + location (`name`, `url`, optional `contracts`, optional `adapter` greenfield seed) and no longer authors a project's target adapter or description for plan-time topology.
+
+**Rationale:** A fact with two authored homes drifts. Previously a project's adapter/description lived in both its `project.yaml` and the hub's `registry.yaml`, and the registry copy silently won at plan time, while `capabilities` / `keywords` (added for slice-to-project routing) never reached the reconciliation envelope. Inverting authority — the project owns what it is, the registry owns only that the project is a member and where it lives — gives every fact exactly one writer and lets capability tags flow into binding. The registry's optional `adapter` survives only as a greenfield scaffold seed (the value written into a brand-new project's `project.yaml`); once that file exists it is authoritative.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Topology cache (lockfile) for plan-time availability
+
+**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml`; hub plan-time topology (`hub_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from the slots and `topology-cache-missing` when a hub has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
+
+**Rationale:** Inverting authority into `project.yaml` would otherwise couple plan-time topology to a synced (and for remotes, reachable) workspace. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the authored truth. "Sync" becomes idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## CWD-based routing for multi-repo execution
@@ -86,11 +114,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Project assignment is a framework concern
+## Project binding happens in the propose response
 
-**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside adapter-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
+**Decision:** Each slice's registry project is bound by the **agent inside the `specrun plan propose --from` response**, not by a separate post-propose assignment step. The dry-run request (`specrun plan propose --dry-run`) carries a `projects[]` topology (always at least one project; a single regular project synthesized from `project.yaml`, each entry carrying its normalized `target` adapter), and the agent names a `project` on each response slice. When exactly one project exists the agent may omit `project` and the kernel auto-binds it; the kernel then resolves each slice's `target` on demand from the bound project (the `target` is not written to `plan.yaml`). Propose is the slice writer — no project-less entries linger for a later assignment pass.
 
-**Rationale:** A multi-repo plan spans projects with different adapters, so assignment is inherently a cross-adapter concern. Placing it in individual propose briefs would duplicate the logic across adapters and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
+**Rationale:** Cross-source lead matching and project binding are the same agent judgment over the same request envelope, so splitting binding into a second skill step would re-read state the agent already holds and reintroduce an ordering problem. Folding binding into the propose response keeps the projection kernel the single writer of `plan.yaml.slices[].project` (the `target` is resolved on demand from the project, never written to disk), and keeps the N=1 case ergonomic via auto-bind. The earlier "assignment runs after propose in the plan skill" framing predates the agent-led `propose --from` kernel and is superseded.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -346,8 +374,40 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Automated propose
 
-**Decision:** `/spec:plan`'s `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` automatically. Uncertain merges annotate the contributing lead blocks with `tentative: true` and surface in a `## Tentative merges` block in `change.md`; materially-disagreeing summary pairs set `slices[].divergence: likely` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend` (split, merge, relabel, rebind, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
+**Decision:** `/spec:plan`'s `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` through `specrun plan propose --from`. Uncertain cross-source merges surface in a `## Tentative merges` block in `change.md` (the agent never edits `discovery.md`); materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specrun plan amend` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend`, `specrun plan add`, and `specrun plan remove` (split, merge, relabel, rebind, defer, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
 
 **Rationale:** Operator-driven lead reconciliation at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## One slice-model artifact, provenance inline
+
+**Decision:** A synthesized slice carries exactly one structured artifact, `.specify/slices/<slice>/model.yaml`, which carries provenance **inline** (`requirements[].claims[]` with `winner`, plus `resolution`). `provenance.yaml` is no longer a persisted file; the same shape is generated on demand by `specrun slice provenance`. There is a single `model.schema.json` (the retired `draft-model.schema.json` is gone): the agent's synthesis response and the persisted file validate against the same schema, with kernel-owned fields (`requirements[].id`, `.status`, `claims[].winner`) optional. The kernel re-derives those fields and ignores anything the agent supplied — **normalize, never reject** — so the `slice-synthesize-kernel-field-usurped` abort and the `slice-model-provenance-drift` finding both retire.
+
+**Rationale:** Three representations of the same provenance facts (`model.yaml`, `provenance.yaml`, and the rendered `spec.md` lines) plus drift validators to keep them in sync is complexity manufactured by materializing a projection. One source of truth with on-read projections cannot drift from itself. A dual draft/persisted schema plus a rejection finding is a firewall around fields the kernel overwrites anyway; normalizing is cheaper and removes a failure mode and an entire schema. `provenance.yaml` was audit-only and unread by downstream verbs, so persisting it bought nothing a projection does not.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Ground-truth validation over envelope firewalls
+
+**Decision:** Build success is gated primarily on ground truth — replay/golden behavioral equivalence plus target-local checks (`cargo check`/`test`) — rather than on structural firewalls around the synthesis envelope. The `slice-synthesize-forbidden-input-leak` set-difference probe retires. The synthesis shape-brief wall is preserved as guidance and proven by the kernel-determinism property (kernel output is byte-identical and target-independent given a fixed response), which is a non-blocking property rather than a runtime finding.
+
+**Rationale:** Policing the agent's intermediate reasoning with a token set-difference test is a weaker signal than checking the result: does the regenerated code reproduce the captured behavior and pass its tests. Every closed enum and probe the agent must satisfy is more surface to get wrong and more validators to maintain. Trust the agent loosely; verify the output brutally.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Authority: document-level plus one override (v1)
+
+**Decision:** v1 resolves authority at document level (the closed `intent` > `documentation` > `behaviour` enum) with a single operator override surface — the per-slice `authority-override` on `plan.yaml`, keyed by claim kind, naming the winning source. The per-Evidence `authority-overrides` surface and per-kind class-lifting are deferred to a future change.
+
+**Rationale:** Two override surfaces with different shapes and a four-tier precedence is generality designed ahead of demonstrated demand. Document-level authority plus one override covers the common case; the finer-grained surfaces can be earned back when a real slice needs them.
+
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## History via git plus an outcome ledger, not a slice graveyard
+
+**Decision (revises archive posture):** The durable record of merged work is git history of the committed `.specify/specs/` baseline plus an append-only outcome ledger (the `slice.archive.created` journal entries: slice, touched-specs, outcome summary, merge SHA). The archived slice folder under `.specify/archive/YYYY-MM-DD-<slice>/` becomes a prunable convenience cache governed by `specrun archive prune`, not the system of record.
+
+**Rationale:** A date-stamped folder of dead slices in the live tree is simultaneously a worse VCS and a worse database than the tools already present: git already records every artifact at the merge commit, and a structured ledger answers "what merged, when, with what outcome" better than spec-delta fragments that no longer compose. Retaining the folder forever ages into misleading cruft; demoting it to a prunable cache while recording the real history in git + ledger keeps the audit story and clears the graveyard.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.

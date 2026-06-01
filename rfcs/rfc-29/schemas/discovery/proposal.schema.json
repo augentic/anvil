@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/discovery/proposal.schema.json",
+  "title": "Specify lead reconciliation envelope",
+  "description": "Validates the request and response envelopes of the agent-led lead-reconciliation step per RFC-29 D2. `kind: request` is returned by `specrun plan propose --dry-run --format json`: a flat catalog of raw, unmerged `(source, lead)` leads read 1:1 from `discovery.md`, plus the `projects[]` topology (always at least one project; each entry carries the normalized target adapter the kernel resolves on demand at read time — it is never written to `plan.yaml`). Optional `aliases[]` on each row are hints from `discovery.md`; the kernel does not lock or auto-merge on them. `kind: response` is the agent's grouping consumed by `specrun plan propose --from`: a single `slices[]` list, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project` from the request (the kernel auto-binds the sole project when only one exists and resolves each slice's `target` on demand from the bound project's `projects[].target` rather than persisting it). The `scope` noun was removed (RFC-29 review F3): there is no kernel fan-out grouping, so a body of work spanning more than one project is expressed as multiple slices joined by `depends-on`, and a lead may legally be referenced by more than one slice. The kernel validates this shape, enforces total lead coverage (every surveyed lead referenced by at least one slice), rejects same-source fusion per slice, enforces unique kebab-case slice names, and writes the structured `{ source, lead }` source bindings through the existing plan writers only when the plan is still replaceable; cross-source matching is agent judgment surfaced for Gate 1 review — the kernel never auto-merges leads. Closed top-level shape: unknown fields are rejected.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    }
+  ],
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "targetRef": {
+      "type": "string",
+      "description": "Target adapter identifier, e.g. `omnia@v1` or `contracts@v1`. Mirrors `plan.schema.json` slice `target` pattern.",
+      "pattern": "^[a-z][a-z0-9-]*@v\\d+$"
+    },
+    "projectRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One project the agent can bind a response slice to. For a hub this is projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + target adapter + domain). The agent matches the slice against the project's `target`, `description`, and `capabilities`.",
+      "required": [
+        "name",
+        "target"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Registry project name; the value the kernel writes to `plan.yaml.slices[].project`."
+        },
+        "target": {
+          "$ref": "#/$defs/targetRef",
+          "description": "The project's registered target adapter. The kernel resolves this value on demand for a slice bound to this project; it is not written to `plan.yaml` (a slice persists only its `project`)."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Single-sentence domain characterisation used by the agent when more than one project shares a target."
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Capability tags this project owns (e.g. `auth`, `billing`), authored in its `project.yaml` per RFC-36. The agent matches a slice against these when binding it to a project. Empty stays off the wire."
+        },
+        "keywords": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Free-form keyword tags supplementing `capabilities`, authored in the project's `project.yaml`. Empty stays off the wire."
+        }
+      }
+    },
+    "leadCatalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "lead",
+        "synopsis"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Plan source binding key matching `plan.yaml.sources.<key>`."
+        },
+        "lead": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Discovery lead id surfaced by this source binding. Identity is the `(source, lead)` pair; `lead` is not unique across `leads[]` when multiple sources surface the same slug."
+        },
+        "synopsis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reconciliation-grade per-source headline from this source's survey of the lead. Primary signal for agent cross-source grouping — SHOULD name the operation/surface and salient constraint; MAY span more than one line when one is too thin."
+        },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "description": "Optional alias hints from `discovery.md` (survey-time or operator-authored via `specrun plan amend --add-alias`). The agent may use these when grouping; the kernel does not lock on them."
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "projects",
+        "leads"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "request"
+        },
+        "projects": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Project topology the agent binds slices to — always at least one project, so there is no separate single-repo shape. For a hub the entries are projected from the committed `.specify/topology.lock` (derived from each member project's `project.yaml` per RFC-36); for a single regular project the CLI synthesizes one entry from `project.yaml` (name + resolved target adapter + domain). Persisted project configuration is normalized into this envelope-local shape.",
+          "items": {
+            "$ref": "#/$defs/projectRef"
+          }
+        },
+        "leads": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Flat lead catalog: one row per raw `(source, lead)` lead, read 1:1 from `discovery.md` (no expansion or cross-source merge). The `lead` field repeats across rows when multiple sources surface the same slug.",
+          "items": {
+            "$ref": "#/$defs/leadCatalogEntry"
+          }
+        }
+      }
+    },
+    "responseMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "lead"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Plan source binding key; must match a request catalog row."
+        },
+        "lead": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Discovery lead id; with `source`, must match a request catalog row."
+        }
+      }
+    },
+    "responseSlice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "sources"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Explicit plan slice name — required. The `scope` noun was removed (RFC-29 review F3): with no kernel grouping the agent names every slice directly and the kernel writes the name verbatim to `plan.yaml.slices[].name`. A body of work that spans more than one project is expressed as multiple slices (which may legally reference the same lead) joined by `depends-on`, distinguished by their names."
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/responseMember"
+          },
+          "description": "Matched catalog rows for this slice, each referenced by `{ source, lead }`. At most one entry per `source`: a slice matches leads across sources but never fuses two leads from the same source (the kernel enforces this as `plan-reconcile-slice-source-collision`). A lead may appear in more than one slice — that is fan-out, not a double-count. The kernel writes the set to `plan.yaml.slices[].sources[]`."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent's reason for the cross-source match in this slice. The agent renders it into `change.md` for Gate 1 review; the kernel ignores it and does not echo it into the journal. Recommended when the match is not obvious from shared slugs or alias hints."
+        },
+        "depends-on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "description": "Slice names this row depends on. Each name must resolve to a projected `plan.yaml.slices[]` entry."
+        },
+        "project": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Project this slice binds to, chosen by the agent from the request's `projects[]`. Required on every slice when the request offers more than one project; optional when exactly one project exists, in which case the kernel auto-binds it and derives `target` from that project's entry."
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "slices"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "response"
+        },
+        "slices": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/responseSlice"
+          }
+        }
+      }
+    }
+  }
+}

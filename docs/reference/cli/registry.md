@@ -8,9 +8,9 @@ The registry was promoted from `specrun registry ...` to a top-level noun group 
 
 | Verb | When to use |
 |------|-------------|
-| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the adapter identifier stored in `adapter:`, and the `description-missing-multi-repo` invariant after the write. |
+| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name and URL classification. `--adapter` is optional (a greenfield scaffold seed only). |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
+| [`validate`](#specify-registry-validate) | Structural and referential check; on hubs runs the `hub-cannot-be-project` invariant. |
 
 ## Subcommands
 
@@ -25,9 +25,9 @@ specrun registry validate
 Validates:
 
 - Registry shape (required fields, kebab-case names, well-formed `url:` values).
-- `description` is required when more than one project is declared (multi-repo invariant).
-- Per-project `adapter:` adapter identifiers or URLs are resolvable.
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
+
+The registry no longer authors a project's adapter/description for plan-time topology, so the `adapter`-required and `description-missing-multi-repo` invariants are retired; those facets live in each project's `project.yaml` and are checked against `.specify/topology.lock` by `specrun plan validate` (`topology-cache-stale`).
 
 Used by `/spec:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
@@ -36,14 +36,15 @@ Used by `/spec:plan` after populating contract roles, and by operators who edit 
 Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent.
 
 ```bash
-specrun registry add <name> --url <url> --adapter <adapter> [--description "..."]
+specrun registry add <name> --url <url> [--adapter <adapter>] [--description "..."]
 ```
 
 Behaviour:
 
-- Validates `name` (kebab-case), `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`), and the `--schema` adapter value (non-empty after trim).
+- Validates `name` (kebab-case) and `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`).
+- `--adapter` is optional and, when present, is recorded only as a greenfield scaffold seed; a project's authoritative target adapter lives in its own `project.yaml`.
 - Refuses to add a project that already exists.
-- Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
+- Runs `Registry::validate_shape` after the write.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
 Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specrun plan amend --project <new>`. The validation-ordering invariant is: `specrun registry add` before `specrun plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.

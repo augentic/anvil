@@ -6,7 +6,7 @@ Specify 2.0 carries three stacked lifecycles. The plan lifecycle gates execution
 
 ![Lifecycle state machines](../assets/diagrams/lifecycle/state-machines.svg)
 
-<p class="pipeline-caption">Plan pending→reviewed; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
+<p class="pipeline-caption">Plan pending→approved; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
 </div>
 
 Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md).
@@ -21,7 +21,7 @@ Two stored states. The plan lifecycle does not move further during execution —
 
 Each row under `plan.yaml.slices[]` carries its own status:
 
-- `pending` is written by `specrun plan add` and `specrun plan amend`.
+- `pending` is written by `specrun plan propose --from` (the default slice writer, which replaces all rows on a replaceable plan), `specrun plan add`, and `specrun plan amend`.
 - `in-progress` is written only by `specrun plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
 - `done` is written only by `specrun slice merge` after a successful merge.
 - Build failures and merge conflicts leave the active entry `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
@@ -40,7 +40,7 @@ Each slice's `.metadata.yaml` tracks an independent lifecycle:
 | `merged`   | Specs applied to baseline; slice archived                               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specrun plan amend --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
+`refining` is the transient state used while `/spec:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `specrun plan amend <entry> --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
 
 ## Transitions
 
@@ -74,6 +74,6 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 .specify/archive/YYYY-MM-DD-<slice-name>/
 ```
 
-The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This provides an audit trail of every slice the project has been through.
+The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the append-only **outcome ledger** (`.specify/journal.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.specify/specs/` baseline plus that ledger, so archived folders can be reclaimed with `specrun archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
 
 For plans, `specrun plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

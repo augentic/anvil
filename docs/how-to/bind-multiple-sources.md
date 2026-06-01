@@ -24,19 +24,21 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 
 ## Multi-source slices
 
-At propose time, reconcile leads across sources into one slice row:
+At propose time, reconcile leads across sources through the D2 envelope:
 
 ```bash
-specrun plan add <slice> --sources legacy=<lead-id> --sources docs=<lead-id>
+specrun plan propose --dry-run --format json
+# agent authors response.json
+specrun plan propose --from response.json
 ```
 
-Single-source intent slices may use the shorthand `sources: [intent]`.
+Single-source intent slices may omit `project` when only one project exists; the kernel auto-binds and normalises `sources: [intent]`.
 
 ## Uncertain reconciliation
 
-When leads align loosely, `/spec:plan` may annotate `tentative: true` in `discovery.md` and add a `## Tentative merges` section to `change.md`. Review at Gate 1; amend before stamping `approved`.
+When cross-source grouping is uncertain, `/spec:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review at Gate 1; amend before stamping `approved`.
 
-When summaries materially disagree, the plan skill may stamp `divergence: likely` on affected slice rows.
+When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `specrun plan amend <entry> --divergence likely`.
 
 ## See also
 

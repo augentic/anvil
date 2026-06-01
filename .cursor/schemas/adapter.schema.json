@@ -36,6 +36,11 @@
       "items": { "$ref": "#/$defs/toolDeclaration" },
       "description": "Optional WASI tool declarations for declared WASI tools. Tools resolve into `.specify/.cache/{sources,targets}/<name>/`."
     },
+    "inputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/buildInputDeclaration" },
+      "description": "RFC-29d \u2014 optional adapter-declared build inputs. Target-only: the per-axis `target.schema.json` admits the key while `source.schema.json` rejects it; the shared shape carries the property so the closed key set admits it. Each entry is a path relative to the build request's `inputs.root`, flagged `required`."
+    },
     "description": {
       "type": "string",
       "minLength": 1,
@@ -45,6 +50,11 @@
       "type": "string",
       "enum": ["opt-out"],
       "description": "workflow \u00a7D8 \u2014 optional cache opt-out switch. When set to `opt-out`, the CLI treats every `extract` (and `survey`) run for this adapter as a cache miss; the `slice.extract.cache-miss` journal event carries `reason: adapter-opt-out`. Absence (the default) means cache fingerprinting is on. Intended for adapters whose intermediate results are non-deterministic; new values require a workflow contract update."
+    },
+    "execution": {
+      "type": "string",
+      "enum": ["agent", "tool"],
+      "description": "Closed adapter execution mode per RFC-29 D9. `required` is owned by the per-axis `source.schema.json` / `target.schema.json`; the shared shape carries the property so the closed key set admits it."
     }
   },
   "$defs": {
@@ -52,6 +62,23 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens."
+    },
+    "buildInputDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "required"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$",
+          "description": "Build input path relative to the build request's `inputs.root` (the slice tree). Absolute paths and URIs are rejected."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether `build` requires this input; a missing `required` path is a build-time abort."
+        }
+      }
     },
     "toolDeclaration": {
       "type": "object",

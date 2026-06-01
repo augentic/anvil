@@ -10,8 +10,8 @@ Each fixture is one slice. The layout per fixture is:
   inputs/
     bindings.yaml    # the slice's resolved plan.yaml.slices[] entry plus its plan.yaml.sources map
     target.txt       # absolute repo-relative path to the target's shape brief
-    evidence/        # one YAML per source-key (the post-extract input to synthesis)
-      <source-key>.yaml
+    evidence/        # one YAML per source (the post-extract input to synthesis)
+      <source>.yaml
   expected/
     proposal.md
     specs/<unit>/spec.md
@@ -26,7 +26,7 @@ The Evidence YAMLs under `inputs/evidence/` validate against [`schemas/evidence.
 | Fixture                          | Sources                                | Tag expected             | Playbook rule exercised                                   |
 | -------------------------------- | -------------------------------------- | ------------------------ | --------------------------------------------------------- |
 | `single-source-intent/`          | `intent`                               | none (Status: agreed)    | Degenerate one-source path; intent drives proposal.       |
-| `combined-docs-and-legacy/`      | `identity-design-notes` + `legacy-monolith` | none (Status: agreed)    | Combined evidence where sources agree per `claim-id`.     |
+| `combined-docs-and-legacy/`      | `identity-design-notes` + `legacy-monolith` | none (Status: agreed)    | Combined evidence where sources agree per `id`.     |
 | `divergence/`                    | `identity-design-notes` + `legacy-monolith` | `[divergence]`      | `documentation > behaviour` resolves contradictory expiry values. |
 | `conflict/`                      | `product-notes` + `identity-design-notes` (both documentation) | `[conflict]` | Tied top authority leaves the operator to reconcile.      |
 | `unknown/`                       | `product-notes`                        | `[unknown]`              | Source emits `claims: []`; synthesis still surfaces the requirement gap. |

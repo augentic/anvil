@@ -1,18 +1,16 @@
-source: product-notes
-adapter: documentation
 authority: documentation
 lead: account
 claims:
   - kind: requirement
-    claim-id: account.storage
+    id: account.storage
     path: account.md#L3
     statement: "The account service stores per-user identity, credential, and notification preferences."
   - kind: criterion
-    claim-id: account.email-uniqueness
+    id: account.email-uniqueness
     path: account.md#L6
     criterion: "Email is the unique handle; case-insensitive comparisons."
   - kind: criterion
-    claim-id: account.password-storage
+    id: account.password-storage
     path: account.md#L7
     criterion: "Passwords are stored hashed (Argon2id) and never logged."
   - kind: decision

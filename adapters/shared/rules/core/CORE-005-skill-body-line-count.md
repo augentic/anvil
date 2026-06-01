@@ -18,7 +18,7 @@ Every `SKILL.md` body under `plugins/<plugin>/skills/<skill>/` stays within the 
 
 The path scope mirrors the retired imperative `skill.body-line-count` predicate: only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths participate. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the cardinality check.
 
-The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/specify-lints/src/lint/index/skill.rs::extract`, whose `body_line_count` field counts non-frontmatter body lines verbatim), so the rule cost is one bound check per candidate skill at lint time. The single source discriminator hardcodes both the metric (`Skill.body_line_count`) and the upper bound (200); a richer config shape (`metric: …, max: …`) is deferred until a second consumer arrives.
+The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/standards/src/lint/index/skill.rs::extract`, whose `body_line_count` field counts non-frontmatter body lines verbatim), so the rule cost is one bound check per candidate skill at lint time. The single source discriminator hardcodes both the metric (`Skill.body_line_count`) and the upper bound (200); a richer config shape (`metric: …, max: …`) is deferred until a second consumer arrives.
 
 ## Look For
 

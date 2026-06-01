@@ -47,7 +47,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
     <div class="rhythm-num">02</div>
     <div class="rhythm-label">Review</div>
     <div class="rhythm-title">Lock the scope</div>
-    <p>The operator stamps the plan <code>reviewed</code>; the agent does not approve its own scope.</p>
+    <p>The operator stamps the plan <code>approved</code>; the agent does not approve its own scope.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">03</div>

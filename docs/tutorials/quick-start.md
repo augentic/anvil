@@ -105,7 +105,6 @@ sources:
     value: "fix typo in user.rs"
 slices:
   - name: fix-typo
-    target: omnia
     sources: [intent]
     status: pending
 ```
@@ -119,11 +118,11 @@ Sources: 1. Leads: 1.
 
 ## Lead inventory
 
-### fix-typo
+### intent:fix-typo
 
-- id: fix-typo
-- sources: [intent]
-- summary: fix typo in user.rs
+- lead: fix-typo
+- source: intent
+- synopsis: fix typo in user.rs
 ```
 
 The skill exits at `plan.lifecycle: pending` and prints:

@@ -78,13 +78,44 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
+### `specrun plan propose --dry-run`
+
+Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none; per-lead `aliases` appears only when non-empty.
+
+```json
+{
+  "version": 1,
+  "kind": "request",
+  "projects": [
+    { "name": "identity-contracts", "target": "contracts@v1", "description": "Versioned API contracts crate for the identity domain." },
+    { "name": "identity-service", "target": "omnia@v1", "description": "Omnia identity service implementing auth and password flows." }
+  ],
+  "leads": [
+    { "source": "docs", "lead": "identity-api", "synopsis": "Identity API contract for authentication and account access." },
+    { "source": "legacy", "lead": "identity-api", "synopsis": "Legacy identity endpoints." }
+  ]
+}
+```
+
+### `specrun plan propose --from`
+
+Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
+
+```json
+{
+  "plan": { "name": "identity-revamp", "path": "/abs/path/to/plan.yaml" },
+  "slice-names": ["identity-contracts", "identity-service", "password-reset"],
+  "slice-count": 3
+}
+```
+
 ### `specrun plan transition`
 
 Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.
 
 ```json
 {
-  "current": "reviewed",
+  "current": "approved",
   "kind": "plan",
   "name": "demo",
   "plan": {
@@ -218,62 +249,118 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
-### `specrun slice validate`
+### `specrun slice synthesize --dry-run`
 
-Runs the slice-shape brief and cross-check predicates. Like `plan validate`, `passed` is a payload indicator and the envelope shape is identical for clean and failed runs.
-
-`brief-results` is keyed by per-brief or per-spec scope (`proposal`, `design`, `tasks`, `specs/<name>/spec.md`); each entry is a list of `{rule, rule-id, status, detail?}` records where `status` is `pass`, `fail`, or `deferred` (semantic checks that need LLM judgement). `cross-checks[]` carries inter-artifact predicates with the same record shape.
+Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
-  "brief-results": {
-    "design": [
-      {
-        "rule": "References only requirement ids present in specs",
-        "rule-id": "design.references-valid-ids",
-        "status": "pass"
-      }
-    ],
-    "proposal": [
-      {
-        "rule": "Has a Why section with at least one sentence",
-        "rule-id": "proposal.why-has-content",
-        "status": "pass"
-      },
-      {
-        "detail": "Semantic check — requires LLM judgment",
-        "rule": "Uses imperative language for motivation",
-        "rule-id": "proposal.uses-imperative-language",
-        "status": "deferred"
-      }
-    ],
-    "specs/login/spec.md": [
-      {
-        "rule": "Every requirement has at least one scenario",
-        "rule-id": "specs.requirements-have-scenarios",
-        "status": "pass"
-      }
-    ],
-    "tasks": [
-      {
-        "rule": "All tasks use `- [ ] X.Y` checkbox format",
-        "rule-id": "tasks.use-checkbox-format",
-        "status": "pass"
-      }
-    ]
-  },
-  "cross-checks": [
+  "version": 1,
+  "kind": "inputs",
+  "slice": "identity-service",
+  "sources": [
     {
-      "rule": "Every crate listed in the proposal has a matching spec file",
-      "rule-id": "cross.proposal-crates-have-specs",
-      "status": "pass"
+      "source": "docs",
+      "lead": "password-reset",
+      "claims": [
+        { "id": "password-reset.request", "kind": "requirement", "statement": "The system lets a registered user request a password reset link by email.", "path": "docs/identity/reset.md#L4" }
+      ]
+    },
+    {
+      "source": "legacy",
+      "lead": "password-reset",
+      "claims": [
+        { "id": "password-reset.expiry", "kind": "example", "output": "expiresAt = createdAt + 24h", "path": "src/users/reset.ts#L88" }
+      ]
     }
   ],
-  "passed": true
+  "shape-brief": "# Shape brief\n…"
 }
 ```
 
-A failed run keeps the same shape with `status: "fail"` on the offending records and an optional `detail` describing why the predicate fired.
+### `specrun slice synthesize --from`
+
+Success summary after the projection kernel persisted the artifacts. `artifacts[]` lists the slice-relative paths written, in write order. Emits `slice.synthesize.started` then `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and exits non-zero.
+
+```json
+{
+  "slice": "identity-service",
+  "artifacts": [
+    "proposal.md",
+    "specs/password-reset/spec.md",
+    "design.md",
+    "tasks.md",
+    "model.yaml"
+  ]
+}
+```
+
+### `specrun slice build`
+
+Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** envelope after assembling and schema-validating the build request: `request` is the assembled `build/request.yaml` the agent's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. Emits `target.execution.agent` and returns without blocking.
+
+```json
+{
+  "slice": "identity-service",
+  "target": "omnia@v1",
+  "execution": "agent",
+  "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
+  "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
+  "briefs-dir": "<TEMPDIR>/adapters/targets/omnia/briefs",
+  "build-brief": "<TEMPDIR>/adapters/targets/omnia/briefs/build.md"
+}
+```
+
+`--phase finalize` validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+
+```json
+{
+  "slice": "identity-service",
+  "target": "omnia@v1",
+  "status": "success",
+  "findings": 0
+}
+```
+
+### `specrun slice validate`
+
+Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specrun lint`, `specdev lint`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
+
+Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
+
+- `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
+- `kind: "review"` — a deterministically-raised request for agent/human judgment (the former `deferred` semantic checks). Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
+
+`summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
+
+```json
+{
+  "findings": [
+    {
+      "artifact": "proposal",
+      "confidence": "medium",
+      "evidence": {
+        "kind": "snippet",
+        "value": "Semantic check — requires agent judgment"
+      },
+      "fingerprint": "sha256:…",
+      "id": "DIAG-0001",
+      "impact": "Semantic check — requires agent judgment",
+      "kind": "review",
+      "location": { "path": "proposal.md" },
+      "remediation": "Uses imperative language for motivation",
+      "rule-id": "proposal.uses-imperative-language",
+      "severity": "suggestion",
+      "source": "model-assisted",
+      "title": "Uses imperative language for motivation"
+    }
+  ],
+  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
+  "version": 1
+}
+```
+
+A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
 
 ---
 

@@ -6,6 +6,8 @@ sources:
     value: "fix typo in user.rs"
 slices:
   - name: fix-typo
-    target: omnia
-    sources: [intent]
+    project: my-app
+    sources:
+      - source: intent
+        lead: fix-typo
     status: pending

@@ -14,7 +14,7 @@ Concretely, RFC-33b adds:
 2. **Last-run persistence** — `.specify/lint/last.json` carries the full envelope from the most recent run so `specrun lint baseline diff` answers "what changed since last scan" without re-scanning.
 3. **Diff verb** — `specrun lint baseline diff` reports `new[] / fixed[] / unchanged[] / ignored[] / baselined[]` as a pure function over `last.json`, the current scan, and the baseline.
 4. **CLI surface** — `specrun lint baseline {write, drop, diff}` subcommands plus `--no-baseline` / `--baseline <path>` flags on `specrun lint run`.
-5. **Status enum widening** — widens `schemas/lint/finding.schema.json` a second time, adding `new` and `baselined` to the `status` enum (extending RFC-33a's initial widening) and the optional `disposition.baseline` sub-field. Also supplies producers for the pre-existing `fixed` and `accepted` values inherited from RFC-28.
+5. **Status enum widening** — widens `schemas/diagnostics/diagnostic.schema.json` a second time, adding `new` and `baselined` to the `status` enum (extending RFC-33a's initial widening) and the optional `disposition.baseline` sub-field. Also supplies producers for the pre-existing `fixed` and `accepted` values inherited from RFC-28.
 
 This RFC adds no lifecycle authority. Baselined findings never transition plan entries, slices, or changes. Baseline mode changes which findings count as CI blockers; it does not change the meaning of a finding.
 
@@ -59,7 +59,7 @@ Principles (1), (3), (4), (5), and (7) carry forward unchanged.
 
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
-| **D1 Baseline file** | A scan-profile-scoped baseline lives at `.specify/lint/baseline.json`. | New `schemas/lint/baseline.schema.json`; new `Baseline` DTO in `specify-lints`; `specrun lint run` loads and matches by `fingerprint`. |
+| **D1 Baseline file** | A scan-profile-scoped baseline lives at `.specify/lint/baseline.json`. | New `schemas/lint/baseline.schema.json`; new `Baseline` DTO in `specify-standards`; `specrun lint run` loads and matches by `fingerprint`. |
 | **D2 Baseline mode default** | When a baseline file matching the active scope exists under `.specify/lint/`, `specrun lint run` runs in baseline mode unless `--no-baseline` is passed. Per-target files (`baseline.<target>.json`) override the project-wide `baseline.json` only when `--target <name>` is active; nearest-scope wins. `--baseline <path>` is an explicit override that bypasses the layering rule. | Two new flags on the `specrun lint run` clap surface (`--no-baseline`, `--baseline <path>`); one new branch in the scanner pipeline; selection table pinned in §"Baseline file" below. |
 | **D7 Last-run persistence** | `.specify/lint/last.json` holds the previous run's envelope verbatim. | One additional write at scanner exit; one new schema `schemas/lint/run.schema.json` (same shape as live emission). |
 | **D9 Diff verb** | `specrun lint baseline diff` reports `new[]`, `fixed[]`, `unchanged[]`, `ignored[]`, `baselined[]` against `last.json`. | One new subcommand; pure function over two envelopes plus the baseline; no scan side effects. |
@@ -159,12 +159,12 @@ Two new schema files:
 | `schemas/lint/baseline.schema.json` | New | RFC-33b |
 | `schemas/lint/run.schema.json` | New | RFC-33b (matches the live envelope shape) |
 
-RFC-33b widens `schemas/lint/finding.schema.json` a second time: the `status` enum adds `new` and `baselined`, and the `disposition` object gains the optional `baseline?` sub-field. The widening is additive and the fingerprint algorithm is unchanged.
+RFC-33b widens `schemas/diagnostics/diagnostic.schema.json` a second time: the `status` enum adds `new` and `baselined`, and the `disposition` object gains the optional `baseline?` sub-field. The widening is additive and the fingerprint algorithm is unchanged.
 
 ### Implementation plan
 
-1. **Schemas.** Add `schemas/lint/baseline.schema.json` and `schemas/lint/run.schema.json`. Widen `schemas/lint/finding.schema.json` additively: extend the `status` enum with `new` and `baselined`, and add the optional `disposition.baseline` sub-field.
-2. **Standards-layer types.** Add `Baseline`, `BaselineEntry`, `ReviewRun` DTOs to `specify-lints`. Reuse RFC-28's canonical-JSON helper.
+1. **Schemas.** Add `schemas/lint/baseline.schema.json` and `schemas/lint/run.schema.json`. Widen `schemas/diagnostics/diagnostic.schema.json` additively: extend the `status` enum with `new` and `baselined`, and add the optional `disposition.baseline` sub-field.
+2. **Standards-layer types.** Add `Baseline`, `BaselineEntry`, `ReviewRun` DTOs to `specify-standards`. Reuse RFC-28's canonical-JSON helper.
 3. **Scanner pipeline.** Insert the baseline pass after directive matching. Order becomes: hint evaluation → default `status: open` assignment → directive validation/matching → baseline matching → ordering → envelope/render → status-aware exit decision.
 4. **Last-run persistence.** Write `.specify/lint/last.json` at scanner exit, after envelope emission.
 5. **CLI surface.** Add `specrun lint baseline {write, write --append, write --rescan, drop, diff}` subcommands and the `--no-baseline` / `--baseline <path>` flags on `specrun lint run`. Enforce the §"Baseline file" selection matrix, the `last.json` staleness check from D11 (`lint-baseline-write-stale`), and confirm-or-`--yes` discipline on every write.

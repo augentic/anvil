@@ -1,6 +1,6 @@
 # Worked example — `task-list` lead
 
-End-to-end illustration of `screenshots.extract` for a lead named `task-list` bound under source-key `screens`. Two screen images:
+End-to-end illustration of `screenshots.extract` for a lead named `task-list` bound under source `screens`. Two screen images:
 
 ```text
 task-list-populated.png   # visible header: "Today"; rows of task items + FAB
@@ -10,36 +10,34 @@ task-list-empty.png       # same header / chrome; empty-state illustration repla
 Resulting Evidence (only one task row's claims shown for brevity):
 
 ```yaml
-source: screens
-adapter: screenshots
 authority: documentation
 lead: task-list
 claims:
   - kind: region
-    claim-id: task-list.header
+    id: task-list.header
     path: task-list-populated.png
     screen: task-list
     region: header
     title: Today
   - kind: region
-    claim-id: task-list.body
+    id: task-list.body
     path: task-list-populated.png
     screen: task-list
     region: body
   - kind: region
-    claim-id: task-list.fab
+    id: task-list.fab
     path: task-list-populated.png
     screen: task-list
     region: fab
   - kind: region
-    claim-id: task-list.states.empty
+    id: task-list.states.empty
     path: task-list-empty.png
     screen: task-list
     region: states.empty
     state_when: tasks.is_empty
     state_replaces: body
   - kind: container
-    claim-id: task-list.body.tasks
+    id: task-list.body.tasks
     path: task-list-populated.png
     screen: task-list
     region: body
@@ -48,7 +46,7 @@ claims:
     each: tasks
     style: plain
   - kind: container
-    claim-id: task-list.body.tasks.task-row
+    id: task-list.body.tasks.task-row
     path: task-list-populated.png
     screen: task-list
     region: body
@@ -61,7 +59,7 @@ claims:
     notes:
       candidate_component: task-row
   - kind: leaf
-    claim-id: task-list.body.tasks.task-row.checkbox
+    id: task-list.body.tasks.task-row.checkbox
     path: task-list-populated.png
     screen: task-list
     region: body
@@ -69,7 +67,7 @@ claims:
     leaf: checkbox
     label: Mark task complete
   - kind: leaf
-    claim-id: task-list.fab.action
+    id: task-list.fab.action
     path: task-list-populated.png
     screen: task-list
     region: fab

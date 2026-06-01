@@ -15,7 +15,7 @@ Sections that MUST appear in `input/specs/task-list/spec.md` and `input/design.m
     - `## Android Shell Requirements` follows the iOS section.
 - Spatial Evidence (`screens` source) was folded into observable behaviour, never raw geometry: the empty-state copy in REQ-001 comes from the `task-list.states.empty.hero.*` leaf claims; the dialog message in REQ-004 comes from `task-list.overlays.delete-confirm.message`.
 - Token / asset references appear only as observable product behaviour (`empty-tasks-hero` image in REQ-001), never as catalogue restatements.
-- `Sources:` lines carry the source key plus optional `#claim-id` for spatial provenance (the fixture uses bare source keys for readability; real synthesis output may append claim ids).
+- `Sources:` lines carry the source key plus optional `#id` for spatial provenance (the fixture uses bare source keys for readability; real synthesis output may append claim ids).
 
 ## `input/design.md`
 

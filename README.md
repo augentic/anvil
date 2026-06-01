@@ -31,11 +31,11 @@ Then work through a slice:
 
 ```text
 /spec:plan "Add a new feature"
-specify plan transition <name> reviewed
+specrun plan transition <name> approved
 /spec:execute
 ```
 
-`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> reviewed`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specrun plan transition <name> approved`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specrun workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
@@ -53,12 +53,12 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 
 Two lifecycle nouns appear constantly in this codebase. workflow §Vocabulary locked their meaning:
 
-- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
+- **Slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specrun slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specrun plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
 
 ## Installing the CLI
 
-The `specify` binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation; for manual setup use:
+The `specrun` binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation; for manual setup use:
 
 ```bash
 brew install augentic/tap/specify

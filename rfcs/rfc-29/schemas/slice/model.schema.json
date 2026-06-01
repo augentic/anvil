@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json",
+  "title": "Specify slice model.yaml",
+  "description": "Validates a slice's single typed machine-readable model per RFC-29 \u00a7Typed slice model. This one schema validates both the agent's synthesis-response `model` and the persisted `model.yaml`: kernel-owned fields (`requirements[].id`, `.status`, `requirements[].sources`, `claims[].winner`) and the header fields (`version`, `slice`, `project`) are optional so the agent may omit them and the kernel re-derives/stamps them on projection (normalize, never reject \u2014 there is no separate draft schema). Provenance is carried inline (`requirements[].claims[]` with `winner` markers); there is no separate `provenance.yaml` file \u2014 `specrun slice provenance` projects the audit view (including `resolution` / `resolution-trace`) from this model plus on-disk Evidence on demand. The model carries only the earned core today \u2014 `requirements[]` (load-bearing provenance) and `tasks[]` (requirement\u2192task tracing); the non-requirements sections (`domain` / `apis` / `configuration` / `technical-logic` / `observability`) and their id grammars are deferred until an `execution: tool` target or a contract gate names a sub-tree it consumes (RFC-29 F1). The top-level shape stays closed so a sub-tree can be re-added cleanly when a consumer lands. Operators edit behavioral prose in `spec.md` / `design.md` / `tasks.md`; `model.yaml` is the machine view target builders consume. `target` is not persisted \u2014 it is resolved on demand from the slice's bound `project` (the plan stores only `project`); `slice-model-target-drift` checks `model.yaml.project` against `plan.yaml`. Kernel-rendered provenance lines in `spec.md` must match projected ids/status/source lists or `slice-spec-provenance-stale` fires. Closed top-level shape \u2014 unknown fields are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requirements",
+    "tasks"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "slice": {
+      "$ref": "#/$defs/kebabName"
+    },
+    "project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/modelRequirement"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/modelTask"
+      }
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "claimId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+      "description": "Dotted Evidence claim id (e.g. `password-reset.expiry`); mirrors the id grammar in `evidence.schema.json`."
+    },
+    "claimKind": {
+      "type": "string",
+      "enum": [
+        "intent",
+        "requirement",
+        "criterion",
+        "decision",
+        "section",
+        "diagram",
+        "contract",
+        "example",
+        "excerpt",
+        "type",
+        "call",
+        "region",
+        "container",
+        "leaf"
+      ],
+      "description": "Closed claim-kind enum mirrored byte-identically from `evidence.schema.json#/$defs/claimKind`. Carried on each `model.yaml` claim (D13) so the kernel resolves per-kind authority (\u00a7Authority over mixed-kind claims) without re-reading Evidence."
+    },
+    "reqId": {
+      "type": "string",
+      "pattern": "^REQ-[0-9]{3}$"
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]{3}$"
+    },
+    "requirementStatus": {
+      "type": "string",
+      "enum": [
+        "agreed",
+        "unknown",
+        "conflict",
+        "divergence"
+      ]
+    },
+    "agreementVerdict": {
+      "type": "string",
+      "enum": [
+        "agreed",
+        "disagreed"
+      ],
+      "description": "Agent-authored agreement verdict over the contributing claims. Required when more than one claim contributes; omitted for 0 or 1 claim. The kernel applies authority to it to derive `status` and winner markers but never re-decides whether two claim values mean the same thing."
+    },
+    "modelRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "statement",
+        "claims"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/reqId",
+          "description": "Kernel-projected in declaration order. The agent omits it in the synthesis response; if present it is ignored and re-derived (normalize, never reject)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/requirementStatus",
+          "description": "Kernel-projected from the claim count, the agent's `agreement` verdict, and resolved authority. The agent omits it; if present it is ignored and re-derived."
+        },
+        "agreement": {
+          "$ref": "#/$defs/agreementVerdict"
+        },
+        "unit": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/modelClaim"
+          },
+          "description": "Agent-authored claim-level provenance, carried inline (this replaces the former separate `provenance.yaml` `contributing-claims[]`): every `(source, id, kind)` claim that fed this requirement, winners and losers alike. Empty for an `unknown` requirement. `kind` (D13) lets the kernel resolve per-kind authority; the `winner` marker on each entry is kernel-projected. The claim `value` / `path` payload is read from on-disk Evidence by the provenance projection rather than copied here."
+        },
+        "sources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "description": "Kernel-projected rendered source list (highest authority first), mirroring the `Sources:` line rendered into `spec.md`. The agent omits it."
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "modelClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/kebabName"
+        },
+        "id": {
+          "$ref": "#/$defs/claimId"
+        },
+        "kind": {
+          "$ref": "#/$defs/claimKind",
+          "description": "Agent-authored: the kind of the cited Evidence claim (D13). The kernel uses it to apply per-kind authority (\u00a7Authority over mixed-kind claims) without re-reading Evidence. `slice-model-claim-kind-mismatch` rejects a value that disagrees with the kind recorded for that `(source, id)` in Evidence."
+        },
+        "winner": {
+          "type": "boolean",
+          "description": "Kernel-projected. Present (`true` on the authority-resolved winner, `false` on every dropped loser) only for a `divergence` requirement; absent for `agreed` and `conflict` requirements."
+        }
+      }
+    },
+    "modelTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/taskId"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "depends-on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/taskId"
+          }
+        },
+        "satisfies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reqId"
+          }
+        }
+      }
+    }
+  }
+}

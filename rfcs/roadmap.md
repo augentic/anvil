@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is now credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills have landed across RFCs 10, 13, 15, and 16. The **enforcement** pillar is landing too: [RFC-28](done/rfc-28-standards-contract.md) (contract + export), [RFC-32](done/rfc-32-standards-enforcement.md) (`specrun lint`), [RFC-33a](rfc-33a-ignore-directives.md) (ignore directives + `lint-completed` telemetry), and [RFC-34](rfc-34-rules-convergence.md) (`FRAME-*` rules + `specdev lint`). The next phase should make the **reconciliation** loop provable end-to-end — not only enforceable — and then observable and portable across teams, forges, agents, and catalogs.
+The local substrate is now credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills have landed across RFCs 10, 13, 15, and 16. The **enforcement** pillar is landing too: [RFC-28](done/rfc-28-standards-contract.md) (contract + export), [RFC-32](done/rfc-32-standards-enforcement.md) (`specrun lint`), [RFC-33a](rfc-33a-ignore-directives.md) (ignore directives + `lint-completed` telemetry), and [RFC-34](rfc-34-rules-convergence.md) (`CORE-*` framework rules + `specdev lint`). Enforcement has since converged on a single neutral currency: `lint`, `validate`, and the framework checks all emit the shared `Diagnostic` / `DiagnosticReport` substrate (the `specify-diagnostics` leaf), so the data type, fingerprint, and renderers are uniform while lint and validate keep distinct gate authority. The next phase should make the **reconciliation** loop provable end-to-end — not only enforceable — and then observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -25,7 +25,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev lint`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](done/rfc-32-standards-enforcement.md) adds the consumer scanner substrate; [RFC-34](rfc-34-rules-convergence.md) adds declarative `FRAME-*` convergence on the framework side. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev lint`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and the neutral `Diagnostic` finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](done/rfc-32-standards-enforcement.md) adds the consumer scanner substrate; [RFC-34](rfc-34-rules-convergence.md) adds declarative `CORE-*` convergence on the framework side. Surfaces converge on the data type, fingerprint, validator, renderer, and blocking predicate — never on gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 - **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [RFC-29](rfc-29-fan-in-fan-out.md).
 
 ## Sequenced Roadmap
@@ -34,11 +34,10 @@ Items are identified as `RM-NN`. **Near Term** order reflects deliberate priorit
 
 ### Current priorities
 
-After the standards layer lands, three tracks run in parallel:
+After the standards layer lands, two tracks run in parallel:
 
-1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source enumerate` / `extract`).
-2. **Shared codex distribution (RM-07)** — operational unblock. Consumer CI cannot rely on `specrun lint` until `UNI-*` rules resolve without `--rules-root`. Small, additive; should not wait for RM-06.
-3. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
+1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source survey` / `extract`). [RFC-35](rfc-35-synthesis-determinism.md) is the sequenced stepping stone ahead of it (deterministic `provenance.yaml` / journal verbs that RFC-29 D3 reuses).
+2. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
 
 **Deferred until trigger conditions or prerequisites:**
 
@@ -56,23 +55,17 @@ After the standards layer lands, three tracks run in parallel:
 **Goal:** Turn Specify's fan-in/fan-out promise into a CLI-owned end-to-end contract so reconciliation is a framework invariant, not agent discipline.
 **Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
-**Why now:** Vocabulary and lifecycle guards exist, but `enumerate`, `extract`, plan-time reconciliation, slice synthesis, typed IR, and multi-output fan-out are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
+**Why now:** Vocabulary and lifecycle guards exist, but `survey`, `extract`, plan-time lead reconciliation, slice synthesis, the typed slice model, and the target build envelope are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
+**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic surfaces (`specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
 **First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
 
 ```bash
-specrun source enumerate <source-key> [--format json]
-specrun source extract <source-key> <candidate-id> --slice <name> [--format json]
+specrun source survey <source> [--format json]
+specrun source extract <source> <lead> --slice <name> [--format json]
 ```
 
-**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose`; D3 `specrun slice synthesize`; D4 typed slice IR (`.specify/slices/<slice>/ir.yaml`); D5 multi-output plan entries; D6 target build envelope; D7 acceptance fixture proving `N sources → one IR → M outputs`.
+**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (flat lead catalog envelope; target binding stays agent-driven); D3 `specrun slice synthesize` (projection kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
 **Unblocks:** RM-05 durable proof path, RM-11 compatibility gates, RM-14 meaningful workflow telemetry, RM-18 hosted execute.
-
-#### RM-07: Shared codex distribution
-
-**Goal:** Resolve shared `UNI-*` (and directive-validation `UNI-022` / `UNI-023`) rules on consumer projects without a co-located framework checkout or manual `--rules-root`.
-**Depends:** [RFC-28](done/rfc-28-standards-contract.md) §"Codex root resolution (v1)"; [RFC-33a](rfc-33a-ignore-directives.md) (orphan-directive checks degrade silently when the universal tree is absent).
-**Implementation:** Extend `specrun init` or the existing manifest cache so `adapters/shared/rules/universal/` (and eventually `framework/` when `--include-framework` is relevant) lands under `.specify/.cache/` and participates in the closed resolution probe order. Additive — does not alter wire output for callers that already pass `--rules-root`.
-**Why now:** RM-10's scanner exists; consumer CI adoption is blocked until distribution ships. Run in parallel with RM-06, not after it.
 
 #### RM-05: Multi-repo acceptance suite
 
@@ -89,8 +82,8 @@ specrun source extract <source-key> <candidate-id> --slice <name> [--format json
 #### RM-10: CI-native standards enforcement
 
 **Goal:** Continuously enforce engineering standards on consumer projects (not a workflow phase — findings may block CI but never transition plan or slice lifecycle).
-**Status:** Core implemented — [RFC-28](done/rfc-28-standards-contract.md), [RFC-32](done/rfc-32-standards-enforcement.md), [RFC-33a](rfc-33a-ignore-directives.md), and [RFC-34](rfc-34-rules-convergence.md) cover the contract, consumer scanner, per-line tolerance, and framework convergence respectively. **Remaining gap for broad adoption:** RM-07 (shared codex distribution). Optional deferred follow-on: [RFC-33b](future/rfc-33b-standards-baseline.md) (cross-run baseline/diff — lands only when trigger conditions in that RFC are met).
-**Source of truth:** [RFC-28](done/rfc-28-standards-contract.md) is canonical for the resolved rule export wire shape (`schemas/rules/resolved.schema.json`, `specrun rules export`), the structured finding schema (`schemas/lint/finding.schema.json`, the `LintFinding` envelope), the fingerprint algorithm, the closed severity enum (`critical` / `important` / `suggestion` / `optional`), and the evidence union; [RFC-32](done/rfc-32-standards-enforcement.md) owns `specrun lint`, hint execution, and the WorkspaceModel that consumes those shapes — RM-10 should not redefine any of them.
+**Status:** Core implemented — [RFC-28](done/rfc-28-standards-contract.md), [RFC-32](done/rfc-32-standards-enforcement.md), [RFC-33a](rfc-33a-ignore-directives.md), and [RFC-34](rfc-34-rules-convergence.md) cover the contract, consumer scanner, per-line tolerance, and framework convergence (`CORE-*` rules under `adapters/shared/rules/core/`, gated by `--include-core`) respectively. The finding currency has since converged: `lint`, `validate`, and the `specdev` framework checks all emit the neutral `Diagnostic` / `DiagnosticReport` substrate (`specify-diagnostics`), sharing the data type, fingerprint, validator, and renderers without sharing gate authority. Shared codex distribution has landed, so consumer projects resolve shared `UNI-*` rules without `--rules-root` (`specrun init` / `specrun rules sync` populate `.specify/.cache/codex/`). Optional deferred follow-on: [RFC-33b](future/rfc-33b-standards-baseline.md) (cross-run baseline/diff — lands only when trigger conditions in that RFC are met).
+**Source of truth:** [RFC-28](done/rfc-28-standards-contract.md) is canonical for the resolved rule export wire shape (`schemas/rules/resolved.schema.json`, `specrun rules export`), the structured finding schema (`schemas/diagnostics/diagnostic.schema.json` + `diagnostic-report.schema.json`, the neutral `Diagnostic` / `DiagnosticReport` substrate that superseded the `LintFinding` envelope), the fingerprint algorithm, the closed severity enum (`critical` / `important` / `suggestion` / `optional`) and its orthogonal `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and `kind` (`violation` / `review`) axes, and the evidence union; [RFC-32](done/rfc-32-standards-enforcement.md) owns `specrun lint`, hint execution, and the WorkspaceModel that consumes those shapes — RM-10 should not redefine any of them.
 **Consumes:** RFC-28's resolved codex export and structured finding schema; RFC-32's deterministic standards scanner.
 **Target surface:**
 
@@ -102,14 +95,14 @@ specdev lint --format json            # framework repo; RFC-28 Phase 3 + RFC-34
 ```
 
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
-**Output:** structured findings via the settled `LintFinding` schema; `lint-completed` journal summary per RFC-33a.
+**Output:** structured findings via the settled `Diagnostic` / `DiagnosticReport` schema; `lint-completed` journal summary per RFC-33a.
 
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
-**Depends:** RM-06 (typed slice IR and multi-output plan entries make producer/consumer impact machine-readable); RM-10 (standards findings for `IFACE-*` contract rules).
+**Depends:** RM-06 (the typed slice model and per-slice fan-out joined by `depends-on` make producer/consumer impact machine-readable); RM-10 (standards findings for `IFACE-*` contract rules).
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
-**Consumes:** RFC-28's `LintFinding` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings (producer project, consumer project, operation id, schema pointer, channel, message, classification, `change-kind`) via `schemas/review/finding/contracts-evidence.schema.json`; RFC-28 defines the `evidence.kind: structured` union but deliberately leaves the inner `data` shape to the consumer roadmap item so contracts-specific decisions land alongside the gate that needs them.
+**Consumes:** RFC-28's neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings (producer project, consumer project, operation id, schema pointer, channel, message, classification, `change-kind`) via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union defines the `evidence.kind: structured` branch but deliberately leaves the inner `data` shape to the consumer roadmap item so contracts-specific decisions land alongside the gate that needs them.
 **Target surface:**
 
 ```bash
@@ -177,7 +170,7 @@ specrun plan finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
-**Requires:** RM-06 (resumable phase contracts and typed IR); sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
+**Requires:** RM-06 (resumable phase contracts and the typed slice model); sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
 **Target surface:**
 
 ```bash
@@ -219,7 +212,7 @@ specify execute resume <run-id>
 
 ## Open Questions
 
-- What is the minimum RFC-29 D1 surface (`specrun source enumerate` / `extract`) before `/spec:refine` delegates extraction to the CLI?
+- What is the minimum RFC-29 D1 surface (`specrun source survey` / `extract`) before `/spec:refine` delegates extraction to the CLI?
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?

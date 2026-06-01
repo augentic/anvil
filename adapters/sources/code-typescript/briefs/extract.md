@@ -1,12 +1,12 @@
 # TypeScript / JavaScript source extract
 
-`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-typescript`. Your job: for a single `(source-key, lead-id)` pair, locate the matching TypeScript module(s) under `$SOURCE_DIR`, read the surrounding code, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source-key>.yaml`.
+`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-typescript`. Your job: for a single `(source, lead)` pair, locate the matching TypeScript module(s) under `$SOURCE_DIR`, read the surrounding code, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`.
 
 ## Inputs
 
 - **`$SOURCE_DIR`** — read-only preopen of the operator-bound source root (same path the survey brief walked). Walk it; resolve `tsconfig.json` `paths` mappings relative to it.
-- **`<lead-id>`** — the kebab-case id of the `## Lead inventory` block the slice is bound to. Look it up in `discovery.md` (the runner provides it via the binding); the block tells you which surface(s) to extract.
-- **`<source-key>`** — the kebab-case source key the binding resolves through.
+- **`<lead>`** — the kebab-case id of the `## Lead inventory` block the slice is bound to. Look it up in `discovery.md` (the runner provides it via the binding); the block tells you which surface(s) to extract.
+- **`<source>`** — the kebab-case source key the binding resolves through.
 
 `$PROJECT_DIR` is unreachable; do not attempt to read project lifecycle state. Writes back into `$SOURCE_DIR` are denied. Use `$SCRATCH_DIR` for any internal staging.
 
@@ -30,13 +30,11 @@ Load on demand when the lead's surface needs deeper analysis. The bodies are Typ
 
 ## Output: Evidence YAML
 
-Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source-key>.yaml`; you produce the body. Top-level fields are required:
+Return one Evidence document matching `schemas/evidence.schema.json`. The CLI atomically writes it to `evidence/<source>.yaml`; you produce the body. Top-level fields are required:
 
 ```yaml
-source: <source-key>
-adapter: code-typescript
 authority: behaviour
-lead: <lead-id>
+lead: <lead>
 claims:
   - kind: excerpt
     path: <ts-path>#L<start>-L<end>
@@ -49,7 +47,7 @@ claims:
     callee: "<module>:<symbol>"
 ```
 
-`authority` is fixed at `behaviour` for this adapter. `source`, `adapter`, and `lead` are kebab-case (validated by `evidence.schema.json` against `^[a-z0-9]+(-[a-z0-9]+)*$`). `claims: []` is valid when the lead has no in-scope code under `$SOURCE_DIR` — failure surfaces as a host-runner error, not as an empty file.
+`authority` is fixed at `behaviour` for this adapter. `lead` is kebab-case (validated by `evidence.schema.json` against `^[a-z0-9]+(-[a-z0-9]+)*$`). The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document. `claims: []` is valid when the lead has no in-scope code under `$SOURCE_DIR` — failure surfaces as a host-runner error, not as an empty file.
 
 ## Claim kinds
 
@@ -59,7 +57,7 @@ This adapter emits three kinds from the closed enum (`evidence.schema.json#/$def
 - **`type`** — a declared interface, type alias, class declaration, or DTO. Use this when synthesis will need the shape of an input / output (e.g. `CreateUserDto`, `RegistrationResult`). The body field is `signature:` — the declaration's source spelling (one line preferred; multi-line acceptable for short class headers).
 - **`call`** — an observed cross-module call that contributes to the lead's behaviour. Use this when synthesis must know that a handler delegates to another module (the call is the wire). The body field is `callee:` — `<module>:<symbol>` matching the `handler` resolution rules from the survey brief (named export, `<ClassName>.<method>`, framework-suffixed inline arrow, etc.).
 
-`claim-id` is optional on `excerpt` / `type` / `call` (per `evidence.schema.json` — required only on `requirement` and `criterion`). You MAY carry it for deterministic cross-source reconciliation when the claim corresponds to a stable concept; otherwise omit it.
+`id` is optional on `excerpt` / `type` / `call` (per `evidence.schema.json` — required only on `requirement` and `criterion`). You MAY carry it for deterministic cross-source reconciliation when the claim corresponds to a stable concept; otherwise omit it.
 
 ## Anchors and excerpts
 
@@ -85,8 +83,6 @@ Source files in scope (per the lead's surface in the staged JSON):
 Resulting Evidence YAML:
 
 ```yaml
-source: legacy-monolith
-adapter: code-typescript
 authority: behaviour
 lead: user-registration
 claims:
@@ -124,4 +120,4 @@ Same skip-root and traversal rules as the survey brief: relative paths only, no 
 | Lead maps to no file under `$SOURCE_DIR`            | Return `claims: []`. Core synthesis surfaces `[unknown]` on every affected requirement.                                         |
 | Read denied outside `$SOURCE_DIR` / `$CAPABILITY_DIR`    | Host runner returns `source-extract-path-denied`; slice stays `refining` and no Evidence is written.                            |
 | Production source uses an out-of-scope framework only    | Emit any in-scope `excerpt` / `type` / `call` claims; the gap surfaces as `[unknown]` requirements at synthesis.                |
-| `evidence.schema.json` validation fails on emit          | CLI rejects the Evidence; slice stays `refining`. Re-emit with the missing `claim-id` / `kind` / `path` corrected.              |
+| `evidence.schema.json` validation fails on emit          | CLI rejects the Evidence; slice stays `refining`. Re-emit with the missing `id` / `kind` / `path` corrected.              |

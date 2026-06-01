@@ -1,6 +1,6 @@
 # Fixture: `[conflict]`
 
-Two `documentation` Evidence contribute claims with the same `claim-id` but disagreeing bodies. Authority is tied at `documentation` — synthesis cannot pick a winner, so the requirement carries `[conflict]` and preserves both values for operator reconciliation. Matches workflow §Acceptance scenario #5c.
+Two `documentation` Evidence contribute claims with the same `id` but disagreeing bodies. Authority is tied at `documentation` — synthesis cannot pick a winner, so the requirement carries `[conflict]` and preserves both values for operator reconciliation. Matches workflow §Acceptance scenario #5c.
 
 Playbook rules exercised:
 

@@ -4,14 +4,14 @@
 
 ## Lead inventory
 
-### archive
+### screens:archive
 
-- id: archive
-- sources: [screens]
-- summary: Archive: completed tasks the user has archived.
+- lead: archive
+- source: screens
+- synopsis: Archive: completed tasks the user has archived.
 
-### task-list
+### screens:task-list
 
-- id: task-list
-- sources: [screens]
-- summary: Task list: today's open tasks for the signed-in user.
+- lead: task-list
+- source: screens
+- synopsis: Task list: today's open tasks for the signed-in user.

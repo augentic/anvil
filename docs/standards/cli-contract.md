@@ -19,7 +19,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Project
 
 - `specrun init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--hub` is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `adapter:` field is omitted). `specrun init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
-- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `reconciliation.yaml`, `discovery.md`) rather than formatted dashboard commands.
+- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `model.yaml`, `discovery.md`) rather than formatted dashboard commands. The provenance audit view is projected on demand by `specrun slice provenance`, not a persisted file.
 
 ### Slice (per-slice lifecycle)
 
@@ -31,7 +31,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Change plan
 
-- `specrun plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `add` appends an entry; `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
+- `specrun plan {create, propose, validate, doctor, next, status, add, amend, remove, transition, archive, lock}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `propose --dry-run` returns the flat lead catalog + project topology for the agent, and `propose --from <response.json>` is the default slice writer (validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `add` appends an entry and `remove` drops a pending entry; `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
 
 ### Change umbrella
 
@@ -60,7 +60,7 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 
 Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specrun plan {create, add, amend}`, drive the loop yourself via `specrun plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specrun plan next`; per-entry `done` is written by `specrun slice merge`), then run `specrun workspace push`, verify PRs with `gh pr view`, and run `specrun plan archive` by hand.
 
-The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are only ever written via `specrun plan add` / `specrun plan amend`; plan *status* is only ever written via `specrun plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specrun plan add` / `specrun plan amend` — the same commands humans run.
+The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specrun plan propose --from` (default), `specrun plan add`, `specrun plan amend`, and `specrun plan remove`; plan *status* is only ever written via `specrun plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specrun plan add` / `specrun plan amend` — the same commands humans run.
 
 The three change-lifecycle skills (`/spec:plan`, `/spec:execute`, `/spec:finalize`) are peers; there is no umbrella that drives all three in one shot. Operators who want a single command can write a thin shell wrapper, accepting that the wrapper opts out of the Gate-1 operator review pause between plan and execute. Each skill is idempotent on re-entry; halts surface verbatim and resume by re-running the same skill.
 
@@ -82,7 +82,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 - `registry-amendment-required` — `/spec:execute` phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specrun registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specrun plan validate` health diagnostics.
+- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specrun plan validate` health diagnostics.
 - `no-branch` — `specrun workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 

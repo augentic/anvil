@@ -2,6 +2,7 @@
 name: contracts
 version: 1
 axis: target
+execution: agent
 description: API contract definition and validation
 briefs:
   shape: briefs/shape.md
@@ -10,3 +11,6 @@ briefs:
 tools:
   - name: contract
     version: 0.3.0
+inputs:
+  - path: contracts
+    required: false

@@ -41,7 +41,7 @@ Plan **Gate 1** (`specrun plan transition <name> approved`) is operator approval
 
 ## Type-system enforcement of the lint boundary
 
-"No lifecycle authority in lint" is a structural invariant of the `specify-cli` workspace, not a coding convention. The shared codex parser **and** the deterministic review surface (`specrun lint`, the WorkspaceModel indexer, hint interpreter, and diagnostic formatters) live in the `specify-lints` crate. `specify-lints` is a **sibling** of `specify-workflow`, not a child: neither crate imports the other, and the standards crate has no dependency on workflow types (slice, change, plan, journal). `specify-workflow` retains the workflow surface and gains nothing review-specific.
+"No lifecycle authority in lint" is a structural invariant of the `specify-cli` workspace, not a coding convention. The shared codex parser **and** the deterministic review surface (`specrun lint`, the WorkspaceModel indexer, hint interpreter, and diagnostic formatters) live in the `specify-standards` crate. `specify-standards` is a **sibling** of `specify-workflow`, not a child: neither crate imports the other, and the standards crate has no dependency on workflow types (slice, change, plan, journal). `specify-workflow` retains the workflow surface and gains nothing review-specific.
 
 The split means lint code physically cannot construct or transition a slice, plan entry, or change — the symbols are not in scope at compile time. The only place both crates meet is the root `specify` binary, which wires them together to resolve project context for `specrun lint`. See the [decision log](decision-log.md#workflow-standards-and-artifacts) for the standards-vs-workflow split and implementation history.
 

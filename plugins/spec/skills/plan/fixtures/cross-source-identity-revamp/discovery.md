@@ -2,7 +2,7 @@
 
 ## Summary
 
-Sources: 2. Leads: 4.
+Sources: 2. Leads: 5.
 
 ## Source inventory
 
@@ -13,28 +13,32 @@ Sources: 2. Leads: 4.
 
 ## Lead inventory
 
-### user-registration
+### identity-design-notes:user-registration
 
-- id: user-registration
-- sources: [identity-design-notes, legacy-monolith]
-- summary: Registration endpoint accepting email + password with RFC-5322 validation.
+- lead: user-registration
+- source: identity-design-notes
+- synopsis: Registration endpoint accepting email + password with RFC-5322 validation.
 
-### password-reset
+### legacy-monolith:user-registration
 
-- id: password-reset
-- sources: [identity-design-notes]
-- summary: Registered users request a password-reset link by email; unknown emails receive the same outward response; links expire after 30 minutes.
-- tentative: true
+- lead: user-registration
+- source: legacy-monolith
+- synopsis: POST /users handler validating email + password and inserting the new user record.
 
-### account-pwd-reset
+### identity-design-notes:password-reset
 
-- id: account-pwd-reset
-- sources: [legacy-monolith]
-- summary: Account password-reset handler; emits a 24-hour reset token via the transactional email service.
-- tentative: true
+- lead: password-reset
+- source: identity-design-notes
+- synopsis: Registered users request a password-reset link by email; unknown emails receive the same outward response; links expire after 30 minutes.
 
-### identity-audit-events
+### legacy-monolith:account-pwd-reset
 
-- id: identity-audit-events
-- sources: [legacy-monolith]
-- summary: Audit-event emitter for identity actions (registration, login, password reset).
+- lead: account-pwd-reset
+- source: legacy-monolith
+- synopsis: Account password-reset handler; emits a 24-hour reset token via the transactional email service.
+
+### legacy-monolith:identity-audit-events
+
+- lead: identity-audit-events
+- source: legacy-monolith
+- synopsis: Audit-event emitter for identity actions (registration, login, password reset).

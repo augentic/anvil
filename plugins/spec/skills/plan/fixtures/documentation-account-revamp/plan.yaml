@@ -6,20 +6,20 @@ sources:
     path: ./design-notes/account
 slices:
   - name: account-registration
-    target: omnia
+    project: account-svc
     sources:
-      - key: docs
+      - source: docs
         lead: account-registration
     status: pending
   - name: password-reset
-    target: omnia
+    project: account-svc
     sources:
-      - key: docs
+      - source: docs
         lead: password-reset
     status: pending
   - name: account-audit-log
-    target: omnia
+    project: account-svc
     sources:
-      - key: docs
+      - source: docs
         lead: account-audit-log
     status: pending

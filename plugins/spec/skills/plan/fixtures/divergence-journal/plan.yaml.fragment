@@ -1,9 +1,9 @@
   - name: identity-session-expiry
-    target: omnia
+    project: identity-svc
     sources:
-      - key: identity-design-notes
+      - source: identity-design-notes
         lead: session-expiry
-      - key: legacy-monolith
+      - source: legacy-monolith
         lead: session-expiry
     divergence: likely
     status: pending

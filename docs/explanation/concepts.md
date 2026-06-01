@@ -152,7 +152,7 @@ You pick the target at scaffolding time (`/spec:init <target>`). You bind source
 
 ## Evidence, provenance, authority
 
-When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source-key>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
+When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
 
 Core synthesis reconciles `Evidence[]` into one `spec.md`. Every requirement header carries:
 

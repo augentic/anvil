@@ -26,7 +26,7 @@ When the slice's `plan.yaml.sources[]` includes a `captures` binding:
 
 1. **Copy or symlink** the bound capture tree into `$CRATE_PATH/tests/data/replays/` preserving handler/scenario layout per [`captures/references/capture-format.md`](../../../../sources/captures/references/capture-format.md).
 2. **Generate one integration test per scenario** — for each `kind: example` claim in `evidence/<runtime-key>.yaml` (or each `<handler>/<scenario>.json` under the bound tree), add or extend tests that load the capture, apply `setup` per [`replay-fixtures.md`](../../references/replay-fixtures.md), invoke the handler, and assert on `output`. Layout: [`replay-crate-layout.md`](../../references/replay-crate-layout.md).
-3. **Trace to Evidence** — doc-comment each replay test with the contributing `claim-id` and `REQ-XXX` where synthesis linked the example claim to a requirement.
+3. **Trace to Evidence** — doc-comment each replay test with the contributing `id` and `REQ-XXX` where synthesis linked the example claim to a requirement.
 4. **Worked examples** — [`examples/replay/`](../../references/examples/replay/) (handler, tests, captures for migration scenarios including time-sensitive `shift_time` patterns).
 
 Capture wire format authority stays at the source adapter — do not duplicate the schema here. Execution of the replay suite belongs to [replay.md](replay.md) (phase 7).

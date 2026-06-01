@@ -2,6 +2,7 @@
 name: omnia
 version: 1
 axis: target
+execution: agent
 description: Omnia Rust WASM target adapter. Supplies idiom guidance for core synthesis (shape), drives crate / test / guest generation and code review (build), and gates the slice landing with cargo + wasm32-wasip2 verification (merge).
 briefs:
   shape: briefs/shape.md

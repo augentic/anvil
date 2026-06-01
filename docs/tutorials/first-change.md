@@ -30,19 +30,16 @@ sources:
     path: ./design-notes/account
 slices:
   - name: account-registration
-    target: omnia
     sources:
       - key: docs
         lead: account-registration
     status: pending
   - name: password-reset
-    target: omnia
     sources:
       - key: docs
         lead: password-reset
     status: pending
   - name: account-audit-log
-    target: omnia
     sources:
       - key: docs
         lead: account-audit-log
@@ -62,7 +59,7 @@ Before stamping `approved`, read:
 Amend if needed:
 
 ```bash
-specrun plan amend account-revamp --add-source ...
+specrun plan amend <entry> --add-source <key>=<lead>
 specrun plan transition account-revamp approved
 ```
 

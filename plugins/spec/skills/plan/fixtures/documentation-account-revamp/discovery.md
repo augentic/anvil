@@ -12,19 +12,20 @@ Sources: 1. Leads: 3.
 
 ## Lead inventory
 
-### account-registration
+### docs:account-registration
 
-- id: account-registration
-- sources: [docs]
-- summary: Account service accepts email + password registration with RFC-5322 validation and persists the new user.
+- lead: account-registration
+- source: docs
+- synopsis: Account service accepts email + password registration with RFC-5322 validation and persists the new user.
 
-### password-reset
+### docs:password-reset
 
-- id: password-reset
-- sources: [docs]
-- summary: Registered users request a password-reset link by email; unknown emails receive the same outward response; links expire after 30 minutes.
+- lead: password-reset
+- source: docs
+- synopsis: Registered users request a password-reset link by email; unknown emails receive the same outward response; links expire after 30 minutes.
 
-### account-audit-log
-- id: account-audit-log
-- sources: [docs]
-- summary: Operator-visible audit log of registration and password-reset events, queryable by user id.
+### docs:account-audit-log
+
+- lead: account-audit-log
+- source: docs
+- synopsis: Operator-visible audit log of registration and password-reset events, queryable by user id.

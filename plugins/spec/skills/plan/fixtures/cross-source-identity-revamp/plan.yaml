@@ -9,18 +9,18 @@ sources:
     path: ./vendor/legacy-monolith
 slices:
   - name: identity-user-registration
-    target: omnia
+    project: identity-svc
     sources:
-      - key: identity-design-notes
+      - source: identity-design-notes
         lead: user-registration
-      - key: legacy-monolith
+      - source: legacy-monolith
         lead: user-registration
     status: pending
   - name: identity-password-reset
-    target: omnia
+    project: identity-svc
     sources:
-      - key: identity-design-notes
+      - source: identity-design-notes
         lead: password-reset
-      - key: legacy-monolith
+      - source: legacy-monolith
         lead: account-pwd-reset
     status: pending

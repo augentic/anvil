@@ -1,6 +1,6 @@
 # Tag grammar
 
-Synthesis surfaces three review-signal tags in `spec.md`. Each tag appears inside the requirement-block headline, after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by hand-editing `spec.md` after the slice transitions to `refined`.
+The kernel renders three review-signal tags into `spec.md` from each requirement's `status` (derived in turn from the agent's `agreement` verdict and the resolved authority). Each tag appears inside the requirement-block headline, after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by re-running `/spec:refine` (with a different verdict or amended `authority-override`) after the slice transitions to `refined`.
 
 ## Closed tag set
 
@@ -20,7 +20,7 @@ One tag per headline. Tags do not stack — a requirement is in at most one of t
 
 ## Coherence rule
 
-The W1.3 provenance parser refuses output where the headline tag and `Status:` field disagree. Synthesis MUST enforce the mirror exactly:
+The W1.3 provenance parser refuses output where the headline tag and `Status:` field disagree. The kernel renders the mirror exactly, so a divergent pair only arises from a post-synthesis hand-edit:
 
 | Headline                                     | Required `Status:` |
 | -------------------------------------------- | ------------------ |
@@ -32,6 +32,8 @@ The W1.3 provenance parser refuses output where the headline tag and `Status:` f
 A headline tag without the matching `Status:` (or vice versa) is a parser failure that keeps the slice in `refining`. The skill body refuses to transition until validation passes.
 
 ## Per-tag body conventions
+
+The agent authors the body prose (the requirement `statement` and any `notes` rendered as `Note:` lines); the kernel renders the headline tag from `status`. The shapes below are the agent's body for each derived `status`.
 
 ### `[unknown]`
 
@@ -87,5 +89,5 @@ The event is the durable hand-off `/spec:execute` and downstream review tooling 
 - **Stacked tags** (`[divergence][unknown]`) — illegal; pick the dominant state.
 - **Tags on `proposal.md` / `design.md` / `tasks.md` headings** — synthesis tags only appear on `spec.md` requirement headlines.
 - **Tag without provenance** — `### Requirement: Foo [conflict]` with no `Sources:` line below fails the parser; every tagged requirement still carries the three provenance lines.
-- **Auto-resolving `[conflict]`** — synthesis never picks a winner when authorities tie. The operator reconciles.
+- **Auto-resolving `[conflict]`** — the kernel never picks a winner when authorities tie. The operator reconciles.
 - **Suppressing `[unknown]` for empty Evidence** — a lead whose Evidence emits `claims: []` legitimately produces `[unknown]` requirements; do not silently omit them.

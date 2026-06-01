@@ -18,7 +18,7 @@ The configuration surfaces:
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [survey, extract]`).
 - **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, and the `plan.yaml` schema.
+- **`schemas/`** — JSON Schema files distributed with the binary: `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and the `plan.yaml` schema.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
@@ -66,11 +66,11 @@ The plan is the change's table of contents. `/spec:plan` produces it by surveyin
 
 `/spec:execute` consumes the approved plan by picking the next eligible slice (`specrun plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-The matching CLI surface spans **`specrun plan {create, add, amend, transition, next, finalize}`**, **`specrun workspace {sync, push, prepare}`** for multi-repo changes, and **`specrun tool run`** for declared WASI helpers.
+The matching CLI surface spans **`specrun plan {create, propose, add, amend, remove, transition, next, finalize}`**, **`specrun workspace {sync, push, prepare}`** for multi-repo changes, and **`specrun tool run`** for declared WASI helpers.
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `reviewed`. This gives operators a deliberate point to inspect `plan.yaml`, edit `change.md`, and amend entries with `specrun plan amend` before any per-slice work runs.
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specrun plan propose --from`, `specrun plan add`, `specrun plan remove`, or `specrun plan amend <entry>` before any per-slice work runs.
 
 The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 
@@ -80,7 +80,7 @@ A key design principle: higher layers invoke lower layers, but lower layers are 
 
 This means you can always drop down a layer:
 
-- If `/spec:plan` produces a plan you want to adjust, edit it with `specrun plan amend` (split, merge, relabel, rebind sources, accept/reject a predicted divergence) and stamp `approved` when ready.
+- If `/spec:plan` produces a plan you want to adjust, use **re-propose** or `specrun plan add` / `specrun plan remove` for grouping and deferral, and `specrun plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then stamp `approved` when ready.
 - If `/spec:execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `/spec:execute` to pick up the next entry.
 - If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/.metadata.yaml` directly — they are plain YAML files.

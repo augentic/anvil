@@ -26,7 +26,7 @@ target: https://github.com/augentic/specify/targets/omnia
 sources: [intent, documentation, code-typescript]
 specify-version: "2.0.0"
 workspace: false
-domain: |
+description: |
   Brief description of the project's domain, purpose, and
   technical constraints. This context is available to all
   briefs during artifact generation.
@@ -39,7 +39,9 @@ domain: |
 | `sources`         | No                     | List of source adapters available for `/spec:plan` to bind. Defaults to the first-party set when omitted. |
 | `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
-| `domain`          | No                     | Free-form domain description available to briefs. |
+| `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. |
+| `capabilities`    | No                     | Capability tags (e.g. `auth`, `billing`) characterising what the project owns. Projected into `.specify/topology.lock` and surfaced in the reconciliation `projects[]` so the agent binds slices on capability, not description prose alone. Authored here, never in `registry.yaml`. |
+| `keywords`        | No                     | Free-form keyword tags supplementing `capabilities`, with the same projection path. |
 
 ### Hub shape
 
@@ -62,7 +64,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 
 **Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
 **Created by:** `/spec:plan` (via `specrun plan create`)
-**Modified by:** `specrun plan add`, `specrun plan amend`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
+**Modified by:** `specrun plan propose --from`, `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 
@@ -79,21 +81,19 @@ sources:
     path: ./vendor/legacy-monolith
 slices:
   - name: identity-user-registration
-    target: omnia
     project: identity-svc
     sources:
-      - key: identity-design-notes
+      - source: identity-design-notes
         lead: user-registration
-      - key: legacy-monolith
+      - source: legacy-monolith
         lead: user-registration
     status: pending
   - name: identity-password-reset
-    target: omnia
     project: identity-svc
     sources:
-      - key: identity-design-notes
+      - source: identity-design-notes
         lead: password-reset
-      - key: legacy-monolith
+      - source: legacy-monolith
         lead: account-pwd-reset
     divergence: likely
     status: pending
@@ -104,17 +104,16 @@ slices:
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
 | `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
-| `sources`                | No       | Map of source-key → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].key`. |
+| `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
 | Field (per slice)        | Required | Description |
 | ------------------------ | -------- | ----------- |
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
-| `target`                 | Yes      | Target adapter identifier for the slice (or the plan-level default). |
-| `project`                | No       | Workspace project name (workspace mode only). |
-| `sources`                | Yes      | List of `{ key, lead }` bindings; cardinality ≥ 1. Bare `<key>` shorthand allowed when the lead id equals the slice's `name`. |
+| `project`                | No       | Project this slice binds. Required when the registry declares multiple projects; optional for single-project setups (an omitted value resolves to the sole topology project). The target adapter is resolved on demand from this project — it is not stored per slice. |
+| `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
-| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` (set by propose), `accepted` / `rejected` (set by `plan amend --divergence`). Advisory metadata in v1. |
+| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specrun plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must be `done` first. |
 | `context`                | No       | List of baseline paths relevant to the slice; used as a focus hint by briefs. |
 | `description`            | No       | What this slice does (human-readable). |
@@ -125,37 +124,27 @@ slices:
 **Created by:** Operator (directly)
 **Validated by:** First-use validators (`specrun workspace sync`, `/spec:plan`)
 
-Workspace catalogue for multi-repo changes. Optional — not needed for single-repo projects.
+Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description`, `capabilities`, and `keywords` are authored in its own `.specify/project.yaml` and projected into `.specify/topology.lock`.
 
 ```yaml
 version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    target: omnia@v1
-    description: >
-      Real-time traffic ingestion and route optimisation.
-
+    adapter: omnia@v1        # optional greenfield scaffold seed only
   - name: command-centre
     url: git@github.com:org/command-centre.git
-    target: omnia@v1
-    description: >
-      Operator dashboard and alerting.
-
   - name: mobile
     url: ../mobile
-    target: vectis@v1
-    description: >
-      iOS and Android mobile application for field operators.
 ```
 
 | Field                       | Required    | Description |
 | --------------------------- | ----------- | ----------- |
 | `version`                   | Yes         | Schema version (currently `1`). |
-| `projects[].name`           | Yes         | Project identifier (kebab-case). |
+| `projects[].name`           | Yes         | Project identifier (kebab-case). The slot name and the `plan.yaml.slices[].project` binding key. |
 | `projects[].url`            | Yes         | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
-| `projects[].target`         | Yes         | Target adapter identifier or URL for this project. |
-| `projects[].description`    | Conditional | Required when multiple projects exist. Describes the project's business domain. |
+| `projects[].adapter`        | No          | Greenfield scaffold seed only — written into a new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology. |
+| `projects[].contracts`      | No          | Per-project contract role declarations (`produces`, `consumes`). |
 
 ## change.md
 

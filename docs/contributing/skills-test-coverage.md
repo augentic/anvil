@@ -18,7 +18,7 @@ The audit is hand-curated and is intended to be re-run whenever a new skill
 or scenario lands. The checked-in fixtures under
 [`tests/fixtures/{sources,targets,skills}/`](../../tests/fixtures/) document
 representative inputs and expected artifact shapes, while the compact Rust
-suite in `specify-cli/crates/authoring/tests/` focuses on checker
+suite in `specify-cli/crates/standards/tests/` focuses on checker
 regressions. The manual scenarios under
 [`tests/cross-repo/`](../../tests/cross-repo/) and
 [`tests/plan/`](../../tests/plan/) cover the LLM-driven body bytes that the
@@ -44,7 +44,7 @@ Rust harness intentionally does not pin.
 > mentions `tests/scenarios/*.json` fixtures, but no such directory or file
 > exists in the repository at audit time. The repository's test packs are the
 > markdown scenarios listed above; their YAML frontmatter (validated by
-> `specify-cli/crates/authoring/src/check/scenarios.rs` is the
+> `specify-cli/crates/standards/src/framework/check/scenarios.rs` is the
 > closest analogue to a fixture. The matrix below uses the markdown scenarios
 > as the unit of coverage. See [Plan amendments](#plan-amendments) for
 > follow-up.

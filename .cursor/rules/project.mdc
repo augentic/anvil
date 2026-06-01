@@ -128,7 +128,7 @@ In downstream consumer projects:
 
 In this repository:
 
-- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/` (with per-source evidence at `evidence/<source-key>.yaml`)
+- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/` (with per-source evidence at `evidence/<source>.yaml`)
 - **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
 - **Plan + discovery**: `$PROJECT_DIR/.specify/{change.md,plan.yaml,discovery.md}` (workspace mode places these at the workspace root)
 
@@ -148,7 +148,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/authoring/src/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specdev lint` (`make lint` locally) enforces both.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/standards/src/framework/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specdev lint` (`make lint` locally) enforces both.
 
 ## For Contributors
 

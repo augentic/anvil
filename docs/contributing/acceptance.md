@@ -2,7 +2,7 @@
 
 The acceptance surface has two layers:
 
-1. **Static repository checks** — `make lint` runs `specdev lint --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-authoring` predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-authoring` — so this repo does not re-run it.
+1. **Static repository checks** — `make lint` runs `specdev lint --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-standards` framework predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-standards` framework — so this repo does not re-run it.
 2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specdev lint` does **not** pin synthesised bytes.
 
 ## Running checks locally
@@ -17,13 +17,13 @@ Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--fr
 
 - `make lint` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
 - `make ci` runs `make lint`.
-- The `specify-authoring` predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
+- The `specify-standards` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 
 ## Synthesis byte-replay (deferred)
 
-The harness in the `specify-authoring` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+The harness in the `specify-standards` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
 
 - a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
 - a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.
@@ -47,6 +47,14 @@ This repository does not add an automated runner, fake forge, transcript replay,
 The plan-generation scenarios ask an operator to create disposable workspaces and run `/spec:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists with `lifecycle: pending`, `specrun plan add` and the propose substep produce coherent slice rows, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
 
 These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> approved`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
+
+## Fan-in / fan-out acceptance
+
+The cross-source fan-in / cross-slice fan-out acceptance splits across two distinct surfaces, and **both** must pass before a release is complete:
+
+1. **Deterministic CLI proof (automated).** The end-to-end fan-in-twice / fan-out-once fixture lives in `augentic/specify-cli` at [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs). It runs under `cargo make test` and asserts the **envelope, ordering, and determinism** of the whole path — `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen.
+
+2. **Generated-output-correctness release gate (manual / CI).** Each target build must pass the target's own **replay/golden suite** plus `cargo check` / `cargo test` for any generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks **is not done — regardless of build-envelope validity**. A schema-valid `build/report.yaml` with `status: success` only proves the envelope contract held; it does not prove the emitted code compiles or replays. This gate is manual/CI because it exercises agent-generated code, which `specdev lint` and the deterministic CLI proof do not pin.
 
 ## Scenario IDs
 

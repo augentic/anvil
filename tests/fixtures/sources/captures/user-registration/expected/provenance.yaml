@@ -8,7 +8,7 @@ requirements:
     sources: [runtime]
     contributing-claims:
       - source: runtime
-        claim-id: user-registration.happy
+        id: user-registration.happy
         kind: example
         value: "POST /users with a fresh email returns 201 and publishes `user.created` with the new user-id."
         path: tests/data/replays/user-registration/happy.json
@@ -18,7 +18,7 @@ requirements:
     sources: [runtime]
     contributing-claims:
       - source: runtime
-        claim-id: user-registration.error
+        id: user-registration.error
         kind: example
         value: "POST /users with a password shorter than 12 characters returns 400 with `{ code: weak-password }`; no message published."
         path: tests/data/replays/user-registration/error.json

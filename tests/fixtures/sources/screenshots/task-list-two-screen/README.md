@@ -21,11 +21,11 @@ expected/
 
 ## Bindings assumed by the fixture
 
-- `<source-key>` = `screens`
+- `<source>` = `screens`
 - `$SOURCE_DIR` = `input/`
 - Two lead ids: `archive`, `task-list` (alphabetical order)
 
-The single input image depicts two screens stacked vertically. Vision triage decomposes them into two leads; an operator binding multiple per-screen images would supply them as separate files. The `extract` outputs below model both screens as if they were extracted from one bound directory — `claim-id`s prefix each claim with its screen slug so the same Evidence shape works for either layout.
+The single input image depicts two screens stacked vertically. Vision triage decomposes them into two leads; an operator binding multiple per-screen images would supply them as separate files. The `extract` outputs below model both screens as if they were extracted from one bound directory — `id`s prefix each claim with its screen slug so the same Evidence shape works for either layout.
 
 ## Validation
 

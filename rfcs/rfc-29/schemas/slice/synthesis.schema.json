@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/slice/synthesis.schema.json",
+  "title": "Specify slice synthesis response",
+  "description": "Validates the agent-led synthesis step's response per RFC-29 \u00a7Slice synthesis engine (D3) and \u00a7Synthesis dispatch (D10). Synthesis is always agent-dispatched (D10): there is no tool consumer, so there is no closed *request* wire shape \u2014 `specrun slice synthesize` assembles the step's inputs directly (the slice's inline Evidence and the bound target's shape brief, which the CLI resolves from `target` and provides to the step) and schema-validates only the returned response. The response (`kind: response`) carries the `model` validated against the single `model.schema.json` (claims, agreement, prose; the agent omits kernel-owned and header fields, which are optional in that schema) plus prose-only Markdown artifacts (requirement bodies without `ID:` / `Sources:` / `Status:` lines). The engine validates the response, then projects the kernel \u2014 re-deriving `requirements[].id`, `.status`, `claims[].winner`, rendered source lists and provenance, ignoring any kernel-owned fields the agent supplied (normalize, never reject), and resolving authority from the on-disk Evidence and any per-slice override \u2014 stamps the `version` / `slice` / `project` header, re-validates the merged `model.yaml` against the same schema, renders provenance lines into `spec.md`, then persists. `model.schema.json` and `synthesis.schema.json` are registered together so the relative `$ref` resolves. Closed shape \u2014 unknown fields are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "slice",
+    "model",
+    "artifacts"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "kind": {
+      "const": "response"
+    },
+    "slice": {
+      "$ref": "#/$defs/kebabName"
+    },
+    "model": {
+      "$ref": "model.schema.json"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/artifacts"
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal",
+        "design",
+        "tasks",
+        "specs"
+      ],
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tasks": {
+          "type": "string",
+          "minLength": 1
+        },
+        "specs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit",
+              "content"
+            ],
+            "properties": {
+              "unit": {
+                "$ref": "#/$defs/kebabName"
+              },
+              "content": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@
 name: documentation
 version: 1
 axis: source
+execution: agent
 briefs:
   extract: briefs/extract.md
   survey: briefs/survey.md

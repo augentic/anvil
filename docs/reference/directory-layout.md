@@ -22,6 +22,7 @@ contracts/                                  # Baseline API contracts
 ├── plan.yaml                               # Change plan (lifecycle + slices[])
 ├── discovery.md                            # Plan-time lead inventory
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
+├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
 ├── .cache/                                 # Cached adapter manifests + briefs
@@ -39,7 +40,7 @@ contracts/                                  # Baseline API contracts
 │       ├── design.md                       # Technical design
 │       ├── tasks.md                        # Implementation checklist
 │       ├── evidence/                       # Per-source extract output (managed by CLI)
-│       │   └── <source-key>.yaml
+│       │   └── <source>.yaml
 │       ├── specs/                          # Behavioral specs (one per unit)
 │       │   └── <unit>/spec.md
 │       └── contracts/                      # Per-slice contract delta (when API interactions exist)
@@ -47,15 +48,18 @@ contracts/                                  # Baseline API contracts
 │           ├── http/
 │           └── messages/
 │
-├── specs/                                  # Merged baseline specs
+├── specs/                                  # Merged baseline specs (committable; system of record)
 │   └── <unit>/spec.md                      # Accumulated behavioral requirements
 │
-├── workspace/                              # Workspace slots (workspace mode only)
+├── journal.jsonl                           # Append-only event log; also the outcome ledger
+│                                           #   (slice.archive.created: slice, touched-specs, summary, merge SHA)
+│
+├── workspace/                              # Workspace slots (workspace mode only; gitignored)
 │   └── <project-name>/
 │       └── ...                             # Project clone or symlink, writable during execution
 │
-└── archive/                                # Finalized plans and merged/dropped slices
-    ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices
+└── archive/                                # Prunable cache of merged/dropped slices + finalized plans
+    ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specrun archive prune`)
     │   ├── .metadata.yaml
     │   ├── proposal.md
     │   ├── design.md
@@ -76,7 +80,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specrun slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specrun plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the per-source `evidence/<source-key>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -100,7 +104,7 @@ Slots are read-only during planning and writable during execution. Before mutati
 
 ### `archive/`
 
-Terminal storage for merged slices, dropped slices, and archived plans. Preserves the full directory for audit. Nothing in `archive/` is read by the active workflow — it exists for traceability.
+A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.specify/specs/` baseline plus the append-only **outcome ledger** in `journal.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `specrun archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound. See [decision-log §"History via git plus an outcome ledger, not a slice graveyard"](../explanation/decision-log.md).
 
 ## Files that do not live under `.specify/`
 

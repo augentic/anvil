@@ -11,7 +11,7 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
 | **`specdev lint` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in the `specify-authoring` crate under `crates/authoring/schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
+**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -19,9 +19,9 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Runtime adapter schemas ship with `specify-cli` under `schemas/`; framework-only schemas (skill frontmatter shape, rules, scenarios, marketplace) ship in `crates/authoring/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship from `specify-cli` under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev lint` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas in `crates/authoring/schemas/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev lint` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -49,13 +49,13 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-authoring` predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
+`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
 Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
 ```bash
 cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .
-cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-authoring
+cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 ```
 
 The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
@@ -81,7 +81,7 @@ FAIL: <rule-id>: <message>
 | `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
 | `codex.*` | `check::rules` | Rule shape and namespace ownership |
 
-See the `specify-authoring` crate's `check` module for the full predicate list.
+See the `specify-standards` crate's `check` module for the full predicate list.
 
 ### JSON output
 
@@ -101,7 +101,7 @@ Envelope shape:
 }
 ```
 
-The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/lint/lint-result.schema.json` for the envelope, `schemas/lint/finding.schema.json` for each `LintFinding`, and `crates/authoring/schemas/rule.schema.json` for rule authoring shape.
+The full wire contract, including per-finding fields and the canonical fingerprint algorithm, is pinned by the CLI schemas: `schemas/diagnostics/diagnostic-report.schema.json` for the envelope, `schemas/diagnostics/diagnostic.schema.json` for each `LintFinding`, and `schemas/rules/rule.schema.json` for rule authoring shape.
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
@@ -125,7 +125,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with `specify-cli` under `schemas/` and are loaded by the `specify-authoring` crate.
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship with `specify-cli` under `schemas/` and are loaded by the `specify-standards` crate.
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`survey` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -143,7 +143,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against the `specify-authoring` skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
+Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Name match** -- the `name` field must match the parent directory name
@@ -307,7 +307,7 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 ## Extending the checks
 
-Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-authoring` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
+Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
 
 ### Choose `CORE-*` (declarative) when
 
@@ -315,13 +315,13 @@ Two surfaces are available for new framework checks: a declarative `CORE-*` rule
 - The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
 - A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
 
-The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/authoring/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
+The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/standards/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
 
 To add a `CORE-*` rule:
 
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
 2. Run `make lint`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
-3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/authoring/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
+3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/standards/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
 
 ### Choose an imperative `Check` when
 
@@ -331,9 +331,9 @@ To add a `CORE-*` rule:
 
 To add an imperative check:
 
-1. Add a module under [`crates/authoring/src/check/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/src/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Finding>`).
-2. Register the check in the `checks` array in [`crates/authoring/src/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/authoring/src/check.rs).
-3. Add a fixture-based integration test under [`crates/authoring/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/authoring/tests/) when the predicate needs regression coverage.
+1. Add a module under [`crates/standards/src/framework/check/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/src/framework/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Diagnostic>`).
+2. Register the check in the `checks` array in [`crates/standards/src/framework/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/check.rs).
+3. Add a fixture-based integration test under [`crates/standards/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/tests/) when the predicate needs regression coverage.
 4. Run `make lint` to verify the new check works.
 
 Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
