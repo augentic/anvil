@@ -1,6 +1,6 @@
 # RFC-29c: Slice Synthesis Engine and Typed Model
 
-> Status: Shipped — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md); durable spec lives in [`specify-cli` `DECISIONS.md` §"Slice synthesis engine (RFC-29 M2b)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) — Companion: [RFC-29d](rfc-29d-target.md), the target build envelope that consumes this milestone's `model.yaml`
+> Status: Shipped — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md); durable spec lives in [`specify-cli` `DECISIONS.md` §"Slice synthesis engine (RFC-29 M2b)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) — Companion: [RFC-29d](rfc-29d-target.md), the target build envelope that consumes this milestone's rendered artifacts (with `model.yaml` as the audit/provenance source they are synthesised from)
 
 This milestone defines how slice `Evidence` becomes a reviewed requirement set, a single schema-typed `model.yaml` (carrying provenance inline), and rendered Markdown artifacts. The rule of thumb is simple: the agent decides the requirement set and prose; the CLI owns every deterministic projection around that judgment — ids, authority resolution, status, rendered source lists, winners, inline provenance, drift checks, and wire envelopes. There is one structured artifact and one schema: the kernel re-derives its owned fields and ignores any the agent supplied (normalize, never reject), and the audit provenance view is projected on demand rather than persisted as a second file.
 
@@ -239,7 +239,7 @@ The system lets a registered user request a password reset link by email.
 
 ## Slice model (D4)
 
-Every synthesized slice carries a machine-readable `model.yaml` alongside its Markdown artifacts. The Markdown stays the human review surface; `model.yaml` is the schema-pinned view that target builders consume.
+Every synthesized slice carries a machine-readable `model.yaml` alongside its Markdown artifacts. The Markdown stays the human review surface and the build / merge input; `model.yaml` is the schema-pinned structured view consumed by `specrun slice validate` (drift) and `specrun slice provenance` (audit), and the source the kernel renders `spec.md`'s provenance lines from.
 
 ### File
 
@@ -346,7 +346,7 @@ Every synthesized slice must carry `model.yaml`.
 
 ### Build input
 
-Target builders consume `model.yaml` for structure and provenance, and the rendered Markdown for behavioral context. `model.yaml` is authoritative for ids, status, and claim provenance; `spec.md` is authoritative for behavioral prose once it has been reviewed.
+Target builds consume the rendered Markdown artifacts — `spec.md` (the authoritative behavioral surface once reviewed), `design.md`, and `tasks.md`, plus any target-specific inputs — **not** `model.yaml` directly (see [RFC-29d §"Target adapter responsibilities"](rfc-29d-target.md#target-adapter-responsibilities)). `model.yaml` is authoritative for ids, status, and claim provenance, but its role today is audit/provenance and drift validation, not build: it is read by `specrun slice validate` and `specrun slice provenance`, and the kernel renders `spec.md`'s `ID:` / `Sources:` / `Status:` lines from it. The deferred non-requirements sub-trees (`domain` / `apis` / `configuration` / `technical-logic` / `observability`; §"Slice model (D4)") are reserved for a future `execution: tool` target that consumes the structured model directly; until such a consumer is earned, target builders read the Markdown.
 
 ## Per-slice fan-out (D5)
 
