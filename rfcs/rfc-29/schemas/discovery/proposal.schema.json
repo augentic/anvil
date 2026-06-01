@@ -47,7 +47,8 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/kebabName"
+            "type": "string",
+            "minLength": 1
           },
           "description": "Capability tags this project owns (e.g. `auth`, `billing`), authored in its `project.yaml` per RFC-36. The agent matches a scope against these when binding a slice to a project. Empty stays off the wire."
         },
@@ -55,7 +56,8 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/kebabName"
+            "type": "string",
+            "minLength": 1
           },
           "description": "Free-form keyword tags supplementing `capabilities`, authored in the project's `project.yaml`. Empty stays off the wire."
         }

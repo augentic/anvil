@@ -22,6 +22,7 @@ contracts/                                  # Baseline API contracts
 ├── plan.yaml                               # Change plan (lifecycle + slices[])
 ├── discovery.md                            # Plan-time lead inventory
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
+├── topology.lock                           # Committed projection of member project.yaml topology (RFC-36; workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
 ├── .cache/                                 # Cached adapter manifests + briefs

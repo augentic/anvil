@@ -36,14 +36,15 @@ Used by `/spec:plan` after populating contract roles, and by operators who edit 
 Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent.
 
 ```bash
-specrun registry add <name> --url <url> --adapter <adapter> [--description "..."]
+specrun registry add <name> --url <url> [--adapter <adapter>] [--description "..."]
 ```
 
 Behaviour:
 
-- Validates `name` (kebab-case), `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`), and the `--schema` adapter value (non-empty after trim).
+- Validates `name` (kebab-case) and `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`).
+- `--adapter` is optional and, when present, is recorded only as a greenfield scaffold seed ([RFC-36](../../../rfcs/rfc-36-registry-projection.md)); a project's authoritative target adapter lives in its own `project.yaml`.
 - Refuses to add a project that already exists.
-- Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
+- Runs `Registry::validate_shape` after the write.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
 Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specrun plan amend --project <new>`. The validation-ordering invariant is: `specrun registry add` before `specrun plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
