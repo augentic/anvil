@@ -11,3 +11,10 @@ briefs:
 tools:
   - name: vectis
     version: "0.3.0"
+inputs:
+  - path: tokens.yaml
+    required: false
+  - path: assets.yaml
+    required: false
+  - path: components.yaml
+    required: false

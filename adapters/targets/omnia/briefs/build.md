@@ -4,6 +4,16 @@
 
 ## Inputs and bindings
 
+The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
+
+- `inputs.artifacts.proposal` (`proposal.md`) — unit inventory and slice scope.
+- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements, one file per `proposal.md ## Units` entry.
+- `inputs.artifacts.design` (`design.md`) — domain model, provider DI, error variants, and WASM idioms (see [`shape.md`](shape.md)).
+- `inputs.artifacts.tasks` (`tasks.md`) — implementation sequencing and progress tracking.
+- `inputs.artifacts.additional[]` — empty for omnia: [`adapter.yaml`](../adapter.yaml) declares no extra slice-tree inputs. Omnia reads the project working tree's `Cargo.toml` directly for workspace context; that is not a slice-tree input.
+
+The brief binds these working names from the request and the resolved crate:
+
 ```text
 $SLICE_NAME    = active in-progress plan entry's slice name (from `specrun plan next`)
 $SLICE_DIR     = .specify/slices/$SLICE_NAME
@@ -35,7 +45,7 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 5. Run the § verify-repair loop below — cross-phase, classifies failures back to the matching phase brief.
 6. Load and follow [`build/review.md`](build/review.md) — its remediation cycle may re-enter the verify-repair loop with tighter caps.
 7. When the slice has a `captures` source binding, load and follow [`build/replay.md`](build/replay.md) — optional runtime capture replay. Omission when unbound is not an error.
-8. Mark `tasks.md` checkboxes complete as each task lands; the slice transitions to `built` by `/spec:build` itself.
+8. Mark `tasks.md` checkboxes complete as each task lands, then write the build report (see `## Build report`). The brief never transitions the slice lifecycle — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
 
 ## § Verify-repair loop (max 3 iterations)
 
@@ -67,7 +77,7 @@ If `cargo test` fails, classify each failure:
 
 **Update-mode regression check.** Before iteration 1, record the baseline: `cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_NAME}-${CRATE_NAME}-baseline.txt`. After each iteration, for each test that passed before and now fails: if the spec explicitly changes the asserted behaviour → expected behavioural change, re-enter test writer to align expectations; if the spec does not change the asserted behaviour → true regression, route the fix through the classification table.
 
-Repeat until all four checks pass or 3 iterations exhausted. If still failing after 3 iterations: **STOP**. Do not mark the slice complete. Report the remaining failures with full error output to the operator and signal the build phase outcome accordingly.
+Repeat until all four checks pass or 3 iterations exhausted. If still failing after 3 iterations: **STOP**. Write a `status: failure` build report (see `## Build report`) mapping the remaining failures as blocking findings, surface the stop hint below with full error output, and do not transition the slice — finalize parks it for human review.
 
 ## § Stop hint contract
 
@@ -79,13 +89,32 @@ A build failure surfaces a stop hint as the body's final output — a single str
 - `log-path` — absolute path to the captured stdout/stderr.
 - `next-action` — typically `re-run /spec:build $SLICE after fix`.
 
-Render the hint as the final visible output of the run. Do not call `specrun slice transition` on the failure path — the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly.
+Render the hint as the final visible output of the run, alongside the `status: failure` build report (see `## Build report`). The brief never calls `specrun slice transition` — finalize validates the report and owns the lifecycle, so the slice stays `refined` and the loop (or a re-invocation) re-enters cleanly.
 
 ## § Deterministic review
 
 Phase 6 writes `$REVIEW_OUTPUT` (`REVIEW.md`) — that is the model-assisted surface: specialist + antagonist judgment per [`review-team-protocol.md`](../references/review-team-protocol.md) and [`build/review.md`](build/review.md). `specrun lint --format json` is the **deterministic complement**. It resolves applicable rules via `specrun rules export`, evaluates declarative `deterministic_hints`, and emits findings in the same `LintFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
 
 Per [Standards layer](../../../../docs/explanation/standards-layer.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
+
+## Build report
+
+When the algorithm resolves, write a schema-valid build report to `.specify/slices/<slice>/build/report.yaml` (the handoff envelope's `report` field). This is the brief's final deliverable. The brief never transitions the slice lifecycle — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
+
+```yaml
+version: 1
+slice: <slice-name>     # matches the build request's `slice`
+target: omnia@v1        # this adapter at its manifest version
+status: success         # or: failure
+findings: []            # structured diagnostics; default []
+```
+
+**Success vs failure findings rule.** A `status: success` report carries an empty `findings[]` or only non-blocking findings (`suggestion` / `optional`); the CLI rejects a `success` report carrying any blocking (`critical` / `important`) finding. A `status: failure` report populates `findings[]` with the blocking violations the target can map from the verify-repair output and `REVIEW.md`, and leaves `findings: []` when no specifics are mappable.
+
+- **Clean build** — the verify-repair loop passes (`cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test`), the code-review remediation cycle leaves no unresolved `critical` / `important` findings in `REVIEW.md`, and replay passes when a `captures` binding is present → `status: success`, `findings: []`.
+- **Unresolved build** — the verify-repair budget is exhausted (3 iterations) or the review remediation cycle cannot clear its blocking findings → `status: failure` with blocking findings mapped where possible.
+
+Each `findings[]` item validates against `schemas/diagnostics/diagnostic.schema.json` (the structured-diagnostic shape distributed with the CLI; required fields include `id`, `title`, `severity`, `source`, `artifact`, `evidence`, `impact`, `remediation`, `fingerprint`). Map omnia's verify-repair and `REVIEW.md` findings into that shape, carrying detail under `evidence.kind: structured` with `target-adapter: omnia`.
 
 ## References
 

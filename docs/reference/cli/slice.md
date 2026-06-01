@@ -12,6 +12,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | [`synthesize`](#specrun-slice-synthesize) | Turn the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml`: `--dry-run` emits the agent inputs envelope; `--from <response.json>` runs the projection kernel and persists. |
 | [`model`](#specrun-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specrun-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
+| [`build`](#specrun-slice-build) | Build the slice through its bound target adapter: `--phase prepare` assembles the build request, `--phase finalize` validates the report and gates the `built` transition. |
 | [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
@@ -73,6 +74,25 @@ specrun slice provenance <name> [--format json]
 ```
 
 Reshapes the inline `model.yaml` data plus on-disk Evidence into the per-requirement audit shape (`{ id, status, sources, contributing-claims, resolution, resolution-trace }`), recomputing `resolution` and reading each claim's `value` / `path` from `evidence/<source>.yaml`. Byte-stable given the same `model.yaml` and Evidence. Audit-only: no downstream verb reads a persisted provenance file. See [provenance projection](../../../plugins/spec/references/synthesis/provenance.md) for the block grammar.
+
+### specrun slice build
+
+Build the slice through its bound target adapter's `build` operation and gate the `built` transition. Two-phase, mirroring `specrun source survey` / `extract`: the CLI cannot run an agent, so `--phase prepare` assembles the build request the agent's `build` brief consumes and `--phase finalize` validates the report the brief writes. The CLI owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate; the target brief owns only code generation.
+
+```bash
+specrun slice build <name> [--phase prepare|finalize] [--format json]
+```
+
+| Argument | Description |
+|----------|-------------|
+| `name` | Slice name (under `.specify/slices/`) |
+| `--phase` | `prepare` (default) or `finalize`. `execution: tool` adapters run the whole operation in one call regardless of the flag. |
+| `--format` | Output format: `json` for the structured handoff / result envelope |
+
+- `--phase prepare` resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, prints the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`), and returns without blocking. The agent then runs the target `build` brief against the prepared request and writes `.specify/slices/<name>/build/report.yaml`.
+- `--phase finalize` emits `slice.build.started`, validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts prepare with `target-build-input-missing`.
+
+This is the CLI verb invoked by [`/spec:build`](../slice-skills/build.md) — the skill no longer hand-transitions to `built`; `finalize` owns that gate. See [CLI output shapes](../cli-output-shapes.md#specrun-slice-build) for the envelope shapes.
 
 ### specrun slice transition
 
@@ -175,6 +195,8 @@ Performs:
 5. Moves the slice directory to `.specify/archive/YYYY-MM-DD-<name>/`.
 
 This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
+
+**Journal events.** `slice merge run` brackets the merge with `slice.merge.started` then `slice.merge.succeeded` / `slice.merge.failed`, which fire on the merge **validator outcome** — there is no v1 merge envelope or merge report. The durable record stays the append-only `slice.archive.created` outcome ledger written by the archive step.
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specrun workspace push` to publish commits to remotes.
 

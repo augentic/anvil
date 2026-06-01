@@ -295,6 +295,33 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 }
 ```
 
+### `specrun slice build`
+
+Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** envelope after assembling and schema-validating the build request: `request` is the assembled `build/request.yaml` the agent's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. Emits `target.execution.agent` and returns without blocking.
+
+```json
+{
+  "slice": "identity-service",
+  "target": "omnia@v1",
+  "execution": "agent",
+  "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
+  "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
+  "briefs-dir": "<TEMPDIR>/adapters/targets/omnia/briefs",
+  "build-brief": "<TEMPDIR>/adapters/targets/omnia/briefs/build.md"
+}
+```
+
+`--phase finalize` validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+
+```json
+{
+  "slice": "identity-service",
+  "target": "omnia@v1",
+  "status": "success",
+  "findings": 0
+}
+```
+
 ### `specrun slice validate`
 
 Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specrun lint`, `specdev lint`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.

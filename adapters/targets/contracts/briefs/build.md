@@ -14,12 +14,14 @@ Build MUST NOT edit the root `contracts/` baseline directly. Baseline updates ha
 
 ## Inputs
 
-- `proposal.md` — authorship mode (author vs import), source material, interface scope, producer/consumer roles.
-- `specs/<unit>/spec.md` — behavioural requirements: endpoints / channels / payloads / errors (one file per `proposal.md ## Units` entry). Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
-- `design.md` — the format selection (OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema), file-layout intent, and any cross-contract dependency notes (see [`shape.md`](shape.md)).
-- The slice's `contracts/` subtree (if present) — partial deltas written by a prior pass.
-- The root `contracts/` baseline — read-only context for `$ref` reuse and extension authoring.
-- `tasks.md` — progress tracking.
+The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
+
+- `inputs.artifacts.proposal` (`proposal.md`) — authorship mode (author vs import), source material, interface scope, producer/consumer roles.
+- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements: endpoints / channels / payloads / errors (one file per `proposal.md ## Units` entry). Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
+- `inputs.artifacts.design` (`design.md`) — the format selection (OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema), file-layout intent, and any cross-contract dependency notes (see [`shape.md`](shape.md)).
+- `inputs.artifacts.tasks` (`tasks.md`) — progress tracking.
+- `inputs.artifacts.additional[]` — the optional `contracts/` subtree declared by [`adapter.yaml`](../adapter.yaml): partial deltas written by a prior pass, present only when the slice already carries them.
+- The root `contracts/` baseline — read-only context for `$ref` reuse and extension authoring; outside the request manifest, not a slice delta.
 
 Build consumes the synthesised Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the synthesised `specs/<unit>/spec.md` files have captured the required behaviour.
 
@@ -55,7 +57,7 @@ If a verifier reports failures:
 
 1. Re-enter the same format sub-brief with the verifier output for targeted repair via the same intent that produced the artifact (author or import).
 2. Re-run that format's verifier.
-3. If still failing after 2 iterations, stop and surface issues for human review. Do not mark the task complete. Report the remaining failures with full output and escalate for guidance.
+3. If still failing after 2 iterations, stop repairing and write the `status: failure` build report described under `## Build report`, mapping the remaining failures as blocking findings. Do not mark the task complete; the skill's finalize step parks the slice for human review.
 
 A clean verification pass with zero issues is the expected outcome.
 
@@ -66,9 +68,9 @@ Build's final step invokes the declared `contract` WASI tool to confirm the slic
 ```bash
 specrun tool run contract -- "$SLICE_DIR/contracts" --format json > /tmp/contract-build.json
 case $? in
-  0) ;;  # clean — slice deltas are well-formed; proceed to task completion
+  0) ;;  # clean — slice deltas are well-formed; write the success build report
   1) ;;  # findings — re-enter the failing format sub-brief per Phase 4
-  2) ;;  # tool/validator could not run — escalate; do not mark the task complete
+  2) ;;  # tool/validator could not run — write the failure build report; do not mark the task complete
 esac
 ```
 
@@ -76,7 +78,27 @@ The tool's `--format json` output shape is documented under [`references/report-
 
 ### No-op behaviour
 
-When the slice's specs describe no API interactions and no Source Material lists importable contract artifacts, every format pass produces an empty delta and the verifiers have nothing to check. The brief completes as a no-op. This is normal for slices that touch only planning metadata or contract documentation without affecting an API surface.
+When the slice's specs describe no API interactions and no Source Material lists importable contract artifacts, every format pass produces an empty delta and the verifiers have nothing to check. The brief completes as a no-op and still writes a `status: success` build report (see `## Build report`). This is normal for slices that touch only planning metadata or contract documentation without affecting an API surface.
+
+## Build report
+
+When the algorithm resolves, write a schema-valid build report to `.specify/slices/<slice>/build/report.yaml` (the handoff envelope's `report` field). This is the brief's final deliverable. The brief never transitions the slice lifecycle — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
+
+```yaml
+version: 1
+slice: <slice-name>     # matches the build request's `slice`
+target: contracts@v1    # this adapter at its manifest version
+status: success         # or: failure
+findings: []            # structured diagnostics; default []
+```
+
+**Success vs failure findings rule.** A `status: success` report carries an empty `findings[]` or only non-blocking findings (`suggestion` / `optional`); the CLI rejects a `success` report carrying any blocking (`critical` / `important`) finding. A `status: failure` report populates `findings[]` with the blocking violations the target can map from the contract tool / verifier output, and leaves `findings: []` when no specifics are mappable.
+
+- **Clean build** — Phase 5 tool gate exit 0 and verifiers clean → `status: success`, `findings: []` (or only advisory `suggestion` / `optional` findings).
+- **Unresolved build** — the verify-repair budget is exhausted (Phase 4) or the tool gate cannot run (Phase 5 exit 2) → `status: failure` with blocking findings mapped where possible.
+- **No-op** — the slice describes no API surface → `status: success`, `findings: []`.
+
+Each `findings[]` item validates against `schemas/diagnostics/diagnostic.schema.json` (the structured-diagnostic shape distributed with the CLI; required fields include `id`, `title`, `severity`, `source`, `artifact`, `evidence`, `impact`, `remediation`, `fingerprint`). Map the contract tool's findings (see [`report-shape.md`](../references/report-shape.md)) into that shape, carrying contract-domain detail under `evidence.kind: structured` with `target-adapter: contracts`.
 
 ## Output hygiene
 

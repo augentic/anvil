@@ -48,6 +48,14 @@ The plan-generation scenarios ask an operator to create disposable workspaces an
 
 These scenarios deliberately stop at Gate 1 — before `specrun plan transition <name> approved`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
 
+## Fan-in / fan-out acceptance
+
+The cross-source fan-in / cross-slice fan-out acceptance splits across two distinct surfaces, and **both** must pass before a release is complete:
+
+1. **Deterministic CLI proof (automated).** The end-to-end fan-in-twice / fan-out-once fixture lives in `augentic/specify-cli` at [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs). It runs under `cargo make test` and asserts the **envelope, ordering, and determinism** of the whole path — `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen.
+
+2. **Generated-output-correctness release gate (manual / CI).** Each target build must pass the target's own **replay/golden suite** plus `cargo check` / `cargo test` for any generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks **is not done — regardless of build-envelope validity**. A schema-valid `build/report.yaml` with `status: success` only proves the envelope contract held; it does not prove the emitted code compiles or replays. This gate is manual/CI because it exercises agent-generated code, which `specdev lint` and the deterministic CLI proof do not pin.
+
 ## Scenario IDs
 
 The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row numbers. The canonical queue lives in [`tests/cross-repo/runs/2.0.0/`](../../tests/cross-repo/runs/2.0.0/); each stub links back here so acceptance references survive archive cleanup.

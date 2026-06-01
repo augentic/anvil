@@ -37,7 +37,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [specrun slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
+| [specrun slice](slice.md) | Per-slice CRUD, synthesis, build, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
 | [specrun plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specrun registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specrun source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |

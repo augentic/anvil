@@ -36,6 +36,11 @@
       "items": { "$ref": "#/$defs/toolDeclaration" },
       "description": "Optional WASI tool declarations for declared WASI tools. Tools resolve into `.specify/.cache/{sources,targets}/<name>/`."
     },
+    "inputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/buildInputDeclaration" },
+      "description": "RFC-29d \u2014 optional adapter-declared build inputs. Target-only: the per-axis `target.schema.json` admits the key while `source.schema.json` rejects it; the shared shape carries the property so the closed key set admits it. Each entry is a path relative to the build request's `inputs.root`, flagged `required`."
+    },
     "description": {
       "type": "string",
       "minLength": 1,
@@ -57,6 +62,23 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens."
+    },
+    "buildInputDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "required"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$",
+          "description": "Build input path relative to the build request's `inputs.root` (the slice tree). Absolute paths and URIs are rejected."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether `build` requires this input; a missing `required` path is a build-time abort."
+        }
+      }
     },
     "toolDeclaration": {
       "type": "object",

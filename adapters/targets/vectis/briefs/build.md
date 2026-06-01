@@ -8,6 +8,19 @@
 
 The Vectis target stays three-capability (`shape` / `build` / `merge`) — there is **no** fourth `refine` slot. Composition regeneration is part of `build`.
 
+## Inputs
+
+The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
+
+- `inputs.artifacts.proposal` (`proposal.md`) — `## Platforms` scope (`core` / `ios` / `android`) and screen / interaction intent.
+- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements per unit: screen titles, scenarios, platform-specific behaviour, validation rules.
+- `inputs.artifacts.design` (`design.md`) — domain model: ViewModel / `Event` / `Route` variants, per-page view structs, capability matrix.
+- `inputs.artifacts.tasks` (`tasks.md`) — phase-completion tracking.
+- `inputs.artifacts.additional[]` — the three design-system inputs declared by [`adapter.yaml`](../adapter.yaml), **all optional** (`required: false`), each with an explicit absent-fallback:
+  - `tokens.yaml` — design tokens; absent → HIG (iOS) / Material 3 (Android) theme fallback in the shell writers.
+  - `assets.yaml` — asset inventory; the composition validator's `tokens` / `assets` modes run only when the respective file is present.
+  - `components.yaml` — the opt-in component catalog (surfaced as `CATALOG_PATH`); absent → no component factoring.
+
 ## Standard arguments
 
 All phase sub-briefs assume these symbols are resolved by `/spec:build` before the sub-agent fan-out:
@@ -42,7 +55,7 @@ If the proposal lists `core` only, skip the iOS and Android phase sub-briefs who
 5. (When `android` is in scope) Load [`build/android/write.md`](build/android/write.md) — generate / update the Compose shell, then its verify loop.
 6. Load [`build/core/review.md`](build/core/review.md) and, when in-scope, [`build/ios/review.md`](build/ios/review.md) and [`build/android/review.md`](build/android/review.md). Reviewers run in parallel.
 7. Run § Consolidate review findings.
-8. Mark `tasks.md` checkboxes complete as each phase lands; the slice transitions to `built` by `/spec:build` itself.
+8. Mark `tasks.md` checkboxes complete as each phase lands, then write the build report (§ Build report). The brief never transitions the slice — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
 
 ## § Sub-agent delegation contract
 
@@ -83,9 +96,28 @@ Symptom triage table: [`../references/known-drift.md`](../references/known-drift
 
 The `build` phase concludes with exactly one of `success` / `failure` / `deferred`:
 
-- **success** — every in-scope verify-repair loop returned `success` within its iteration budget, and the orchestrator has both regenerated `composition.yaml` (or skipped it for a core-only slice) and the implementation code under `${PROJECT_DIR}`. The slice lifecycle is ready to transition to `built`.
-- **failure** — any verify-repair loop exhausted its iterations, or the composition validation gate ([build/composition.md](build/composition.md)) failed and could not be repaired. Surface the load-bearing error line as `--summary` and the full output through `--context`; the merge brief refuses to run while the slice is in this state.
-- **deferred** — a host prerequisite is missing (Java 21, Android SDK, Rust Android targets, `cargo-swift`, Gradle wrapper, Xcode CLT) or a known-drift template / pin issue surfaced and operator judgement is required. Surface the unresolved prerequisite or drift signal as `--summary`.
+- **success** — every in-scope verify-repair loop returned `success` within its iteration budget, and the orchestrator has both regenerated `composition.yaml` (or skipped it for a core-only slice) and the implementation code under `${PROJECT_DIR}`. Write a `status: success` build report (§ Build report); finalize owns the lifecycle transition.
+- **failure** — any verify-repair loop exhausted its iterations, or the composition validation gate ([build/composition.md](build/composition.md)) failed and could not be repaired. Surface the load-bearing error line as `--summary` and the full output through `--context`, and write a `status: failure` build report with the blocking findings mapped where possible; the merge brief refuses to run while the slice is in this state.
+- **deferred** — a host prerequisite is missing (Java 21, Android SDK, Rust Android targets, `cargo-swift`, Gradle wrapper, Xcode CLT) or a known-drift template / pin issue surfaced and operator judgement is required. Surface the unresolved prerequisite or drift signal as `--summary` and write a `status: failure` build report (the report carries only `success` / `failure`; `deferred` is the operator-facing stop signal, not a built slice).
+
+## Build report
+
+When the algorithm resolves, write a schema-valid build report to `.specify/slices/<slice>/build/report.yaml` (the handoff envelope's `report` field). This is the brief's final deliverable. The brief never transitions the slice lifecycle — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
+
+```yaml
+version: 1
+slice: <slice-name>     # matches the build request's `slice`
+target: vectis@v1       # this adapter at its manifest version
+status: success         # or: failure
+findings: []            # structured diagnostics; default []
+```
+
+**Success vs failure findings rule.** A `status: success` report carries an empty `findings[]` or only non-blocking findings (`suggestion` / `optional`); the CLI rejects a `success` report carrying any blocking (`critical` / `important`) finding. A `status: failure` report populates `findings[]` with the blocking violations the target can map from the composition validator gate and the per-platform verify-repair output, and leaves `findings: []` when no specifics are mappable.
+
+- **Clean build** — composition regenerated and the validator gate ([build/composition.md](build/composition.md)) passed (or was skipped for a core-only slice), every in-scope verify-repair loop (core, iOS, Android) returned `success` within its budget, and § Consolidate review findings produced no blocking findings → `status: success`, `findings: []` (or only advisory `suggestion` / `optional` findings).
+- **Unresolved build** — a verify-repair loop exhausted its iterations, the composition validator gate failed unrepaired, or a host prerequisite / known-drift signal forced a `deferred` outcome → `status: failure` with blocking findings mapped where possible.
+
+Each `findings[]` item validates against `schemas/diagnostics/diagnostic.schema.json` (the structured-diagnostic shape distributed with the CLI; required fields include `id`, `title`, `severity`, `source`, `artifact`, `evidence`, `impact`, `remediation`, `fingerprint`). Map vectis's composition-validator, cargo / Gradle / Xcode verify, and review findings into that shape, carrying detail under `evidence.kind: structured` with `target-adapter: vectis`.
 
 ## Notes for downstream phases
 
