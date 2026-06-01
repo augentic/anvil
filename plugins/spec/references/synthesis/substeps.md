@@ -1,6 +1,6 @@
 # Substep contract
 
-`/spec:refine` invokes synthesis in this fixed order: `proposal → specs → design → tasks`. Each substep reads the prior substeps' artifacts plus the full `Evidence[]` and the target `shape` brief; later substeps never rewrite earlier ones.
+The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. `specrun slice synthesize --from` projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
 
 ## 1. `proposal.md`
 
@@ -15,20 +15,20 @@ Required H2 sections, in order: `## Why`, `## Units`, `## Non-goals`. Each `## U
 
 ## 2. `specs/<unit>/spec.md`
 
-Behavioural requirements. **This is the only synthesised artifact the provenance parser validates.** Write one spec file per `proposal.md` `## Units` entry at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Units` entry, keyed by `unit`; `specrun slice synthesize` writes one file per unit at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
 
-Every requirement block follows [`requirement-block.md`](requirement-block.md) verbatim: `ID:`, `Sources:`, `Status:`, with a tag in the headline when `Status` is anything other than `agreed`.
+Author each requirement as prose only — heading and body. The kernel injects the `ID:` / `Sources:` / `Status:` lines and the headline tag from `model.yaml`; see [`requirement-block.md`](requirement-block.md) for the prose you write and the block the kernel renders.
 
-Authoring loop:
+Authoring loop (per requirement, in declaration order):
 
 1. Group all claims across all Evidence by `id` (deterministic on `requirement` / `criterion` per the Evidence schema; see [`claim-reconciliation.md`](claim-reconciliation.md) for how `decision` / `section` / `excerpt` / `type` / `call` / spatial / `intent` claims contribute).
-2. For each reconciled group, apply [`authority.md`](authority.md)'s decision table to pick `Status:`.
-3. Emit one H3 requirement block per group, numbering `REQ-001`, `REQ-002`, … in source order (top of the highest-authority Evidence document down). Within one Evidence, keep claim order.
-4. For each block that carries a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
+2. Record the contributing `(source, id, kind)` claims and an `agreement` verdict (`agreed` / `disagreed`) on the requirement. You classify agreement from Evidence semantics; the kernel resolves authority and derives `status` (see [`authority.md`](authority.md)).
+3. Write the requirement prose (`title`, `statement`, `scenarios[]`, `notes`). Order requirements in the response by source order (top of the highest-authority Evidence document down; within one Evidence, keep claim order) — the kernel assigns `REQ-001`, `REQ-002`, … in that declaration order.
+4. For each requirement the kernel derives a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 
 Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the unit's behavioural surface; the overview carries no provenance lines.
 
-Each requirement block may include one or more `#### Scenario:` H4 headings after the requirement body and before the next `### Requirement:` heading. Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](../spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
+Each requirement may include one or more scenarios (rendered as `#### Scenario:` H4 headings after the body and before the next requirement). Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](../spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
 
 ## 3. `design.md`
 
@@ -61,7 +61,6 @@ One bullet per task. Nesting (`  - [ ]`) is allowed for sub-tasks but discourage
 ## What synthesis never does
 
 - **Never edit `.metadata.yaml`, `plan.yaml`, or `discovery.md`.** The skill body's CLI calls own those.
-- **Never rewrite an earlier substep.** `proposal.md` is final before spec files open; spec files are final before `design.md` opens.
-- **Never invent provenance.** A `Sources:` key that did not contribute a claim is a parser failure.
-- **Never park the slice on uncertainty.** Surface `[unknown]` / `[conflict]` / `[divergence]` and proceed.
-- **Never call a `specrun slice synthesize` verb.** It does not exist; substeps are hand-coded in the skill body.
+- **Never rewrite an earlier response section.** Author `proposal` before specs; specs before `design`.
+- **Never author kernel-owned fields.** `REQ` ids, `status`, `winner` markers, and rendered `Sources:` lists are the kernel's; the agent records `(source, id, kind)` claims and an `agreement` verdict and lets the kernel project the rest. A claim citing a `(source, id)` absent from Evidence fails projection with `slice-model-source-orphan`.
+- **Never park the slice on uncertainty.** Record the `agreement` verdict and proceed; the kernel derives `[unknown]` / `[conflict]` / `[divergence]`.

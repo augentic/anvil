@@ -1,6 +1,6 @@
 # RFC-29c: Slice Synthesis Engine and Typed Model
 
-> Status: Draft — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md) — Companion: [RFC-29d](rfc-29d-target.md), the target build envelope that consumes this milestone's `model.yaml`
+> Status: Shipped — Milestone **M2b** of [RFC-29](rfc-29-fan-in-fan-out.md); durable spec lives in [`specify-cli` `DECISIONS.md` §"Slice synthesis engine (RFC-29 M2b)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) — Companion: [RFC-29d](rfc-29d-target.md), the target build envelope that consumes this milestone's `model.yaml`
 
 This milestone defines how slice `Evidence` becomes a reviewed requirement set, a single schema-typed `model.yaml` (carrying provenance inline), and rendered Markdown artifacts. The rule of thumb is simple: the agent decides the requirement set and prose; the CLI owns every deterministic projection around that judgment — ids, authority resolution, status, rendered source lists, winners, inline provenance, drift checks, and wire envelopes. There is one structured artifact and one schema: the kernel re-derives its owned fields and ignores any the agent supplied (normalize, never reject), and the audit provenance view is projected on demand rather than persisted as a second file.
 

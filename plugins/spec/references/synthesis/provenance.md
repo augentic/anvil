@@ -4,7 +4,7 @@ The audit-only view per slice of every `REQ-*` id and the contributing `(source,
 
 ## How it's produced
 
-The kernel writes provenance inline on each `model.yaml` requirement during `specrun slice synthesize` (claim `value` / `path` / `winner`, `resolution`, `resolution-trace`). The skill writes no `provenance.yaml` file. To inspect the audit view, run `specrun slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below. Because the view is a pure projection of `model.yaml`, it can never drift from the model and there is no `slice.provenance.written` event.
+During `specrun slice synthesize` the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specrun slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and there is no `slice.provenance.written` event.
 
 ## Block grammar
 

@@ -1,6 +1,6 @@
 # Claim reconciliation
 
-How synthesis groups claims across `Evidence[]` and where each claim kind lands in the four artifacts.
+How the agent groups claims across `Evidence[]` into the synthesis response and where each claim kind lands in the four artifacts. Grouping and the `agreement` verdict are the agent's; the kernel resolves authority, derives `status`, marks winners, and renders the `Sources:` list.
 
 ## Per-kind reconciliation
 
@@ -25,20 +25,20 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 
 ### Deterministic reconciliation on `id`
 
-`requirement` and `criterion` claims MUST carry `id` (enforced by `schemas/evidence.schema.json`). Synthesis groups every contributing claim by exact `id` match across all Evidence documents — that is the cross-source reconciliation key.
+`requirement` and `criterion` claims MUST carry `id` (enforced by `schemas/evidence.schema.json`). The agent groups every contributing claim by exact `id` match across all Evidence documents — that is the cross-source reconciliation key.
 
-- All claims sharing one `id` collapse into one `spec.md` requirement block.
-- The `Sources:` list of the block enumerates every source key that contributed, highest authority first.
-- The block's `Status:` is decided by [`authority.md`](authority.md)'s table over the contributing authorities and the agreement state of the claim bodies.
+- All claims sharing one `id` collapse into one requirement, carrying every contributing `(source, id, kind)` claim.
+- The kernel renders the `Sources:` list from those claims, highest authority first.
+- The kernel derives `status` from the claim count, the agent's `agreement` verdict, and the resolved authority (see [`authority.md`](authority.md)).
 
-When two contributing claims share `id` but their `statement:` / `criterion:` strings *agree* (after trivial whitespace normalisation), the body is the shared text and `Status: agreed`. When they *disagree*, apply the per-authority resolution below.
+When two contributing claims share `id` and their `statement:` / `criterion:` strings *agree* (after trivial whitespace normalisation), record `agreement: agreed`; the kernel renders the shared text with `Status: agreed`. When they *disagree*, record `agreement: disagreed` and let the kernel apply the per-authority resolution below.
 
 ### Behaviour claims as corroboration
 
 `excerpt`, `type`, `call`, and `example` claims (authority class: `behaviour` by default) primarily drive `design.md`. They contribute to `spec.md` in two ways:
 
-- **Standalone source** — when no other source supplied a `requirement` claim on the same behavioural surface, an `excerpt` whose paraphrase reads as a single behavioural assertion, or an `example` whose captured `input` / `output` pair reads as one, becomes a `spec.md` requirement block with `Status: agreed` and `Sources: [<code-key>]`.
-- **Authority-loser** — when a `documentation` `requirement` contradicts an `excerpt` or `example`, the `documentation` claim wins per the default ordering; the behaviour-class claim becomes the `Note:` line of a `[divergence]` block (see [`authority.md`](authority.md)). Operators flip that default per slice via per-slice `authority-override` — useful exactly when runtime captures should outrank stale docs.
+- **Standalone source** — when no other source supplied a `requirement` claim on the same behavioural surface, an `excerpt` whose paraphrase reads as a single behavioural assertion, or an `example` whose captured `input` / `output` pair reads as one, becomes a requirement carrying that single claim; the kernel derives `Status: agreed` (single-source).
+- **Authority-loser** — when a `documentation` `requirement` contradicts an `excerpt` or `example`, record `agreement: disagreed`; the kernel resolves the `documentation` claim as the winner per the default ordering, and the behaviour-class claim survives with `winner: false` (rendered as the `Note:` line of the `[divergence]` block — see [`authority.md`](authority.md)). Operators flip that default per slice via per-slice `authority-override` — useful exactly when runtime captures should outrank stale docs.
 
 ### `example` claims from `captures`
 
@@ -57,12 +57,12 @@ When two contributing claims share `id` but their `statement:` / `criterion:` st
 The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1 contract). Synthesis:
 
 - Renders the `statement` verbatim as the heart of `proposal.md` `## Why`.
-- If the statement names a behaviour ("Add a search filter to the user list"), also emits one headline `spec.md` requirement (`REQ-001`) with `Status: agreed` and `Sources: [<intent-key>]`.
-- Pure-intent slices (the degenerate `[intent]` case) produce a `spec.md` with at most one requirement block — additional requirements only appear when other sources contribute.
+- If the statement names a behaviour ("Add a search filter to the user list"), also records one headline requirement citing the `intent` claim; the kernel assigns `REQ-001` and derives `Status: agreed` (single-source).
+- Pure-intent slices (the degenerate `[intent]` case) produce a spec with at most one requirement — additional requirements only appear when other sources contribute.
 
 ## Per-authority resolution (slice-time)
 
-When a reconciled `id` group carries claims from multiple authorities, [`authority.md`](authority.md)'s [§Resolution order](authority.md#resolution-order) picks the winning Status. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
+When a reconciled `id` group the agent marked `disagreed` carries claims from multiple authorities, the kernel's [§Resolution order](authority.md#resolution-order) picks the winner and derives the `status`. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
 
 - **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
 - **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
@@ -71,9 +71,9 @@ When a reconciled `id` group carries claims from multiple authorities, [`authori
 
 ## Order and stability
 
-- Group reconciliation is deterministic: sort `Sources:` by authority class (`intent` < `documentation` < `behaviour`), then alphabetically by source key within a class. The requirement block lists the highest-authority key first.
-- Requirement-block ordering inside `spec.md` follows source order on the highest-authority Evidence document. When tied, fall back to alphabetical order on the first `Sources:` key.
-- Re-running `/spec:refine` on identical `Evidence[]` and `shape` MUST produce byte-identical artifacts (modulo non-deterministic timestamps the agent never writes — synthesis emits no timestamps into the artifacts).
+- The kernel renders `Sources:` deterministically: sort by authority class (`intent` < `documentation` < `behaviour`), then alphabetically by source key within a class, highest-authority key first.
+- Order requirements in the response by source order on the highest-authority Evidence document (when tied, fall back to alphabetical order on the first contributing source key); the kernel assigns `REQ` ids and renders the spec blocks in that declaration order.
+- Re-running `/spec:refine` on identical `Evidence[]` and `shape` MUST produce byte-identical artifacts: the kernel is a deterministic, target-independent projection over a fixed response and emits no timestamps into the artifacts.
 
 ## Plan-time reconciliation is a separate playbook
 

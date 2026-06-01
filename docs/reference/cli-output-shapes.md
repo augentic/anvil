@@ -249,6 +249,52 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
+### `specrun slice synthesize --dry-run`
+
+Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+
+```json
+{
+  "version": 1,
+  "kind": "inputs",
+  "slice": "identity-service",
+  "sources": [
+    {
+      "source": "docs",
+      "lead": "password-reset",
+      "claims": [
+        { "id": "password-reset.request", "kind": "requirement", "statement": "The system lets a registered user request a password reset link by email.", "path": "docs/identity/reset.md#L4" }
+      ]
+    },
+    {
+      "source": "legacy",
+      "lead": "password-reset",
+      "claims": [
+        { "id": "password-reset.expiry", "kind": "example", "output": "expiresAt = createdAt + 24h", "path": "src/users/reset.ts#L88" }
+      ]
+    }
+  ],
+  "shape-brief": "# Shape brief\n…"
+}
+```
+
+### `specrun slice synthesize --from`
+
+Success summary after the projection kernel persisted the artifacts. `artifacts[]` lists the slice-relative paths written, in write order. Emits `slice.synthesize.started` then `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and exits non-zero.
+
+```json
+{
+  "slice": "identity-service",
+  "artifacts": [
+    "proposal.md",
+    "specs/password-reset/spec.md",
+    "design.md",
+    "tasks.md",
+    "model.yaml"
+  ]
+}
+```
+
 ### `specrun slice validate`
 
 Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specrun lint`, `specdev lint`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.

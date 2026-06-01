@@ -9,6 +9,9 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
+| [`synthesize`](#specrun-slice-synthesize) | Turn the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml`: `--dry-run` emits the agent inputs envelope; `--from <response.json>` runs the projection kernel and persists. |
+| [`model`](#specrun-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
+| [`provenance`](#specrun-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
 | [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
@@ -34,6 +37,42 @@ specrun slice create <name> [--if-exists fail|continue|restart] [--format json]
 | `--format` | Output format: `json` for structured output |
 
 Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
+
+### specrun slice synthesize
+
+Turn the slice's `Evidence[]` plus the bound target's `shape` brief into the canonical artifacts and the typed `model.yaml`. Two-phase, mirroring [`specrun plan propose`](plan.md#specrun-plan-propose): the CLI cannot run an agent, so `--dry-run` emits the inputs the agent reconciles and `--from` projects the agent's response.
+
+```bash
+specrun slice synthesize <name> --dry-run [--format json]
+specrun slice synthesize <name> --from <response.json> [--format json]
+```
+
+- `--dry-run` assembles the **inputs** envelope — each bound source's inline `lead` + `claims` (read from `evidence/<source>.yaml`) plus the resolved target `shape` brief body. Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
+- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (assign `REQ` ids in declaration order, derive `status` and per-claim `winner` markers, render highest-authority-first `Sources:` lists, write inline provenance, stamp the `version` / `slice` / `project` header), renders the `ID:` / `Sources:` / `Status:` lines into each `specs/<unit>/spec.md`, runs the drift validators, then atomically persists `proposal.md` / `specs/<unit>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
+
+The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is `cache: opt-out` — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
+
+This is the CLI verb invoked by [`/spec:refine`](../slice-skills/refine.md) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specrun-slice-synthesize---dry-run) for the JSON envelope shapes.
+
+### specrun slice model
+
+Read-only view of the persisted typed model.
+
+```bash
+specrun slice model show <name> [--format json]
+```
+
+Loads `.specify/slices/<name>/model.yaml` and renders it (text, or the schema-shaped object under `--format json`). The model carries the earned core — `requirements` (with inline provenance: `claims[]`, `winner` markers, rendered `sources`, `status`) and `tasks` — plus the `version` / `slice` / `project` header. `target` is not a `model.yaml` field; it is resolved on demand from the bound project.
+
+### specrun slice provenance
+
+Project the audit view of a slice's inline provenance on demand.
+
+```bash
+specrun slice provenance <name> [--format json]
+```
+
+Reshapes the inline `model.yaml` data plus on-disk Evidence into the per-requirement audit shape (`{ id, status, sources, contributing-claims, resolution, resolution-trace }`), recomputing `resolution` and reading each claim's `value` / `path` from `evidence/<source>.yaml`. Byte-stable given the same `model.yaml` and Evidence. Audit-only: no downstream verb reads a persisted provenance file. See [provenance projection](../../../plugins/spec/references/synthesis/provenance.md) for the block grammar.
 
 ### specrun slice transition
 
@@ -89,6 +128,7 @@ Checks include:
 
 - **Structural checks** -- artifact files exist, conform to expected format, required sections present.
 - **Referential checks** -- specs referenced in the proposal exist, requirement IDs are unique and stable.
+- **Typed-model drift checks** (synthesized slices) -- load `model.yaml` and emit `slice-model-schema`, `slice-spec-provenance-stale`, `slice-model-target-drift`, `slice-model-source-orphan`, `slice-model-cross-ref-orphan`, `slice-model-claim-kind-mismatch`, and `slice-model-id-grammar`. Blocking findings gate the transition at exit 2. Every synthesized slice must carry `model.yaml`.
 - **Adapter checks** -- artifacts conform to the active adapter's rules.
 - **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 

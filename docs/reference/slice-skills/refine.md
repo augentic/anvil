@@ -39,7 +39,7 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 1. **Resolve target and sources** — take the resolved `target` from `specrun plan next` (the plan stores no per-slice `target`) and read `sources[]` from `plan.yaml.slices[<slice>]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
-4. **Synthesize** — load target `shape` brief; write `proposal.md → specs/<unit>/spec.md → design.md → tasks.md` in fixed order. Provenance is carried inline in the single `model.yaml` artifact (written by the M2b synthesis kernel), never as a hand-authored `provenance.yaml`; `specrun slice provenance` projects the audit view on demand.
+4. **Synthesize** — drive the two-phase `specrun slice synthesize` verb. `--dry-run` emits the agent inputs envelope (each bound source's inline `lead` + `claims` plus the resolved target `shape` brief); the agent authors the response (per-requirement `(source, id, kind)` claims, an `agreement` verdict, and prose, plus the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and spec bodies without provenance lines); `--from <response.json>` runs the projection kernel, renders provenance into `spec.md`, and atomically persists `proposal.md → specs/<unit>/spec.md → design.md → tasks.md → model.yaml`. The kernel owns `REQ`/`TASK` ids, status, winner markers, and rendered `Sources:` lists; provenance is carried inline in the single `model.yaml` artifact, never as a hand-authored `provenance.yaml`, and `specrun slice provenance` projects the audit view on demand.
 5. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
 6. **Transition** — `specrun slice transition <name> refined`.
 
@@ -53,7 +53,7 @@ On success:
 Slice <slice-name> refined. spec tags: <U> unknown, <C> conflict, <D> divergence. Review .specify/slices/<slice-name>/specs/, then run /spec:build <slice-name> or resume /spec:execute.
 ```
 
-On extract failure, the slice stays `refining` with amend-plan guidance. On validation failure, fix artifacts and re-validate before transitioning.
+On extract failure, the slice stays `refining` with amend-plan guidance. On a `slice.synthesize.failed` or post-persist validation failure, the prior artifacts stay intact; fix the synthesis response and re-run `specrun slice synthesize --from` before transitioning.
 
 ## Lifecycle transitions
 
@@ -66,7 +66,7 @@ On extract failure, the slice stays `refining` with amend-plan guidance. On vali
 | `refine-no-active-slice` | No `in-progress` entry and no slice argument | Run `/spec:execute` or pass slice name |
 | `refine-binding-unresolved` | Source key or lead id not in plan/discovery | Fix plan bindings |
 | Extract failure | Source path denied or brief error | Amend plan sources; re-run refine |
-| Validation failure | Spec provenance parse / staleness / orphan claim | Fix `specs/<unit>/spec.md`; re-validate |
+| Synthesis / validation failure | `slice.synthesize.failed` (orphan claim, schema gate) or a post-persist drift finding | Fix the synthesis response and re-run `specrun slice synthesize --from`; never hand-edit the kernel-rendered provenance lines |
 
 ## Examples
 

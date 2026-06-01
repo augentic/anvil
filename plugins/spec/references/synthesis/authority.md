@@ -8,21 +8,25 @@ Top-level `authority:` on every `Evidence` document is a closed enum. Highest wi
 
 Authority is a property of the **Evidence document** by default. v1 sharpens that default with a single opt-in override surface (see [§Authority overrides](#authority-overrides) below): a per-slice override on `plan.yaml`. A slice without `authority-override` behaves exactly as the document-level rule above. (A per-Evidence per-kind `authority-overrides` surface is deferred to a future RFC.)
 
-## Agreement → `Status` decision table
+The **agent** never resolves authority or marks winners. It records the contributing `(source, id, kind)` claims and an `agreement` verdict (`agreed` / `disagreed`) per requirement. The **kernel** resolves authority from the on-disk Evidence and any per-slice override *after* the response returns, then derives `status`, winner markers, and the rendered `Sources:` list.
 
-Apply this table per requirement after [claim reconciliation](claim-reconciliation.md) has grouped contributing claims by `id`:
+## `agreement` verdict → kernel `status` derivation
 
-| Agreement                                  | `Status:`     | Tag in headline | Body shape                                                                            |
-| ------------------------------------------ | ------------- | --------------- | ------------------------------------------------------------------------------------- |
-| Single contributing source                 | `agreed`      | (none)          | One paragraph stating the requirement.                                                |
-| Multiple sources, all agree                | `agreed`      | (none)          | One paragraph; `Sources:` lists every contributing key, highest authority first.      |
-| Multiple sources disagree, one wins authority | `divergence` | `[divergence]`  | Winning value as the requirement; loser preserved as `Note: <source> observed …`. |
-| Multiple sources disagree, tied top authority | `conflict`   | `[conflict]`    | Both values preserved inline as `Note: <source> says …` lines; no winner.         |
-| No contributing Evidence at all            | `unknown`     | `[unknown]`     | One-line placeholder noting that no source supplied a claim for this requirement.    |
+The agent supplies the `agreement` verdict; the kernel derives `status` from the claim count, that verdict, and the resolved authority:
 
-The tag in the headline MUST match `Status:` per the coherence rule in [`tags.md`](tags.md). The provenance parser (consumed by `specrun slice validate`) refuses output where a `[…]` headline tag and `Status:` disagree.
+| `claims` | `agreement`                       | Kernel `status` | Tag           | Winner markers                |
+| -------- | --------------------------------- | --------------- | ------------- | ----------------------------- |
+| 0        | *(omitted)*                       | `unknown`       | `[unknown]`   | none                          |
+| 1        | *(omitted)*                       | `agreed`        | (none)        | none                          |
+| ≥2       | `agreed`                          | `agreed`        | (none)        | none                          |
+| ≥2       | `disagreed`, unique top authority | `divergence`    | `[divergence]`| winner `true`, losers `false` |
+| ≥2       | `disagreed`, top authority ties   | `conflict`      | `[conflict]`  | none                          |
+
+The kernel renders the headline tag to match `status` per the coherence rule in [`tags.md`](tags.md); the provenance parser (consumed by `specrun slice validate`) refuses any hand-edit where a `[…]` headline tag and `Status:` disagree.
 
 ## Worked applications
+
+The rendered blocks below are the kernel's **output** — the agent authors only the heading and body prose plus the `(source, id, kind)` claims and `agreement` verdict; the kernel injects `ID:` / `Sources:` / `Status:` and the headline tag.
 
 ### Single source
 
@@ -87,7 +91,7 @@ Operator reconciliation required before /spec:build.
 
 ### No contributing Evidence (`[unknown]`)
 
-A requirement the slice's proposal calls for (e.g. covered by the lead `synopsis`) that no source supplied a claim for. Synthesis still authors the block so the operator sees the gap:
+A requirement the slice's proposal calls for (e.g. covered by the lead `synopsis`) that no source supplied a claim for. The agent still records the requirement (with an empty claims list) so the operator sees the gap; the kernel derives `Status: unknown` and the `[unknown]` tag:
 
 ```markdown
 ### Requirement: Reset link single-use [unknown]
@@ -141,13 +145,13 @@ specrun plan add   <entry> --authority-override <claim-kind>=<source>   # repeat
 
 ### Resolution order
 
-When synthesis reconciles claims for a single `id` group and the contributing claims disagree, it walks the following ordered steps. The first step that yields a winner stops the walk; the chosen step name is recorded inline in `model.yaml` at `requirements[].resolution-trace.step` (and surfaced by `specrun slice provenance`) so the operator can audit which surface broke the tie.
+When a requirement's `agreement` verdict is `disagreed`, the kernel walks the following ordered steps over the contributing claims. The first step that yields a winner stops the walk; the chosen step name is recorded inline in `model.yaml` at `requirements[].resolution-trace.step` (and surfaced by `specrun slice provenance`) so the operator can audit which surface broke the tie.
 
-1. **`per-slice-authority-override`** — the slice's `authority-override.<kind>` names a source key that appears in the reconciled group's contributing sources. That source wins; the requirement block carries `Status: divergence` (or `agreed` when the override happens to align with a shared value), and the runner-up survives as a `Note:` line.
+1. **`per-slice-authority-override`** — the slice's `authority-override.<kind>` names a source key that appears in the reconciled group's contributing sources. That source wins; the kernel derives `status: divergence` (or `agreed` when the override aligns with a shared value), and the runner-up survives with `winner: false`.
 2. **`document-authority-ordering`** — fall back to the document-level `authority:` enum (`intent > documentation > behaviour`). Highest class wins; ties at the top class continue to step 3.
-3. **`tied-conflict`** — still tied. Emit `Status: conflict` with `[conflict]` tag; preserve every contributing value as `Note:` lines. The operator reconciles by hand-editing `spec.md` before `/spec:build`.
+3. **`tied-conflict`** — still tied. The kernel derives `status: conflict` with the `[conflict]` tag; no winner markers. The operator reconciles by re-running `/spec:refine` (after amending the override or the source set) before `/spec:build`.
 
-Steps 1–2 produce `Status: divergence` when the chosen source disagrees with at least one other contributor and `Status: agreed` when every contributor's value matches the winner's. Step 3 produces `Status: conflict`. Step names are byte-stable across runs and match the projected `requirements[].resolution-trace.step` exactly — see [`provenance.md`](provenance.md) for the audit shape and [`claim-reconciliation.md`](claim-reconciliation.md) for the per-kind body landing rules. (The deferred per-Evidence surface would insert a `per-evidence-authority-override` step between 1 and 2.)
+Steps 1–2 yield `status: divergence` when the chosen source disagrees with at least one other contributor and `status: agreed` when every contributor's value matches the winner's. Step 3 yields `status: conflict`. Step names are byte-stable across runs and match the projected `requirements[].resolution-trace.step` exactly — see [`provenance.md`](provenance.md) for the audit shape and [`claim-reconciliation.md`](claim-reconciliation.md) for the per-kind body landing rules. (The deferred per-Evidence surface would insert a `per-evidence-authority-override` step between 1 and 2.)
 
 ### Worked example — both overrides at play
 
@@ -168,7 +172,7 @@ slices:
     status: pending
 ```
 
-Synthesis walks the resolution order. Step 1 (`per-slice-authority-override`) matches: `runtime` is in the reconciled group's contributing sources. The walk stops; `runtime` wins.
+The agent records both contributing claims with `agreement: disagreed`; the kernel walks the resolution order. Step 1 (`per-slice-authority-override`) matches: `runtime` is in the reconciled group's contributing sources. The walk stops; `runtime` wins. The kernel renders:
 
 ```markdown
 ### Requirement: Reset link expiry [divergence]
@@ -187,7 +191,7 @@ The runner-up (`identity-design-notes`) is preserved verbatim as a `Note:` line.
 ## Notes
 
 - Authority does **not** apply at plan-time `propose` (no `Evidence` yet); it activates here at slice-time synthesis.
-- Per-kind and per-claim overrides remain out of scope for v1 (the per-Evidence `authority-overrides` surface is deferred to a future RFC). The override seam below per-slice granularity stays as today: hand-edit `spec.md` after `/spec:refine` transitions the slice to `refined`.
-- The `Sources:` list MUST list every contributing source key, highest authority first **after override resolution** — a per-slice override that promotes a `behaviour`-class source to the operative winner promotes that key to the front of the list for the affected block.
+- Per-kind and per-claim overrides remain out of scope for v1 (the per-Evidence `authority-overrides` surface is deferred to a future RFC). The override seam below per-slice granularity is re-running `/spec:refine` with a different `agreement` verdict or amended `plan.yaml.slices[].authority-override`, never a hand-edit of the kernel-rendered `spec.md` provenance lines.
+- The kernel renders the `Sources:` list with every contributing source key, highest authority first **after override resolution** — a per-slice override that promotes a `behaviour`-class source to the operative winner promotes that key to the front of the list for the affected block.
 - The provenance parser cross-resolves every `Sources:` key against the slice's `plan.yaml.slices[].sources[]` bindings; a stale or missing key fails validation. Per-slice `authority-override` source keys are checked by the same parser before `/spec:refine` runs.
 - Every override resolution — including step 2 fallbacks where no override fired — lands inline in `model.yaml` at `requirements[].resolution-trace.step` and is surfaced by `specrun slice provenance`. The projected provenance view is the audit surface; `spec.md` carries operator-facing prose only.

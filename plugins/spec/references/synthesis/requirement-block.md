@@ -1,8 +1,8 @@
 # Requirement block
 
-Every requirement in a spec file (`specs/<unit>/spec.md`) is one H3 block with three required provenance lines plus a body. The provenance parser (consumed by `specrun slice validate`) enforces this shape exactly — any deviation fails the slice in `refining`.
+Every requirement in a spec file (`specs/<unit>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); `specrun slice synthesize` **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `specrun slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
 
-## Canonical template
+## Canonical template (kernel-rendered)
 
 ```markdown
 ### Requirement: <Human-readable name>[ <tag>]
@@ -21,15 +21,17 @@ Status: <agreed|unknown|conflict|divergence>
 
 The `#### Scenario:` heading is optional per requirement block — include it when the requirement has meaningful acceptance criteria. GIVEN is optional context that precedes the WHEN/THEN pair. Multiple `#### Scenario:` headings may appear within one requirement block. The heading level is fixed at H4; see [`spec-format.md`](../spec-format.md) for the canonical heading conventions.
 
-Rules the parser enforces:
+Invariants the kernel guarantees and the parser re-checks:
 
-- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no gaps required, but each id MUST be unique across all spec files in the slice (since `provenance.yaml` is a per-slice flat index keyed by `REQ-*` id). Numbering is sequential across units — do not restart at `REQ-001` per unit.
-- **`Sources:`** is a YAML-flow list of kebab-case source keys. Every key MUST resolve against the slice's `plan.yaml.slices[].sources[]` bindings. `[]` is legal only when `Status: unknown`. Highest-authority key first.
-- **`Status:`** is one of the closed enum `agreed | unknown | conflict | divergence`. Snake-case or any other casing fails.
-- **Tag coherence:** the headline tag (`[unknown]` / `[conflict]` / `[divergence]`) MUST match `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag; the other three Status values carry their matching tag verbatim.
+- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no holes after a single synthesis run; each id is unique across the whole slice (the kernel assigns ids in declaration order across all units — it never restarts at `REQ-001` per unit).
+- **`Sources:`** is a YAML-flow list of kebab-case source keys, every key resolving against the slice's `plan.yaml.slices[].sources[]` bindings, highest-authority key first. `[]` appears only when `Status: unknown`.
+- **`Status:`** is one of the closed enum `agreed | unknown | conflict | divergence`.
+- **Tag coherence:** the headline tag (`[unknown]` / `[conflict]` / `[divergence]`) matches `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag; the other three Status values carry their matching tag verbatim.
 - **Block boundary:** the H3 heading starts a new block; the next H2 or H3 closes it. Anything between provenance lines and the next heading is the body.
 
 ## Worked examples per Status
+
+These show the kernel's **rendered output**. In the response the agent supplies only the heading text, body prose, scenarios, and the requirement's `(source, id, kind)` claims plus its `agreement` verdict; the kernel projects the `ID:` / `Sources:` / `Status:` lines and the headline tag.
 
 ### `agreed` — single source with scenario
 
@@ -105,16 +107,18 @@ No contributing source supplied a claim for this requirement. Operator review re
 
 - **One requirement, one behavioural assertion.** Split compound behaviours (`"…and the system also…"`) into separate `REQ-NNN` blocks so each carries its own provenance.
 - **Verbatim source language where possible.** Quote requirement / criterion claims from `documentation` Evidence as written; lightly normalise capitalisation and terminal punctuation only. Behavioural `excerpt` claims paraphrase into present-tense system prose.
-- **`Note:` lines carry commentary, never operative requirements.** A `[divergence]` block's body is the winning value; the loser sits in a `Note:` line below. A `[conflict]` block has only `Note:` lines plus an operator-reconciliation prompt.
-- **No invented citations.** Do not add a `Sources:` key that did not contribute a claim. Do not promote a source key by hand to gain authority — emit the `[conflict]` and let the operator reconcile.
+- **`Note:` lines carry commentary, never operative requirements.** For a `disagreed` requirement, write the winning value as the body and preserve each loser as a `Note:` line; for a tied conflict, write only `Note:` lines plus an operator-reconciliation prompt. (The kernel renders the `[divergence]` / `[conflict]` tag from the verdict and resolved authority.)
+- **No invented citations.** Only cite a `(source, id, kind)` claim that the inputs-envelope Evidence actually carries — a claim referencing an absent `(source, id)` fails projection with `slice-model-source-orphan`. Never try to author `Sources:` lists or `winner` markers; the kernel projects them.
 
 ## Failure modes the parser surfaces
 
-| Symptom                                                       | Fix                                                                                         |
+The kernel renders the provenance lines, so these arise only from a **post-synthesis hand-edit** (caught by `slice-spec-provenance-stale`) — the fix is to re-run `specrun slice synthesize` rather than to hand-correct the line:
+
+| Symptom                                                       | Cause                                                                                       |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ID:` not matching `^REQ-\d{3}$` (e.g. `REQ-7`, `req-007`)    | Zero-pad to three digits; uppercase `REQ`.                                                  |
-| `Sources:` key not in `plan.yaml.slices[].sources[]`          | Use one of the slice's bound source keys, or amend the plan to add the source.              |
-| `Status:` outside the closed enum                             | Map to `agreed | unknown | conflict | divergence`.                                          |
-| Tag in headline disagrees with `Status:`                      | Make them match per [`tags.md`](tags.md).                                                   |
-| `Sources: []` with `Status:` anything other than `unknown`    | A non-`unknown` requirement always has at least one contributing source.                    |
-| Duplicate `REQ-NNN` ids inside the slice (across all spec files) | Renumber so each id is unique across the entire slice.                                      |
+| `ID:` not matching `^REQ-\d{3}$` (e.g. `REQ-7`, `req-007`)    | A hand-edit corrupted a kernel-assigned id.                                                 |
+| `Sources:` key not in `plan.yaml.slices[].sources[]`          | A hand-edit added a key the kernel never rendered.                                          |
+| `Status:` outside the closed enum                             | A hand-edit replaced the kernel-rendered value.                                             |
+| Tag in headline disagrees with `Status:`                      | A hand-edit changed one without the other.                                                  |
+| `Sources: []` with `Status:` anything other than `unknown`    | A non-`unknown` requirement always renders at least one contributing source.                |
+| Duplicate `REQ-NNN` ids inside the slice                      | A hand-edit duplicated a kernel-assigned id.                                                |
