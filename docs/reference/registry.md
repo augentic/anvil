@@ -1,12 +1,12 @@
 # Registry
 
-The registry is a first-party Specify component — it owns project topology and the local materialised view that workspace-mode planning and execution run against.
+The registry is a first-party Specify component — it owns project membership and location and the local materialised view that workspace-mode planning and execution run against.
 
 ## What is the registry?
 
 The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
 
-Per [RFC-36](../../rfcs/rfc-36-registry-projection.md), the registry does **not** author a project's target adapter, description, or capabilities for plan-time topology — those facets are authored in each project's `.specify/project.yaml` and projected into the committed `.specify/topology.lock` by `specrun workspace sync`. The registry's `adapter` field survives only as an optional *greenfield scaffold seed* used when `workspace sync` clones a brand-new, empty project.
+The registry does **not** author a project's target adapter, description, or capabilities for plan-time topology — those facets are authored in each project's `.specify/project.yaml` and projected into the committed `.specify/topology.lock` by `specrun workspace sync`. The registry's `adapter` field survives only as an optional *greenfield scaffold seed* used when `workspace sync` clones a brand-new, empty project.
 
 Target adapters own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The plan (`/spec:plan`, `specrun plan *`) coordinates *when* — sequencing slices across one or more registered projects.
 
@@ -15,7 +15,7 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | Path                          | Owner    | Purpose |
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Membership + location ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
-| `.specify/topology.lock`      | derived  | Committed projection of each member project's `project.yaml` topology facets (`target`, `description`, `capabilities`, `keywords`). Machine-written by `specrun workspace sync`; never hand-edited. See [RFC-36](../../rfcs/rfc-36-registry-projection.md). |
+| `.specify/topology.lock`      | derived  | Committed projection of each member project's `project.yaml` topology facets (`target`, `description`, `capabilities`, `keywords`). Machine-written by `specrun workspace sync`; never hand-edited. |
 | `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specrun workspace sync`. |
 | `.specify/.cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `adapters/sources/` and `adapters/targets/` subdirectories). |
 
@@ -41,7 +41,7 @@ projects:
 | `projects`                  | optional (defaults to empty) | Ordered list of registered projects. Empty or single-entry registries behave like single-repo mode. |
 | `projects[].name`           | yes                          | Kebab-case identifier. Must be unique within the registry. The slot name and the binding key written to `plan.yaml.slices[].project`. |
 | `projects[].url`            | yes                          | Clone target — `.`, a repo-relative path (`../peer`, `./foo`), `git@host:path`, or an `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://` remote. |
-| `projects[].adapter`        | optional                     | Greenfield scaffold seed only — the adapter written into a brand-new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology; the project's own `project.yaml` is authoritative once it exists ([RFC-36](../../rfcs/rfc-36-registry-projection.md)). |
+| `projects[].adapter`        | optional                     | Greenfield scaffold seed only — the adapter written into a brand-new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology; the project's own `project.yaml` is authoritative once it exists. |
 | `projects[].contracts`      | optional                     | Per-project contract role declarations (`produces`, `consumes`). |
 
 A project's `description`, `capabilities`, and `keywords` are **not** registry fields — they are authored in the project's own `.specify/project.yaml` and projected into `.specify/topology.lock`.

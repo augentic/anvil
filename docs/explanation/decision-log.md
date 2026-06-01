@@ -78,7 +78,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what adapter they use, what domain they own). Sync-workspace runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
-**Superseded in part by:** [RFC-36](../../rfcs/rfc-36-registry-projection.md) — the registry no longer authors a project's adapter/description/capabilities for topology purposes (it carries membership + location plus an optional greenfield adapter seed). Those facets are authored in each project's `project.yaml` and projected into the committed `.specify/topology.lock`. See "Project facets are authored in project.yaml" and "Topology cache (lockfile) for plan-time availability" below.
+**Superseded in part by:** the registry no longer authors a project's adapter/description/capabilities for topology purposes (it carries membership + location plus an optional greenfield adapter seed). Those facets are authored in each project's `project.yaml` and projected into the committed `.specify/topology.lock`. See "Project facets are authored in project.yaml" and "Topology cache (lockfile) for plan-time availability" below.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -88,7 +88,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** A fact with two authored homes drifts. Previously a project's adapter/description lived in both its `project.yaml` and the hub's `registry.yaml`, and the registry copy silently won at plan time, while `capabilities` / `keywords` (added for slice-to-project routing) never reached the reconciliation envelope. Inverting authority — the project owns what it is, the registry owns only that the project is a member and where it lives — gives every fact exactly one writer and lets capability tags flow into binding. The registry's optional `adapter` survives only as a greenfield scaffold seed (the value written into a brand-new project's `project.yaml`); once that file exists it is authoritative.
 
-**Source:** [RFC-36](../../rfcs/rfc-36-registry-projection.md).
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Topology cache (lockfile) for plan-time availability
 
@@ -96,7 +96,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Inverting authority into `project.yaml` would otherwise couple plan-time topology to a synced (and for remotes, reachable) workspace. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the authored truth. "Sync" becomes idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
 
-**Source:** [RFC-36](../../rfcs/rfc-36-registry-projection.md).
+**Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## CWD-based routing for multi-repo execution
 

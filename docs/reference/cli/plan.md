@@ -41,7 +41,7 @@ Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on
 
 - `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
-- `topology-cache-stale` (warning) -- a workspace slot's `project.yaml` (target adapter, description, capabilities, or keywords) has diverged from the committed `.specify/topology.lock`. Per [RFC-36](../../../rfcs/rfc-36-registry-projection.md) the project's `project.yaml` is authoritative; the fix is `specrun workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
+- `topology-cache-stale` (warning) -- a workspace slot's `project.yaml` (target adapter, description, capabilities, or keywords) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` is authoritative; the fix is `specrun workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
 
 Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 

@@ -40,7 +40,7 @@ description: |
 | `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. |
-| `capabilities`    | No                     | Capability tags (e.g. `auth`, `billing`) characterising what the project owns. Projected into `.specify/topology.lock` and surfaced in the reconciliation `projects[]` so the agent binds slices on capability, not description prose alone ([RFC-36](../../rfcs/rfc-36-registry-projection.md)). Authored here, never in `registry.yaml`. |
+| `capabilities`    | No                     | Capability tags (e.g. `auth`, `billing`) characterising what the project owns. Projected into `.specify/topology.lock` and surfaced in the reconciliation `projects[]` so the agent binds slices on capability, not description prose alone. Authored here, never in `registry.yaml`. |
 | `keywords`        | No                     | Free-form keyword tags supplementing `capabilities`, with the same projection path. |
 
 ### Hub shape
@@ -124,7 +124,7 @@ slices:
 **Created by:** Operator (directly)
 **Validated by:** First-use validators (`specrun workspace sync`, `/spec:plan`)
 
-Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. Per [RFC-36](../../rfcs/rfc-36-registry-projection.md) it carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description`, `capabilities`, and `keywords` are authored in its own `.specify/project.yaml` and projected into `.specify/topology.lock`.
+Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description`, `capabilities`, and `keywords` are authored in its own `.specify/project.yaml` and projected into `.specify/topology.lock`.
 
 ```yaml
 version: 1
