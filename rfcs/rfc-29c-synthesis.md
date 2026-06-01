@@ -135,7 +135,7 @@ The `slice-synthesize-forbidden-input-leak` finding complements gate 1 by flaggi
 
 The synthesis step communicates with the kernel over a closed request/response envelope, dispatched under `execution: agent` (default) or `execution: tool` (D10). Its schema is `[synthesis.schema.json](rfc-29/schemas/slice/synthesis.schema.json)`, discriminated by `kind: request | response`; the response `model` `$ref`s `[draft-model.schema.json](rfc-29/schemas/slice/draft-model.schema.json)` rather than the persisted schema (D3a).
 
-Each `evidence.<source>` entry embeds that source's `extract` output inline — its `lead` and `claims` — rather than a path to `evidence/<source>.yaml`, so the dispatched step (agent or WASI tool) reconciles without host filesystem access. The on-disk Evidence document stays the kernel's source of truth for projection, `provenance.yaml`, and drift validation; the per-document `authority` / `authority-overrides` are **not** echoed per source, because the kernel resolves authority out of band before dispatch and passes the result via `authority.resolved-path`.
+Each `evidence.<source>` entry embeds that source's `extract` output inline — its `lead` and `claims` — rather than a path to `evidence/<source>.yaml`, so the dispatched step (agent or WASI tool) reconciles without host filesystem access. The on-disk Evidence document stays the kernel's source of truth for projection, `provenance.yaml`, and drift validation; the per-document `authority` / `authority-overrides` are **not** echoed per source, because the kernel resolves authority before dispatch and embeds the result inline under `authority.resolved` (§"Authority resolution"). Together with inline Evidence this makes the whole request hermetic — the dispatched step needs no filesystem reads at all.
 
 A request looks like this:
 
@@ -224,12 +224,14 @@ The kernel rejects any draft that sets a kernel-owned field (`requirements[].id`
 
 ### Authority resolution
 
-Authority is resolved before dispatch and passed into the envelope. The resolution order is:
+Authority is resolved before dispatch and passed into the envelope inline under `authority.resolved`. The resolution order is:
 
 1. per-slice `authority-override`;
 2. per-Evidence `authority-overrides`;
 3. document-level `authority`;
 4. tied effective authority → `conflict`.
+
+`authority.resolved` carries one `{ source, kind, class }` row per contributing `(source, kind)` — the **effective authority class** after the walk above, nothing more. It records resolution inputs, not outcomes: winner markers and `status` are kernel-projected *after* the synthesis step returns (§"Status derivation"), so they never appear here. Keying by `(source, kind)` rather than per claim is sufficient because every claim of a given kind in one Evidence document shares that document's effective class.
 
 The synthesis step never re-decides authority or marks winners. Once it returns the claims and `agreement` verdict, the kernel projects the winners and derives `status` plus rendered source lists from them.
 

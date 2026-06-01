@@ -8,9 +8,9 @@ The registry was promoted from `specrun registry ...` to a top-level noun group 
 
 | Verb | When to use |
 |------|-------------|
-| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the adapter identifier stored in `adapter:`, and the `description-missing-multi-repo` invariant after the write. |
+| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name and URL classification. `--adapter` is optional (a greenfield scaffold seed per [RFC-36](../../../rfcs/rfc-36-registry-projection.md)). |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
+| [`validate`](#specify-registry-validate) | Structural and referential check; on hubs runs the `hub-cannot-be-project` invariant. |
 
 ## Subcommands
 
@@ -25,9 +25,9 @@ specrun registry validate
 Validates:
 
 - Registry shape (required fields, kebab-case names, well-formed `url:` values).
-- `description` is required when more than one project is declared (multi-repo invariant).
-- Per-project `adapter:` adapter identifiers or URLs are resolvable.
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
+
+Per [RFC-36](../../../rfcs/rfc-36-registry-projection.md) the registry no longer authors a project's adapter/description for plan-time topology, so the `adapter`-required and `description-missing-multi-repo` invariants are retired; those facets live in each project's `project.yaml` and are checked against `.specify/topology.lock` by `specrun plan validate` (`topology-cache-stale`).
 
 Used by `/spec:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
