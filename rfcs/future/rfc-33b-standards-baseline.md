@@ -1,10 +1,10 @@
 # RFC-33b: Standards Baseline
 
-> Status: Deferred · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md), [RFC-33a](../rfc-33a-ignore-directives.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement) (when triggered), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Deferred · Depends: RFC-28, RFC-32, and [RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) (durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md)) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events) (when triggered)
 
 ## Abstract
 
-[RFC-33a](../rfc-33a-ignore-directives.md) delivers in-source ignore directives, the initial `status` enum widening (adding `ignored`), the `disposition` field with the `directive?` sub-field, and the `lint-completed` journal event. It does not deliver the **cross-run** lifecycle: how a project acknowledges a body of legitimate findings as baseline debt, how scans diff against prior runs, and how operators stage remediation across releases.
+[RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) delivers in-source ignore directives, the initial `status` enum widening (adding `ignored`), the `disposition` field with the `directive?` sub-field, and the `lint-completed` journal event. It does not deliver the **cross-run** lifecycle: how a project acknowledges a body of legitimate findings as baseline debt, how scans diff against prior runs, and how operators stage remediation across releases.
 
 This RFC pre-designs that surface so it can land against a settled contract when one of the trigger conditions in §"Trigger conditions" is met. While deferred, no Phase 2 code, schema file, CLI verb, or filesystem path under `.specify/lint/` ships. RFC-33a established the partial wire shape (D5 / D6 — adding `ignored` to `status` and `directive?` to `disposition`); RFC-33b extends both decisions additively when it lands, adding `new` / `baselined` to `status` and `baseline?` to `disposition`.
 
@@ -20,7 +20,7 @@ This RFC adds no lifecycle authority. Baselined findings never transition plan e
 
 ## Motivation
 
-[RFC-33a](../rfc-33a-ignore-directives.md) §"Motivation" enumerates three pressure points after RFC-32 lands. The first (intentional exceptions need to live with the code) is addressed by RFC-33a's ignore directives. This RFC addresses the remaining two:
+[RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) §"Motivation" enumerates three pressure points after RFC-32 lands. The first (intentional exceptions need to live with the code) is addressed by RFC-33a's ignore directives. This RFC addresses the remaining two:
 
 - **Mass adoption requires a staging mechanism.** A consumer project picking up RFC-32 on a codebase older than the rule set will see findings for code that was correct at the time it was written. Without baselines, the operator's only choices are to fix everything before turning on CI gates or to disable entire rules globally. The first is impractical; the second discards the rule's value forever.
 - **CI dashboards need diffs, not absolute counts.** "Project X has 412 findings" is not actionable. "PR Y introduced 3 new findings and fixed 1" is. Stable fingerprints are already there per RFC-28; what is missing is somewhere to compare them against.
@@ -46,7 +46,7 @@ Each trigger has a clean owner: (1) is detected by codex resolver output deltas,
 
 ## Principles
 
-The principles that govern this layer are stated in full in [RFC-33a](../rfc-33a-ignore-directives.md) §"Principles". RFC-33b activates the two that were dormant while it was deferred:
+The principles that govern this layer are stated in full in [RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) §"Principles". RFC-33b activates the two that were dormant while it was deferred:
 
 - **(2) Baseline is opt-in but on-by-default once present.** The first scan after `specrun lint baseline write` runs in baseline mode without a flag; explicit `--no-baseline` is required to ignore.
 - **(6) One writer per file.** `.specify/lint/baseline.json` is only written by `specrun lint baseline write`. `.specify/lint/last.json` is only written by `specrun lint run`. No skill, no agent, no other CLI verb edits either file.
@@ -66,7 +66,7 @@ Principles (1), (3), (4), (5), and (7) carry forward unchanged.
 | **D10 Baseline omits rule body** | Baseline entries store only `(fingerprint, rule_id, path, line, kind, rationale, recorded_at)`. They never embed hint kind, regex pattern, or any other rule-body slice; interpreter drift surfaces through `evidence-payload` changes already encoded in the fingerprint. | `schemas/lint/baseline.schema.json` pins the closed entry shape; no duplicate of `specrun rules export` output; baseline rewrites are fingerprint-driven, not rule-edit-driven. |
 | **D11 `baseline write` reads `last.json`** | `specrun lint baseline write` reads the most recent run from `.specify/lint/last.json` and refuses if the file is missing or stale (mtime older than the most recent file mtime under any scoped artifact path). It does not re-scan unless `--rescan` is passed, in which case it runs a scan inline and writes the resulting envelope verbatim before persisting the baseline. | Closed input contract: scanner is the only writer of `last.json`; baseline write is a pure transformation of an already-approved envelope; `--rescan` flag covers the rare "fresh capture" path without forking the contract. |
 
-The decision IDs (D1, D2, D7, D9, D10, D11) are preserved from the original combined RFC-33 so prior references continue to resolve. [RFC-33a](../rfc-33a-ignore-directives.md) owns D3, D4, D5, D6, D8, D12, D13.
+The decision IDs (D1, D2, D7, D9, D10, D11) are preserved from the original combined RFC-33 so prior references continue to resolve. [RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) owns D3, D4, D5, D6, D8, D12, D13.
 
 ### Baseline file
 
@@ -173,7 +173,7 @@ RFC-33b widens `schemas/diagnostics/diagnostic.schema.json` a second time: the `
 
 ### Migration
 
-**For operator projects:** Additive. Without a baseline file, behaviour is identical to [RFC-33a](../rfc-33a-ignore-directives.md). To adopt baseline mode, run `specrun lint run` (which writes `.specify/lint/last.json`) then `specrun lint baseline write`, review the file in PR, and commit.
+**For operator projects:** Additive. Without a baseline file, behaviour is identical to [RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit). To adopt baseline mode, run `specrun lint run` (which writes `.specify/lint/last.json`) then `specrun lint baseline write`, review the file in PR, and commit.
 
 **For CLI maintainers:** The baseline and run files live under `.specify/lint/` — a new sub-tree, distinct from `.specify/cache/`, `.specify/slices/`, and `.specify/archive/`. Document the directory in `docs/reference/directory-layout.md` and the `init` runbook at the time RFC-33b lands.
 
@@ -218,14 +218,13 @@ The three operational questions stay open until the RFC-33b implementation PR ha
 2. Should `specrun lint baseline drop` require `--yes` always or only in non-TTY environments? Current preference: always — the file is policy and dropping it changes CI behaviour for the next scan.
 3. Should `last.json` be checked into source control? Current preference: no — it changes every run and dominates PR diffs. Operators wanting history should consume `lint-completed` events.
 
-Q1, Q2, and Q4 from earlier drafts have been resolved into normative decisions D10, D11, and D12 (the last lives in [RFC-33a](../rfc-33a-ignore-directives.md)) respectively.
+Q1, Q2, and Q4 from earlier drafts have been resolved into normative decisions D10, D11, and D12 (the last lives in [RFC-33a (shipped; retired milestone doc)](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit)) respectively.
 
 ## References
 
-- [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
-- [RFC-32: Engineering Standards — Deterministic Enforcement](../done/rfc-32-standards-enforcement.md)
-- [RFC-33a: Standards Ignore Directives](../rfc-33a-ignore-directives.md) — companion RFC, active; provides the wire-shape decisions consumed here
+- RFC-28: Engineering Standards — Codex Contract and Findings (retired) — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- RFC-32: Engineering Standards — Deterministic Enforcement (retired) — [`DECISIONS.md` §Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
+- RFC-33a: Standards Ignore Directives (shipped; retired milestone doc) — [`DECISIONS.md` §Lint finding lifecycle](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit) — companion to this RFC; provides the wire-shape decisions consumed here
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
-- [Specify Roadmap — RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 - [`crates/workflow/src/journal.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/journal.rs) — closed `EventKind` taxonomy

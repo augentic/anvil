@@ -1,6 +1,6 @@
 # RFC-29b: Plan-Time Lead Reconciliation
 
-> Status: Draft — Milestone **M2a** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (surveyed `discovery.md`) — Unblocks: [RFC-29c](rfc-29c-synthesis.md) plan rows
+> Status: **Shipped** (M2a) — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Lead reconciliation (D2)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Milestone **M2a** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (surveyed `discovery.md`) — Unblocks: [RFC-29c](rfc-29c-synthesis.md) plan rows
 
 This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sources become the `plan.yaml.slices[]` rows that `/spec:execute` runs later.
 
@@ -10,7 +10,7 @@ This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sou
 
 One noun:
 
-- **slice** — one `plan.yaml.slices[]` row: an explicit kebab-case `name`, a bound `project`, and its matched `sources[]` (at most one lead per source) inline. Cross-source matching is agent judgment from per-source `synopsis`, optional `aliases[]` hints, and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1. A body of work that targets more than one project is expressed as **multiple slices** that may reference the same lead, joined by `depends-on` — there is no `scope` grouping noun (RFC-29 review F3 removed it). Each slice binds a project; its target is resolved on demand, not written to disk.
+- **slice** — one `plan.yaml.slices[]` row: an explicit kebab-case `name`, a bound `project`, and its matched `sources[]` (at most one lead per source) inline. Cross-source matching is agent judgment from per-source `synopsis` and shared slugs — never kernel-enforced. The agent never fuses two leads from the *same* source: each source's lead is its own candidate slice, sized by the source adapter, and same-source re-sizing is an operator action at Gate 1. A body of work that targets more than one project is expressed as **multiple slices** that may reference the same lead, joined by `depends-on` — there is no `scope` grouping noun (RFC-29 review F3 removed it). Each slice binds a project; its target is resolved on demand, not written to disk.
 
 Shared wire contracts are pinned in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts). This document is the source of truth for D2.
 
@@ -50,13 +50,12 @@ The agent owns judgment during propose. The CLI owns projection and persistence.
 
 ## Cross-Source Matching
 
-Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source, lead)` lead with its per-source `synopsis` and optional `aliases[]` (operator-authored hints from `discovery.md`; the kernel does not interpret them as locks).
+Sources survey independently — there is no cross-source coordination step. Each catalog row is one raw `(source, lead)` lead with its per-source `synopsis`.
 
 The agent decides which rows belong in the same slice:
 
 - **Shared slug** — two sources may emit the same `lead` (e.g. both surface `identity-api`). That overlap is a hint, not a kernel lock. The agent may merge or keep them separate; accidental slug collision is resolved at Gate 1, not forced at propose time.
-- **Alias hints** — `aliases[]` on a row may bridge to another source's `lead`. The agent may use these when grouping; `specrun plan amend --add-alias` records operator knowledge on `discovery.md` for future replans.
-- **Synopsis judgment** — when ids and aliases do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source synopses.
+- **Synopsis judgment** — when ids do not suggest a link (e.g. `password-reset` and `reset-password`), the agent merges or splits from per-source synopses.
 
 **At most one lead per source.** A slice matches leads *across* sources; it never fuses two leads from the *same* source. Each surveyed lead is that source adapter's candidate slice — a sizing judgment made with full visibility of the legacy code, documentation, or capture the agent does not have. Merging two same-source leads would override that sizing and risk a slice too large to execute, so the propose kernel rejects it (`plan-reconcile-slice-source-collision`). When a source genuinely over-fragments, the fix is a better source adapter or an operator Gate 1 merge via `specrun plan amend --sources` — where a human owns the sizing risk — not an agent propose-time fusion.
 
@@ -78,7 +77,7 @@ An earlier draft carried a `scope` grouping id and forced every slice sharing it
 
 Request and response validate against `schemas/discovery/proposal.schema.json` (`PROPOSAL_JSON_SCHEMA`), with a closed `kind: request | response` discriminator.
 
-The request is lead-centric: flat `leads[]` carries one row per raw `(source, lead)` lead. Each catalog row carries `source`, `lead`, per-source `synopsis`, and optional `aliases[]`.
+The request is lead-centric: flat `leads[]` carries one row per raw `(source, lead)` lead. Each catalog row carries `source`, `lead`, and per-source `synopsis`.
 
 Each raw lead from `discovery.md` becomes one catalog row — no expansion or cross-source merge at survey or request time. `lead` is unique only within a `source`; the same slug under different sources is legal. Catalog identity is the `(source, lead)` pair. Envelope and `plan.yaml` slice bindings use the same shape.
 
@@ -111,9 +110,9 @@ leads:
 
 The agent may merge `docs:identity-api` with `legacy:identity-api` by shared slug, and `password-reset` with `reset-password` by synopsis — both are judgment calls surfaced for Gate 1 review.
 
-`projects[]` lists every project the agent may bind and always carries at least one entry (a single regular project is synthesized from `project.yaml`). Available targets come from `projects[].target` — there is no separate request-level `targets[]`. Each entry may also carry `capabilities[]` / `keywords[]` routing tags ([RFC-36](rfc-36-registry-projection.md)) so the agent can bind on capability, not description prose alone.
+`projects[]` lists every project the agent may bind and always carries at least one entry (a single regular project is synthesized from `project.yaml`). Available targets come from `projects[].target` — there is no separate request-level `targets[]`. Each entry may also carry the derived-identity surfaces `surface[]` / `decisions[]` / `recent[]` ([RFC-36](rfc-36-project-identity.md)) so the agent can bind on actual owned behaviour and architectural commitment, not description prose alone.
 
-The dry-run envelope normalizes project topology into `{ name, target, description, capabilities, keywords }`: hub projects are projected from the committed `.specify/topology.lock` (regenerated by `specrun workspace sync` from each member project's `project.yaml` per [RFC-36](rfc-36-registry-projection.md)); a single regular project resolves `.specify/project.yaml.adapter` through the target adapter resolver into a `name@vN` ref. The normalized `projects[].target` is envelope-local; the kernel uses it only to resolve a bound slice's target on demand and never writes it to `plan.yaml` — a slice persists only its `project`.
+The dry-run envelope normalizes project topology into `{ name, target, description, surface, decisions, recent }`: hub projects are projected from the committed `.specify/topology.lock` (regenerated by `specrun workspace sync` from each member project's `project.yaml` plus its baseline per [RFC-36](rfc-36-project-identity.md)); a single regular project resolves `.specify/project.yaml.adapter` through the target adapter resolver into a `name@vN` ref. The normalized `projects[].target` is envelope-local; the kernel uses it only to resolve a bound slice's target on demand and never writes it to `plan.yaml` — a slice persists only its `project`.
 
 ### N=1 degenerate example
 
@@ -227,9 +226,9 @@ Name uniqueness is the sole duplicate gate: two slices resolving to the same nam
 
 ## Project Binding
 
-Every slice resolves to exactly one project. The dry-run request carries `projects[]` as `{ name, target, description, capabilities, keywords }` — for a hub, projected from the committed `.specify/topology.lock` ([RFC-36](rfc-36-registry-projection.md)); for a single regular project, one entry synthesized from `project.yaml` (`name`, target adapter, `description`, `capabilities`, `keywords`).
+Every slice resolves to exactly one project. The dry-run request carries `projects[]` as `{ name, target, description, surface, decisions, recent }` — for a hub, projected from the committed `.specify/topology.lock` ([RFC-36](rfc-36-project-identity.md)); for a single regular project, one entry synthesized from `project.yaml` (`name`, target adapter, `description`) plus the live baseline projection (`surface`, `decisions`, `recent`).
 
-The agent binds `project` on each slice by matching the slice against each project's `target`, `description`, and `capabilities`. When `projects[]` has exactly one entry the agent may omit `project` and the kernel auto-binds it. When more than one project exists the agent must name one explicitly; the CLI never chooses among candidates.
+The agent binds `project` on each slice by matching the slice against each project's `target`, `description`, and derived `surface[]` / `decisions[]`. When `projects[]` has exactly one entry the agent may omit `project` and the kernel auto-binds it. When more than one project exists the agent must name one explicitly; the CLI never chooses among candidates.
 
 Before writing, the kernel enforces:
 
@@ -249,7 +248,6 @@ Operator override paths at Gate 1 (see [decision log §"Automated propose"](../d
 - **`specrun plan propose --from`** — re-run agent grouping (replaces all slices on a replaceable plan)
 - **`specrun plan add` / `specrun plan remove`** — append or drop pending entries (structural edits)
 - **`specrun plan amend <entry>`** — relabel, rebind sources/project/depends-on, accept or reject divergence; compose with `plan add` / `plan remove` for split and merge
-- **`specrun plan amend --add-alias`** — record a cross-source bridge on `discovery.md` for the next replan (not a propose-time lock; requires an existing `<entry>` positional even though the write targets `discovery.md`)
 - **Re-propose** — re-run `propose --from` on a still-pending plan after fixing `discovery.md` or adjusting the agent response
 
 ### Gate 1 recipes
@@ -263,8 +261,6 @@ D2 partition invariants apply only to `propose --from`. `plan add`, `plan amend`
 | **Merge (cross-source)** | `specrun plan amend <keep> --sources ...` (union of bindings) then `specrun plan remove <drop>` |
 | **Merge (same-source sizing override)** | Same as merge — allowed at Gate 1 only; propose kernel forbids this |
 | **Defer a lead** | `specrun plan remove <entry>` — lead stays in `discovery.md` until re-survey or the next `propose --from` |
-
-Recurring cross-source pairings the operator accepts may be promoted to aliases with `--add-alias` so future surveys surface the hint on disk.
 
 ## Out Of Kernel Scope
 
@@ -281,7 +277,7 @@ D2 coverage invariants (total lead coverage, at-most-one-lead-per-source per sli
 During `/spec:plan`, the agent:
 
 1. Calls `specrun plan propose --dry-run --format json`.
-2. Matches catalog rows across sources by judgment from `synopsis`, shared slugs, and optional `aliases[]` hints — at most one lead per source per slice, never fusing two leads from the same source.
+2. Matches catalog rows across sources by judgment from `synopsis` and shared slugs — at most one lead per source per slice, never fusing two leads from the same source.
 3. Emits one `slices[]` row per slice: names it, lists the matched `sources[]`, and binds a `project` (or omits it when exactly one exists). Cross-target fan-out is multiple slices that reference the same lead, ordered by `depends-on`.
 4. Adds `rationale` on non-obvious cross-source matches, plus `depends-on` on slices.
 5. Calls `specrun plan propose --from <response.json>`.
@@ -302,6 +298,6 @@ Canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fan-in
 
 Items intentionally out of scope for this milestone:
 
-1. **Kernel-side token-intersection locks** — auto-merging rows when `{lead} ∪ aliases[]` intersects across source keys. Rejected for D2: shared slugs are unattested (collision risk), and Gate 1 is the human curation step after agent propose.
+1. **Kernel-side token-intersection locks** — auto-merging rows when `lead` slugs intersect across source keys. Rejected for D2: shared slugs are unattested (collision risk), and Gate 1 is the human curation step after agent propose.
 2. **Kernel-side advisory clustering of open leads** — facet edges, lexical fallback, connected-component bucketing. Would require per-lead `blocking-keys[]` survey metadata not produced by current `lead.schema.json`.
 3. **Optional lead target-axis hints** — deferred to a follow-on RFC. `target` is always kernel-derived from the bound project.

@@ -1,6 +1,6 @@
 # RFC-30: Init Bootstrap, Update, and Migration Lifecycle
 
-> Status: Draft - Depends: [RFC-13](../done/rfc-13-extensibility.md), [RFC-25](../done/rfc-25-workflow.md) - Enables: [roadmap RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model)
+> Status: Draft - Depends: RFC-13 and RFC-25 (retired milestone docs; durable behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)) - Enables: [roadmap RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model)
 
 ## Abstract
 
@@ -352,7 +352,7 @@ Add four kebab-case variants to the closed `EventKind` enum in `crates/workflow/
 | `migration-applied` | `MigrationApplied` | `{ kind: String, files-rewritten: usize, files-moved: usize }` |
 | `migration-skipped` | `MigrationSkipped` | `{ kind: String, reason: String }` |
 
-Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/main/AGENTS.md), wire ids stay kebab-case and Rust variants stay `snake_case` joined by `#[serde(rename)]`.
+Per the [journal event contract](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#journal-event-names), wire ids stay kebab-case and Rust variants stay `snake_case` joined by `#[serde(rename)]`.
 
 ## Implementation Plan
 
@@ -447,9 +447,9 @@ For the CLI: `specify init --upgrade` replaces the implicit `$UPGRADE=true` runb
 
 ## References
 
-- [RFC-13: Extensibility](../done/rfc-13-extensibility.md) — adapter resolution and `specify init` shape.
-- [RFC-25: Workflow](../done/rfc-25-workflow.md) — closed lifecycle vocabulary the migrator preserves.
-- [RFC-29: Fan-In/Fan-Out](rfc-29-fan-in-fan-out.md) — per-slice fan-out drops `slices[].target` (the target resolves on demand from the bound `project`), so the `V1ToV2` migrator strips that field and binds `project`.
+- RFC-13: Extensibility (retired milestone doc) — adapter resolution and `specify init` shape.
+- RFC-25: Workflow (retired milestone doc) — closed lifecycle vocabulary the migrator preserves; see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md).
+- [RFC-29: Fan-In/Fan-Out](../rfc-29-fan-in-fan-out.md) — per-slice fan-out drops `slices[].target` (the target resolves on demand from the bound `project`), so the `V1ToV2` migrator strips that field and binds `project`.
 - [Specify CLI `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — current exit-code table and the "2.0 is a hard cut" policy this RFC softens.
 - [Specify CLI `DECISIONS.md` — Exit codes](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#exit-codes) — long-form rationale for the existing codes 0–3.
 - [Roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events) — downstream consumer of the new journal events.

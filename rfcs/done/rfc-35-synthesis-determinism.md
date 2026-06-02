@@ -1,6 +1,6 @@
 # RFC-35: Synthesis Determinism — Closing Reference Contradictions and Agent Trial-and-Error Loops
 
-> Status: Done · Depends: [RFC-27](rfc-27-synthesis.md) (synthesis contract), [RFC-25](rfc-25-workflow.md) (workflow), [RFC-31](rfc-31-vectis-screenshots-loop.md) (Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun source resolve`, `specrun target resolve`, synthesis references
+> Status: Done · Depends: RFC-27 (retired; superseded by RFC-29c / [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)), RFC-25 (retired; [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)), RFC-31 (retired Vectis screenshots loop) · Affects: `/spec:refine` skill body, `specrun slice validate`, `specrun source resolve`, `specrun target resolve`, synthesis references
 
 ## Abstract
 
@@ -246,9 +246,9 @@ Four steps, ordered by dependency. Steps 1–3 are documentation-only changes in
 
 ## References
 
-- [RFC-27: Synthesis](rfc-27-synthesis.md) — the synthesis contract this RFC's reference corrections align with.
-- [RFC-25: Workflow](rfc-25-workflow.md) — the plan-driven loop and slice lifecycle.
-- [RFC-31: Vectis Screenshots Loop](rfc-31-vectis-screenshots-loop.md) — Vectis target hardening; this RFC addresses synthesis-side friction from the same pipeline.
+- RFC-27 (retired) — superseded by RFC-29c / [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b).
+- RFC-25 (retired) — [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md).
+- RFC-31 (retired) — Vectis screenshots loop; this RFC addresses synthesis-side friction from the same pipeline.
 - [`plugins/spec/references/spec-format.md`](../../plugins/spec/references/spec-format.md) — canonical heading conventions for `spec.md`.
 - [`plugins/spec/references/synthesis/substeps.md`](../../plugins/spec/references/synthesis/substeps.md) — synthesis substep contract corrected by D1, D4, D5.
 - [`plugins/spec/references/synthesis/requirement-block.md`](../../plugins/spec/references/synthesis/requirement-block.md) — requirement block template extended by D2.

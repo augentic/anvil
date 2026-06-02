@@ -1,6 +1,6 @@
 # RFC-19: CLI Observability
 
-> Status: Draft - Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-15](archive/rfc-15-wasm-plugins.md)
+> Status: Draft - Depends: RFC-1, RFC-2, and RFC-15 (retired milestone docs; durable CLI behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
 ## Abstract
 
@@ -297,8 +297,6 @@ For CLI maintainers:
 
 ## References
 
-- [RFC-1: CLI](archive/rfc-1-cli.md)
-- [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-15: WASI Adapter Tools](archive/rfc-15-wasm-plugins.md)
+- RFC-1 / RFC-2 / RFC-15 (retired milestone docs) — CLI and WASI tool predecessors.
 - `specify-cli/src/output.rs`
 - `specify-cli/docs/contributing/cli-architecture.md`

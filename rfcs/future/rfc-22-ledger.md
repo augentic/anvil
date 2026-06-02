@@ -1,6 +1,6 @@
 # RFC-22: Migration Ledger and Slice Mapping
 
-> Status: Draft - Depends: [RFC-3a](../done/rfc-3a-monoliths.md), [RFC-3b](../done/rfc-3b-platform.md), [RFC-9](../done/rfc-9-platform.md), [RFC-20](../done/rfc-20-survey.md), [RFC-25](../done/rfc-25-workflow.md), [RFC-21](rfc-21-catalogue.md)
+> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-20, RFC-25 (retired milestone docs), [RFC-21](rfc-21-catalogue.md)
 
 ## Abstract
 
@@ -266,7 +266,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 - Cross-platform-repo ledger sharing (the ledger is per-platform-repo).
 - A `confidence` field on ledger entries (review findings live in their own surface).
 - Driving execution from the ledger (the ledger is read-only for every executor-side path).
-- Backstage / external catalogue export (deferred; consistent shape with [RM-12](roadmap.md#rm-12-catalog-import-backstage-adapter)).
+- Backstage / external catalogue export (deferred; consistent shape with [RM-12](../roadmap.md#rm-12-catalog-import-backstage-adapter)).
 - Replacing operator review with ledger-driven decisions in propose. The ledger is advisory throughout.
 - A general "migration timeline" UI or report. The JSON envelope on `specify migration-log show` is sufficient for downstream tooling to build that.
 - Retroactively rewriting ledger entries when a change is dropped post-finalize (drops happen pre-merge; post-merge edits are out of scope).
@@ -284,13 +284,10 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 ## References
 
-- [RFC-3a: Monoliths](../done/rfc-3a-monoliths.md) — analyze/extract predecessor this RFC's ledger annotates.
-- [RFC-3b: Platform](../done/rfc-3b-platform.md) — assignment and one-slice-one-project invariant the ledger augments.
-- [RFC-9: Platform](../done/rfc-9-platform.md) — historical change-lifecycle predecessor; ledger writers fire through `specify slice merge` and `specify plan finalize` in the current `/spec:plan` -> `/spec:execute` -> `/spec:finalize` flow.
-- [RFC-20: Survey-to-Plan Pipeline](../done/rfc-20-survey.md) — survey, synthesise, propose, and assignment predecessor that the RFC-25 source adapter flow replaces.
+- RFC-3a / RFC-3b / RFC-9 / RFC-20 / RFC-25 (retired milestone docs) — predecessors this RFC annotates toward the RFC-29 source-adapter flow.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
-- [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
-- [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the ledger preserves.
-- [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
+- [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
+- [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the ledger preserves.
+- [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.
 - [`crates/workflow/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.

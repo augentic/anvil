@@ -20,7 +20,7 @@ Specialist skills in this repo consume those artifacts, but they should not rede
 Artifacts move through the normal Specify lifecycle:
 
 1. `.specify/slices/<change>/` holds the working slice.
-2. `.specify/specs/` holds the merged baseline specs.
+2. `.specify/specs/` holds the merged baseline specs; `.specify/decisions/` holds the append-only catalogue of accepted Decision Records (the design "why", promoted at merge — see [Decision Records](#decision-records-design-why)).
 3. `.specify/slices/archive/` holds finalized changes, including merged and dropped changes.
 
 The human workflow is:
@@ -47,7 +47,15 @@ $DESIGN_PATH      = $SLICE_DIR/design.md
 $PROPOSAL_PATH    = $SLICE_DIR/proposal.md
 $TASKS_PATH       = $SLICE_DIR/tasks.md
 $BASELINE_SPECS   = $PROJECT_DIR/.specify/specs
+$DECISIONS_DIR    = $SLICE_DIR/decisions          # optional, slice-authored
+$BASELINE_DECISIONS = $PROJECT_DIR/.specify/decisions
 ```
+
+## Decision Records (Design "Why")
+
+A slice may author zero or more **Decision Records** at `$DECISIONS_DIR/<slug>.md` — the durable "why" of a design choice plus the alternatives it rejected. Each is a YAML front-matter header (the agent authors `slug` and `status: accepted | rejected`) plus a Nygard body with `## Context` / `## Decision` / `## Consequences`.
+
+`/spec:merge` folds them into the baseline the same way it folds spec deltas: each record is promoted by opaque whole-file add into `$BASELINE_DECISIONS/DEC-NNNN-<slug>.md`, with the durable project-global `DEC-NNNN` id assigned by the CLI (never reused). A newer record's `supersedes:` flips its named targets to `status: superseded`. The catalogue is append-only and stores the *why* only — design *state* (domain models, API shapes) stays in `design.md` and the code. Decision Records are opt-in; most slices author none. Accepted decisions also project into plan-time routing identity as a third axis beside the project's behavioural surface and recent activity.
 
 ## Spec Files (Behavioral "What")
 

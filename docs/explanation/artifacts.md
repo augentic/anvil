@@ -108,14 +108,20 @@ The task list is an implementation checklist. Each task is a checkbox (`- [ ]`) 
 
 Tasks describe sequencing and checkpoints. They do not introduce new requirements -- those belong in specs.
 
+### Decision Records
+
+A slice may author zero or more **Decision Records** -- the durable *why* behind a design choice plus the alternatives it rejected. Each is a YAML front-matter header plus a Nygard-shaped Markdown body (`## Context` / `## Decision` / `## Consequences`) at `.specify/slices/<name>/decisions/<slug>.md`. The slice author writes `slug` and `status` (`accepted` / `rejected`) only; `/spec:merge` promotes each record into the append-only baseline catalogue at `.specify/decisions/DEC-NNNN-<slug>.md`, assigning the durable project-global `DEC-NNNN` id.
+
+Decision Records store the *why*, never design *state*: domain models and API shapes stay in `design.md` and the code. Unlike `design.md` (a per-slice artifact archived with its slice), accepted decisions accumulate into a reviewable, diffable baseline -- the design counterpart to what `.specify/specs/` is for behaviour. They are opt-in; a slice that takes no notable decision authors none. See the [Decision Records section of the artifact-writing conventions](../../plugins/spec/references/artifact-conventions.md) for the authored format.
+
 ## Artifact lifecycle
 
 Artifacts move through three locations:
 
 1. **Working slice** -- `.specify/slices/<name>/` holds the active slice and its artifacts.
-2. **Baseline** -- `.specify/specs/` holds the merged specs that represent the current known state of the system.
+2. **Baseline** -- `.specify/specs/` holds the merged specs that represent the current known state of the system; `.specify/decisions/` holds the append-only catalogue of accepted (and superseded) Decision Records.
 3. **Archive** -- `.specify/archive/YYYY-MM-DD-<name>/` holds finalized slices (both merged and dropped) for audit.
 
-When you run `/spec:merge`, the slice's spec deltas are applied to the baseline. For Vectis slices, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the slice includes contract artifacts, they are copied into the root-level `contracts/` directory using opaque file replacement -- each file is replaced wholesale rather than delta-merged. The baseline grows over time, giving future slices a foundation to build on.
+When you run `/spec:merge`, the slice's spec deltas are applied to the baseline. For Vectis slices, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the slice includes contract artifacts, they are copied into the root-level `contracts/` directory using opaque file replacement -- each file is replaced wholesale rather than delta-merged. Any Decision Records the slice authored are promoted into `.specify/decisions/` by the same opaque-add strategy -- whole-file add with an engine-assigned `DEC-NNNN` id, never a prose delta-merge -- and a newer record's `supersedes:` flips its named targets to `status: superseded`. The baseline grows over time, giving future slices a foundation to build on. Accepted decisions also sharpen the project's routing identity at plan time (a third axis beside *what the project does* and *what recently changed*).
 
 For full format details, see the [Artifact Format](../reference/artifact-format.md) reference.

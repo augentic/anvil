@@ -30,6 +30,40 @@ Follow the heading conventions in [`spec-format.md`](./spec-format.md) and the b
 
 Follow the design format and decision criteria in [`augentic-specify-usage.md`](../../../docs/explanation/augentic-specify-usage.md) (Design Document section, including "When To Create A Full Design"). The instruction file provides the output template.
 
+## Decision Records (optional)
+
+A slice may author zero or more **Decision Records** — the durable "why" behind a design choice plus the alternatives it rejected. Each is a hand-written file at `.specify/slices/<slice>/decisions/<slug>.md`: a YAML front-matter header plus a Nygard-shaped Markdown body. Author one only when the slice makes a decision worth keeping; the directory is opt-in, and most slices author none.
+
+Authored shape (the agent writes `slug` and `status` only — the engine assigns `id` / `slice` / `date` at merge):
+
+```markdown
+---
+slug: identity-store-postgres
+status: accepted            # accepted | rejected (slice-authored); superseded is engine-only
+supersedes: [DEC-0003]      # optional: a baseline DEC-NNNN, or a slug authored earlier in this slice
+related: [REQ-001, REQ-014] # optional: traceability into this slice's requirements
+---
+# Use PostgreSQL for the identity store
+
+## Context
+Why the decision is needed; constraints and forces.
+
+## Decision
+What was chosen.
+
+## Consequences
+Trade-offs, follow-ups, and what the rejected alternatives cost us.
+```
+
+Conventions:
+
+- **`slug`** is kebab-case (`^[a-z][a-z0-9-]*$`, ≤ 64 chars) and unique within the slice. It is the only key the agent picks; `specrun slice merge` promotes the record to `.specify/decisions/DEC-NNNN-<slug>.md` and assigns the durable, project-global `DEC-NNNN` id (`max(existing) + 1`, never reused).
+- **Body** must carry the three Nygard headings `## Context`, `## Decision`, `## Consequences`. The H1 (`# …`) is the human title projected into routing identity.
+- **`supersedes:`** flips each named target's status to `superseded` at merge; a target that resolves to neither the baseline nor a sibling record in this slice is a blocking `decision-supersede-orphan`.
+- **Decisions store the *why*, never design *state*.** Domain models, API shapes, and other volatile "how-it-is-now" detail stay in `design.md` and the code — never re-authored into a Decision Record.
+
+`specrun slice validate` gates record shape at refine (`decision-record-schema`, `decision-record-section-missing`, `decision-slug-grammar`, `decision-slug-collision`, `decision-supersede-orphan`); `specrun slice merge` re-checks supersede targets against the live baseline and promotes.
+
 ## Task format conventions
 
 Follow the task format and guidelines in [`augentic-specify-usage.md`](../../../docs/explanation/augentic-specify-usage.md) (Tasks Document section). The instruction file provides the available-skills table per adapter. The build phase parses checkbox format to track progress.
