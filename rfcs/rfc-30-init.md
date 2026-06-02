@@ -46,7 +46,7 @@ The migration concern also changes a standing policy. Instead of treating every 
 | **D4 ProjectNeedsMigration error** | `ProjectConfig::load` rejects a project whose `specify_version` major is older than the running binary. | Add `Error::ProjectNeedsMigration { from, to }` (plus its `variant_str()` and optional `hint()` arms); add an `Exit::MigrationRequired` variant returning `4` from `Exit::code()` and wire it through `Exit::from(&Error)`; update DECISIONS.md exit-code table. |
 | **D5 Init re-entry semantics** | `specrun init --upgrade` rewrites `specify_version` and re-scaffolds preservation-safe files only. | Add `--upgrade` flag to `init` clap surface; `crates/workflow/src/init/regular.rs` and `init/hub.rs` route through the same preservation rules as the first-run case. |
 | **D6 Init skill expansion** | `/spec:init` runbook adds three probe steps (CLI version, plugin cache, artifact major) before existing step 2. | Update `plugins/spec/skills/init/SKILL.md` Critical Path and Guardrails; add `references/init-runbook.md` sections 1b, 1c, and 2a. |
-| **D7 Bootstrap journal events** | Every CLI-owned bootstrap action emits a journal event with kebab-case discriminant. | Add `cli-upgraded`, `plugins-refreshed`, `migration-applied`, and `migration-skipped` variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`. |
+| **D7 Bootstrap journal events** | Every CLI-owned bootstrap action emits a journal event under a dotted `<noun>.<verb>` discriminant, matching the dominant `EventKind` taxonomy (`slice.build.started`, `plan.transition.approved`, …). | Add `cli.upgraded`, `plugins.refreshed`, `migration.applied`, and `migration.skipped` variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`. |
 
 ## Operator surface
 
@@ -106,7 +106,7 @@ specrun upgrade [--channel cargo|brew|binary|auto] [--yes] [--format json]
 
 | Channel | Action |
 | --- | --- |
-| `cargo` | `cargo install --git https://github.com/augentic/specify-cli` (tag pinned to the resolved latest release when GitHub is reachable; HEAD otherwise with a warning). |
+| `cargo` | `cargo install --git https://github.com/augentic/specify-cli --tag vX.Y.Z`, pinned to the resolved latest release when GitHub is reachable; falls back to plain `--git` (HEAD) with a warning and a journal note when the latest tag cannot be resolved. |
 | `brew` | `brew upgrade augentic/tap/specrun`. |
 | `binary` | Download the latest release archive for the current platform, verify the checksum sidecar, and replace the binary atomically. |
 
@@ -117,7 +117,7 @@ Both `specrun upgrade` (mandatory) and `/spec:init` (optional probe) call the sa
 ### Journal
 
 ```text
-cli-upgraded    { from: "0.42.1", to: "0.43.0", channel: "brew" }
+cli.upgraded    { from: "0.42.1", to: "0.43.0", channel: "brew" }
 ```
 
 `from` is the version observed before the upgrade. The new binary writes the event.
@@ -126,16 +126,19 @@ cli-upgraded    { from: "0.42.1", to: "0.43.0", channel: "brew" }
 
 ### Layout
 
-Cursor's plugin cache lives under `$CURSOR_HOME/plugins/cache/<name>/<plugin>/<sha>/`, where `<name>` is the marketplace's top-level `name` field (e.g. `augentic`). `$CURSOR_HOME` defaults to `~/.cursor` and is overridable. Each plugin directory carries the marketplace-resolved git sha as its leaf segment. `marketplace.json` declares the top-level `name`, the expected `plugins[]` (each with a `name` and a `source` relative to `pluginRoot`), and the `pluginRoot` they live under. The marketplace file declares no per-plugin shas — Cursor's marketplace machinery resolves those from each plugin's git `source`.
+Cursor's plugin cache lives under `$CURSOR_HOME/plugins/cache/<name>/<plugin>/<sha>/`, where `<name>` is the marketplace's top-level `name` field (e.g. `augentic`). `$CURSOR_HOME` defaults to `~/.cursor` and is overridable. Each plugin directory carries the marketplace-resolved git sha as its leaf segment. `marketplace.json` declares the top-level `name`, a `metadata.pluginRoot` the plugins live under (e.g. `plugins`), and the expected `plugins[]` — each with a `name` and a `source`. As the augentic marketplace ships today, every `source` is a **path relative to `pluginRoot`** (`spec`, `client`, `capture`), so the plugin sources are same-repo directories rather than standalone git URLs. The marketplace file declares no per-plugin shas — Cursor's marketplace machinery resolves those from the plugin's backing checkout.
 
 ### Expected-sha resolution
 
-Because `marketplace.json` carries no shas, `doctor` resolves the *expected* sha from the marketplace's backing git checkout:
+Because `marketplace.json` carries no shas, `doctor` resolves the *expected* sha from the marketplace's backing git checkout. For relative-path `source`s the plugin tree lives inside the marketplace repo, so all declared plugins share one HEAD:
 
-- When the resolved marketplace path lives inside a git worktree (the common case — the augentic marketplace ships in this repo), the expected sha is `git -C <marketplace-repo> rev-parse HEAD`. Every same-repo plugin shares that HEAD; out-of-repo `source` URLs resolve via `git ls-remote <source>` against the declared ref.
+- When the resolved marketplace path lives inside a git worktree (the only shape the augentic marketplace ships today — `marketplace.json` lives in this repo and every `source` is a same-repo directory), the expected sha is `git -C <marketplace-repo> rev-parse HEAD`, shared by every plugin.
+- A future absolute-URL `source` (a plugin hosted outside the marketplace repo) resolves via `git ls-remote <source>` against the declared ref. No such `source` exists today; the branch is specified now so the resolver is closed, but it has no live input until an out-of-repo plugin ships.
 - When the marketplace is not inside a git checkout and no `source` ref resolves, `expected-sha` is reported as `null` and the plugin's `status` collapses to `present` / `missing` only. This degradation is a finding, not an error.
 
 `doctor` never invents an expected sha and never claims drift it cannot prove.
+
+> **Assumption to validate in Wave D.** The above equates the cache-leaf `<sha>` segment with the marketplace repo's `HEAD`. The cache *layout* (`…/<name>/<plugin>/<sha>/`) is confirmed against a live install, but the precise rule Cursor uses to derive that leaf sha is Cursor-owned and not contractually guaranteed here. Wave D must confirm the derivation against a real Cursor cache before asserting `drifted`; the `expected-sha: null` → `present` fallback is the safety net if the derivation cannot be reproduced, so a wrong guess degrades to "can't prove drift" rather than a false `drifted` finding.
 
 ### `specrun plugins doctor`
 
@@ -172,7 +175,7 @@ Read-only diagnostic. For each plugin declared in `.cursor-plugin/marketplace.js
 Confirmed cache invalidation. After `--yes` or interactive confirmation:
 
 1. Delete `$CURSOR_HOME/plugins/cache/<name>/` for the marketplace's top-level `name`.
-2. Emit `plugins-refreshed { deleted-paths: [...] }`.
+2. Emit `plugins.refreshed { deleted-paths: [...] }`.
 3. Print: `Plugin cache cleared. Restart Cursor to repopulate from the marketplace.`
 4. Exit `0`.
 
@@ -239,13 +242,13 @@ pub trait Migrator {
 
 ### Atomicity
 
-Migrations write to `.specify/.migrate/<kind>/staging/` and rename into place once every staged change validates. Partial failures leave the project untouched and emit `migration-skipped { reason: "<diagnostic>" }`.
+Migrations write to `.specify/.migrate/<kind>/staging/` and rename into place once every staged change validates. Partial failures leave the project untouched and emit `migration.skipped { reason: "<diagnostic>" }`.
 
 ### Journal
 
 ```text
-migration-applied { kind: "v1-to-v2", files-rewritten: 12, files-moved: 5 }
-migration-skipped { kind: "v1-to-v2", reason: "staged-validation-failed" }
+migration.applied { kind: "v1-to-v2", files-rewritten: 12, files-moved: 5 }
+migration.skipped { kind: "v1-to-v2", reason: "staged-validation-failed" }
 ```
 
 ## ProjectNeedsMigration error and exit code (D4)
@@ -357,16 +360,16 @@ Add a `migrated` template alongside `greenfield`, `brownfield`, and `hub` in `pl
 
 ## Bootstrap journal events (D7)
 
-Add four kebab-case variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`:
+Add four variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`:
 
 | Wire id | Rust variant | Payload |
 | --- | --- | --- |
-| `cli-upgraded` | `CliUpgraded` | `{ from: String, to: String, channel: String }` |
-| `plugins-refreshed` | `PluginsRefreshed` | `{ deleted-paths: Vec<String>, marketplace: String }` |
-| `migration-applied` | `MigrationApplied` | `{ kind: String, files-rewritten: usize, files-moved: usize }` |
-| `migration-skipped` | `MigrationSkipped` | `{ kind: String, reason: String }` |
+| `cli.upgraded` | `CliUpgraded` | `{ from: String, to: String, channel: String }` |
+| `plugins.refreshed` | `PluginsRefreshed` | `{ deleted-paths: Vec<String>, marketplace: String }` |
+| `migration.applied` | `MigrationApplied` | `{ kind: String, files-rewritten: usize, files-moved: usize }` |
+| `migration.skipped` | `MigrationSkipped` | `{ kind: String, reason: String }` |
 
-Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/main/AGENTS.md), wire ids stay kebab-case and Rust variants stay `snake_case` joined by `#[serde(rename)]`.
+The wire ids use the dominant dotted `<noun>.<verb>` namespace shared by every other lifecycle event (`slice.build.started`, `plan.transition.approved`, `slice.archive.created`, …), **not** the lone flat `lint-completed` form. Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/main/AGENTS.md), the dotted wire id and the `snake_case` Rust variant are joined by `#[serde(rename)]`, and the per-variant payload fields project through `rename_all = "kebab-case"` (so `deleted-paths`, `files-rewritten`, `files-moved` stay kebab-case on the wire).
 
 ## Implementation Plan
 
@@ -383,7 +386,7 @@ Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/m
 1. Add `crates/workflow/src/migrate.rs` with `MigrationKind`, `Migrator`, `MigrationPlan`, `MigrationReport`.
 2. Add `src/runtime/commands/migrate.rs` with `--from`, `--to`, `--dry-run`, `--yes`, and `--format` flags.
 3. Implement `V1ToV2`; check in golden fixtures under `tests/migrate/v1-to-v2/{before,after}/`.
-4. Add `migration-applied` and `migration-skipped` journal events.
+4. Add `migration.applied` and `migration.skipped` journal events.
 5. Add `specrun init --check-migration` (read-only probe used by the skill).
 
 ### Wave C — CLI upgrade verb
@@ -391,13 +394,13 @@ Per the [RFC-19 journal contract](https://github.com/augentic/specify-cli/blob/m
 1. Add `crates/workflow/src/upgrade.rs` with `InstallChannel::detect` and per-channel upgrade strategy.
 2. Add `src/runtime/commands/upgrade.rs` and `--channel`, `--yes`, `--format`, `--dry-run` flags.
 3. Add the latest-version probe (`gh release view` first, `api.github.com` fallback).
-4. Add `cli-upgraded` journal event.
+4. Add `cli.upgraded` journal event.
 
 ### Wave D — Plugin cache verbs
 
 1. Add `crates/workflow/src/plugins.rs` with marketplace discovery and cache scanning.
 2. Add `src/runtime/commands/plugins.rs` with `doctor` and `refresh` subcommands.
-3. Add `plugins-refreshed` journal event.
+3. Add `plugins.refreshed` journal event.
 4. Add cross-platform `$CURSOR_HOME` detection (default `~/.cursor`, overridable).
 
 ### Wave E — Init flag and skill expansion
@@ -452,13 +455,18 @@ For the CLI: `specrun init --upgrade` is the explicit re-entry flag; `specrun in
 
 ## Open Questions
 
-1. Should `specrun upgrade` for the `cargo` channel pin the latest release tag (`cargo install --git ... --tag vX.Y.Z`) or always track HEAD? Current preference: pin to latest release when reachable; fall back to HEAD with a journal note.
-2. Should `specrun plugins doctor` warn about `extra` cache entries? Current preference: report them but exit `0`; cleanup is a `refresh` concern.
-3. Should `specrun migrate` support partial migrations (`--only <kind>`)? Current preference: no for v1 — migrators compose to span majors but never run halfway.
-4. Should the `migrated` init output template include a diff summary, or only the structured `MigrationReport`? Current preference: structured summary; full diff stays in the journal.
-5. Should `specrun init --check-migration` be its own subcommand (e.g. `specrun migrate plan`) instead of a flag on `init`? Current preference: keep it on `init` because the skill is its only caller.
-6. Where does CI fit? `cli-upgraded`, `plugins-refreshed`, and `migration-applied` are useful telemetry but require a user identity boundary. Defer to [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events).
-7. Should `Error::ProjectNeedsMigration` carry the migration plan in its payload so a single `--format json` round-trip can drive the agent prompt? Current preference: no — keep the error narrow; the skill calls `--check-migration` to fetch the plan.
+The two surface-affecting questions are now **locked** so Waves C and E can build against a fixed wire and skill surface; both resolutions are normative in the sections cited:
+
+- **`cargo`-channel pin (resolved).** `specrun upgrade` pins the latest release tag when GitHub is reachable (`cargo install --git … --tag vX.Y.Z`) and falls back to HEAD with a journal note otherwise. Normative in the [CLI upgrade verb (D1) "Upgrade actions"](#cli-upgrade-verb-d1) table.
+- **`--check-migration` shape (resolved).** The migration probe stays a flag on `init` (`specrun init --check-migration`), not a `specrun migrate plan` subcommand, because the `/spec:init` skill is its only caller. Normative in [Init skill expansion (D6)](#init-skill-expansion-d6) and the [Operator surface](#operator-surface).
+
+These remain genuinely open and are non-blocking — each has a default and none changes a committed wire or skill surface:
+
+1. Should `specrun plugins doctor` warn about `extra` cache entries? Current preference: report them but exit `0`; cleanup is a `refresh` concern.
+2. Should `specrun migrate` support partial migrations (`--only <kind>`)? Current preference: no for v1 — migrators compose to span majors but never run halfway.
+3. Should the `migrated` init output template include a diff summary, or only the structured `MigrationReport`? Current preference: structured summary; full diff stays in the journal.
+4. Where does CI fit? `cli.upgraded`, `plugins.refreshed`, and `migration.applied` are useful telemetry but require a user identity boundary. Defer to [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events).
+5. Should `Error::ProjectNeedsMigration` carry the migration plan in its payload so a single `--format json` round-trip can drive the agent prompt? Current preference: no — keep the error narrow; the skill calls `--check-migration` to fetch the plan.
 
 ## References
 
