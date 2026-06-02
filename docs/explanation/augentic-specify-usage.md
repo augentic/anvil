@@ -66,6 +66,7 @@ A slice may author **Decision Records** at `$DECISIONS_DIR/<slug>.md` for the du
 <div class="see-also">
 <strong>See also</strong>
 
+- [From sources to slices](reconciliation.md) — how leads become slices and evidence becomes a spec, end to end
 - [Artifacts in depth](artifacts.md) — conceptual overview of every artifact
 - [Artifact format](../reference/artifact-format.md) — definitive structure and delta syntax
 - [Anatomy of an adapter](adapter-anatomy.md) — how source and target adapters compose with synthesis

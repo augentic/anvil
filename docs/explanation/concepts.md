@@ -154,7 +154,7 @@ You pick the target at scaffolding time (`/spec:init <target>`). You bind source
 
 When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
 
-Core synthesis reconciles `Evidence[]` into the slice's per-unit `specs/<unit>/spec.md`. Every requirement header carries:
+Core synthesis reconciles `Evidence[]` into the slice's per-unit `specs/<unit>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 
 ```markdown
 ID: REQ-001
@@ -178,6 +178,7 @@ Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) run one p
 <div class="see-also">
 <strong>See also</strong>
 
+- [From sources to slices](reconciliation.md) — the two reconciliation moments (leads → slices at plan time, evidence → spec at slice time) end to end
 - [Anatomy of an adapter](adapter-anatomy.md) — how source and target adapters compose with core synthesis
 - [The layered stack](layered-stack.md) — the architectural framing
 - [Quick reference card](../reference/quick-reference.md) — every verb at a glance

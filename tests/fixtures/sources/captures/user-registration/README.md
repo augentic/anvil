@@ -12,7 +12,7 @@ inputs/
 expected/
   discovery.md            # survey output (one lead, `runtime` source key)
   evidence.yaml           # extract output (two `kind: example` claims, alphabetical)
-  provenance.yaml             # sample `specrun slice provenance` projection (two REQ-* / single-source resolutions)
+  provenance.yaml         # projection golden ONLY (sample `specrun slice provenance` output; NOT a workflow artifact and never written to a real slice tree)
 ```
 
 ## Bindings assumed by the fixture

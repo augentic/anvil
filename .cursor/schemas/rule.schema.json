@@ -105,7 +105,7 @@
         "hybrid"
       ],
       "default": "model-assisted",
-      "description": "How this rule is expected to be reviewed. The review runner decides execution; this field only classifies the rule."
+      "description": "How this rule is expected to be linted. The lint runner decides execution; this field only classifies the rule."
     },
     "deterministic_hints": {
       "type": "array",
@@ -122,21 +122,21 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": [
-              "path-pattern",
-              "regex",
-              "schema",
-              "tool",
-              "unique",
-              "reference-resolves",
-              "set-coverage",
-              "cardinality",
-              "constant-eq",
-              "set-eq",
-              "content-digest-eq",
-              "namespace-owner"
-            ],
-            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specrun lint` hint interpreter; no kind is reserved. This editor mirror shape-validates the value; execution semantics live in the canonical CLI schema and interpreter."
+            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specrun lint` hint interpreter, which carries one `eval/<kind>.rs` interpreter module per `const`; no kind is reserved. Adding a new kind requires landing its interpreter in the same change.",
+            "oneOf": [
+              { "const": "path-pattern" },
+              { "const": "regex" },
+              { "const": "schema" },
+              { "const": "tool" },
+              { "const": "unique" },
+              { "const": "reference-resolves" },
+              { "const": "set-coverage" },
+              { "const": "cardinality" },
+              { "const": "constant-eq" },
+              { "const": "set-eq" },
+              { "const": "content-digest-eq" },
+              { "const": "namespace-owner" }
+            ]
           },
           "value": {
             "type": "string",
