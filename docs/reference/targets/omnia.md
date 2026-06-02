@@ -12,7 +12,7 @@
 | Brief | Output | Dependencies |
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<adapter>/spec.md` | proposal |
+| `specs.md` | `specs/<unit>/spec.md` | proposal |
 | `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 

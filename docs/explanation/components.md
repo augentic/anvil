@@ -1,5 +1,8 @@
 # Component Catalog
 
+> [!NOTE]
+> **Who needs this page.** The component catalog is a **Vectis-only**, opt-in feature for projects generating cross-platform UI. If your target is Omnia or Contracts, or you are not factoring shared UI components, you can skip it — projects that never create the file behave exactly as before.
+
 The component catalog at `.specify/design-system/components.yaml` lets operators declare shared UI components that the Vectis target factors into reusable code at build time. It is the third operator-curated design-system file, joining `tokens.yaml` (colours, typography, spacing) and `assets.yaml` (raster, vector, and symbol entries).
 
 ## The problem: cross-slice component drift

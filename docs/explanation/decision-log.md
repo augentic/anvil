@@ -2,6 +2,9 @@
 
 Key architectural decisions in Specify, distilled from the design RFCs. Each entry explains the *why* behind a design choice. For full context, follow the links to the original RFCs.
 
+> [!NOTE]
+> This is a design archive, not an onboarding page. It records *why* Specify is built the way it is, including decisions that have since been **superseded** (kept and labelled so the reasoning is not lost). If you are learning Specify, start with [Core concepts](concepts.md) and [From sources to slices](reconciliation.md) instead. Use the **On this page** sidebar to jump straight to a specific decision; superseded entries name what replaced them.
+
 ## CLI owns correctness, agent owns judgment
 
 **Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specify` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.

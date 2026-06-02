@@ -38,10 +38,10 @@
 - [Workflow, standards, and artifacts](explanation/standards-layer.md)
 - [The layered stack](explanation/layered-stack.md)
 - [Artifacts in depth](explanation/artifacts.md)
+- [From sources to slices](explanation/reconciliation.md)
 - [Anatomy of an adapter](explanation/adapter-anatomy.md)
-- [Using artifacts with Augentic specialists](explanation/augentic-specify-usage.md)
 - [Tool declarations](explanation/tool-declarations.md)
-- [Decision log](explanation/decision-log.md)
+- [Component factoring (Vectis)](explanation/components.md)
 
 ---
 
@@ -75,12 +75,14 @@
   - [CLI output shapes](reference/cli-output-shapes.md)
 - [Plugins](reference/plugins/index.md)
   - [Client](reference/plugins/client.md)
+- [Source adapters](reference/sources/index.md)
 - [Target adapters](reference/targets/index.md)
   - [Omnia](reference/targets/omnia.md)
   - [Vectis](reference/targets/vectis.md)
   - [Contracts](reference/targets/contracts.md)
 - [Registry](reference/registry.md)
 - [Configuration files](reference/configuration.md)
+- [Ignore directives](reference/ignore-directives.md)
 - [Declared tool helper inventory](reference/declared-tool-helper-inventory.md)
 - [Review team protocol](reference/review-team-protocol.md)
 
@@ -89,6 +91,7 @@
 # Appendices
 
 - [Glossary](appendices/glossary.md)
+- [Decision log](explanation/decision-log.md)
 - [Release notes](explanation/release-notes.md)
 
 ---
@@ -96,6 +99,7 @@
 # Contributing
 
 - [Overview](contributing/index.md)
+- [Augentic specialist usage](explanation/augentic-specify-usage.md)
 - [Documentation authoring standards](standards/doc-authoring.md)
 - [Skill authoring standards](standards/skill-authoring.md)
 - [Skill guardrails](standards/skill-guardrails.md)

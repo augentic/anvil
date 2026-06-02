@@ -1,6 +1,9 @@
 # Tool Declarations
 
-Specify tools are WASI components that a project or adapter declares for deterministic helper work. The `specify` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
+> [!NOTE]
+> **Who needs this page.** Tool declarations are an advanced authoring topic for *adapter and project authors* who ship a deterministic helper alongside their briefs. If you are running changes, you can skip it — the first-party tools (the contract validator and the Vectis tools) are already declared for you. Read on only when you are packaging your own helper.
+
+Specify tools are WASI components that a project or adapter declares for deterministic helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
 
 ## Declaration sites
 
