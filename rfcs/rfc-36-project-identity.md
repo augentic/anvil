@@ -1,6 +1,6 @@
 # RFC-36: Project Identity
 
-> Status: Draft — Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time `projects[]` topology) and [RFC-29c](rfc-29c-synthesis.md) (synthesis authors `design.md`; the baseline delta-merge model) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), the [roadmap principle "Treat `registry.yaml` as a projection"](roadmap.md#principles), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
+> Status: **Shipped** — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Registry projection and topology cache (RFC-36)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#registry-projection-and-topology-cache-rfc-36) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time `projects[]` topology) and [RFC-29c](rfc-29c-synthesis.md) (synthesis authors `design.md`; the baseline delta-merge model) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
 
 ## Problem
 

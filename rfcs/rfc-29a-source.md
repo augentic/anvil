@@ -1,6 +1,6 @@
 # RFC-29a: Executable Source Operations
 
-> Status: **Shipped** (M1) — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Source operations (D1)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1), §"Adapter execution mode (D9)", and §"`specrun journal emit` — guarded front door (D12)" plus [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Milestone **M1** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-35](done/rfc-35-synthesis-determinism.md) — Unblocks: RM-05 durable proof; the M2a inputs ([RFC-29b M2a, shipped](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2))
+> Status: **Shipped** (M1) — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Source operations (D1)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1), §"Adapter execution mode (D9)", and §"`specrun journal emit` — guarded front door (D12)" plus [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Milestone **M1** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-35](done/rfc-35-synthesis-determinism.md) — Unblocks: RM-05 durable proof; the M2a inputs ([RFC-29b M2a, shipped](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2))
 
 This is the first independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). It makes source-adapter `survey` and `extract` CLI-owned operations, adds the closed adapter `execution` mode, and adds the guarded journal emitter. **Shipped:** `specrun source survey` / `extract` make `/spec:refine` extraction CLI-owned and give acceptance a durable seam. This document is retained for historical reference; if it disagrees with `DECISIONS.md` or the workflow contract, trust those.
 
@@ -177,7 +177,7 @@ The canonical closed tables live in [RFC-29 §"Shared wire contracts"](rfc-29-fa
 
 ## Implementation sequence
 
-**Historical — M1 shipped.** The stepped sequence below records how the milestone landed. For current wire contracts, see [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1) and the companion [rfc-29a-implementation-plan.md](rfc-29a-implementation-plan.md) / [rfc-29a-preflight.md](rfc-29a-preflight.md) archives.
+**Historical — M1 shipped.** The stepped sequence below records how the milestone landed. For current wire contracts, see [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1).
 
 
 | Step | Work                                                                                                                   | Repo(s)     |

@@ -1,6 +1,6 @@
 # RFC-38: Completing Lead Reconciliation
 
-> Status: Draft — Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time lead reconciliation, the `proposal.schema.json` envelope) and [RFC-29c](rfc-29c-synthesis.md) (slice synthesis, the deferred `advisory-context` input) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (implement after RFC-36 lands; this RFC enriches the *lead* side of the same envelope RFC-36 enriched on the *project* side) — Related: the [roadmap principle "Core owns reconciliation"](roadmap.md#principles) and [RFC-29](rfc-29-fan-in-fan-out.md)
+> Status: Draft — Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time lead reconciliation, the `proposal.schema.json` envelope) and [RFC-29c](rfc-29c-synthesis.md) (slice synthesis, the deferred `advisory-context` input) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (shipped; this RFC enriches the *lead* side of the same envelope RFC-36 enriched on the *project* side) — Related: the [roadmap principle "Core owns reconciliation"](roadmap.md#principles) and [RFC-29](rfc-29-fan-in-fan-out.md)
 
 ## Problem
 
@@ -12,7 +12,6 @@ They leave the rest of the flow untouched, and the enrichment is **asymmetric**:
 - **Binding is enriched but not surfaced as signal.** The richer `surface[]` / `decisions[]` axes are presented as raw lists for the agent to eyeball. Nothing computes or surfaces *affinity* between a lead and a project, and nothing flags a lead that contradicts an accepted decision before Gate 1 — RFC-36 names that guard as aspirational agent judgment with no field, finding, or check behind it ([RFC-36 §"Why decisions improve routing"](rfc-36-project-identity.md)).
 - **The baseline `decisions[]` never reaches synthesis.** RFC-36 routes accepted decisions into *topology identity* only. RFC-29's Q2 "amnesiac synthesis" seam — feed prior wording, settled conflicts, and house terminology into the synthesis step as read-only context — stays open, and RFC-29c's `advisory-context` input stays deferred ([RFC-29c §"Synthesis response"](rfc-29c-synthesis.md)). The decision catalogue is the obvious feedstock, left unwired.
 - **Greenfield gets nothing.** `surface[]` / `recent[]` / `decisions[]` are all empty until merges happen, so RFC-36 improves the *N*-th change, not the *first* — the common bootstrap still binds on `description` alone ([RFC-36 §"Greenfield seed"](rfc-36-project-identity.md)).
-- **The integration point has drifted.** [RFC-29b §"Envelope"](rfc-29b-reconciliation.md) and §"Project Binding" still advertise `capabilities[]` / `keywords[]` and link the stale filename `rfc-36-registry-projection.md`, both of which RFC-36 **D36-4** removed.
 
 ## Solution
 
@@ -35,7 +34,7 @@ Every kernel addition is a *hint or a warning*, never a lock: the agent still de
 | **D38-3 Decision-conflict advisory** | When a lead's `topics[]` intersect an accepted decision's `conflicts-with[]` token set, propose surfaces a non-blocking `plan-reconcile-decision-conflict` advisory naming the `(lead, project, DEC-NNNN)` triple, so the agent can flag it in `change.md` before Gate 1 rather than at build. Advisory only — it never aborts propose and never transitions anything. |
 | **D38-4 Decisions reach synthesis** | The D3 synthesis request (RFC-29c) gains the deferred read-only `advisory-context` input, populated deterministically from the bound project's accepted `.specify/decisions/` titles and the relevant baseline `spec.md` requirement titles. This closes [RFC-29 Q2](rfc-29-fan-in-fan-out.md). It is context, not authority: synthesis never treats advisory context as Evidence and the authority enum is unchanged ([RFC-29c §"Authority resolution"](rfc-29c-synthesis.md)). |
 | **D38-5 Greenfield identity seed** | When a project has no merged baseline, `specrun workspace sync` projects a one-line `seed:` derived deterministically from `project.yaml.description` into the lock entry, so the first change binds on a normalised signal rather than raw prose. The seed is dropped from the projection the moment `surface[]` becomes non-empty (auto-sharpen, per RFC-36). |
-| **D38-6 Reconcile drifted prose** | [RFC-29b](rfc-29b-reconciliation.md) §"Envelope" and §"Project Binding" are corrected in this change: drop the `capabilities[]` / `keywords[]` references (removed by RFC-36 **D36-4**), repoint the stale `rfc-36-registry-projection.md` link to `rfc-36-project-identity.md`, and add `surface[]` / `recent[]` / `decisions[]` to the documented `projects[]` shape. Errata, shipped alongside the schema work that makes it true. |
+| **D38-6 RFC-29b errata (shipped)** | [RFC-29b](rfc-29b-reconciliation.md) §"Envelope" and §"Project Binding" document `surface[]` / `recent[]` / `decisions[]` on `projects[]` and no longer reference the retired `capabilities[]` / `keywords[]` facets or the old `rfc-36-registry-projection.md` filename. |
 
 ## Lead-side signal (D38-1)
 
@@ -102,7 +101,6 @@ The workflow contract spans both repos (parent-repo AGENTS §"Note to the implem
 **`augentic/specify` (this repo):**
 - `/spec:plan` skill: document reading `clusters[]` / `affinity` as hints and rendering any `plan-reconcile-decision-conflict` advisory into `change.md` for Gate 1.
 - `/spec:refine` skill: document that synthesis may read `advisory-context` as read-only prior art, never as Evidence.
-- **RFC-29b errata (D38-6):** correct §"Envelope" and §"Project Binding" — drop `capabilities[]` / `keywords[]`, repoint `rfc-36-registry-projection.md` → `rfc-36-project-identity.md`, document `surface[]` / `recent[]` / `decisions[]`.
 - `docs/explanation/`: note the lead-side signal and the synthesis advisory-context in the reconciliation narrative; add a decision-log entry (advisory-not-lock clustering; deterministic affinity over ranking; decisions-as-synthesis-context).
 
 ## Out of scope

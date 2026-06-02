@@ -1,6 +1,6 @@
 # RFC-29: Fan-In/Fan-Out Code Contract
 
-> Status: Draft (umbrella) — Depends: [RFC-25](../done/rfc-25-workflow.md), [RFC-27](../done/rfc-27-synthesis.md), [RFC-28](../done/rfc-28-standards-contract.md) — Enables: provable multi-source fan-in and plan-level multi-slice fan-out (D5)
+> Status: Shipped (umbrella) — M1–M3 landed; durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md); D7 acceptance proof tracked under [RM-05](roadmap.md#rm-05-multi-repo-acceptance-suite) — Depends: [RFC-35](done/rfc-35-synthesis-determinism.md) (determinism stepping stone) — Enables: provable multi-source fan-in and plan-level multi-slice fan-out (D5)
 
 This document is the **umbrella** for the RFC-29 family. It owns the abstract, the decision catalogue, the operator surface, and — most importantly — the **shared wire contracts** (the schemas, the closed `EventKind` taxonomy, and the closed validation-finding / `Error::Validation` code vocabulary) that the four implementation milestones must keep stable across their boundaries. The detailed mechanics of each decision live in the sub-RFC that ships it:
 
@@ -162,7 +162,7 @@ RFC-29 adds **no new exit code**. `Exit::from(&Error)` in `src/runtime/output.rs
 
 The kebab `code` strings below are a **closed, documented vocabulary**, not new `Error` enum variants. The `Error` enum stays small (`[crates/error/src/error.rs](https://github.com/augentic/specify-cli/blob/main/crates/error/src/error.rs)`); a condition is promoted to its own typed variant only if it needs a distinct exit code or structured payload (none here do). RFC-29 conditions reach exit 2 through two existing surfaces:
 
-- `**Diagnostic` findings** (the [RFC-28](../done/rfc-28-standards-contract.md) substrate) — a stable `code` plus `severity`, `kind`, message, and location, emitted as a `DiagnosticReport` by the validate surface (`specrun slice validate`). A report carrying any blocking finding gates the transition at exit 2.
+- `**Diagnostic` findings** (the RFC-28 substrate — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)) — a stable `code` plus `severity`, `kind`, message, and location, emitted as a `DiagnosticReport` by the validate surface (`specrun slice validate`). A report carrying any blocking finding gates the transition at exit 2.
 - `**Error::Validation { code, detail }`** — a single operational abort raised by a command that fails one specific check; `code` is the JSON `error` discriminant skills branch on.
 
 The split is "a *set of findings over an artifact* (`Diagnostic`) vs a *single command abort* (`Error::Validation`)", not a new enum arm per condition. Both are exit 2; both keep a stable `code` that skills branch on and acceptance tests assert.
@@ -273,7 +273,7 @@ RFC-29 is fully implementable without this question being resolved.
 
 ## Relationship to RFC-35
 
-[RFC-35 (synthesis determinism)](rfc-35-synthesis-determinism.md) is the stepping stone that lands first: a set of small, additive, deterministic CLI surfaces — `briefs-dir` on `specrun source resolve` / `target resolve` output, and the determinism scaffolding the agent-driven loop already needs — that RFC-29 then reuses rather than re-invents. RFC-29a's `survey` / `extract` runners locate brief bodies through RFC-35's `briefs-dir` field (D1), and RFC-29c's synthesis kernel reuses the same brief-resolution surface.
+[RFC-35 (synthesis determinism)](done/rfc-35-synthesis-determinism.md) is the stepping stone that lands first: a set of small, additive, deterministic CLI surfaces — `briefs-dir` on `specrun source resolve` / `target resolve` output, and the determinism scaffolding the agent-driven loop already needs — that RFC-29 then reuses rather than re-invents. RFC-29a's `survey` / `extract` runners locate brief bodies through RFC-35's `briefs-dir` field (D1), and RFC-29c's synthesis kernel reuses the same brief-resolution surface.
 
 The one place the two RFCs diverge is `specrun journal emit`. RFC-35 considered a guarded journal-emit verb and **deferred** it: at that stage every workflow event had a deterministic command that owned its own emission, so a general-purpose agent-facing emitter had no caller that a deterministic command could not already serve, and adding one risked a second emission path drifting from the closed taxonomy. RFC-29 changes that calculus — D2/D9/D10's agent-dispatched phases (and agent-driven build/merge) are workflow steps with **no** deterministic command to emit on their behalf — so RFC-29 adds `specrun journal emit` (D12) as a single guarded front door onto the *same* closed `EventKind` taxonomy, adding no event kinds of its own and keeping "one taxonomy, one writer." See [RFC-29a §"Journal emitter (D12)"](rfc-29a-source.md#journal-emitter-d12) for the emitter mechanics.
 
@@ -281,13 +281,13 @@ The one place the two RFCs diverge is `specrun journal emit`. RFC-35 considered 
 
 - RFC-29a: Executable Source Operations — M1, **shipped**; durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#source-operations-d1) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
 - RFC-29b: Plan-Time Lead Reconciliation — M2a, **shipped**; durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
-- [RFC-29c: Slice Synthesis Engine and Typed Model](rfc-29c-synthesis.md) — M2b
-- [RFC-29d: Target Build Envelope and Fan-Out Proof](rfc-29d-target.md) — M3
-- [RFC-25: Workflow](../done/rfc-25-workflow.md)
-- [RFC-27: Synthesis Sharpening](../done/rfc-27-synthesis.md)
-- [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
-- [Core concepts](../../docs/explanation/concepts.md)
-- [Anatomy of an adapter](../../docs/explanation/adapter-anatomy.md)
-- [Claim reconciliation](../../plugins/spec/references/synthesis/claim-reconciliation.md)
-- [Provenance index](../../plugins/spec/references/synthesis/provenance.md)
+- [RFC-29c: Slice Synthesis Engine and Typed Model](rfc-29c-synthesis.md) — M2b, **shipped**
+- [RFC-29d: Target Build Envelope and Fan-Out Proof](rfc-29d-target.md) — M3, **shipped**
+- RFC-25: Workflow (retired milestone doc) — [`docs/standards/workflow.md` in specify-cli](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
+- RFC-27: Synthesis Sharpening (retired milestone doc) — superseded by RFC-29c / [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)
+- RFC-28: Engineering Standards — Codex Contract and Findings (retired milestone doc) — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- [Core concepts](../docs/explanation/concepts.md)
+- [Anatomy of an adapter](../docs/explanation/adapter-anatomy.md)
+- [Claim reconciliation](../plugins/spec/references/synthesis/claim-reconciliation.md)
+- [Provenance index](../plugins/spec/references/synthesis/provenance.md)
 

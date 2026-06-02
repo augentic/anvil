@@ -1,6 +1,6 @@
 # RFC-29d: Target Build Envelope and Fan-Out Proof
 
-> Status: Draft — Milestone **M3** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29c](rfc-29c-synthesis.md) (rendered artifacts), [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (`execution`, [durable spec](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-execution-mode-d9)) — Unblocks: RM-18 hosted execute; the RFC-29 acceptance proof
+> Status: **Shipped** (M3) — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Target build envelope (D6, D9 target side, D7 proof)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#target-build-envelope-d6-d9-target-side-d7-proof) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Milestone **M3** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29c](rfc-29c-synthesis.md) (rendered artifacts), [RFC-29a M1 (shipped)](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (`execution`, [durable spec](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-execution-mode-d9)) — Unblocks: RM-18 hosted execute; the RFC-29 acceptance proof
 
 This is the final independently shippable milestone of [RFC-29](rfc-29-fan-in-fan-out.md). It defines the target build request/report envelopes and the acceptance fixture that proves fan-in twice (Leads and Evidence) and fan-out once (multiple slices from shared source claims).
 

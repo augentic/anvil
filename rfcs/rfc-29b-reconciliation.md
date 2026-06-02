@@ -1,6 +1,6 @@
 # RFC-29b: Plan-Time Lead Reconciliation
 
-> Status: Draft — Milestone **M2a** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (surveyed `discovery.md`) — Unblocks: [RFC-29c](rfc-29c-synthesis.md) plan rows
+> Status: **Shipped** (M2a) — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Lead reconciliation (D2)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Milestone **M2a** of [RFC-29](rfc-29-fan-in-fan-out.md) — Depends: [RFC-29a](rfc-29-fan-in-fan-out.md#sub-rfcs-and-milestone-ordering) (surveyed `discovery.md`) — Unblocks: [RFC-29c](rfc-29c-synthesis.md) plan rows
 
 This milestone closes plan-time fan-in: surveyed `Lead[]` rows from multiple sources become the `plan.yaml.slices[]` rows that `/spec:execute` runs later.
 

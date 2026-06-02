@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md), [RFC-10](../done/rfc-10-skills.md), [RFC-13](../done/rfc-13-extensibility.md)
+> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (retired milestone docs; durable enforcement spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md))
 
 ## Abstract
 
@@ -177,8 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- [RFC-28: Engineering Standards — Codex Contract and Findings](../done/rfc-28-standards-contract.md)
-- [RFC-32: Engineering Standards — Deterministic Enforcement](../done/rfc-32-standards-enforcement.md)
-- [RFC-10: Skills](archive/rfc-10-skills.md)
-- [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
-- [`adapters/targets/omnia/briefs/build/crate.md`](../adapters/targets/omnia/briefs/build/crate.md)
+- RFC-28 (retired) — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- RFC-32 (retired) — [`DECISIONS.md` §Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
+- RFC-10 / RFC-13 (retired milestone docs)
+- [`adapters/targets/omnia/briefs/build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md)
