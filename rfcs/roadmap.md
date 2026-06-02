@@ -26,7 +26,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
 - **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev lint`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and the neutral `Diagnostic` finding shape via [RFC-28](done/rfc-28-standards-contract.md); [RFC-32](done/rfc-32-standards-enforcement.md) adds the consumer scanner substrate; [RFC-34](rfc-34-rules-convergence.md) adds declarative `CORE-*` convergence on the framework side. Surfaces converge on the data type, fingerprint, validator, renderer, and blocking predicate — never on gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
-- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [RFC-29](rfc-29-fan-in-fan-out.md).
+- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [From sources to slices](../docs/explanation/reconciliation.md) and [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
 
 ## Sequenced Roadmap
 
@@ -36,8 +36,8 @@ Items are identified as `RM-NN`. **Near Term** order reflects deliberate priorit
 
 After the standards layer lands, two tracks run in parallel:
 
-1. **Reconciliation contract (RM-06)** — the strategic bet. Fan-in/fan-out is Specify's architectural promise; load-bearing synthesis steps are still agent discipline today. [RFC-29](rfc-29-fan-in-fan-out.md) moves them into CLI-owned contracts so the loop becomes provable and eventually automatable. Start with D1 (executable `specrun source survey` / `extract`). [RFC-35](rfc-35-synthesis-determinism.md) is the sequenced stepping stone ahead of it (deterministic `provenance.yaml` / journal verbs that RFC-29 D3 reuses).
-2. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it on the current agent-driven loop while RM-06 lands; RFC-29 is what makes that proof durable.
+1. **Reconciliation contract (RM-06)** — **shipped.** Fan-in/fan-out is CLI-owned end-to-end: `specrun source survey` / `extract`, `specrun plan propose`, `specrun slice synthesize`, the typed `model.yaml`, `specrun slice build`, and the fan-in/fan-out acceptance fixture. Operator narrative: [From sources to slices](../docs/explanation/reconciliation.md). Implementation contract: [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Agent authoring: [`plugins/spec/references/synthesis/`](../plugins/spec/references/synthesis/).
+2. **Acceptance proof (RM-05)** — validation debt. The 2.0.0 cross-repo queue is the release gate; scenario #1 is a blocker. Run it against the live 2.0 binary now that RM-06's deterministic seams are in place.
 
 **Deferred until trigger conditions or prerequisites:**
 
@@ -53,18 +53,19 @@ After the standards layer lands, two tracks run in parallel:
 #### RM-06: Fan-in/fan-out workflow contract
 
 **Goal:** Turn Specify's fan-in/fan-out promise into a CLI-owned end-to-end contract so reconciliation is a framework invariant, not agent discipline.
-**Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
-**Source of truth:** [RFC-29](rfc-29-fan-in-fan-out.md).
-**Why now:** Vocabulary and lifecycle guards exist, but `survey`, `extract`, plan-time lead reconciliation, slice synthesis, the typed slice model, and the target build envelope are still skill-run instructions. Until the CLI owns those steps, acceptance stays manual, hosted execution (RM-18) has nothing durable to resume, and multi-repo contract-first flows lack a machine contract.
-**Stepping stone:** [RFC-35](rfc-35-synthesis-determinism.md) lands first — small, additive deterministic surfaces (`specrun journal emit`, `briefs_dir` on resolve output) that unblock the current agent-driven loop and that RFC-29 D3 then reuses as the journal/brief surfaces (see RFC-29 §"Relationship to RFC-35").
-**First slice:** D1 — executable source operations with sandbox, cache fingerprint, schema validation, and journal events:
+**Status:** Shipped — source operations, plan-time lead reconciliation, slice synthesis with inline-provenance `model.yaml`, per-slice target build envelopes, project facets via `topology.lock`, and the `tests/fan_in_fan_out.rs` acceptance fixture.
+**Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md), [RFC-35](done/rfc-35-synthesis-determinism.md).
+**Source of truth:** [From sources to slices](../docs/explanation/reconciliation.md) (operator narrative); [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) (implementation contract); [`plugins/spec/references/synthesis/`](../plugins/spec/references/synthesis/) (agent authoring).
+**Surface:**
 
 ```bash
 specrun source survey <source> [--format json]
 specrun source extract <source> <lead> --slice <name> [--format json]
+specrun plan propose --dry-run | --from <response.json>
+specrun slice synthesize <slice> --dry-run | --from <response.json>
+specrun slice build <slice> [--phase prepare|finalize]
 ```
 
-**Follow-on slices (same RFC, sequenced):** D2 `specrun plan propose --dry-run` (flat lead catalog envelope; target binding stays agent-driven); D3 `specrun slice synthesize` (projection kernel + agent synthesis envelope); D4 typed slice model (`.specify/slices/<slice>/model.yaml`); D5 per-slice fan-out (one slice per target, joined by `depends-on` — no `outputs[]`); D6 target build envelope; D7 acceptance fixture proving `N sources → one slice model → 1 target per slice`, with cross-target fan-out across multiple slices.
 **Unblocks:** RM-05 durable proof path, RM-11 compatibility gates, RM-14 meaningful workflow telemetry, RM-18 hosted execute.
 
 #### RM-05: Multi-repo acceptance suite
@@ -73,7 +74,7 @@ specrun source extract <source> <lead> --slice <name> [--format json]
 **Status:** Partial — `tests/cross-repo/runs/2.0.0/` defines 20 scenarios including extract failure (`05f`), invalid evidence (`05g`), source sandbox denial (`05j`), execute build failure (`09`), step-through breakout (`08`), workspace breakout (`11`), and dual-driving refusal (`12`). **All run-summaries are still pending**; scenario #1 (pure intent, N=1) is the release blocker per the queue README.
 **Immediate task:** Run scenario #1 against the live 2.0 binary and fill the run-summary. Halt on failure; triage before continuing.
 **Remaining fixture gap:** A dedicated stale-workspace recovery scenario (not yet stubbed).
-**Relationship to RM-06:** Manual `cursor-agent` sweeps remain the source of truth until RFC-29 D1–D3 land; RM-06 is what makes synthesis proof automatable. See [docs/contributing/acceptance.md](../docs/contributing/acceptance.md).
+**Relationship to RM-06:** RM-06's CLI-owned seams make synthesis and build proof automatable; the cross-repo queue still exercises LLM-emitted prose manually. See [docs/contributing/acceptance.md](../docs/contributing/acceptance.md).
 
 ---
 
@@ -212,7 +213,6 @@ specify execute resume <run-id>
 
 ## Open Questions
 
-- What is the minimum RFC-29 D1 surface (`specrun source survey` / `extract`) before `/spec:refine` delegates extraction to the CLI?
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?

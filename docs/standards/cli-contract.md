@@ -6,7 +6,7 @@ The CLI itself is built in the sibling [augentic/specify-cli](https://github.com
 
 ## Rule: all deterministic operations live in the CLI
 
-The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries. Everything else runs through `specify`.
+The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries. Everything else runs through `specify`.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb in the CLI repo and have the skill call it. The wrong fix is to make the skill smarter. The same rule is mirrored in the CLI repo's `AGENTS.md` under "Skill / CLI responsibility split".
 

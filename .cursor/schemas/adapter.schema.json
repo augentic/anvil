@@ -39,7 +39,7 @@
     "inputs": {
       "type": "array",
       "items": { "$ref": "#/$defs/buildInputDeclaration" },
-      "description": "RFC-29d \u2014 optional adapter-declared build inputs. Target-only: the per-axis `target.schema.json` admits the key while `source.schema.json` rejects it; the shared shape carries the property so the closed key set admits it. Each entry is a path relative to the build request's `inputs.root`, flagged `required`."
+      "description": "Optional adapter-declared build inputs. Target-only: the per-axis `target.schema.json` admits the key while `source.schema.json` rejects it; the shared shape carries the property so the closed key set admits it. Each entry is a path relative to the build request's `inputs.root`, flagged `required`."
     },
     "description": {
       "type": "string",
@@ -54,7 +54,7 @@
     "execution": {
       "type": "string",
       "enum": ["agent", "tool"],
-      "description": "Closed adapter execution mode per RFC-29 D9. `required` is owned by the per-axis `source.schema.json` / `target.schema.json`; the shared shape carries the property so the closed key set admits it."
+      "description": "Closed adapter execution mode (`agent` | `tool`). `required` is owned by the per-axis `source.schema.json` / `target.schema.json`; the shared shape carries the property so the closed key set admits it."
     }
   },
   "$defs": {

@@ -33,9 +33,10 @@ New specs and merged baselines use a flat requirement format:
 ### Requirement: <Behavior Name>
 
 ID: REQ-001
+Sources: [<source-key>, …]
+Status: <agreed|unknown|conflict|divergence>
 
 The system SHALL <behavioral description>.
-Source: <source function or design section>
 
 #### Scenario: <Happy Path>
 
@@ -233,17 +234,7 @@ Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- i
 - Reference specs for what needs to be built, design for how to build it.
 - Each task should be verifiable -- you know when it is done.
 
-### Skill directive tags
-
-Tasks may include a skill directive as an HTML comment. The build phase parses these tags and delegates the task to the named specialist skill:
-
-```markdown
-- [ ] 2.1 Generate the domain crate <!-- skill: omnia:crate-writer -->
-- [ ] 2.2 Generate test suites <!-- skill: omnia:test-writer -->
-- [ ] 2.3 Manual integration step
-```
-
-Tasks without a skill tag are implemented via the adapter's default build instruction.
+Tasks are implemented by the active target adapter's `build` brief (`adapters/targets/<target>/briefs/build.md`), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone specialist skills.
 
 ## Decision Records (design "why")
 

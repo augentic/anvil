@@ -39,7 +39,7 @@ Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one
 <p class="pipeline-caption">Breakouts /spec:refine, /spec:build, /spec:merge share the same skill bodies as /spec:execute.</p>
 </div>
 
-Each skill is an agent-driven orchestrator. It reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
+Each skill is an agent-driven orchestrator. It reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, runs the active target adapter's build brief, and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
 
 The full set of Layer 1 skills:
 

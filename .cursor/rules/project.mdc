@@ -62,9 +62,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /.cursor-plugin/          # Multi-plugin marketplace manifest
 /docs/                    # Extended documentation (explanation, contributing)
 /plugins/
-  ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop)
-  ├── contract/           # Contract authoring/import/verify skills
+  ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/

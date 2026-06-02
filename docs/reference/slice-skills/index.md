@@ -24,7 +24,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 
 Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI. Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/` with shell tools, and never move files to the archive directly.
 
-During `/spec:build`, tasks with skill directive tags (e.g. `<!-- skill: omnia:crate-writer -->`) delegate to named specialist plugin skills. Tasks without tags follow the target adapter's default `build` brief.
+During `/spec:build`, every task is implemented by the active target adapter's `build` brief (`adapters/targets/<target>/briefs/build.md`), which carries the specialist orchestration inline.
 
 ## See also
 

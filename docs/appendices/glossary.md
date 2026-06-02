@@ -157,7 +157,7 @@ The reconciled unit of work behind a slice: the set of leads the agent judges to
 The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.
 
 **Skill**
-An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/omnia:crate-writer`). Skills delegate deterministic work to the CLI and use judgment for everything else.
+An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/spec:build`). Skills delegate deterministic work to the CLI and use judgment for everything else.
 
 **Slice**
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.

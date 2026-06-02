@@ -7,7 +7,7 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 | Repo          | Size                                                                                                                              | Health                                                                                                                                                                                              |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specify-cli` | ~53k LOC Rust / 355 files. Big crates: `workflow` (19k), `standards` (15.5k), binary `src/` (9.2k), `tool` (3.5k), `model` (2.8k) | Disciplined: typed errors, documented handler shape, `#[expect]` over `#[allow]`, no `TODO/FIXME/HACK`, minimal prod `unwrap`. Debt is structural (megamodules, duplication, mid-flight burn-down). |
-| `specify`     | 499 markdown files, ~42k lines prose + YAML adapters/schemas                                                                      | Content is mostly sound but carries drift from the RFC-29/32/33/35 churn: dead `/omnia:*` references, duplicated explanations, stale counts, a few broken links.                                    |
+| `specify`     | 499 markdown files, ~42k lines prose + YAML adapters/schemas                                                                      | Content is mostly sound but carries drift from recent standards/reconciliation churn: dead `/omnia:*` references, duplicated explanations, stale counts, a few broken links.                                    |
 
 **Where to focus first (highest ROI):**
 1. specify-cli: cache the schema validators + fix the swallowed git fetch (correctness/perf quick wins).
@@ -82,11 +82,11 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 
 3. **Fix spec-path drift.** `docs/how-to/resolve-spec-conflicts.md:19,28` uses `.specify/slices/<name>/spec.md` while everything else uses `specs/<unit>/spec.md`.
 
-4. **Repair broken RFC links.** `rfcs/roadmap.md:39,59` and `rfcs/rfc-29-fan-in-fan-out.md:276` link `rfc-35-synthesis-determinism.md`, which now lives only under `rfcs/done/`.
+4. **Repair broken RFC links.** `rfcs/roadmap.md` links to `rfc-35-synthesis-determinism.md` without the `done/` prefix where applicable.
 
-5. **Sync the one drifting schema.** `.cursor/schemas/rule.schema.json` still uses an open `kebabToken` for artifact categories while the CLI copy moved to a closed `enum`. (All other `.cursor/schemas/*` and `rfcs/rfc-29/schemas/*` match the CLI — good.)
+5. **Sync the one drifting schema.** `.cursor/schemas/rule.schema.json` still uses an open `kebabToken` for artifact categories while the CLI copy moved to a closed `enum`.
 
-6. **Fix stale counts/status.** `docs/standards/skill-authoring.md:119` says "~29 skills" (actual: 10) and its examples cite a retired `/omnia:code-reviewer` pattern. `rfcs/roadmap.md:39` and the RFC-29 umbrella still describe shipped work (D1–D3, M1–M2b) as future and reference a retired `provenance.yaml`. `tests/fixtures/sources/captures/user-registration/README.md:15` documents `expected/provenance.yaml` though provenance is now inline in `model.yaml`.
+6. **Fix stale counts/status.** `docs/standards/skill-authoring.md:119` says "~29 skills" (actual: 10) and its examples cite a retired `/omnia:code-reviewer` pattern. `tests/fixtures/sources/captures/user-registration/README.md:15` documents `expected/provenance.yaml` though provenance is now inline in `model.yaml`.
 
 ### Tier 2 — Consolidation (medium/structural)
 
@@ -107,7 +107,7 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 ## Part C — Cross-cutting & process
 
 - **CI asymmetry.** `specify`'s CI is a single 15-min `specdev lint` job; finishing the lint burn-down (Part A #16) directly speeds it up. `specify-cli` delegates to a shared org workflow — confirm it runs full `cargo make ci` (clippy `-D warnings`, deny, fmt, nextest) on PRs.
-- **Schema is a cross-repo seam.** Workflow schemas live in `specify-cli/schemas` (authoritative), mirrored into `specify/.cursor/schemas` and `rfcs/rfc-29/schemas`. A parity check (Part A #11) should ideally span both repos, since the only current drift (`rule.schema.json`) is exactly here.
+- **Schema is a cross-repo seam.** Workflow schemas live in `specify-cli/schemas` (authoritative), mirrored into `specify/.cursor/schemas`. A parity check (Part A #11) should ideally span both repos, since the only current drift (`rule.schema.json`) is exactly here.
 - **Inline tests inflate "real" LOC** across `workflow`, `standards`, and `model` (35–45% of the largest files). Extracting tests to `tests/` modules (the pattern already used by `archive/tests.rs`, `validate/tests.rs`) improves navigation and makes complexity legible.
 
 ## Suggested sequencing

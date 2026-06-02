@@ -67,9 +67,24 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/kebabToken"
+            "type": "string",
+            "enum": [
+              "code",
+              "tests",
+              "contracts",
+              "specs",
+              "design",
+              "tasks",
+              "skill",
+              "adapter",
+              "brief",
+              "reference",
+              "codex",
+              "rfc",
+              "doc"
+            ]
           },
-          "description": "Lowercase artifact category tokens such as `code`, `tests`, `contracts`, or `specs`."
+          "description": "Closed artifact category tokens. Consumer-side tokens (`code`, `tests`, `contracts`, `specs`, `design`, `tasks`) compose with framework-side tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`, `doc`)."
         },
         "paths": {
           "type": "array",
@@ -200,7 +215,7 @@
   "$defs": {
     "ruleId": {
       "type": "string",
-      "pattern": "^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
+      "pattern": "^(UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
     },
     "adapterRef": {
       "type": "string",

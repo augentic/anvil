@@ -37,7 +37,7 @@ The dividing line matters because it keeps specs portable across targets:
 
 - **Specs stay behavioral.** They must not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions. See the [spec format](../reference/artifact-format.md#spec-files-behavioral-what).
 - **`design.md` carries the technical "how"** — domain models, API and message shapes, business logic, integrations, configuration, and risks. See the [design format](../reference/artifact-format.md#design-document-technical-how). Cite stable requirement IDs (e.g. `REQ-003`) rather than requirement titles.
-- **Generator-owned binding decisions stay in specialist skills**, never in the artifacts. Omnia trait composition and Crux effect types are decided by the specialist skill that writes the code (for example `/omnia:crate-writer`), guided by the target adapter's `shape` brief — not hardcoded into the behavioral contract.
+- **Generator-owned binding decisions stay in the target adapter's build brief**, never in the artifacts. Omnia trait composition and Crux effect types are decided by the target adapter's `build` brief that writes the code, guided by its `shape` brief — not hardcoded into the behavioral contract.
 
 ## Deriving specs from source code
 
@@ -57,17 +57,7 @@ Never generate tasks that require human-only action: manual app testing, visual 
 
 `specrun slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/spec:build` as a preflight.
 
-### Skill directive tags
-
-A task may route itself to a specialist skill with an HTML-comment directive. The build phase parses the tag and delegates that task instead of using the adapter's default build instruction:
-
-```markdown
-- [ ] 2.1 Generate the domain crate <!-- skill: omnia:crate-writer -->
-- [ ] 2.2 Generate test suites <!-- skill: omnia:test-writer -->
-- [ ] 2.3 Manual integration step
-```
-
-Use a skill tag when a task maps directly to a single specialist skill invocation; leave it off when the adapter's default build instruction should handle it.
+Tasks are implemented by the active target adapter's `build` brief, which carries the specialist orchestration inline; they do not route to standalone specialist skills.
 
 ## Decision Records
 

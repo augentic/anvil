@@ -16,7 +16,7 @@ Tags appear on requirement headers alongside `Status: conflict`, `Status: diverg
 
 ## Resolve a divergence
 
-1. Open `.specify/slices/<name>/spec.md` and read the inline commentary from the losing source.
+1. Open `.specify/slices/<name>/specs/<unit>/spec.md` and read the inline commentary from the losing source.
 2. If the authority winner is correct, accept as-is or edit prose for clarity.
 3. If wrong, hand-edit the requirement or amend plan sources and re-run `/spec:refine`.
 
