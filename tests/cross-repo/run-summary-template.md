@@ -17,7 +17,7 @@ failure, preserve enough evidence for another operator to reproduce the state.
 - **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
-- **Workspace root:** `<temporary workspace-root project root>`
+- **Workspace:** `<temporary workspace project root>`
 - **Backend project root:** `<temporary Omnia project root>`
 - **Mobile project root:** `<temporary Vectis project root>`
 - **`SPECIFY_BIN`:** `<path or "PATH default">`
@@ -88,7 +88,7 @@ Record the final planned slices before execution.
 
 | Role | Slice name | Project | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| Contract | `<slice>` | `<none or workspace root>` | `<none>` | `<status>` |
+| Contract | `<slice>` | `<none or workspace>` | `<none>` | `<status>` |
 | Backend implementation | `<slice>` | `<backend project>` | `<contract slice>` | `<status>` |
 | Mobile implementation | `<slice>` | `<mobile project>` | `<contract slice>` | `<status>` |
 

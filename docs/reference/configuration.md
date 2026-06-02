@@ -16,7 +16,7 @@ Specify 2.0 uses several YAML and Markdown files for configuration. All are mana
 **Created by:** `/spec:init` (via `specrun init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the workspace root shape (`specrun init --workspace`).
+Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the workspace shape (`specrun init --workspace`).
 
 ### Regular project shape
 
@@ -51,18 +51,18 @@ workspace: true
 specify-version: "2.0.0"
 ```
 
-A workspace root is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under `.specify/workspace/` but is never itself a code project.
+A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under `.specify/workspace/` but is never itself a code project.
 
 | Field             | Required | Description |
 | ----------------- | -------- | ----------- |
-| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the workspace root sentinel. |
-| `target`          | --       | **Omitted.** A workspace root has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
+| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the workspace sentinel. |
+| `target`          | --       | **Omitted.** A workspace has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
 
-**When to use the registry-only workspace root:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
+**When to use the registry-only workspace:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
 
 ## plan.yaml
 
-**Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
+**Location:** `.specify/plan.yaml` (single-project) or `<workspace>/.specify/plan.yaml` (workspace mode)
 **Created by:** `/spec:plan` (via `specrun plan create`)
 **Modified by:** `specrun plan propose --from`, `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
 
@@ -148,7 +148,7 @@ projects:
 
 ## change.md
 
-**Location:** `.specify/change.md` (workspace mode: at workspace root)
+**Location:** `.specify/change.md` (workspace mode: at workspace)
 **Created by:** `/spec:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 

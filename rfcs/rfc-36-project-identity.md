@@ -4,7 +4,7 @@
 
 ## Problem
 
-A project's adapter and description currently live in **two** authored homes: `.specify/project.yaml` and the workspace root's `registry.yaml`. At plan time `workspace_topology` reads the registry, so a stale registry entry silently overrides the project's own config.
+A project's adapter and description currently live in **two** authored homes: `.specify/project.yaml` and the workspace's `registry.yaml`. At plan time `workspace_topology` reads the registry, so a stale registry entry silently overrides the project's own config.
 
 Worse, the reconciliation agent has to bind each slice to a project on `description` prose alone.
 
@@ -239,18 +239,18 @@ When `workspace sync` clones a repo with no `project.yaml` yet, the registry ent
 
 ### Removing the authored facets
 
-`capabilities` and `keywords` are deleted in one change from every home that carries them today: `ProjectConfig` (`crates/workflow/src/config.rs`), `TopologyProject` + `topology-lock.schema.json`, the `resolve_topology` workspace-root and live paths (`crates/workflow/src/change/plan/core/propose.rs`), and `proposal.schema.json#/$defs/projectRef`, plus their tests and fixtures.
+`capabilities` and `keywords` are deleted in one change from every home that carries them today: `ProjectConfig` (`crates/workflow/src/config.rs`), `TopologyProject` + `topology-lock.schema.json`, the `resolve_topology` workspace and live paths (`crates/workflow/src/change/plan/core/propose.rs`), and `proposal.schema.json#/$defs/projectRef`, plus their tests and fixtures.
 
 `ProjectConfig` does **not** set `deny_unknown_fields`, so dropping the two struct fields makes a stale `capabilities:` / `keywords:` key in an existing `project.yaml` a silently-ignored unknown field — it loads cleanly and the keys simply stop contributing. No migration script and no operator edit is required.
 
-`TopologyProject`, by contrast, *does* set `deny_unknown_fields`, so a pre-upgrade `topology.lock` still carrying `capabilities` / `keywords` would fail `TopologyLock::load` until regenerated. The lock is machine-written, so the fix is the ordinary one — `workspace sync` rewrites it — but the upgrade note should call this out so a workspace-root operator runs `workspace sync` before the first post-upgrade `plan` reads the cache.
+`TopologyProject`, by contrast, *does* set `deny_unknown_fields`, so a pre-upgrade `topology.lock` still carrying `capabilities` / `keywords` would fail `TopologyLock::load` until regenerated. The lock is machine-written, so the fix is the ordinary one — `workspace sync` rewrites it — but the upgrade note should call this out so a workspace operator runs `workspace sync` before the first post-upgrade `plan` reads the cache.
 
 ### Staleness
 
 `specrun plan validate` (and `propose --dry-run` / `--from`) compare each lock entry against its slot's current `project.yaml` and baseline projection:
 
 - Divergent `target` / `description` / `surface` / `decisions` / `recent` → `topology-cache-stale` (warning); fix with `workspace sync`.
-- No lock in a workspace root → `topology-cache-missing`.
+- No lock in a workspace → `topology-cache-missing`.
 
 Because the projection is deterministic (D36-6), staleness is a regenerate-and-compare check — the same generate-if-changed discipline as `context.lock`. CI reuses the exit-2 gate of `plan validate`. There is no hand-edit path and no `--check` flag.
 
@@ -258,7 +258,7 @@ Because the projection is deterministic (D36-6), staleness is a regenerate-and-c
 
 The lock and `registry.yaml` are separated by **writer**: `registry.yaml` is operator-authored, stable, small (`name` + `url`); the lock is machine-written, churning, and now carries the derived identity surface. Folding the derived identity into `registry.yaml` would make the machine rewrite an operator-authored file on every `workspace sync` — the top-down synchronisation anti-pattern (clobbered comments, noisy diffs, a re-introduced dual-writer file) this RFC exists to remove.
 
-Deriving live at propose time (and dropping the lock) was also rejected: it couples plan-time topology to a synced and, for remotes, reachable workspace whose baselines are all readable. The committed snapshot keeps propose offline and fast. Under baseline-derivation that coupling is stronger, so the lock is more load-bearing, not less. The lock is workspace-root-only — a single-repo project has neither `registry.yaml` nor a lock and reads `project.yaml` + baseline live.
+Deriving live at propose time (and dropping the lock) was also rejected: it couples plan-time topology to a synced and, for remotes, reachable workspace whose baselines are all readable. The committed snapshot keeps propose offline and fast. Under baseline-derivation that coupling is stronger, so the lock is more load-bearing, not less. The lock is workspace-only — a single-repo project has neither `registry.yaml` nor a lock and reads `project.yaml` + baseline live.
 
 > The lock now projects *identity* rather than topology facets; renaming it `identity.lock` reads truer than `topology.lock`. Cosmetic — kept as `topology.lock` here to avoid churning cross-references; rename in a follow-up if desired.
 
@@ -283,7 +283,7 @@ Appends to [`DECISIONS.md` §Lead reconciliation](https://github.com/augentic/sp
 - **Schema:** `topology-lock.schema.json` (`TOPOLOGY_LOCK_JSON_SCHEMA`) for `.specify/topology.lock`, carrying `surface[]` (`unit`, bounded `requirements[]`, optional `more:` count), `decisions[]` (`{ id, title }`, plus optional `more:` count), and `recent[]` per project.
 - **`proposal.schema.json` `$defs/projectRef`:** gains optional `surface[]`, `decisions[]`, and `recent[]`; drops `capabilities[]` / `keywords[]`. Hub `projects[]` source restated as the topology cache, not `registry.yaml#/projects[]`.
 - **Schema:** `decision.schema.json` (`DECISION_JSON_SCHEMA`) — validates the front-matter block (`slug` required; `status` closed enum `accepted | rejected | superseded`; optional `supersedes[]`, `related[]`; engine-stamped `id` / `slice` / `date` / `superseded-by` optional in the slice-authored form, required on the persisted baseline form).
-- **Validation codes:** `topology-cache-missing` (workspace root with no cache; `propose`), `topology-cache-stale` (lock diverges from a slot's `project.yaml` or baseline projection; `plan validate`); `decision-record-schema`, `decision-record-section-missing`, `decision-slug-grammar`, `decision-slug-collision`, `decision-supersede-orphan` — all `Error::Validation` / slice-doctor findings.
+- **Validation codes:** `topology-cache-missing` (workspace with no cache; `propose`), `topology-cache-stale` (lock diverges from a slot's `project.yaml` or baseline projection; `plan validate`); `decision-record-schema`, `decision-record-section-missing`, `decision-slug-grammar`, `decision-slug-collision`, `decision-supersede-orphan` — all `Error::Validation` / slice-doctor findings.
 - **Ledger field:** `slice.archive.created` gains an optional `decisions[]` array of the `DEC-NNNN` ids promoted by the merge (no new event kind). This is the durable record alongside git history of `.specify/decisions/`.
 
 ## Implementation checklist

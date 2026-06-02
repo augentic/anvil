@@ -1,20 +1,20 @@
 # Cross-repo changes
 
-Coordinate a Specify change across multiple repositories from a workspace root. This tutorial assumes you completed the [Quick start](quick-start.md).
+Coordinate a Specify change across multiple repositories from a workspace. This tutorial assumes you completed the [Quick start](quick-start.md).
 
 ## What you will build
 
-A workspace-scoped plan where `change.md`, `plan.yaml`, and `discovery.md` live at the workspace root, while slice work runs in materialised project slots under `.specify/workspace/<project>/`.
+A workspace-scoped plan where `change.md`, `plan.yaml`, and `discovery.md` live at the workspace, while slice work runs in materialised project slots under `.specify/workspace/<project>/`.
 
 ## Prerequisites
 
 - Completed [Quick start](quick-start.md)
-- A [registry-only workspace root](../reference/configuration.md) or workspace-enabled project (`registry.yaml` describing peer repos)
+- A [registry-only workspace](../reference/configuration.md) or workspace-enabled project (`registry.yaml` describing peer repos)
 - Git remotes configured for each registered project
 
-## Step 1 — Initialise a workspace root
+## Step 1 — Initialise a workspace
 
-For a registry-only workspace root:
+For a registry-only workspace:
 
 ```text
 /spec:init workspace
@@ -22,9 +22,9 @@ For a registry-only workspace root:
 
 For a workspace registered inside a platform project, see [Registry](../reference/registry.md) and [Configuration files](../reference/configuration.md).
 
-## Step 2 — Plan from the workspace root
+## Step 2 — Plan from the workspace
 
-Run `/spec:plan` at the workspace root (not from a project slot). Bind sources in the plan invocation. At propose time, route slices to registry slots with `specrun plan add --project <name>`.
+Run `/spec:plan` at the workspace (not from a project slot). Bind sources in the plan invocation. At propose time, route slices to registry slots with `specrun plan add --project <name>`.
 
 ```text
 /spec:plan platform-auth source docs=./design-notes/auth
@@ -41,7 +41,7 @@ specrun workspace sync
 specrun workspace prepare <project> --change <name>
 ```
 
-`/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace root; phase skills `chdir` into `.specify/workspace/<project>/`.
+`/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `.specify/workspace/<project>/`.
 
 ## Step 4 — Execute with workspace routing
 
@@ -64,7 +64,7 @@ Finalize runs `specrun workspace push` to publish `specify/<change-name>` branch
 
 ## What you learned
 
-- Workspace plans centralise plan artifacts at the workspace root root.
+- Workspace plans centralise plan artifacts in the workspace.
 - Per-slice `project` routes phase work into registry slots.
 - Finalize pushes branches and waits for merged PRs before archive.
 

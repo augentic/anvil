@@ -101,7 +101,7 @@ The skill never auto-stamps `approved`. The operator runs the literal transition
 | Error | Cause | Resolution |
 | ----- | ----- | ---------- |
 | Malformed change name | Non-kebab-case `<name>` | Use kebab-case identifiers |
-| Workspace plan active | `/spec:plan` from project root while workspace plan is active | Follow CLI structured error; plan from workspace root |
+| Workspace plan active | `/spec:plan` from project root while workspace plan is active | Follow CLI structured error; plan from workspace |
 | Registry invalid | Malformed `registry.yaml` in workspace mode | Fix registry before sync |
 
 ## Examples

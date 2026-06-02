@@ -48,7 +48,7 @@ Next steps:
 ```
 ## Specify Initialized (Workspace Root)
 
-**Topology**: registry-only workspace root
+**Topology**: registry-only workspace
 **Config**: .specify/project.yaml (`workspace: true`; `adapter:` omitted)
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock

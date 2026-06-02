@@ -12,7 +12,7 @@ Operational detail for `/spec:init`. The SKILL.md keeps only the orientation sur
 $PROFILE     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specrun` CLI is available, decide whether this is a regular single-project init or a registry-only workspace root, then invoke `specrun init <adapter>` (regular) or `specrun init --workspace` (workspace root) to install a starter `project.yaml` and generated `AGENTS.md` context.
+I'll ensure the `specrun` CLI is available, decide whether this is a regular single-project init or a registry-only workspace, then invoke `specrun init <adapter>` (regular) or `specrun init --workspace` (workspace) to install a starter `project.yaml` and generated `AGENTS.md` context.
 
 ## Input
 
@@ -23,7 +23,7 @@ None required. Optionally a adapter identifier (a bare name like `omnia`, an `ht
 - `specrun init` (no positional, no `--workspace`) → exits `2` with a missing-required-argument diagnostic.
 - `specrun init <adapter> --workspace` (both supplied) → exits `2` with an argument-conflict diagnostic.
 
-A regular project must declare an adapter; a workspace root must declare `--workspace` and never carries an `adapter:`.
+A regular project must declare an adapter; a workspace must declare `--workspace` and never carries an `adapter:`.
 
 ## Steps
 
@@ -157,14 +157,14 @@ Check whether `.specify/project.yaml` exists.
 
   If `specrun init --upgrade` exits `4` (`project-needs-migration`), run step 1d's migration handoff first, then retry the upgrade.
 
-### 3. Decide the topology — regular project or workspace root
+### 3. Decide the topology — regular project or workspace
 
 See [Configuration files](../../../docs/reference/configuration.md#projectyaml) and [Registry](../../../docs/reference/registry.md) for the full background on the two shapes. Briefly:
 
 - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **adapter**.
-- **Workspace root** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the workspace root itself; code lives in registered project repos under `.specify/workspace/<name>/`.
+- **Workspace** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the workspace itself; code lives in registered project repos under `.specify/workspace/<name>/`.
 
-Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a workspace root). Treat the result as `$WORKSPACE_MODE=true|false`.
+Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a workspace). Treat the result as `$WORKSPACE_MODE=true|false`.
 
 Branch:
 
@@ -208,13 +208,13 @@ Never combine the two: `specrun init "$PROFILE" --workspace` exits `2` with clap
 The CLI writes:
 
 - **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/.cache/manifests/targets/<adapter>/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
-- **Workspace root** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace root itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the workspace root disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
+- **Workspace** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the workspace disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
 If root `AGENTS.md` already exists, `specrun init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
 
 For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `workspace-synced`, `workspace-sync-message`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
 
-On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Workspace mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a workspace root, they remove `.specify/` first.
+On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Workspace mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a workspace, they remove `.specify/` first.
 
 ### 6. Prompt for customization
 
@@ -227,16 +227,16 @@ For a **regular** init, tell the user:
 
 For a **workspace** init, tell the user:
 
-- "Specify initialized as a registry-only workspace root. Config written to `.specify/project.yaml` (`workspace: true`, no `adapter:`)."
+- "Specify initialized as a registry-only workspace. Config written to `.specify/project.yaml` (`workspace: true`, no `adapter:`)."
 - "Generated workspace context at `AGENTS.md`; inspect the file directly for later review."
 - Report the init envelope's `workspace-sync-message` (CLI chains sync automatically — do not run `specrun workspace sync` again).
-- "Add code projects to `registry.yaml` once they exist. The workspace root starts with `projects: []`."
+- "Add code projects to `registry.yaml` once they exist. The workspace starts with `projects: []`."
 
 Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
 ### 7. Detect existing codebase and offer baseline extraction *(regular only — skip in workspace mode)*
 
-When `$WORKSPACE_MODE=true`, skip this step entirely and show the **workspace output** below. A workspace root never carries code, so codebase detection and baseline extraction do not apply.
+When `$WORKSPACE_MODE=true`, skip this step entirely and show the **workspace output** below. A workspace never carries code, so codebase detection and baseline extraction do not apply.
 
 For regular projects, check whether the project root contains an active codebase by looking for:
 

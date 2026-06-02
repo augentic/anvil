@@ -28,7 +28,7 @@ tools:
       write: []
 ```
 
-Project-scope declarations are owned by the project author. They are available even when the project is a workspace-root project with no adapter, and they survive adapter changes.
+Project-scope declarations are owned by the project author. They are available even when the project is a workspace project with no adapter, and they survive adapter changes.
 
 Use project scope when a repo needs a local override, a development build, a private helper, or a tool that is not part of the adapter contract.
 
@@ -68,7 +68,7 @@ Permission entries may use:
 - `$PROJECT_DIR` in both project-scope and adapter-scope declarations.
 - `$CAPABILITY_DIR` only in adapter-scope declarations.
 
-`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for workspace-root projects or projects whose adapter changes later.
+`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for workspace projects or projects whose adapter changes later.
 
 Variables are expanded only in `permissions.read` and `permissions.write`. They are not expanded in `source`, and they are not expanded in arguments passed after `--`.
 
@@ -115,7 +115,7 @@ The `oci.reference` written into `meta.yaml` is derived best-effort from the res
 3. The `WKG_CONFIG` override, when the env var is set.
 4. An embedded `specify -> augentic.io` namespace fallback, applied only when no earlier layer mapped the `specify` namespace.
 
-`specrun init` (regular and workspace-root modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
+`specrun init` (regular and workspace modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
 
 ```toml
 default_registry = "augentic.io"
@@ -134,7 +134,7 @@ Choose project scope when:
 
 - The tool is repo-private.
 - The project needs a temporary or permanent override of a adapter tool.
-- The project is a workspace root and has no adapter.
+- The project is a workspace and has no adapter.
 - The tool should remain available after changing adapters.
 
 Choose adapter scope when:

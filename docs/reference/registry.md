@@ -59,7 +59,7 @@ None of these go through the per-slice loop. The registry is substrate: it is wh
 
 ## Workspace materialisation
 
-`.specify/workspace/` is **derived registry state**, not a separate component-owned topology. The workspace root owns `registry.yaml`; each child path under `.specify/workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
+`.specify/workspace/` is **derived registry state**, not a separate component-owned topology. The workspace owns `registry.yaml`; each child path under `.specify/workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
 
 The registry crate owns the materialiser and workspace verbs:
 

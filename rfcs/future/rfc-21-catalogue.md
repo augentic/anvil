@@ -31,7 +31,7 @@ This RFC is the smallest set of additions that fix all four issues without viola
 
 ### Principles
 
-1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace root alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
+1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
 2. **The CLI is the single writer.** `specify source {add, remove, sync}` are the only writers to `sources.yaml`. No skill hand-edits the file; this mirrors the writer rules for `registry.yaml` and `plan.yaml`.
 3. **The tier-1 boundary is preserved.** `.specify/.cache/sources/<key>/` is read-only with respect to source adapter `enumerate`, source adapter `extract`, and every planner-time skill. Nothing in this RFC writes into a source clone after sync materialises it.
 4. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.

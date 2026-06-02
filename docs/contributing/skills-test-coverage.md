@@ -34,7 +34,7 @@ Rust harness intentionally does not pin.
   finalize).
 - **Cross-repo scenarios:** [`tests/cross-repo/`](../../tests/cross-repo/) --
   one end-to-end manual scenario that drives `plan` → `execute` → `push` →
-  `finalize` across a workspace root plus two routed projects.
+  `finalize` across a workspace plus two routed projects.
 - **Target-local scenarios:**
   [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/) --
   five scenarios covering the contracts target's own `refine → build →

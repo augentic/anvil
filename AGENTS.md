@@ -36,11 +36,11 @@ The word **workspace** overloads three related concepts. Use them verbatim:
 
 | Term | Meaning |
 | --- | --- |
-| **Workspace root** | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
+| **Workspace** | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
 | **Workspace slot** | Materialised peer at `.specify/workspace/<project>/` |
 | **Workspace sync** | `specrun workspace sync` — materialise slots and regenerate `topology.lock` |
 
-`/spec:init workspace` and `specrun init --workspace` scaffold a workspace root; the CLI chains an initial workspace sync before returning.
+`/spec:init workspace` and `specrun init --workspace` scaffold a workspace; the CLI chains an initial workspace sync before returning.
 
 ### Workflow, standards, and artifacts
 

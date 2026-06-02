@@ -12,7 +12,7 @@ $ /spec:finalize dark-mode
 Step 1 — Pre-flight
   name:         dark-mode (kebab-case ok)
   workspace:    /…/shop-platform/.specify/project.yaml
-  plan.yaml:    present (workspace root)
+  plan.yaml:    present (workspace)
   specify:      2.0.x on PATH
   gh:           v2.x.y on PATH (read-only PR observation)
 
@@ -88,7 +88,7 @@ Exit 0
 
 ## Invariants pinned
 
-1. **Workspace root is the working directory throughout.** `/spec:finalize` is invoked from the workspace root; `specrun workspace push` and `specrun plan archive` both operate against the workspace `plan.yaml` (single-`plan.yaml` invariant preserved at the workspace root).
+1. **Workspace is the working directory throughout.** `/spec:finalize` is invoked from the workspace; `specrun workspace push` and `specrun plan archive` both operate against the workspace `plan.yaml` (single-`plan.yaml` invariant preserved at the workspace).
 2. **Every step runs in order across both projects.** Pre-flight → drained → push (one verb, per-project status table) → PR observation (per-project `gh pr view`, all `MERGED`) → archive → wrap-up. No project is dropped.
 3. **`specrun workspace push` is the sole push verb.** The skill does not loop `gh push` itself; per-project routing is owned by the CLI verb.
 4. **PR observation is per-project but the halt classification is plan-wide.** Both PRs must reach `MERGED` before step 5 runs; one open PR halts the entire finalize.

@@ -29,7 +29,7 @@ Not before Gate 1, nor after every per-entry status is `done` (use [/spec:finali
 ## Behavior
 
 1. **Refusal gate** — `specrun plan next --format json` refuses when `plan-not-approved`; prints `specrun plan transition <name> approved` verbatim.
-2. **Acquire plan lock** — exclusive non-blocking lock on `.specify/plan.lock` (workspace root in workspace mode). On `plan-lock-busy`, exit with holder pid.
+2. **Acquire plan lock** — exclusive non-blocking lock on `.specify/plan.lock` (workspace in workspace mode). On `plan-lock-busy`, exit with holder pid.
 3. **Loop** — for each `specrun plan next` result:
    - Route to workspace slot when `project` is set.
    - Invoke `/spec:refine` when slice is fresh (`refining` or absent).
@@ -42,7 +42,7 @@ Re-entry is implicit: re-running `/spec:execute` picks up the active `in-progres
 
 ### Workspace routing
 
-When a plan entry carries `project`, plan artifacts stay at the workspace root and phase work runs in `.specify/workspace/<project>/`. See [specrun workspace](../cli/workspace.md).
+When a plan entry carries `project`, plan artifacts stay at the workspace and phase work runs in `.specify/workspace/<project>/`. See [specrun workspace](../cli/workspace.md).
 
 ## Lifecycle interactions
 

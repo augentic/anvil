@@ -14,19 +14,19 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `<target>` | Required for regular projects | Target identifier or URL, e.g. `omnia` (bare name), `https://github.com/augentic/specify/adapters/targets/omnia` (URL), or `file:///…` (local URI). Supports an `@ref` suffix for version pinning. Mutually exclusive with `--workspace`. |
-| `--workspace` | -- | Scaffold a registry-only workspace root instead of a regular project. No adapter identifier is needed. |
+| `--workspace` | -- | Scaffold a registry-only workspace instead of a regular project. No adapter identifier is needed. |
 
 ## When to use
 
 - Setting up a new project for spec-driven development.
 - Re-initialising to change or update the adapter.
-- Bootstrapping a registry-only workspace root for multi-repo coordination.
+- Bootstrapping a registry-only workspace for multi-repo coordination.
 
 ## Artifacts produced
 
 | Artifact | Location | Content |
 |----------|----------|---------|
-| Project config | `.specify/project.yaml` | Adapter identifier, domain description, project rules (regular); just `workspace: true` (workspace root) |
+| Project config | `.specify/project.yaml` | Adapter identifier, domain description, project rules (regular); just `workspace: true` (workspace) |
 | Adapter cache | `.specify/.cache/manifests/targets/<adapter>/` | Cached target adapter manifest and brief files (regular only) |
 | Directory structure | `.specify/{slices,specs,archive}/` | Empty scaffold (regular only) |
 | Agent context | `AGENTS.md` | Generated repository guidance when root `AGENTS.md` is absent |
@@ -37,7 +37,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 The authoritative step-by-step lives in the [`/spec:init` skill body](../../../plugins/spec/skills/init/SKILL.md); the operator summary follows.
 
 1. Checks whether `.specify/` already exists. If so, warns and offers to reconfigure.
-2. Runs `specrun init <adapter>` (regular) or `specrun init --workspace` (workspace root); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
+2. Runs `specrun init <adapter>` (regular) or `specrun init --workspace` (workspace); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
 3. The CLI scaffolds the directory structure, writes `project.yaml`, and generates `AGENTS.md` plus `.specify/context.lock` when root `AGENTS.md` is absent.
 4. Existing root `AGENTS.md` files are preserved byte-for-byte; init reports the skip instead of overwriting them.
 5. Detects existing source code in the project. If found, the operator can bind it as a `code-typescript` (or future-language) source on the first `/spec:plan` invocation.
@@ -66,7 +66,7 @@ None -- init creates the project scaffold, not a slice.
 # Initialise with a pinned Vectis target version
 /spec:init https://github.com/augentic/specify/adapters/targets/vectis@v1
 
-# Bootstrap a registry-only workspace root
+# Bootstrap a registry-only workspace
 /spec:init workspace
 ```
 

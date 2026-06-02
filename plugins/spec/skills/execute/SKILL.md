@@ -10,7 +10,7 @@ description: Drive an approved plan through refine → build → merge per entry
 ## Critical Path
 
 1. Verify `plan.lifecycle == approved` via `specrun plan next`; refuse with the literal `specrun plan transition <name> approved` hint when the plan is still `pending`.
-2. Acquire the exclusive lock on `.specify/plan.lock` (workspace root in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
+2. Acquire the exclusive lock on `.specify/plan.lock` (workspace in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
 3. For each `specrun plan next` result, route the active slice into its workspace slot when `project` is set, then invoke `/spec:refine` (when the slice is fresh), `/spec:build`, and `/spec:merge` — the only writer of per-entry `done`.
 4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`references/stop-conditions.md`](references/stop-conditions.md).
 5. On `drained`, print `drained — run /spec:finalize <name>` and exit — without acquiring the lock when the first `specrun plan next` returns drained; otherwise release the lock after the loop.
@@ -21,7 +21,7 @@ Every skill that touches plan state from outside the loop reuses the shell snipp
 
 ## Workspace routing
 
-When the active plan entry carries a `project` field, plan artifacts stay at the workspace root and phase work runs in the materialised slot at `.specify/workspace/<project>/`. The routing rules — slot resolution, `specrun workspace sync` + `specrun workspace prepare`, `chdir` into the slot, residue commit, and CWD restore before the next `specrun plan next` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace root with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
+When the active plan entry carries a `project` field, plan artifacts stay at the workspace and phase work runs in the materialised slot at `.specify/workspace/<project>/`. The routing rules — slot resolution, `specrun workspace sync` + `specrun workspace prepare`, `chdir` into the slot, residue commit, and CWD restore before the next `specrun plan next` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
 
 ## Phase invocation
 

@@ -8,7 +8,7 @@ Augentic uses stock Specify as its executable workflow contract. Specialist skil
 ## Where specialists read and write
 
 ```text
-$PROJECT_DIR        = <workspace root>
+$PROJECT_DIR        = <workspace>
 $SLICE_DIR          = $PROJECT_DIR/.specify/slices/<slice-name>
 $SPECS_DIR          = $SLICE_DIR/specs
 $DESIGN_PATH        = $SLICE_DIR/design.md

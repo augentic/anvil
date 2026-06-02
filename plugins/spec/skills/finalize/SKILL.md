@@ -10,7 +10,7 @@ argument-hint: <name>
 
 ## Critical Path
 
-- Pre-flight: validate `<name>`, resolve the project or workspace root, and verify the active `plan.yaml`.
+- Pre-flight: validate `<name>`, resolve the project or workspace, and verify the active `plan.yaml`.
 - Drainage: run `specrun plan next --format json`; only `reason: drained` may continue.
 - Push: run `specrun workspace push` and surface the per-project status table verbatim.
 - Observe PRs: poll each pushed PR with `gh pr view <url> --json state,url,number` until every PR is `MERGED`.

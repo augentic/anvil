@@ -79,9 +79,9 @@ run.
 ## Workspace
 
 - **Suite:** cross-repo.
-- **Project shape:** one temporary registry-only workspace root plus two temporary
+- **Project shape:** one temporary registry-only workspace plus two temporary
   registered projects.
-- **Hub adapter:** none; initialize the workspace root with `specrun init --workspace`.
+- **Hub adapter:** none; initialize the workspace with `specrun init --workspace`.
 - **Backend project adapter:** `omnia@v1`.
 - **Mobile project adapter:** `vectis@v1`.
 - **Registry shape:** the workspace registry contains exactly the backend and mobile
@@ -108,7 +108,7 @@ Prerequisites:
 
 ## Inputs
 
-Create a short feature brief in the workspace root workspace at `docs/oauth-login.md`:
+Create a short feature brief in the workspace workspace at `docs/oauth-login.md`:
 
 ```markdown
 # OAuth Login
@@ -184,7 +184,7 @@ cd ../cross-repo-shop-mobile
 specrun init vectis@v1
 ```
 
-Return to the workspace root and register the implementation projects. Use descriptions
+Return to the workspace and register the implementation projects. Use descriptions
 that make routing unambiguous:
 
 ```bash
@@ -198,7 +198,7 @@ Create `docs/oauth-login.md` from the **Inputs** section.
 
 ### 2. Draft the change
 
-Run `/spec:plan` from the workspace root:
+Run `/spec:plan` from the workspace:
 
 ```text
 /spec:plan oauth-login source brief=docs/oauth-login.md
@@ -236,7 +236,7 @@ authored.
 
 ### 4. Execute the plan
 
-Run the supervised execution loop from the workspace root:
+Run the supervised execution loop from the workspace:
 
 ```text
 /spec:execute loop
@@ -258,7 +258,7 @@ complete (`all-done`), not because it is stuck, failed, or interrupted.
 
 ### 5. Finalize — first invocation (halts on unmerged PRs)
 
-Run `/spec:finalize` from the workspace root:
+Run `/spec:finalize` from the workspace:
 
 ```text
 /spec:finalize oauth-login
@@ -290,7 +290,7 @@ two finalize invocations is the design.
 
 ### 7. Finalize — second invocation (archives the plan)
 
-Re-run `/spec:finalize` from the workspace root:
+Re-run `/spec:finalize` from the workspace:
 
 ```text
 /spec:finalize oauth-login
@@ -316,7 +316,7 @@ This re-entry should report that no active plan remains and exit 0 — the chang
 
 The run should leave these artifacts or states for inspection:
 
-- `registry.yaml` exists in the workspace root and contains `shop-backend` and
+- `registry.yaml` exists in the workspace and contains `shop-backend` and
   `shop-mobile`.
 - `plan.yaml` exists after `/spec:plan` and validates cleanly.
 - The plan has exactly one contract slice and two implementation slices.

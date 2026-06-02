@@ -18,7 +18,7 @@ failure, preserve the evidence directory or notes that explain the result.
 - **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
-- **Workspace root:** `<temp project root used for the run>`
+- **Workspace:** `<temp project root used for the run>`
 
 ## Inputs Created
 

@@ -52,7 +52,7 @@ A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absen
 
 Selected sync materialises selected slots only. Unselected registry projects are not cloned, fetched, symlinked, or contract-refreshed. Running without selectors syncs all registry projects. Non-zero exit if any selected project fails, with a per-project status summary.
 
-After materialisation succeeds, `sync` regenerates the committed `.specify/topology.lock` from each materialised slot's `project.yaml` (resolved target adapter, description) plus its deterministic baseline projection — `surface[]` (owned units + requirement titles, capped) from `.specify/specs/` and `recent[]` (the merge-outcome tail) from `.specify/journal.jsonl`. The lock is the plan-time topology source for workspace-root planning; it is machine-written (write-if-changed) and never hand-edited. `specrun plan validate` reports `topology-cache-stale` when a slot's `project.yaml` or baseline projection has diverged from the lock — the fix is to re-run `specrun workspace sync`.
+After materialisation succeeds, `sync` regenerates the committed `.specify/topology.lock` from each materialised slot's `project.yaml` (resolved target adapter, description) plus its deterministic baseline projection — `surface[]` (owned units + requirement titles, capped) from `.specify/specs/` and `recent[]` (the merge-outcome tail) from `.specify/journal.jsonl`. The lock is the plan-time topology source for workspace planning; it is machine-written (write-if-changed) and never hand-edited. `specrun plan validate` reports `topology-cache-stale` when a slot's `project.yaml` or baseline projection has diverged from the lock — the fix is to re-run `specrun workspace sync`.
 
 ### specrun workspace push
 

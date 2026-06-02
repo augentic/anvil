@@ -21,7 +21,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/spec:init`             | One-time project setup; run `specrun init --workspace` for a registry-only workspace root               |
+| `/spec:init`             | One-time project setup; run `specrun init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
 | `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
@@ -34,7 +34,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Artifact            | Question                            | Location                                                          |
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `change.md`         | Why is the change happening?        | `.specify/change.md` (workspace mode: at workspace root)          |
+| `change.md`         | Why is the change happening?        | `.specify/change.md` (workspace mode: at workspace)          |
 | `plan.yaml`         | Which slices, in what order?        | `.specify/plan.yaml`                                              |
 | `discovery.md`      | What leads did sources surface? | `.specify/discovery.md`                                           |
 | `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
@@ -70,7 +70,7 @@ refining --> refined --> built --> merged
 ```bash
 # Project setup
 specrun init <target>                                    # single-project scaffold (positional target adapter)
-specrun init --workspace                                       # registry-only workspace root
+specrun init --workspace                                       # registry-only workspace
 specrun source resolve <name>                            # validate a source adapter manifest
 specrun target resolve <value>                           # validate a target adapter (name, path, or URL)
 

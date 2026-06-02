@@ -56,7 +56,7 @@ Authority hierarchy does not apply at propose — without `Evidence`, reconcilia
 ## Guardrails
 
 - **Single-writer for `plan.yaml`.** Slice rows land through `specrun plan propose --from` (default) or `specrun plan add` / `plan amend` / `plan remove` (manual Gate 1 fallback); `divergence: likely` rides on `plan amend --divergence likely`. The skill never reads-modifies-writes `plan.yaml` directly.
-- **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specrun plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace root.
+- **Single-driving-mode per project.** In workspace-registered projects, `/spec:plan` from a project root while a workspace plan is active is refused at `specrun plan create`. Surface the CLI's structured error to the operator; do not retry from the workspace.
 - **Never invent verbs.** Creation/amend paths fold schema validation into `specrun plan add` / `plan amend`; validation after writes may call `specrun plan validate` for structural/health diagnostics. Confirm the plan parses by re-reading `plan.yaml` after every write.
 - **Never bypass the sandbox.** Source adapter `survey` briefs run with the bound `path` mounted read-only as the `SOURCE_DIR` preopen; the CLI denies access outside the granted preopens as `source-survey-path-denied`.
 

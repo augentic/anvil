@@ -112,7 +112,7 @@ Plan a small single-project change from docs/inventory-adjustments.md.
 Expected shape:
 - one or more local Omnia slices for inventory adjustment behavior
 - no project routing fields because this workspace is not registered as a
-  multi-project workspace root
+  multi-project workspace
 - dependencies only where one local slice genuinely depends on another
 
 Keep the plan small and happy-path only.

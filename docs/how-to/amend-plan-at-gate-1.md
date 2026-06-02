@@ -19,7 +19,7 @@ There is one active `plan.yaml` per project. `specrun plan amend` takes **one po
 
 ## Step 1 — Read the plan artifacts
 
-Open these files at `.specify/` (workspace mode: workspace root):
+Open these files at `.specify/` (workspace mode: workspace):
 
 | File | Check |
 | ---- | ----- |

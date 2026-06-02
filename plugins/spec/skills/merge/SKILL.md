@@ -26,7 +26,7 @@ $PROJECT_ROOT           = repo root (single-repo) or active workspace project sl
 ## Critical Path
 
 1. **Resolve the active slice.** Run `specrun plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$TARGET` (and `$PROJECT` in workspace mode) from the same response.
-2. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace root in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
+2. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace in workspace mode); see [plan-lock.md](../../references/plan-lock.md).
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, run `specrun workspace sync $PROJECT` and `chdir` into `.specify/workspace/$PROJECT/` before continuing. Single-repo mode is a no-op.
 4. **Refuse if lifecycle is not `built`.** Read `$SLICE_DIR/.metadata.yaml`. Halt on `refining` / `refined` with a hint pointing at `/spec:build`; halt on `merged` / `dropped` with "already finalised". Only `built` proceeds.
 5. **Load and run the target merge brief.** Resolve `specrun target resolve $TARGET --format json`; read `adapters/targets/$TARGET/briefs/merge.md`. The brief covers target-specific pre-merge gates (omnia: cargo + clippy + test + `cargo build --target wasm32-wasip2`; vectis: cap-matrix re-run; contracts: WASI tool against the slice). Pre-merge gate failure → emit a stop hint (§ Stop hint contract); slice stays `built`.
