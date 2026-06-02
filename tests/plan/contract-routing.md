@@ -37,7 +37,7 @@ This scenario is deliberately manual. It does not introduce a test runner, fake 
 
 ## Intent
 
-Prove that `/spec:plan` can author a deterministic cross-repo plan from a registry-only hub:
+Prove that `/spec:plan` can author a deterministic cross-repo plan from a registry-only workspace root:
 
 ```text
 feature brief
@@ -52,11 +52,11 @@ The scenario checks durable plan structure only. It should not fail because the 
 ## Workspace
 
 - **Suite:** plan.
-- **Project shape:** one temporary registry-only hub plus two temporary registered projects.
-- **Hub adapter:** none; initialize the hub with `specrun init --hub`.
+- **Project shape:** one temporary registry-only workspace root plus two temporary registered projects.
+- **Hub adapter:** none; initialize the workspace root with `specrun init --workspace`.
 - **Backend project adapter:** `omnia@v1`.
 - **Mobile project adapter:** `vectis@v1`.
-- **Registry shape:** the hub registry contains exactly the backend and mobile projects for this run.
+- **Registry shape:** the workspace registry contains exactly the backend and mobile projects for this run.
 - **Isolation:** `fresh-project`. Use disposable directories and start with empty Specify state.
 - **Backend:** `manual` - a human or agent follows this script and records results in the [run summary](run-summary-template.md).
 
@@ -68,7 +68,7 @@ Prerequisites:
 
 ## Inputs
 
-Create a short feature brief in the hub workspace at `docs/oauth-login.md`:
+Create a short feature brief in the workspace root workspace at `docs/oauth-login.md`:
 
 ```markdown
 # OAuth Login
@@ -135,7 +135,7 @@ Initialize them:
 
 ```bash
 cd plan-shop-platform
-specrun init --hub
+specrun init --workspace
 
 cd ../plan-shop-backend
 specrun init omnia@v1
@@ -144,7 +144,7 @@ cd ../plan-shop-mobile
 specrun init vectis@v1
 ```
 
-Return to the hub and register the implementation projects. Use descriptions
+Return to the workspace root and register the implementation projects. Use descriptions
 that make routing unambiguous:
 
 ```bash
@@ -158,7 +158,7 @@ Create `docs/oauth-login.md` from the **Inputs** section.
 
 ### 2. Plan the change
 
-Run `/spec:plan` from the hub:
+Run `/spec:plan` from the workspace root:
 
 ```text
 /spec:plan oauth-login-plan from docs/oauth-login.md
@@ -188,7 +188,7 @@ Do not run `/spec:execute`, `specrun workspace push`, or `specrun plan archive`.
 
 The run should leave these artifacts or states for inspection:
 
-- `registry.yaml` exists in the hub and contains `shop-backend` and `shop-mobile` with clear descriptions.
+- `registry.yaml` exists in the workspace root and contains `shop-backend` and `shop-mobile` with clear descriptions.
 - `plan.yaml` exists after `/spec:plan` and validates cleanly.
 - `.specify/plans/oauth-login-plan/discovery.md` records the supplied documentation input.
 - `.specify/plans/oauth-login-plan/workspace.md` records the synchronized peer context for routing.

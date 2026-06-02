@@ -17,7 +17,7 @@ failure, preserve enough evidence for another operator to reproduce the state.
 - **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
-- **Hub root:** `<temporary hub project root>`
+- **Workspace root:** `<temporary workspace-root project root>`
 - **Backend project root:** `<temporary Omnia project root>`
 - **Mobile project root:** `<temporary Vectis project root>`
 - **`SPECIFY_BIN`:** `<path or "PATH default">`

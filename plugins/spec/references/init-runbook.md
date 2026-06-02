@@ -12,18 +12,18 @@ Operational detail for `/spec:init`. The SKILL.md keeps only the orientation sur
 $PROFILE     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specrun` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specrun init <adapter>` (regular) or `specrun init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
+I'll ensure the `specrun` CLI is available, decide whether this is a regular single-project init or a registry-only workspace root, then invoke `specrun init <adapter>` (regular) or `specrun init --workspace` (workspace root) to install a starter `project.yaml` and generated `AGENTS.md` context.
 
 ## Input
 
-None required. Optionally a adapter identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and project context. The adapter argument is irrelevant for hub mode and must be omitted there.
+None required. Optionally a adapter identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and project context. The adapter argument is irrelevant for workspace mode and must be omitted there.
 
-**Adapter vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with clap's standard parse-error diagnostic and exit code `2`:
+**Adapter vs `--workspace` is mutually exclusive.** The CLI rejects both pathological invocations with clap's standard parse-error diagnostic and exit code `2`:
 
-- `specrun init` (no positional, no `--hub`) → exits `2` with a missing-required-argument diagnostic.
-- `specrun init <adapter> --hub` (both supplied) → exits `2` with an argument-conflict diagnostic.
+- `specrun init` (no positional, no `--workspace`) → exits `2` with a missing-required-argument diagnostic.
+- `specrun init <adapter> --workspace` (both supplied) → exits `2` with an argument-conflict diagnostic.
 
-A regular project must declare a adapter; a hub must declare `--hub` and never carries a `adapter:`.
+A regular project must declare an adapter; a workspace root must declare `--workspace` and never carries an `adapter:`.
 
 ## Steps
 
@@ -150,28 +150,28 @@ Check whether `.specify/project.yaml` exists.
   specrun init --upgrade --format json
   ```
 
-  `--upgrade` bumps `specify-version`, preserves the existing `adapter:` (or `hub:`) and all operator artifacts, and regenerates `AGENTS.md` only when absent. Branch on the JSON body's `specify-version-changed`:
+  `--upgrade` bumps `specify-version`, preserves the existing `adapter:` (or `workspace:`) and all operator artifacts, and regenerates `AGENTS.md` only when absent. Branch on the JSON body's `specify-version-changed`:
 
-  - `true` — the version was bumped. Report the new `specify-version` and `adapter-name` (or `"hub"`); note that `AGENTS.md` was preserved when `context-skip-reason` is `"existing-agents-md"`. Stop — the project is already scaffolded.
+  - `true` — the version was bumped. Report the new `specify-version` and `adapter-name` (or `"workspace"`); note that `AGENTS.md` was preserved when `context-skip-reason` is `"existing-agents-md"`. Stop — the project is already scaffolded.
   - `false` — already current; the run was an idempotent no-op. Tell the operator nothing changed and stop.
 
   If `specrun init --upgrade` exits `4` (`project-needs-migration`), run step 1d's migration handoff first, then retry the upgrade.
 
-### 3. Decide the topology — regular project or platform hub
+### 3. Decide the topology — regular project or workspace root
 
 See [Configuration files](../../../docs/reference/configuration.md#projectyaml) and [Registry](../../../docs/reference/registry.md) for the full background on the two shapes. Briefly:
 
 - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **adapter**.
-- **Platform hub** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
+- **Workspace root** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the workspace root itself; code lives in registered project repos under `.specify/workspace/<name>/`.
 
-Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a hub). Treat the result as `$HUB_MODE=true|false`.
+Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a workspace root). Treat the result as `$WORKSPACE_MODE=true|false`.
 
 Branch:
 
-- When `$HUB_MODE=true`, skip step 4's adapter selection and jump to step 5's hub invocation.
-- When `$HUB_MODE=false`, continue with the adapter-driven flow below.
+- When `$WORKSPACE_MODE=true`, skip step 4's adapter selection and jump to step 5's workspace invocation.
+- When `$WORKSPACE_MODE=false`, continue with the adapter-driven flow below.
 
-### 4. Choose adapter *(regular only — skip in hub mode)*
+### 4. Choose adapter *(regular only — skip in workspace mode)*
 
 If `$PROFILE` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia adapter identifier unless project context clearly indicates another adapter:
 
@@ -185,7 +185,7 @@ Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI 
 
 ### 5. Collect project metadata and invoke `specrun init`
 
-Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DESCRIPTION` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DESCRIPTION` if the user hasn't supplied one. An empty `$DESCRIPTION` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
+Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DESCRIPTION` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DESCRIPTION` if the user hasn't supplied one. An empty `$DESCRIPTION` is fine — the CLI omits the field. For workspace mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
 
 **Regular invocation** (adapter is the required first positional):
 
@@ -195,26 +195,26 @@ specrun init "$PROFILE" \
   ${DESCRIPTION:+--description "$DESCRIPTION"}
 ```
 
-**Hub invocation** (when `$HUB_MODE=true` — no positional, `--hub` is the discriminator):
+**Workspace invocation** (when `$WORKSPACE_MODE=true` or `$PROFILE` is the literal `workspace` — no adapter positional, `--workspace` is the discriminator):
 
 ```bash
-specrun init --hub \
+specrun init --workspace \
   --name "$PROJECT_NAME" \
   ${DESCRIPTION:+--description "$DESCRIPTION"}
 ```
 
-Never combine the two: `specrun init "$PROFILE" --hub` exits `2` with clap's argument-conflict diagnostic. `specrun init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
+Never combine the two: `specrun init "$PROFILE" --workspace` exits `2` with clap's argument-conflict diagnostic. `specrun init` with neither supplied exits `2` with clap's missing-required-argument diagnostic.
 
 The CLI writes:
 
 - **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/.cache/manifests/targets/<adapter>/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
-- **Hub** — `.specify/project.yaml` with `hub: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; generated hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
+- **Workspace root** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace root itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the workspace root disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
 If root `AGENTS.md` already exists, `specrun init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
 
-For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `hub`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
+For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `workspace-synced`, `workspace-sync-message`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
 
-On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
+On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Workspace mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a workspace root, they remove `.specify/` first.
 
 ### 6. Prompt for customization
 
@@ -225,17 +225,18 @@ For a **regular** init, tell the user:
 - "Edit the `description` field to describe your project's tech stack, architecture, and testing approach."
 - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/manifests/targets/<adapter>/adapter.yaml`."
 
-For a **hub** init, tell the user:
+For a **workspace** init, tell the user:
 
-- "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `adapter:`)."
-- "Generated hub context at `AGENTS.md`; inspect the file directly for later review."
-- "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
+- "Specify initialized as a registry-only workspace root. Config written to `.specify/project.yaml` (`workspace: true`, no `adapter:`)."
+- "Generated workspace context at `AGENTS.md`; inspect the file directly for later review."
+- Report the init envelope's `workspace-sync-message` (CLI chains sync automatically — do not run `specrun workspace sync` again).
+- "Add code projects to `registry.yaml` once they exist. The workspace root starts with `projects: []`."
 
 Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
-### 7. Detect existing codebase and offer baseline extraction *(regular only — skip in hub mode)*
+### 7. Detect existing codebase and offer baseline extraction *(regular only — skip in workspace mode)*
 
-When `$HUB_MODE=true`, skip this step entirely and show the **hub output** below. A hub never carries code, so codebase detection and baseline extraction do not apply.
+When `$WORKSPACE_MODE=true`, skip this step entirely and show the **workspace output** below. A workspace root never carries code, so codebase detection and baseline extraction do not apply.
 
 For regular projects, check whether the project root contains an active codebase by looking for:
 
@@ -263,7 +264,7 @@ The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, a
 
 ## Output
 
-Render the **greenfield** template for a regular project with no codebase indicators (or when the user declined extraction in step 7), the **brownfield** template after the user opted into baseline extraction, or the **hub** template when `$HUB_MODE=true`. Each template substitutes the resolved `$PROFILE` (regular and brownfield only; hub omits it). The verbatim templates live in [`init-output-templates.md`](init-output-templates.md).
+Render the **greenfield** template for a regular project with no codebase indicators (or when the user declined extraction in step 7), the **brownfield** template after the user opted into baseline extraction, or the **workspace** template when `$WORKSPACE_MODE=true`. Each template substitutes the resolved `$PROFILE` (regular and brownfield only; workspace omits it). The verbatim templates live in [`init-output-templates.md`](init-output-templates.md).
 
 ## Skill scope
 
@@ -272,12 +273,12 @@ Render the **greenfield** template for a regular project with no codebase indica
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specrun init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
 - **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specrun init` owns adapter fetch and copy when invoked with the adapter positional.
 - **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specrun slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
-- **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specrun registry add`.
+- **No registry peer registration.** Workspace init only seeds an empty `projects: []`; peer registration lives in `specrun registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
-- **Adapter vs `--hub` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.
+- **Adapter vs `--workspace` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.
 
 ## References
 
 - [`docs/explanation/adapter-anatomy.md`](../../../docs/explanation/adapter-anatomy.md) — adapter manifest boundaries and resolver behavior.
 - [`docs/reference/lifecycle.md`](../../../docs/reference/lifecycle.md) — workflow state owned by CLI verbs.
-- [`init-output-templates.md`](init-output-templates.md) — regular, brownfield, and hub init summaries.
+- [`init-output-templates.md`](init-output-templates.md) — regular, brownfield, and workspace init summaries.

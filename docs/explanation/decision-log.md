@@ -95,7 +95,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Topology cache (lockfile) for plan-time availability
 
-**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); hub plan-time topology (`hub_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a hub has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
+**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); hub plan-time topology (`workspace_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a hub has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
 
 **Rationale:** Deriving identity at propose time would couple plan-time topology to a synced (and for remotes, reachable) workspace whose baselines are all readable. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the derived truth. Because the projection is deterministic, "sync" is idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
 
@@ -209,9 +209,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Adapter vs `--hub` is mutually exclusive at init
+## Adapter vs `--workspace` is mutually exclusive at init
 
-**Decision:** `specrun init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
+**Decision:** `specrun init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a workspace root carries `workspace: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
@@ -280,7 +280,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 - `specify schema {resolve, check, pipeline}` → `specify adapter {resolve, check, pipeline}`.
 - `specrun registry {add, remove}` were added by historical design record.
 - The pre-historical design record in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specrun tool run contract` as the post-merge baseline gate.
-- `specrun init --hub` is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
+- `specrun init --workspace` is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only workspace root whose `project.yaml` carries only `hub: true`.
 - `specrun workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from earlier surfaces" parentheticals while preserving the trail for anyone tracing a stale call site.

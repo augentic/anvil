@@ -41,7 +41,7 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadat
 ## Workflow
 
 ```text
-/spec:init <target>               (once per project; for a registry-only platform hub, use specrun init --hub)
+/spec:init <target>               (once per project; for a registry-only workspace root, use specrun init --workspace)
 
 /spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
 

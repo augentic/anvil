@@ -1,12 +1,12 @@
 # Init output templates
 
-Verbatim summaries `/spec:init` prints after a successful invocation. Pick the template that matches the resolved topology and `$HUB_MODE` / baseline-extraction outcome.
+Verbatim summaries `/spec:init` prints after a successful invocation. Pick the template that matches the resolved topology and `$WORKSPACE_MODE` / baseline-extraction outcome.
 
 | Scenario | Template |
 |---|---|
 | Regular project, no codebase indicators or user declined extraction | [Greenfield](#greenfield) |
 | Regular project, user opted into baseline extraction | [Brownfield](#brownfield) |
-| Hub init (`$HUB_MODE=true`) | [Hub](#hub) |
+| Workspace init (`$WORKSPACE_MODE=true`) | [Workspace](#workspace) |
 | Migration applied during the artifact-major probe (runbook step 1d) | [Migrated](#migrated) |
 
 ## Greenfield
@@ -43,16 +43,17 @@ Next steps:
 4. Run `/spec:plan <name> ...` for future changes
 ```
 
-## Hub
+## Workspace
 
 ```
-## Specify Initialized (Platform Hub)
+## Specify Initialized (Workspace Root)
 
-**Topology**: registry-only hub
-**Config**: .specify/project.yaml (`hub: true`; `adapter:` omitted)
+**Topology**: registry-only workspace root
+**Config**: .specify/project.yaml (`workspace: true`; `adapter:` omitted)
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
+**Workspace sync**: $WORKSPACE_SYNC_MESSAGE (from init JSON `workspace-sync-message`; typically `workspace sync complete` on first run)
 
 Next steps:
 1. Add registered projects with `specrun registry add`

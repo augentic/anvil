@@ -30,6 +30,18 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
 
+### Workspace topology (disambiguation)
+
+The word **workspace** overloads three related concepts. Use them verbatim:
+
+| Term | Meaning |
+| --- | --- |
+| **Workspace root** | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
+| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/` |
+| **Workspace sync** | `specrun workspace sync` — materialise slots and regenerate `topology.lock` |
+
+Retire **platform hub** / **hub mode** in operator-facing prose. `/spec:init workspace` and `specrun init --workspace` scaffold a workspace root; the CLI chains an initial workspace sync before returning.
+
 ### Workflow, standards, and artifacts
 
 Specify separates three concerns. Use the terms verbatim; see [docs/explanation/standards-layer.md](docs/explanation/standards-layer.md) for the full picture.

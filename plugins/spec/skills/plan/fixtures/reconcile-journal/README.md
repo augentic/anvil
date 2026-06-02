@@ -4,7 +4,7 @@ Pins the journal tail `specrun plan propose --from` appends to `.specify/journal
 
 ## Scenario
 
-A hub `identity-revamp` change where the agent matched four surveyed leads across two sources (`docs`, `legacy`) into three slices:
+A workspace-root `identity-revamp` change where the agent matched four surveyed leads across two sources (`docs`, `legacy`) into three slices:
 
 - `identity-contracts` and `identity-service` — both reference the shared `identity-api` lead (matched by a shared slug across `docs` + `legacy`), fanned out to two projects and joined by `depends-on`.
 - `password-reset` — `docs`'s `password-reset` and `legacy`'s `reset-password`, judged the same flow; bound to `identity-service` only.

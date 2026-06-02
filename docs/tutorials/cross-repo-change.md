@@ -1,6 +1,6 @@
 # Cross-repo changes
 
-Coordinate a Specify change across multiple repositories from a workspace hub. This tutorial assumes you completed the [Quick start](quick-start.md).
+Coordinate a Specify change across multiple repositories from a workspace root. This tutorial assumes you completed the [Quick start](quick-start.md).
 
 ## What you will build
 
@@ -9,15 +9,15 @@ A workspace-scoped plan where `change.md`, `plan.yaml`, and `discovery.md` live 
 ## Prerequisites
 
 - Completed [Quick start](quick-start.md)
-- A [registry-only platform hub](../reference/configuration.md) or workspace-enabled project (`registry.yaml` describing peer repos)
+- A [registry-only workspace root](../reference/configuration.md) or workspace-enabled project (`registry.yaml` describing peer repos)
 - Git remotes configured for each registered project
 
-## Step 1 — Initialise a workspace hub
+## Step 1 — Initialise a workspace root
 
-For a registry-only hub:
+For a registry-only workspace root:
 
 ```text
-/spec:init hub
+/spec:init workspace
 ```
 
 For a workspace registered inside a platform project, see [Registry](../reference/registry.md) and [Configuration files](../reference/configuration.md).
@@ -64,7 +64,7 @@ Finalize runs `specrun workspace push` to publish `specify/<change-name>` branch
 
 ## What you learned
 
-- Workspace plans centralise plan artifacts at the hub root.
+- Workspace plans centralise plan artifacts at the workspace root root.
 - Per-slice `project` routes phase work into registry slots.
 - Finalize pushes branches and waits for merged PRs before archive.
 

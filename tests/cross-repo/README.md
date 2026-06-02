@@ -21,7 +21,7 @@ which parts are stable enough to automate later.
 ## Relationship To Acceptance
 
 These are shared outside-in scenario documents. They live under
-`tests/cross-repo/` because the cross-repo workflow spans the hub, registry,
+`tests/cross-repo/` because the cross-repo workflow spans the workspace root, registry,
 workspace, change plan, contract adapter, and implementation adapters.
 Adapter-local tests, such as the contracts scenarios, stay under
 `adapters/<adapter>/tests/`.

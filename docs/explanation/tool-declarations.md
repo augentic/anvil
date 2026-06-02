@@ -28,7 +28,7 @@ tools:
       write: []
 ```
 
-Project-scope declarations are owned by the project author. They are available even when the project is a hub project with no adapter, and they survive adapter changes.
+Project-scope declarations are owned by the project author. They are available even when the project is a workspace-root project with no adapter, and they survive adapter changes.
 
 Use project scope when a repo needs a local override, a development build, a private helper, or a tool that is not part of the adapter contract.
 

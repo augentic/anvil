@@ -16,7 +16,7 @@ Specify 2.0 uses several YAML and Markdown files for configuration. All are mana
 **Created by:** `/spec:init` (via `specrun init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the hub shape (`specrun init --hub`).
+Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the workspace root shape (`specrun init --workspace`).
 
 ### Regular project shape
 
@@ -43,7 +43,7 @@ description: |
 
 A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specrun workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
-### Hub shape
+### Workspace shape
 
 ```yaml
 name: shop-platform
@@ -51,14 +51,14 @@ workspace: true
 specify-version: "2.0.0"
 ```
 
-A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and `workspace/` slots but is never itself a code project.
+A workspace root is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under `.specify/workspace/` but is never itself a code project.
 
 | Field             | Required | Description |
 | ----------------- | -------- | ----------- |
-| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the hub sentinel. |
-| `target`          | --       | **Omitted.** A hub has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
+| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the workspace root sentinel. |
+| `target`          | --       | **Omitted.** A workspace root has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
 
-**When to use the registry-only platform hub:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
+**When to use the registry-only workspace root:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
 
 ## plan.yaml
 

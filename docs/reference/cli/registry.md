@@ -10,7 +10,7 @@ The registry was promoted from `specrun registry ...` to a top-level noun group 
 |------|-------------|
 | [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name and URL classification. `--adapter` is optional (a greenfield scaffold seed only). |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`validate`](#specify-registry-validate) | Structural and referential check; on hubs runs the `hub-cannot-be-project` invariant. |
+| [`validate`](#specify-registry-validate) | Structural and referential check; on hubs runs the `workspace-cannot-be-project` invariant. |
 
 ## Subcommands
 
@@ -45,7 +45,7 @@ Behaviour:
 - `--adapter` is optional and, when present, is recorded only as a greenfield scaffold seed; a project's authoritative target adapter lives in its own `project.yaml`.
 - Refuses to add a project that already exists.
 - Runs `Registry::validate_shape` after the write.
-- Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
+- Workspace repos (`project.yaml: workspace: true`) layer on the `workspace-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
 Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specrun plan amend --project <new>`. The validation-ordering invariant is: `specrun registry add` before `specrun plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
 
