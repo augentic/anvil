@@ -63,7 +63,7 @@ The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omn
 ### Code reviewer depth
 
 - [`review-categories.md`](review-categories.md) — full SEC/COR/QUA/UNI check library and codex `rule_id` mapping.
-- [`review-team-protocol.md`](review-team-protocol.md) — verbatim specialist spawn prompts, antagonist protocol, synthesis rules.
+- [`team-protocol-crate.md`](team-protocol-crate.md) — verbatim specialist spawn prompts, antagonist protocol, synthesis rules.
 - [`review-auto-fix.md`](review-auto-fix.md) — `fix` scope, per-category success-rate table, regression guard.
 - [`review-output-template.md`](review-output-template.md) — `REVIEW.md` template and finding-ID conventions.
 - [`agent-teams.md`](agent-teams.md) — shared multi-agent review pattern (specialists + antagonist + lead synthesis).

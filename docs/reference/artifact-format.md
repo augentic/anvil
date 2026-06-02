@@ -8,33 +8,35 @@ This is the definitive reference for the structure and conventions of Specify ar
 - [Design document (technical "how")](#design-document-technical-how)
 - [Proposal document](#proposal-document)
 - [Tasks document](#tasks-document)
+- [Decision Records (design "why")](#decision-records-design-why)
 - [Composition document (Vectis only)](#composition-document-vectis-only)
 - [Contract artifacts (API "shape")](#contract-artifacts-api-shape)
 - [Validation checklists](#validation-checklists)
 
 ## Spec files (behavioral "what")
 
-One spec file per unit, at `specs/<name>/spec.md`.
+One spec file per unit, at `specs/<unit>/spec.md` (a *unit* is one cohesive area of behaviour — a crate, module, or service).
 
 Specs are behavioral. They describe what the system must do, not how it should be implemented in a particular framework.
 
-### Baseline / new adapter format
+### Baseline / new unit format
 
 New specs and merged baselines use a flat requirement format:
 
 ````markdown
-# <Adapter Name> Specification
+# <Unit Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this adapter does>
+<1-2 sentence description of what this unit does>
 
 ### Requirement: <Behavior Name>
 
 ID: REQ-001
+Sources: [<source-key>, …]
+Status: <agreed|unknown|conflict|divergence>
 
 The system SHALL <behavioral description>.
-Source: <source function or design section>
 
 #### Scenario: <Happy Path>
 
@@ -62,12 +64,12 @@ Key rules:
 - Error conditions are listed at the end as a cross-cutting summary.
 - Metrics are only included when they are explicit in the source material.
 
-### Delta spec format (modified adapter)
+### Delta spec format (modified unit)
 
-When modifying an existing adapter, specs use operation headers to describe what changed:
+When modifying an existing unit, specs use operation headers to describe what changed:
 
 ````markdown
-# <Adapter Name> Specification
+# <Unit Name> Specification
 
 ## Purpose
 
@@ -171,7 +173,7 @@ Create a full design if any of the following apply:
 
 If none apply, create a minimal `design.md` noting that a full design is not warranted and referencing the proposal and specs.
 
-For multi-adapter changes, structure the document with adapter-specific sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
+For multi-unit changes, structure the document with per-unit sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
 
 ### Business logic tags
 
@@ -203,11 +205,31 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 ## Proposal document
 
-`proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
+`proposal.md` captures why the slice exists and what is in scope. The workflow owns three required H2 sections, in order — target shape briefs may add sections after them (e.g. Vectis `## Platforms`) but must not rename or replace these:
 
-The **Units** section creates the contract between proposal and specs phases -- each unit listed will need a corresponding spec file at `specs/<name>/spec.md`.
+```markdown
+## Why
 
-Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- implementation details belong in the design.
+<One to three paragraphs explaining why the slice exists.>
+
+## Units
+
+- <unit-slug> — <target-specific meaning and short scope summary>
+
+## Non-goals
+
+- <Out-of-scope behavior or surface, when known>
+```
+
+- **`## Why`** is the motivation section `specrun slice validate` checks (`proposal.why-has-content`).
+- **`## Units`** is the only section the validator uses to locate spec files: every bullet maps one-to-one to `specs/<unit>/spec.md`. Unit slugs are kebab-case. Targets interpret what a unit means (Vectis feature, Omnia crate/service surface, contracts contract surface) in their shape briefs, but the section name and file layout are identical for every target.
+- **`## Non-goals`** is optional content when known; the heading is still required.
+
+No provenance lines on `proposal.md` — provenance lives in spec files after synthesis.
+
+For agent-authored synthesis responses, see [`plugins/spec/references/synthesis/substeps.md`](../../plugins/spec/references/synthesis/substeps.md) section 1 for per-source authoring guidance.
+
+Keep proposals concise (one to two pages). Focus on the "why" not the "how" — implementation details belong in the design.
 
 ## Tasks document
 
@@ -232,17 +254,34 @@ Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- i
 - Reference specs for what needs to be built, design for how to build it.
 - Each task should be verifiable -- you know when it is done.
 
-### Skill directive tags
+Tasks are implemented by the active target adapter's `build` brief (`adapters/targets/<target>/briefs/build.md`), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone specialist skills.
 
-Tasks may include a skill directive as an HTML comment. The build phase parses these tags and delegates the task to the named specialist skill:
+## Decision Records (design "why")
 
-```markdown
-- [ ] 2.1 Generate the domain crate <!-- skill: omnia:crate-writer -->
-- [ ] 2.2 Generate test suites <!-- skill: omnia:test-writer -->
-- [ ] 2.3 Manual integration step
-```
+A slice may author zero or more **Decision Records** at `.specify/slices/<name>/decisions/<slug>.md` -- the durable *why* behind a design choice plus the alternatives it rejected. Each record is a YAML front-matter header (the author writes only `slug` and `status: accepted | rejected`) followed by a [Nygard-shaped](https://github.com/joelparkerhenderson/architecture-decision-record) body:
 
-Tasks without a skill tag are implemented via the adapter's default build instruction.
+````markdown
+---
+slug: token-store-backing
+status: accepted
+---
+
+## Context
+
+<the forces and constraints that make this decision necessary>
+
+## Decision
+
+<the choice that was made>
+
+## Consequences
+
+<what becomes easier or harder as a result>
+````
+
+Decision Records store the *why*, never design *state* -- domain models and API shapes stay in `design.md` and the code.
+
+`/spec:merge` promotes each record into the append-only baseline catalogue at `.specify/decisions/DEC-NNNN-<slug>.md` by opaque whole-file add, assigning the durable, project-global `DEC-NNNN` id (the CLI never reuses an id). A newer record's `supersedes:` flips its named targets to `status: superseded`. Records are opt-in -- a slice that takes no notable decision authors none.
 
 ## Composition document (Vectis only)
 
@@ -253,7 +292,7 @@ Tasks without a skill tag are implemented via the adapter's default build instru
 The pre-define and post-define surfaces are two sibling artifacts that share the same JSON Schema:
 
 - **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers (the [`screenshots` source adapter](../../adapters/sources/screenshots/adapter.yaml) is the first-party producer; future Figma and source-code inferers reuse the same contract) or hand-authored. Validated by `specrun tool run vectis -- validate layout`, which enforces the unwired-subset rule and the structural-identity rule.
-- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specrun tool run vectis -- validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
+- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced during synthesis (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specrun tool run vectis -- validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
 
 ### Format
 

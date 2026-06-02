@@ -7,6 +7,7 @@ Verbatim summaries `/spec:init` prints after a successful invocation. Pick the t
 | Regular project, no codebase indicators or user declined extraction | [Greenfield](#greenfield) |
 | Regular project, user opted into baseline extraction | [Brownfield](#brownfield) |
 | Hub init (`$HUB_MODE=true`) | [Hub](#hub) |
+| Migration applied during the artifact-major probe (runbook step 1d) | [Migrated](#migrated) |
 
 ## Greenfield
 
@@ -57,4 +58,21 @@ Next steps:
 1. Add registered projects with `specrun registry add`
 2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
 3. Stamp Gate 1 with `specrun plan transition <name> approved`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+```
+
+## Migrated
+
+Rendered after `specrun migrate --yes` applies a major-version migration during the artifact-major probe (runbook step 1d). Substitute the fields from the migration report; the structured summary is the surface here, while the full per-file diff lives in the journal.
+
+```
+## Specify Migrated
+
+**Migration**: $MIGRATION_KIND (e.g. v1-to-v2)
+**Files rewritten**: $FILES_REWRITTEN
+**Files moved**: $FILES_MOVED
+**Audit**: see the `migration.applied` entry in `.specify/journal.jsonl` for the full per-file record
+
+Next steps:
+1. The project is now on the current artifact major; init continues automatically
+2. Review the migrated artifacts under `.specify/` before authoring new changes
 ```

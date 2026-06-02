@@ -142,7 +142,7 @@ A **change** is the operator-defined umbrella that coordinates one or more slice
 
 Specify 2.0 splits adapters by direction.
 
-A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`.
+A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `captures`, `screenshots`.
 
 A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `shape` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 
@@ -154,7 +154,7 @@ You pick the target at scaffolding time (`/spec:init <target>`). You bind source
 
 When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
 
-Core synthesis reconciles `Evidence[]` into one `spec.md`. Every requirement header carries:
+Core synthesis reconciles `Evidence[]` into the slice's per-unit `specs/<unit>/spec.md`. Every requirement header carries:
 
 ```markdown
 ID: REQ-001

@@ -12,7 +12,7 @@
 | Brief | Output | Dependencies |
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<adapter>/spec.md` | proposal |
+| `specs.md` | `specs/<unit>/spec.md` | proposal |
 | `tasks.md` | `tasks.md` | specs |
 
 There is no `design` stage. Contract changes define interface shapes, not implementation design. Implementation-level concerns (auth schemes, retry policies, caching strategies) belong in the implementing project's change, not in the contract change.

@@ -98,7 +98,17 @@ specrun workspace push [<project>...]                    # publish specify/<name
 
 # Tools
 specrun tool run <name> [args...]                        # run a declared WASI tool
+
+# Maintenance & bootstrap
+specrun upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
+specrun plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
+specrun plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
+specrun migrate [--from <X.Y.Z>] [--to <X.Y.Z>] [--dry-run|--yes]  # run registered migrators
+specrun init --upgrade                                   # bump specify_version + re-scaffold preservation-safe files only
+specrun init --check-migration --format json             # read-only major-version probe (needs-migration bool + plan)
 ```
+
+`specrun migrate --to` pins `specify_version` **verbatim** to the requested target (not necessarily the running binary). A pin on a major older than the binary is exit `4` (migrate up); a pin newer than the binary is exit `3` (upgrade the binary first). For `specrun upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specrun plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
 
 ## Adapters
 

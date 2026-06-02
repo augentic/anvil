@@ -14,7 +14,7 @@ Deterministic bookkeeping — slice selection, lifecycle transition, archive mov
 
 When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure. Non-interactive mode forwards `--reason` to `specrun slice drop`.
 
-## Steps
+## Critical Path
 
 1. **Select the slice**
 

@@ -28,7 +28,7 @@ Source code changes in the project codebase (not under `.specify/`). The CLI wri
 
 ## Behavior
 
-The skill drives the two-phase [`specrun slice build`](../cli/slice.md#specrun-slice-build) verb (prepare → brief → finalize), mirroring `specrun source survey` / `extract`. The CLI owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate; this skill owns only running the target build brief against the prepared request.
+The authoritative step-by-step lives in the [`/spec:build` skill body](../../../plugins/spec/skills/build/SKILL.md); the operator summary follows. The skill drives the two-phase [`specrun slice build`](../cli/slice.md#specrun-slice-build) verb (prepare → brief → finalize), mirroring `specrun source survey` / `extract`. The CLI owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate; this skill owns only running the target build brief against the prepared request.
 
 1. **Resolve active slice** — `specrun plan next --format json`; refuse if `[slice-name]` mismatches active entry.
 2. **Acquire plan lock** when invoked standalone (skip when `SPECIFY_PLAN_LOCK_HELD=1` from `/spec:execute`).

@@ -36,10 +36,12 @@ Not for first-time change authoring without a plan — use [/spec:plan](../chang
 
 ## Behavior
 
+The authoritative step-by-step (CLI choreography, handoff envelopes, guardrails) lives in the [`/spec:refine` skill body](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../plugins/spec/references/synthesis/). The operator summary:
+
 1. **Resolve target and sources** — take the resolved `target` from `specrun plan next` (the plan stores no per-slice `target`) and read `sources[]` from `plan.yaml.slices[<slice>]`; cross-resolve against `discovery.md` lead inventory.
 2. **Create slice directory** — `specrun slice create <name> --target <target>` stamps `refining`.
 3. **Extract serially** — for each source binding, run the adapter's `extract` brief; persist Evidence YAML.
-4. **Synthesize** — drive the two-phase `specrun slice synthesize` verb. `--dry-run` emits the agent inputs envelope (each bound source's inline `lead` + `claims` plus the resolved target `shape` brief); the agent authors the response (per-requirement `(source, id, kind)` claims, an `agreement` verdict, and prose, plus the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and spec bodies without provenance lines); `--from <response.json>` runs the projection kernel, renders provenance into `spec.md`, and atomically persists `proposal.md → specs/<unit>/spec.md → design.md → tasks.md → model.yaml`. The kernel owns `REQ`/`TASK` ids, status, winner markers, and rendered `Sources:` lists; provenance is carried inline in the single `model.yaml` artifact, never as a hand-authored `provenance.yaml`, and `specrun slice provenance` projects the audit view on demand.
+4. **Synthesize** — drive the two-phase `specrun slice synthesize` verb: the agent authors per-requirement claims, an `agreement` verdict, and prose; the kernel owns `REQ`/`TASK` ids, status, winner markers, and rendered `Sources:` lists, persisting `proposal.md → specs/<unit>/spec.md → design.md → tasks.md → model.yaml` with provenance carried inline in `model.yaml`.
 5. **Validate** — `specrun slice validate`; on failure, slice stays `refining`.
 6. **Transition** — `specrun slice transition <name> refined`.
 

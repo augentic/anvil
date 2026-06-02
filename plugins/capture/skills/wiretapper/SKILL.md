@@ -6,17 +6,15 @@ argument-hint: <legacy-dir> [app-name]
 
 # Wiretapper Skill
 
-## Overview
-
 Analyze a cloned legacy TypeScript/Node.js repository, detect which of eight patterns (A–H) apply (Fastify, Express, NestJS, Kafka consumer/producer, HttpClient, TypeORM), and generate a `src/wiretap/` folder with core session/singleton and only the relevant adapters. Then patch the app entrypoint to wire up wiretap (conditional on `WIRETAP_ENABLED=true`) and run the project build to verify the code compiles. Output at runtime is `{app-name}.wiretap.json` when wiretap is enabled.
 
 This skill operates **autonomously**: it never prompts for input. Invalid input or build failure results in a clear error and step failure.
 
 If `<legacy-dir>` is missing or not a directory, fail with: `"Error: legacy-dir is required and must be an existing directory."` `<app-name>` defaults to `package.json` `"name"` or `basename(<legacy-dir>)` when omitted; it labels the runtime wiretap file `{app-name}.wiretap.json`.
 
-## Process
+## Critical Path
 
-### Step 0: Bootstrap the legacy tree (if remote)
+### 0. Bootstrap the legacy tree (if remote)
 
 `/capture:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first into a fresh temporary directory and pass the resulting local path as `$LEGACY_DIR`:
 
@@ -24,17 +22,17 @@ If `<legacy-dir>` is missing or not a directory, fail with: `"Error: legacy-dir 
 git clone "$url" "$dest"
 ```
 
-### Step 1: Validate
+### 1. Validate
 
 1. **Path**: Ensure `$LEGACY_DIR` exists and is a directory.
 2. **Node project**: Ensure `$LEGACY_DIR/package.json` exists and is valid JSON.
 3. If validation fails, exit with a clear error message.
 
-### Step 2: Detect Patterns
+### 2. Detect Patterns
 
 Read `$LEGACY_DIR/package.json` (dependencies and devDependencies) and scan source under `$LEGACY_DIR` (e.g. `src/`, `lib/`, or root `*.ts`/`*.js`). The eight-pattern detection table (A–H), the per-pattern signals, and the HTTP-entry mutual-exclusion rule (NestJS > Fastify/Express) live in [references/design.md](references/design.md) §Detection. Be conservative — when in doubt, do not add a pattern.
 
-### Step 3: Generate Core and Adapters
+### 3. Generate Core and Adapters
 
 Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **exact** adapter code from [references/adapters/](references/adapters/) for each detected pattern; do not invent alternate implementations.
 
@@ -45,7 +43,7 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
 
 **Generated only when the corresponding pattern is detected.** The pattern → adapter file → reference document mapping (A–H) lives in [references/design.md](references/design.md) §Generated Layout. Generate one adapter file under `$LEGACY_DIR/src/wiretap/adapters/` per detected pattern, copying verbatim from the listed reference.
 
-### Step 4: Wire Up the Start
+### 4. Wire Up the Start
 
 1. **Locate entrypoint**: Prefer `src/main.ts`, `src/start.ts`, `main.ts`, `start.ts`, or the file referenced by `package.json` `main`/`scripts.start`.
 2. **Insert wiretap bootstrap** so it runs only when `process.env.WIRETAP_ENABLED === "true"`:
@@ -54,7 +52,7 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
    - For NestJS + Kafka: register interceptor and TypeORM/Kafka wrappers **before** `startAllMicroservices()`; wrap Kafka consumer before `startAllMicroservices()`.
 3. If the entrypoint cannot be determined or patched safely (e.g. non-standard layout), fail with a clear message describing what was tried.
 
-### Step 5: Verify Compile
+### 5. Verify Compile
 
 1. From `$LEGACY_DIR`, run the project build (e.g. `npm run build` or `npx tsc --noEmit`). Use the script the project defines; if both exist, prefer `npm run build`.
 2. If the build fails, report the compiler errors and **fail the step**. Do not leave the repo in a broken state without failing.

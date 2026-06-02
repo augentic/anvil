@@ -25,13 +25,15 @@ contracts/                                  # Baseline API contracts
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── .cache/                                 # Cached adapter manifests + briefs
-│   ├── adapters/sources/<name>/                     # Source adapter cache
+├── .cache/                                 # Cached adapter manifests, briefs, and extraction results
+│   ├── manifests/sources/<name>/           # Source adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{survey,extract}.md
-│   └── adapters/targets/<name>/                     # Target adapter cache
-│       ├── adapter.yaml
-│       └── briefs/{shape,build,merge}.md
+│   ├── manifests/targets/<name>/           # Target adapter manifest cache
+│   │   ├── adapter.yaml
+│   │   └── briefs/{shape,build,merge}.md
+│   └── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
+│       └── index.jsonl
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
@@ -94,7 +96,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `.cache/`
 
-Adapter manifests and brief files. The adapter loader (`crates/workflow/src/adapter/`) routes by axis: `adapters/sources/<name>/` for source adapters and `adapters/targets/<name>/` for target adapters. The cache is populated by `specrun source resolve` and `specrun target resolve` on first use.
+Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specrun source resolve` / `specrun target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache (with an append-only `index.jsonl`). The whole `.cache/` tree is regenerable and safe to delete.
 
 ### `workspace/`
 

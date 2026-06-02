@@ -362,6 +362,114 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 
 A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
 
+## Bootstrap verbs
+
+The bootstrap lifecycle verbs (`specrun upgrade`, `specrun plugins doctor`, `specrun init --check-migration`, `specrun migrate`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
+
+### `specrun upgrade --dry-run`
+
+Reports the detected channel and resolved target version without mutating. `commands` lists the channel-native commands that *would* run (empty for the `binary` channel, which instead carries `guidance`). `head-fallback` is `true` when the latest release tag could not be resolved and the `cargo` channel falls back to a HEAD install. On the apply path (`--yes`) `dry-run`/`applied` flip and `journaled` reports whether a `cli.upgraded` event was written.
+
+```json
+{
+  "version": 1,
+  "channel": "cargo",
+  "from": "0.3.0",
+  "to": "0.43.0",
+  "dry-run": true,
+  "applied": false,
+  "head-fallback": false,
+  "journaled": false,
+  "commands": [
+    { "program": "cargo", "args": ["install", "--git", "https://github.com/augentic/specify-cli", "--tag", "v0.43.0"] }
+  ]
+}
+```
+
+The `binary` channel omits `commands` and carries `guidance` instead, because its in-process self-replace is deferred:
+
+```json
+{
+  "version": 1,
+  "channel": "binary",
+  "from": "0.3.0",
+  "to": "0.43.0",
+  "dry-run": true,
+  "applied": false,
+  "head-fallback": false,
+  "journaled": false,
+  "commands": [],
+  "guidance": "binary-channel self-replace is deferred; download the latest release manually"
+}
+```
+
+### `specrun plugins doctor`
+
+Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plugin (then any `extra` cache entries), each with the marketplace-resolved `expected-sha` (`null` when unresolvable), the `cached-sha` (`null` when no cache entry), and a `status` from the closed set `ok | drifted | present | missing | extra`. Drift is a **finding**, never a non-zero exit — `doctor` exits non-zero only on filesystem / marketplace-parse failure.
+
+```json
+{
+  "version": 1,
+  "marketplace": "/abs/path/specify/.cursor-plugin/marketplace.json",
+  "cache-root": "/Users/me/.cursor/plugins/cache/augentic",
+  "plugins": [
+    { "name": "spec", "expected-sha": "f1b21b2…", "cached-sha": "a0c4d1e…", "status": "drifted" },
+    { "name": "capture", "expected-sha": "f1b21b2…", "cached-sha": "f1b21b2…", "status": "ok" }
+  ],
+  "summary": { "ok": 1, "drifted": 1, "present": 0, "missing": 0, "extra": 0 }
+}
+```
+
+### `specrun init --check-migration`
+
+Read-only major-version probe. `needs-migration` is the headline the `/spec:init` skill branches on; `from` is the pinned `project.yaml.specify_version` (`null` when unset), `to` is this binary's version, and `plan` carries one entry per registered hop in the `from → to` window with its `actions[]` (internally-tagged on `action`: `move` / `rewrite` / `remove`). Exits `0` regardless of outcome.
+
+```json
+{
+  "version": 1,
+  "needs-migration": false,
+  "from": "2.0.0",
+  "to": "2.0.0",
+  "plan": []
+}
+```
+
+A project owed a migration carries a populated `plan`:
+
+```json
+{
+  "version": 1,
+  "needs-migration": true,
+  "from": "1.4.0",
+  "to": "2.0.0",
+  "plan": [
+    {
+      "kind": "v1-to-v2",
+      "actions": [
+        { "action": "move", "from": "adapters/omnia/adapter.yaml", "to": "adapters/targets/omnia/adapter.yaml" },
+        { "action": "rewrite", "path": ".specify/discovery.md", "contents": "## Lead inventory\n…" }
+      ]
+    }
+  ]
+}
+```
+
+### `specrun init --upgrade`
+
+Re-entry version bump. It shares the `specrun init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify_version` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
+
+```json
+{
+  "config-path": "/abs/path/.specify/project.yaml",
+  "adapter-name": "omnia",
+  "specify-version": "2.0.0",
+  "specify-version-changed": true,
+  "cache-present": true,
+  "context-generated": false,
+  "context-skipped": true
+}
+```
+
 ---
 
 When migrating a new dispatcher to `Render`, append its body under a stable H3 heading and link from the corresponding `SKILL.md` instead of inlining the JSON example. Trim large example bodies to the smallest shape that illustrates the contract — readers who want byte-for-byte canonical output should follow the fixture link above to the CLI repo.

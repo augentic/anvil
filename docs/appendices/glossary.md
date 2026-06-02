@@ -17,7 +17,7 @@ A machine-readable interface definition at `contracts/`. Uses three formats: JSO
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour`. Declared per source adapter, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour`. Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -35,9 +35,6 @@ A markdown prompt file shipped by a source or target adapter that drives one ope
 
 ## C
 
-**Lead**
-A slice-sized unit emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, with stable `id` and `sources[]`. Re-surveying the same source replaces blocks by `id`.
-
 **Change**
 The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary in 2.0, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
 
@@ -53,7 +50,13 @@ Unresolvable disagreement between two `Evidence` rows at the same authority clas
 **Contract id**
 The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. Rename-stable hint that survives file moves and `info.version` bumps.
 
+**Crux**
+An Augentic product: a cross-platform application framework (Rust core, native iOS and Android shells). The [Vectis](#v) target adapter generates Crux applications. Not part of the core Specify contract.
+
 ## D
+
+**Diagnostic**
+The neutral finding currency every check surface emits (`specrun slice validate`, `specrun lint`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
 The plan-time discovery artifact at `.specify/discovery.md` (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
@@ -65,9 +68,6 @@ Authority-resolved disagreement between two `Evidence` rows. The higher-authorit
 The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specrun slice transition <name> dropped --reason "..."`.
 
 ## E
-
-**Survey**
-The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`.
 
 **Evidence**
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
@@ -95,6 +95,9 @@ The operator-supplied free-form description that backs N=1 work and overrides hi
 
 ## L
 
+**Lead**
+A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in `propose`. See [From sources to slices](../explanation/reconciliation.md).
+
 **Lifecycle**
 Three stacked lifecycles in `plan.yaml`: the plan lifecycle (`pending → approved`, two stored states), the per-entry lifecycle (`pending → in-progress → done`, with `dropped` available as a slice transition target), and the slice lifecycle inside `.metadata.yaml` (`refining → refined → built → merged`).
 
@@ -106,6 +109,14 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
 
+**model.yaml**
+The single structured artifact per refined slice, at `.specify/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `specrun slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).
+
+## O
+
+**Omnia**
+An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. The [`omnia`](../reference/targets/omnia.md) target adapter generates Omnia service crates. Not part of the core Specify contract.
+
 ## P
 
 **Plan**
@@ -114,14 +125,14 @@ The change's table of contents in `plan.yaml`. Contains `sources:` (top-level so
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
 
+**Prepare and finalize (slice build)**
+The two phases of `specrun slice build <slice>`. `--phase prepare` (default) assembles and schema-validates the build request and hands it to the target's `build` brief; `--phase finalize` validates the report the brief writes and gates the `refined → built` transition. The same two-phase pattern (`prepare` builds the sandbox, `finalize` validates output) governs source `survey` / `extract` under `execution: agent`.
+
 **Project (plan routing)**
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
 The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specrun plan propose`. The agent returns `slices[]`, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` (one row per `(scope, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specrun plan amend`.
-
-**Scope (reconciliation)**
-The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specrun plan propose` response `slices[]` rows that carry identical `sources[]`. The per-scope source sets declare every `(source, lead)` exactly once; one scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording and from the [Core concepts](../explanation/concepts.md) doc title.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -132,30 +143,42 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 The breakout skill (`/spec:refine`) that runs per slice: `specrun slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
 
 **Registry**
-`registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry has a name, URL, target adapter identifier, and domain description.
+`registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry carries a `name` and `url` (plus optional contract wiring and a greenfield adapter seed); a project's description, capabilities, and target live in its own `project.yaml` and are projected into `topology.lock`.
 
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
 ## S
 
+**Scope (reconciliation)**
+The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specrun plan propose` response `slices[]` rows that carry identical `sources[]`. One scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording. See [From sources to slices](../explanation/reconciliation.md).
+
 **Shape**
 The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.
 
 **Skill**
-An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/omnia:crate-writer`). Skills delegate deterministic work to the CLI and use judgment for everything else.
+An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/spec:build`). Skills delegate deterministic work to the CLI and use judgment for everything else.
 
 **Slice**
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`. Lives at `adapters/sources/<name>/adapter.yaml`.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
 
 **Spec**
 A behavioral specification at `specs/<unit>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
+
+**specdev**
+The CLI binary that runs framework **authoring** checks — skill frontmatter, doc house style, marketplace consistency — for contributors to the `augentic/specify` repo. Invoked locally as `make lint`. Distinct from `specrun`. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+
+**specrun**
+The runtime CLI binary that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, and consumer-project `specrun lint`. This is the `specify` binary's runtime surface. Distinct from `specdev` (framework authoring checks).
+
+**Survey**
+The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.
 
 ## T
 
@@ -165,7 +188,18 @@ Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaul
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).
 
+**topology.lock**
+A committed file at `.specify/topology.lock` (workspace mode only). A machine-written projection of each member project's `project.yaml` topology facets — `name`, `target`, `description`, `capabilities[]`, `keywords[]` — regenerated by `specrun workspace sync`. Plan-time reconciliation reads it so the agent can route slices to the right project without cloning every repo.
+
+## V
+
+**Vectis**
+An Augentic product: a target that applies spec-first generation to cross-platform UI, producing [Crux](#c) applications (Rust core plus native iOS and Android shells). The [`vectis`](../reference/targets/vectis.md) target adapter drives it. Not part of the core Specify contract.
+
 ## W
+
+**WASI**
+The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations and declared tools under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
 
 **Workspace**
 The directory under `.specify/workspace/` holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specrun workspace sync` from `registry.yaml`. Local commits are published through `specrun workspace push`; PR merge remains an operator action outside Specify.

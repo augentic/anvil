@@ -34,6 +34,8 @@ Not when the slice is still `refining` or `refined` (use [/spec:build](build.md)
 
 ## Behavior
 
+The authoritative step-by-step lives in the [`/spec:merge` skill body](../../../plugins/spec/skills/merge/SKILL.md); the operator summary follows.
+
 1. **Resolve active slice** — `specrun plan next`; validate optional `[slice-name]` matches active entry.
 2. **Acquire plan lock** when invoked standalone.
 3. **Workspace routing** — `chdir` into workspace slot when `project` is set.

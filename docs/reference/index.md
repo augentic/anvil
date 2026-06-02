@@ -26,7 +26,8 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Adapters
 
-- [Target Adapters](targets/index.md) — `shape` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts). Source adapters are documented inline at [`adapters/sources/<name>/`](https://github.com/augentic/specify/tree/main/adapters/sources).
+- [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, code-typescript, screenshots, captures).
+- [Target Adapters](targets/index.md) — `shape` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 

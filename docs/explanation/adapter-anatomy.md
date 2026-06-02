@@ -2,6 +2,9 @@
 
 Specify 2.0 has two adapter roles with a shared shape. **Source adapters** turn external material (operator intent, written documentation, legacy code, screenshots) into structured `Evidence`. **Target adapters** turn that evidence into code by guiding core synthesis and driving build / merge. The role you are authoring decides which operations you implement; the on-disk shape is the same.
 
+> [!NOTE]
+> This page is the authoring contract — manifest fields, claim kinds, sandboxing, and authority resolution in detail. If you just want to understand *how an adapter fits into a change* (a legacy-code source surveys a lead, extracts evidence, and a target turns the resulting spec into code), read [From sources to slices](reconciliation.md) first. For the per-adapter field tables, see the [Source adapters](../reference/sources/index.md) and [Target adapters](../reference/targets/index.md) references.
+
 <div class="audience-grid">
   <div class="audience">
     <div class="who">Source author</div>

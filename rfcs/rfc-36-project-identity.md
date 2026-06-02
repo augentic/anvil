@@ -1,6 +1,6 @@
 # RFC-36: Project Identity
 
-> Status: **Shipped** — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Registry projection and topology cache (RFC-36)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#registry-projection-and-topology-cache-rfc-36) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time `projects[]` topology) and [RFC-29c](rfc-29c-synthesis.md) (synthesis authors `design.md`; the baseline delta-merge model) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
+> Status: **Shipped** — archived milestone spec; durable source of truth is [`specify-cli` `DECISIONS.md` §"Registry projection and topology cache (RFC-36)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#registry-projection-and-topology-cache-rfc-36) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). Depends: [From sources to slices §Plan time](../docs/explanation/reconciliation.md#plan-time-leads-become-slices) (plan-time `projects[]` topology) and [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) (synthesis authors `design.md`; the baseline delta-merge model) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
 
 ## Problem
 
@@ -94,7 +94,7 @@ The lock follows the same discipline as `.specify/context.lock`: snapshot machin
 | baseline `model.yaml` `domain` / `apis` sub-trees | structured domain + API surface | **Future** (see Out of scope) |
 
 
-`design.md` is intentionally **not** an identity source: it is a per-slice artifact bundling volatile *state* with immutable *decisions*. Its structured content is what [RFC-29c](rfc-29c-synthesis.md) deferred out of the baseline `model.yaml` (`domain` / `apis` / …); when those sub-trees are earned, identity gains a richer structured source for free. The *decisions* half is promoted into `.specify/decisions/` at merge and projected as `decisions[]` — the durable, baseline-resident counterpart this identity model requires for the design layer.
+`design.md` is intentionally **not** an identity source: it is a per-slice artifact bundling volatile *state* with immutable *decisions*. Its structured content is what [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) deferred out of the baseline `model.yaml` (`domain` / `apis` / …); when those sub-trees are earned, identity gains a richer structured source for free. The *decisions* half is promoted into `.specify/decisions/` at merge and projected as `decisions[]` — the durable, baseline-resident counterpart this identity model requires for the design layer.
 
 ### Why decisions improve routing
 
@@ -105,7 +105,7 @@ The lock follows the same discipline as `.specify/context.lock`: snapshot machin
 The projection reuses the existing parsers; it introduces no new scraper:
 
 - **`surface[].unit`** is the `<unit>` directory slug under `.specify/specs/`, sorted by slug.
-- **`surface[].requirements[]`** are the parsed requirement-block headings of that unit's `spec.md` — the `Requirement.name` field (heading text with any inline `[…]` tag stripped) from the requirement-block parser (`crates/model/src/spec/provenance.rs`), in `Requirement.id` order (`REQ-NNN`, no holes, per [RFC-29c §"ID grammar"](rfc-29c-synthesis.md)). Titles only; bodies, `Sources:`, and `Status:` lines are never projected.
+- **`surface[].requirements[]`** are the parsed requirement-block headings of that unit's `spec.md` — the `Requirement.name` field (heading text with any inline `[…]` tag stripped) from the requirement-block parser (`crates/model/src/spec/provenance.rs`), in `Requirement.id` order (`REQ-NNN`, no holes, per [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)). Titles only; bodies, `Sources:`, and `Status:` lines are never projected.
 - **`decisions[]`** obeys **D36-6 (deterministic projection only)** — structural and byte-stable, never an LLM summary:
   - **Source filter:** only baseline records with `status: accepted`. `superseded` and `rejected` records describe past or not-taken posture, so they are excluded from *current* identity (the same way `surface[]` reflects current requirements, not removed ones).
   - **`decisions[].id`** is the `DEC-NNNN`; **`decisions[].title`** is the record's H1 heading text. No body, `Context`, or `Consequences` prose is projected.
@@ -142,7 +142,7 @@ projects:
       - "password-reset: added reset-link expiry + email queue"
 ```
 
-Each entry projects one member's identity. `name` is the **registry slot name** (the binding key in `plan.yaml.slices[].project` and build-time fan-out per [RFC-29c](rfc-29c-synthesis.md)); `target` resolves from the slot's `adapter`; `description` is authored intent; `surface[]` / `decisions[]` / `recent[]` are the deterministic baseline projection. Empty `surface` / `decisions` / `recent` stay off the wire, so greenfield reconciliation degrades cleanly to `description` only.
+Each entry projects one member's identity. `name` is the **registry slot name** (the binding key in `plan.yaml.slices[].project` and build-time fan-out per [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)); `target` resolves from the slot's `adapter`; `description` is authored intent; `surface[]` / `decisions[]` / `recent[]` are the deterministic baseline projection. Empty `surface` / `decisions` / `recent` stay off the wire, so greenfield reconciliation degrades cleanly to `description` only.
 
 ### Surface bounds
 
@@ -165,7 +165,7 @@ Size is bounded by `#units × K` and degrades gracefully — a huge project stil
 Three mechanics keep this sound:
 
 - **Caps live in the projection, not the wire.** They are applied in `workspace sync`, so the committed `topology.lock` *is* the bounded artifact and the envelope forwards it unchanged.
-- **Stable ordering only, never relevance-ranked.** Within a unit, declaration order (which equals `REQ` id order with no holes, [RFC-29c §"ID grammar"](rfc-29c-synthesis.md)); units sorted by slug; decisions sorted by `DEC-NNNN`. Ranking by relevance to a lead would make the lock non-deterministic and break D36-6.
+- **Stable ordering only, never relevance-ranked.** Within a unit, declaration order (which equals `REQ` id order with no holes, [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)); units sorted by slug; decisions sorted by `DEC-NNNN`. Ranking by relevance to a lead would make the lock non-deterministic and break D36-6.
 - **`K` / `M` are fixed defaults**, not operator config — `description` already absorbs the cold-start and cryptic-title cases. A project that overflows even at unit granularity is a sign the slot is too coarse for one registry entry; the knob is deferred until a real project demands it.
 
 ### Decision Records
@@ -278,7 +278,7 @@ No new top-level verb for decisions. A read-only `specrun decisions list` projec
 
 ## Wire contracts
 
-Appends to [RFC-29 §"Shared wire contracts"](rfc-29-fan-in-fan-out.md#shared-wire-contracts):
+Appends to [`DECISIONS.md` §Lead reconciliation](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2):
 
 - **Schema:** `topology-lock.schema.json` (`TOPOLOGY_LOCK_JSON_SCHEMA`) for `.specify/topology.lock`, carrying `surface[]` (`unit`, bounded `requirements[]`, optional `more:` count), `decisions[]` (`{ id, title }`, plus optional `more:` count), and `recent[]` per project.
 - **`proposal.schema.json` `$defs/projectRef`:** gains optional `surface[]`, `decisions[]`, and `recent[]`; drops `capabilities[]` / `keywords[]`. Hub `projects[]` source restated as the topology cache, not `registry.yaml#/projects[]`.
@@ -308,7 +308,7 @@ The workflow contract spans both repos (parent-repo AGENTS §"Note to the implem
 
 ## Out of scope
 
-- **Design / model-subtree enrichment.** Richer structured identity from baseline `model.yaml` `domain` / `apis` sub-trees lands automatically once [RFC-29c](rfc-29c-synthesis.md) earns those sub-trees; this RFC ships the spec/decisions/journal/description projection only.
+- **Design / model-subtree enrichment.** Richer structured identity from baseline `model.yaml` `domain` / `apis` sub-trees lands automatically once [`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b) earns those sub-trees; this RFC ships the spec/decisions/journal/description projection only.
 - **Structured `model.yaml` decisions sub-tree.** A kernel-projected `decisions[]` sub-tree on `model.yaml` (the richer, merge-keyed enrichment path RFC-29c deferred its non-requirements sub-trees toward) is a future RFC. This RFC deliberately ships the lighter opaque-add Markdown catalogue first and does **not** depend on that sub-tree landing; if it lands, these `DEC-NNNN` records become its projection target.
 - **Relevance-ranked identity.** The `decisions[]` projection is in scope, but only as a stable, `DEC`-ordered, capped list. Ranking decisions by relevance to a lead, or weighting the binding score by decision overlap, would break **D36-6** determinism and is deferred to whatever future RFC makes binding itself score-based.
 - **Design *state* / living architecture docs.** C4 / arc42-style living architecture documentation and any auto-derived design-state surface are not in scope; design state stays the job of the code and the future model sub-trees.

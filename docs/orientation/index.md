@@ -2,18 +2,22 @@
 
 Specify is a plugin system that orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Specify at existing documentation, intent, or legacy code), Specify generates a plan and durable artifacts, then specialist AI skills implement each slice from those artifacts.
 
+## A graduated path
+
+You do not need to read this guide front to back. Pick the row that matches where you are and follow it left to right — each step builds on the one before.
+
 <div class="audience-grid">
   <div class="audience">
-    <div class="who">New operator</div>
-    <div class="path"><a href="../tutorials/quick-start.md">Quick start</a> → <a href="../explanation/concepts.md">Core concepts</a> → <a href="prerequisites.md">Prerequisites</a></div>
+    <div class="who">Day 1 — run it</div>
+    <div class="path"><a href="prerequisites.md">Prerequisites</a> → <a href="../tutorials/quick-start.md">Quick start</a> → <a href="../tutorials/first-change.md">First multi-slice change</a></div>
   </div>
   <div class="audience">
-    <div class="who">Architect</div>
-    <div class="path"><a href="../explanation/layered-stack.md">Layered stack</a> → <a href="../explanation/adapter-anatomy.md">Adapter anatomy</a></div>
+    <div class="who">Day 2 — understand it</div>
+    <div class="path"><a href="../explanation/concepts.md">Core concepts</a> → <a href="../explanation/artifacts.md">Artifacts</a> → <a href="../explanation/reconciliation.md">From sources to slices</a> → <a href="../how-to/index.md">How-to guides</a></div>
   </div>
   <div class="audience">
-    <div class="who">Returning user</div>
-    <div class="path"><a href="../reference/quick-reference.md">Quick reference</a> → <a href="../reference/lifecycle.md">Lifecycle</a></div>
+    <div class="who">Going deeper</div>
+    <div class="path"><a href="../explanation/layered-stack.md">Layered stack</a> → <a href="../explanation/adapter-anatomy.md">Adapter anatomy</a> → <a href="../reference/index.md">Reference</a></div>
   </div>
 </div>
 
