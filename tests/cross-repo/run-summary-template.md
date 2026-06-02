@@ -88,7 +88,7 @@ Record the final planned slices before execution.
 
 | Role | Slice name | Project | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| Contract | `<slice>` | `<none or hub>` | `<none>` | `<status>` |
+| Contract | `<slice>` | `<none or workspace root>` | `<none>` | `<status>` |
 | Backend implementation | `<slice>` | `<backend project>` | `<contract slice>` | `<status>` |
 | Mobile implementation | `<slice>` | `<mobile project>` | `<contract slice>` | `<status>` |
 

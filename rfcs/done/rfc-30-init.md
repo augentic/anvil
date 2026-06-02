@@ -44,7 +44,7 @@ The migration concern also changes a standing policy. Instead of treating every 
 | **D2 Plugin cache verbs** | The CLI exposes `specrun plugins doctor` (read-only drift report) and `specrun plugins refresh` (cache invalidation). | Add `src/runtime/commands/plugins.rs`; scope the cache by the marketplace's top-level `name` (`$CURSOR_HOME/plugins/cache/<name>/`); resolve the expected sha from the marketplace's backing git checkout and compare against the cached leaf sha. |
 | **D3 Migration framework** | The CLI exposes `specrun migrate` with a closed registry of per-major migrators. | Add `crates/workflow/src/migrate.rs`; add `MigrationKind` closed enum; each variant registers a golden fixture under `tests/migrate/`. |
 | **D4 ProjectNeedsMigration error** | `ProjectConfig::load` rejects a project whose `specify_version` major is older than the running binary. | Add `Error::ProjectNeedsMigration { from, to }` (plus its `variant_str()` and optional `hint()` arms); add an `Exit::MigrationRequired` variant returning `4` from `Exit::code()` and wire it through `Exit::from(&Error)`; update DECISIONS.md exit-code table. |
-| **D5 Init re-entry semantics** | `specrun init --upgrade` rewrites `specify_version` and re-scaffolds preservation-safe files only. | Add `--upgrade` flag to `init` clap surface; `crates/workflow/src/init/regular.rs` and `init/hub.rs` route through the same preservation rules as the first-run case. |
+| **D5 Init re-entry semantics** | `specrun init --upgrade` rewrites `specify_version` and re-scaffolds preservation-safe files only. | Add `--upgrade` flag to `init` clap surface; `crates/workflow/src/init/regular.rs` and `init/workspace.rs` route through the same preservation rules as the first-run case. |
 | **D6 Init skill expansion** | `/spec:init` runbook adds three probe steps (CLI version, plugin cache, artifact major) before existing step 2. | Update `plugins/spec/skills/init/SKILL.md` Critical Path and Guardrails; add `references/init-runbook.md` sections 1b, 1c, and 2a. |
 | **D7 Bootstrap journal events** | Every CLI-owned bootstrap action emits a journal event under a dotted `<noun>.<verb>` discriminant, matching the dominant `EventKind` taxonomy (`slice.build.started`, `plan.transition.approved`, …). | Add `cli.upgraded`, `plugins.refreshed`, `migration.applied`, and `migration.skipped` variants to the closed `EventKind` enum in `crates/workflow/src/journal.rs`. |
 
@@ -79,7 +79,7 @@ Init gains one flag for bumping `specify_version` without re-scaffolding:
 specrun init --upgrade
 ```
 
-`--upgrade` is mutually exclusive with the `<adapter>` positional and `--hub`. It refuses to run when `Error::ProjectNeedsMigration` would fire — the operator must `specrun migrate` first.
+`--upgrade` is mutually exclusive with the `<adapter>` positional and `--workspace`. It refuses to run when `Error::ProjectNeedsMigration` would fire — the operator must `specrun migrate` first.
 
 ## CLI upgrade verb (D1)
 
@@ -313,9 +313,9 @@ Add a private `fn major(v: &str) -> Option<u64>` helper beside `version_is_older
 
 ### `specrun init --upgrade`
 
-Add an `--upgrade` flag to `src/runtime/commands/init.rs` and a matching field on the `InitOptions` struct in `crates/workflow/src/init.rs`. `InitOptions` is `Copy` and borrow-shaped, so the new field is a scalar (`bool`) threaded through `init` → `regular::run` / `hub::run` by value. Behavior:
+Add an `--upgrade` flag to `src/runtime/commands/init.rs` and a matching field on the `InitOptions` struct in `crates/workflow/src/init.rs`. `InitOptions` is `Copy` and borrow-shaped, so the new field is a scalar (`bool`) threaded through `init` → `regular::run` / `workspace::run` by value. Behavior:
 
-- Mutually exclusive with the `<adapter>` positional and `--hub`.
+- Mutually exclusive with the `<adapter>` positional and `--workspace`.
 - Refuses to run if `Error::ProjectNeedsMigration` would fire (the operator must `specrun migrate` first).
 - Preserves the existing `adapter:` field in `project.yaml`.
 - Rewrites `specify_version` to `CARGO_PKG_VERSION`.
@@ -324,7 +324,7 @@ Add an `--upgrade` flag to `src/runtime/commands/init.rs` and a matching field o
 
 ### Preservation invariant
 
-`specrun init --upgrade` runs over a populated `.specify/`, so its write set is enumerated and closed. The only file it mutates is `project.yaml` (rewriting `specify_version`, preserving every other field including `adapter:` / `hub:`). It regenerates `AGENTS.md` only when absent. It MUST NOT touch any operator-authored artifact — `slices/`, `specs/`, `archive/`, `registry.yaml`, `.specify/design-system/components.yaml`, `tokens.yaml`, `assets.yaml`, or the adapter cache (the last only refetched under explicit `--refresh-cache`). Re-scaffolding is confined to files the first-run case would create and that are currently absent; an existing file is never overwritten.
+`specrun init --upgrade` runs over a populated `.specify/`, so its write set is enumerated and closed. The only file it mutates is `project.yaml` (rewriting `specify_version`, preserving every other field including `adapter:` / `workspace:`). It regenerates `AGENTS.md` only when absent. It MUST NOT touch any operator-authored artifact — `slices/`, `specs/`, `archive/`, `registry.yaml`, `.specify/design-system/components.yaml`, `tokens.yaml`, `assets.yaml`, or the adapter cache (the last only refetched under explicit `--refresh-cache`). Re-scaffolding is confined to files the first-run case would create and that are currently absent; an existing file is never overwritten.
 
 ### Idempotency
 
@@ -356,7 +356,7 @@ The skill invokes `specrun init --upgrade` after confirmation; this is the real 
 
 ### Output templates
 
-Add a `migrated` template alongside `greenfield`, `brownfield`, and `hub` in `plugins/spec/skills/init/references/init-output-templates.md`. It renders the structured `MigrationReport` summary and points at the journal entry for full audit.
+Add a `migrated` template alongside `greenfield`, `brownfield`, and `workspace` in `plugins/spec/skills/init/references/init-output-templates.md`. It renders the structured `MigrationReport` summary and points at the journal entry for full audit.
 
 ## Bootstrap journal events (D7)
 
@@ -406,12 +406,12 @@ The wire ids use the dominant dotted `<noun>.<verb>` namespace shared by every o
 ### Wave E — Init flag and skill expansion
 
 1. Add `--upgrade` flag to `src/runtime/commands/init.rs` and `InitOptions`.
-2. Update `crates/workflow/src/init/{regular,hub}.rs` to honor the flag.
+2. Update `crates/workflow/src/init/{regular,workspace}.rs` to honor the flag.
 3. Update `plugins/spec/skills/init/SKILL.md` Critical Path, scope, and Guardrails.
 4. Update `plugins/spec/skills/init/references/init-runbook.md` with steps 1b, 1c, 1d.
 5. Add the `migrated` output template.
-6. Update acceptance fixtures to cover the four init shapes: greenfield, brownfield, hub, migrated.
-7. Add a re-entry idempotency fixture: run `specrun init --upgrade` over a populated brownfield (and hub) tree, then a second time, asserting that only `project.yaml.specify_version` changes on the first run, every operator-authored artifact is byte-stable, and the second run is a no-op.
+6. Update acceptance fixtures to cover the four init shapes: greenfield, brownfield, workspace, migrated.
+7. Add a re-entry idempotency fixture: run `specrun init --upgrade` over a populated brownfield (and workspace) tree, then a second time, asserting that only `project.yaml.specify_version` changes on the first run, every operator-authored artifact is byte-stable, and the second run is a no-op.
 
 ### Wave F — Documentation
 

@@ -6,11 +6,11 @@ A TypeScript notification processing service is being migrated to Rust WASM. The
 
 ## Input
 
-**Specify artifacts**: `./.specify/slices/notification_hub/` **Client**: Auckland Transport **Origin**: code-analysis (TypeScript source)
+**Specify artifacts**: `./.specify/slices/notification-center/` **Client**: Auckland Transport **Origin**: code-analysis (TypeScript source)
 
 **Key artifact content** (summarised):
 
-- **Component**: `notification_hub` — Processes disruption notifications and publishes to mobile channels
+- **Component**: `notification-center` — Processes disruption notifications and publishes to mobile channels
 - **Business Logic Blocks**: 3 blocks (process notification, enrich with route data, format for mobile)
 - **API Contracts**: 2 endpoints (POST /notifications, GET /notifications/{id}/status)
 - **External Service Dependencies**: Route API (HTTP), Message Broker (Publish)
@@ -21,18 +21,18 @@ A TypeScript notification processing service is being migrated to Rust WASM. The
 ## Command
 
 ```prompt
-/sow-writer ./.specify/slices/notification_hub ./SOW-notification-hub.md "Auckland Transport"
+/sow-writer ./.specify/slices/notification-center ./SOW-notification-center.md "Auckland Transport"
 ```
 
 ## Output
 
-The generated SoW at `./SOW-notification-hub.md`:
+The generated SoW at `./SOW-notification-center.md`:
 
 ```markdown
 # Statement of Work
 
 **Client**: Auckland Transport
-**Project**: Notification Hub
+**Project**: Notification Center
 
 | Version | Date        | Author | Changes       |
 | ------- | ----------- | ------ | ------------- |
@@ -66,7 +66,7 @@ Propellerhead Limited and Auckland Transport dated [DATE].
 
 ### Scope
 
-This Statement of Work covers the migration of the Notification Hub from
+This Statement of Work covers the migration of the Notification Center from
 TypeScript to Rust WASM, targeting the Omnia platform. The implementation
 will preserve existing business logic for notification processing, route
 data enrichment, and mobile delivery, while integrating with the Route API

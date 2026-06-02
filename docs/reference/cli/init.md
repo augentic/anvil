@@ -52,7 +52,6 @@ When `--format json` is provided, returns:
 - `context-skipped` -- `true` when context generation was skipped
 - `context-skip-reason` -- present when skipped (`existing-agents-md` or `workspace-clone`)
 
-Legacy `hub: true` in existing `project.yaml` files still deserialises; re-serialisation and `specrun init --upgrade` emit `workspace: true`.
 
 ## See also
 

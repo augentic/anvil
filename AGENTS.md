@@ -40,7 +40,7 @@ The word **workspace** overloads three related concepts. Use them verbatim:
 | **Workspace slot** | Materialised peer at `.specify/workspace/<project>/` |
 | **Workspace sync** | `specrun workspace sync` — materialise slots and regenerate `topology.lock` |
 
-Retire **platform hub** / **hub mode** in operator-facing prose. `/spec:init workspace` and `specrun init --workspace` scaffold a workspace root; the CLI chains an initial workspace sync before returning.
+`/spec:init workspace` and `specrun init --workspace` scaffold a workspace root; the CLI chains an initial workspace sync before returning.
 
 ### Workflow, standards, and artifacts
 

@@ -23,7 +23,7 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 
 1. **Uncached schema validators (perf).** `compile_synthesis_validator` / `compile_build_report_validator` rebuild a `jsonschema::Registry` and recompile the validator on *every* call. Verified at `crates/workflow/src/schema.rs:183` (and ~291). Hoist to `OnceLock`/`LazyLock` statics. Same pattern repeats across ~18 `validate_*` entry points that all do parse → validate → `err_from_failures`; collapse to one generic `validate_parsed_json(schema, code, rule, content)`.
 
-2. **Swallowed git fetch error (correctness).** `sync.rs:254` ends a `git fetch --depth 1` with `.or(Ok(()))`, converting fetch failure into success and masking stale registry clones in hub/workspace flows. Log + surface a diagnostic or propagate.
+2. **Swallowed git fetch error (correctness).** `sync.rs:254` ends a `git fetch --depth 1` with `.or(Ok(()))`, converting fetch failure into success and masking stale registry clones in workspace flows. Log + surface a diagnostic or propagate.
 
 3. **Production `expect` in fingerprint/cache serialisation.** `crates/workflow/src/adapter/cache.rs:79` (`canonical_bytes`) and `crates/diagnostics/src/fingerprint.rs:105,125` panic on `serde_json` edge cases for closed-shape data. Replace with infallible encoding or `unwrap_or_else(|_| unreachable!())` with rationale — these couple digest stability to panic policy.
 
@@ -43,7 +43,7 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 
 10. **Duplicated lint eval helpers.** `lint/eval/set_coverage.rs` and `set_eq.rs` repeat identical `SOURCE_OPERATIONS`/`TARGET_OPERATIONS` constants and brief-iteration (`:48`/`:58`); `lint/index/agent_teams.rs:73` and `index/symlinks.rs:74` repeat path-rendering. Extract `adapter_briefs.rs` and `index/path_util.rs`.
 
-11. **Schema embed fragmentation + no parity guard.** `crates/schema/src/constants.rs` is the intended single embed hub, but `include_str!` also appears in `adapter/core.rs:60-62`, `standards/rules/parse.rs:54` (same `rule.schema.json`), `tool/validate.rs:14`, `tool/cache.rs:30`. Three test layers (`schema/tests/schemas.rs`, inline `workflow/src/schema.rs`, `workflow/tests/schemas.rs`) overlap with no byte-equality check. Add one CI test asserting every embed == on-disk file; add missing compile tests for `LEAD`/`PROPOSAL`/`TOPOLOGY` and disk-only `cache-meta`/`context-lock` schemas.
+11. **Schema embed fragmentation + no parity guard.** `crates/schema/src/constants.rs` is the intended single embed location, but `include_str!` also appears in `adapter/core.rs:60-62`, `standards/rules/parse.rs:54` (same `rule.schema.json`), `tool/validate.rs:14`, `tool/cache.rs:30`. Three test layers (`schema/tests/schemas.rs`, inline `workflow/src/schema.rs`, `workflow/tests/schemas.rs`) overlap with no byte-equality check. Add one CI test asserting every embed == on-disk file; add missing compile tests for `LEAD`/`PROPOSAL`/`TOPOLOGY` and disk-only `cache-meta`/`context-lock` schemas.
 
 12. **Under-tested leaf paths.** `crates/model/src/atomic.rs` (shared writer for all `.specify/*.yaml`) has **zero tests**; `crates/diagnostics` render formatters are only tested indirectly from `standards`; `crates/schema/src/validate.rs` and `error/src/serde_rfc3339*.rs` are untested; `validate_slice` rule modules (`specs.rs`, `cross.rs`, `composition.rs`) are only exercised via goldens.
 

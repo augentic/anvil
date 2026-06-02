@@ -10,7 +10,7 @@ The registry was promoted from `specrun registry ...` to a top-level noun group 
 |------|-------------|
 | [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name and URL classification. `--adapter` is optional (a greenfield scaffold seed only). |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`validate`](#specify-registry-validate) | Structural and referential check; on hubs runs the `workspace-cannot-be-project` invariant. |
+| [`validate`](#specify-registry-validate) | Structural and referential check; on workspace roots runs the `workspace-cannot-be-project` invariant. |
 
 ## Subcommands
 
