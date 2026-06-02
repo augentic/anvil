@@ -87,7 +87,6 @@ specrun plan amend <entry> --add-source <key>=<lead>
 specrun plan amend <entry> --remove-source <key>
 specrun plan amend <entry> --divergence likely|accepted|rejected
 specrun plan amend <entry> --authority-override <entry> <kind>=<source>
-specrun plan amend <entry> --add-alias <lead>=<alias>
 ```
 
 Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.

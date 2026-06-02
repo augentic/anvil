@@ -29,7 +29,7 @@ Every kernel addition is a *hint or a warning*, never a lock: the agent still de
 
 | ID | Decision |
 | -- | -------- |
-| **D38-1 Lead-side signal** | `lead.schema.json` gains an optional survey-time `topics[]` facet (source-adapter authored, kebab-case tokens). `proposal.schema.json` forwards it on each catalog row, and `specrun plan propose --dry-run` emits a deterministic advisory `clusters[]` block grouping rows whose `{lead} ∪ aliases[] ∪ topics[]` token sets intersect across source keys. Clustering is a **hint** the agent may follow or ignore; the kernel never auto-merges (preserves [From sources to slices §Propose reconciles leads across sources](../docs/explanation/reconciliation.md#propose-reconciles-leads-across-sources)). |
+| **D38-1 Lead-side signal** | `lead.schema.json` gains an optional survey-time `topics[]` facet (source-adapter authored, kebab-case tokens). `proposal.schema.json` forwards it on each catalog row, and `specrun plan propose --dry-run` emits a deterministic advisory `clusters[]` block grouping rows whose `{lead} ∪ topics[]` token sets intersect across source keys. Clustering is a **hint** the agent may follow or ignore; the kernel never auto-merges (preserves [From sources to slices §Propose reconciles leads across sources](../docs/explanation/reconciliation.md#propose-reconciles-leads-across-sources)). |
 | **D38-2 Deterministic binding affinity** | For each `(lead, project)` pair the dry-run envelope carries an advisory `affinity` integer — the count of shared kebab tokens between the lead's signal set and the project's `surface[]` requirement titles + `decisions[]` titles. It is structural and byte-stable (no ranking, no LLM), so it obeys [RFC-36 **D36-6**](rfc-36-project-identity.md). The agent still binds `project` explicitly; affinity never auto-binds. |
 | **D38-3 Decision-conflict advisory** | When a lead's `topics[]` intersect an accepted decision's `conflicts-with[]` token set, propose surfaces a non-blocking `plan-reconcile-decision-conflict` advisory naming the `(lead, project, DEC-NNNN)` triple, so the agent can flag it in `change.md` before Gate 1 rather than at build. Advisory only — it never aborts propose and never transitions anything. |
 | **D38-4 Decisions reach synthesis** | The D3 synthesis request (RFC-29c) gains the deferred read-only `advisory-context` input, populated deterministically from the bound project's accepted `.specify/decisions/` titles and the relevant baseline `spec.md` requirement titles. This closes [From sources to slices](../docs/explanation/reconciliation.md). It is context, not authority: synthesis never treats advisory context as Evidence and the authority enum is unchanged ([`DECISIONS.md` §Slice synthesis engine](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slice-synthesis-engine-rfc-29-m2b)). |
@@ -41,7 +41,7 @@ Every kernel addition is a *hint or a warning*, never a lock: the agent still de
 The project side gained structured signal (`surface[]`); the lead side should too. Two additions, both deterministic:
 
 - **`topics[]` (survey time).** A source adapter may tag each lead with kebab-case domain tokens (`session-token`, `replay-protection`, …) it observed while sizing. This is the metadata [`DECISIONS.md` §Lead reconciliation](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lead-reconciliation-d2) said advisory clustering needed and [From sources to slices §Plan time](../docs/explanation/reconciliation.md#plan-time-leads-become-slices) deferred. Optional: a source that emits none degrades to today's `synopsis`-only behaviour.
-- **Advisory `clusters[]` (propose time).** The kernel computes connected components over catalog rows whose `{lead} ∪ aliases[] ∪ topics[]` token sets intersect *across different source keys* (never within one source — same-source fusion stays forbidden, [From sources to slices §Propose reconciles leads across sources](../docs/explanation/reconciliation.md#propose-reconciles-leads-across-sources)). The result is emitted as a hint:
+- **Advisory `clusters[]` (propose time).** The kernel computes connected components over catalog rows whose `{lead} ∪ topics[]` token sets intersect *across different source keys* (never within one source — same-source fusion stays forbidden, [From sources to slices §Propose reconciles leads across sources](../docs/explanation/reconciliation.md#propose-reconciles-leads-across-sources)). The result is emitted as a hint:
 
 ```yaml
 # specrun plan propose --dry-run output, beside leads[]
@@ -57,7 +57,7 @@ This is the token-intersection idea from [`DECISIONS.md` §Lead reconciliation](
 `affinity` makes the RFC-36 identity axes *actionable* without ranking. For each `(lead, project)`:
 
 ```text
-affinity = | tokens(lead.lead ∪ lead.aliases ∪ lead.topics)
+affinity = | tokens(lead.lead ∪ lead.topics)
           ∩ tokens(project.surface[].requirements ∪ project.decisions[].title) |
 ```
 

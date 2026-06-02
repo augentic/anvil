@@ -10,7 +10,7 @@ Re-surveying the same source key replaces that source's leads by `(source, lead)
 
 ## Minimal lead block
 
-The propose sub-step matches across sources using `lead`, `aliases[]`, `synopsis`, and `source` on these blocks:
+The propose sub-step matches across sources using `lead`, `synopsis`, and `source` on these blocks:
 
 ```markdown
 ### legacy-monolith:user-registration
@@ -54,7 +54,7 @@ Sources: 1. Leads: 1.
 
 ## Multi-source skeleton
 
-When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead` may appear once per source, each with its own `source` and per-source `synopsis`. The propose sub-step groups them by agent judgment (shared slug, alias hints, or synopsis) — not kernel lock — and writes one or more `slices[]` rows via `specrun plan propose --from`. The operator reviews cross-source merges at Gate 1:
+When two source adapters surface the same unit of work, each survey writes its **own** raw lead block: the same `lead` may appear once per source, each with its own `source` and per-source `synopsis`. The propose sub-step groups them by agent judgment (shared slug or synopsis) — not kernel lock — and writes one or more `slices[]` rows via `specrun plan propose --from`. The operator reviews cross-source merges at Gate 1:
 
 ```markdown
 ### identity-design-notes:user-registration
