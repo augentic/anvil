@@ -191,7 +191,7 @@ specify execute resume <run-id>
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
-**Depends:** [RFC-30](next/rfc-30-init.md) (bootstrap/upgrade/migrate lifecycle) for adoption at scale; RM-06 for executable adapter operations as the contract authors target.
+**Depends:** [RFC-30](done/rfc-30-init.md) (bootstrap/upgrade/migrate lifecycle) for adoption at scale; RM-06 for executable adapter operations as the contract authors target.
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for rules, artifact templates, and tool manifests.
 
 #### RM-22: Hosted observability dashboards

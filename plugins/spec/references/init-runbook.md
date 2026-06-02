@@ -55,14 +55,107 @@ After installation, run `specrun --version` again.
 - If verification succeeds, continue.
 - If installation or verification fails, surface the error and stop. Do not attempt a prose fallback or hand-roll `.specify/` scaffolding.
 
+These three probes run before any prompt the existing steps would otherwise fire. Each is a fast no-op when nothing has drifted, so prompt counts only grow when the operator must choose.
+
+### 1b. Probe CLI version
+
+Run:
+
+```bash
+specrun upgrade --dry-run --format json
+```
+
+Parse the JSON body. The binary is **stale** when `to` differs from `from`, when `to` is `"HEAD"`, or when `head-fallback` is `true`. When `channel` is `"unknown"`, the CLI cannot self-update.
+
+- If the binary is current (`to == from`), say nothing and continue to step 1c.
+- If `channel` is `"unknown"`, surface the `guidance` string verbatim so the operator can upgrade manually, then continue to step 1c. Do not auto-run an upgrade.
+- If stale on a known channel, tell the user:
+
+  > "Your `specrun` binary is behind the latest release (`<from>` → `<to>`). I can update it now with `specrun upgrade --yes`."
+
+  Use the **AskQuestion tool** to confirm.
+
+  - If they decline, continue to step 1c on the current binary.
+  - If they confirm, run:
+
+    ```bash
+    specrun upgrade --yes
+    ```
+
+    Then print "CLI updated to `<to>`; no Cursor restart required." and continue to step 1c.
+
+### 1c. Probe plugin cache
+
+Run:
+
+```bash
+specrun plugins doctor --format json
+```
+
+`doctor` never exits non-zero on drift — drift is a finding. Parse the JSON body: the cache is **drifted** when `summary.drifted > 0` or `summary.missing > 0`.
+
+- If `summary.drifted` and `summary.missing` are both `0`, continue to step 1d.
+- If drifted, tell the user:
+
+  > "Your Cursor plugin cache has drifted from the marketplace (`<drifted>` drifted, `<missing>` missing). I can clear it with `specrun plugins refresh --yes`, but Cursor must restart to repopulate the cache."
+
+  Use the **AskQuestion tool** to confirm.
+
+  - If they decline, continue to step 1d on the current cache.
+  - If they confirm, run:
+
+    ```bash
+    specrun plugins refresh --yes
+    ```
+
+    The CLI prints `Plugin cache cleared. Restart Cursor to repopulate from the marketplace.` Relay that line, then **stop**: tell the operator to restart Cursor and re-run `/spec:init`. Do not continue to step 1d — the refreshed cache only repopulates on restart.
+
+### 1d. Probe artifact major
+
+Run:
+
+```bash
+specrun init --check-migration --format json
+```
+
+Parse the JSON body. Migration is required only when `needs-migration` is `true`. The CLI binary is pre-1.0 today, so the major-bump path cannot fire and `needs-migration` is virtually always `false` — treat that as the normal healthy result and continue to step 2.
+
+- If `needs-migration` is `false`, continue to step 2.
+- If `needs-migration` is `true`, the project's artifacts are pinned to an older major (`from`) than the binary targets (`to`). Tell the user:
+
+  > "This project's artifacts are on Specify `<from>`; the CLI targets `<to>`. I can migrate them now with `specrun migrate --yes` before continuing."
+
+  Use the **AskQuestion tool** to confirm.
+
+  - If they decline, stop and tell them migration is required before any other Specify command can run.
+  - If they confirm, run:
+
+    ```bash
+    specrun migrate --yes
+    ```
+
+    Render the **migrated** template (see [`init-output-templates.md`](init-output-templates.md)) from the migration report, then continue to step 2.
+
 ### 2. Check if already initialized
 
 Check whether `.specify/project.yaml` exists.
 
+- If it does not exist, this is a first-run init — continue to step 3.
 - If it exists, inform the user: "Specify is already initialized in this project. Your config is at `.specify/project.yaml`."
-- Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites project.yaml).
+- Use the **AskQuestion tool** to confirm whether they want to re-enter — a version upgrade that preserves `project.yaml` and every operator-authored artifact.
 - If they decline, stop.
-- If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify-version` to the running binary.
+- If they confirm, run the re-entry upgrade:
+
+  ```bash
+  specrun init --upgrade --format json
+  ```
+
+  `--upgrade` bumps `specify-version`, preserves the existing `adapter:` (or `hub:`) and all operator artifacts, and regenerates `AGENTS.md` only when absent. Branch on the JSON body's `specify-version-changed`:
+
+  - `true` — the version was bumped. Report the new `specify-version` and `adapter-name` (or `"hub"`); note that `AGENTS.md` was preserved when `context-skip-reason` is `"existing-agents-md"`. Stop — the project is already scaffolded.
+  - `false` — already current; the run was an idempotent no-op. Tell the operator nothing changed and stop.
+
+  If `specrun init --upgrade` exits `4` (`project-needs-migration`), run step 1d's migration handoff first, then retry the upgrade.
 
 ### 3. Decide the topology — regular project or platform hub
 

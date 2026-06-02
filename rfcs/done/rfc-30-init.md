@@ -1,6 +1,6 @@
 # RFC-30: Init Bootstrap, Update, and Migration Lifecycle
 
-> Status: Draft - Depends: [RFC-13](../done/rfc-13-extensibility.md), [RFC-25](../done/rfc-25-workflow.md) - Enables: [roadmap RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model)
+> Status: Done - Depends: [RFC-13](../done/rfc-13-extensibility.md), [RFC-25](../done/rfc-25-workflow.md) - Enables: [roadmap RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model)
 
 ## Abstract
 
