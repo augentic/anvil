@@ -60,10 +60,19 @@ Specs Merged
 - <adapter-1>: merged into .specify/specs/<adapter-1>/spec.md
 - <adapter-2>: new baseline created at .specify/specs/<adapter-2>/spec.md
 
+Decisions Promoted
+- DEC-0007: Use PostgreSQL for the identity store
+- DEC-0008: DPoP sender-constrained access tokens (supersedes DEC-0003)
+
 (or "No delta specs to merge" if `specrun slice merge preview` returned an
 empty `specs` array)
 
 All artifacts complete. All tasks complete.
 ```
+
+Render the **Decisions Promoted** block from the `decisions[]` ids on the
+`slice.archive.created` ledger entry the merge appended (the `DEC-NNNN` ids of
+the records promoted into `.specify/decisions/`). Omit the block when the slice
+authored no Decision Records — it stays off an empty merge.
 
 Mention any workspace auto-commit warning or residue note returned by the CLI.

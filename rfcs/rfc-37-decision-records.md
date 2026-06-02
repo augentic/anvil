@@ -1,6 +1,6 @@
 # RFC-37: Decision Records
 
-> Status: Draft — Depends: [RFC-29c](rfc-29c-synthesis.md) (synthesis authors `design.md`; the baseline delta-merge model) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (implement after RFC-36 lands; **extends** its identity projection — see [§"Decision Records as an identity source"](#decision-records-as-an-identity-source-rfc-36)) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
+> Status: Accepted — Depends: [RFC-29c](rfc-29c-synthesis.md) (synthesis authors `design.md`; the baseline delta-merge model) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (implement after RFC-36 lands; **extends** its identity projection — see [§"Decision Records as an identity source"](#decision-records-as-an-identity-source-rfc-36)) — Related: [decision-log §"Opaque replacement for contract merge"](../docs/explanation/decision-log.md), [decision-log §"History via git plus an outcome ledger"](../docs/explanation/decision-log.md), and the [roadmap principle "one authored home per fact, derive the rest"](roadmap.md#principles)
 
 ## Problem
 
