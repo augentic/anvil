@@ -56,7 +56,7 @@ Artifacts live in three places over their lifetime:
 2. **Baseline** — `.specify/specs/` holds the merged specs that represent the current known state of the system; `.specify/decisions/` holds the accepted Decision Records.
 3. **Archive** — `.specify/archive/YYYY-MM-DD-<name>/` holds finalized slices (merged or dropped) as a prunable convenience cache.
 
-When you run `/spec:merge`, the slice's spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline, contract files are replaced wholesale, and any Decision Records are promoted into the catalogue. The slice itself is then archived. The baseline grows over time, giving future slices a consistent foundation to build on.
+When you run `/spec:merge`, the slice's spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline. For Vectis slices, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. Contract files are replaced wholesale at the root-level `contracts/` directory. Any Decision Records the slice authored are promoted into `.specify/decisions/` by the same opaque-add strategy — whole-file add with an engine-assigned `DEC-NNNN` id, never a prose delta-merge — and a newer record's `supersedes:` flips its named targets to `status: superseded`. The slice itself is then archived. The baseline grows over time, giving future slices a consistent foundation to build on. Accepted decisions also sharpen the project's routing identity at plan time (a third axis beside *what the project does* and *what recently changed*).
 
 <div class="see-also">
 <strong>See also</strong>

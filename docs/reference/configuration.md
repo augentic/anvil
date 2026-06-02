@@ -39,9 +39,9 @@ description: |
 | `sources`         | No                     | List of source adapters available for `/spec:plan` to bind. Defaults to the first-party set when omitted. |
 | `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
-| `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. |
-| `capabilities`    | No                     | Capability tags (e.g. `auth`, `billing`) characterising what the project owns. Projected into `.specify/topology.lock` and surfaced in the reconciliation `projects[]` so the agent binds slices on capability, not description prose alone. Authored here, never in `registry.yaml`. |
-| `keywords`        | No                     | Free-form keyword tags supplementing `capabilities`, with the same projection path. |
+| `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
+
+A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specrun workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Hub shape
 
@@ -124,7 +124,7 @@ slices:
 **Created by:** Operator (directly)
 **Validated by:** First-use validators (`specrun workspace sync`, `/spec:plan`)
 
-Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description`, `capabilities`, and `keywords` are authored in its own `.specify/project.yaml` and projected into `.specify/topology.lock`.
+Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description` is authored in its own `.specify/project.yaml`, and its derived identity (`surface[]` / `recent[]`) is projected into `.specify/topology.lock` from that project's baseline.
 
 ```yaml
 version: 1

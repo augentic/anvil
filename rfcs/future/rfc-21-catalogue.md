@@ -1,6 +1,6 @@
 # RFC-21: Source Catalogue and Tier-1 Cache
 
-> Status: Draft - Depends: [RFC-3a](../done/rfc-3a-monoliths.md), [RFC-3b](../done/rfc-3b-platform.md), [RFC-9](../done/rfc-9-platform.md), [RFC-14](../done/rfc-14-workspace.md), [RFC-20](../done/rfc-20-survey.md), [RFC-25](../done/rfc-25-workflow.md)
+> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (retired milestone docs; superseded by the RFC-29 source-adapter flow — see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
 ## Abstract
 
@@ -23,7 +23,7 @@ The framework already supports the *mechanics* of multi-source migration: `plan.
 - **Sources are declared every change.** Operators repeat `--source <k>=<adapter>:<url>` for every plan invocation. Forty repos times two re-plans is eighty CLI flags. There is no artifact saying "these are the legacy sources we are migrating", separate from any one change.
 - **Tier-1 clones are ad hoc and ephemeral.** Each remote path-bound source may need fresh materialisation before enumeration. Re-planning the same source means re-fetching or re-cloning. Source adapter `enumerate` compounds the cost when run across many sources, because each plan iteration starts from scratch.
 - **Discovery fan-out is sequential.** `/spec:plan` invokes source adapter `enumerate` once per source binding in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
-- **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the workspace-tier boundary in [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) blurs.
+- **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the workspace-tier boundary in [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) blurs.
 
 This RFC is the smallest set of additions that fix all four issues without violating Specify's existing posture (`registry.yaml` is target-only, archives are immutable, and source adapter `enumerate` is per source binding).
 
@@ -128,7 +128,7 @@ sources:
 
 The `.snapshot.yaml` records what was on disk at archive time so audit value is preserved without copying gigabytes per change. Operators who want a full byte-snapshot of the source tree can run `git clone --shared` against the cache before archive; this is a deliberate operator opt-in, not the default.
 
-This is a strict refinement of [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md): tier-1 now has a durable cache, but the **role separation** (tier-1 = read-only source input; tier-2 = read-write target workspace) is unchanged.
+This is a strict refinement of [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md): tier-1 now has a durable cache, but the **role separation** (tier-1 = read-only source input; tier-2 = read-write target workspace) is unchanged.
 
 ### `--source @<key>` selector
 
@@ -217,13 +217,13 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Extend `registry.yaml` with a `sources:` block instead of a separate file.** Rejected. Sources and targets have different lifecycles, validation rules, materialisation strategies (read-only cache vs read-write working tree), and audiences (planner-time vs executor-time). Mixing them violates the registry's existing role and the workspace-tier separation.
 
-**Promote `specify source sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises tier-2 target workspaces under `.specify/workspace/`; `source sync` materialises tier-1 source inputs into `.specify/.cache/sources/`. Conflating them re-introduces the workspace-tier confusion that [`workspace-tiers.md`](../docs/explanation/workspace-tiers.md) was written to dispel.
+**Promote `specify source sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises tier-2 target workspaces under `.specify/workspace/`; `source sync` materialises tier-1 source inputs into `.specify/.cache/sources/`. Conflating them re-introduces the workspace-tier confusion that [`workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) was written to dispel.
 
 **Snapshot the entire tier-1 clone into archives instead of recording a snapshot reference.** Rejected. With 80+ repos and frequent re-plans, copying gigabytes per archive is impractical. The recorded `.snapshot.yaml` (commit SHA, source URL, materialisation date) preserves the audit trail at constant cost; operators who genuinely need byte-snapshots can opt in by hand.
 
 **Put the cache under `.specify/adapters/sources/` rather than `.specify/.cache/sources/`.** Rejected. The leading dot makes it clear the directory is framework-managed scratch (like `.specify/.cache/`, the existing adapter resolver cache). Operators expect non-dot directories under `.specify/` to be authored or curated state.
 
-**Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
+**Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
 
 **Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify slice merge` and `specify plan finalize`) that make `status` honest.
 
@@ -236,7 +236,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 - A `status` field on `sources[]` entries (covered by RFC-22).
 - Source-tree mutation (tier-1 stays read-only).
 - Cross-platform-repo source sharing (sources are per-platform-repo).
-- Backstage / external catalogue import (deferred; consistent shape with [RM-12](roadmap.md#rm-12-catalog-import-backstage-adapter)).
+- Backstage / external catalogue import (deferred; consistent shape with [RM-12](../roadmap.md#rm-12-catalog-import-backstage-adapter)).
 - Tier-1 cache eviction policies beyond `specify source remove` (operators may delete `.specify/.cache/sources/<key>/` by hand if they need to).
 - Driving execution from `sources.yaml` (the catalogue is read-only for every executor-side path).
 - Parallel multi-plan output.
@@ -253,12 +253,8 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## References
 
-- [RFC-3a: Monoliths](../done/rfc-3a-monoliths.md) — analyze/extract predecessor this RFC updates to the RFC-25 source adapter split.
-- [RFC-3b: Platform](../done/rfc-3b-platform.md) — `registry.yaml` posture this RFC's `sources.yaml` mirrors.
-- [RFC-9: Platform](../done/rfc-9-platform.md) — historical change-lifecycle predecessor; the new `--source @<key>` selector and `--enumerate-concurrency` flag flow through the current `/spec:plan` -> `/spec:execute` -> `/spec:finalize` flow.
-- [RFC-14: Workspace](../done/rfc-14-workspace.md) — workspace-tier separation this RFC preserves while adding tier-1 caching.
-- [RFC-20: Survey-to-Plan Pipeline](../done/rfc-20-survey.md) — survey, synthesise, and assignment predecessor that the RFC-25 source adapter flow replaces.
-- [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
-- [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
-- [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
+- RFC-3a / RFC-3b / RFC-9 / RFC-14 / RFC-20 / RFC-25 (retired milestone docs) — predecessors this RFC updates toward the RFC-29 source-adapter flow.
+- [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
+- [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
+- [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`crates/workflow/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture `Sources` mirrors.

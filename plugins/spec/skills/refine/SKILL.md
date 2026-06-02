@@ -19,6 +19,8 @@ argument-hint: "[slice-name]"
 
 > **Provenance is not a hand-written file.** There is one structured slice artifact — `model.yaml` — carrying provenance **inline** on each requirement; the M2b synthesis kernel (`specrun slice synthesize`) is its sole writer, and `specrun slice provenance` projects the audit view on demand. The refine skill does not author a `provenance.yaml`. See [`../../references/synthesis/provenance.md`](../../references/synthesis/provenance.md).
 
+> **Decision Records (optional).** When the slice makes a design *decision* worth keeping — an architectural choice plus the alternatives it rejected — author one Decision Record per choice as a hand-written file at `.specify/slices/$SLICE_NAME/decisions/<slug>.md` (YAML front-matter + a `## Context` / `## Decision` / `## Consequences` Nygard body; the agent authors `slug` and `status: accepted | rejected` only — `specrun slice merge` assigns the durable `DEC-NNNN`). These are agent-authored prose, not kernel-projected from `model.yaml`; step 5 `specrun slice validate` gates their shape (`decision-record-*` findings). See [`../../references/artifact-conventions.md`](../../references/artifact-conventions.md) (Decision Records section). Slices that take no notable decision author none — the directory is opt-in.
+
 ## Closing hint
 
 On success:
@@ -46,6 +48,7 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 - [`../../references/synthesis/`](../../references/synthesis/) — synthesis playbook (substeps, authority, requirement-block, claim-reconciliation, reconciliation, tags).
 - [`../../references/synthesis/provenance.md`](../../references/synthesis/provenance.md) — the on-demand provenance projection (`specrun slice provenance`): inline-in-`model.yaml` shape, truncation rule, `resolution` enum, and `resolution-trace` step names.
 - [`../../references/spec-format.md`](../../references/spec-format.md) — canonical heading conventions for requirement blocks and scenario headings in spec files.
+- [`../../references/artifact-conventions.md`](../../references/artifact-conventions.md) — Decision Records (optional): the `decisions/<slug>.md` front-matter + Nygard body format authored at refine.
 - [`adapters/targets/<target>/briefs/shape.md`](../../../../adapters/targets/) — per-target idiom guidance synthesis folds into `design.md`.
 - [`adapters/sources/<adapter>/briefs/extract.md`](../../../../adapters/sources/) — per-source-adapter extract brief invoked in step 3.
 
