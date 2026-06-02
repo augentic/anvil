@@ -54,7 +54,7 @@ After the standards layer lands, two tracks run in parallel:
 
 **Goal:** Turn Specify's fan-in/fan-out promise into a CLI-owned end-to-end contract so reconciliation is a framework invariant, not agent discipline.
 **Status:** Shipped — source operations, plan-time lead reconciliation, slice synthesis with inline-provenance `model.yaml`, per-slice target build envelopes, project facets via `topology.lock`, and the `tests/fan_in_fan_out.rs` acceptance fixture.
-**Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md), [RFC-35](done/rfc-35-synthesis-determinism.md).
+**Depends:** [RFC-25](done/rfc-25-workflow.md), [RFC-27](done/rfc-27-synthesis.md), [RFC-28](done/rfc-28-standards-contract.md).
 **Source of truth:** [From sources to slices](../docs/explanation/reconciliation.md) (operator narrative); [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) (implementation contract); [`plugins/spec/references/synthesis/`](../plugins/spec/references/synthesis/) (agent authoring).
 **Surface:**
 

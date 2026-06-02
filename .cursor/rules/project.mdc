@@ -32,22 +32,15 @@ When conflicts arise, follow this strict precedence order:
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
-When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls. Higher-authority sources win; losers survive as inline commentary. Same-authority disagreements emit `[conflict]` for operator reconciliation. See [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md).
+When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls. Higher-authority sources win; losers survive as inline commentary. Same-authority disagreements emit `[conflict]` for operator reconciliation. See [synthesis/authority.md](../../plugins/spec/references/synthesis/authority.md) for the resolution order and [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md) for the adapter contract.
 
 **Key principle**: If artifacts conflict with source, trust the artifacts. If artifacts are incomplete, mark unknowns rather than guessing.
 
 ## Artifact Boundaries
 
-Specify artifacts have separate responsibilities:
+Specify artifacts have separate responsibilities (`proposal.md` = why/scope, `spec.md` = behavioral requirements, `design.md` = the how, `tasks.md` = sequencing; Vectis adds `tokens.yaml` / `assets.yaml`). See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the full per-artifact breakdown.
 
-- **`proposal.md`**: why the slice exists and what is in scope
-- **`spec.md`**: behavioral requirements with `ID:`, `Sources:`, `Status:` provenance lines; scenarios; error conditions; optional metrics
-- **`design.md`**: domain model, APIs, integrations, configuration, technical logic
-- **`tasks.md`**: implementation sequencing only
-- **`tokens.yaml`**: design tokens — colours, typography, spacing, radii, and elevation values consumed by Vectis shell writers (Vectis only)
-- **`assets.yaml`**: asset inventory — raster, vector, and symbol entries with per-platform source mappings (Vectis only)
-
-Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside the code it accompanies; they are not Specify artifacts and core does not synthesize them.
+Behavioral specs stay platform-neutral: Omnia trait selection, guest wiring, WASM translation, and target-specific build outputs (e.g. Vectis `composition.yaml`) live in specialist skills and references, not in `spec.md`. Target build outputs are not Specify artifacts and core does not synthesize them.
 
 ## Specialist Skills
 

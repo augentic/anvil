@@ -31,6 +31,8 @@ Baseline specs remain unchanged.
 
 ## Behavior
 
+The authoritative step-by-step lives in the [`/spec:drop` skill body](../../../plugins/spec/skills/drop/SKILL.md); the operator summary follows.
+
 1. **Select slice** — use argument or prompt when multiple active slices exist.
 2. **Check lifecycle** — warn when slice is `built` (ready for merge); refuse when already `merged` or `dropped`.
 3. **Confirm** — AskQuestion unless `reason` supplied (non-interactive).

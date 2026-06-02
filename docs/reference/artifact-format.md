@@ -205,11 +205,31 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 ## Proposal document
 
-`proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
+`proposal.md` captures why the slice exists and what is in scope. The workflow owns three required H2 sections, in order — target shape briefs may add sections after them (e.g. Vectis `## Platforms`) but must not rename or replace these:
 
-The **Units** section creates the contract between proposal and specs phases -- each unit listed will need a corresponding spec file at `specs/<unit>/spec.md`.
+```markdown
+## Why
 
-Keep proposals concise (one to two pages). Focus on the "why" not the "how" -- implementation details belong in the design.
+<One to three paragraphs explaining why the slice exists.>
+
+## Units
+
+- <unit-slug> — <target-specific meaning and short scope summary>
+
+## Non-goals
+
+- <Out-of-scope behavior or surface, when known>
+```
+
+- **`## Why`** is the motivation section `specrun slice validate` checks (`proposal.why-has-content`).
+- **`## Units`** is the only section the validator uses to locate spec files: every bullet maps one-to-one to `specs/<unit>/spec.md`. Unit slugs are kebab-case. Targets interpret what a unit means (Vectis feature, Omnia crate/service surface, contracts contract surface) in their shape briefs, but the section name and file layout are identical for every target.
+- **`## Non-goals`** is optional content when known; the heading is still required.
+
+No provenance lines on `proposal.md` — provenance lives in spec files after synthesis.
+
+For agent-authored synthesis responses, see [`plugins/spec/references/synthesis/substeps.md`](../../plugins/spec/references/synthesis/substeps.md) section 1 for per-source authoring guidance.
+
+Keep proposals concise (one to two pages). Focus on the "why" not the "how" — implementation details belong in the design.
 
 ## Tasks document
 

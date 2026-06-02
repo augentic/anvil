@@ -1,6 +1,6 @@
 ---
 name: client-sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and the operator wants to package its artifacts as a client deliverable; not while artifacts are still being authored (`define`) or implemented (`build`).
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and the operator wants to package its artifacts as a client deliverable; not while artifacts are still being authored (`refine`) or implemented (`build`).
 argument-hint: <slice-dir> [output-path] [client-name] [company-name] [pdf]
 ---
 
@@ -32,3 +32,10 @@ Generated SoWs are drafts for Client Strategist review. Use placeholder costs on
 
 1. [migration-sow.md](examples/migration-sow.md) — SoW generated from `code-analysis` artifacts (TypeScript to Rust migration).
 2. [greenfield-sow.md](examples/greenfield-sow.md) — SoW generated from `requirements` artifacts (design document).
+
+## Guardrails
+
+- **Read-only on Specify artifacts.** The SoW is a derived deliverable; never modify `proposal.md`, `spec.md`, `design.md`, `tasks.md`, or anything under `.specify/`.
+- **Drafts for Client Strategist review.** Use placeholder costs only; never present a generated SoW as final or commercially binding.
+- **Business framing, not implementation.** Focus on what the client receives, not how it is built; do not reproduce implementation detail in the deliverable.
+- **Verbatim boilerplate.** Include Appendix A verbatim from [`references/sow-template.md`](references/sow-template.md) and an Automated Test Suite deliverable; turn material `[unknown]` tokens into assumptions or exclusions.

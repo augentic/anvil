@@ -34,6 +34,8 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 ## Behavior
 
+The authoritative step-by-step lives in the [`/spec:init` skill body](../../../plugins/spec/skills/init/SKILL.md); the operator summary follows.
+
 1. Checks whether `.specify/` already exists. If so, warns and offers to reconfigure.
 2. Runs `specrun init <adapter>` (regular) or `specrun init --hub` (hub); the CLI resolves the adapter and caches its brief files into `.specify/.cache/` (regular mode only).
 3. The CLI scaffolds the directory structure, writes `project.yaml`, and generates `AGENTS.md` plus `.specify/context.lock` when root `AGENTS.md` is absent.

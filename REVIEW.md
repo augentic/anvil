@@ -82,11 +82,9 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 
 3. **Fix spec-path drift.** `docs/how-to/resolve-spec-conflicts.md:19,28` uses `.specify/slices/<name>/spec.md` while everything else uses `specs/<unit>/spec.md`.
 
-4. **Repair broken RFC links.** `rfcs/roadmap.md` links to `rfc-35-synthesis-determinism.md` without the `done/` prefix where applicable.
+4. **Sync the one drifting schema.** `.cursor/schemas/rule.schema.json` still uses an open `kebabToken` for artifact categories while the CLI copy moved to a closed `enum`.
 
-5. **Sync the one drifting schema.** `.cursor/schemas/rule.schema.json` still uses an open `kebabToken` for artifact categories while the CLI copy moved to a closed `enum`.
-
-6. **Fix stale counts/status.** `docs/standards/skill-authoring.md:119` says "~29 skills" (actual: 10) and its examples cite a retired `/omnia:code-reviewer` pattern. `tests/fixtures/sources/captures/user-registration/README.md:15` documents `expected/provenance.yaml` though provenance is now inline in `model.yaml`.
+5. **Fix stale counts/status.** `docs/standards/skill-authoring.md:119` says "~29 skills" (actual: 10) and its examples cite a retired `/omnia:code-reviewer` pattern. `tests/fixtures/sources/captures/user-registration/README.md:15` documents `expected/provenance.yaml` though provenance is now inline in `model.yaml`.
 
 ### Tier 2 — Consolidation (medium/structural)
 
@@ -112,7 +110,7 @@ _Review date: 2026-06-02. Scope: `augentic/specify` (docs/prompt repo) and `auge
 
 ## Suggested sequencing
 
-1. **Week 1 (correctness/perf quick wins):** A1 (cache validators), A2 (git fetch), A3/A4 (panic removal), B1–B6 (doc quick fixes).
+1. **Week 1 (correctness/perf quick wins):** A1 (cache validators), A2 (git fetch), A3/A4 (panic removal), B1–B5 (doc quick fixes).
 2. **Week 2–3 (dedup + test debt):** A6–A14 — biggest is the survey/extract kernel and the schema parity guard; add `atomic.rs`/render/validate-rule unit tests.
 3. **Ongoing (structural):** A15 (extract `slice/validate`), A16 (lint burn-down), A17 (megamodule splits), then B7–B12 doc consolidation.
 

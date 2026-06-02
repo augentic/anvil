@@ -2,7 +2,7 @@
 <div class="eyebrow">Understanding Specify</div>
 <h1 class="hero-title">From sources to slices</h1>
 
-Specify turns raw inputs — operator intent, written documentation, legacy code, screenshots — into behavioral specs. This page explains the two moments where that transformation happens, and how Specify keeps a clear trail back to where every requirement came from.
+Specify turns raw inputs — operator intent, written documentation, legacy code, screenshots, runtime captures — into behavioral specs. This page explains the two moments where that transformation happens, and how Specify keeps a clear trail back to where every requirement came from.
 
 <div class="meta-row">
 
@@ -17,7 +17,7 @@ Specify turns raw inputs — operator intent, written documentation, legacy code
 There are two distinct reconciliation moments, and they answer different questions:
 
 - **Plan time — what work exists?** `/spec:plan` surveys each bound source for *leads* and reconciles them into the *slices* that make up the change.
-- **Slice time — what must each unit do?** `/spec:refine` extracts *evidence* from each source and synthesizes it into one `spec.md`, recording exactly which source contributed each requirement.
+- **Slice time — what must each unit do?** `/spec:refine` extracts *evidence* from each source and synthesizes it into the unit's `specs/<unit>/spec.md`, recording exactly which source contributed each requirement.
 
 ```mermaid
 flowchart LR

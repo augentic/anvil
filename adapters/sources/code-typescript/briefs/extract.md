@@ -97,7 +97,7 @@ claims:
     callee: "src/users/repository.ts:insertUser"
 ```
 
-Three claims, three anchors, no raw source bodies. Synthesis reconciles these into `Status: agreed` requirements with `Sources: [legacy-monolith]` when no other source contributes; when documentation or intent also contributes, the authority hierarchy (`intent > documentation > behaviour`) decides.
+Three claims, three anchors, no raw source bodies. Synthesis reconciles these into `Status: agreed` requirements with `Sources: [legacy-monolith]` when no other source contributes; when documentation or intent also contributes, the [authority hierarchy](../../../../plugins/spec/references/synthesis/authority.md) (`intent > documentation > behaviour`) decides.
 
 ## Path rules
 

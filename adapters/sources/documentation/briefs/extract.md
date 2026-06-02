@@ -63,7 +63,7 @@ claims:
     decision: "..."
 ```
 
-`authority` is always the literal `documentation` (operator-provided written product/technical intent — see the authority hierarchy `intent > documentation > behaviour`). `lead` is the supplied `<lead>`. The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
+`authority` is always the literal `documentation` (operator-provided written product/technical intent — see the [authority hierarchy](../../../../plugins/spec/references/synthesis/authority.md) `intent > documentation > behaviour`). `lead` is the supplied `<lead>`. The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
 
 ## Worked example
 
