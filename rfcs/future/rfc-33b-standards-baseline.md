@@ -1,6 +1,6 @@
 # RFC-33b: Standards Baseline
 
-> Status: Deferred · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md), [RFC-33a](../rfc-33a-ignore-directives.md) · Enables: [roadmap RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement) (when triggered), [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Deferred · Depends: [RFC-28](../done/rfc-28-standards-contract.md), [RFC-32](../done/rfc-32-standards-enforcement.md), [RFC-33a](../rfc-33a-ignore-directives.md) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events) (when triggered)
 
 ## Abstract
 
@@ -226,6 +226,5 @@ Q1, Q2, and Q4 from earlier drafts have been resolved into normative decisions D
 - [RFC-32: Engineering Standards — Deterministic Enforcement](../done/rfc-32-standards-enforcement.md)
 - [RFC-33a: Standards Ignore Directives](../rfc-33a-ignore-directives.md) — companion RFC, active; provides the wire-shape decisions consumed here
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
-- [Specify Roadmap — RM-10](../roadmap.md#rm-10-ci-native-standards-enforcement)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 - [`crates/workflow/src/journal.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/journal.rs) — closed `EventKind` taxonomy

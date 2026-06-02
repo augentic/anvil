@@ -1,6 +1,6 @@
 # RFC-38: Completing Lead Reconciliation
 
-> Status: Draft — Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time lead reconciliation, the `proposal.schema.json` envelope) and [RFC-29c](rfc-29c-synthesis.md) (slice synthesis, the deferred `advisory-context` input) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (implement after RFC-36 lands; this RFC enriches the *lead* side of the same envelope RFC-36 enriched on the *project* side) — Related: the [roadmap principle "Core owns reconciliation"](roadmap.md#principles) and [RM-06](roadmap.md#rm-06-fan-infan-out-workflow-contract)
+> Status: Draft — Depends: [RFC-29b](rfc-29b-reconciliation.md) (plan-time lead reconciliation, the `proposal.schema.json` envelope) and [RFC-29c](rfc-29c-synthesis.md) (slice synthesis, the deferred `advisory-context` input) — Sequenced-after: [RFC-36](rfc-36-project-identity.md) (implement after RFC-36 lands; this RFC enriches the *lead* side of the same envelope RFC-36 enriched on the *project* side) — Related: the [roadmap principle "Core owns reconciliation"](roadmap.md#principles) and [RFC-29](rfc-29-fan-in-fan-out.md)
 
 ## Problem
 
