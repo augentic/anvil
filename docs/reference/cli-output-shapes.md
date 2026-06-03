@@ -165,20 +165,22 @@ Dashboard view over a plan. `counts` summarises per-status totals; `entries` car
 
 ### `specrun plan validate`
 
-Runs the plan-shape diagnostics. The `passed` payload field is a result indicator, not an envelope discriminant — both the clean and failed bodies have the same top-level shape, with `results` either empty or populated.
+Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specrun slice validate` and `specrun lint`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
 
 ```json
 {
-  "passed": true,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
+  "findings": [],
+  "summary": {
+    "critical": 0,
+    "important": 0,
+    "optional": 0,
+    "suggestion": 0
   },
-  "results": []
+  "version": 1
 }
 ```
 
-A failed run carries one entry per finding in `results`, each with `code` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `entry` (the entry name or `null` for plan-wide findings), `message`, and `severity` (`error` or `warning`).
+A failed run carries one object per finding in `findings`, each with `rule-id` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. Health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`) attach their structured payload to `evidence` as `{ "kind": "structured", "data": … }`.
 
 ### `specrun plan archive`
 

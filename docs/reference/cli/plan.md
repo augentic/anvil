@@ -39,21 +39,21 @@ specrun plan validate
 
 Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
-- `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
-- `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
-- `topology-cache-stale` (warning) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specrun workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
+- `project-not-in-registry` (important) -- every `project` value must match a `projects[].name` in the registry.
+- `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
+- `topology-cache-stale` (suggestion) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specrun workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
 
 Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
-| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
-| `orphan-source` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
-| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specrun workspace sync` to refresh the clone. |
+| `cycle-in-depends-on` | important | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Structured evidence carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
+| `orphan-source` | suggestion | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
+| `stale-workspace-clone` | suggestion | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specrun workspace sync` to refresh the clone. |
 
-JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone`). Base validate findings carry no `data` field; the three health diagnostics always do.
+JSON output (`--format json`) is the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specrun slice validate` and `specrun lint` — see [`schemas/diagnostic-report.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/diagnostic-report.schema.json). Each finding carries `rule-id` (kebab-case, e.g. `duplicate-name` / `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. The three health diagnostics attach their machine-readable payload to `evidence` as `{ "kind": "structured", "data": … }`; base validate findings carry a plain `snippet` evidence.
 
-Exit code: `0` when no error-severity finding fires (warnings are non-fatal); `2` when any error-severity finding fires.
+Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` when any blocking (`critical` / `important`) finding fires.
 
 ### specrun plan next
 
