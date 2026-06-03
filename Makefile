@@ -4,12 +4,16 @@ else
   SPECDEV_MANIFEST := specify-cli/Cargo.toml
 endif
 
-.PHONY: lint ci use-local-plugins use-team-plugins
+.PHONY: lint check-schemas ci use-local-plugins use-team-plugins
 
 lint:
 	cargo run --release --manifest-path $(SPECDEV_MANIFEST) --bin specdev -- lint --framework-root .
 
-ci: lint
+# Authoritative mirror list lives in scripts/check-schema-mirror.sh.
+check-schemas:
+	bash ./scripts/check-schema-mirror.sh
+
+ci: lint check-schemas
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

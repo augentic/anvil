@@ -110,7 +110,7 @@ When a larger source decomposes into multiple leads, emit one block per surface 
 - **Hallucinated framework signatures.** If `package.json` does not depend on `bullmq`, do not emit BullMQ surfaces. Framework absence is dispositive.
 - **Test files.** Skip `*.test.*`, `*.spec.*`, and anything under `tests/` or `__tests__/`. Tests validate production surfaces, they are not production surfaces.
 - **Type-only `.d.ts` files in `touches`.** They contribute zero production LOC and inflate lead sizing.
-- **Cross-source coalescing.** This brief only sees one source's tree. Cross-source merges happen later in `/spec:plan`'s `propose` sub-step.
+- **Cross-source coalescing.** This brief only sees one source's tree. Cross-source merges happen later in `/spec:plan`'s `propose` sub-step — see [From sources to slices](../../../../docs/explanation/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
 - **Writing `discovery.md` or `plan.yaml`.** Only lead blocks. The CLI owns every lifecycle file.
 
 ## Failure modes

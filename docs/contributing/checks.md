@@ -11,7 +11,7 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
 | **`specdev lint` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
+**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract. These copies must stay byte-identical to their CLI sources; [`scripts/check-schema-mirror.sh`](../../scripts/check-schema-mirror.sh) is the authoritative mirror list and fails on drift. Run it locally with `make check-schemas` (also wired into `make ci` and CI).
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -49,7 +49,7 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
+`make ci` runs `lint` and `check-schemas` (the schema-mirror check above). When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
 Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
@@ -308,6 +308,8 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 ## Extending the checks
 
 Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
+
+> **Steady state — the imperative predicates are not all going away.** An empirical audit (2026-06) established that the imperative→declarative migration is bounded: every *fact-consuming* hint kind is hardcoded to a single discriminator, all already spent on `CORE-001..009`, so only `path-pattern`, line-based `regex`, and `schema` can express a *new* check author-side without new engine work in `specify-cli`. The majority of the remaining `CORE-010..051` predicates are fused multi-finding checks, procedural/structural logic, dynamic registries, or tool-driven — they cannot become declarative rules without new hint-kind discriminators + indexer facts (a future RFC), and must never be retired by weakening a check. Treat the imperative `Check` predicates as the intended steady state for those cases. See [`specify-cli/DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (the framework-authoring-checks paragraph under "Crate layout") for the full rationale.
 
 ### Choose `CORE-*` (declarative) when
 

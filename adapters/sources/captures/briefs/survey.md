@@ -115,7 +115,7 @@ Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 
 - **Inventing handlers from `INSTRUCTIONS.md`.** The prose is operator hint material; the directory listing is the lead source of truth. If a handler is named in `INSTRUCTIONS.md` but has no scenario JSON files, emit nothing for it.
 - **Per-scenario leads.** One block per `<handler>/` directory, never one per `<scenario>.json`. Scenario-level detail belongs in `extract`'s `kind: example` claims.
-- **Cross-source slug mismatches here.** When another source surfaces the same handler under a different slug, reconciliation is propose-time agent judgment and Gate 1 `--sources` edits; this brief sees one source's tree.
+- **Cross-source slug mismatches here.** When another source surfaces the same handler under a different slug, reconciliation is propose-time agent judgment and Gate 1 `--sources` edits; this brief sees one source's tree. See [From sources to slices](../../../../docs/explanation/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
 - **Writing `discovery.md` or `plan.yaml`.** Only lead blocks. The CLI owns every lifecycle file.
 
 ## Failure modes

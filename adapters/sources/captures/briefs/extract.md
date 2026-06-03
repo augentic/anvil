@@ -33,7 +33,7 @@ Load both references — they own everything the brief does not spell out.
 
 ## Claim grain
 
-One `kind: example` claim per scenario file. A handler directory with 47 `<scenario>.json` files yields 47 example claims; synthesis reconciles them later through the `requirement` / `criterion` claims contributed by sibling sources. The per-handler grain is the lead (`survey`'s output); the per-scenario grain is the claim. This adapter does not collapse scenarios into a representative subset — every scenario the operator captured contributes one claim, and the 64 KiB inline cap (see references) handles the bulk case.
+One `kind: example` claim per scenario file. A handler directory with 47 `<scenario>.json` files yields 47 example claims; synthesis reconciles them later through the `requirement` / `criterion` claims contributed by sibling sources (see [From sources to slices](../../../../docs/explanation/reconciliation.md#slice-time-evidence-becomes-a-spec)). The per-handler grain is the lead (`survey`'s output); the per-scenario grain is the claim. This adapter does not collapse scenarios into a representative subset — every scenario the operator captured contributes one claim, and the 64 KiB inline cap (see references) handles the bulk case.
 
 ## Output skeleton
 
