@@ -1,6 +1,6 @@
 # Vectis build — Android shell (write + verify)
 
-Loaded by [../../build.md](../../build.md) Steps 9 + 10 when `android` is in `proposal.md` `## Platforms`. The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
+Loaded by [../../build.md](../../build.md) when `android` is in the platform set (carried from `project.yaml.platforms` via `proposal.md ## Platforms`). The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
 
 Carries the body of the retired `vectis-android-writer` skill. Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`../../../references/android/`](../../../references/android/).
 
@@ -33,7 +33,7 @@ Full set at [`hard-rules-android.md`](../../../references/hard-rules-android.md)
 
 ## Verify (max 3 iterations)
 
-Spawn this loop in its own sub-agent with `ANDROID_SHELL_DIR`. The sub-agent returns `status`, `iterations_used`, and any unresolved errors.
+Spawn this loop in its own sub-agent with `ANDROID_SHELL_DIR`. The sub-agent returns `status`, `iterations_used`, and any unresolved errors. The verify sub-agent is the **sole source of truth** for Android shell checkboxes in `tasks.md` — never mark an Android task complete or report success unless `make build`, `gradlew :shared:cargoBuild`, and `gradlew :app:assembleDebug` have actually run and passed in the verify loop.
 
 ### Pre-flight (fail fast on misconfiguration)
 

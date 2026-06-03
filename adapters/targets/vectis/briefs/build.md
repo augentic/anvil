@@ -36,15 +36,23 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 | `APP_NAME` | The Xcode target / Swift source folder name (derived from `design.md`'s `App` struct name). |
 | `CATALOG_PATH` | `${PROJECT_DIR}/.specify/design-system/components.yaml` when present. Optional — absent means no component factoring. |
 
-## Platform detection
+## Platform scope
 
-Read `${SLICE_DIR}/proposal.md` `## Platforms` to determine scope. Valid Vectis platform tokens are `core`, `ios`, `android`, and the deferred `web`. Token / asset / layout work is **input context**, never a platform. Process platforms in dependency order:
+Every slice carries the full app platform set from `project.yaml.platforms` (stamped verbatim into `proposal.md ## Platforms` by synthesis). Each slice signifies core + all declared shell work; build determines the **actual per-platform work**:
+
+- **create** — the shell tree is absent on disk → the bootstrap slice's build runs `specrun tool run vectis -- scaffold <platform> <APP_NAME> [--caps <csv>]` to stand up the minimum shell. Only `core`, `ios`, and `android` have scaffold support today.
+- **update** — the shell tree exists → diff core types against existing code and apply targeted edits (the normal feature-slice path).
+- **no-op** — the platform is in scope but the slice introduces no changes for that shell (skip the sub-brief).
+
+Valid Vectis platform tokens are `core`, `ios`, `android`, `web`, and `desktop`. Only `core`, `ios`, and `android` have build sub-briefs today; `web` and `desktop` in the platform set are silently skipped by the phase order (no sub-brief to load). Token / asset / layout work is **input context**, never a platform.
+
+Process platforms in dependency order:
 
 1. `core` first — shells depend on the core.
 2. `ios` and `android` shells — independent of each other; their **generation** phases can run in parallel; their **verify** phases are serial because they share the same Cargo workspace lock.
-3. `web` — deferred.
+3. `web`, `desktop` — deferred (no sub-brief; silently skipped).
 
-If the proposal lists `core` only, skip the iOS and Android phase sub-briefs wholesale; this is a backend-only build.
+If the platform set contains `core` only, skip the iOS and Android phase sub-briefs wholesale; this is a backend-only build.
 
 ## Phase order
 
@@ -55,7 +63,8 @@ If the proposal lists `core` only, skip the iOS and Android phase sub-briefs who
 5. (When `android` is in scope) Load [`build/android/write.md`](build/android/write.md) — generate / update the Compose shell, then its verify loop.
 6. Load [`build/core/review.md`](build/core/review.md) and, when in-scope, [`build/ios/review.md`](build/ios/review.md) and [`build/android/review.md`](build/android/review.md). Reviewers run in parallel.
 7. Run § Consolidate review findings.
-8. Mark `tasks.md` checkboxes complete as each phase lands, then write the build report (§ Build report). The brief never transitions the slice — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
+8. **Shell verify gate.** Run `specrun tool run vectis -- verify --mode verify "${PROJECT_DIR}"`. A missing or empty tree for any supported declared platform (`core`, `ios`, `android`) forces `status: failure`. `web` and `desktop` are valid tokens but have no on-disk interpretation yet — the tool emits a `platform-not-yet-supported` info finding and treats them as present.
+9. Mark `tasks.md` checkboxes complete as each phase lands, then write the build report (§ Build report). The brief never transitions the slice — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
 
 ## § Sub-agent delegation contract
 
@@ -96,7 +105,7 @@ Symptom triage table: [`../references/known-drift.md`](../references/known-drift
 
 The `build` phase concludes with exactly one of `success` / `failure` / `deferred`:
 
-- **success** — every in-scope verify-repair loop returned `success` within its iteration budget, and the orchestrator has both regenerated `composition.yaml` (or skipped it for a core-only slice) and the implementation code under `${PROJECT_DIR}`. Write a `status: success` build report (§ Build report); finalize owns the lifecycle transition.
+- **success** — every in-scope verify-repair loop returned `success` within its iteration budget, the shell verify gate (step 8) passed, the orchestrator has both regenerated `composition.yaml` (or skipped it for a core-only slice) and the implementation code under `${PROJECT_DIR}`, and `outputs[]` is populated with each supported platform's tree path. Write a `status: success` build report (§ Build report); finalize owns the lifecycle transition.
 - **failure** — any verify-repair loop exhausted its iterations, or the composition validation gate ([build/composition.md](build/composition.md)) failed and could not be repaired. Surface the load-bearing error line as `--summary` and the full output through `--context`, and write a `status: failure` build report with the blocking findings mapped where possible; the merge brief refuses to run while the slice is in this state.
 - **deferred** — a host prerequisite is missing (Java 21, Android SDK, Rust Android targets, `cargo-swift`, Gradle wrapper, Xcode CLT) or a known-drift template / pin issue surfaced and operator judgement is required. Surface the unresolved prerequisite or drift signal as `--summary` and write a `status: failure` build report (the report carries only `success` / `failure`; `deferred` is the operator-facing stop signal, not a built slice).
 
@@ -110,11 +119,20 @@ slice: <slice-name>     # matches the build request's `slice`
 target: vectis@v1       # this adapter at its manifest version
 status: success         # or: failure
 findings: []            # structured diagnostics; default []
+outputs:                # per-platform build outputs; default []
+  - platform: core
+    path: shared/
+  - platform: ios
+    path: iOS/
+  - platform: android
+    path: Android/
 ```
+
+The `outputs[]` array declares the per-platform build outputs produced by this build. Each entry carries a `platform` token and a `path` relative to `PROJECT_DIR`. The CLI's `--phase finalize` verifies every declared path exists and is non-empty on disk; a missing output triggers `target-build-output-missing` (exit 2). Populate `outputs[]` with an entry for each supported platform in `project.yaml.platforms` that the build produced or maintained work for. Omit entries for platforms with no on-disk interpretation (`web`, `desktop`).
 
 **Success vs failure findings rule.** A `status: success` report carries an empty `findings[]` or only non-blocking findings (`suggestion` / `optional`); the CLI rejects a `success` report carrying any blocking (`critical` / `important`) finding. A `status: failure` report populates `findings[]` with the blocking violations the target can map from the composition validator gate and the per-platform verify-repair output, and leaves `findings: []` when no specifics are mappable.
 
-- **Clean build** — composition regenerated and the validator gate ([build/composition.md](build/composition.md)) passed (or was skipped for a core-only slice), every in-scope verify-repair loop (core, iOS, Android) returned `success` within its budget, and § Consolidate review findings produced no blocking findings → `status: success`, `findings: []` (or only advisory `suggestion` / `optional` findings).
+- **Clean build** — composition regenerated and the validator gate ([build/composition.md](build/composition.md)) passed (or was skipped for a core-only slice), every in-scope verify-repair loop (core, iOS, Android) returned `success` within its budget, the shell verify gate passed, and § Consolidate review findings produced no blocking findings → `status: success`, `findings: []` (or only advisory `suggestion` / `optional` findings), `outputs[]` populated with each supported platform's tree path.
 - **Unresolved build** — a verify-repair loop exhausted its iterations, the composition validator gate failed unrepaired, or a host prerequisite / known-drift signal forced a `deferred` outcome → `status: failure` with blocking findings mapped where possible.
 
 Each `findings[]` item validates against `schemas/diagnostics/diagnostic.schema.json` (the structured-diagnostic shape distributed with the CLI; required fields include `id`, `title`, `severity`, `source`, `artifact`, `evidence`, `impact`, `remediation`, `fingerprint`). Map vectis's composition-validator, cargo / Gradle / Xcode verify, and review findings into that shape, carrying detail under `evidence.kind: structured` with `target-adapter: vectis`.

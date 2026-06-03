@@ -12,7 +12,7 @@ A Vectis slice produces a buildable cross-platform application:
 - Zero or more **platform shells** (`ios`, `android`, future `web`) that render the core's `ViewModel`, dispatch `Event` values from user interactions, and translate the core's `Effect`s into host I/O.
 - A **`composition.yaml` manifest** regenerated each build from `spec.md` + `design.md` (see `build.md`). `composition.yaml` is no longer a Specify artifact — synthesis never writes it. The synthesiser must still describe screen-level structure precisely enough for `build` to reconstruct the composition deterministically.
 
-`core` is always in scope. Shells are opt-in via the slice's `proposal.md` `## Platforms` declaration (see below).
+`core` is always in scope. Platforms are an **app-level fact** declared once in `project.yaml.platforms` and carried verbatim to every slice's `proposal.md ## Platforms` (see below) — they are not per-slice opt-in.
 
 ## Synthesis substep notes
 
@@ -20,7 +20,7 @@ A Vectis slice produces a buildable cross-platform application:
 
 - `## Source` is **Manual** for Vectis (the per-source provenance lives in `Sources:` lines on each requirement; `proposal.md` describes intent at a higher level).
 - `## Units` lists business features in kebab-case (`todo-app`, `weather-forecast`) — never implementation layers (`todo-core`, `todo-ios`). For Vectis, each unit is a business feature; each unit maps one-to-one to `specs/<unit>/spec.md`.
-- `## Platforms` is the build router. Valid entries: `core` (always required), `ios`, `android`, `web` (future). Tokens, assets, and layout are **not** platforms — they are build inputs to the shells. Per-shell scope (`vectis:ios-*` vs `vectis:android-*` work) is driven entirely by this list.
+- `## Platforms` is the build router. Read `project.yaml.platforms` directly and stamp the full set verbatim — do not cherry-pick or trim per slice. Valid tokens: `core` (always required and always present in the set), `ios`, `android`, `web`, `desktop`. `web` and `desktop` are accepted tokens but have no build sub-briefs, scaffold support, or on-disk shell interpretation yet — do not invent shell sections for them. Tokens, assets, and layout are **not** platforms — they are build inputs to the shells. Per-shell scope (`vectis:ios-*` vs `vectis:android-*` work) is driven entirely by this list. Every slice carries the same platform set; build determines per-platform work (create / update / no-op).
 - Modified units list existing baseline spec folders that change behaviourally; new requirement-IDs append, modified IDs keep their number, removed IDs carry a deletion note.
 
 ### `spec.md` — behavioural requirements
@@ -36,7 +36,7 @@ A Vectis slice produces a buildable cross-platform application:
 
 ### `design.md` — implementation shape
 
-`design.md` is the canonical reader of every upstream claim that `build` will turn into code or into `composition.yaml`. Include only the sections relevant to the platforms declared in `proposal.md`. The Domain Model and Adapters sections are always present (core is always in scope).
+`design.md` is the canonical reader of every upstream claim that `build` will turn into code or into `composition.yaml`. Include only the sections relevant to the platforms declared in `proposal.md` (which mirrors `project.yaml.platforms` verbatim). The Domain Model and Adapters sections are always present (core is always in scope).
 
 Required sections in order:
 
