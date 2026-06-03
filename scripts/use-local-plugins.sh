@@ -33,6 +33,8 @@ for p in m.get('plugins', []):
     print(p['source'])
 " "$MARKETPLACE")
 
+# Intentional: clear only the augentic-scoped cache so it is repopulated below;
+# CACHE_DIR is fixed to ~/.cursor/plugins/cache/augentic, never the whole cache.
 rm -rf "$CACHE_DIR"
 
 for plugin in $PLUGINS; do

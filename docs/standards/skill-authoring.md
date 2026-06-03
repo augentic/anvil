@@ -48,7 +48,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
 3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Move durable rationale to [docs/explanation/decision-log.md](../explanation/decision-log.md) and cite current references from the skill body. Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
-4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).`
+4. **If present, `## Phase outcome contract` is a single-line link, not a paragraph.** Phase skills are *not* required to carry this section — none do today, and no predicate enforces its presence; the canonical contract lives in [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). When a skill does include the section, replace any opening prose with the single-line `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract.
 
 ## Cross-cutting guardrails
 
@@ -108,9 +108,9 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills (`/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:execute`, `/spec:finalize`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specrun` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries.
+The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specrun` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `.metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
 
-When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
+The skill-authoring consequence is the rule unique to this page: when a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it — not to make the skill smarter.
 
 ## Rationale
 

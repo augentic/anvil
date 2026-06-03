@@ -37,7 +37,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specrun` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specrun init`, `specify adapter`.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `tools.yaml`, `specrun init`, and the axis-split `specrun source resolve` / `specrun target resolve` (which replaced the retired `specify adapter` family). JSON Schemas are owned by and distributed with the `specrun` binary, not a top-level repo directory.
 2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specrun slice *` verbs they wrap.
 3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specrun plan *` / `specrun registry *` / `specrun workspace *` verbs they wrap.
 

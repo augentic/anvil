@@ -16,7 +16,7 @@ Unless you are fixing a known bug, we recommend discussing your change with the 
 
 The framework spans two repositories:
 
-- **[augentic/specify](https://github.com/augentic/specify)** -- skills, schemas, briefs, shared references, and documentation (Markdown, YAML, TypeScript)
+- **[augentic/specify](https://github.com/augentic/specify)** -- skills, schemas, briefs, shared references, and documentation (Markdown, YAML, and shell)
 - **[augentic/specify-cli](https://github.com/augentic/specify-cli)** -- the `specrun` and `specdev` binaries and their Rust workspace crates
 
 See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides.

@@ -2,6 +2,8 @@
 
 > Status: Draft - Depends: RFC-1, RFC-2, and RFC-15 (retired milestone docs; durable CLI behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
+> **Verbs frozen at draft time.** This draft predates the 2.0 rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+
 ## Abstract
 
 Add first-class observability to the Specify CLI using Rust's `tracing` ecosystem. The CLI should emit structured, filterable diagnostics for command execution, slice lifecycle transitions, plan orchestration, workspace operations, and WASI tool runs without changing the existing stdout contract for humans, skills, or CI.

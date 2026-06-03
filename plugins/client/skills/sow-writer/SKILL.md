@@ -1,6 +1,6 @@
 ---
 name: client-sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and the operator wants to package its artifacts as a client deliverable; not while artifacts are still being authored (`refine`) or implemented (`build`).
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and its artifacts need packaging as a client deliverable; not while artifacts are still being authored (`refine`) or implemented (`build`).
 argument-hint: <slice-dir> [output-path] [client-name] [company-name] [pdf]
 ---
 
