@@ -62,7 +62,7 @@ All requirement IDs share one flat `REQ-###` namespace. Platform sections contin
 
 ## Platforms
 
-The proposal declares which platforms a slice targets:
+Platforms are an app-level fact declared in `project.yaml` via `specrun init vectis --platforms core,ios,android` and carried to every slice. The proposal's `## Platforms` section is stamped verbatim from `project.yaml.platforms` (not per-slice opt-in).
 
 | Platform | Build sub-brief | Description |
 |----------|-----------------|-------------|
@@ -83,10 +83,16 @@ The Vectis adapter's briefs and references carry domain context about:
 
 ## Project configuration
 
-After `/spec:init vectis`, `project.yaml` carries:
+After `specrun init vectis --platforms core,ios,android`, `project.yaml` carries:
 
 ```yaml
 target: https://github.com/augentic/specify/adapters/targets/vectis
+platforms:
+  - core
+  - ios
+  - android
 rules:
   - "Project-specific constraints go here"
 ```
+
+The `platforms` field is required for vectis and must include `core`. To change platforms after init, re-run `specrun init --upgrade --platforms <csv>`.
