@@ -53,10 +53,10 @@ Render the hint as the final visible output of the run. Do not call `specrun sli
 - **Refuse only on slice lifecycle, never on synthesis tags.** `[unknown]` / `[conflict]` / `[divergence]` in `spec.md` are review signals; the build proceeds against whatever spec is on disk.
 - **The `built` transition is owned by `specrun slice build $SLICE --phase finalize`.** `/spec:build` never calls `specrun slice transition $SLICE built`; the `Refined → Built` gate fires inside finalize on a clean success report.
 - **Never write `plan.yaml` from this body.** Per-entry transitions are owned by `specrun plan next` (writes `in-progress`) and `specrun slice merge` (writes `done`). `/spec:build` writes no lifecycle state by hand — the slice's `.metadata.yaml` is stamped by `specrun slice build --phase finalize`.
-- **Lifecycle single-writer:** [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- **Lifecycle single-writer:** [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never invoke retired writer or reviewer skills directly.** The target build brief carries those bodies inline; calling them out-of-band bypasses brief orchestration and breaks shape-injection guarantees.
 
 ## References
 
-- [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
+- [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `.metadata.yaml`, `plan.yaml`, archive paths.
 - `adapters/targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts); it also writes the `build/report.yaml` that `--phase finalize` validates.

@@ -59,7 +59,7 @@ Arguments deliberately excluded from the common surface:
 
 ## Component directive emission
 
-The `component: <slug>` directive is the v1 cross-shell factoring contract; see [Component Catalog](../../../../docs/explanation/components.md) for the operator-curated catalog and validation surfaces. Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
+The `component: <slug>` directive is the v1 cross-shell factoring contract; see [Component Catalog](./spec-runtime/components.md) for the operator-curated catalog and validation surfaces. Inferers emit it conservatively because every shell writer (iOS, Android, future React+TypeScript) factors a single named element per slug and the operator owns the eventual prop-shape contract.
 
 Emission policy:
 
@@ -139,6 +139,6 @@ Source-specific skills MAY add additional sections (e.g. the image inferer repor
 
 ## See also
 
-- [Component Catalog](../../../../docs/explanation/components.md) — operator workflow and validation surfaces for `components.yaml`.
+- [Component Catalog](./spec-runtime/components.md) — operator workflow and validation surfaces for `components.yaml`.
 - [`composition.schema.json`](https://schemas.specify.dev/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against. Retrieve with `specrun tool schema vectis composition`.
 - [`tokens.schema.json`](https://schemas.specify.dev/vectis/tokens.schema.json) and [`assets.schema.json`](https://schemas.specify.dev/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.

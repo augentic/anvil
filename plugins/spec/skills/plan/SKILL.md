@@ -42,7 +42,7 @@ The skill forwards every binding to `specrun plan create --source <key>=<adapter
 
 ## Propose sub-step
 
-Reconcile leads through the D2 envelope (see [`specrun plan propose`](../../../../docs/reference/cli/plan.md#specrun-plan-propose)):
+Reconcile leads through the D2 envelope (see [`specrun plan propose`](../../references/cli/plan-propose.md)):
 
 1. **Dry-run** — `specrun plan propose --dry-run --format json` returns the flat lead catalog and `projects[]`. Read-only — nothing is written and no journal event fires.
 2. **Agent grouping** — match leads across sources by judgment from `synopsis` and shared slugs (at most one lead per source per slice — never fuse two leads from the same source), then emit one `slices[]` row per slice, each carrying an explicit kebab-case `name`, its matched `sources[]`, and a bound `project`. There is no `scope` grouping noun — cross-target fan-out is multiple slices that may reference the same lead, joined by `depends-on`. Add `rationale` and `depends-on` as needed. The response shape is pinned by [`proposal.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/proposal.schema.json). **Split on doubt.** An over-merge is expensive and downstream-poisoning — two unrelated bodies of work land in one slice and one project/target, and `/spec:refine` synthesis inherits the bad match as `[conflict]`/divergence. An over-split is cheap and locally reversible at Gate 1 via `specrun plan amend <entry> --sources`. So when a cross-source match is not well-supported by shared slug or synopsis, keep the leads in **separate** slices and surface the candidate pairing in `## Tentative merges` for the operator to confirm-by-merge — never gamble on an unrecoverable propose-time merge.

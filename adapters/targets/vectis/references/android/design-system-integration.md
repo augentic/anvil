@@ -17,7 +17,7 @@ which carries the concrete code templates per token shape.
 When this document conflicts with another source, follow this precedence:
 
 1. `tokens.yaml` and `assets.yaml` — the operator-owned input artifacts.
-2. [Layout Inferer Contract](../layout-inferer-contract.md), [Component Catalog](../../../../../docs/explanation/components.md), and the Vectis schemas/tool validators.
+2. [Layout Inferer Contract](../layout-inferer-contract.md), [Component Catalog](../spec-runtime/components.md), and the Vectis schemas/tool validators.
 3. [`kotlin-token-templates.md`](token-templates.md) — concrete code
    templates per token category.
 4. This document — integration policy and fallback rules.

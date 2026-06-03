@@ -159,7 +159,7 @@ Check whether `.specify/project.yaml` exists.
 
 ### 3. Decide the topology — regular project or workspace
 
-See [Configuration files](../../../docs/reference/configuration.md#projectyaml) and [Registry](../../../docs/reference/registry.md) for the full background on the two shapes. Briefly:
+See [Configuration files](https://specify.augentic.io/reference/configuration.html#projectyaml) and [Registry](https://specify.augentic.io/reference/registry.html) for the full background on the two shapes. Briefly:
 
 - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **adapter**.
 - **Workspace** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the workspace itself; code lives in registered project repos under `.specify/workspace/<name>/`.
@@ -268,7 +268,7 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## Skill scope
 
-`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](./guardrails.md#single-writer-for-lifecycle-state).
 
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specrun init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
 - **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specrun init` owns adapter fetch and copy when invoked with the adapter positional.
@@ -279,6 +279,6 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## References
 
-- [`docs/explanation/adapter-anatomy.md`](../../../docs/explanation/adapter-anatomy.md) — adapter manifest boundaries and resolver behavior.
-- [`docs/reference/lifecycle.md`](../../../docs/reference/lifecycle.md) — workflow state owned by CLI verbs.
+- [Adapter anatomy](https://specify.augentic.io/explanation/adapter-anatomy.html) — adapter manifest boundaries and resolver behavior.
+- [Lifecycle](https://specify.augentic.io/reference/lifecycle.html) — workflow state owned by CLI verbs.
 - [`init-output-templates.md`](init-output-templates.md) — regular, brownfield, and workspace init summaries.

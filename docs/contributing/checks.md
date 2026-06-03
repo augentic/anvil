@@ -157,6 +157,10 @@ Long `SKILL.md` bodies are also checked for structure: bodies over 200 post-fron
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.
 
+### 6b. Deployable surfaces must not link into `docs/`
+
+`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specrun init`, `references/spec-runtime/` inside the cached adapter tree.
+
 ### 7. Skill variable consistency
 
 For skills that declare an `## Arguments` or `## Derived Arguments` section with `$VARIABLE = ...` definitions in ` ```text` blocks:

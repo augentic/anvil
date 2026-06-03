@@ -82,7 +82,7 @@ When all in-scope reviews complete:
 
 The per-platform reviewers above ([`build/core/review.md`](build/core/review.md), [`build/ios/review.md`](build/ios/review.md), [`build/android/review.md`](build/android/review.md)) carry the model-assisted surface — specialist + antagonist judgment per [`agent-teams.md`](../references/agent-teams.md). `specrun lint --format json` is the **deterministic complement**. It resolves applicable rules via `specrun rules export`, evaluates declarative `deterministic_hints`, and emits findings in the same `LintFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
 
-Per [Standards layer](../../../../docs/explanation/standards-layer.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
+Per [Standards layer](../references/spec-runtime/standards-layer-snippet.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
 
 ## § Template / version-pin drift handling
 
@@ -92,7 +92,7 @@ Symptom triage table: [`../references/known-drift.md`](../references/known-drift
 
 ## § Phase outcome contract
 
-> See [Phase outcome contract](../../../../plugins/spec/references/phase-outcome-contract.md).
+> See [Phase outcome contract](../references/spec-runtime/phase-outcome-contract.md).
 
 The `build` phase concludes with exactly one of `success` / `failure` / `deferred`:
 

@@ -39,4 +39,4 @@ When the slice is already past a phase on re-entry (e.g. `refined` after a build
 - **Never write per-entry `done` directly.** `/spec:merge` is the sole writer of per-entry `done`; this skill only sequences the phase skills.
 - **Never skip the lock.** Every shell that runs `specrun plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md).
 - **No `gh pr merge`, no branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
-- Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

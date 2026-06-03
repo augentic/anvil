@@ -33,7 +33,7 @@ Return one block per lead, in alphabetical `lead` order. The CLI appends them un
 - synopsis: Account service that lets a registered user request a password reset link by email.
 ```
 
-Field order is fixed (`lead`, `synopsis`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job — see [From sources to slices](../../../../docs/explanation/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
+Field order is fixed (`lead`, `synopsis`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job — see [From sources to slices](../references/spec-runtime/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
 
 ## Worked example
 

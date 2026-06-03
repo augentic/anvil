@@ -2,6 +2,8 @@
 
 House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
 
+**Runtime vs book:** Agent-critical prose is canonical under [`plugins/spec/references/`](../../plugins/spec/references/) and vendored into cached adapters at `references/spec-runtime/`. Skills and adapter briefs must not link into `docs/` with relative paths. Use `https://specify.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
+
 ## Document types (Diátaxis)
 
 Organise chapters by reader intent. The `docs/SUMMARY.md` section order follows this model:

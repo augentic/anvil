@@ -54,7 +54,7 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 
 ## Guardrails
 
-- **Lifecycle single-writer:** [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- **Lifecycle single-writer:** [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never materialise `.specify/slices/$SLICE_NAME/` outside step 2.** `specrun slice create` is the sole writer; before step 2 the on-disk shape is plan-only.
 - **Never run `extract` in parallel.** Bindings are processed in `slices[].sources[]` declaration order; deterministic goldens depend on it.
 - **Never park the slice on tags.** `[unknown]` / `[conflict]` / `[divergence]` are review signals; the slice still transitions to `refined`. A `slice.synthesize.failed` (or a post-persist `specrun slice validate` failure) is the only condition that keeps the slice in `refining` after extract succeeds.

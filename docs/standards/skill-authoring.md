@@ -39,7 +39,7 @@ All caps are floors, not budgets — overflow means the relocate-to-`references/
 
 Long-form rules, code-block examples, output templates, and edge-case enumerations belong in siblings the SKILL.md body links to (Anthropic's [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns) pattern). The SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; sibling files (`references/`, `examples/`, topical files) carry the prose.
 
-Push prose to `references/<topic>.md` (or, for cross-skill prose, the relevant tree under [docs/](../../docs/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
+Push prose to `references/<topic>.md` under the plugin (runtime canonical) before raising any cap. Use [docs/](../../docs/) only for contributor-facing book prose, not for links agents must resolve at skill runtime. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
 
 ## Skill body discipline
 
@@ -52,7 +52,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [docs/standards/skill-guardrails.md](./skill-guardrails.md). SKILL.md files **link** to them; they do **not** restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
 
 The canonical "skills MUST NOT" list:
 

@@ -87,7 +87,7 @@ The post-merge gate intentionally validates the merged baseline, not the staged 
 
 ## Stop hint contract
 
-> See [Phase outcome contract](../../../../plugins/spec/references/phase-outcome-contract.md).
+> See [Phase outcome contract](../references/spec-runtime/phase-outcome-contract.md).
 
 When the pre-merge gate, the CLI delta merge, or the post-merge hook fails, emit a structured stop hint as the body's final output:
 

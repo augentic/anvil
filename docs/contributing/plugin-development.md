@@ -93,17 +93,24 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
-Cross-cutting reference material lives under `docs/`, not in any single plugin:
+Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`](../../plugins/spec/references/). The Cursor plugin cache ships only `plugins/`, so skills must link to `references/…` siblings (or `../../references/…` from a skill directory), never to `docs/` via `../` escapes.
 
-| File | Purpose |
+| Runtime file | Purpose |
 |------|---------|
-| [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Definitive artifact format spec (proposal, spec, design, tasks) |
-| [`docs/explanation/augentic-specify-usage.md`](../explanation/augentic-specify-usage.md) | Augentic-specific supplement on how specialists use the artifacts |
-| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Multi-agent review pattern (specialists + antagonist + lead synthesis) |
-| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md) | Canonical JSON envelope shapes for `specify *` commands |
-| [`docs/standards/skill-guardrails.md`](../standards/skill-guardrails.md) | Cross-cutting "do not / never / always" rules for skill authors |
+| [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) | Cross-cutting "do not / never / always" rules for skills |
+| [`plugins/spec/references/specialist-usage.md`](../../plugins/spec/references/specialist-usage.md) | How specialists consume the four artifacts |
+| [`plugins/spec/references/reconciliation.md`](../../plugins/spec/references/reconciliation.md) | Plan-time leads and slice-time evidence |
+| [`plugins/spec/references/cli/plan-propose.md`](../../plugins/spec/references/cli/plan-propose.md) | `specrun plan propose` contract for `/spec:plan` |
 
-Plugin skills, rules, and adapter briefs link to these documents directly via relative paths. The only surviving cross-tree symlink pattern is per-target-adapter — `adapters/targets/<name>/references/agent-teams.md` symlinks to `docs/reference/review-team-protocol.md` so each review brief keeps a self-contained relative link.
+Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
+
+Adapter briefs link to vendored copies at `references/spec-runtime/` inside each cached target adapter (see [`adapters/shared/references/runtime/README.md`](../../adapters/shared/references/runtime/README.md)). Monorepo maintenance uses symlinks from that tree to the plugin canonical files; run `make sync-spec-runtime` (or `bash scripts/sync-adapter-spec-runtime.sh`) before `make lint` to materialise the same tree under each adapter's `references/spec-runtime/`. `specrun init` dereferences them into the cached adapter copy.
+
+| Book-only (not agent runtime) | Purpose |
+|------|---------|
+| [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Full artifact format reference |
+| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md) | JSON envelope shapes for CLI commands |
+| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Review-team protocol (canonical for mdBook; mirrored into `spec-runtime` for adapters) |
 
 ## Publishing a new plugin
 

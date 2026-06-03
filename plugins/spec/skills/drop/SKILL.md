@@ -76,4 +76,4 @@ The baseline remains unchanged.
 - Do not merge or rewrite any files under `.specify/specs/`.
 - Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
-- `specrun slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../../docs/standards/skill-guardrails.md#single-writer-for-lifecycle-state).
+- `specrun slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

@@ -63,7 +63,7 @@ After the pre-merge gate passes, follow the [`spec-merge`](../../../../plugins/s
 
 ## § Stop hint contract
 
-> See [Phase outcome contract](../../../../plugins/spec/references/phase-outcome-contract.md).
+> See [Phase outcome contract](../references/spec-runtime/phase-outcome-contract.md).
 
 When the pre-merge gate or the CLI delta merge fails, emit a structured stop hint as the body's final output:
 
