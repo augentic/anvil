@@ -144,7 +144,20 @@ Check whether `.specify/project.yaml` exists.
 - If it exists, inform the user: "Specify is already initialized in this project. Your config is at `.specify/project.yaml`."
 - Use the **AskQuestion tool** to confirm whether they want to re-enter — a version upgrade that preserves `project.yaml` and every operator-authored artifact.
 - If they decline, stop.
-- If they confirm, run the re-entry upgrade:
+- If they confirm, elicit platforms when the existing target adapter requires them:
+
+  1. Resolve the existing target adapter from `project.yaml` to check whether it declares `platforms.required`. When it does (e.g. vectis), use the **AskQuestion tool** to ask whether the operator wants to change the platform set:
+
+     > "The current project targets `<current platforms from project.yaml>`. Do you want to change the platform set? The allowed set is `<allowed>` and `core` is mandatory."
+
+     Options: **Keep current platforms** (recommended), **Change platforms (I'll specify)**.
+
+     - If they choose to change, store the comma-separated result as `$PLATFORMS` (e.g. `core,ios,android`). Validate that `core` is present before proceeding.
+     - If they keep current, leave `$PLATFORMS` unset.
+
+  2. When the target does not declare `platforms.required`, skip the elicitation (`$PLATFORMS` is unset).
+
+  3. Run the re-entry upgrade:
 
   ```bash
   specrun init --upgrade ${PLATFORMS:+--platforms "$PLATFORMS"} --format json
@@ -197,7 +210,7 @@ Store the comma-separated result as `$PLATFORMS` (e.g. `core,ios,android`). When
 
 When the target does not declare `platforms.required`, skip this step entirely (`$PLATFORMS` is unset).
 
-For the upgrade path (`specrun init --upgrade`), elicit platforms when the operator wants to change the platform set (e.g. adding `android` to an iOS-only project). The same validation rules apply.
+The upgrade path (step 2) has its own platform elicitation inline; this step applies only to first-run init.
 
 ### 5. Collect project metadata and invoke `specrun init`
 
