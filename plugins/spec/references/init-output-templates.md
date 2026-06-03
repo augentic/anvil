@@ -1,12 +1,12 @@
 # Init output templates
 
-Verbatim summaries `/spec:init` prints after a successful invocation. Pick the template that matches the resolved topology and `$HUB_MODE` / baseline-extraction outcome.
+Verbatim summaries `/spec:init` prints after a successful invocation. Pick the template that matches the resolved topology and `$WORKSPACE_MODE` / baseline-extraction outcome.
 
 | Scenario | Template |
 |---|---|
 | Regular project, no codebase indicators or user declined extraction | [Greenfield](#greenfield) |
 | Regular project, user opted into baseline extraction | [Brownfield](#brownfield) |
-| Hub init (`$HUB_MODE=true`) | [Hub](#hub) |
+| Workspace init (`$WORKSPACE_MODE=true`) | [Workspace](#workspace) |
 | Migration applied during the artifact-major probe (runbook step 1d) | [Migrated](#migrated) |
 
 ## Greenfield
@@ -39,30 +39,31 @@ Next steps:
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
 2. Run `/spec:plan initial-baseline source code-typescript=.` (or whichever `code-*` source matches the codebase) to survey leads
-3. Stamp Gate 1 with `specrun plan transition initial-baseline approved`, then run `/spec:execute` to drive `refine -> build -> merge`
+3. Stamp Gate 1 with `specify plan transition initial-baseline approved`, then run `/spec:execute` to drive `refine -> build -> merge`
 4. Run `/spec:plan <name> ...` for future changes
 ```
 
-## Hub
+## Workspace
 
 ```
-## Specify Initialized (Platform Hub)
+## Specify Initialized (Workspace Root)
 
-**Topology**: registry-only hub
-**Config**: .specify/project.yaml (`hub: true`; `adapter:` omitted)
+**Topology**: registry-only workspace
+**Config**: .specify/project.yaml (`workspace: true`; `adapter:` omitted)
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
+**Workspace sync**: $WORKSPACE_SYNC_MESSAGE (from init JSON `workspace-sync-message`; typically `workspace sync complete` on first run)
 
 Next steps:
-1. Add registered projects with `specrun registry add`
+1. Add registered projects with `specify registry add`
 2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
-3. Stamp Gate 1 with `specrun plan transition <name> approved`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+3. Stamp Gate 1 with `specify plan transition <name> approved`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
 ```
 
 ## Migrated
 
-Rendered after `specrun migrate --yes` applies a major-version migration during the artifact-major probe (runbook step 1d). Substitute the fields from the migration report; the structured summary is the surface here, while the full per-file diff lives in the journal.
+Rendered after `specify migrate --yes` applies a major-version migration during the artifact-major probe (runbook step 1d). Substitute the fields from the migration report; the structured summary is the surface here, while the full per-file diff lives in the journal.
 
 ```
 ## Specify Migrated

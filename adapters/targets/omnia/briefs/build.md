@@ -15,7 +15,7 @@ The brief runs against the build request the CLI prepared at `.specify/slices/<s
 The brief binds these working names from the request and the resolved crate:
 
 ```text
-$SLICE_NAME    = active in-progress plan entry's slice name (from `specrun plan next`)
+$SLICE_NAME    = active in-progress plan entry's slice name (from `specify plan next`)
 $SLICE_DIR     = .specify/slices/$SLICE_NAME
 $UNIT_NAME     = unit slug from proposal.md ## Units (typically equals crate name for single-crate slices)
 $SPEC_PATH     = $SLICE_DIR/specs/$UNIT_NAME/spec.md
@@ -27,7 +27,7 @@ $GUEST_PATH    = workspace root (single `src/lib.rs` exports HTTP / Messaging / 
 $REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md
 ```
 
-`/spec:build` resolves `$SLICE_NAME` from `specrun plan next`. The brief uses that name throughout.
+`/spec:build` resolves `$SLICE_NAME` from `specify plan next`. The brief uses that name throughout.
 
 ## Mode detection
 
@@ -83,19 +83,19 @@ Repeat until all four checks pass or 3 iterations exhausted. If still failing af
 
 A build failure surfaces a stop hint as the body's final output — a single structured message the parent skill or the parent loop can act on without re-deriving context:
 
-- `slice` — slice name from `specrun plan next`.
+- `slice` — slice name from `specify plan next`.
 - `phase` — `build`.
 - `failing-task` — the `tasks.md` checkbox (or sub-step) that exited non-zero.
 - `log-path` — absolute path to the captured stdout/stderr.
 - `next-action` — typically `re-run /spec:build $SLICE after fix`.
 
-Render the hint as the final visible output of the run, alongside the `status: failure` build report (see `## Build report`). The brief never calls `specrun slice transition` — finalize validates the report and owns the lifecycle, so the slice stays `refined` and the loop (or a re-invocation) re-enters cleanly.
+Render the hint as the final visible output of the run, alongside the `status: failure` build report (see `## Build report`). The brief never calls `specify slice transition` — finalize validates the report and owns the lifecycle, so the slice stays `refined` and the loop (or a re-invocation) re-enters cleanly.
 
 ## § Deterministic review
 
-Phase 6 writes `$REVIEW_OUTPUT` (`REVIEW.md`) — that is the model-assisted surface: specialist + antagonist judgment per [`team-protocol-crate.md`](../references/team-protocol-crate.md) and [`build/review.md`](build/review.md). `specrun lint --format json` is the **deterministic complement**. It resolves applicable rules via `specrun rules export`, evaluates declarative `deterministic_hints`, and emits findings in the same `LintFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
+Phase 6 writes `$REVIEW_OUTPUT` (`REVIEW.md`) — that is the model-assisted surface: specialist + antagonist judgment per [`team-protocol-crate.md`](../references/team-protocol-crate.md) and [`build/review.md`](build/review.md). `specify lint --format json` is the **deterministic complement**. It resolves applicable rules via `specify rules export`, evaluates declarative `rule_hints`, and emits findings in the same `LintFinding` shape (`rule-id`, `fingerprint`, severity, `evidence`) operators already see in that export. The two surfaces are layered, not alternatives — model-assisted judgment sits on top of the deterministic scan.
 
-Per [Standards layer](../../../../docs/explanation/standards-layer.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
+Per [Standards layer](../references/spec-runtime/standards-layer-snippet.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
 
 ## Build report
 

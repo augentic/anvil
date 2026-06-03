@@ -13,10 +13,10 @@ Specify 2.0 uses several YAML and Markdown files for configuration. All are mana
 ## project.yaml
 
 **Location:** `.specify/project.yaml`
-**Created by:** `/spec:init` (via `specrun init`)
+**Created by:** `/spec:init` (via `specify init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the hub shape (`specrun init --hub`).
+Project-level configuration that persists across changes. Two shapes — the regular project shape (default) and the workspace shape (`specify init --workspace`).
 
 ### Regular project shape
 
@@ -34,16 +34,16 @@ description: |
 
 | Field             | Required               | Description |
 | ----------------- | ---------------------- | ----------- |
-| `name`            | Yes                    | Project name (set by `specrun init --name`) |
+| `name`            | Yes                    | Project name (set by `specify init --name`) |
 | `target`          | Yes (regular projects) | Target adapter identifier or URL (with optional `@ref` suffix). Accepts a bare name, an `https://…` URL, or a `file:///…` URI. Omitted on workspaces. |
 | `sources`         | No                     | List of source adapters available for `/spec:plan` to bind. Defaults to the first-party set when omitted. |
-| `specify-version` | Yes                    | Minimum CLI version required (set by `specrun init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
+| `specify-version` | Yes                    | Minimum CLI version required (set by `specify init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "specify-version")]`. |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specrun workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
-### Hub shape
+### Workspace shape
 
 ```yaml
 name: shop-platform
@@ -51,20 +51,20 @@ workspace: true
 specify-version: "2.0.0"
 ```
 
-A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and `workspace/` slots but is never itself a code project.
+A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under `.specify/workspace/` but is never itself a code project.
 
 | Field             | Required | Description |
 | ----------------- | -------- | ----------- |
-| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the hub sentinel. |
-| `target`          | --       | **Omitted.** A hub has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
+| `workspace`       | Yes      | `true`. The presence of this flag (paired with the absence of `target:`) is the workspace sentinel. |
+| `target`          | --       | **Omitted.** A workspace has no target — its absence tells the CLI to skip target resolution and the per-project phase pipelines. |
 
-**When to use the registry-only platform hub:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
+**When to use the registry-only workspace:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous.
 
 ## plan.yaml
 
-**Location:** `.specify/plan.yaml` (single-project) or `<workspace-root>/.specify/plan.yaml` (workspace mode)
-**Created by:** `/spec:plan` (via `specrun plan create`)
-**Modified by:** `specrun plan propose --from`, `specrun plan add`, `specrun plan amend`, `specrun plan remove`, `specrun plan transition`, `specrun plan next`, `specrun plan archive`
+**Location:** `.specify/plan.yaml` (single-project) or `<workspace>/.specify/plan.yaml` (workspace mode)
+**Created by:** `/spec:plan` (via `specify plan create`)
+**Modified by:** `specify plan propose --from`, `specify plan add`, `specify plan amend`, `specify plan remove`, `specify plan transition`, `specify plan next`, `specify plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 
@@ -103,7 +103,7 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `approved`. Written by `specrun plan transition`; `/spec:plan` exits at `pending`. |
+| `lifecycle`              | Yes      | `pending` or `approved`. Written by `specify plan transition`; `/spec:plan` exits at `pending`. |
 | `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
@@ -113,7 +113,7 @@ slices:
 | `project`                | No       | Project this slice binds. Required when the registry declares multiple projects; optional for single-project setups (an omitted value resolves to the sole topology project). The target adapter is resolved on demand from this project — it is not stored per slice. |
 | `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
 | `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
-| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specrun plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
+| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `specify plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must be `done` first. |
 | `context`                | No       | List of baseline paths relevant to the slice; used as a focus hint by briefs. |
 | `description`            | No       | What this slice does (human-readable). |
@@ -122,7 +122,7 @@ slices:
 
 **Location:** `registry.yaml`
 **Created by:** Operator (directly)
-**Validated by:** First-use validators (`specrun workspace sync`, `/spec:plan`)
+**Validated by:** First-use validators (`specify workspace sync`, `/spec:plan`)
 
 Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description` is authored in its own `.specify/project.yaml`, and its derived identity (`surface[]` / `recent[]`) is projected into `.specify/topology.lock` from that project's baseline.
 
@@ -148,7 +148,7 @@ projects:
 
 ## change.md
 
-**Location:** `.specify/change.md` (workspace mode: at workspace root)
+**Location:** `.specify/change.md` (workspace mode: at workspace)
 **Created by:** `/spec:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
@@ -175,8 +175,8 @@ into Omnia. Priority: user registration, password reset.
 ## .metadata.yaml
 
 **Location:** `.specify/slices/<name>/.metadata.yaml`
-**Created by:** `specrun slice create`
-**Modified by:** `specrun slice transition`, `specrun slice merge`
+**Created by:** `specify slice create`
+**Modified by:** `specify slice transition`, `specify slice merge`
 
 Per-slice lifecycle metadata. **Never hand-edit this file.**
 

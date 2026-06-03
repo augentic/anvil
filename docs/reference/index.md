@@ -18,7 +18,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### CLI
 
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
-- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — first-party helper migration boundary for `specrun tool run`.
+- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — first-party helper migration boundary for `specify tool run`.
 
 ### Plugins
 
@@ -35,7 +35,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Engineering standards
 
-- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and `specrun lint` exit semantics.
+- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and `specify lint` exit semantics.
 
 ## Finding what you need
 

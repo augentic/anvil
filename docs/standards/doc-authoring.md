@@ -2,6 +2,8 @@
 
 House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
 
+**Runtime vs book:** Agent-critical prose is canonical under [`plugins/spec/references/`](../../plugins/spec/references/) and vendored into cached adapters at `references/spec-runtime/`. Skills and adapter briefs must not link into `docs/` with relative paths. Use `https://specify.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
+
 ## Document types (Diátaxis)
 
 Organise chapters by reader intent. The `docs/SUMMARY.md` section order follows this model:
@@ -152,7 +154,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```html
 <div class="synopsis">
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 </div>
 
 <div class="see-also">
@@ -212,7 +214,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```markdown
 \{{#template templates/synopsis-open.md}}
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 \{{#template templates/synopsis-close.md}}
 ```
 
@@ -278,7 +280,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 | **Tutorial** | [`tutorials/quick-start.md`](../tutorials/quick-start.md) | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
 | **How-to** | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also |
 | **Explanation** | [`explanation/concepts.md`](../explanation/concepts.md) | hero, audience-grid, rhythm, pipeline, admonition, see-also |
-| **Reference** | [`reference/change-skills/plan.md`](../reference/change-skills/plan.md) | hero, synopsis, tables below fold, see-also |
+| **Reference** | [`reference/cli/plan.md`](../reference/cli/plan.md) | intro, verb cheat-sheet table, synopsis blocks, see-also |
 | **Section landing** | [`tutorials/index.md`](../tutorials/index.md) | hero, card-grid, see-also |
 
 ## Palette and theme picker

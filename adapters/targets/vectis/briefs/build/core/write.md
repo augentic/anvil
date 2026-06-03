@@ -8,7 +8,7 @@ Carries the body of the retired `vectis-core-writer` skill. The Crux 0.17 idioms
 
 Inspect `${PROJECT_DIR}/shared/src/app.rs`:
 
-- Missing → **create mode**: render the scaffold with `specrun tool run vectis -- scaffold core <APP_NAME> [--caps <csv>]`, then enter update mode for feature-specific code.
+- Missing → **create mode**: render the scaffold with `specify tool run vectis -- scaffold core <APP_NAME> [--caps <csv>]`, then enter update mode for feature-specific code.
 - Present → **update mode**: diff the artifact-derived target against the existing implementation and apply targeted edits.
 
 Repair sub-agent (invoked by the verify-repair loop in [../test.md](../test.md)) uses `mode: repair` plus the failing error output to apply the minimum change to fix the reported errors.
@@ -16,7 +16,7 @@ Repair sub-agent (invoked by the verify-repair loop in [../test.md](../test.md))
 ## Critical path
 
 1. **Read inputs.** `${SLICE_DIR}/specs/${UNIT_NAME}/spec.md` (core body + platform sections), `${SLICE_DIR}/design.md` (Domain Model, Adapters, API Contracts, Implementation Constraints). Extract App name, Model, Events, ViewModel / Page / Route, capability set, and any HTTP / SSE / KV shapes.
-2. **Detect mode.** In create mode, render the scaffold via `specrun tool run vectis -- scaffold core <APP_NAME> --caps <comma-separated-caps> [--version-file <path>]` and run an explicit `cargo check --workspace` sanity gate before any further edits.
+2. **Detect mode.** In create mode, render the scaffold via `specify tool run vectis -- scaffold core <APP_NAME> --caps <comma-separated-caps> [--version-file <path>]` and run an explicit `cargo check --workspace` sanity gate before any further edits.
 3. **Build an implementation inventory** of existing types and diff against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order: capabilities → views → domain → model → events → API → logic. The full mapping rules live in [`crux/artifact-to-code-mapping.md`](../../../references/crux/artifact-to-code-mapping.md) and [`crux/update-change-patterns.md`](../../../references/crux/update-change-patterns.md).
 4. **Apply structural edits** to `app.rs`: domain types → `Page` / `ViewModel` / `Route` → `Model` → `Event` / `Effect` → imports → `Cargo.toml` updates for new capabilities. Adopt screen names, ViewModel variants, per-page view structs, field names, and `Event` / `Route` variants verbatim from `design.md`.
 5. **Apply logic edits** to `update()` and `view()`: per-`Event` match arms, business rules from the spec, model-to-ViewModel mapping for new pages. Consult the Crux 0.17 surface (see [`crux/app-pattern.md`](../../../references/crux/app-pattern.md), [`crux/command-api.md`](../../../references/crux/command-api.md), [`crux/capabilities.md`](../../../references/crux/capabilities.md), [`crux/custom-capabilities.md`](../../../references/crux/custom-capabilities.md)): return `Command<Effect, Event>` from `update()`; mark `Event` enums `#[repr(C)]`; never define a `Capabilities` struct (the 0.17 API uses `Effect` directly as an enum with `#[effect(facet_typegen)]`); never call `crux_core::cli::run()` (use `crux_core::type_generation::facet::TypeRegistry` instead); generate SSE inline as a custom adapter — not a published crate.

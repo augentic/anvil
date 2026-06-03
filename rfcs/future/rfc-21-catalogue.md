@@ -2,6 +2,8 @@
 
 > Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (retired milestone docs; superseded by the RFC-29 source-adapter flow — see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
+> **Verbs frozen at draft time.** This draft predates the 2.0 rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+
 ## Abstract
 
 Add a durable, platform-level catalogue of legacy source repositories (`sources.yaml`), a shared tier-1 cache for their clones (`.specify/.cache/sources/<key>/`), and a `--source @<key>` selector form for `/spec:plan`. Together these let a platform repo declare dozens of legacy sources once and re-use them across many changes, without re-cloning each time and without conflating sources (planner-time inputs) with the existing target-project registry (executor-time outputs).
@@ -31,7 +33,7 @@ This RFC is the smallest set of additions that fix all four issues without viola
 
 ### Principles
 
-1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace root alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
+1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
 2. **The CLI is the single writer.** `specify source {add, remove, sync}` are the only writers to `sources.yaml`. No skill hand-edits the file; this mirrors the writer rules for `registry.yaml` and `plan.yaml`.
 3. **The tier-1 boundary is preserved.** `.specify/.cache/sources/<key>/` is read-only with respect to source adapter `enumerate`, source adapter `extract`, and every planner-time skill. Nothing in this RFC writes into a source clone after sync materialises it.
 4. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.

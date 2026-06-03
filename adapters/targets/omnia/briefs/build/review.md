@@ -1,6 +1,6 @@
 # Omnia build — standards review (code reviewer)
 
-Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succeeds. Applies **engineering standards** with model-assisted judgment: an agent team of three specialists (Security, Correctness, Quality) plus an antagonist; the lead synthesises findings into `$REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md`. This is build-time standards application, not CI-native `specrun lint` and not plan Gate 1. Carries the body of the retired `omnia-code-reviewer` skill.
+Loaded by [../build.md](../build.md) phase 6, after the verify-repair loop succeeds. Applies **engineering standards** with model-assisted judgment: an agent team of three specialists (Security, Correctness, Quality) plus an antagonist; the lead synthesises findings into `$REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md`. This is build-time standards application, not CI-native `specify lint` and not plan Gate 1. Carries the body of the retired `omnia-code-reviewer` skill.
 
 ## Review pipeline
 

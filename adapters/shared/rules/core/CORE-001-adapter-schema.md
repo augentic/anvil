@@ -3,7 +3,7 @@ id: CORE-001
 title: Adapter Manifest Schema
 severity: critical
 trigger: An `adapter.yaml` manifest under `adapters/**/` fails to validate against the shared adapter manifest schema (missing required fields, unknown keys, or malformed values).
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: adapters/**/adapter.yaml
     description: Narrow the candidate set to adapter manifests before schema validation.

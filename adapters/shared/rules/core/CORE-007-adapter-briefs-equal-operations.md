@@ -2,8 +2,8 @@
 id: CORE-007
 title: Adapter Briefs Equal Operations
 severity: important
-trigger: An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set is not exactly the closed axis-appropriate operation enum (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), either omitting a required operation or carrying an unexpected key the loader has no operation to dispatch.
-deterministic_hints:
+trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set is not exactly the closed axis-appropriate operation enum (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), either omitting a required operation or carrying an unexpected key the loader has no operation to dispatch."
+rule_hints:
   - kind: path-pattern
     value: "adapters/sources/*/adapter.yaml"
     description: Source adapter manifests; `briefs.keys()` must equal exactly `survey` and `extract`.

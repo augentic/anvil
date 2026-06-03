@@ -1,10 +1,10 @@
 # Reconcile-journal golden
 
-Pins the journal tail `specrun plan propose --from` appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specrun journal emit` for D2; the CLI owns this event.
+Pins the journal tail `specify plan propose --from` appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specify journal emit` for D2; the CLI owns this event.
 
 ## Scenario
 
-A hub `identity-revamp` change where the agent matched four surveyed leads across two sources (`docs`, `legacy`) into three slices:
+A workspace `identity-revamp` change where the agent matched four surveyed leads across two sources (`docs`, `legacy`) into three slices:
 
 - `identity-contracts` and `identity-service` — both reference the shared `identity-api` lead (matched by a shared slug across `docs` + `legacy`), fanned out to two projects and joined by `depends-on`.
 - `password-reset` — `docs`'s `password-reset` and `legacy`'s `reset-password`, judged the same flow; bound to `identity-service` only.

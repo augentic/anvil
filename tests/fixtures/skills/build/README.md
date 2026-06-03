@@ -7,7 +7,7 @@ Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build
 | Fixture                     | Trigger                                             | Acceptance scenario | Expected output                                            |
 | --------------------------- | --------------------------------------------------- | ------------------- | ---------------------------------------------------------- |
 | `failure-replay/`           | Target build brief exits non-zero on `cargo test`.  | #9 (build park)     | Stop hint with `failing-task` + `log-path`; slice stays `refined`; plan entry stays `in-progress`. |
-| `success/`                  | Target build brief completes; slice goes to `built`.| #9 happy-path       | `specrun slice transition <slice> built`; control returns to caller. |
+| `success/`                  | Target build brief completes; slice goes to `built`.| #9 happy-path       | `specify slice transition <slice> built`; control returns to caller. |
 | `breakout-from-execute/`    | `/spec:build` invoked from inside `/spec:execute` with `SPECIFY_PLAN_LOCK_HELD=1`. | #11 | Skip plan-lock acquire; otherwise identical to standalone path. |
 
 ## Layout per fixture

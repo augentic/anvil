@@ -96,7 +96,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | `$SCRATCH_DIR`    | write-only | Per-operation scratch under the extraction tree, disjoint from the fingerprint result cache: `extract` → `.specify/.cache/extractions/<adapter>/<slice>/scratch/`; `survey` (plan-time, no slice) → `.specify/.cache/extractions/<adapter>/survey/scratch/`. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
-Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specrun plan amend` to include the needed root, or drop the source.
+Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
 
 Under `execution: agent` the runner dispatches the operation in two phases: `prepare` builds the sandbox above, scaffolds the output target, emits `source.execution.agent`, and prints a handoff envelope on stdout, then returns control; the agent runs the brief against the prepared directory; `finalize` validates the output before it becomes visible (lead set / Evidence schema), then merges it into `discovery.md` (`survey`) or persists `evidence/<source>.yaml` (`extract`) and writes the cache. Under `execution: tool` the operation is single-phase. The CLI never blocks on agent work.
 
@@ -105,10 +105,10 @@ Under `execution: agent` the runner dispatches the operation in two phases: `pre
 Target adapters do not own `spec.md` or `design.md` synthesis. They contribute three briefs:
 
 - **`shape`** — idiom guidance consumed by core synthesis. The brief shapes how `proposal.md` / `spec.md` / `design.md` / `tasks.md` are written for slices that target this adapter. Empty `shape` is valid; the brief is read into context, not executed.
-- **`build`** — implementation drive: consume **only** the build request's `inputs` manifest (the rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. `specrun slice build` owns request assembly, report validation, and the `built` transition gate; the brief owns only code generation.
-- **`merge`** — landing gate: requires lifecycle `built`, re-runs the target's validators per the merge brief, surfaces conflicts, and drives verification commands (e.g. `cargo build --target wasm32-wasip2 --release`). v1 adds **no** merge envelope — `specrun slice merge` is the writer and `slice.merge.*` events fire on its validator outcome.
+- **`build`** — implementation drive: consume **only** the build request's `inputs` manifest (the rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. `specify slice build` owns request assembly, report validation, and the `built` transition gate; the brief owns only code generation.
+- **`merge`** — landing gate: requires lifecycle `built`, re-runs the target's validators per the merge brief, surfaces conflicts, and drives verification commands (e.g. `cargo build --target wasm32-wasip2 --release`). v1 adds **no** merge envelope — `specify slice merge` is the writer and `slice.merge.*` events fire on its validator outcome.
 
-A target adapter MAY declare an optional `inputs[]` field — a flat list of `{ path, required }` entries naming the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into the request's `inputs.artifacts.additional[]`, and a missing `required` path aborts the build with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. See the [target adapter reference](../reference/targets/index.md#manifest-shape) and [`specrun slice build`](../reference/cli/slice.md#specrun-slice-build).
+A target adapter MAY declare an optional `inputs[]` field — a flat list of `{ path, required }` entries naming the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into the request's `inputs.artifacts.additional[]`, and a missing `required` path aborts the build with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. See the [target adapter reference](../reference/targets/index.md#manifest-shape) and [`specify slice build`](../reference/cli/slice.md#specify-slice-build).
 
 Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Specify artifacts and do not need a fourth capability. Each slice binds a `project` in `plan.yaml`; the target adapter is resolved on demand from that project (it is not stored per slice). v1 supports one target per project.
 
@@ -123,11 +123,11 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
-CLI entry points: `specrun source resolve <name>` and `specrun target resolve <value>` load and validate the manifest on first use. `specrun plan add`, `specrun plan amend <entry> --add-source / --remove-source`, and `specrun plan propose --from` write slice bindings into `plan.yaml`.
+CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and `specify plan propose --from` write slice bindings into `plan.yaml`.
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail for skill authors lives in [`plugins/spec/references/synthesis/authority.md`](../../plugins/spec/references/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>
@@ -167,7 +167,7 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
     </div>
   </div>
   <p style="font-size: 12px; margin: 8px 0 0; font-family: ui-monospace, monospace;">
-    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes with <code>specrun slice provenance</code> (projected on demand from <code>model.yaml</code>).
+    Every step that does not fire is consulted and skipped; the chain is byte-stable. Inspect outcomes with <code>specify slice provenance</code> (projected on demand from <code>model.yaml</code>).
   </p>
 </div>
 
@@ -178,7 +178,7 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Declare tools (optional).** WASI helpers in `tools[]` resolve into the per-axis manifest cache at `.specify/.cache/manifests/{sources,targets}/<name>/`.
-6. **Validate.** `specrun source resolve <name>` / `specrun target resolve <name>` exercises manifest loading; `make lint` runs the documentation predicates and the schema validators.
+6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make lint` runs the documentation predicates and the schema validators.
 
 ## Adapter manifests vs Cursor plugin manifests
 

@@ -6,8 +6,8 @@ Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge
 
 | Fixture              | Trigger                                                         | Acceptance scenario | Expected output                                                                  |
 | -------------------- | --------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------- |
-| `conflict-replay/`   | `specrun slice merge` returns non-zero on a baseline overlap.   | #11 (paired with build) | Stop hint with `failure-kind: baseline-conflict` + conflict paths; slice stays `built`; plan entry stays `in-progress`. |
-| `success/`           | Pre-merge gate passes; `specrun slice merge` exits zero.        | #9 happy-path       | Slice transitions to `merged`, archive moved, plan entry stamped `done`.         |
+| `conflict-replay/`   | `specify slice merge` returns non-zero on a baseline overlap.   | #11 (paired with build) | Stop hint with `failure-kind: baseline-conflict` + conflict paths; slice stays `built`; plan entry stays `in-progress`. |
+| `success/`           | Pre-merge gate passes; `specify slice merge` exits zero.        | #9 happy-path       | Slice transitions to `merged`, archive moved, plan entry stamped `done`.         |
 
 `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` follows the same env-var-detection contract as `/spec:build`; see [`../build/breakout-from-execute/`](../build/breakout-from-execute/) for the shared contract.
 

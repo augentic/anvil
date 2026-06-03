@@ -1,6 +1,6 @@
 # intent.extract
 
-Emit one `Evidence` document carrying a single `kind: intent` claim. The `intent` source is degenerate — `extract` returns the operator's intent string verbatim, with `authority: intent` so downstream synthesis treats it as the highest-priority signal under the [authority hierarchy](../../../../plugins/spec/references/synthesis/authority.md) (`intent > documentation > behaviour`).
+Emit one `Evidence` document carrying a single `kind: intent` claim. The `intent` source is degenerate — `extract` returns the operator's intent string verbatim, with `authority: intent` so downstream synthesis treats it as the highest-priority signal under the authority precedence (`intent > documentation > behaviour`) defined in [`authority.md`](../references/spec-runtime/synthesis/authority.md). Core synthesis reconciles it with any sibling sources' Evidence into the slice's `spec.md` — see [From sources to slices](../references/spec-runtime/reconciliation.md#slice-time-evidence-becomes-a-spec).
 
 ## Inputs
 

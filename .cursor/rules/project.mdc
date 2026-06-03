@@ -28,19 +28,17 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **adapters/sources/`<name>`/briefs/** / **adapters/targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
-When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls. Higher-authority sources win; losers survive as inline commentary. Same-authority disagreements emit `[conflict]` for operator reconciliation. See [synthesis/authority.md](../../plugins/spec/references/synthesis/authority.md) for the resolution order and [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md) for the adapter contract.
+When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls: higher-authority sources win, losers survive as inline commentary, and same-authority disagreements emit `[conflict]`. See [AGENTS.md](../../AGENTS.md#authority-and-reconciliation-mechanics) and [synthesis/authority.md](../../plugins/spec/references/synthesis/authority.md) for the resolution order, and [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md) for the adapter contract.
 
 **Key principle**: If artifacts conflict with source, trust the artifacts. If artifacts are incomplete, mark unknowns rather than guessing.
 
 ## Artifact Boundaries
 
-Specify artifacts have separate responsibilities (`proposal.md` = why/scope, `spec.md` = behavioral requirements, `design.md` = the how, `tasks.md` = sequencing; Vectis adds `tokens.yaml` / `assets.yaml`). See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the full per-artifact breakdown.
-
-Behavioral specs stay platform-neutral: Omnia trait selection, guest wiring, WASM translation, and target-specific build outputs (e.g. Vectis `composition.yaml`) live in specialist skills and references, not in `spec.md`. Target build outputs are not Specify artifacts and core does not synthesize them.
+Artifacts carry separate responsibilities (`proposal.md` = why/scope, `spec.md` = behavioral *what*, `design.md` = the *how*, `tasks.md` = sequencing; Vectis adds `tokens.yaml` / `assets.yaml`), and behavioral specs stay platform-neutral — Omnia trait selection, guest wiring, WASM translation, and target build outputs (e.g. Vectis `composition.yaml`) live in specialist skills and references, not `spec.md`. See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the per-artifact breakdown and [docs/explanation/augentic-specify-usage.md](../../docs/explanation/augentic-specify-usage.md) for the specialist-vs-artifact dividing line.
 
 ## Specialist Skills
 
@@ -72,14 +70,14 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   └── shared/               # Shared adapter support material, not adapters
       ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
       └── target-hooks/replay/
-/schemas/                 # plugin, source, target, evidence, lead JSON Schemas
+/.cursor/schemas/         # Editor-facing JSON Schema mirrors (adapter, skill, rule, scenario, marketplace); authoritative schemas live in augentic/specify-cli
 /scripts/                 # Validation and plugin management
 ```
 
 ## Validation
 
 ```bash
-make lint   # forwards to specdev lint
+make lint   # forwards to specify lint framework
 ```
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
@@ -121,7 +119,7 @@ In this repository:
 
 - **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/` (with per-source evidence at `evidence/<source>.yaml`)
 - **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
-- **Plan + discovery**: `$PROJECT_DIR/.specify/{change.md,plan.yaml,discovery.md}` (workspace mode places these at the workspace root)
+- **Plan + discovery**: `$PROJECT_DIR/.specify/{change.md,plan.yaml,discovery.md}` (workspace mode places these at the workspace)
 
 ## Troubleshooting
 
@@ -139,7 +137,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/standards/src/framework/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specdev lint` (`make lint` locally) enforces both.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/standards/src/framework/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specify lint framework` (`make lint` locally) enforces both.
 
 ## For Contributors
 

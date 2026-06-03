@@ -17,7 +17,7 @@ failure, preserve enough evidence for another operator to reproduce the state.
 - **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
-- **Hub root:** `<temporary hub project root>`
+- **Workspace:** `<temporary workspace project root>`
 - **Backend project root:** `<temporary Omnia project root>`
 - **Mobile project root:** `<temporary Vectis project root>`
 - **`SPECIFY_BIN`:** `<path or "PATH default">`
@@ -44,11 +44,11 @@ section; record any deviation explicitly.
 ### Stage 2 — Review (operator pause)
 
 ```bash
-<paste the specrun plan validate / inspect plan.yaml commands actually run>
+<paste the specify plan validate / inspect plan.yaml commands actually run>
 ```
 
 - **Operator action taken:** `<accepted-as-authored | edited-via-amend | aborted>`
-- **`specrun plan amend` invocations:** `<none | list>`
+- **`specify plan amend` invocations:** `<none | list>`
 
 ### Stage 3 — Execute
 
@@ -88,7 +88,7 @@ Record the final planned slices before execution.
 
 | Role | Slice name | Project | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| Contract | `<slice>` | `<none or hub>` | `<none>` | `<status>` |
+| Contract | `<slice>` | `<none or workspace>` | `<none>` | `<status>` |
 | Backend implementation | `<slice>` | `<backend project>` | `<contract slice>` | `<status>` |
 | Mobile implementation | `<slice>` | `<mobile project>` | `<contract slice>` | `<status>` |
 

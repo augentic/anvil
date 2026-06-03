@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Who needs this page.** Tool declarations are an advanced authoring topic for *adapter and project authors* who ship a deterministic helper alongside their briefs. If you are running changes, you can skip it — the first-party tools (the contract validator and the Vectis tools) are already declared for you. Read on only when you are packaging your own helper.
 
-Specify tools are WASI components that a project or adapter declares for deterministic helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
+Specify tools are WASI components that a project or adapter declares for deterministic helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolves, caches, and runs them with explicit permissions through `specify tool`.
 
 ## Declaration sites
 
@@ -28,7 +28,7 @@ tools:
       write: []
 ```
 
-Project-scope declarations are owned by the project author. They are available even when the project is a hub project with no adapter, and they survive adapter changes.
+Project-scope declarations are owned by the project author. They are available even when the project is a workspace project with no adapter, and they survive adapter changes.
 
 Use project scope when a repo needs a local override, a development build, a private helper, or a tool that is not part of the adapter contract.
 
@@ -49,13 +49,13 @@ tools:
     version: 0.3.0
 ```
 
-First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specrun tool run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `scripts/use-local-dev.sh` writes it with a `source:` pointing to a locally-built WASM binary. The sidecar is gitignored and never checked in.
+First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specify tool run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `scripts/use-local-dev.sh` writes it with a `source:` pointing to a locally-built WASM binary. The sidecar is gitignored and never checked in.
 
 Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 
 ## Precedence
 
-`specrun tool` resolves the current project, loads both declaration sites, and merges by `name`.
+`specify tool` resolves the current project, loads both declaration sites, and merges by `name`.
 
 Project scope wins on collision. This lets an operator redirect a adapter-shipped tool to a local build or a pinned internal mirror without editing the adapter. The CLI emits a `tool-name-collision` warning and keeps going.
 
@@ -68,7 +68,7 @@ Permission entries may use:
 - `$PROJECT_DIR` in both project-scope and adapter-scope declarations.
 - `$CAPABILITY_DIR` only in adapter-scope declarations.
 
-`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for hub projects or projects whose adapter changes later.
+`$CAPABILITY_DIR` is rejected in project-scope tools because project declarations must remain valid even for workspace projects or projects whose adapter changes later.
 
 Variables are expanded only in `permissions.read` and `permissions.write`. They are not expanded in `source`, and they are not expanded in arguments passed after `--`.
 
@@ -94,11 +94,11 @@ The global cache is segmented by declaration scope:
 
 Project and adapter entries stay isolated even when the name, version, and source are identical. This keeps ownership explicit and prevents one declarer from silently changing another declarer's cached bytes.
 
-The cache root follows the `specrun tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
+The cache root follows the `specify tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
 
 ## Package Sources and SHA-256 Pins
 
-First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specrun tool fetch` and `specrun tool run`; they do not install `wkg`.
+First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specify tool fetch` and `specify tool run`; they do not install `wkg`.
 
 `sha256` pins object-declared component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose sidecar digest no longer matches the live declaration.
 
@@ -108,14 +108,14 @@ The `oci.reference` written into `meta.yaml` is derived best-effort from the res
 
 ## Registry configuration
 
-`specrun tool fetch` and `specrun tool run` resolve registries through wasm-pkg with a layered config (last write wins per key):
+`specify tool fetch` and `specify tool run` resolve registries through wasm-pkg with a layered config (last write wins per key):
 
 1. The wasm-pkg global defaults (`~/.config/wasm-pkg/config.toml`).
 2. The project-local `.specify/wasm-pkg.toml`, when present.
 3. The `WKG_CONFIG` override, when the env var is set.
 4. An embedded `specify -> augentic.io` namespace fallback, applied only when no earlier layer mapped the `specify` namespace.
 
-`specrun init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
+`specify init` (regular and workspace modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
 
 ```toml
 default_registry = "augentic.io"
@@ -134,13 +134,13 @@ Choose project scope when:
 
 - The tool is repo-private.
 - The project needs a temporary or permanent override of a adapter tool.
-- The project is a hub and has no adapter.
+- The project is a workspace and has no adapter.
 - The tool should remain available after changing adapters.
 
 Choose adapter scope when:
 
 - The tool is part of the adapter's documented behavior.
-- Briefs or skills in the adapter call `specrun tool run <name>`.
+- Briefs or skills in the adapter call `specify tool run <name>`.
 - The adapter author owns updates, digest pins, and distribution.
 - `$CAPABILITY_DIR` is needed for read-only templates or bundled resources.
 
@@ -191,8 +191,8 @@ tools:
 Invocation:
 
 ```bash
-specrun tool fetch contract
-specrun tool run contract -- "$PROJECT_DIR/contracts" --format json
+specify tool fetch contract
+specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 ```
 
 ## Future lints
@@ -203,9 +203,9 @@ The framework linter reserves rule ids for this surface:
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
 - `skill.invokes-host-binary-with-declared-tool-equivalent` will warn when a brief or skill shells out to a host helper after an equivalent declared tool exists.
 
-The current CLI already validates tool declaration structure during `specrun tool` commands. The framework checks also scan active first-party briefs and skills for retired helper invocations covered by the [Declared Tool Helper Inventory](../reference/declared-tool-helper-inventory.md).
+The current CLI already validates tool declaration structure during `specify tool` commands. The framework checks also scan active first-party briefs and skills for retired helper invocations covered by the [Declared Tool Helper Inventory](../reference/declared-tool-helper-inventory.md).
 
 ## See also
 
-- [specrun tool](../reference/cli/tool.md) -- command reference
+- [specify tool](../reference/cli/tool.md) -- command reference
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter sidecar conventions

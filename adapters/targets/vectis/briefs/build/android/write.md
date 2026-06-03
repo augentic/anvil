@@ -8,7 +8,7 @@ Carries the body of the retired `vectis-android-writer` skill. Compose patterns,
 
 Inspect `${ANDROID_SHELL_DIR}/app/src/main/java/<package>/Core.kt`:
 
-- Missing → **create mode**: scaffold with `specrun tool run vectis -- scaffold android <APP_NAME> [--caps <csv>] [--android-package <package>]`, then enter pre-flight (see § Verify below), then update mode.
+- Missing → **create mode**: scaffold with `specify tool run vectis -- scaffold android <APP_NAME> [--caps <csv>] [--android-package <package>]`, then enter pre-flight (see § Verify below), then update mode.
 - Present → **update mode**: diff core types against existing Kotlin code and apply targeted edits.
 
 Spawn the writer sub-agent with `mode: create|update` and `skip_verification: true`; the dedicated verify sub-agent (§ Verify) runs afterward.

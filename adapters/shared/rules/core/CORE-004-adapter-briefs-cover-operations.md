@@ -2,8 +2,8 @@
 id: CORE-004
 title: Adapter Briefs Cover Operations
 severity: important
-trigger: An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set does not cover every operation the axis requires (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), leaving the loader without a brief to dispatch for at least one declared operation.
-deterministic_hints:
+trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set does not cover every operation the axis requires (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), leaving the loader without a brief to dispatch for at least one declared operation."
+rule_hints:
   - kind: path-pattern
     value: "adapters/sources/*/adapter.yaml"
     description: Source adapter manifests; `briefs.keys()` must cover `survey` and `extract`.
@@ -17,7 +17,7 @@ deterministic_hints:
 
 ## Rule
 
-Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its operation dispatch through the `briefs:` map. The set of keys in that map must cover the closed axis-appropriate operation enum: `SourceOperation::{Survey, Extract}` for source adapters, `TargetOperation::{Shape, Build, Merge}` for target adapters. A missing key leaves the workflow loader without a brief to dispatch when the per-axis verb fires (`specrun source resolve survey <name>`, `specrun target resolve build <name>`, …).
+Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its operation dispatch through the `briefs:` map. The set of keys in that map must cover the closed axis-appropriate operation enum: `SourceOperation::{Survey, Extract}` for source adapters, `TargetOperation::{Shape, Build, Merge}` for target adapters. A missing key leaves the workflow loader without a brief to dispatch when the per-axis verb fires (`specify source resolve survey <name>`, `specify target resolve build <name>`, …).
 
 The deterministic-hint interpreter consumes the `AdapterManifest` facts the framework-profile indexer already produced (`crates/standards/src/lint/index/adapter.rs::extract`, including the new `brief-keys` field that mirrors the manifest's `briefs:` map keys verbatim), so the rule cost is one set-difference per candidate manifest at lint time. The path scope intentionally pins the canonical `adapters/{sources,targets}/<name>/adapter.yaml` shape; nested `adapter.yaml` files (e.g. inside `briefs/` subtrees) are dropped upstream by the extractor and never reach this layer.
 

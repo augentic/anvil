@@ -2,6 +2,8 @@
 
 > Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-20, RFC-25 (retired milestone docs), [RFC-21](rfc-21-catalogue.md)
 
+> **Verbs frozen at draft time.** This draft predates the 2.0 rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+
 ## Abstract
 
 Add the cumulative cross-change state required to plan, route, and audit migrations that span many changes. Today's framework records per-change history through `.specify/archive/plans/<date>-<name>/`, but assignment, propose, and survey have no machine-readable answer to "is this source migrated yet?" or "what's the source-to-target pattern of this slice?" — both questions get harder as a multi-repo migration grows.

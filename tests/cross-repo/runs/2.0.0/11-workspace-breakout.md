@@ -4,7 +4,7 @@
 
 [`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids), scenario `11`.
 
-> `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at workspace root and runs `/spec:build`.
+> `/spec:execute` parks on `auth-rotate` in `project-a`; operator stays at workspace and runs `/spec:build`.
 
 **Stress-tests:** Project-routing rule for breakout verbs; active-slice resolution across the workspace/slot boundary; correct `chdir` without operator intervention.
 

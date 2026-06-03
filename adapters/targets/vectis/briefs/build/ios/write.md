@@ -8,7 +8,7 @@ Carries the body of the retired `vectis-ios-writer` skill. The SwiftUI patterns,
 
 Inspect `${IOS_SHELL_DIR}` for any `.swift` files:
 
-- No Swift files → **create mode**: scaffold with `specrun tool run vectis -- scaffold ios <APP_NAME> [--caps <csv>]`, then enter update mode.
+- No Swift files → **create mode**: scaffold with `specify tool run vectis -- scaffold ios <APP_NAME> [--caps <csv>]`, then enter update mode.
 - Swift files present → **update mode**: diff core types against existing Swift code and apply targeted edits.
 
 Spawn the writer sub-agent with `mode: create|update` and `skip_verification: true`; the dedicated verify sub-agent (§ Verify) runs afterward.

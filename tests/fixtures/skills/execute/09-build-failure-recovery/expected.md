@@ -13,9 +13,9 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
 
 1. **First `/spec:execute` pass.**
    - Lock acquired.
-   - `specrun plan next` returns slice 2 (already `in-progress`).
+   - `specify plan next` returns slice 2 (already `in-progress`).
    - Slice lifecycle `refined` → loop dispatches `/spec:build`.
-   - `/spec:build` runs tasks 1–4 successfully (each `specrun slice task mark` flips the checkbox). Task 5 (`cargo test`) fails: a regression test asserts session cookie `Secure` flag is set; production code path forgot it.
+   - `/spec:build` runs tasks 1–4 successfully (each `specify slice task mark` flips the checkbox). Task 5 (`cargo test`) fails: a regression test asserts session cookie `Secure` flag is set; production code path forgot it.
    - `/spec:build` records `PhaseOutcome { phase: build, outcome: failure, summary: "task-5 cargo test failed: session_cookie_secure_flag_set" }` to `.specify/slices/session-cookie-harden/.metadata.yaml`, then returns non-zero.
    - `/spec:execute` reads the outcome, prints the templated stop hint from [`../../../../../plugins/spec/skills/execute/references/stop-conditions.md`](../../../../../plugins/spec/skills/execute/references/stop-conditions.md):
 
@@ -37,11 +37,11 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
 
 3. **Operator re-runs `/spec:execute`.**
    - Lock acquired.
-   - `specrun plan next` returns slice 2 (still `in-progress`).
+   - `specify plan next` returns slice 2 (still `in-progress`).
    - Slice lifecycle is `refined` → loop dispatches `/spec:build`.
    - `/spec:build` reads tasks 1–4 as already-flipped (idempotent re-mark is a no-op), re-runs task 5, passes.
    - Slice lifecycle transitions to `built`; loop dispatches `/spec:merge`.
-   - Merge success → `specrun plan transition session-cookie-harden done`.
+   - Merge success → `specify plan transition session-cookie-harden done`.
    - Next iteration runs slice 3 end-to-end → drained.
 
 ## Terminal state

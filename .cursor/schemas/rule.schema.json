@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/rules/rule.schema.json",
   "title": "Specify rule frontmatter",
-  "description": "Validates the YAML frontmatter block at the top of a rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specdev lint`.",
+  "description": "Validates the YAML frontmatter block at the top of a rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specify lint framework`.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -105,9 +105,9 @@
         "hybrid"
       ],
       "default": "model-assisted",
-      "description": "How this rule is expected to be reviewed. The review runner decides execution; this field only classifies the rule."
+      "description": "How this rule is expected to be linted. The lint runner decides execution; this field only classifies the rule."
     },
-    "deterministic_hints": {
+    "rule_hints": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -122,21 +122,23 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": [
-              "path-pattern",
-              "regex",
-              "schema",
-              "tool",
-              "unique",
-              "reference-resolves",
-              "set-coverage",
-              "cardinality",
-              "constant-eq",
-              "set-eq",
-              "content-digest-eq",
-              "namespace-owner"
-            ],
-            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specrun lint` hint interpreter; no kind is reserved. This editor mirror shape-validates the value; execution semantics live in the canonical CLI schema and interpreter."
+            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specify lint` hint interpreter, which carries one `eval/<kind>.rs` interpreter module per `const`; no kind is reserved. Adding a new kind requires landing its interpreter in the same change.",
+            "oneOf": [
+              { "const": "path-pattern" },
+              { "const": "regex" },
+              { "const": "schema" },
+              { "const": "tool" },
+              { "const": "unique" },
+              { "const": "reference-resolves" },
+              { "const": "set-coverage" },
+              { "const": "cardinality" },
+              { "const": "constant-eq" },
+              { "const": "set-eq" },
+              { "const": "content-digest-eq" },
+              { "const": "namespace-owner" },
+              { "const": "fenced-block" },
+              { "const": "authoring-predicate" }
+            ]
           },
           "value": {
             "type": "string",
@@ -147,6 +149,12 @@
             "type": "string",
             "minLength": 1,
             "description": "Optional human explanation for the hint."
+          },
+          "config": {
+            "description": "Per-kind configuration. Phase 1: `regex` hints may carry regexHintConfig.",
+            "oneOf": [
+              { "$ref": "#/$defs/regexHintConfig" }
+            ]
           }
         }
       }
@@ -213,6 +221,47 @@
     }
   },
   "$defs": {
+    "regexHintConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional `kind: regex` hint configuration (RFC-31 Phase 1).",
+      "properties": {
+        "negative-match": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, emit one finding per line where the pattern does not match."
+        },
+        "capture-group": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based capture group index to parse as an integer for threshold comparison."
+        },
+        "capture-op": {
+          "type": "string",
+          "enum": ["lt", "le", "gt", "ge", "eq"],
+          "description": "Comparison operator applied to the captured integer."
+        },
+        "capture-value": {
+          "type": "integer",
+          "description": "Right-hand side for capture-op comparison."
+        },
+        "suffix-must-not-start-with": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-match filter: skip matches whose remainder starts with this literal prefix."
+        },
+        "slash-skill-positional": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, apply CORE-023 slash-skill positional semantics instead of matching `value` as a regex."
+        },
+        "join-backslash-continuations": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true with `slash-skill-positional`, join backslash- and indent-continued rows before scanning."
+        }
+      }
+    },
     "ruleId": {
       "type": "string",
       "pattern": "^(UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
@@ -232,7 +281,8 @@
     "relativePathPattern": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      "pattern": "^(!?)(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+      "description": "Relative path or glob. A leading `!` marks an exclusion path-pattern hint (RFC-31 Phase 2)."
     }
   }
 }

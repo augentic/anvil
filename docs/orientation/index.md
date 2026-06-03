@@ -26,7 +26,7 @@ You do not need to read this guide front to back. Pick the row that matches wher
 Every change flows through one rhythm:
 
 1. **Plan** — `/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
-2. **Operator review (Gate 1)** — you stamp `approved`: `specrun plan transition <name> approved`.
+2. **Operator review (Gate 1)** — you stamp `approved`: `specify plan transition <name> approved`.
 3. **Execute** — `/spec:execute` loops per slice: refine → build → merge.
 4. **Finalize** — `/spec:finalize` pushes branches, observes PRs, archives the plan.
 

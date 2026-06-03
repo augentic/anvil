@@ -3,7 +3,7 @@ id: VECTIS-005
 title: Declared Platform Shells Must Be Present
 severity: important
 trigger: A Vectis project declares platforms in project.yaml and a proposal.md carries the platform set.
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: '**/proposal.md'
     description: Any proposal that carries a ## Platforms section should be checked against the on-disk shell trees.

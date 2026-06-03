@@ -1,6 +1,6 @@
 # `documentation.extract`
 
-For one `Lead`, walk `$SOURCE_DIR` (read-only) and return a single `Evidence` document of structured claims. The CLI persists the result at `.specify/slices/<slice>/evidence/<source>.yaml`; this brief returns the YAML body only.
+For one `Lead`, walk `$SOURCE_DIR` (read-only) and return a single `Evidence` document of structured claims. The CLI persists the result at `.specify/slices/<slice>/evidence/<source>.yaml`; this brief returns the YAML body only. Core synthesis later reconciles this Evidence with every other bound source's into the slice's `spec.md` — see [From sources to slices](../references/spec-runtime/reconciliation.md#slice-time-evidence-becomes-a-spec).
 
 ## Inputs
 
@@ -63,7 +63,7 @@ claims:
     decision: "..."
 ```
 
-`authority` is always the literal `documentation` (operator-provided written product/technical intent — see the [authority hierarchy](../../../../plugins/spec/references/synthesis/authority.md) `intent > documentation > behaviour`). `lead` is the supplied `<lead>`. The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
+`authority` is always the literal `documentation` (operator-provided written product/technical intent; the authority precedence `intent > documentation > behaviour` is defined in [`authority.md`](../references/spec-runtime/synthesis/authority.md)). `lead` is the supplied `<lead>`. The document's `(slice, source)` identity is path-borne (the CLI persists it at `.specify/slices/<slice>/evidence/<source>.yaml`) and the adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document.
 
 ## Worked example
 

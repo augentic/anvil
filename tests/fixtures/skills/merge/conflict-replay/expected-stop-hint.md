@@ -15,10 +15,10 @@ stop: merge-failed
 ## Lifecycle invariants on this path
 
 - `.specify/slices/identity-user-registration/.metadata.yaml` `status` stays `built`.
-- `plan.yaml.slices[0].status` stays `in-progress` — `/spec:merge` only writes the per-entry `done` on the `specrun slice merge` success path.
+- `plan.yaml.slices[0].status` stays `in-progress` — `/spec:merge` only writes the per-entry `done` on the `specify slice merge` success path.
 - The slice directory is not moved into `.specify/archive/`.
 - The plan lock (acquired in standalone mode, held by parent in loop mode) releases on process exit.
-- No `specrun slice transition` call was made.
+- No `specify slice transition` call was made.
 
 ## Operator recovery
 

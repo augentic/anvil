@@ -2,8 +2,8 @@
 id: CORE-003
 title: Skill Names Unique
 severity: important
-trigger: Two or more `plugins/**/SKILL.md` files declare the same `name:` frontmatter value, leaving the marketplace with an ambiguous skill identifier.
-deterministic_hints:
+trigger: "Two or more `plugins/**/SKILL.md` files declare the same `name:` frontmatter value, leaving the marketplace with an ambiguous skill identifier."
+rule_hints:
   - kind: path-pattern
     value: "plugins/**/SKILL.md"
     description: Narrow the candidate set to plugin skill manifests before the uniqueness check fires.

@@ -130,7 +130,7 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
   working tree after `/spec:build`, and (when merge is run) in the baseline
   `contracts/` tree after `/spec:merge`.
 - `contract-validator-clean`: the build's contract verifier (the `contract`
-  WASI tool, run as `specrun tool run contract -- "$PROJECT_ROOT/contracts" --format json`)
+  WASI tool, run as `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`)
   exits `0` with no findings and no manual-review warnings on the produced
   artifacts.
 
@@ -148,7 +148,7 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
 Drop or archive the slice before moving to the next scenario unless you
 explicitly want the new baseline contracts to persist:
 
-- `specrun slice drop user-adapter-api` to discard without merging, or
+- `specify slice drop user-adapter-api` to discard without merging, or
 - `/spec:merge user-adapter-api` to merge the baseline contracts; the merge
   skill calls `slice merge run`, which atomically merges, transitions the
   slice to `merged`, and archives it.

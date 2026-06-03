@@ -7,7 +7,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## CLI owns correctness, agent owns judgment
 
-**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specify` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
+**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specrun` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
 
 **Rationale:** LLM-interpreted prose rules for structured operations (validation, task parsing, directory manipulation) produced unreliable results. A binary that returns structured JSON and exit codes gives deterministic correctness where it matters, while the agent retains judgment for semantic decisions.
 
@@ -35,9 +35,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Independently useful layers
 
-**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
+**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specrun` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specrun init`, `specify adapter`.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `tools.yaml`, `specrun init`, and the axis-split `specrun source resolve` / `specrun target resolve` (which replaced the retired `specify adapter` family). JSON Schemas are owned by and distributed with the `specrun` binary, not a top-level repo directory.
 2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specrun slice *` verbs they wrap.
 3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specrun plan *` / `specrun registry *` / `specrun workspace *` verbs they wrap.
 
@@ -89,13 +89,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** A project's *authored intent* (`adapter`, `description`) lives solely in each project's `.specify/project.yaml`. Its *routing identity* is **derived, not authored** — a deterministic structural projection of the project's own baseline: `surface[]` (owned unit slugs + requirement titles from `.specify/specs/`) and `recent[]` (the merge-outcome tail from `.specify/journal.jsonl`). The hand-authored `capabilities` / `keywords` facets are removed. `registry.yaml` is reduced to membership + location (`name`, `url`, optional `contracts`, optional `adapter` greenfield seed) and no longer authors a project's target adapter or description for plan-time topology.
 
-**Rationale:** A fact with two authored homes drifts; a hand-authored tag rots independently of the project it describes. Previously a project's adapter/description lived in both its `project.yaml` and the hub's `registry.yaml` (the registry copy silently won at plan time), and `capabilities` / `keywords` duplicated what the baseline already states. Inverting authority — the project owns what it *intends* to be, identity is *derived* from what it *actually owns* — gives every fact one writer and introduces no new authored fact: the baseline is authored through the slice loop, the journal is machine-written, and `description` already exists. Routing quality auto-sharpens as slices merge, with zero operator tag maintenance. The registry's optional `adapter` survives only as a greenfield scaffold seed; once a project's `project.yaml` exists it is authoritative. (Supersedes the earlier "hand-authored project facets" draft.)
+**Rationale:** A fact with two authored homes drifts; a hand-authored tag rots independently of the project it describes. Previously a project's adapter/description lived in both its `project.yaml` and the workspace's `registry.yaml` (the registry copy silently won at plan time), and `capabilities` / `keywords` duplicated what the baseline already states. Inverting authority — the project owns what it *intends* to be, identity is *derived* from what it *actually owns* — gives every fact one writer and introduces no new authored fact: the baseline is authored through the slice loop, the journal is machine-written, and `description` already exists. Routing quality auto-sharpens as slices merge, with zero operator tag maintenance. The registry's optional `adapter` survives only as a greenfield scaffold seed; once a project's `project.yaml` exists it is authoritative. (Supersedes the earlier "hand-authored project facets" draft.)
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Topology cache (lockfile) for plan-time availability
 
-**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); hub plan-time topology (`hub_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a hub has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
+**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); workspace plan-time topology (`workspace_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a workspace has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
 
 **Rationale:** Deriving identity at propose time would couple plan-time topology to a synced (and for remotes, reachable) workspace whose baselines are all readable. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the derived truth. Because the projection is deterministic, "sync" is idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
 
@@ -209,9 +209,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## Adapter vs `--hub` is mutually exclusive at init
+## Adapter vs `--workspace` is mutually exclusive at init
 
-**Decision:** `specrun init` accepts either a adapter positional or `--hub`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
+**Decision:** `specrun init` accepts either a adapter positional or `--workspace`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a workspace carries `workspace: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--workspace`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
@@ -241,9 +241,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## One `specify` binary; adapter-specific helpers ship as declared tools
+## One `specrun` binary; adapter-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specrun`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
 
 **Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
@@ -280,7 +280,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 - `specify schema {resolve, check, pipeline}` → `specify adapter {resolve, check, pipeline}`.
 - `specrun registry {add, remove}` were added by historical design record.
 - The pre-historical design record in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specrun tool run contract` as the post-merge baseline gate.
-- `specrun init --hub` is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
+- `specrun init --workspace` is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only workspace whose `project.yaml` carries only `workspace: true`.
 - `specrun workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from earlier surfaces" parentheticals while preserving the trail for anyone tracing a stale call site.
@@ -361,9 +361,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Uniform workspace routing
 
-**Decision:** `/spec:execute` and the breakout verbs share the same routing: plan lock at workspace root → resolve the active slice's project → `workspace sync` of that slot → `chdir` → phase work → return. Phase skills remain unaware of multi-repo routing; the driver handles it identically whether invoked from the loop or as a breakout.
+**Decision:** `/spec:execute` and the breakout verbs share the same routing: plan lock at workspace → resolve the active slice's project → `workspace sync` of that slot → `chdir` → phase work → return. Phase skills remain unaware of multi-repo routing; the driver handles it identically whether invoked from the loop or as a breakout.
 
-**Rationale:** 1.x had separate routing paths for the loop and the manual breakouts, which meant a workspace breakout after a build failure required the operator to navigate to the right slot by hand. Sharing the routing rule means an operator can park execute, run `/spec:build` from the workspace root, and have the driver place them in the correct project slot automatically.
+**Rationale:** 1.x had separate routing paths for the loop and the manual breakouts, which meant a workspace breakout after a build failure required the operator to navigate to the right slot by hand. Sharing the routing rule means an operator can park execute, run `/spec:build` from the workspace, and have the driver place them in the correct project slot automatically.
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -377,7 +377,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Automated propose
 
-**Decision:** `/spec:plan`'s `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` through `specrun plan propose --from`. Uncertain cross-source merges surface in a `## Tentative merges` block in `change.md` (the agent never edits `discovery.md`); materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specrun plan amend` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend`, `specrun plan add`, and `specrun plan remove` (split, merge, relabel, rebind, defer, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands.
+**Decision:** The `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` through `specrun plan propose --from`. Uncertain cross-source merges surface in a `## Tentative merges` block in `change.md` (the agent never edits `discovery.md`); materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specrun plan amend` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend`, `specrun plan add`, and `specrun plan remove` (split, merge, relabel, rebind, defer, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands. The hosting skill is `/spec:plan`.
 
 **Rationale:** Operator-driven lead reconciliation at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 

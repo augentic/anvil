@@ -1,6 +1,6 @@
 # Substep contract
 
-The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. `specrun slice synthesize --from` projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
+The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. `specify slice synthesize --from` projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
 
 ## 1. `proposal.md`
 
@@ -15,7 +15,7 @@ Required H2 sections, in order: `## Why`, `## Units`, `## Non-goals`. Each `## U
 
 ## 2. `specs/<unit>/spec.md`
 
-Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Units` entry, keyed by `unit`; `specrun slice synthesize` writes one file per unit at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Units` entry, keyed by `unit`; `specify slice synthesize` writes one file per unit at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
 
 Author each requirement as prose only — heading and body. The kernel injects the `ID:` / `Sources:` / `Status:` lines and the headline tag from `model.yaml`; see [`requirement-block.md`](requirement-block.md) for the prose you write and the block the kernel renders.
 
@@ -24,7 +24,7 @@ Authoring loop (per requirement, in declaration order):
 1. Group all claims across all Evidence by `id` (deterministic on `requirement` / `criterion` per the Evidence schema; see [`claim-reconciliation.md`](claim-reconciliation.md) for how `decision` / `section` / `excerpt` / `type` / `call` / spatial / `intent` claims contribute).
 2. Record the contributing `(source, id, kind)` claims and an `agreement` verdict (`agreed` / `disagreed`) on the requirement. You classify agreement from Evidence semantics; the kernel resolves authority and derives `status` (see [`authority.md`](authority.md)).
 3. Write the requirement prose (`title`, `statement`, `scenarios[]`, `notes`). Order requirements in the response by source order (top of the highest-authority Evidence document down; within one Evidence, keep claim order) — the kernel assigns `REQ-001`, `REQ-002`, … in that declaration order.
-4. For each requirement the kernel derives a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
+4. For each requirement the kernel derives a `[unknown]` / `[conflict]` / `[divergence]` tag, `specify slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 
 Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the unit's behavioural surface; the overview carries no provenance lines.
 

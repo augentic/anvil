@@ -1,17 +1,17 @@
 # Consistency Checks
 
-The `specify` repo is linted by the `specdev` authoring binary from `augentic/specify-cli`. `make lint` forwards to `specdev lint`; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is linted by `specify lint framework` from `augentic/specify-cli`. `make lint` forwards to it; CI runs the same binary in release mode. Run checks before every pull request.
 
-## Editor-first vs specdev lint
+## Editor-first vs specify lint framework
 
 Framework validation splits into two surfaces:
 
 | Surface | When it runs | What it covers |
 | --- | --- | --- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specdev lint` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specdev -- lint --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract.
+**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract. These copies must stay byte-identical to their CLI sources; [`scripts/check-schema-mirror.sh`](../../scripts/check-schema-mirror.sh) is the authoritative mirror list and fails on drift. Run it locally with `make check-schemas` (also wired into `make ci` and CI).
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -21,7 +21,7 @@ Framework validation splits into two surfaces:
 
 Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship from `specify-cli` under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specdev lint` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specify lint framework` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -29,8 +29,8 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
-| **Authoring standards** | `specdev lint` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specrun lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
+| **Authoring standards** | `specify lint framework` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Engineering standards** | `specify lint` | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
 Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
@@ -41,7 +41,9 @@ Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/s
 make lint
 ```
 
-This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+
+**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Compare before/after with `/usr/bin/time make lint` when benchmarking locally.
 
 Tooling contributors run the full local CI subset with:
 
@@ -49,18 +51,18 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
+`make ci` runs `lint` and `check-schemas` (the schema-mirror check above). When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
 Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
 ```bash
-cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specdev -- lint --framework-root .
+cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
 cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 ```
 
 The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
 
-Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
+Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
 
 ### Diagnostic format
 
@@ -85,10 +87,10 @@ See the `specify-standards` crate's `check` module for the full predicate list.
 
 ### JSON output
 
-`specdev lint` can emit the same structured result shape consumed by CI integrations. Run `specdev lint --format json` (or set `SPECDEV_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specrun lint` output.
+`specify lint framework` can emit the same structured result shape consumed by CI integrations. Run `specify lint framework --format json` (or set `SPECIFY_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specify lint` output.
 
 ```bash
-specdev lint --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+specify lint framework --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 Envelope shape:
@@ -105,15 +107,15 @@ The full wire contract, including per-finding fields and the canonical fingerpri
 
 Exit codes follow the existing semantics — `0` on a clean tree, `2` when findings are present (validation failed), `1` on infrastructure errors. On a `1`, the JSON envelope on stdout collapses to `{"version": 1, "summary": {…all zero}, "findings": []}` and the underlying error surfaces on stderr.
 
-**Severity mapping.** Authoring imperative rule ids map to `LintFinding` severities through the table in [`src/authoring/severity.rs`](https://github.com/augentic/specify-cli/blob/main/src/authoring/severity.rs):
+**Severity mapping.** Authoring imperative rule ids map to `Diagnostic` severities through `severity_for` in [`crates/standards/src/framework/builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs):
 
 - `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
-- every other authoring family (`adapter.*`, `codex.duplicate-rule-id`, `codex.namespace-ownership-violation`, `links.*`, `scenarios.*`, `skill.*`, …) → `important`.
-- unclassified rule ids fall through to the `important` default.
+- `adapter.execution-agent` → `suggestion` — a first-party adapter running via `agent` is informational and must never block CI.
+- every other authoring family (`adapter.*`, `agent-teams.*`, `links.*`, `scenarios.*`, `skill.*`, …) → `important` via the default.
 
-**`rule-id` is null for authoring findings.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`, which authoring imperative ids like `rules.schema-violation` and `skill.unknown-tool` do not match. The [authoring mapper](https://github.com/augentic/specify-cli/blob/main/src/authoring/map_finding.rs) therefore emits `rule_id: null` and preserves the authoring id as a `[rule_id]` prefix on the `title` field (e.g. `"[rules.schema-violation] Rule frontmatter failed schema validation."`). This is transitional; a future framework-rules migration may move authoring ids into a declarative `FRAME-NNN` codex namespace, at which point `rule-id` becomes populated and the bracketed title prefix retires.
+**`rule-id` carries the closed `CORE-NNN` id.** Declarative rules set `rule_id` from the rule file's `id:` frontmatter. The imperative namespace bridge maps `rules.namespace-ownership-violation` to `CORE-009` via `CORE_ID_TABLE` in [`builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs). Migratable predicates retired from that table run through `kind: authoring-predicate` on their `CORE-*` rule files until native hint parity replaces the bridge.
 
-**Consumer-project counterpart.** `specdev lint --format json` is the **framework-repo** authoring surface; `specrun lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specify lint framework --format json` is the **framework-repo** authoring surface; `specify lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 
@@ -156,6 +158,10 @@ Long `SKILL.md` bodies are also checked for structure: bodies over 200 post-fron
 ### 6. Skill reference link resolution
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.
+
+### 6b. Deployable surfaces must not link into `docs/`
+
+`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
 
 ### 7. Skill variable consistency
 
@@ -251,7 +257,7 @@ FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: adapters/targets/con
 FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
 ```
 
-Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace, and ensure new scenario ids are unique.
 
 ### 12. Recorded trace freshness
 
@@ -303,25 +309,27 @@ Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file unde
 
 This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
-**Common fix:** verify the tool name and schema name in the URL. Use `specrun tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
+**Common fix:** verify the tool name and schema name in the URL. Use `specify tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
 
 ## Extending the checks
 
-Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specrun lint`.
+Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specify lint`.
+
+> **Declarative lint program (complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records live under specify-cli `docs/standards/` (phase 1 and phase 2 spike docs, sidecar schema notes); posture is documented in DECISIONS and the diagnostics annex on declarative lint.
 
 ### Choose `CORE-*` (declarative) when
 
-- The predicate can be expressed as one or more `deterministic_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
 - The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
 - A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
 
-The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/standards/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
+The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate; parity lives in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) (`mod core_001`). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, hint-kind preference, and authoring conventions.
 
 To add a `CORE-*` rule:
 
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
-2. Run `make lint`; `specdev lint` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specrun lint` / `specrun rules export`); `specdev` always sees `CORE-*` rules.
-3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/standards/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
+2. Run `make lint`; `specify lint framework` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
+3. If retiring an imperative `Check` row alongside the rule, add a `mod core_NNN` submodule in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
 
 ### Choose an imperative `Check` when
 

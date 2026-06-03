@@ -2,8 +2,8 @@
 id: CORE-006
 title: Adapter Manifest Version
 severity: important
-trigger: An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `version:` field whose value does not equal the canonical `1`, so the workflow loader cannot rely on the wire shape pinned by the v1 manifest schema.
-deterministic_hints:
+trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `version:` field whose value does not equal the canonical `1`, so the workflow loader cannot rely on the wire shape pinned by the v1 manifest schema."
+rule_hints:
   - kind: path-pattern
     value: "adapters/sources/*/adapter.yaml"
     description: Source adapter manifests; `version:` must equal the literal `1` pinned by `source.schema.json`.

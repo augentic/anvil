@@ -1,22 +1,5 @@
 # Shared guardrails
 
-Cross-cutting "do not / never / always" rules that apply across many skills. Skills should **link** to the relevant section here rather than restating these rules verbatim in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](./skill-authoring.md#skill-body-discipline)).
+> Runtime canonical for agents: [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md). Published copy: [Shared guardrails](https://specify.augentic.io/standards/skill-guardrails.html).
 
-Per-skill guardrails — rules that only make sense for one skill ("never auto-promote a `component:` slug", "never invent cost figures", etc.) — stay in the owning `SKILL.md`. Lift to this file only when 3+ skills repeat the same rule.
-
-## Single-writer for lifecycle state
-
-The CLI is the **only** writer for change and slice lifecycle state. Skills route every write through a CLI verb; they never edit the underlying files by hand.
-
-- **Never hand-edit `plan.yaml`.** Append entries through `specrun plan add`; transition entries through `specrun plan transition`; close out the plan through `specrun plan archive`. The single-writer contract lives in [`plan` skill body](../../plugins/spec/skills/plan/SKILL.md).
-- **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specrun slice transition`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
-- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan archive`.
-- **Never hand-roll `AGENTS.md` during init.** `specrun init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` as the generation fingerprint.
-
-## Baseline immutability for contract authoring
-
-Contract authoring skills (OpenAPI, AsyncAPI, JSON Schema) write only inside the active slice directory. The shared baseline is read-only to authoring; merge into the baseline is a separate, explicit step.
-
-- **Do not modify any file outside `$SLICE_DIR/contracts/`** (or `$SLICE_DIR/contracts/schemas/` for the JSON Schema skill).
-- **Never modify baseline files in root `contracts/`.** All authored output lands in the slice-local `contracts/` directory; merging into the baseline is `specrun slice merge run`'s job.
-- **Never silently delete or narrow a baseline schema's fields.** If the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id`.
+This page is retained for mdBook navigation and contributor bookmarks. Edit the runtime file above; keep this stub in sync when renaming sections.

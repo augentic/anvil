@@ -39,7 +39,7 @@ All caps are floors, not budgets — overflow means the relocate-to-`references/
 
 Long-form rules, code-block examples, output templates, and edge-case enumerations belong in siblings the SKILL.md body links to (Anthropic's [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns) pattern). The SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; sibling files (`references/`, `examples/`, topical files) carry the prose.
 
-Push prose to `references/<topic>.md` (or, for cross-skill prose, the relevant tree under [docs/](../../docs/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
+Push prose to `references/<topic>.md` under the plugin (runtime canonical) before raising any cap. Use [docs/](../../docs/) only for contributor-facing book prose, not for links agents must resolve at skill runtime. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
 
 ## Skill body discipline
 
@@ -48,17 +48,17 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
 3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Move durable rationale to [docs/explanation/decision-log.md](../explanation/decision-log.md) and cite current references from the skill body. Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
-4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).`
+4. **If present, `## Phase outcome contract` is a single-line link, not a paragraph.** Phase skills are *not* required to carry this section — none do today, and no predicate enforces its presence; the canonical contract lives in [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). When a skill does include the section, replace any opening prose with the single-line `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract.
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [docs/standards/skill-guardrails.md](./skill-guardrails.md). SKILL.md files **link** to them; they do **not** restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
 
 The canonical "skills MUST NOT" list:
 
-- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specrun slice transition` or `specrun plan transition`.
-- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specrun slice create` / `specrun plan create`; the CLI owns directory shape.
-- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan archive`.
+- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
+- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
+- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan archive`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with a stable anchor instead.
 
@@ -108,9 +108,9 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills (`/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:execute`, `/spec:finalize`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, plan and slice lifecycle transitions, source and target resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries.
+The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specify` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `.metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
 
-When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
+The skill-authoring consequence is the rule unique to this page: when a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it — not to make the skill smarter.
 
 ## Rationale
 
@@ -122,7 +122,7 @@ The upstream specs are Anthropic's [Agent Skills overview](https://platform.clau
 
 **Description examples — good.**
 
-> "Build the active in-progress slice by driving the two-phase `specrun slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task."
+> "Build the active in-progress slice by driving the two-phase `specify slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task."
 
 What + when, with concrete triggers (`/spec:execute`, `/spec:refine`) the discovery scorer can match.
 

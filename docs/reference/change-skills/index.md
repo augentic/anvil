@@ -15,6 +15,8 @@ Change skills coordinate one or more slices through `change.md` and `plan.yaml`.
 
 Inside `/spec:execute`, each slice runs through the per-slice loop documented in [Slice skills](../slice-skills/index.md): refine → build → merge. Every phase is also reachable as a manual breakout when execute parks or when you want to drive one slice by hand.
 
+Each row below links to a per-skill stub; the authoritative operator instructions for every phase live in its canonical skill body under `plugins/spec/skills/<phase>/SKILL.md`.
+
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
@@ -25,7 +27,7 @@ Inside `/spec:execute`, each slice runs through the per-slice loop documented in
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator. Deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — run through the `specify` CLI. Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/` with shell tools, and never move files into `.specify/archive/` directly.
+Each skill is an agent-driven orchestrator that delegates deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
 
 Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `/spec:execute` sequences those skills; the same bodies run when you invoke a breakout by hand.
 

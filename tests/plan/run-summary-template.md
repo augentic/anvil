@@ -15,7 +15,7 @@ Fill in the fields below for one run. Keep this document next to the run's evide
 - **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
-- **Workspace root:** `<temporary project or hub root>`
+- **Workspace:** `<temporary project or workspace>`
 - **Peer project roots:** `<none or relative/absolute paths used for registry>`
 
 ## Inputs Created

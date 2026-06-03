@@ -3,7 +3,7 @@ id: CORE-005
 title: Skill Body Line Count
 severity: important
 trigger: A `plugins/<plugin>/skills/<skill>/SKILL.md` body exceeds the 200-line cap pinned by [docs/standards/skill-authoring.md](../../../../docs/standards/skill-authoring.md), crowding out the operator's request and every other skill body that fires after it.
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: "plugins/**/SKILL.md"
     description: Narrow the candidate set to plugin skill manifests before the body-size check fires.

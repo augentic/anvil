@@ -17,7 +17,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`augentic/specify-cli/tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-### `specrun plan create`
+### `specify plan create`
 
 Scaffolds an empty plan and emits its first entry.
 
@@ -40,7 +40,7 @@ Scaffolds an empty plan and emits its first entry.
 }
 ```
 
-### `specrun plan amend`
+### `specify plan amend`
 
 Replaces a field on an existing plan entry. The `entry` body mirrors the post-amend state; absent fields surface as `null` or `[]` so consumers can rely on the shape regardless of which field was touched.
 
@@ -62,7 +62,7 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 }
 ```
 
-### `specrun plan next`
+### `specify plan next`
 
 Returns the next entry the executor should pick up, or a `reason` describing why nothing is eligible. Success carries `next: "<entry>"`; drained / blocked / in-progress states carry `next: null` and a populated `reason` (`drained`, `in-progress`, etc.).
 
@@ -78,9 +78,9 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
-### `specrun plan propose --dry-run`
+### `specify plan propose --dry-run`
 
-Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none; per-lead `aliases` appears only when non-empty.
+Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
 
 ```json
 {
@@ -97,7 +97,7 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
 }
 ```
 
-### `specrun plan propose --from`
+### `specify plan propose --from`
 
 Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
 
@@ -109,7 +109,7 @@ Success summary after projecting the agent **response** onto `plan.yaml.slices[]
 }
 ```
 
-### `specrun plan transition`
+### `specify plan transition`
 
 Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.
 
@@ -126,7 +126,7 @@ Used for both entry transitions (`kind: "entry"`) and the plan-level review stam
 }
 ```
 
-### `specrun plan status`
+### `specify plan status`
 
 Dashboard view over a plan. `counts` summarises per-status totals; `entries` carries the full topologically-sorted entry list with per-entry status and depends-on edges; `in-progress` and `next-eligible` are convenience pointers into `entries`.
 
@@ -163,24 +163,26 @@ Dashboard view over a plan. `counts` summarises per-status totals; `entries` car
 }
 ```
 
-### `specrun plan validate`
+### `specify plan validate`
 
-Runs the plan-shape diagnostics. The `passed` payload field is a result indicator, not an envelope discriminant — both the clean and failed bodies have the same top-level shape, with `results` either empty or populated.
+Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate` and `specify lint`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
 
 ```json
 {
-  "passed": true,
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
+  "findings": [],
+  "summary": {
+    "critical": 0,
+    "important": 0,
+    "optional": 0,
+    "suggestion": 0
   },
-  "results": []
+  "version": 1
 }
 ```
 
-A failed run carries one entry per finding in `results`, each with `code` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `entry` (the entry name or `null` for plan-wide findings), `message`, and `severity` (`error` or `warning`).
+A failed run carries one object per finding in `findings`, each with `rule-id` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. Health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`) attach their structured payload to `evidence` as `{ "kind": "structured", "data": … }`.
 
-### `specrun plan archive`
+### `specify plan archive`
 
 Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
@@ -194,7 +196,7 @@ Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the
 }
 ```
 
-### `specrun slice merge run`
+### `specify slice merge run`
 
 Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one entry per spec file touched, each listing the requirement-level operations applied (`added`, `modified`, `removed`).
 
@@ -216,7 +218,7 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 }
 ```
 
-### `specrun slice task mark`
+### `specify slice task mark`
 
 Marks one task complete. `idempotent: true` indicates the task was already complete and the call was a no-op; the `new-content-path` always points at the updated `tasks.md` regardless.
 
@@ -228,7 +230,7 @@ Marks one task complete. `idempotent: true` indicates the task was already compl
 }
 ```
 
-### `specrun slice task progress`
+### `specify slice task progress`
 
 Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pending` are the headline counts; `tasks[]` carries each parsed task with its parent `group`, `number` (`X.Y`), free-form `description`, and optional `skill-directive` (the embedded `<!-- skill: plugin:skill-name -->` reference, if any).
 
@@ -249,7 +251,7 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
-### `specrun slice synthesize --dry-run`
+### `specify slice synthesize --dry-run`
 
 Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
@@ -278,7 +280,7 @@ Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry 
 }
 ```
 
-### `specrun slice synthesize --from`
+### `specify slice synthesize --from`
 
 Success summary after the projection kernel persisted the artifacts. `artifacts[]` lists the slice-relative paths written, in write order. Emits `slice.synthesize.started` then `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and exits non-zero.
 
@@ -295,7 +297,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 }
 ```
 
-### `specrun slice build`
+### `specify slice build`
 
 Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** envelope after assembling and schema-validating the build request: `request` is the assembled `build/request.yaml` the agent's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. Emits `target.execution.agent` and returns without blocking.
 
@@ -322,9 +324,9 @@ Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** 
 }
 ```
 
-### `specrun slice validate`
+### `specify slice validate`
 
-Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specrun lint`, `specdev lint`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
+Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specify lint`, `specify lint framework`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 
@@ -364,9 +366,9 @@ A failed run carries one `kind: "violation"` finding per breached invariant (e.g
 
 ## Bootstrap verbs
 
-The bootstrap lifecycle verbs (`specrun upgrade`, `specrun plugins doctor`, `specrun init --check-migration`, `specrun migrate`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
+The bootstrap lifecycle verbs (`specify upgrade`, `specify plugins doctor`, `specify init --check-migration`, `specify migrate`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
 
-### `specrun upgrade --dry-run`
+### `specify upgrade --dry-run`
 
 Reports the detected channel and resolved target version without mutating. `commands` lists the channel-native commands that *would* run (empty for the `binary` channel, which instead carries `guidance`). `head-fallback` is `true` when the latest release tag could not be resolved and the `cargo` channel falls back to a HEAD install. On the apply path (`--yes`) `dry-run`/`applied` flip and `journaled` reports whether a `cli.upgraded` event was written.
 
@@ -403,7 +405,7 @@ The `binary` channel omits `commands` and carries `guidance` instead, because it
 }
 ```
 
-### `specrun plugins doctor`
+### `specify plugins doctor`
 
 Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plugin (then any `extra` cache entries), each with the marketplace-resolved `expected-sha` (`null` when unresolvable), the `cached-sha` (`null` when no cache entry), and a `status` from the closed set `ok | drifted | present | missing | extra`. Drift is a **finding**, never a non-zero exit — `doctor` exits non-zero only on filesystem / marketplace-parse failure.
 
@@ -420,7 +422,7 @@ Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plu
 }
 ```
 
-### `specrun init --check-migration`
+### `specify init --check-migration`
 
 Read-only major-version probe. `needs-migration` is the headline the `/spec:init` skill branches on; `from` is the pinned `project.yaml.specify_version` (`null` when unset), `to` is this binary's version, and `plan` carries one entry per registered hop in the `from → to` window with its `actions[]` (internally-tagged on `action`: `move` / `rewrite` / `remove`). Exits `0` regardless of outcome.
 
@@ -454,9 +456,9 @@ A project owed a migration carries a populated `plan`:
 }
 ```
 
-### `specrun init --upgrade`
+### `specify init --upgrade`
 
-Re-entry version bump. It shares the `specrun init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify_version` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
+Re-entry version bump. It shares the `specify init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify_version` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
 
 ```json
 {

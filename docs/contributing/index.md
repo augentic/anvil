@@ -9,11 +9,11 @@ Specify spans two repositories:
 | Repository | Contents | Language |
 |------------|----------|----------|
 | [`augentic/specify`](https://github.com/augentic/specify) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
-| [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specrun` runtime binary, `specdev` authoring binary, and workspace crates | Rust |
+| [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
 
 The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
-The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specrun plan add ...`, `specrun slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
 
 ## Who you're contributing for
 
@@ -21,7 +21,7 @@ Two audiences share this repository:
 
 | Audience | Typical edits | Rust required locally? |
 |----------|---------------|------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specdev lint` on every PR |
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specify lint framework` on every PR |
 | **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
 
 Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-standards` framework predicate suite) before opening a PR.
@@ -61,7 +61,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `specdev lint` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what `specify lint framework` enforces and how to extend it
 
 ## Example Patterns
 

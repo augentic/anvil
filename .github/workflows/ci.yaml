@@ -52,6 +52,9 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
           
+      - name: Verify schema mirror
+        run: bash scripts/check-schema-mirror.sh
+
       - name: Verify framework
         run: |
-          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specdev -- lint --framework-root .
+          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .

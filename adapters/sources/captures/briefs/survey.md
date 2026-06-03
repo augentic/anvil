@@ -38,7 +38,7 @@ The bound directory is the only filesystem grant — `$PROJECT_DIR` is unreachab
 
 One lead per observed handler — that is, one per `tests/data/replays/<handler>/` directory. Each directory groups every captured scenario for one HTTP route, message handler, scheduled job, or WebSocket handler. The slice grain operators reason about is the handler, not the individual capture; per-scenario detail lives in `extract`-time claims (one `kind: example` claim per scenario file).
 
-The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead`. When two sources surface the same handler under different names (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), the operator adds an `aliases:` row at plan time through `specrun plan amend --add-alias`; do not invent aliases here.
+The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead`. When two sources surface the same handler under different slugs (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), cross-source reconciliation is agent judgment at propose time and Gate 1 curation via `specify plan amend <entry> --sources`; do not invent alternate names here.
 
 ## Output: lead blocks
 
@@ -115,7 +115,7 @@ Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 
 - **Inventing handlers from `INSTRUCTIONS.md`.** The prose is operator hint material; the directory listing is the lead source of truth. If a handler is named in `INSTRUCTIONS.md` but has no scenario JSON files, emit nothing for it.
 - **Per-scenario leads.** One block per `<handler>/` directory, never one per `<scenario>.json`. Scenario-level detail belongs in `extract`'s `kind: example` claims.
-- **Cross-source aliasing here.** Aliases are added at plan time via `specrun plan amend --add-alias`; this brief sees one source's tree.
+- **Cross-source slug mismatches here.** When another source surfaces the same handler under a different slug, reconciliation is propose-time agent judgment and Gate 1 `--sources` edits; this brief sees one source's tree. See [From sources to slices](../references/spec-runtime/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
 - **Writing `discovery.md` or `plan.yaml`.** Only lead blocks. The CLI owns every lifecycle file.
 
 ## Failure modes

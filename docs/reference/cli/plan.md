@@ -1,6 +1,6 @@
-# specrun plan
+# specify plan
 
-Scaffold, populate, validate, transition, and archive change plans. The `plan` verb is the top-level home of every `plan.yaml` operation; each verb on this page is invoked as `specrun plan <verb>`.
+Scaffold, populate, validate, transition, and archive change plans. The `plan` verb is the top-level home of every `plan.yaml` operation; each verb on this page is invoked as `specify plan <verb>`.
 
 ## Verb cheat-sheet
 
@@ -10,105 +10,104 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
-| [`propose`](#specrun-plan-propose) | Reconcile surveyed leads into `slices[]`: `--dry-run` emits the request envelope; `--from <response.json>` is the slice writer that validates the agent grouping and replaces `slices[]` on a replaceable plan. |
-| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specrun plan transition <plan-name> approved`) or close a merged entry (`specrun plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
+| [`propose`](#specify-plan-propose) | Reconcile surveyed leads into `slices[]`: `--dry-run` emits the request envelope; `--from <response.json>` is the slice writer that validates the agent grouping and replaces `slices[]` on a replaceable plan. |
+| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> approved`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
 
 ## Subcommands
 
-### specrun plan create
+### specify plan create
 
 Scaffold an empty plan.
 
 ```bash
-specrun plan create <name> [--source <key>=<adapter>:<path>...] [--source <key>=<adapter>:value:<literal>...]
+specify plan create <name> [--source <key>=<adapter>:<path>...] [--source <key>=<adapter>:value:<literal>...]
 ```
 
 Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Each optional `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present.
 
-### specrun plan validate
+### specify plan validate
 
 Check structural and referential integrity of the plan, plus the four
 health diagnostics that previously lived on `change plan doctor`.
 
 ```bash
-specrun plan validate
+specify plan validate
 ```
 
 Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
-- `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
-- `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
-- `topology-cache-stale` (warning) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specrun workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
+- `project-not-in-registry` (important) -- every `project` value must match a `projects[].name` in the registry.
+- `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
+- `topology-cache-stale` (suggestion) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specify workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
 
 Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
-| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specrun plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
-| `orphan-source` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
-| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specrun workspace sync` to refresh the clone. |
+| `cycle-in-depends-on` | important | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle structure surfaces. Structured evidence carries the cycle path, e.g. `["a", "b", "a"]`. | `specify plan amend <entry> --depends-on …` to break the cycle, then re-run validate. |
+| `orphan-source` | suggestion | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
+| `stale-workspace-clone` | suggestion | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or adapter diverged) or `slot-mismatch` (slot materialisation does not match the registry). | `specify workspace sync` to refresh the clone. |
 
-JSON output (`--format json`) wraps every finding under `results[]` with a top-level `passed` boolean (`false` whenever any error-severity row is present). Each row carries `level`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone`). Base validate findings carry no `data` field; the three health diagnostics always do.
+JSON output (`--format json`) is the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate` and `specify lint` — see [`schemas/diagnostic-report.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/diagnostic-report.schema.json). Each finding carries `rule-id` (kebab-case, e.g. `duplicate-name` / `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. The three health diagnostics attach their machine-readable payload to `evidence` as `{ "kind": "structured", "data": … }`; base validate findings carry a plain `snippet` evidence.
 
-Exit code: `0` when no error-severity finding fires (warnings are non-fatal); `2` when any error-severity finding fires.
+Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` when any blocking (`critical` / `important`) finding fires.
 
-### specrun plan next
+### specify plan next
 
 Report the next eligible plan entry.
 
 ```bash
-specrun plan next
+specify plan next
 ```
 
 Returns the first `pending` entry whose `depends-on` entries are all `done`. Returns an error if no eligible entry exists.
 
 With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
 
-### specrun plan add
+### specify plan add
 
 Append a new entry to the plan.
 
 ```bash
-specrun plan add <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
+specify plan add <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
 ```
 
 Creates the entry in `pending` state.
 
-### specrun plan amend
+### specify plan amend
 
-Edit non-status fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, and surgical source/project/depends-on edits. For grouping changes prefer `specrun plan propose --from`; for deferral use `specrun plan remove`.
+Edit non-status fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, and surgical source/project/depends-on edits. For grouping changes prefer `specify plan propose --from`; for deferral use `specify plan remove`.
 
 ```bash
-specrun plan amend <entry> [--project <name>] [--description "<text>"] [--depends-on <entry>...]
-specrun plan amend <entry> --add-source <key>=<lead>
-specrun plan amend <entry> --remove-source <key>
-specrun plan amend <entry> --divergence likely|accepted|rejected
-specrun plan amend <entry> --authority-override <entry> <kind>=<source>
-specrun plan amend <entry> --add-alias <lead>=<alias>
+specify plan amend <entry> [--project <name>] [--description "<text>"] [--depends-on <entry>...]
+specify plan amend <entry> --add-source <key>=<lead>
+specify plan amend <entry> --remove-source <key>
+specify plan amend <entry> --divergence likely|accepted|rejected
+specify plan amend <entry> --authority-override <entry> <kind>=<source>
 ```
 
-Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
+Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
-### specrun plan remove
+### specify plan remove
 
 Drop a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 only — defers the entry's lead(s) without re-surveying `discovery.md`.
 
 ```bash
-specrun plan remove <entry>
+specify plan remove <entry>
 ```
 
 Refuses with `plan-remove-plan-not-replaceable` when the plan is approved or any entry is non-pending. Refuses with `plan-remove-entry-referenced` when another entry lists `<entry>` in `depends-on`.
 
-### specrun plan propose
+### specify plan propose
 
 Reconcile the surveyed `discovery.md` leads into the plan's `slices[]` grouping. Two modes; exactly one is required.
 
 ```bash
-specrun plan propose --dry-run [--format json]
-specrun plan propose --from <response.json> [--format json]
+specify plan propose --dry-run [--format json]
+specify plan propose --from <response.json> [--format json]
 ```
 
 - `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
@@ -137,12 +136,12 @@ Validation codes (all exit 2):
 
 Both envelopes validate against [`schemas/discovery/proposal.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/proposal.schema.json) (`kind: request` for `--dry-run`, `kind: response` for the `--from` input). See [CLI output shapes](../cli-output-shapes.md) for the `--format json` request and success-summary bodies.
 
-### specrun plan transition
+### specify plan transition
 
 Stamp Gate 1 or close a merged plan entry.
 
 ```bash
-specrun plan transition <name> <target> [--reason "<text>"]
+specify plan transition <name> <target> [--reason "<text>"]
 ```
 
 | Target | Applies to | Meaning |
@@ -150,23 +149,23 @@ specrun plan transition <name> <target> [--reason "<text>"]
 | `approved` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
 | `done` | `<entry-name>` (a `slices[]` row) | Close the entry after `/spec:merge` folded the slice. |
 
-Per-entry `pending` is written by `specrun plan add` / `plan amend`; `in-progress` is written only by `specrun plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
+Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 At most one entry may be `in-progress` at a time.
 
-### specrun plan archive
+### specify plan archive
 
 Archive a completed plan.
 
 ```bash
-specrun plan archive
+specify plan archive
 ```
 
 Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 ## See also
 
-- [specrun slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
+- [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
 - [/spec:plan](../change-skills/plan.md) -- skill that authors plans
 - [/spec:execute](../change-skills/execute.md) -- skill that drives plan execution
 - [/spec:finalize](../change-skills/finalize.md) -- skill that closes out a completed change

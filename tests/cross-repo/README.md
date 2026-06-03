@@ -6,7 +6,7 @@ change lifecycle (`/spec:plan` → operator review → `/spec:execute` → `/spe
 
 1. draft a multi-slice change from a short feature brief (`/spec:plan`)
 2. review the draft plan at the operator pause (`inspect plan.yaml`,
-   optional `specrun plan amend`)
+   optional `specify plan amend`)
 3. execute contract and implementation slices in dependency order
    (`/spec:execute loop`)
 4. drive the post-execute tail (`/spec:finalize`): push prepared workspace
@@ -21,7 +21,7 @@ which parts are stable enough to automate later.
 ## Relationship To Acceptance
 
 These are shared outside-in scenario documents. They live under
-`tests/cross-repo/` because the cross-repo workflow spans the hub, registry,
+`tests/cross-repo/` because the cross-repo workflow spans the workspace, registry,
 workspace, change plan, contract adapter, and implementation adapters.
 Adapter-local tests, such as the contracts scenarios, stay under
 `adapters/<adapter>/tests/`.
@@ -62,7 +62,7 @@ branches, so avoid using an important working tree.
 For each run:
 
 1. Open [`scenario.md`](scenario.md).
-2. Create the temporary hub and project workspaces described in **Workspace**.
+2. Create the temporary workspace and project workspaces described in **Workspace**.
 3. Create the feature brief from **Inputs**.
 4. Run the prompts and commands from **Invocation** exactly as written unless
    the scenario documents an allowed local substitution. The `/spec:finalize`

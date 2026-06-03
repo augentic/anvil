@@ -41,11 +41,11 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadat
 ## Workflow
 
 ```text
-/spec:init <target>               (once per project; for a registry-only platform hub, use specrun init --hub)
+/spec:init <target>               (once per project; for a registry-only workspace, use specify init --workspace)
 
 /spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
 
-specrun plan transition <name> approved   (Gate 1; operator-only)
+specify plan transition <name> approved   (Gate 1; operator-only)
 
 /spec:execute                     (drives /spec:refine -> /spec:build -> /spec:merge per slice)
 
@@ -73,7 +73,7 @@ Breakouts share skill bodies with the loop and are reached when `/spec:execute` 
 
 ### Artifacts incomplete
 
-- Run `specrun slice validate <name>` to check artifact status
+- Run `specify slice validate <name>` to check artifact status
 - Re-run `/spec:refine <name>` to regenerate artifacts for one slice
 - Re-run `/spec:plan <name> ...` to author a fresh change
 

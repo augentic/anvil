@@ -10,6 +10,8 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 
 `/spec:init` is one-time scaffolding. The loop runs inside `/spec:execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
 
+Each row below links to a per-skill stub; the authoritative operator instructions for every phase live in its canonical skill body under `plugins/spec/skills/<phase>/SKILL.md`.
+
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
@@ -22,9 +24,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI. Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/` with shell tools, and never move files to the archive directly.
-
-During `/spec:build`, every task is implemented by the active target adapter's `build` brief (`adapters/targets/<target>/briefs/build.md`), which carries the specialist orchestration inline.
+Each skill is an agent-driven orchestrator that delegates deterministic operations to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
 
 ## See also
 

@@ -95,7 +95,7 @@ When folding Evidence into `design.md`'s `## Adapters` table, the following cues
 - Platform detection (iOS vs Android vs Web) — `Platform` adapter (`crux_platform`).
 - Rendering (always) — `Render` adapter.
 
-State the capability set explicitly in `design.md`; the `build` brief feeds this directly into `specrun tool run vectis -- scaffold core --caps <csv>` and into the per-shell `Effect` switch generation.
+State the capability set explicitly in `design.md`; the `build` brief feeds this directly into `specify tool run vectis -- scaffold core --caps <csv>` and into the per-shell `Effect` switch generation.
 
 ## Source-adapter contract (what the synthesiser may encounter)
 
@@ -106,4 +106,4 @@ A `target: vectis` slice typically draws on one or more of:
 - **`screenshots`** — vision-assisted spatial inference producing `region` / `container` / `leaf` claims (`authority: documentation`). The spatial claims are how upstream UI evidence reaches the synthesiser; treat them as the structural backbone for screen-bearing requirements and view-struct fields.
 - **`code-typescript`** (or any future code source) — behavioural evidence from a legacy implementation (`authority: behaviour`). Useful when migrating an existing TypeScript surface to Crux.
 
-When sources disagree, follow the synthesis contract's [authority hierarchy](../../../../plugins/spec/references/synthesis/authority.md) (`intent > documentation > behaviour`). Spatial `screenshots` claims carry `authority: documentation`; behavioural Rust / TypeScript claims carry `authority: behaviour`. Conflicts surface inline as `[divergence]` / `[conflict]` tags per the global synthesis rules — Vectis does not override the global authority order.
+When sources disagree, follow the authority precedence (`intent > documentation > behaviour`) and resolution order defined in [`authority.md`](../references/spec-runtime/synthesis/authority.md) — Vectis does not override the global authority order.

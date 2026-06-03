@@ -7,7 +7,7 @@
 #
 # Assumes the standard sibling layout:
 #   augentic/specify/      (this repo — plugins, skills, references)
-#   augentic/specify-cli/  (the CLI workspace — specrun, specdev, wasi-tools)
+#   augentic/specify-cli/  (the CLI workspace — specify, wasi-tools)
 #
 # Usage: bash ./scripts/use-local-dev.sh [--skip-wasi]
 #
@@ -15,7 +15,7 @@
 #   --skip-wasi       Skip building WASI tools (faster iteration on CLI/skills only)
 #
 # Environment:
-#   SPECIFY_BIN_DIR   — where to install specrun/specdev (default: ~/.local/bin)
+#   SPECIFY_BIN_DIR   — where to install specify (default: ~/.local/bin)
 
 set -euo pipefail
 
@@ -93,30 +93,27 @@ mkdir -p "$INSTALL_DIR"
 
 # ── Build and install CLI binaries ────────────────────────────
 
-echo "Building specrun + specdev from $CLI_ROOT …"
+echo "Building specify from $CLI_ROOT …"
 cargo build --release --manifest-path "$CLI_ROOT/Cargo.toml"
 
-for bin in specrun specdev; do
-  src="$CLI_ROOT/target/release/$bin"
-  if [ ! -f "$src" ]; then
-    echo "Warning: $bin not found at $src, skipping" >&2
-    continue
-  fi
-  cp "$src" "$INSTALL_DIR/$bin"
-  echo "Installed $bin → $INSTALL_DIR/$bin"
-done
+bin=specify
+src="$CLI_ROOT/target/release/$bin"
+if [ ! -f "$src" ]; then
+  echo "Error: $bin not found at $src" >&2
+  exit 1
+fi
+cp "$src" "$INSTALL_DIR/$bin"
+echo "Installed $bin → $INSTALL_DIR/$bin"
 
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
   echo "Warning: $INSTALL_DIR is not on your PATH."
   echo "         Add to your shell profile: export PATH=\"$INSTALL_DIR:\$PATH\""
 else
-  for bin in specrun specdev; do
-    resolved="$(command -v "$bin" 2>/dev/null || true)"
-    if [ -n "$resolved" ] && [ "$resolved" != "$INSTALL_DIR/$bin" ]; then
-      echo "Warning: $bin resolves to $resolved, which shadows $INSTALL_DIR/$bin."
-      echo "         Move $INSTALL_DIR earlier on your PATH or remove the other copy."
-    fi
-  done
+  resolved="$(command -v "$bin" 2>/dev/null || true)"
+  if [ -n "$resolved" ] && [ "$resolved" != "$INSTALL_DIR/$bin" ]; then
+    echo "Warning: $bin resolves to $resolved, which shadows $INSTALL_DIR/$bin."
+    echo "         Move $INSTALL_DIR earlier on your PATH or remove the other copy."
+  fi
 fi
 
 # ── Build WASI tools ─────────────────────────────────────────
@@ -165,8 +162,8 @@ bash "$REPO_ROOT/scripts/use-local-plugins.sh"
 
 echo ""
 echo "Local dev environment ready."
-specrun_path="$(command -v specrun 2>/dev/null || echo "$INSTALL_DIR/specrun")"
-echo "  specrun: $specrun_path ($("$specrun_path" --version 2>/dev/null || echo "version unknown"))"
+specify_path="$(command -v specify 2>/dev/null || echo "$INSTALL_DIR/specify")"
+echo "  specify: $specify_path ($("$specify_path" --version 2>/dev/null || echo "version unknown"))"
 for entry in "${WASI_TOOLS[@]}"; do
   IFS='|' read -r _ _ adapter_dir tool_name <<< "$entry"
   sidecar="$REPO_ROOT/adapters/targets/$adapter_dir/tools.yaml"
