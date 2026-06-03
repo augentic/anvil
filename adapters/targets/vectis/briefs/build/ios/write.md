@@ -1,6 +1,6 @@
 # Vectis build — iOS shell (write + verify)
 
-Loaded by [../../build.md](../../build.md) Steps 7 + 8 when `ios` is in `proposal.md` `## Platforms`. The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
+Loaded by [../../build.md](../../build.md) when `ios` is in the platform set (carried from `project.yaml.platforms` via `proposal.md ## Platforms`). The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
 
 Carries the body of the retired `vectis-ios-writer` skill. The SwiftUI patterns, Crux iOS shell anatomy, token templates, and design-system integration depth live in [`../../../references/ios/`](../../../references/ios/).
 
@@ -24,7 +24,7 @@ Spawn the writer sub-agent with `mode: create|update` and `skip_verification: tr
 
 ## Verify (max 3 iterations)
 
-Spawn this loop in its own sub-agent with `IOS_SHELL_DIR` and `APP_NAME`. The sub-agent returns `status`, `iterations_used`, and any unresolved errors.
+Spawn this loop in its own sub-agent with `IOS_SHELL_DIR` and `APP_NAME`. The sub-agent returns `status`, `iterations_used`, and any unresolved errors. The verify sub-agent is the **sole source of truth** for iOS shell checkboxes in `tasks.md` — never mark an iOS task complete or report success unless `make build` and `make sim-build` have actually run and passed in the verify loop.
 
 ```bash
 swiftformat "${IOS_SHELL_DIR}/${APP_NAME}/"        # 1. Format.

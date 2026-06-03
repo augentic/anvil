@@ -15,7 +15,8 @@ argument-hint: <adapter>
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and route reinit through `specrun init --upgrade`.
 3. **Choose topology** — decide regular project vs registry-only platform hub; adapter is required for regular projects and forbidden in hub mode.
 4. **Resolve metadata** — choose `$ADAPTER`, the project name, and an optional description; never pre-populate `.specify/.cache/`.
-5. **Invoke `specrun init`** — run either `specrun init "$ADAPTER" ...` or `specrun init --hub ...`; let the CLI scaffold files and generate starter context, and surface non-zero CLI errors without hand-rolling scaffold files.
+4b. **Elicit platforms** — when the resolved target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set. Offer the adapter manifest's `default` set (e.g. `core,ios,android`) as the suggested value, name the `allowed` set (e.g. `core,ios,android,web,desktop`), and note that `core` is mandatory. Store the result as `$PLATFORMS`. When the target does not require platforms, skip this step.
+5. **Invoke `specrun init`** — run either `specrun init "$ADAPTER" --platforms "$PLATFORMS" ...` (when platforms were elicited) or `specrun init "$ADAPTER" ...` (no platforms) or `specrun init --hub ...`; let the CLI scaffold files and generate starter context, and surface non-zero CLI errors without hand-rolling scaffold files.
 6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
 7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.
 

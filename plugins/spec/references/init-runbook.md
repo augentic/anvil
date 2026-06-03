@@ -147,10 +147,10 @@ Check whether `.specify/project.yaml` exists.
 - If they confirm, run the re-entry upgrade:
 
   ```bash
-  specrun init --upgrade --format json
+  specrun init --upgrade ${PLATFORMS:+--platforms "$PLATFORMS"} --format json
   ```
 
-  `--upgrade` bumps `specify-version`, preserves the existing `adapter:` (or `hub:`) and all operator artifacts, and regenerates `AGENTS.md` only when absent. Branch on the JSON body's `specify-version-changed`:
+  `--upgrade` bumps `specify-version`, preserves the existing `adapter:` (or `hub:`) and all operator artifacts, and regenerates `AGENTS.md` only when absent. When `--platforms` is passed alongside `--upgrade`, the CLI resolves the existing target adapter, applies the same three validation rules (`project-platforms-required`, `project-platforms-must-include-core`, `project-platforms-not-allowed`), and updates the config's `platforms` field — this is the mutation affordance for changing platforms on an existing project (e.g. adding `android` to an iOS-only project). Branch on the JSON body's `specify-version-changed`:
 
   - `true` — the version was bumped. Report the new `specify-version` and `adapter-name` (or `"hub"`); note that `AGENTS.md` was preserved when `context-skip-reason` is `"existing-agents-md"`. Stop — the project is already scaffolded.
   - `false` — already current; the run was an idempotent no-op. Tell the operator nothing changed and stop.
@@ -183,6 +183,22 @@ For local development in this repository, a local target directory such as `./ad
 
 Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specrun init <adapter>`.
 
+### 4b. Elicit platforms *(regular only — skip in hub mode)*
+
+When the target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set before invoking `specrun init`. The adapter manifest's `default` and `allowed` sets are available from the adapter's published `adapter.yaml` (or from the `--format json` output of a dry-run resolve).
+
+Use the **AskQuestion tool** to elicit the set:
+
+> "The `<adapter>` target requires platform declarations. The default set is `<default>` (allowed: `<allowed>`). `core` is mandatory and must always be included. Which platforms should this project target?"
+
+Options: present the `default` set as the recommended choice, with an "Other (I'll specify)" option for customisation.
+
+Store the comma-separated result as `$PLATFORMS` (e.g. `core,ios,android`). When the operator picks a custom set, validate that `core` is present before proceeding — the CLI enforces this, but catching it early avoids a round-trip.
+
+When the target does not declare `platforms.required`, skip this step entirely (`$PLATFORMS` is unset).
+
+For the upgrade path (`specrun init --upgrade`), elicit platforms when the operator wants to change the platform set (e.g. adding `android` to an iOS-only project). The same validation rules apply.
+
 ### 5. Collect project metadata and invoke `specrun init`
 
 Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DESCRIPTION` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DESCRIPTION` if the user hasn't supplied one. An empty `$DESCRIPTION` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
@@ -192,6 +208,7 @@ Determine `$PROJECT_NAME` (default: project directory basename) and optionally `
 ```bash
 specrun init "$PROFILE" \
   --name "$PROJECT_NAME" \
+  ${PLATFORMS:+--platforms "$PLATFORMS"} \
   ${DESCRIPTION:+--description "$DESCRIPTION"}
 ```
 

@@ -51,6 +51,10 @@
       "enum": ["opt-out"],
       "description": "workflow \u00a7D8 \u2014 optional cache opt-out switch. When set to `opt-out`, the CLI treats every `extract` (and `survey`) run for this adapter as a cache miss; the `slice.extract.cache-miss` journal event carries `reason: adapter-opt-out`. Absence (the default) means cache fingerprinting is on. Intended for adapters whose intermediate results are non-deterministic; new values require a workflow contract update."
     },
+    "platforms": {
+      "type": "object",
+      "description": "Optional declarative platforms capability. Target-only: the per-axis `target.schema.json` refines the shape with `$defs/platformsCapability`; `source.schema.json` rejects the key. The shared shape carries the property so the closed key set (from `additionalProperties: false`) admits it."
+    },
     "execution": {
       "type": "string",
       "enum": ["agent", "tool"],
