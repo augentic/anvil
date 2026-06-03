@@ -2,8 +2,8 @@
 id: CORE-004
 title: Adapter Briefs Cover Operations
 severity: important
-trigger: An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set does not cover every operation the axis requires (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), leaving the loader without a brief to dispatch for at least one declared operation.
-deterministic_hints:
+trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `briefs:` map whose key set does not cover every operation the axis requires (`survey` + `extract` for source adapters; `shape` + `build` + `merge` for target adapters), leaving the loader without a brief to dispatch for at least one declared operation."
+rule_hints:
   - kind: path-pattern
     value: "adapters/sources/*/adapter.yaml"
     description: Source adapter manifests; `briefs.keys()` must cover `survey` and `extract`.

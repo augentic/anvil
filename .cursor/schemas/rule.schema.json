@@ -107,7 +107,7 @@
       "default": "model-assisted",
       "description": "How this rule is expected to be linted. The lint runner decides execution; this field only classifies the rule."
     },
-    "deterministic_hints": {
+    "rule_hints": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -135,7 +135,9 @@
               { "const": "constant-eq" },
               { "const": "set-eq" },
               { "const": "content-digest-eq" },
-              { "const": "namespace-owner" }
+              { "const": "namespace-owner" },
+              { "const": "fenced-block" },
+              { "const": "authoring-predicate" }
             ]
           },
           "value": {
@@ -147,6 +149,12 @@
             "type": "string",
             "minLength": 1,
             "description": "Optional human explanation for the hint."
+          },
+          "config": {
+            "description": "Per-kind configuration. Phase 1: `regex` hints may carry regexHintConfig.",
+            "oneOf": [
+              { "$ref": "#/$defs/regexHintConfig" }
+            ]
           }
         }
       }
@@ -213,6 +221,47 @@
     }
   },
   "$defs": {
+    "regexHintConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional `kind: regex` hint configuration (RFC-31 Phase 1).",
+      "properties": {
+        "negative-match": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, emit one finding per line where the pattern does not match."
+        },
+        "capture-group": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based capture group index to parse as an integer for threshold comparison."
+        },
+        "capture-op": {
+          "type": "string",
+          "enum": ["lt", "le", "gt", "ge", "eq"],
+          "description": "Comparison operator applied to the captured integer."
+        },
+        "capture-value": {
+          "type": "integer",
+          "description": "Right-hand side for capture-op comparison."
+        },
+        "suffix-must-not-start-with": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-match filter: skip matches whose remainder starts with this literal prefix."
+        },
+        "slash-skill-positional": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, apply CORE-023 slash-skill positional semantics instead of matching `value` as a regex."
+        },
+        "join-backslash-continuations": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true with `slash-skill-positional`, join backslash- and indent-continued rows before scanning."
+        }
+      }
+    },
     "ruleId": {
       "type": "string",
       "pattern": "^(UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
@@ -232,7 +281,8 @@
     "relativePathPattern": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      "pattern": "^(!?)(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+      "description": "Relative path or glob. A leading `!` marks an exclusion path-pattern hint (RFC-31 Phase 2)."
     }
   }
 }

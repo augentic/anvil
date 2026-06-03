@@ -3,7 +3,7 @@ id: OMNIA-002
 title: WASM Guest Runtime Constraints
 severity: critical
 trigger: An Omnia guest relies on process, thread, filesystem, environment, randomness, mutable global state, blocking I/O, or native runtime behavior unavailable in wasm32-wasip2.
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: '**/*.rs'
     description: Restrict the forbidden-std scan to Rust source files.

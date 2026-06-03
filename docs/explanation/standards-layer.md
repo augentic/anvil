@@ -32,7 +32,7 @@ Enforcement splits by audience, not by rule id:
 | Surface | Binary | Audience | What it checks |
 | --- | --- | --- | --- |
 | Framework authoring | `specify lint framework` | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| Consumer standards | `specify lint` | Downstream projects with `.specify/` | Applicable rules with `deterministic_hints`; emits structured findings |
+| Consumer standards | `specify lint` | Downstream projects with `.specify/` | Applicable rules with `rule_hints`; emits structured findings |
 | Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted application of codex policy → human `REVIEW.md` |
 
 `specify lint` is **not** a workflow phase. It is CI-native **standards enforcement**: findings may block a pipeline (exit code `2`) but never call `specify slice transition` or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`specify slice validate` during refine; verify-repair during build).

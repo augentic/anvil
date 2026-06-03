@@ -71,7 +71,7 @@ What the rule actually requires, in prose.
 - Concrete code patterns or smells that hint the rule is being violated.
 ```
 
-Optional frontmatter fields (`applicability`, `lint_mode`, `deterministic_hints`, `references`, `deprecated`) are documented in the schema. `id` must be globally unique across every codex tree the checker discovers.
+Optional frontmatter fields (`applicability`, `lint_mode`, `rule_hints`, `references`, `deprecated`) are documented in the schema. `id` must be globally unique across every codex tree the checker discovers.
 
 ## How rules are consumed
 

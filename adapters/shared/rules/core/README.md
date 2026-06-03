@@ -19,7 +19,7 @@ trigger: One-sentence condition that tells a reviewer when this rule matters.
 applicability:
   artifacts:
     - <one of the framework artifact tokens listed below>
-deterministic_hints:
+rule_hints:
   - kind: schema | path-pattern | regex | tool
     value: <kind-specific payload>
     description: Optional human explanation.
@@ -57,7 +57,9 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 ## Hint-kind preference
 
-Every v1 hint kind is now executable: `path-pattern`, `schema`, `regex`, `tool`, `reference-resolves`, `unique`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, and `namespace-owner`. No kind carries an `"x-hint-status": "reserved"` annotation in the canonical `rule.schema.json` distributed by the CLI (editor-mirrored at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json)) anymore. The reserved-kind machinery survives in the interpreter as forward-compat scaffolding, so if a future kind ever lands shape-only ahead of its interpreter, pick it only when authoring a new rule alongside that interpreter in the same change; otherwise an authored hint will fail evaluation until its kind lands.
+Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate` (declarative-lints Phase 3 bridge: runs a closed imperative `rule_id` until native hint parity lands). Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json). The reserved-kind machinery survives as forward-compat scaffolding only.
+
+**Lint performance (declarative lints, Phase 4).** `specify lint framework` no longer runs the full imperative `Check` batch on every invocation; migratable predicates run through declarative hints (mostly `authoring-predicate` today). The imperative producer is CORE-009 namespace ownership only. Time locally with `/usr/bin/time make lint` after pulling specify-cli changes.
 
 ## Authoring conventions
 

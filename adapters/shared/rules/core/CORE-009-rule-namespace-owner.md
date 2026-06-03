@@ -3,7 +3,7 @@ id: CORE-009
 title: Rule Namespace Owner
 severity: important
 trigger: A rule markdown file declares an id whose namespace prefix is not owned by the rules directory it lives under, so a `CORE-`, `UNI-`, `OMNIA-`, `VECTIS-`, `IFACE-`, or `SRC-` rule has been authored in the wrong tree.
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: adapters/**/rules/**/*.md
     description: Narrow the candidate set to rule markdown files under any adapter or shared rules tree.

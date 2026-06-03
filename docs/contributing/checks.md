@@ -30,7 +30,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
 | **Authoring standards** | `specify lint framework` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specify lint` | Consumer projects with `.specify/` | Applicable rules with `deterministic_hints`; structured findings for CI |
+| **Engineering standards** | `specify lint` | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
 Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
@@ -42,6 +42,8 @@ make lint
 ```
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+
+**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Compare before/after with `/usr/bin/time make lint` when benchmarking locally.
 
 Tooling contributors run the full local CI subset with:
 
@@ -111,7 +113,7 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 - `adapter.execution-agent` → `suggestion` — a first-party adapter running via `agent` is informational and must never block CI.
 - every other authoring family (`adapter.*`, `agent-teams.*`, `links.*`, `scenarios.*`, `skill.*`, …) → `important` via the default.
 
-**`rule-id` carries the mapped `CORE-NNN` id.** The wire schema's `rule-id` field is constrained to the closed codex regex `^(UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$`. The `framework_finding` builder in [`crates/standards/src/framework/builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs) resolves each still-active imperative id (e.g. `skill.unknown-tool`) to its `CORE-NNN` id via `CORE_ID_TABLE`, sets `rule_id: Some("CORE-NNN")`, and emits a clean `title`. Only an id with **no** `CORE_ID_TABLE` entry falls back to `rule_id: null` with the legacy `[rule_id]` title prefix, so a newly-added predicate is never silently dropped from the wire. `CORE-001..009` are owned by declarative rule files; `CORE-010..051` are still emitted imperatively (see the steady-state note below).
+**`rule-id` carries the closed `CORE-NNN` id.** Declarative rules set `rule_id` from the rule file's `id:` frontmatter. The imperative namespace bridge maps `rules.namespace-ownership-violation` to `CORE-009` via `CORE_ID_TABLE` in [`builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs). Migratable predicates retired from that table run through `kind: authoring-predicate` on their `CORE-*` rule files until native hint parity replaces the bridge.
 
 **Consumer-project counterpart.** `specify lint framework --format json` is the **framework-repo** authoring surface; `specify lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
@@ -313,21 +315,21 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specify lint`.
 
-> **Steady state — the imperative predicates are not all going away.** An empirical audit (2026-06) established that the imperative→declarative migration is bounded: every *fact-consuming* hint kind is hardcoded to a single discriminator, all already spent on `CORE-001..009`, so only `path-pattern`, line-based `regex`, and `schema` can express a *new* check author-side without new engine work in `specify-cli`. The majority of the remaining `CORE-010..051` predicates are fused multi-finding checks, procedural/structural logic, dynamic registries, or tool-driven — they cannot become declarative rules without new hint-kind discriminators + indexer facts (a future RFC), and must never be retired by weakening a check. Treat the imperative `Check` predicates as the intended steady state for those cases. See [`specify-cli/DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (the framework-authoring-checks paragraph under "Crate layout") for the full rationale.
+> **Declarative lint program (RFC-31 complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records: specify-cli `docs/standards/rfc-31-phase{1,2}-spike.md`, `rfc-31-sidecar-schemas.md`; posture in DECISIONS and DIAGNOSTICS §A16.
 
 ### Choose `CORE-*` (declarative) when
 
-- The predicate can be expressed as one or more `deterministic_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
 - The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
 - A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
 
-The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate via the parity test at [`crates/standards/tests/core_parity_adapter_schema.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity_adapter_schema.rs). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, the applicability-token table, hint-kind preference, authoring conventions, and the pointer into the predicate migration map.
+The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md), which retired the previous imperative `adapter` schema-row predicate; parity lives in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) (`mod core_001`). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule file shape, hint-kind preference, and authoring conventions.
 
 To add a `CORE-*` rule:
 
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs its hints against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
-3. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/standards/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
+3. If retiring an imperative `Check` row alongside the rule, add a `mod core_NNN` submodule in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) and delete the predicate row in the same PR; the fingerprint algorithm collapses duplicate findings during overlap.
 
 ### Choose an imperative `Check` when
 

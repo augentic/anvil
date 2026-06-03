@@ -3,7 +3,7 @@ id: CORE-002
 title: Markdown Links Resolve
 severity: important
 trigger: A markdown file contains an `[label](target)` link whose relative target does not exist on disk after joining against the file's parent directory.
-deterministic_hints:
+rule_hints:
   - kind: path-pattern
     value: "adapters/**/*.md"
     description: Adapter manifests, briefs, references, and rules.

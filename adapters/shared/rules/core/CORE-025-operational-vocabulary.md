@@ -1,0 +1,54 @@
+---
+id: CORE-025
+title: Operational Vocabulary
+severity: important
+trigger: Retired Specify 1.x vocabulary appears outside the allowlisted decision-log, release-notes, fixtures, and archive carve-outs.
+applicability:
+  artifacts:
+    - doc
+rule_hints:
+  - kind: path-pattern
+    value: "docs/**/*.md"
+  - kind: path-pattern
+    value: "plugins/**/*.md"
+  - kind: path-pattern
+    value: ".cursor/**/*.md"
+  - kind: path-pattern
+    value: "**/AGENTS.md"
+  - kind: path-pattern
+    value: "**/README.md"
+  - kind: path-pattern
+    value: "!docs/explanation/decision-log.md"
+  - kind: path-pattern
+    value: "!docs/explanation/release-notes.md"
+  - kind: path-pattern
+    value: "!**/fixtures/**"
+  - kind: path-pattern
+    value: "!**/archive/**"
+  - kind: regex
+    value: "\\.specify/changes/"
+  - kind: regex
+    value: "\\bspecify validate\\b"
+  - kind: regex
+    value: "\\bspecify merge\\b"
+  - kind: regex
+    value: "\\bspecify change plan\\b"
+  - kind: regex
+    value: "\\bspecify change draft\\b"
+  - kind: regex
+    value: "\\b[Ii]nitiative\\b"
+---
+
+## Rule
+
+Scan framework prose for retired Specify 1.x vocabulary. Path exclusions mirror the former imperative allowlist (`decision-log.md`, `release-notes.md`, `/fixtures/`, `/archive/`). Each forbidden pattern is a separate `regex` hint so findings stay line-scoped.
+
+## Look For
+
+- `.specify/changes/` paths instead of `.specify/slices/`
+- `specify validate` instead of `specify slice validate`
+- `Initiative` instead of `change` / `slice`
+
+## Fix
+
+Replace with the 2.0 vocabulary in [docs/explanation/decision-log.md](../../../../docs/explanation/decision-log.md) and sibling docs.

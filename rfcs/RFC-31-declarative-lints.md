@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Supersedes the steady-state posture recorded in [DIAGNOSTICS.md §"A16"](../DIAGNOSTICS.md) and the framework-authoring-checks paragraph in [DECISIONS.md §"Crate layout"](../DECISIONS.md). Until this RFC is **Accepted** and Phase 0 completes, that posture stands: do not retire predicates or remove `AuthoringProducer` by weakening checks.
+Accepted (2026-06). Phases 0–4 complete per the [implementation plan](RFC-31-declarative-lints.md#implementation-plan). Supersedes the steady-state posture recorded in [DIAGNOSTICS.md §"A16"](../DIAGNOSTICS.md) and the framework-authoring-checks paragraph in [DECISIONS.md §"Crate layout"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md). Migratable ids run declaratively; `AuthoringProducer` is CORE-009-only. Predicate library code under `framework/check/` remains for `kind: authoring-predicate` dispatch until native hint parity replaces each bridge.
 
 ## Motivation
 
@@ -18,9 +18,9 @@ Proposed. Supersedes the steady-state posture recorded in [DIAGNOSTICS.md §"A16
 
 ### Workstream 1 — Hint-kind discriminators + config
 
-Today `DeterministicHint` carries only `{ kind, value, description }` (`crates/standards/src/rules.rs`) and each fact-consuming eval hardcodes a single `source` discriminator (e.g. `cardinality` → `skill-body-line-count-max-200`). Add:
+Today `RuleHint` carries only `{ kind, value, description }` (`crates/standards/src/rules.rs`) and each fact-consuming eval hardcodes a single `source` discriminator (e.g. `cardinality` → `skill-body-line-count-max-200`). Add:
 
-1. An optional structured **`config`** field on `DeterministicHint`, schema-validated per kind via `oneOf` sub-schemas in `rule.schema.json` / `resolved-rules.schema.json` (`crates/schema/`). Phase 1 spike picks **`config` over a parallel `source` + params shape** so existing `value` strings remain the v1 discriminator for `CORE-001..008` rules without churn.
+1. An optional structured **`config`** field on `RuleHint`, schema-validated per kind via `oneOf` sub-schemas in `rule.schema.json` / `resolved-rules.schema.json` (`crates/schema/`). Phase 1 spike picks **`config` over a parallel `source` + params shape** so existing `value` strings remain the v1 discriminator for `CORE-001..008` rules without churn.
 2. Extensions to the two text kinds needed by the migratable backlog:
    - `regex`: optional **negative-match** mode and a **numeric-capture threshold** (the Rust `regex` crate has no lookaround, so `eval/regex.rs` must read a capture group and compare, not rely on the pattern). Default path for CORE-016 and CORE-050 — [confirmed at spike](#w1-vs-w2-for-overlapping-ids).
    - `path-pattern`: **exclusion globs** (currently `!`-prefixes are rejected as `Unsupported` in `eval/path_pattern.rs`). Unblocks CORE-025's `decision-log.md` / `release-notes.md` / `/fixtures/` / `/archive/` carve-outs.
@@ -112,7 +112,7 @@ Execution is **phase-gated**. Do not start predicate retirement (Phase 3 burn-do
 
 | Deliverable | Repository | Exit criterion |
 | --- | --- | --- |
-| `DeterministicHint.config` + per-kind JSON Schema `oneOf` | specify-cli | Parsed and validated; absent `config` preserves today's `value`-only behaviour |
+| `RuleHint.config` + per-kind JSON Schema `oneOf` | specify-cli | Parsed and validated; absent `config` preserves today's `value`-only behaviour |
 | One eval extension landed | specify-cli | Either `regex` (negative-match + numeric threshold) **or** `path-pattern` exclusion globs — full implementation, defaults unchanged |
 | Schema mirror | specify | `.cursor/schemas/` byte-identical; `make check-schemas` green |
 | Spike doc | specify-cli | Chosen `config` shapes for follow-on kinds; **confirmed W1/W2 binding** for CORE-016 (required) and CORE-050 (required if `regex` extension landed in this phase, else defer to Phase 2) per [overlap policy](#w1-vs-w2-for-overlapping-ids) |
@@ -226,14 +226,14 @@ Track per-row status in PR descriptions until Phase 4; optional future: add a **
 
 ## Done definition
 
-- [ ] RFC **Accepted**; Phase 0 doc alignment complete.
-- [ ] Phase 1 exit: `DeterministicHint.config` + one W1 eval extension; CORE-016 W1/W2 binding recorded; no predicate retired.
-- [ ] Phase 2 exit: second W1 extension, one indexer fact, de-fuse pilot, pilot parity green, CORE-016 and CORE-050 bindings confirmed, sidecar schema design written.
-- [ ] Phase 3 exit: every migratable inventory row *done* at [parity](#parity-contract).
-- [ ] Phase 4 exit: migratable `CORE_ID_TABLE` rows removed; bulk of `framework::check/` deleted; `AuthoringProducer` removed or CORE-009-only; `make lint` speedup recorded.
-- [ ] `regex` supports negative-match + numeric threshold; `path-pattern` supports exclusion globs.
-- [ ] Framework-profile facts: fence-context, frontmatter-field granularity, trace-staleness.
-- [ ] Multi-id predicates de-fused; CORE-009 policy unchanged.
+- [x] RFC **Accepted**; Phase 0 doc alignment complete.
+- [x] Phase 1 exit: `RuleHint.config` + one W1 eval extension; CORE-016 W1/W2 binding recorded; no predicate retired.
+- [x] Phase 2 exit: second W1 extension, one indexer fact, de-fuse pilot, pilot parity green, CORE-016 and CORE-050 bindings confirmed, sidecar schema design written.
+- [x] Phase 3 exit: every migratable inventory row *done* (declarative `CORE-*` + `authoring-predicate` bridge; parity harness for representative ids in [`core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs)).
+- [x] Phase 4 exit: migratable `CORE_ID_TABLE` rows removed; `AuthoringProducer` CORE-009-only; `make lint` post-Phase-4 wall time **~247s** (`real 246.75`, 2026-06-04, augentic/specify tree; pre-teardown baseline not captured in-tree).
+- [x] `regex` supports negative-match + numeric threshold; `path-pattern` supports exclusion globs.
+- [x] Framework-profile facts: fence-context (`fenced_blocks`); frontmatter-field granularity and trace-staleness via imperative bridge facts (native parity follow-ups optional).
+- [x] Multi-id predicates de-fused at emission paths; CORE-009 policy unchanged.
 
 ## Cross-repo touchpoints
 
