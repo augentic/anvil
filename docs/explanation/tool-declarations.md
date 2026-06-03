@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Who needs this page.** Tool declarations are an advanced authoring topic for *adapter and project authors* who ship a deterministic helper alongside their briefs. If you are running changes, you can skip it — the first-party tools (the contract validator and the Vectis tools) are already declared for you. Read on only when you are packaging your own helper.
 
-Specify tools are WASI components that a project or adapter declares for deterministic helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
+Specify tools are WASI components that a project or adapter declares for deterministic helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specrun` binary resolves, caches, and runs them with explicit permissions through `specrun tool`.
 
 ## Declaration sites
 
@@ -74,7 +74,7 @@ Variables are expanded only in `permissions.read` and `permissions.write`. They 
 
 Permissions are directory preopens, not globs. The host canonicalizes every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. A tool that writes files should ask for the narrowest existing parent directory it needs. Use `$PROJECT_DIR` only when the tool's contract must create or update root-level files such as `Cargo.toml`.
 
-First-party scalar package declarations do not repeat permissions in YAML. `specify` embeds the current defaults for `specify:contract` and `specify:vectis`; project-local object declarations still carry explicit permissions.
+First-party scalar package declarations do not repeat permissions in YAML. `specrun` embeds the current defaults for `specify:contract` and `specify:vectis`; project-local object declarations still carry explicit permissions.
 
 ## Cache segmentation
 

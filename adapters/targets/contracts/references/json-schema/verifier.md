@@ -55,7 +55,7 @@ If `$CHANGE_SCHEMAS` does not exist or contains no files, report all checks as p
 
 ### `cross-project` mode
 
-- `specify` is on `$PATH` and supports `specrun tool run`.
+- `specrun` is on `$PATH` and supports `specrun tool run`.
 - The current project resolves the contracts adapter sidecar that declares the `contract` tool.
 - `$BASELINE_CONTRACTS` (`$PROJECT_ROOT/contracts`) is the directory the tool will walk. The declared read permission points at `$PROJECT_DIR/contracts`; if that directory is absent, `specrun tool run` exits `2`. Callers MUST NOT pre-stat the path.
 
@@ -290,7 +290,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 ### Why a WASI tool delegate?
 
-The contracts adapter owns merge gating through the declared `contract` WASI tool: a deterministic, adapter-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
+The contracts adapter owns merge gating through the declared `contract` WASI tool: a deterministic, adapter-owned gate the merge brief can run through `specrun` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
 Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate.
 
@@ -320,7 +320,7 @@ Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format c
 | Two top-level contracts share the same `info.x-specify-id`                       | Finding `contract.id-unique` against each colliding path; exit `1`.                                                                                                             |
 | Standalone JSON Schema under `$BASELINE_CONTRACTS/schemas/` has missing metadata | **Not** a `cross-project` concern — schema-only files are skipped by the binary's `openapi:` / `asyncapi:` filter. Schema-side issues are caught in `single` mode (Checks 1–4). |
 | YAML file under `$BASELINE_CONTRACTS` is malformed                               | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding.                                             |
-| `specify` is not on `$PATH`                                                      | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`.                                                              |
+| `specrun` is not on `$PATH`                                                      | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`.                                                              |
 
 ## Guardrails
 

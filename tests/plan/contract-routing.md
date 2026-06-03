@@ -62,7 +62,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 
 Prerequisites:
 
-- A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
+- A current `specrun` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
 - The `contracts@v1`, `omnia@v1`, and `vectis@v1` adapters are resolvable in the local development environment.
 - Git is available if the local `specrun workspace sync` path needs repository metadata. Do not add fake `gh` or fake forge behavior for this scenario.
 

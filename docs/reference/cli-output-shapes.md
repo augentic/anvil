@@ -1,6 +1,6 @@
 # CLI output shapes
 
-Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](../standards/skill-authoring.md#skill-body-discipline)).
+Canonical JSON envelope shapes for `specrun *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](../standards/skill-authoring.md#skill-body-discipline)).
 
 ## Conventions
 

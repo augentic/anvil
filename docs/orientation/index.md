@@ -55,7 +55,7 @@ Artifacts are regular files — you commit and review them like source code. `/s
 
 You can also run one phase by hand (a **breakout**) — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Behind the skills, the `specify` CLI handles deterministic work: validation, lifecycle transitions, spec merging. The agent keeps judgment; the CLI keeps correctness.
+Behind the skills, the `specrun` CLI handles deterministic work: validation, lifecycle transitions, spec merging. The agent keeps judgment; the CLI keeps correctness.
 
 ## Going deeper
 

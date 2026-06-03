@@ -31,7 +31,7 @@ A minimal Omnia project where Specify plans, specifies, implements, and merges a
 Complete [Prerequisites](../orientation/prerequisites.md):
 
 - Cursor with Augentic plugins installed
-- `specify` CLI (`specify --version` succeeds)
+- `specrun` CLI (`specrun --version` succeeds)
 - Rust toolchain with `wasm32-wasip2` target for Omnia
 
 Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposable repo.

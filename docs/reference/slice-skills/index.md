@@ -24,7 +24,7 @@ Each row below links to a per-skill stub; the authoritative operator instruction
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator that delegates deterministic operations to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
+Each skill is an agent-driven orchestrator that delegates deterministic operations to the `specrun` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
 
 ## See also
 

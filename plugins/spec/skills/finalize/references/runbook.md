@@ -182,7 +182,7 @@ This skill must not introduce any other shell-out. Any temptation to add a flag,
 
 This skill adds **no new logic**. Every step is a documented shell-out to either:
 
-- a `specify` CLI verb listed above; or
+- a `specrun` CLI verb listed above; or
 - the `gh` CLI for read-only PR observation.
 
 Concretely, this skill MUST NOT:

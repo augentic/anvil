@@ -15,7 +15,7 @@ Hands-on walkthroughs from zero to a working Specify change. Each tutorial build
 </div>
 
 
-Complete [Prerequisites](../orientation/prerequisites.md) (Cursor, Augentic plugins, `specify` CLI, and adapter tooling) before you start.
+Complete [Prerequisites](../orientation/prerequisites.md) (Cursor, Augentic plugins, `specrun` CLI, and adapter tooling) before you start.
 
 <div class="card-grid">
 

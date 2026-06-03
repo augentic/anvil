@@ -1,6 +1,6 @@
 # Vectis WASI tools
 
-Vectis deterministic helpers are declared adapter tools and are run through [`specrun tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
+Vectis deterministic helpers are declared adapter tools and are run through [`specrun tool`](tool.md). Operators install and invoke `specrun`; no separate Vectis host binary is part of the current command surface.
 
 ## Tools
 

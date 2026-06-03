@@ -178,7 +178,7 @@ Run once per project: `/spec:init omnia`
 
 ```markdown
 \{{#template templates/prereq-open.md}}
-Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
+Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specrun` CLI, …
 \{{#template templates/prereq-close.md}}
 ```
 

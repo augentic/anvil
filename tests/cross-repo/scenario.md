@@ -93,7 +93,7 @@ run.
 
 Prerequisites:
 
-- A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in
+- A current `specrun` binary available on `PATH`, or `SPECIFY_BIN` documented in
   the run summary if the operator uses an explicit binary.
 - The `contracts@v1`, `omnia@v1`, and `vectis@v1` adapters are resolvable in
   the local development environment.

@@ -1,6 +1,6 @@
 # specrun tool
 
-Run declared WASI tools through the `specify` binary.
+Run declared WASI tools through the `specrun` binary.
 
 `specrun tool` is the operator surface for deterministic helper code declared by a project or by its resolved adapter. Tools are WASI Preview 2 command components. The CLI resolves the declaration, fills the global cache, applies the declared filesystem permissions, and runs the component through the embedded Wasmtime host.
 
@@ -125,7 +125,7 @@ Without `sha256`, cache reuse is based on the manifest tuple. If bytes at a URL 
 
 ## Security notes
 
-Operators still install one binary: `specify`. Cached modules are never executed directly as host binaries; `specrun tool run` always goes through the Wasmtime host.
+Operators still install one binary: `specrun`. Cached modules are never executed directly as host binaries; `specrun tool run` always goes through the Wasmtime host.
 
 Filesystem access is deny-by-default. A tool receives only the read and write preopens declared in its manifest or embedded for first-party package declarations, and permission paths must already exist. Runtime network access is disabled for WASI tools; resolver network access for `https://` and wasm-pkg sources is separate and happens before execution.
 

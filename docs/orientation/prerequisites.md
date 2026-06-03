@@ -16,9 +16,9 @@ Install the Augentic plugins from the Cursor marketplace:
 
 This installs the bundled plugins (Specify, Capture, Client) and their skills. Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](../../adapters/targets/), not in plugins.
 
-## The `specify` CLI
+## The `specrun` CLI
 
-The `specify` binary backs every skill in the Specify plugin. If you are setting up a project through Cursor, run `/spec:init`; when the CLI is missing, the skill can install it for you with:
+The `specrun` binary backs every skill in the Specify plugin. If you are setting up a project through Cursor, run `/spec:init`; when the CLI is missing, the skill can install it for you with:
 
 ```bash
 cargo install --git https://github.com/augentic/specify-cli

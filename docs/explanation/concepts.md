@@ -166,7 +166,7 @@ Status: agreed
 
 ## Skills
 
-A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how you drive Specify — the agent owns judgement, the skill owns the workflow, and the `specify` CLI does the deterministic work (validation, lifecycle transitions, spec merging, plan writes) underneath.
+A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how you drive Specify — the agent owns judgement, the skill owns the workflow, and the `specrun` CLI does the deterministic work (validation, lifecycle transitions, spec merging, plan writes) underneath.
 
 The default rhythm:
 

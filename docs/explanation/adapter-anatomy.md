@@ -182,9 +182,9 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 
 ## Adapter manifests vs Cursor plugin manifests
 
-Cursor and `specify` are different runtimes. The repo's adapter directories happen to double as Cursor plugin roots, but the two manifest systems are independent — they share no fields, no loader, and no discovery path.
+Cursor and `specrun` are different runtimes. The repo's adapter directories happen to double as Cursor plugin roots, but the two manifest systems are independent — they share no fields, no loader, and no discovery path.
 
-- **`.cursor-plugin/plugin.json`** is read by Cursor itself to register IDE surface area: skills, rules, and slash commands. It is invisible to the `specify` CLI.
-- **`adapter.yaml`** is read by the `specify` CLI through `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` (the post-Task-E typed entry points). Cursor never consults it.
+- **`.cursor-plugin/plugin.json`** is read by Cursor itself to register IDE surface area: skills, rules, and slash commands. It is invisible to the `specrun` CLI.
+- **`adapter.yaml`** is read by the `specrun` CLI through `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` (the post-Task-E typed entry points). Cursor never consults it.
 
 Neither manifest references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — `adapter.yaml` is the only manifest the CLI consumes; `plugin.json` is Cursor's, not Specify's.

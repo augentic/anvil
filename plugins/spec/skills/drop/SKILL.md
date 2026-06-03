@@ -8,7 +8,7 @@ argument-hint: "[slice-name]"
 
 Drop a slice without merging its specs into the baseline.
 
-Deterministic bookkeeping — slice selection, lifecycle transition, archive move — is delegated to the `specify` CLI. This skill drives the confirmation flow and the summary.
+Deterministic bookkeeping — slice selection, lifecycle transition, archive move — is delegated to the `specrun` CLI. This skill drives the confirmation flow and the summary.
 
 ## Non-interactive mode
 

@@ -7,7 +7,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## CLI owns correctness, agent owns judgment
 
-**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specify` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
+**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specrun` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
 
 **Rationale:** LLM-interpreted prose rules for structured operations (validation, task parsing, directory manipulation) produced unreliable results. A binary that returns structured JSON and exit codes gives deterministic correctness where it matters, while the agent retains judgment for semantic decisions.
 
@@ -35,7 +35,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Independently useful layers
 
-**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
+**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specrun` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
 1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `schemas/`, `tools.yaml`, `specrun init`, `specify adapter`.
 2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specrun slice *` verbs they wrap.
@@ -241,9 +241,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## One `specify` binary; adapter-specific helpers ship as declared tools
+## One `specrun` binary; adapter-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specrun`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
 
 **Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 

@@ -1,6 +1,6 @@
 # contracts.merge
 
-Landing brief for slices that target the `contracts` adapter. The standard delta-spec merge, baseline coherence validation, lifecycle transition, and archive move are delegated to the `specify` CLI (`specrun slice merge`). The contracts target adds **one target-specific gate** on top of that flow: a post-merge baseline check via the declared `contract` WASI tool. Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
+Landing brief for slices that target the `contracts` adapter. The standard delta-spec merge, baseline coherence validation, lifecycle transition, and archive move are delegated to the `specrun` CLI (`specrun slice merge`). The contracts target adds **one target-specific gate** on top of that flow: a post-merge baseline check via the declared `contract` WASI tool. Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
 
 Follow the [`/spec:merge` skill](../../../../plugins/spec/skills/merge/SKILL.md) for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The post-merge tool gate below is the contracts-specific delta on top of that flow.
 

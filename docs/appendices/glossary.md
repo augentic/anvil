@@ -175,7 +175,7 @@ A behavioral specification at `specs/<unit>/spec.md`. Contains requirements with
 The CLI binary that runs framework **authoring** checks — skill frontmatter, doc house style, marketplace consistency — for contributors to the `augentic/specify` repo. Invoked locally as `make lint`. Distinct from `specrun`. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **specrun**
-The runtime CLI binary that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, and consumer-project `specrun lint`. This is the `specify` binary's runtime surface. Distinct from `specdev` (framework authoring checks).
+The runtime CLI binary that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, and consumer-project `specrun lint`. This is the runtime binary produced by `augentic/specify-cli`. Distinct from `specdev` (framework authoring checks).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.

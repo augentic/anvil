@@ -16,7 +16,7 @@ Before merging, confirm:
 - The `build` phase regenerated `${SLICE_DIR}/composition.yaml` (or the slice is core-only and intentionally has none).
 - `specrun slice validate <SLICE_ID>` reports no unmet merge-phase needs.
 
-Delta-spec merging, baseline coherence validation, lifecycle transition, and the archive move are delegated to the `specify` CLI. Follow the [`/spec:merge`](../../../../plugins/spec/skills/merge/SKILL.md) skill body for the driver-side flow: slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The Vectis adapter adds the two adapter-specific gates described below.
+Delta-spec merging, baseline coherence validation, lifecycle transition, and the archive move are delegated to the `specrun` CLI. Follow the [`/spec:merge`](../../../../plugins/spec/skills/merge/SKILL.md) skill body for the driver-side flow: slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The Vectis adapter adds the two adapter-specific gates described below.
 
 ## Pre-merge — composition validation
 

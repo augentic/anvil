@@ -55,7 +55,7 @@ The scenario checks durable plan structure only. It should not fail because the 
 
 Prerequisites:
 
-- A current `specify` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
+- A current `specrun` binary available on `PATH`, or `SPECIFY_BIN` documented in the run summary if the operator uses an explicit binary.
 - The `omnia@v1` adapter is resolvable in the local development environment.
 
 ## Inputs

@@ -26,9 +26,9 @@ Format detection: a YAML file is top-level iff its root carries `openapi:` or `a
 |---|---|
 | `0` | Clean — no findings. The baseline is well-formed under all three rules. |
 | `1` | One or more findings. Caller (typically the contracts merge brief) MUST treat as `failure`. |
-| `2` | The tool could not run, either because `specify` could not resolve/instantiate it or because the validator rejected its invocation. Caller MUST treat as `failure`. |
+| `2` | The tool could not run, either because `specrun` could not resolve/instantiate it or because the validator rejected its invocation. Caller MUST treat as `failure`. |
 
-The `0` / `1` / `2` mapping is the conventional shell-friendly shape so adapter skills can branch on the exit code without needing the broader `specify` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
+The `0` / `1` / `2` mapping is the conventional shell-friendly shape so adapter skills can branch on the exit code without needing the broader `specrun` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
 
 ## JSON Envelope
 
@@ -68,7 +68,7 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 The contracts target adapter declares the WASI tool inline in [`adapters/targets/contracts/adapter.yaml`](../../../adapters/targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
-Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specrun tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
+Operators install `specrun`; no separate contract-validator binary is required for the canonical path. `specrun tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 
 During local development, project authors may override the adapter declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
 

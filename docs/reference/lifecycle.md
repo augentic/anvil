@@ -1,6 +1,6 @@
 # Lifecycle
 
-Specify 2.0 carries three stacked lifecycles. The plan lifecycle gates execution; the per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `specify` CLI — skills never write state directly.
+Specify 2.0 carries three stacked lifecycles. The plan lifecycle gates execution; the per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `specrun` CLI — skills never write state directly.
 
 <div class="pipeline">
 

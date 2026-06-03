@@ -28,7 +28,7 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/briefs/** / **targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **adapters/sources/`<name>`/briefs/** / **adapters/targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 

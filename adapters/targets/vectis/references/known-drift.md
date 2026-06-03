@@ -11,7 +11,7 @@ Concrete fix items carried into this catalogue from earlier Vectis template-upda
 specify vectis update-versions --dry-run --verify
 ```
 
-Run via `<specify-cli>/target/debug/specify` after `cargo build -p specify` in the `specify-cli` checkout, or via an installed `specify` binary, against live registries.
+Run via `<specify-cli>/target/debug/specrun` after `cargo build -p specify` in the `specify-cli` checkout, or via an installed `specrun` binary, against live registries.
 
 When a fix ships, remove the item from this file in the same commit that lands the fix. Stale entries make the catalogue softer than intended.
 
