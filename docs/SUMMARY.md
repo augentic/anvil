@@ -66,7 +66,7 @@
   - [specrun init](reference/cli/init.md)
   - [specrun slice](reference/cli/slice.md)
   - [specrun plan](reference/cli/plan.md)
-  - [specify adapter](reference/cli/adapter.md)
+  - [specrun source and target resolve](reference/cli/adapter.md)
   - [specrun registry](reference/cli/registry.md)
   - [specrun workspace](reference/cli/workspace.md)
   - [specrun tool](reference/cli/tool.md)

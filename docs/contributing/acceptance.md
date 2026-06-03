@@ -16,7 +16,7 @@ Set `SPECDEV_FRAMEWORK_ROOT` only when invoking `specdev` directly without `--fr
 ## Targets
 
 - `make lint` runs `specdev lint` — static repository checks, including scenario frontmatter validation.
-- `make ci` runs `make lint`.
+- `make ci` runs `make lint` plus the `check-schemas` target (`scripts/check-schema-mirror.sh`, which verifies the `.cursor/schemas/` mirrors match the CLI). Bare `make lint` does not run the schema-mirror check.
 - The `specify-standards` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
 - The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
 - The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).

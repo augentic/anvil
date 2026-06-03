@@ -70,7 +70,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   └── shared/               # Shared adapter support material, not adapters
       ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
       └── target-hooks/replay/
-/schemas/                 # plugin, source, target, evidence, lead JSON Schemas
+/.cursor/schemas/         # Editor-facing JSON Schema mirrors (adapter, skill, rule, scenario, marketplace); authoritative schemas live in augentic/specify-cli
 /scripts/                 # Validation and plugin management
 ```
 

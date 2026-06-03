@@ -4,7 +4,7 @@ Closed wire shapes for the build-time `replay` hook. Recording rules and merge p
 
 ## Journal event (v1 recorder)
 
-Emit via `specrun slice journal append`:
+Emit via `specrun journal emit slice.replay.completed --payload <json>`:
 
 | Field | Value |
 |---|---|

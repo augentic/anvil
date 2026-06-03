@@ -39,6 +39,7 @@ contracts/                                  # Baseline API contracts
 │   └── <slice-name>/
 │       ├── .metadata.yaml                  # Slice lifecycle (managed by CLI)
 │       ├── proposal.md                     # Why this slice exists
+│       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
 │       ├── design.md                       # Technical design
 │       ├── tasks.md                        # Implementation checklist
 │       ├── evidence/                       # Per-source extract output (managed by CLI)
@@ -82,7 +83,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specrun slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specrun plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specrun slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 

@@ -30,7 +30,7 @@ This matches the current synthesis posture on `[conflict]` and `[divergence]` ta
 
 ### v1 recorder: journal event
 
-Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo) via `specrun slice journal append`. Payload shape: [`journal-payload.md`](journal-payload.md).
+Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo) via `specrun journal emit slice.replay.completed --payload <json>`. Payload shape: [`journal-payload.md`](journal-payload.md).
 
 The implementing target's runner sub-brief supplies the `runner` string (e.g. `omnia-target@1 (cargo nextest)`).
 
