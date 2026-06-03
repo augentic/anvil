@@ -1,6 +1,6 @@
 # Specify Workflow
 
-Specify 2.0 routes every operator action through `/spec:*`. `/spec:init` scaffolds a project. `/spec:plan` authors `change.md` + `plan.yaml`. After the operator stamps Gate 1 (`specrun plan transition <name> approved`), `/spec:execute` drives the per-slice loop. The per-slice breakouts — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — share the loop's skill bodies and are reached either through `execute` or by an operator inspecting a slice by hand. `/spec:finalize` pushes branches, observes PR state, and archives the plan once every PR is `MERGED`.
+Specify 2.0 routes every operator action through `/spec:*`. `/spec:init` scaffolds a project. `/spec:plan` authors `change.md` + `plan.yaml`. After the operator stamps Gate 1 (`specify plan transition <name> approved`), `/spec:execute` drives the per-slice loop. The per-slice breakouts — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — share the loop's skill bodies and are reached either through `execute` or by an operator inspecting a slice by hand. `/spec:finalize` pushes branches, observes PR state, and archives the plan once every PR is `MERGED`.
 
 ## Skills
 

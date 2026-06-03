@@ -38,7 +38,7 @@ The bound directory is the only filesystem grant — `$PROJECT_DIR` is unreachab
 
 One lead per observed handler — that is, one per `tests/data/replays/<handler>/` directory. Each directory groups every captured scenario for one HTTP route, message handler, scheduled job, or WebSocket handler. The slice grain operators reason about is the handler, not the individual capture; per-scenario detail lives in `extract`-time claims (one `kind: example` claim per scenario file).
 
-The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead`. When two sources surface the same handler under different slugs (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), cross-source reconciliation is agent judgment at propose time and Gate 1 curation via `specrun plan amend <entry> --sources`; do not invent alternate names here.
+The directory name is the kebab-case handler identifier — keep it verbatim as the lead `lead`. When two sources surface the same handler under different slugs (e.g. `password-reset` here, `account-pwd-reset` in the legacy code source), cross-source reconciliation is agent judgment at propose time and Gate 1 curation via `specify plan amend <entry> --sources`; do not invent alternate names here.
 
 ## Output: lead blocks
 

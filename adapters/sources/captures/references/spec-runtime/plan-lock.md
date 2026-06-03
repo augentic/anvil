@@ -2,7 +2,7 @@
 
 The plan lock is an OS-level exclusive advisory file lock taken on `.specify/plan.lock` (or `<workspace>/.specify/plan.lock` in workspace mode). The lock identity is the file lock itself; the file body carries the holder pid, hostname, and acquisition timestamp purely as diagnostic noise. Acquisition is non-blocking: a second `/spec:execute` (or a `/spec:refine` / `/spec:build` / `/spec:merge` breakout) that finds the lock held exits immediately with the structured error `plan-lock-busy` and the holder pid.
 
-There is no `specrun plan lock {acquire,release,status}` CLI verb — the lock is the `flock`-based snippet below, never a CLI surface (the `cli-contract.md` verb tree records the same `.specify/plan.lock` snippet as the driver lock, "not a CLI verb"). Every skill that touches plan state from outside the loop — `/spec:execute` itself, plus the three breakout skills when invoked standalone — reuses the snippet below verbatim.
+There is no `specify plan lock {acquire,release,status}` CLI verb — the lock is the `flock`-based snippet below, never a CLI surface (the `cli-contract.md` verb tree records the same `.specify/plan.lock` snippet as the driver lock, "not a CLI verb"). Every skill that touches plan state from outside the loop — `/spec:execute` itself, plus the three breakout skills when invoked standalone — reuses the snippet below verbatim.
 
 ## Primary path — `flock -n`
 

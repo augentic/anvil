@@ -154,7 +154,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```html
 <div class="synopsis">
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 </div>
 
 <div class="see-also">
@@ -178,7 +178,7 @@ Run once per project: `/spec:init omnia`
 
 ```markdown
 \{{#template templates/prereq-open.md}}
-Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specrun` CLI, …
+Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
 \{{#template templates/prereq-close.md}}
 ```
 
@@ -214,7 +214,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```markdown
 \{{#template templates/synopsis-open.md}}
-Agent-driven orchestrator. Deterministic work delegates to `specrun plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 \{{#template templates/synopsis-close.md}}
 ```
 

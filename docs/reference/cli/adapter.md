@@ -1,23 +1,23 @@
-# specrun source and target resolve
+# specify source and target resolve
 
 Adapter resolution in 2.0 splits by axis. The retired `specify adapter *` verb family is replaced by two entry points.
 
-## specrun source resolve
+## specify source resolve
 
 Validate and locate a source adapter manifest.
 
 ```bash
-specrun source resolve <name>
+specify source resolve <name>
 ```
 
 Returns the adapter root, manifest path, and brief paths for `survey` and `extract`. Used by `/spec:plan` during survey and `/spec:refine` during extract.
 
-## specrun target resolve
+## specify target resolve
 
 Validate and locate a target adapter manifest.
 
 ```bash
-specrun target resolve <value>
+specify target resolve <value>
 ```
 
 `<value>` may be a bare adapter name (`omnia`), a URL, or a local path. Returns manifest path and brief paths for `shape`, `build`, and `merge`. Used by `/spec:refine`, `/spec:build`, and `/spec:merge`.

@@ -10,4 +10,4 @@ Two slices, both reconciled by `propose` from a documentation source and a TypeS
 
 ## Tentative merges
 
-`password-reset` — the documentation lead `password-reset` and the legacy lead `account-pwd-reset` describe the same operator-visible flow under different names. Both surfaced from the same product area but the legacy lead predates the rename in the design notes. Operator review at Gate 1 should confirm or split via `specrun plan amend`.
+`password-reset` — the documentation lead `password-reset` and the legacy lead `account-pwd-reset` describe the same operator-visible flow under different names. Both surfaced from the same product area but the legacy lead predates the rename in the design notes. Operator review at Gate 1 should confirm or split via `specify plan amend`.

@@ -1,1 +1,34 @@
-../../../../../plugins/spec/references/cli/plan-propose.md
+# specify plan propose
+
+Reconcile surveyed `discovery.md` leads into the plan's `slices[]` grouping. Two modes; exactly one is required.
+
+```bash
+specify plan propose --dry-run [--format json]
+specify plan propose --from <response.json> [--format json]
+```
+
+- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
+- `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates explicit slice names, binds projects, atomically replaces `plan.yaml.slices[]`, then emits `plan.reconcile.completed`. It never trusts a prior dry-run snapshot.
+
+Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
+
+**Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise `plan-reconcile-plan-not-replaceable`.
+
+Validation codes (all exit 2):
+
+| Code | Meaning |
+|------|---------|
+| `plan-propose-mode-required` | Neither `--dry-run` nor `--from` was given. |
+| `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
+| `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
+| `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
+| `plan-reconcile-partition` | Grouped leads do not achieve total coverage. |
+| `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
+| `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
+| `plan-reconcile-slice-name-collision` | Two slices resolve to the same plan slice name. |
+| `plan-reconcile-depends-on-cycle` | Projected `depends-on` edges form a cycle. |
+| `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
+| `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
+| `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
+
+Envelopes validate against `schemas/discovery/proposal.schema.json` (`kind: request` for `--dry-run`, `kind: response` for `--from`). Full CLI reference: [specify plan](https://specify.augentic.io/reference/cli/plan.html#specify-plan-propose).

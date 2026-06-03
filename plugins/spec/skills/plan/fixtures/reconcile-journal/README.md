@@ -1,6 +1,6 @@
 # Reconcile-journal golden
 
-Pins the journal tail `specrun plan propose --from` appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specrun journal emit` for D2; the CLI owns this event.
+Pins the journal tail `specify plan propose --from` appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specify journal emit` for D2; the CLI owns this event.
 
 ## Scenario
 

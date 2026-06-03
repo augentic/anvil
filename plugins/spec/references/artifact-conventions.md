@@ -57,12 +57,12 @@ Trade-offs, follow-ups, and what the rejected alternatives cost us.
 
 Conventions:
 
-- **`slug`** is kebab-case (`^[a-z][a-z0-9-]*$`, ≤ 64 chars) and unique within the slice. It is the only key the agent picks; `specrun slice merge` promotes the record to `.specify/decisions/DEC-NNNN-<slug>.md` and assigns the durable, project-global `DEC-NNNN` id (`max(existing) + 1`, never reused).
+- **`slug`** is kebab-case (`^[a-z][a-z0-9-]*$`, ≤ 64 chars) and unique within the slice. It is the only key the agent picks; `specify slice merge` promotes the record to `.specify/decisions/DEC-NNNN-<slug>.md` and assigns the durable, project-global `DEC-NNNN` id (`max(existing) + 1`, never reused).
 - **Body** must carry the three Nygard headings `## Context`, `## Decision`, `## Consequences`. The H1 (`# …`) is the human title projected into routing identity.
 - **`supersedes:`** flips each named target's status to `superseded` at merge; a target that resolves to neither the baseline nor a sibling record in this slice is a blocking `decision-supersede-orphan`.
 - **Decisions store the *why*, never design *state*.** Domain models, API shapes, and other volatile "how-it-is-now" detail stay in `design.md` and the code — never re-authored into a Decision Record.
 
-`specrun slice validate` gates record shape at refine (`decision-record-schema`, `decision-record-section-missing`, `decision-slug-grammar`, `decision-slug-collision`, `decision-supersede-orphan`); `specrun slice merge` re-checks supersede targets against the live baseline and promotes.
+`specify slice validate` gates record shape at refine (`decision-record-schema`, `decision-record-section-missing`, `decision-slug-grammar`, `decision-slug-collision`, `decision-supersede-orphan`); `specify slice merge` re-checks supersede targets against the live baseline and promotes.
 
 ## Task format conventions
 
@@ -81,7 +81,7 @@ Every generated task **must** be executable and verifiable by an agent using cod
 
 If a requirement appears to call for human validation, encode the equivalent code-based test or scripted verification task instead.
 
-After writing `tasks.md`, complete the **Self-Review** step in the adapter's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specrun slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
+After writing `tasks.md`, complete the **Self-Review** step in the adapter's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify slice validate` checks checkbox / grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
 
 ### Skill directives (optional)
 

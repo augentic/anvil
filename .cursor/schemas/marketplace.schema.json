@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/authoring/marketplace.schema.json",
   "title": "Cursor plugin marketplace manifest",
-  "description": "Validates `.cursor-plugin/marketplace.json`. Cross-file consistency with `plugins/` (symlink integrity, declared plugin surfaces) is enforced by `specdev lint`.",
+  "description": "Validates `.cursor-plugin/marketplace.json`. Cross-file consistency with `plugins/` (symlink integrity, declared plugin surfaces) is enforced by `specify lint framework`.",
   "type": "object",
   "required": ["name", "owner", "metadata", "plugins"],
   "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "Editor schema hint; ignored by specdev lint semantics."
+      "description": "Editor schema hint; ignored by specify lint framework semantics."
     },
     "name": {
       "type": "string",

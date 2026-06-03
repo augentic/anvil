@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify-cli/schemas/rules/rule.schema.json",
   "title": "Specify rule frontmatter",
-  "description": "Validates the YAML frontmatter block at the top of a rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specdev lint`.",
+  "description": "Validates the YAML frontmatter block at the top of a rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across the first-party rule set, is handled by `specify lint framework`.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -122,7 +122,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specrun lint` hint interpreter, which carries one `eval/<kind>.rs` interpreter module per `const`; no kind is reserved. Adding a new kind requires landing its interpreter in the same change.",
+            "description": "Kind of deterministic signal the hint describes. Every kind in the enum is executed by the `specify lint` hint interpreter, which carries one `eval/<kind>.rs` interpreter module per `const`; no kind is reserved. Adding a new kind requires landing its interpreter in the same change.",
             "oneOf": [
               { "const": "path-pattern" },
               { "const": "regex" },

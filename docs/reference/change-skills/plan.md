@@ -8,5 +8,5 @@ Survey bound sources, reconcile leads into `slices[]`, validate the plan, and ex
 
 - [Amend a plan at Gate 1](../../how-to/amend-plan-at-gate-1.md) — inspect and edit before stamping `approved`
 - [Bind multiple sources](../../how-to/bind-multiple-sources.md) — source binding patterns
-- [specrun plan](../cli/plan.md) — CLI reference
+- [specify plan](../cli/plan.md) — CLI reference
 - [Quick start tutorial](../../tutorials/quick-start.md) — hands-on first change

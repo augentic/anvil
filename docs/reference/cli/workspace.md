@@ -1,4 +1,4 @@
-# specrun workspace
+# specify workspace
 
 Materialise, prepare, and publish registry-backed workspace slots for multi-repo changes.
 
@@ -14,8 +14,8 @@ Materialise, prepare, and publish registry-backed workspace slots for multi-repo
 `sync` and `push` accept optional project selectors:
 
 ```bash
-specrun workspace sync [<project>...]
-specrun workspace push [<project>...]
+specify workspace sync [<project>...]
+specify workspace push [<project>...]
 ```
 
 Selectors are registry project names. Unknown selectors fail before filesystem, Git, or forge side effects. When selectors are omitted, `sync` operates on every project declared in `registry.yaml`; `push` classifies every registry project and only performs transport work for branches that need publication.
@@ -30,36 +30,36 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specrun workspace push`, and `/spec:finalize` (which runs `specrun plan archive` after PR observation). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `/spec:finalize` (which runs `specify plan archive` after PR observation). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
-### specrun workspace sync
+### specify workspace sync
 
 Clone or refresh selected projects declared in `registry.yaml` into `.specify/workspace/<project>/`.
 
 ```bash
-specrun workspace sync [<project>...]
+specify workspace sync [<project>...]
 ```
 
 For each selected registry project:
 
 - **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot, or fetches an existing matching clone.
 - **Local path** (`.`, `../foo`, `/absolute/path`) -- symlinks the resolved path into the workspace slot.
-- **Greenfield** (remote URL, repo does not yet exist) -- creates the local workspace slot, runs `git init`, sets `origin`, and bootstraps `.specify/project.yaml` via `specrun init <adapter>`. Remote repositories are not created during sync; creation happens, when supported, during `workspace push`.
+- **Greenfield** (remote URL, repo does not yet exist) -- creates the local workspace slot, runs `git init`, sets `origin`, and bootstraps `.specify/project.yaml` via `specify init <adapter>`. Remote repositories are not created during sync; creation happens, when supported, during `workspace push`.
 
-A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specrun init` is re-attempted without re-running `git init` or `git remote add`.
+A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
 
 Selected sync materialises selected slots only. Unselected registry projects are not cloned, fetched, symlinked, or contract-refreshed. Running without selectors syncs all registry projects. Non-zero exit if any selected project fails, with a per-project status summary.
 
-After materialisation succeeds, `sync` regenerates the committed `.specify/topology.lock` from each materialised slot's `project.yaml` (resolved target adapter, description) plus its deterministic baseline projection — `surface[]` (owned units + requirement titles, capped) from `.specify/specs/` and `recent[]` (the merge-outcome tail) from `.specify/journal.jsonl`. The lock is the plan-time topology source for workspace planning; it is machine-written (write-if-changed) and never hand-edited. `specrun plan validate` reports `topology-cache-stale` when a slot's `project.yaml` or baseline projection has diverged from the lock — the fix is to re-run `specrun workspace sync`.
+After materialisation succeeds, `sync` regenerates the committed `.specify/topology.lock` from each materialised slot's `project.yaml` (resolved target adapter, description) plus its deterministic baseline projection — `surface[]` (owned units + requirement titles, capped) from `.specify/specs/` and `recent[]` (the merge-outcome tail) from `.specify/journal.jsonl`. The lock is the plan-time topology source for workspace planning; it is machine-written (write-if-changed) and never hand-edited. `specify plan validate` reports `topology-cache-stale` when a slot's `project.yaml` or baseline projection has diverged from the lock — the fix is to re-run `specify workspace sync`.
 
-### specrun workspace push
+### specify workspace push
 
 Publish selected workspace clones that are already on the exact change branch.
 
 ```bash
-specrun workspace push [<project>...] [--dry-run]
+specify workspace push [<project>...] [--dry-run]
 ```
 
 The change name is read from `plan.yaml`; the expected branch is exactly `specify/<change-name>`. `workspace push` is transport-only PR publication/update. It never creates the local change branch, never checks out a branch, never commits files, never pushes a default branch, and never merges a PR.
@@ -125,17 +125,17 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 
 ## PR landing
 
-Automated workspace merge has been removed. There is no active `specrun workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
+Automated workspace merge has been removed. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
 /spec:finalize <name>
 ```
 
-`/spec:finalize` verifies the operator-merged PR state with `gh pr view` and archives the coordinator state via `specrun plan archive`; it does not merge PRs.
+`/spec:finalize` verifies the operator-merged PR state with `gh pr view` and archives the coordinator state via `specify plan archive`; it does not merge PRs.
 
 ## See also
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
 - [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
-- [`specrun plan archive`](plan.md) -- archive verb used by `/spec:finalize` after PRs are operator-merged
+- [`specify plan archive`](plan.md) -- archive verb used by `/spec:finalize` after PRs are operator-merged

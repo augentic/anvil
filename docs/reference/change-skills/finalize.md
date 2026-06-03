@@ -8,5 +8,5 @@ Close a drained change: push branches, observe PR state until every PR is `MERGE
 
 - [/spec:execute](execute.md) — drives slices until drain
 - [Cross-repo changes tutorial](../../tutorials/cross-repo-change.md) — workspace push and PR flow
-- [specrun plan](../cli/plan.md) — `plan archive`
+- [specify plan](../cli/plan.md) — `plan archive`
 - [Registry](../registry.md) — multi-repo platform setup

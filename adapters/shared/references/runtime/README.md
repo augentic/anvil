@@ -1,6 +1,6 @@
 # Shared spec runtime references
 
-Symlinks point at canonical files under `plugins/spec/references/` (and `review-team-protocol.md` under `docs/reference/`). `specrun init` vendors dereferenced copies into each cached target adapter at `references/spec-runtime/` so briefs can link with `../references/spec-runtime/...` inside the adapter tree only.
+Symlinks point at canonical files under `plugins/spec/references/` (and `review-team-protocol.md` under `docs/reference/`). `specify init` vendors dereferenced copies into each cached target adapter at `references/spec-runtime/` so briefs can link with `../references/spec-runtime/...` inside the adapter tree only.
 
 | Symlink | Canonical |
 | --- | --- |
@@ -23,4 +23,4 @@ The per-adapter `references/spec-runtime/` trees (~120 files across `adapters/{s
 
 After editing any canonical file, run `bash ./scripts/sync-adapter-spec-runtime.sh` (or `make lint` / `make ci`, which both run the `sync-spec-runtime` target first) so the materialised copies match, then commit the regenerated trees in the same change. There is currently no CI diff gate that fails when the materialised trees drift from canonical — a `sync-spec-runtime`-then-`git diff --exit-code` gate is a tracked follow-up; until it lands, the canonical-only discipline above is enforced by convention.
 
-Per-target `references/agent-teams.md` symlinks to `review-team-protocol.md` here so review briefs keep a stable relative link; `specrun init` vendors the dereferenced bytes into `references/spec-runtime/review-team-protocol.md`.
+Per-target `references/agent-teams.md` symlinks to `review-team-protocol.md` here so review briefs keep a stable relative link; `specify init` vendors the dereferenced bytes into `references/spec-runtime/review-team-protocol.md`.

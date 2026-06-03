@@ -44,11 +44,11 @@ section; record any deviation explicitly.
 ### Stage 2 — Review (operator pause)
 
 ```bash
-<paste the specrun plan validate / inspect plan.yaml commands actually run>
+<paste the specify plan validate / inspect plan.yaml commands actually run>
 ```
 
 - **Operator action taken:** `<accepted-as-authored | edited-via-amend | aborted>`
-- **`specrun plan amend` invocations:** `<none | list>`
+- **`specify plan amend` invocations:** `<none | list>`
 
 ### Stage 3 — Execute
 

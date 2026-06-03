@@ -6,7 +6,7 @@ The kernel renders three review-signal tags into `spec.md` from each requirement
 
 | Tag             | Mirrors `Status:` | Meaning                                                                          | Operator action                                            |
 | --------------- | ----------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `[unknown]`     | `unknown`         | No contributing Evidence supplied a claim for this requirement.                  | Add a source via `specrun plan amend --add-source` and re-refine, or hand-edit. |
+| `[unknown]`     | `unknown`         | No contributing Evidence supplied a claim for this requirement.                  | Add a source via `specify plan amend --add-source` and re-refine, or hand-edit. |
 | `[conflict]`    | `conflict`        | Multiple sources at the same authority class disagree; no winner.                | Hand-edit `spec.md` to pick a value and flip `Status: agreed`, or amend the plan to drop the losing source. |
 | `[divergence]`  | `divergence`      | Multiple sources disagree, but one wins by authority class (`intent > documentation > behaviour`). | Hand-edit `spec.md` if the authority-resolved winner is wrong, otherwise proceed. |
 
@@ -74,7 +74,7 @@ Note: legacy-monolith observed 24-hour expiry; the documentation authority overr
 
 Each line appended to `.specify/journal.jsonl` must be one JSON object, newline-terminated, with kebab-case keys only — no snake_case field names. Wire shape is adjacency-tagged `{ timestamp, event, payload }` (see the worked line in [plan divergence journal fixture](https://github.com/augentic/specify/blob/main/plugins/spec/skills/plan/fixtures/divergence-journal/journal.jsonl)).
 
-For each requirement block written with a `[unknown]` / `[conflict]` / `[divergence]` tag, `specrun slice validate` (step 6 of `/spec:refine`) appends one journal event after validation succeeds:
+For each requirement block written with a `[unknown]` / `[conflict]` / `[divergence]` tag, `specify slice validate` (step 6 of `/spec:refine`) appends one journal event after validation succeeds:
 
 | Tag             | Event id                       | Payload                                  |
 | --------------- | ------------------------------ | ---------------------------------------- |

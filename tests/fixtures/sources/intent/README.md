@@ -2,7 +2,7 @@
 
 Static fixture covering the degenerate N=1 path for the [`intent` source adapter](../../../../adapters/sources/intent/adapter.yaml). The fixture is shape-only: it pins the inputs `/spec:plan` and `/spec:refine` pass to the [`survey`](../../../../adapters/sources/intent/briefs/survey.md) and [`extract`](../../../../adapters/sources/intent/briefs/extract.md) briefs, and the outputs those briefs must emit.
 
-The `cli`-side acceptance harness (`specrun source resolve intent` plus the synthesis runner once W3.1 lands) is the executable surface that consumes this fixture. From this repository, the fixture is read-only documentation of the contract.
+The `cli`-side acceptance harness (`specify source resolve intent` plus the synthesis runner once W3.1 lands) is the executable surface that consumes this fixture. From this repository, the fixture is read-only documentation of the contract.
 
 ## Files
 

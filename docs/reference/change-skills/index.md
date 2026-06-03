@@ -27,7 +27,7 @@ Each row below links to a per-skill stub; the authoritative operator instruction
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator that delegates deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — to the `specrun` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
+Each skill is an agent-driven orchestrator that delegates deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
 
 Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `/spec:execute` sequences those skills; the same bodies run when you invoke a breakout by hand.
 

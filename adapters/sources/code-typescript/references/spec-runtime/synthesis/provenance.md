@@ -1,10 +1,10 @@
-# Provenance projection (`specrun slice provenance`)
+# Provenance projection (`specify slice provenance`)
 
-The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specrun slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only the shape of the projected view that records which rule fired.
+The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specify slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only the shape of the projected view that records which rule fired.
 
 ## How it's produced
 
-During `specrun slice synthesize` the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specrun slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and there is no `slice.provenance.written` event.
+During `specify slice synthesize` the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specify slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and there is no `slice.provenance.written` event.
 
 ## Block grammar
 
@@ -166,21 +166,21 @@ Boolean, optional:
 
 > The deferred per-Evidence `authority-overrides` surface (a future RFC — see [`authority.md`](authority.md)) would add a `per-evidence-authority-override` step here. It is out of scope for v1.
 
-The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specrun slice validate` will not refuse it.
+The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specify slice validate` will not refuse it.
 
 ## Audit posture
 
-The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specrun slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
+The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specify slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
-The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back) or amend `plan.yaml.slices[].authority-override` via `specrun plan amend`.
+The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back) or amend `plan.yaml.slices[].authority-override` via `specify plan amend`.
 
 ## No drift surface
 
-Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift, and the retired `slice-provenance-drift` validator is gone. `specrun slice validate` still checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift, and the retired `slice-provenance-drift` validator is gone. `specify slice validate` still checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
 
 ## Worked example
 
-A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specrun plan amend identity-password-reset --authority-override identity-password-reset criterion=runtime`. Three requirements illustrate the common shapes:
+A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specify plan amend identity-password-reset --authority-override identity-password-reset criterion=runtime`. Three requirements illustrate the common shapes:
 
 ```yaml
 version: 1

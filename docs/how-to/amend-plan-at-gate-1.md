@@ -10,12 +10,12 @@ Gate 1 is the operator review step between plan authoring and execution. `/spec:
 
 | Goal | Prefer |
 | --- | --- |
-| Rethink cross-source grouping | Re-run `specrun plan propose --from` (replaces all slices) |
-| Defer a lead out of this change | `specrun plan remove <entry>` |
-| Split or merge entries | `specrun plan add` + `specrun plan amend` + `specrun plan remove` — see the [plan command reference](../reference/cli/plan.md) |
-| Divergence stamp, authority override, single-source fix | `specrun plan amend <entry>` (the scalpel) |
+| Rethink cross-source grouping | Re-run `specify plan propose --from` (replaces all slices) |
+| Defer a lead out of this change | `specify plan remove <entry>` |
+| Split or merge entries | `specify plan add` + `specify plan amend` + `specify plan remove` — see the [plan command reference](../reference/cli/plan.md) |
+| Divergence stamp, authority override, single-source fix | `specify plan amend <entry>` (the scalpel) |
 
-There is one active `plan.yaml` per project. `specrun plan amend` takes **one positional — the entry (slice) name** — not a plan name plus entry name.
+There is one active `plan.yaml` per project. `specify plan amend` takes **one positional — the entry (slice) name** — not a plan name plus entry name.
 
 ## Step 1 — Read the plan artifacts
 
@@ -33,30 +33,30 @@ Use CLI verbs — never hand-edit `plan.yaml`:
 
 ```bash
 # Add a source binding to an existing entry
-specrun plan amend <entry> --add-source <key>=<lead>
+specify plan amend <entry> --add-source <key>=<lead>
 
 # Remove a source binding
-specrun plan amend <entry> --remove-source <key>
+specify plan amend <entry> --remove-source <key>
 
 # Mark likely divergence for Gate 1 acknowledgement
-specrun plan amend <entry> --divergence likely
+specify plan amend <entry> --divergence likely
 
 # Accept or reject a predicted divergence at Gate 1
-specrun plan amend <entry> --divergence accepted
+specify plan amend <entry> --divergence accepted
 
 # Override authority for a claim kind on this entry
-specrun plan amend <entry> --authority-override <entry> <kind>=<source>
+specify plan amend <entry> --authority-override <entry> <kind>=<source>
 
 # Defer an entry's lead(s) without re-surveying discovery.md
-specrun plan remove <entry>
+specify plan remove <entry>
 ```
 
-See [specrun plan](../reference/cli/plan.md) for the full amend surface.
+See [specify plan](../reference/cli/plan.md) for the full amend surface.
 
 ## Step 3 — Validate (optional)
 
 ```bash
-specrun plan validate --format json
+specify plan validate --format json
 ```
 
 Surface Error-level findings before stamping approved.
@@ -64,14 +64,14 @@ Surface Error-level findings before stamping approved.
 ## Step 4 — Stamp approved
 
 ```bash
-specrun plan transition <plan-name> approved
+specify plan transition <plan-name> approved
 ```
 
 Only after this transition will `/spec:execute` start.
 
 ## Splitting one slice into two
 
-When Gate 1 review shows a slice should split, add a second row with `specrun plan add`, narrow the original with `specrun plan amend <original> --sources …`, and `specrun plan remove <original>` when the original entry is empty. Scenario coverage lives in acceptance scenario #7.
+When Gate 1 review shows a slice should split, add a second row with `specify plan add`, narrow the original with `specify plan amend <original> --sources …`, and `specify plan remove <original>` when the original entry is empty. Scenario coverage lives in acceptance scenario #7.
 
 ## See also
 

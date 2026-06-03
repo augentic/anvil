@@ -77,7 +77,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 ## Validation
 
 ```bash
-make lint   # forwards to specdev lint
+make lint   # forwards to specify lint framework
 ```
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
@@ -137,7 +137,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/standards/src/framework/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specdev lint` (`make lint` locally) enforces both.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Predicate sources live in `augentic/specify-cli` under `crates/standards/src/framework/check/`; schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specify lint framework` (`make lint` locally) enforces both.
 
 ## For Contributors
 

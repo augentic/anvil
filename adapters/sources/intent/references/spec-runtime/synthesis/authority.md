@@ -22,7 +22,7 @@ The agent supplies the `agreement` verdict; the kernel derives `status` from the
 | ≥2       | `disagreed`, unique top authority | `divergence`    | `[divergence]`| winner `true`, losers `false` |
 | ≥2       | `disagreed`, top authority ties   | `conflict`      | `[conflict]`  | none                          |
 
-The kernel renders the headline tag to match `status` per the coherence rule in [`tags.md`](./tags.md); the provenance parser (consumed by `specrun slice validate`) refuses any hand-edit where a `[…]` headline tag and `Status:` disagree.
+The kernel renders the headline tag to match `status` per the coherence rule in [`tags.md`](./tags.md); the provenance parser (consumed by `specify slice validate`) refuses any hand-edit where a `[…]` headline tag and `Status:` disagree.
 
 ## Worked applications
 
@@ -133,19 +133,19 @@ slices:
 Rules:
 
 - Plan-wide and project-wide overrides are out of scope; the map is scoped to a single slice.
-- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specrun slice validate` with the structured error `slice-authority-override-orphan-source` before `/spec:refine` runs.
+- Orphan source keys (a value that is not in the slice's own `sources[]`) are rejected by `specify slice validate` with the structured error `slice-authority-override-orphan-source` before `/spec:refine` runs.
 - Operators author the map via the CLI; the synthesis playbook never asks an agent to hand-edit `plan.yaml`:
 
 ```bash
-specrun plan amend <entry> --authority-override <entry> <claim-kind>=<source>
-specrun plan amend <entry> --clear-authority-override <entry> <claim-kind>
-specrun plan amend <entry> --clear-authority-overrides
-specrun plan add   <entry> --authority-override <claim-kind>=<source>   # repeatable on create
+specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>
+specify plan amend <entry> --clear-authority-override <entry> <claim-kind>
+specify plan amend <entry> --clear-authority-overrides
+specify plan add   <entry> --authority-override <claim-kind>=<source>   # repeatable on create
 ```
 
 ### Resolution order
 
-When a requirement's `agreement` verdict is `disagreed`, the kernel walks the following ordered steps over the contributing claims. The first step that yields a winner stops the walk; the chosen step name is recorded inline in `model.yaml` at `requirements[].resolution-trace.step` (and surfaced by `specrun slice provenance`) so the operator can audit which surface broke the tie.
+When a requirement's `agreement` verdict is `disagreed`, the kernel walks the following ordered steps over the contributing claims. The first step that yields a winner stops the walk; the chosen step name is recorded inline in `model.yaml` at `requirements[].resolution-trace.step` (and surfaced by `specify slice provenance`) so the operator can audit which surface broke the tie.
 
 1. **`per-slice-authority-override`** — the slice's `authority-override.<kind>` names a source key that appears in the reconciled group's contributing sources. That source wins; the kernel derives `status: divergence` (or `agreed` when the override aligns with a shared value), and the runner-up survives with `winner: false`.
 2. **`document-authority-ordering`** — fall back to the document-level `authority:` enum (`intent > documentation > behaviour`). Highest class wins; ties at the top class continue to step 3.
@@ -186,7 +186,7 @@ The system expires password reset links after 24 hours. (from runtime; behaviour
 Note: identity-design-notes (documentation) says reset links expire after 30 minutes; the per-slice authority-override pins behaviour-class as the winner. Operator review recommended.
 ```
 
-The runner-up (`identity-design-notes`) is preserved verbatim as a `Note:` line. The `Sources:` list lists `runtime` first because the per-slice override promoted it to the operative source for this block — the audit trail (inline in `model.yaml`, surfaced by `specrun slice provenance`) reads `resolution-trace.step: per-slice-authority-override` with `override: { criterion: runtime }` and `winner: runtime`.
+The runner-up (`identity-design-notes`) is preserved verbatim as a `Note:` line. The `Sources:` list lists `runtime` first because the per-slice override promoted it to the operative source for this block — the audit trail (inline in `model.yaml`, surfaced by `specify slice provenance`) reads `resolution-trace.step: per-slice-authority-override` with `override: { criterion: runtime }` and `winner: runtime`.
 
 ## Notes
 
@@ -194,4 +194,4 @@ The runner-up (`identity-design-notes`) is preserved verbatim as a `Note:` line.
 - Per-kind and per-claim overrides remain out of scope for v1 (the per-Evidence `authority-overrides` surface is deferred to a future RFC). The override seam below per-slice granularity is re-running `/spec:refine` with a different `agreement` verdict or amended `plan.yaml.slices[].authority-override`, never a hand-edit of the kernel-rendered `spec.md` provenance lines.
 - The kernel renders the `Sources:` list with every contributing source key, highest authority first **after override resolution** — a per-slice override that promotes a `behaviour`-class source to the operative winner promotes that key to the front of the list for the affected block.
 - The provenance parser cross-resolves every `Sources:` key against the slice's `plan.yaml.slices[].sources[]` bindings; a stale or missing key fails validation. Per-slice `authority-override` source keys are checked by the same parser before `/spec:refine` runs.
-- Every override resolution — including step 2 fallbacks where no override fired — lands inline in `model.yaml` at `requirements[].resolution-trace.step` and is surfaced by `specrun slice provenance`. The projected provenance view is the audit surface; `spec.md` carries operator-facing prose only.
+- Every override resolution — including step 2 fallbacks where no override fired — lands inline in `model.yaml` at `requirements[].resolution-trace.step` and is surfaced by `specify slice provenance`. The projected provenance view is the audit surface; `spec.md` carries operator-facing prose only.

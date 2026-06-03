@@ -56,9 +56,9 @@ Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules
 
 The canonical "skills MUST NOT" list:
 
-- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specrun slice transition` or `specrun plan transition`.
-- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specrun slice create` / `specrun plan create`; the CLI owns directory shape.
-- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specrun slice merge`, `specrun slice transition <name> dropped`, and `specrun plan archive`.
+- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
+- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
+- **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan archive`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with a stable anchor instead.
 
@@ -108,7 +108,7 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specrun` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `.metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
+The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specify` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `.metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
 
 The skill-authoring consequence is the rule unique to this page: when a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it — not to make the skill smarter.
 
@@ -122,7 +122,7 @@ The upstream specs are Anthropic's [Agent Skills overview](https://platform.clau
 
 **Description examples — good.**
 
-> "Build the active in-progress slice by driving the two-phase `specrun slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task."
+> "Build the active in-progress slice by driving the two-phase `specify slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task."
 
 What + when, with concrete triggers (`/spec:execute`, `/spec:refine`) the discovery scorer can match.
 
@@ -151,4 +151,4 @@ Internal section citations and layer numbers occupy Stage 1 budget without telli
 - **`context`** — Claude Code context-attachment metadata. Source skills load durable context through body links and `<!-- skill: ... -->` directives.
 - **`paths`** — Claude Code auto-activation glob. Specify skills are invoked by slash command, by phase pipeline, or by direct trigger phrases — not by file pattern.
 
-**Portability posture.** Source skills are Cursor-plugin-first; the Cursor-only surface (marketplace layout, `/plugin:skill` slash routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, `<!-- skill: plugin:skill -->` directives) is part of the source contract because that is how skills compose inside Cursor. A Claude Code / upstream Agent Skills consumer should ship a separate compatibility *adapter* that strips or maps Cursor-only fields, replaces Cursor-only tool names, translates `<!-- skill: ... -->` delegation, and (where useful) adds target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or `paths`. Source visibility for mutating workflows is governed at runtime by skill bodies and the `specrun` CLI; export adapters may choose stricter activation policy.
+**Portability posture.** Source skills are Cursor-plugin-first; the Cursor-only surface (marketplace layout, `/plugin:skill` slash routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, `<!-- skill: plugin:skill -->` directives) is part of the source contract because that is how skills compose inside Cursor. A Claude Code / upstream Agent Skills consumer should ship a separate compatibility *adapter* that strips or maps Cursor-only fields, replaces Cursor-only tool names, translates `<!-- skill: ... -->` delegation, and (where useful) adds target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or `paths`. Source visibility for mutating workflows is governed at runtime by skill bodies and the `specify` CLI; export adapters may choose stricter activation policy.

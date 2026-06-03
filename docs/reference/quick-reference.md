@@ -21,7 +21,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/spec:init`             | One-time project setup; run `specrun init --workspace` for a registry-only workspace               |
+| `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
 | `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
@@ -69,46 +69,46 @@ refining --> refined --> built --> merged
 
 ```bash
 # Project setup
-specrun init <target>                                    # single-project scaffold (positional target adapter)
-specrun init --workspace                                       # registry-only workspace
-specrun source resolve <name>                            # validate a source adapter manifest
-specrun target resolve <value>                           # validate a target adapter (name, path, or URL)
+specify init <target>                                    # single-project scaffold (positional target adapter)
+specify init --workspace                                       # registry-only workspace
+specify source resolve <name>                            # validate a source adapter manifest
+specify target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specrun plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specrun plan propose --dry-run --format json                   # request the flat lead catalog + project topology
-specrun plan propose --from <response.json>                    # default slice writer after survey
-specrun plan add <entry> --sources <key>=<lead> --project <name>
-specrun plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
-specrun plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-specrun plan transition <plan-name> approved                 # Gate 1; operator-only
-specrun plan next                                        # active in-progress, or pick next pending
-specrun plan archive
+specify plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
+specify plan propose --dry-run --format json                   # request the flat lead catalog + project topology
+specify plan propose --from <response.json>                    # default slice writer after survey
+specify plan add <entry> --sources <key>=<lead> --project <name>
+specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
+specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
+specify plan transition <plan-name> approved                 # Gate 1; operator-only
+specify plan next                                        # active in-progress, or pick next pending
+specify plan archive
 
 # Slice management
-specrun slice create <name> --target <target>
-specrun slice transition <name> <refining|refined|built|dropped> [--reason "..."]
-specrun slice validate <name>
-specrun slice merge <name> [--dry-run|--check-only]
+specify slice create <name> --target <target>
+specify slice transition <name> <refining|refined|built|dropped> [--reason "..."]
+specify slice validate <name>
+specify slice merge <name> [--dry-run|--check-only]
 
 # Workspace (multi-repo)
-specrun workspace sync [<project>...]                    # materialise slots from registry.yaml
-specrun workspace prepare <project> --change <name>
-specrun workspace push [<project>...]                    # publish specify/<name> branch as PR
+specify workspace sync [<project>...]                    # materialise slots from registry.yaml
+specify workspace prepare <project> --change <name>
+specify workspace push [<project>...]                    # publish specify/<name> branch as PR
 
 # Tools
-specrun tool run <name> [args...]                        # run a declared WASI tool
+specify tool run <name> [args...]                        # run a declared WASI tool
 
 # Maintenance & bootstrap
-specrun upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
-specrun plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
-specrun plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
-specrun migrate [--from <X.Y.Z>] [--to <X.Y.Z>] [--dry-run|--yes]  # run registered migrators
-specrun init --upgrade                                   # bump specify_version + re-scaffold preservation-safe files only
-specrun init --check-migration --format json             # read-only major-version probe (needs-migration bool + plan)
+specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
+specify plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
+specify plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
+specify migrate [--from <X.Y.Z>] [--to <X.Y.Z>] [--dry-run|--yes]  # run registered migrators
+specify init --upgrade                                   # bump specify_version + re-scaffold preservation-safe files only
+specify init --check-migration --format json             # read-only major-version probe (needs-migration bool + plan)
 ```
 
-`specrun migrate --to` pins `specify_version` **verbatim** to the requested target (not necessarily the running binary). A pin on a major older than the binary is exit `4` (migrate up); a pin newer than the binary is exit `3` (upgrade the binary first). For `specrun upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specrun plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
+`specify migrate --to` pins `specify_version` **verbatim** to the requested target (not necessarily the running binary). A pin on a major older than the binary is exit `4` (migrate up); a pin newer than the binary is exit `3` (upgrade the binary first). For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
 
 ## Adapters
 

@@ -16,4 +16,4 @@ stop: build-failed
 - `.specify/slices/session-cookie-harden/.metadata.yaml` `status` stays `refined`.
 - `plan.yaml.slices[0].status` stays `in-progress` — `/spec:build` never writes `plan.yaml`.
 - The plan lock (acquired in standalone mode, held by parent in loop mode) releases on process exit.
-- No `specrun slice transition` call was made (success-only step).
+- No `specify slice transition` call was made (success-only step).

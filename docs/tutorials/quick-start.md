@@ -31,7 +31,7 @@ A minimal Omnia project where Specify plans, specifies, implements, and merges a
 Complete [Prerequisites](../orientation/prerequisites.md):
 
 - Cursor with Augentic plugins installed
-- `specrun` CLI (`specrun --version` succeeds)
+- `specify` CLI (`specify --version` succeeds)
 - Rust toolchain with `wasm32-wasip2` target for Omnia
 
 Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposable repo.
@@ -53,7 +53,7 @@ Run once per project:
 /spec:init omnia
 ```
 
-The skill runs `specrun init omnia`, which scaffolds:
+The skill runs `specify init omnia`, which scaffolds:
 
 ```text
 .specify/
@@ -128,7 +128,7 @@ Sources: 1. Leads: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specrun plan transition fix-typo approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
@@ -136,7 +136,7 @@ Plan `fix-typo` is at `pending`. Run `specrun plan transition fix-typo approved`
 Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `approved` itself; you do:
 
 ```bash
-specrun plan transition fix-typo approved
+specify plan transition fix-typo approved
 ```
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).

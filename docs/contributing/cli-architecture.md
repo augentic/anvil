@@ -1,6 +1,6 @@
 # CLI Architecture
 
-The `specrun` CLI lives in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repository. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specrun tool run`.
+The `specify` CLI lives in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repository. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify tool run`.
 
 ## Core crate dependency graph
 
@@ -82,7 +82,7 @@ The mapping from error variants to exit codes:
 
 ## Error handling
 
-Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specrun tool run` on stdout/stderr when the guest starts successfully.
+Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specify tool run` on stdout/stderr when the guest starts successfully.
 
 The pattern for a command handler:
 

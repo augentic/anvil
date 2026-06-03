@@ -1,10 +1,10 @@
-# specrun plan propose
+# specify plan propose
 
 Reconcile surveyed `discovery.md` leads into the plan's `slices[]` grouping. Two modes; exactly one is required.
 
 ```bash
-specrun plan propose --dry-run [--format json]
-specrun plan propose --from <response.json> [--format json]
+specify plan propose --dry-run [--format json]
+specify plan propose --from <response.json> [--format json]
 ```
 
 - `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
@@ -31,4 +31,4 @@ Validation codes (all exit 2):
 | `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
 | `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
 
-Envelopes validate against `schemas/discovery/proposal.schema.json` (`kind: request` for `--dry-run`, `kind: response` for `--from`). Full CLI reference: [specrun plan](https://specify.augentic.io/reference/cli/plan.html#specrun-plan-propose).
+Envelopes validate against `schemas/discovery/proposal.schema.json` (`kind: request` for `--dry-run`, `kind: response` for `--from`). Full CLI reference: [specify plan](https://specify.augentic.io/reference/cli/plan.html#specify-plan-propose).

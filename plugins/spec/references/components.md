@@ -39,8 +39,8 @@ components:
 
 | Surface | Finding | Meaning |
 | --- | --- | --- |
-| `specrun slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
-| `specrun tool run vectis -- validate composition` | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
+| `specify slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
+| `specify tool run vectis -- validate composition` | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
 
 ## What the catalog does not do
 

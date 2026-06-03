@@ -24,7 +24,7 @@ For a workspace registered inside a platform project, see [Registry](../referenc
 
 ## Step 2 — Plan from the workspace
 
-Run `/spec:plan` at the workspace (not from a project slot). Bind sources in the plan invocation. At propose time, route slices to registry slots with `specrun plan add --project <name>`.
+Run `/spec:plan` at the workspace (not from a project slot). Bind sources in the plan invocation. At propose time, route slices to registry slots with `specify plan add --project <name>`.
 
 ```text
 /spec:plan platform-auth source docs=./design-notes/auth
@@ -37,8 +37,8 @@ Each slice row in `plan.yaml` may carry a `project:` field naming the registry s
 Before execute, materialise peer clones:
 
 ```bash
-specrun workspace sync
-specrun workspace prepare <project> --change <name>
+specify workspace sync
+specify workspace prepare <project> --change <name>
 ```
 
 `/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `.specify/workspace/<project>/`.
@@ -46,11 +46,11 @@ specrun workspace prepare <project> --change <name>
 ## Step 4 — Execute with workspace routing
 
 ```bash
-specrun plan transition <name> approved
+specify plan transition <name> approved
 /spec:execute
 ```
 
-When a slice targets a project slot, refine/build/merge run inside that clone. Residue commits and merge commits follow workspace rules documented in [specrun workspace](../reference/cli/workspace.md).
+When a slice targets a project slot, refine/build/merge run inside that clone. Residue commits and merge commits follow workspace rules documented in [specify workspace](../reference/cli/workspace.md).
 
 ## Step 5 — Push and finalize
 
@@ -60,7 +60,7 @@ After execute drains:
 /spec:finalize <name>
 ```
 
-Finalize runs `specrun workspace push` to publish `specify/<change-name>` branches as pull requests, observes each PR until `MERGED`, then archives the plan. PR merges remain operator-owned.
+Finalize runs `specify workspace push` to publish `specify/<change-name>` branches as pull requests, observes each PR until `MERGED`, then archives the plan. PR merges remain operator-owned.
 
 ## What you learned
 
@@ -71,5 +71,5 @@ Finalize runs `specrun workspace push` to publish `specify/<change-name>` branch
 ## Next steps
 
 - [Registry](../reference/registry.md) — `registry.yaml` format
-- [specrun workspace](../reference/cli/workspace.md) — sync, prepare, push CLI reference
+- [specify workspace](../reference/cli/workspace.md) — sync, prepare, push CLI reference
 - [Drop down a layer](../how-to/drop-down-a-layer.md) — manual CLI when automation fails

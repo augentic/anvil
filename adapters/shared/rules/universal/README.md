@@ -1,10 +1,10 @@
 # Shared engineering standards (UNI-\*)
 
-Shared **engineering standards** catalog — target-agnostic rules under `adapters/shared/`. Codex is the on-disk rule format; these files are durable policy, not workflow state or slice artifacts. Read by every target adapter's build review brief during `/spec:build` and (when implemented) by `specrun lint` for deterministic CI enforcement. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
+Shared **engineering standards** catalog — target-agnostic rules under `adapters/shared/`. Codex is the on-disk rule format; these files are durable policy, not workflow state or slice artifacts. Read by every target adapter's build review brief during `/spec:build` and (when implemented) by `specify lint` for deterministic CI enforcement. Findings cite a rule here as a stable `rule_id` (for example `UNI-014`) alongside a report-local occurrence id (for example `UNI-3`) in `REVIEW.md`.
 
 See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
-This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map by the `check::rules` namespace map, so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specdev lint`.
+This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map by the `check::rules` namespace map, so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specify lint framework`.
 
 Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks/replay/) — shared build-time replay hook contract for targets that opt in.
 
@@ -52,7 +52,7 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specdev lint` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are kept byte-identical by `specdev lint`'s `rules.schema-drift` predicate. The minimum form:
+Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specify lint framework` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are kept byte-identical by `specify lint framework`'s `rules.schema-drift` predicate. The minimum form:
 
 ```markdown
 ---
@@ -93,6 +93,6 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
 3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](../../../targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](../../../targets/vectis/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
-4. Run `make lint` (which forwards to `specdev lint --framework-root .`). The relevant predicate is `framework::check::rules` in `specify-standards`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
+4. Run `make lint` (which forwards to `specify lint framework --framework-root .`). The relevant predicate is `framework::check::rules` in `specify-standards`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

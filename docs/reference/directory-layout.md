@@ -62,7 +62,7 @@ contracts/                                  # Baseline API contracts
 │       └── ...                             # Project clone or symlink, writable during execution
 │
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
-    ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specrun archive prune`)
+    ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specify archive prune`)
     │   ├── .metadata.yaml
     │   ├── proposal.md
     │   ├── design.md
@@ -81,9 +81,9 @@ contracts/                                  # Baseline API contracts
 
 ### `slices/`
 
-Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specrun slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specrun plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
+Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specrun slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -97,17 +97,17 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `.cache/`
 
-Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specrun source resolve` / `specrun target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache (with an append-only `index.jsonl`). The whole `.cache/` tree is regenerable and safe to delete.
+Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache (with an append-only `index.jsonl`). The whole `.cache/` tree is regenerable and safe to delete.
 
 ### `workspace/`
 
-Workspace slots for multi-repo changes. Created or refreshed by `specrun workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
+Workspace slots for multi-repo changes. Created or refreshed by `specify workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
 
-Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specrun workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `/spec:finalize` later observes the merge state with `gh pr view` before running `specrun plan archive`.
+Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `/spec:finalize` later observes the merge state with `gh pr view` before running `specify plan archive`.
 
 ### `archive/`
 
-A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.specify/specs/` baseline plus the append-only **outcome ledger** in `journal.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `specrun archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound. See [decision-log §"History via git plus an outcome ledger, not a slice graveyard"](../explanation/decision-log.md).
+A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.specify/specs/` baseline plus the append-only **outcome ledger** in `journal.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `specify archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound. See [decision-log §"History via git plus an outcome ledger, not a slice graveyard"](../explanation/decision-log.md).
 
 ## Files that do not live under `.specify/`
 

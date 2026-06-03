@@ -6,7 +6,7 @@ output templates and the workspace-clone commit semantics that step 5 invokes.
 ## Preview template
 
 Render this from the `operations[]` array returned by
-`specrun slice merge preview --format json`. Operations are typed `added`,
+`specify slice merge preview --format json`. Operations are typed `added`,
 `modified`, `removed`, `renamed`, or `created_baseline`:
 
 ```text
@@ -21,7 +21,7 @@ Merge Preview: <slice-name>
 - CREATING baseline with N requirements
 ```
 
-If `specrun slice merge preview` returns an empty `specs` array, report "No
+If `specify slice merge preview` returns an empty `specs` array, report "No
 delta specs to merge" and stop.
 
 ## Conflict-check surfacing
@@ -37,17 +37,17 @@ the baseline's `baseline-modified-at`:
 ## Workspace clone auto-commit
 
 When CWD is inside a workspace clone (`.specify/workspace/*/` with
-`.specify/project.yaml`), `specrun slice merge run` auto-commits **only**
+`.specify/project.yaml`), `specify slice merge run` auto-commits **only**
 `.specify/specs/` and `.specify/archive/` with message
 `specify: merge <slice-name>`. Commit failure is a **warning**, not an
 error — the spec merge still succeeds. Any project-output residue outside
 those two trees is left for `/spec:execute` to commit as
 `specify: residue <slice-name>`. Committed changes remain local until the
-operator explicitly runs `specrun workspace push`.
+operator explicitly runs `specify workspace push`.
 
 ## Summary template
 
-Render after `specrun slice merge run` succeeds, using `merged-specs[]` from
+Render after `specify slice merge run` succeeds, using `merged-specs[]` from
 the response:
 
 ```text
@@ -64,7 +64,7 @@ Decisions Promoted
 - DEC-0007: Use PostgreSQL for the identity store
 - DEC-0008: DPoP sender-constrained access tokens (supersedes DEC-0003)
 
-(or "No delta specs to merge" if `specrun slice merge preview` returned an
+(or "No delta specs to merge" if `specify slice merge preview` returned an
 empty `specs` array)
 
 All artifacts complete. All tasks complete.

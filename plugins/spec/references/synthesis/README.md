@@ -1,10 +1,10 @@
 # Synthesis playbook
 
-The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it authors the **synthesis response** that `specrun slice synthesize` projects into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`) and the typed `model.yaml`. The skill body owns the CLI choreography (slice create, serial extract, the two-phase `specrun slice synthesize` handoff, validate, transition); this playbook owns **what to write into the response**.
+The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it authors the **synthesis response** that `specify slice synthesize` projects into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`) and the typed `model.yaml`. The skill body owns the CLI choreography (slice create, serial extract, the two-phase `specify slice synthesize` handoff, validate, transition); this playbook owns **what to write into the response**.
 
 ## Agent / kernel split
 
-`specrun slice synthesize <slice> --dry-run` assembles the **inputs** envelope (each bound source's inline `lead` + `claims`, plus the resolved target `shape` brief); the agent authors the **response**; `specrun slice synthesize <slice> --from <response.json>` runs the CLI-owned projection kernel and persists everything. The line between the two is sharp:
+`specify slice synthesize <slice> --dry-run` assembles the **inputs** envelope (each bound source's inline `lead` + `claims`, plus the resolved target `shape` brief); the agent authors the **response**; `specify slice synthesize <slice> --from <response.json>` runs the CLI-owned projection kernel and persists everything. The line between the two is sharp:
 
 - **Agent (response).** Reconciles `Evidence[]` into the requirement set: which requirements exist and how claims merge or split. Per requirement it records the contributing `(source, id, kind)` claims, an `agreement` verdict (`agreed` / `disagreed`), the behavioural prose (`title`, `statement`, `scenarios[]`, `notes`), and the owning `unit`; plus the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and the spec bodies written **without** `ID:` / `Sources:` / `Status:` lines. The agent authors `TASK` ids and `satisfies[]` references (pointing at the declaration-order `REQ` ids the kernel will assign).
 - **Kernel (CLI).** Stamps the `version` / `slice` / `project` header, resolves authority, assigns `REQ` ids in declaration order, derives `status` and per-claim `winner` markers, renders the highest-authority-first `Sources:` lists, writes the inline provenance into `model.yaml`, and renders the `ID:` / `Sources:` / `Status:` lines into `spec.md`. Any kernel-owned field the agent supplies is ignored and re-derived — the kernel **normalises, never rejects**.
@@ -28,7 +28,7 @@ See [`substeps.md`](substeps.md) for the per-section contract.
 | [`authority.md`](authority.md)             | Authority hierarchy, the per-slice override on `plan.yaml` (per-Evidence per-kind overrides are deferred), the kernel's resolution order, and the agent's `agreement` verdict → kernel `status` derivation table. |
 | [`requirement-block.md`](requirement-block.md) | The agent-authored requirement prose plus the kernel-rendered `spec.md` block it projects into, per `status` variant. |
 | [`claim-reconciliation.md`](claim-reconciliation.md)       | How to reconcile per-`kind` and per-`authority` claims into the response; where each claim kind lands. |
-| [`provenance.md`](provenance.md)                   | Provenance projection (`specrun slice provenance`, inline in `model.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, and `resolution-trace` step names. |
+| [`provenance.md`](provenance.md)                   | Provenance projection (`specify slice provenance`, inline in `model.yaml`): block grammar per `resolution` enum value, inline `value` truncation, `winner` markers, and `resolution-trace` step names. |
 | [`tags.md`](tags.md)                       | Tag grammar (`[unknown]` / `[conflict]` / `[divergence]`) and the tag ↔ `status` coherence the kernel renders. |
 
 ## Posture

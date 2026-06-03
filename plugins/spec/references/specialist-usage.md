@@ -44,7 +44,7 @@ When a source adapter's `extract` reconstructs behaviour from legacy code, the s
 
 Never generate tasks that require human-only action: manual app testing, visual inspection, real-world API credentials, production services, physical-device checks, app-store review, or "ask the user to verify". When behaviour appears to need manual validation, write the agent-verifiable equivalent instead (a mocked API test, a replay, a simulator or build check, a contract test, or a scripted smoke test).
 
-`specrun slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/spec:build` as a preflight.
+`specify slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/spec:build` as a preflight.
 
 Tasks are implemented by the active target adapter's `build` brief, which carries the specialist orchestration inline; they do not route to standalone specialist skills.
 

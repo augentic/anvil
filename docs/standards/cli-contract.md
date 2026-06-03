@@ -1,12 +1,12 @@
 # CLI Contract
 
-The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`) shells out to the `specrun` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
+The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
 
 The CLI itself is built in the sibling [augentic/specify-cli](https://github.com/augentic/specify-cli) repository. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
 ## Rule: all deterministic operations live in the CLI
 
-The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries. Everything else runs through `specrun`.
+The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries. Everything else runs through `specify`.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb in the CLI repo and have the skill call it. The wrong fix is to make the skill smarter. The same rule is mirrored in the CLI repo's `AGENTS.md` under "Skill / CLI responsibility split".
 
@@ -18,50 +18,50 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Project
 
-- `specrun init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--workspace` is the mutually exclusive alternative: it scaffolds a registry-only workspace whose `project.yaml` carries only `workspace: true` (the `adapter:` field is omitted). `specrun init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
-- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `model.yaml`, `discovery.md`) rather than formatted dashboard commands. The provenance audit view is projected on demand by `specrun slice provenance`, not a persisted file.
+- `specify init <adapter>` — scaffold `.specify/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `--workspace` is the mutually exclusive alternative: it scaffolds a registry-only workspace whose `project.yaml` carries only `workspace: true` (the `adapter:` field is omitted). `specify init` invoked with neither (or both) exits `2` with clap's standard parse-error diagnostic.
+- Read-only state inspection is direct file inspection (`plan.yaml`, `registry.yaml`, `.metadata.yaml`, `model.yaml`, `discovery.md`) rather than formatted dashboard commands. The provenance audit view is projected on demand by `specify slice provenance`, not a persisted file.
 
 ### Slice (per-slice lifecycle)
 
-- `specrun slice {create, validate, transition, touched-specs, overlap, drop}` — slice CRUD and lifecycle.
-- `specrun slice synthesize` — two-phase synthesis: `--dry-run` emits the agent inputs envelope, `--from <response.json>` projects the agent response into `model.yaml` plus the Markdown artifacts (the only writer).
-- `specrun slice build` — two-phase target build: `--phase prepare` assembles the build request, `--phase finalize` validates the report and gates the `built` transition.
-- `specrun slice {model show, provenance}` — read-only views: `model show` renders `model.yaml`; `provenance` projects the audit-only inline-provenance view on demand.
-- `specrun slice merge {preview, conflict-check, run}` — three-phase merge into the baseline.
-- `specrun slice task {progress, mark}` — per-task progress writes.
+- `specify slice {create, validate, transition, touched-specs, overlap, drop}` — slice CRUD and lifecycle.
+- `specify slice synthesize` — two-phase synthesis: `--dry-run` emits the agent inputs envelope, `--from <response.json>` projects the agent response into `model.yaml` plus the Markdown artifacts (the only writer).
+- `specify slice build` — two-phase target build: `--phase prepare` assembles the build request, `--phase finalize` validates the report and gates the `built` transition.
+- `specify slice {model show, provenance}` — read-only views: `model show` renders `model.yaml`; `provenance` projects the audit-only inline-provenance view on demand.
+- `specify slice merge {preview, conflict-check, run}` — three-phase merge into the baseline.
+- `specify slice task {progress, mark}` — per-task progress writes.
 
 ### Change plan
 
-- `specrun plan {create, propose, validate, next, add, amend, remove, transition, archive}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `propose --dry-run` returns the flat lead catalog + project topology for the agent, and `propose --from <response.json>` is the default slice writer (validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`. The `/spec:execute` driver lock is the `flock`-based `.specify/plan.lock` snippet in [`plugins/spec/references/plan-lock.md`](../../plugins/spec/references/plan-lock.md), not a CLI verb.
+- `specify plan {create, propose, validate, next, add, amend, remove, transition, archive}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `propose --dry-run` returns the flat lead catalog + project topology for the agent, and `propose --from <response.json>` is the default slice writer (validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`. The `/spec:execute` driver lock is the `flock`-based `.specify/plan.lock` snippet in [`plugins/spec/references/plan-lock.md`](../../plugins/spec/references/plan-lock.md), not a CLI verb.
 
 ### Change umbrella
 
-- `specrun plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specrun plan *`; PR-state confirmation belongs to `/spec:finalize` and its `gh pr view` observation loop before this verb runs.
+- `specify plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specify plan *`; PR-state confirmation belongs to `/spec:finalize` and its `gh pr view` observation loop before this verb runs.
 
 ### Registry and workspace
 
-- `specrun registry {validate, add, remove}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- `specrun workspace {sync, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specrun workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specrun plan archive`.
+- `specify registry {validate, add, remove}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
+- `specify workspace {sync, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specify workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specify plan archive`.
 
 ### Source / target adapters and declared tools
 
-- `specrun source {resolve, survey, extract, preview}` and `specrun target {resolve}` — the axis-split adapter surface that replaced the retired `specify adapter` family. `resolve` locates a manifest and reports its declared operations; `survey` / `extract` are the two-phase (`--phase prepare|finalize`) workflow operations that merge leads into `discovery.md` and persist Evidence; `source preview` runs survey + extract in isolation without touching `.specify/`.
-- `specrun tool {run, fetch, gc, schema}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
+- `specify source {resolve, survey, extract, preview}` and `specify target {resolve}` — the axis-split adapter surface that replaced the retired `specify adapter` family. `resolve` locates a manifest and reports its declared operations; `survey` / `extract` are the two-phase (`--phase prepare|finalize`) workflow operations that merge leads into `discovery.md` and persist Evidence; `source preview` runs survey + extract in isolation without touching `.specify/`.
+- `specify tool {run, fetch, gc, schema}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
 
-Today the per-slice verbs live under `specrun slice *` and the umbrella verbs live under `specrun plan *`.
+Today the per-slice verbs live under `specify slice *` and the umbrella verbs live under `specify plan *`.
 
 ## Plan-driven loop composition
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specrun plan transition <change-name> approved` command is printed for the operator.
-2. **Gate 1.** Operator runs `specrun plan transition <change-name> approved` — the only writer of `approved`. `/spec:plan` never stamps `approved` itself.
-3. **Execute.** `/spec:execute` refuses unless the plan is `approved`; it repeatedly picks `specrun plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:refine → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
-4. **Finalize.** `/spec:finalize <change-name>` runs `specrun workspace push`, observes PR state via `gh pr view`, and runs `specrun plan archive` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specify plan transition <change-name> approved` command is printed for the operator.
+2. **Gate 1.** Operator runs `specify plan transition <change-name> approved` — the only writer of `approved`. `/spec:plan` never stamps `approved` itself.
+3. **Execute.** `/spec:execute` refuses unless the plan is `approved`; it repeatedly picks `specify plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:refine → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
+4. **Finalize.** `/spec:finalize <change-name>` runs `specify workspace push`, observes PR state via `gh pr view`, and runs `specify plan archive` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specrun plan {create, add, amend}`, drive the loop yourself via `specrun plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specrun plan next`; per-entry `done` is written by `specrun slice merge`), then run `specrun workspace push`, verify PRs with `gh pr view`, and run `specrun plan archive` by hand.
+Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), then run `specify workspace push`, verify PRs with `gh pr view`, and run `specify plan archive` by hand.
 
-The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specrun plan propose --from` (default), `specrun plan add`, `specrun plan amend`, and `specrun plan remove`; plan *status* is only ever written via `specrun plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specrun plan add` / `specrun plan amend` — the same commands humans run.
+The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specify plan propose --from` (default), `specify plan add`, `specify plan amend`, and `specify plan remove`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
 The three change-lifecycle skills (`/spec:plan`, `/spec:execute`, `/spec:finalize`) are peers; there is no umbrella that drives all three in one shot. Operators who want a single command can write a thin shell wrapper, accepting that the wrapper opts out of the Gate-1 operator review pause between plan and execute. Each skill is idempotent on re-entry; halts surface verbatim and resume by re-running the same skill.
 
@@ -69,9 +69,9 @@ The three change-lifecycle skills (`/spec:plan`, `/spec:execute`, `/spec:finaliz
 
 The contracts target adapter's `build` brief carries author / import / verify intents for OpenAPI, AsyncAPI, and JSON Schema as format sub-flows. Each sub-flow dispatches to sibling references under `adapters/targets/contracts/references/<format>/`: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@v1` adapter, and the `contracts/` baseline directory keep their original names.
 
-The matching CLI surface is the declared `contract` WASI tool, run through `specrun tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party adapter owning its own validation behaviour; the contracts adapter merge brief now shells out through `specrun tool run` as the post-merge baseline gate.
+The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party adapter owning its own validation behaviour; the contracts adapter merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specrun tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
+Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ## JSON envelope
 
@@ -82,22 +82,22 @@ The canonical envelope shapes — including the success / error variants and per
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
 - `registry-amendment-required` — `/spec:execute` phase outcome carrying a structured proposal payload for adapters that need a new registry project.
-- `description-missing-multi-repo` — `specrun registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specrun plan validate` health diagnostics.
-- `no-branch` — `specrun workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
+- `description-missing-multi-repo` — `specify registry` shape validation invariant.
+- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
+- `no-branch` — `specify workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 
 ## Exit codes
 
-The CLI uses a five-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specrun tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
+The CLI uses a five-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse `data`. |
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, undeclared/over-permissioned tool, argument errors. |
-| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` — the project's `specify_version` is **newer** than this binary; surface the upgrade hint (`specrun upgrade`). |
-| `4` | `EXIT_MIGRATION_REQUIRED` | `Error::ProjectNeedsMigration` — the project's pinned `specify_version` MAJOR is **older** than this binary; run `specrun migrate`. The asymmetric twin of code `3`. |
+| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` — the project's `specify_version` is **newer** than this binary; surface the upgrade hint (`specify upgrade`). |
+| `4` | `EXIT_MIGRATION_REQUIRED` | `Error::ProjectNeedsMigration` — the project's pinned `specify_version` MAJOR is **older** than this binary; run `specify migrate`. The asymmetric twin of code `3`. |
 
 Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the five slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 

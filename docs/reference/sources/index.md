@@ -23,7 +23,7 @@ You bind sources per change at plan time (`/spec:plan <name> source docs=./desig
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
-Authority is set on the **Evidence document** during `extract`, not in `adapter.yaml`; the table above lists the default each adapter's extract brief emits. Operators can override authority per slice at Gate 1 with `specrun plan amend <entry> --authority-override`.
+Authority is set on the **Evidence document** during `extract`, not in `adapter.yaml`; the table above lists the default each adapter's extract brief emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
 
 ## Manifest shape
 
@@ -66,7 +66,7 @@ Both operations run sandboxed under the WASI Preview 2 posture — directory pre
 
 ## Validation
 
-The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specrun source resolve <name>` loads and validates the manifest on first use; `specrun source survey` / `specrun source extract` run the bound operation under the declared `execution` mode.
+The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation under the declared `execution` mode.
 
 ## See also
 

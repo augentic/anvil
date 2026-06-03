@@ -1,6 +1,6 @@
 # Framework convergence rules (`CORE-*`)
 
-First-party rules that enforce framework-repository invariants through the shared deterministic-hint interpreter. The pack root activates the second shared resolution root (`adapters/shared/rules/<pack>/`) with pack name `core`; resolved rules carry `origin: core`. `CORE-*` rules participate in `specdev lint` runs by default and are excluded from consumer-side `specrun rules export` / `specrun lint` unless the operator passes `--include-core`.
+First-party rules that enforce framework-repository invariants through the shared deterministic-hint interpreter. The pack root activates the second shared resolution root (`adapters/shared/rules/<pack>/`) with pack name `core`; resolved rules carry `origin: core`. `CORE-*` rules participate in `specify lint framework` runs by default and are excluded from consumer-side `specify rules export` / `specify lint` unless the operator passes `--include-core`.
 
 This directory is the peer of [`adapters/shared/rules/universal/`](../universal/README.md): same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `adapters/shared/rules/core/`; the placement predicate in `check::rules` rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
 
@@ -63,7 +63,7 @@ Every v1 hint kind is now executable: `path-pattern`, `schema`, `regex`, `tool`,
 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
-3. Add the rule, then run `make lint`. `specdev lint` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
+3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
 4. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/standards/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the existing fingerprint algorithm collapses duplicate findings during the overlap.
 5. Pair each new `CORE-*` rule with the existing imperative predicate it replaces by consulting the **predicate migration map** in the standards-enforcement decision record (filed in the design-history tree). The map names which `Check` row each reserved hint kind is intended to retire; rules without a mapped predecessor are still legal but should land with a smoke-test fixture rather than a parity test.
 

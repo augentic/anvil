@@ -16,7 +16,7 @@ set -euo pipefail
 # To update a mirror after the CLI source changes, copy the CLI source over the
 # .cursor/schemas/ file (do not hand-edit the mirror).
 
-# Resolve the CLI repo root the same way the Makefile resolves SPECDEV_MANIFEST:
+# Resolve the CLI repo root the same way the Makefile resolves SPECIFY_MANIFEST:
 # prefer ./specify-cli (the CI layout), else ../specify-cli (the local sibling layout).
 if [ -f "specify-cli/Cargo.toml" ]; then
   CLI_ROOT="specify-cli"

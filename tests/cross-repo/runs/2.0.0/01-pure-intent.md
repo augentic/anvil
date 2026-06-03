@@ -8,7 +8,7 @@
 
 > Operator runs `/spec:plan fix-typo "fix typo in user.rs"`.
 
-**Stress-tests:** Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specrun plan transition fix-typo approved` command -- the operator runs it, then `/spec:execute`. The skill never auto-stamps `approved`.
+**Stress-tests:** Degenerate `intent.enumerate`; Gate 1 ergonomics on trivial work; `change.md` + `plan.yaml` justifiability at N=1; `Sources: [intent]` provenance; `/spec:plan` exits at `pending` and prints the literal `specify plan transition fix-typo approved` command -- the operator runs it, then `/spec:execute`. The skill never auto-stamps `approved`.
 
 ## Run-summary
 

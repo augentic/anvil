@@ -27,9 +27,9 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 At propose time, reconcile leads across sources through the D2 envelope:
 
 ```bash
-specrun plan propose --dry-run --format json
+specify plan propose --dry-run --format json
 # agent authors response.json
-specrun plan propose --from response.json
+specify plan propose --from response.json
 ```
 
 Single-source intent slices may omit `project` when only one project exists; the kernel auto-binds and normalises `sources: [intent]`.
@@ -38,7 +38,7 @@ Single-source intent slices may omit `project` when only one project exists; the
 
 When cross-source grouping is uncertain, `/spec:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review at Gate 1; amend before stamping `approved`.
 
-When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `specrun plan amend <entry> --divergence likely`.
+When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `specify plan amend <entry> --divergence likely`.
 
 ## See also
 

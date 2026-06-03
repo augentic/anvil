@@ -7,7 +7,7 @@ The verifier runs in two modes:
 | Surface                            | Output format                                  | Caller                                         | Trigger                                        |
 | ---------------------------------- | ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
 | Format verifier `single` (default) | Markdown                                       | contracts adapter build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
-| Format verifier `cross-project`    | JSON envelope from `specrun tool run contract` | contracts adapter merge brief                  | Post-merge baseline validation gate            |
+| Format verifier `cross-project`    | JSON envelope from `specify tool run contract` | contracts adapter merge brief                  | Post-merge baseline validation gate            |
 
 `single` mode is human-readable; the contracts adapter build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope.
 

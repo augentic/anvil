@@ -6,7 +6,7 @@ change lifecycle (`/spec:plan` → operator review → `/spec:execute` → `/spe
 
 1. draft a multi-slice change from a short feature brief (`/spec:plan`)
 2. review the draft plan at the operator pause (`inspect plan.yaml`,
-   optional `specrun plan amend`)
+   optional `specify plan amend`)
 3. execute contract and implementation slices in dependency order
    (`/spec:execute loop`)
 4. drive the post-execute tail (`/spec:finalize`): push prepared workspace

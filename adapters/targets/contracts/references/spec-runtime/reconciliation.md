@@ -67,9 +67,9 @@ Tags never park the slice. Synthesis tags the requirement and proceeds. The oper
 
 ## model.yaml and the provenance trail
 
-`model.yaml` (at `.specify/slices/<slice>/model.yaml`) is the single structured record of a refined slice. It holds the requirement set with **inline provenance** — for each requirement, which claims contributed and which one won — plus the task list and a small header. It is the artifact `specrun slice validate` checks for drift, and it is what later steps read instead of re-parsing the markdown.
+`model.yaml` (at `.specify/slices/<slice>/model.yaml`) is the single structured record of a refined slice. It holds the requirement set with **inline provenance** — for each requirement, which claims contributed and which one won — plus the task list and a small header. It is the artifact `specify slice validate` checks for drift, and it is what later steps read instead of re-parsing the markdown.
 
-There is no separate `provenance.yaml` on disk. The full audit view is *projected on demand* from `model.yaml` and the Evidence files by `specrun slice provenance`, so the trail can never drift out of sync with the spec.
+There is no separate `provenance.yaml` on disk. The full audit view is *projected on demand* from `model.yaml` and the Evidence files by `specify slice provenance`, so the trail can never drift out of sync with the spec.
 
 ## See also
 

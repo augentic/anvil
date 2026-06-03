@@ -26,7 +26,7 @@ You do not need to read this guide front to back. Pick the row that matches wher
 Every change flows through one rhythm:
 
 1. **Plan** — `/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
-2. **Operator review (Gate 1)** — you stamp `approved`: `specrun plan transition <name> approved`.
+2. **Operator review (Gate 1)** — you stamp `approved`: `specify plan transition <name> approved`.
 3. **Execute** — `/spec:execute` loops per slice: refine → build → merge.
 4. **Finalize** — `/spec:finalize` pushes branches, observes PRs, archives the plan.
 
@@ -55,7 +55,7 @@ Artifacts are regular files — you commit and review them like source code. `/s
 
 You can also run one phase by hand (a **breakout**) — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Behind the skills, the `specrun` CLI handles deterministic work: validation, lifecycle transitions, spec merging. The agent keeps judgment; the CLI keeps correctness.
+Behind the skills, the `specify` CLI handles deterministic work: validation, lifecycle transitions, spec merging. The agent keeps judgment; the CLI keeps correctness.
 
 ## Going deeper
 
