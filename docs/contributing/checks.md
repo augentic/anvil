@@ -315,7 +315,7 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specify lint`.
 
-> **Declarative lint program (RFC-31 complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records: specify-cli `docs/standards/rfc-31-phase{1,2}-spike.md`, `rfc-31-sidecar-schemas.md`; posture in DECISIONS and DIAGNOSTICS §A16.
+> **Declarative lint program (complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records live under specify-cli `docs/standards/` (phase 1 and phase 2 spike docs, sidecar schema notes); posture is documented in DECISIONS and the diagnostics annex on declarative lint.
 
 ### Choose `CORE-*` (declarative) when
 
