@@ -47,7 +47,7 @@ When asked to "run specify's acceptance tests and report any issues", an agent s
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
-   - A missing 2.0 binary. `scripts/resolve-specify-bin.sh` resolves `$SPECIFY_BIN` → the sibling release build and capability-gates it; the agent hands back only when resolution fails (no built binary, or the candidate is not a 2.0 build), never picking a binary blindly.
+   - A missing `specify` binary. `make acceptance` builds one and prints the resolved path, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists (or the candidate is not a `specify` build), never picking a binary blindly.
    - Real forge PR merges between the two `/spec:finalize` invocations.
    - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
    - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).

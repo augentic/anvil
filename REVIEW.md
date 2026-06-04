@@ -12,7 +12,7 @@
 
 | Rank | Focus | Why (optimize lens) |
 | --- | --- | --- |
-| **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live 2.0 binary. Catalog: [`acceptance/suites/lifecycle/README.md`](acceptance/suites/lifecycle/README.md). |
+| **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live `specify` binary. Catalog: [`acceptance/suites/lifecycle/README.md`](acceptance/suites/lifecycle/README.md). |
 | **2** | **Executable harness for `acceptance/examples/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/examples` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
 | **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint run`) is thinly covered (`tests/lint_run.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
 | **4** | **CORE parity coverage gaps** | `crates/standards/tests/core_parity.rs` pins **16** ids; **36** `CORE-*` rule files still run via `authoring-predicate` bridge without parity tests. Incremental parity reduces bridge retirement risk. |
