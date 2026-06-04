@@ -30,9 +30,6 @@ acceptance:
 	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test fan_in_fan_out --test source_extract --test slice --test plan_orchestrate --test workspace
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
-	@echo
-	@echo "Symlinked specify -> $(SPECIFY_LINK)"
-	@echo "Bare 'specify' resolves to: $$(command -v specify 2>/dev/null || echo '<not on PATH>')"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
 # Scaffold one acceptance scenario's disposable environment up to its
