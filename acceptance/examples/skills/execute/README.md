@@ -1,6 +1,6 @@
 # `/spec:execute` worked-example fixtures
 
-Static fixtures pinning the four `/spec:execute` acceptance scenarios (see [`docs/contributing/acceptance.md` §Scenario IDs](../../../../docs/contributing/acceptance.md#scenario-ids) and [`docs/reference/lifecycle.md`](../../../../docs/reference/lifecycle.md)):
+Static fixtures pinning the four `/spec:execute` acceptance scenarios (see the [lifecycle scenario catalog](../../../suites/lifecycle/README.md) and [`docs/reference/lifecycle.md`](../../../../docs/reference/lifecycle.md)):
 
 | Scenario | Fixture directory | What it pins |
 |---|---|---|

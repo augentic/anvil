@@ -17,5 +17,5 @@ fails with `Broken link`, the predicate has regressed.
 - Sample 3: `[broken target](this-path-does-not-exist.md)`
 
 This file deliberately omits YAML frontmatter so the scenario-frontmatter
-check skips it (per `acceptance/suites/plan-authoring/README.md`: "Prose-only documents ... are
-skipped by the scenario frontmatter check").
+check skips it (per `acceptance/README.md`: "Prose-only files ... lack scenario
+frontmatter and are skipped").
