@@ -116,7 +116,6 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 **Severity mapping.** Authoring imperative rule ids map to `Diagnostic` severities through `severity_for` in [`crates/standards/src/framework/builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs):
 
 - `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
-- `adapter.execution-agent` → `suggestion` — a first-party adapter running via `agent` is informational and must never block CI.
 - every other authoring family (`adapter.*`, `agent-teams.*`, `links.*`, `scenarios.*`, `skill.*`, …) → `important` via the default.
 
 **`rule-id` carries the closed `CORE-NNN` id.** Declarative rules set `rule_id` from the rule file's `id:` frontmatter. The imperative namespace bridge maps `rules.namespace-ownership-violation` to `CORE-009` via `CORE_ID_TABLE` in [`builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs). Migratable predicates retired from that table run through `kind: authoring-predicate` on their `CORE-*` rule files until native hint parity replaces the bridge.
