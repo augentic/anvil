@@ -1,6 +1,6 @@
 # specify source and target resolve
 
-Adapter resolution in 2.0 splits by axis. The retired `specify adapter *` verb family is replaced by two entry points.
+Adapter resolution splits by axis. The retired `specify adapter *` verb family is replaced by two entry points.
 
 ## specify source resolve
 

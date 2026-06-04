@@ -1,90 +1,101 @@
 # Running Acceptance
 
-The acceptance surface has two layers:
+This is the single entry point for Specify acceptance. It defines the two acceptance surfaces, how an operator (or agent) runs them, the wave ordering and halt gate, and the green-gate signal.
 
-1. **Static repository checks** — `make lint` runs `specify lint framework --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-standards` framework predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-standards` framework — so this repo does not re-run it.
-2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specify lint framework` does **not** pin synthesised bytes.
+The scenario catalog — the canonical list of every scenario, its wave, release-blocker status, and run status — lives in [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md). This document does not duplicate that table.
 
-## Running checks locally
+## The two acceptance surfaces
+
+A release is proven only when **both** surfaces are green:
+
+1. **Deterministic CLI proof — automated.** `cargo make test` in [`augentic/specify-cli`](https://github.com/augentic/specify-cli) (including [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs)) asserts the envelope, ordering, and re-projection determinism of the whole CLI path: `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen. Plus the static repository checks: `make lint` runs `specify lint framework --framework-root .` against the live tree (skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, scenario frontmatter).
+2. **Operator scenario sweep — manual.** The `lifecycle` scenarios in [`acceptance/lifecycle/`](../../acceptance/lifecycle/) exercise the full `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`, plus the per-target generated-output-correctness gate. A schema-valid `build/report.yaml` with `status: success` proves the build envelope held, **not** that the generated code compiles or replays — so each exercised target must also pass `cargo check` / `cargo test` / its replay suite (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of envelope validity.
+
+The scenario sweep is intentionally **not** an automated harness: no runner, fake forge, recorded transcript, CI target, or golden-output comparison. That posture is encoded as the `negative-expectations` frontmatter on every scenario and is the one place this rationale is stated — individual scenarios do not repeat it in prose. It remains manual because it involves LLM-emitted prose; `specify lint framework` does not pin synthesised bytes.
+
+**Fixture-backed scenarios are the exception.** A scenario whose assertions are entirely deterministic CLI/host behavior — no LLM prose to judge — is promoted to `backend: fixture` and proven by a named test in surface 1, not the manual sweep. Its scenario file carries an **Automated coverage** section naming the test (e.g. `source-sandbox-denied` → `tests/source_extract.rs::sandbox_denies_out_of_scope`), and its catalog status is `automated`. The manual sweep skips these; the deterministic surface covers them on every commit. The `negative-expectations` (no runner / no CI target) apply only to the manual-prose scenarios, so a fixture-backed scenario drops them.
+
+**What keeps a scenario manual.** A scenario stays on the manual sweep when at least one assertion is irreducible to deterministic CLI/host behavior. Three categories, each with the deterministic substrate that *is* covered by surface 1 named alongside:
+
+1. **LLM-prose judgment** — whether a synthesized `spec.md` / `design.md` reads correctly, or a plan decomposes a brief sensibly (e.g. `pure-intent`, `documentation-one-slice`, `plan-single-project`, `target-shape-injection`, `cross-source-merge`). The CLI substrate — provenance/`Sources:` rendering, `[conflict]`/`[divergence]` tagging, propose routing, the embedded `shape` brief in the synthesis envelope — is covered by `tests/slice/synthesize.rs`, `tests/plan_orchestrate/`, and `tests/fan_in_fan_out.rs`.
+2. **Skill-loop orchestration** — the `/spec:execute` stop / resume / `all-done` behavior emitted by skill markdown, not by any single CLI verb (e.g. `execute-build-failure`, `stepthrough-breakout`, `stale-workspace-recovery`, `workspace-breakout`). The per-step primitives — build-finalize gating (`tests/slice_build.rs`), `plan next` advance, `slice merge` stamping `done`, `workspace sync` dirty-slot detection (`tests/workspace.rs`) — are covered; the loop that sequences them is not.
+3. **Live-forge interaction** — real PR pushes/merges between `/spec:finalize` invocations (e.g. `cross-repo-contract-flow`, `workspace-execute-two-projects`), and skill-enforced pre-flight refusals (`dual-driving-refused`). No deterministic fixture stands in for a live forge or a live `cursor-agent` pre-flight.
+
+This is the boundary: a scenario is promotable to `backend: fixture` only when *every* assertion falls outside these three categories. Re-confirm against this list before adding a scenario to the manual sweep — if all its assertions are deterministic, it belongs in surface 1 instead.
+
+## Running the automated surface
 
 ```bash
-make lint
+make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
+make acceptance    # builds the release binary, runs make lint + the fixture-backed acceptance tests, then prints the SPECIFY_BIN export line for the sweep
 ```
 
-Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
+`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the fixture-backed acceptance tests against the sibling `specify-cli` checkout — `fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, and `workspace`, which carry the named tests behind every `automated` catalog entry — prints an `export SPECIFY_BIN=…` line, then points at the manual sweep below. (`cargo make test` in `specify-cli` remains the full deterministic surface, including the wasm-tool suites `make acceptance` skips for portability.) It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
 
-## Targets
+`make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
-- `make lint` runs `specify lint framework` — static repository checks, including scenario frontmatter validation.
-- `make ci` runs `make lint` plus the `check-schemas` target (`scripts/check-schema-mirror.sh`, which verifies the `.cursor/schemas/` mirrors match the CLI). Bare `make lint` does not run the schema-mirror check.
-- The `specify-standards` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
-- The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
-- The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
+## Running the manual sweep
 
-## Synthesis byte-replay (deferred)
+The sweep needs a `specify` binary. `make acceptance` builds one and prints an `export SPECIFY_BIN=…` line — copy-paste it before running the sweep. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and `export SPECIFY_BIN=/abs/path/to/specify-cli/target/release/specify` yourself.
 
-The harness in the `specify-standards` crate covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. The skill bodies are agent-driven markdown and the byte-equivalent of "synthesis golden" requires either:
+For each scenario:
 
-- a **recorded-transcript layer** that captures a `cursor-agent` run via `@cursor/sdk` and replays the persisted output back through the harness, or
-- a **structured-trace assertion library** that compares the *shape* of synthesised artifacts (sections, IDs, Sources, Status enums) rather than the bytes.
+1. Open the scenario file under [`acceptance/lifecycle/<id>.md`](../../acceptance/lifecycle/) — each is self-contained (intent, setup, invocation, assertions).
+2. Bring up a fresh disposable environment per the scenario's **Setup** (common steps factored into [`acceptance/shared/setup.md`](../../acceptance/shared/setup.md)).
+3. Run the scenario's **Invocation** exactly as written, stamping Gate 1 yourself (`specify plan transition <name> approved`) — the skills never auto-stamp.
+4. Check each **Assertion** on durable structure only (never a byte/golden compare).
+5. Record the run with [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md), filed under [`acceptance/runs/`](../../acceptance/runs/README.md), and update the scenario's status in the [catalog](../../acceptance/lifecycle/README.md).
 
-Both options are out of scope for the 2.0 cutover. A follow-up RFC will pick one. Until then, the manual scenario sweep below is the source of truth for end-to-end LLM-driven correctness.
+Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) into a live `cursor-agent` session.
 
-## What The Cross-Repo Scenario Proves
+## Agent runbook — "run specify's acceptance tests"
 
-The manual scenario asks an operator to create a fresh temporary workspace with:
+When asked to "run specify's acceptance tests and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
 
-- a registry-only `shop-platform` workspace,
-- `shop-backend` and `shop-mobile` projects,
-- an OAuth login fixture brief.
+1. **Automated surface.** Run `make acceptance` — it runs `make lint` plus the fixture-backed acceptance tests (`fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, `workspace`), which prove every `automated` catalog entry. Report pass/fail with the failing finding/test ids. For the full deterministic surface (including the wasm-tool suites), run `cargo make test` in the `specify-cli` checkout. This step needs no human input.
+2. **Manual sweep — per scenario, in wave order** (see [catalog](../../acceptance/lifecycle/README.md)):
+   - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
+   - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
+3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
+   - A missing `specify` binary. `make acceptance` builds one and prints the `export SPECIFY_BIN=…` line to copy-paste, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists.
+   - Real forge PR merges between the two `/spec:finalize` invocations.
+   - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
+   - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).
 
-It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, Gate 1 stamping, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `/spec:finalize` PR observation, `specify plan archive`, archived plan state, and already-archived re-entry handling.
+## Execution order and the halt gate
 
-This repository does not add an automated runner, fake forge, transcript replay, CI acceptance target, or golden output comparison for this scenario yet. The goal is to run the manual script a few times, learn which checks are stable, and automate only after the simple testing shape is clear.
+The catalog is drained in three waves. Each run fills a run-summary and flips the scenario's catalog status to `passed` / `failed` / `deferred`.
 
-## What The Plan Scenarios Prove
+1. **Wave 0 — release blocker.** Scenario `pure-intent` (N=1). **Hard halt:** if it fails, record the failure, do not run any other scenario, triage, then resume once green. No later scenario is meaningful while it is red.
+2. **Wave 1 — core synthesis + routing.** The happy-path planning, multi-slice, multi-repo routing, authority/conflict tagging, and Gate-1 amend scenarios.
+3. **Wave 2 — failure and breakout paths.** The negative, recovery, and breakout scenarios.
 
-The plan-generation scenarios ask an operator to create disposable workspaces and run `/spec:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists with `lifecycle: pending`, `specify plan add` and the propose substep produce coherent slice rows, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
+Within a wave, scenarios are independent and may run in any order; a failure outside Wave 0 is recorded and triaged but does not halt sibling runs.
 
-These scenarios deliberately stop at Gate 1 — before `specify plan transition <name> approved`, `/spec:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared planning scenarios; per-target slice-loop scenarios stay under `adapters/targets/<name>/tests/`.
+## The gate signal
+
+- Each run commits its filled run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md) as the audit trail.
+- On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template, and file a follow-up issue in `augentic/specify` linked back to the run-summary.
+- The **release gate is green** when `tests/fan_in_fan_out.rs` passes under `cargo make test`, scenario `pure-intent` is `passed`, and every non-deferred catalog entry is `passed`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
+
+When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../acceptance/lifecycle/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
+
+## What the scenarios prove
+
+The `lifecycle` pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Highlights:
+
+- **N=1 and single-project planning** (`pure-intent`, `documentation-one-slice`, `plan-single-project`): degenerate `intent` / `documentation` survey, Gate-1 ergonomics, `Sources:` provenance, plans that stop at `pending` and print the literal Gate-1 transition command.
+- **Synthesis and reconciliation** (`combined-evidence`, `divergence-authority`, `same-authority-conflict`, `cross-source-merge`): inline `[conflict]` / `[divergence]` tagging, authority resolution, deterministic cross-source reconciliation, lifecycle reaching `refined` cleanly.
+- **Cross-repo routing** (`contract-routing`, `cross-repo-contract-flow`, `multi-repo-workspace`, `workspace-execute-two-projects`): contract-first plans, registry-driven routing, workspace slot materialisation, durable end-state (archived plan path, one merged PR per routed project, archived `change.md`).
+- **Failure and breakout** (`extract-failure`, `invalid-evidence`, `target-shape-injection`, `source-sandbox-denied`, `amend-into-two`, `stepthrough-breakout`, `execute-build-failure`, `workspace-breakout`, `dual-driving-refused`, `stale-workspace-recovery`): structured errors that keep the slice in `refining`, build-failure stop/resume, breakout verbs, sandbox enforcement, and stale-slot recovery.
 
 ## Fan-in / fan-out acceptance
 
-The cross-source fan-in / cross-slice fan-out acceptance splits across two distinct surfaces, and **both** must pass before a release is complete:
+The cross-source fan-in / cross-slice fan-out acceptance splits across the two surfaces above, and **both** must pass before a release is complete:
 
-1. **Deterministic CLI proof (automated).** The end-to-end fan-in-twice / fan-out-once fixture lives in `augentic/specify-cli` at [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs). It runs under `cargo make test` and asserts the **envelope, ordering, and determinism** of the whole path — `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen.
+1. **Deterministic CLI proof (automated).** [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs) in `augentic/specify-cli` runs under `cargo make test` and asserts the envelope, ordering, and determinism of the whole path. It does not execute real target codegen.
+2. **Generated-output-correctness release gate (manual / CI).** Each target build must pass the target's own replay/golden suite plus `cargo check` / `cargo test` for generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of build-envelope validity.
 
-2. **Generated-output-correctness release gate (manual / CI).** Each target build must pass the target's own **replay/golden suite** plus `cargo check` / `cargo test` for any generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks **is not done — regardless of build-envelope validity**. A schema-valid `build/report.yaml` with `status: success` only proves the envelope contract held; it does not prove the emitted code compiles or replays. This gate is manual/CI because it exercises agent-generated code, which `specify lint framework` and the deterministic CLI proof do not pin.
+## Synthesis byte-replay (deferred)
 
-## Scenario IDs
-
-The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row numbers. The canonical queue lives in [`tests/cross-repo/runs/2.0.0/`](../../tests/cross-repo/runs/2.0.0/); each stub links back here so acceptance references survive archive cleanup.
-
-| Scenario ID | Meaning | Stub |
-| --- | --- | --- |
-| `1` | Pure intent, one slice | [`01-pure-intent.md`](../../tests/cross-repo/runs/2.0.0/01-pure-intent.md) |
-| `2` | Documentation, one slice | [`02-documentation-one-slice.md`](../../tests/cross-repo/runs/2.0.0/02-documentation-one-slice.md) |
-| `3` | Documentation, multi-slice | [`03-documentation-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/03-documentation-multi-slice.md) |
-| `4` | Code, multi-slice | [`04-code-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/04-code-multi-slice.md) |
-| `5` | Intra-Evidence `[conflict]` | [`05-intra-evidence-conflict.md`](../../tests/cross-repo/runs/2.0.0/05-intra-evidence-conflict.md) |
-| `5a` | Combined evidence from code and documentation | [`05a-combined-evidence.md`](../../tests/cross-repo/runs/2.0.0/05a-combined-evidence.md) |
-| `5b` | `[divergence]` from authority resolution | [`05b-divergence-authority.md`](../../tests/cross-repo/runs/2.0.0/05b-divergence-authority.md) |
-| `5c` | `[conflict]` from same-authority disagreement | [`05c-same-authority-conflict.md`](../../tests/cross-repo/runs/2.0.0/05c-same-authority-conflict.md) |
-| `5e` | Cross-source propose-time merge | [`05e-cross-source-merge.md`](../../tests/cross-repo/runs/2.0.0/05e-cross-source-merge.md) |
-| `5f` | Extract failure | [`05f-extract-failure.md`](../../tests/cross-repo/runs/2.0.0/05f-extract-failure.md) |
-| `5g` | Invalid Evidence schema rejection | [`05g-invalid-evidence.md`](../../tests/cross-repo/runs/2.0.0/05g-invalid-evidence.md) |
-| `5h` | Target `shape` injection | [`05h-target-shape-injection.md`](../../tests/cross-repo/runs/2.0.0/05h-target-shape-injection.md) |
-| `5j` | Source-adapter sandbox path-denied | [`05j-source-sandbox-denied.md`](../../tests/cross-repo/runs/2.0.0/05j-source-sandbox-denied.md) |
-| `6` | Multi-repo assignment from a workspace | [`06-multi-repo-workspace.md`](../../tests/cross-repo/runs/2.0.0/06-multi-repo-workspace.md) |
-| `7` | Operator amends one-slice plan into two slices at Gate 1 | [`07-amend-into-two.md`](../../tests/cross-repo/runs/2.0.0/07-amend-into-two.md) |
-| `8` | Step-through breakout mid-execute | [`08-stepthrough-breakout.md`](../../tests/cross-repo/runs/2.0.0/08-stepthrough-breakout.md) |
-| `9` | `/spec:execute` parks on a build failure, operator fixes, resumes | [`09-execute-build-failure.md`](../../tests/cross-repo/runs/2.0.0/09-execute-build-failure.md) |
-| `10` | Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects.md`](../../tests/cross-repo/runs/2.0.0/10-workspace-execute-two-projects.md) |
-| `11` | Workspace breakout after build failure in a slot | [`11-workspace-breakout.md`](../../tests/cross-repo/runs/2.0.0/11-workspace-breakout.md) |
-| `12` | Dual-driving refused | [`12-dual-driving-refused.md`](../../tests/cross-repo/runs/2.0.0/12-dual-driving-refused.md) |
-
-## Evidence
-
-Each cross-repo manual run should fill out [`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md). On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.
-
-Each plan-generation run should fill out [`tests/plan/run-summary-template.md`](../../tests/plan/run-summary-template.md). On failure, preserve the workspace state, exact `/spec:plan` prompt, `plan.yaml`, `.specify/discovery.md` lead inventory, validation output, and any `specify plan show` output.
+The `specify-standards` harness covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. A byte-equivalent "synthesis golden" requires either a recorded-transcript layer (capture a `cursor-agent` run via `@cursor/sdk` and replay it) or a structured-trace assertion library (compare the *shape* of synthesised artifacts rather than the bytes). Both are out of scope for now; a follow-up RFC will pick one. Until then, the manual sweep is the source of truth for end-to-end LLM-driven correctness.

@@ -140,7 +140,7 @@ What is fine; *when* is missing. `AI-powered` is filler — the scorer cannot te
 
 Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no adapter or trigger. Repo-history references belong in [docs/explanation/decision-log.md](../explanation/decision-log.md), not in a discovery `description`.
 
-**Forbidden frontmatter (and why).** The Anthropic spec is permissive; this repository narrows the surface explicitly. Enforced via `additionalProperties: false` in [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json).
+**Forbidden frontmatter (and why).** The Anthropic spec is permissive; this repository narrows the surface explicitly. Enforced via `additionalProperties: false` in the CLI-embedded `schemas/authoring/skill.schema.json`, applied by `specify lint framework`.
 
 - **`license`** — already declared in the plugin manifest and the repo `LICENSE`; not part of the Anthropic SKILL.md spec.
 - **`compatibility`** — environment requirements belong in a body "Prerequisites" / "Setup" section.

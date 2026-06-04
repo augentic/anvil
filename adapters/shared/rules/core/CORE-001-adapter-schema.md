@@ -8,8 +8,8 @@ rule_hints:
     value: adapters/**/adapter.yaml
     description: Narrow the candidate set to adapter manifests before schema validation.
   - kind: schema
-    value: ./.cursor/schemas/adapter.schema.json
-    description: Validate each adapter manifest against the shared `adapter.schema.json` shape (kebab `name`, integer `version`, axis discriminator, `briefs` map, optional `tools` declarations, single-sentence `description`).
+    value: adapter
+    description: Validate each adapter manifest against the embedded `adapter.schema.json` shape (kebab `name`, integer `version`, axis discriminator, `briefs` map, optional `tools` declarations, single-sentence `description`).
 ---
 
 ## Rule

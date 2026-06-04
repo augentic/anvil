@@ -2,7 +2,7 @@
 
 > Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (retired milestone docs; superseded by the RFC-29 source-adapter flow — see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
-> **Verbs frozen at draft time.** This draft predates the 2.0 rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
 
 ## Abstract
 

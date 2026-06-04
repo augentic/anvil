@@ -11,7 +11,7 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
 | **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract. These copies must stay byte-identical to their CLI sources; [`scripts/check-schema-mirror.sh`](../../scripts/check-schema-mirror.sh) is the authoritative mirror list and fails on drift. Run it locally with `make check-schemas` (also wired into `make ci` and CI).
+**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -43,7 +43,7 @@ make lint
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Compare before/after with `/usr/bin/time make lint` when benchmarking locally.
+**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Post–Phase-4 wall time on this tree was **~247s** (`real 246.75`, 2026-06-04); compare before/after with `/usr/bin/time make lint` when benchmarking locally.
 
 Tooling contributors run the full local CI subset with:
 
@@ -51,7 +51,7 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint` and `check-schemas` (the schema-mirror check above). When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
+`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
 Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
@@ -73,17 +73,23 @@ FAIL: <rule-id>: <message>
   at <repo-relative-path>:<line>
 ```
 
-`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `codex.namespace-ownership-violation`). The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
+`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `rules.namespace-ownership-violation`). Human text output may still say `codex.*` in older examples; wire ids use the `rules.*` family for codex shape checks. The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
 
-| Rule id prefix | Check module | Topic |
+| Tier | `CORE-*` | How enforced |
 | --- | --- | --- |
-| `adapter.*` | `check::adapter` | Adapter manifest schema and missing manifests |
-| `links.*` | `check::links`, `check::schema_links` | Markdown links, skill references, skill directives, tool-owned schema URLs |
-| `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
-| `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
-| `codex.*` | `check::rules` | Rule shape and namespace ownership |
+| Native declarative | `CORE-001..008` | `rule_hints` on rule files (no imperative batch) |
+| Imperative | `CORE-009` | Namespace bridge only (`rules.namespace-ownership-violation`) |
+| Declarative + bridge | `CORE-010..052` | `CORE-*` rule files; `kind: authoring-predicate` until native parity |
 
-See the `specify-standards` crate's `check` module for the full predicate list.
+| Authoring `rule_id` prefix | Topic |
+| --- | --- |
+| `adapter.*` | Adapter manifests |
+| `links.*` | Markdown links, skill references, directives, tool-owned schema URLs |
+| `skill.*` | `SKILL.md` frontmatter and body |
+| `scenarios.*` | Acceptance scenario frontmatter and recorded traces |
+| `rules.*` | Rule shape, namespace ownership (`CORE-009` bridge) |
+
+Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). Predicate implementations for bridges and `CORE-009` live in `augentic/specify-cli` under `crates/standards/src/framework/check/` and `lint/eval/authoring_predicate.rs`.
 
 ### JSON output
 
@@ -110,7 +116,6 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 **Severity mapping.** Authoring imperative rule ids map to `Diagnostic` severities through `severity_for` in [`crates/standards/src/framework/builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs):
 
 - `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
-- `adapter.execution-agent` → `suggestion` — a first-party adapter running via `agent` is informational and must never block CI.
 - every other authoring family (`adapter.*`, `agent-teams.*`, `links.*`, `scenarios.*`, `skill.*`, …) → `important` via the default.
 
 **`rule-id` carries the closed `CORE-NNN` id.** Declarative rules set `rule_id` from the rule file's `id:` frontmatter. The imperative namespace bridge maps `rules.namespace-ownership-violation` to `CORE-009` via `CORE_ID_TABLE` in [`builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs). Migratable predicates retired from that table run through `kind: authoring-predicate` on their `CORE-*` rule files until native hint parity replaces the bridge.
@@ -133,7 +138,7 @@ Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.js
 
 ### 3. Adapter referential integrity
 
-The 1.x pipeline-graph integrity check retired at the 2.0 cut — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
+The legacy pipeline-graph integrity check has been retired — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
 
 ### 4. Symlink integrity
 
@@ -145,10 +150,10 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
+Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (the embedded `schemas/authoring/skill.schema.json`):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
-- **Name match** -- the `name` field must match the parent directory name
+- **Plugin-qualified name** -- `name` is **plugin-qualified** (`<plugin>-<skill>`, e.g. `specify-merge`, `omnia-crate-writer`), not the bare directory name; the per-plugin prefix invariant and global uniqueness across plugins are enforced by `specify lint framework` (CORE-043), since JSON Schema cannot see the surrounding directory
 - **Known tools** -- every entry in `allowed-tools` must be a recognized Cursor tool name or match the `mcp__*` prefix
 
 The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`, `Glob`, `ReadLints`, `WebFetch`, `WebSearch`, `AskQuestion`, `Task`, `TodoWrite`, `SemanticSearch`, `EditNotebook`, `GenerateImage`.
@@ -197,14 +202,12 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `tests/<suite>/scenario.md` — shared outside-in suites.
-2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
-3. `tests/plan/<scenario>.md` — shared plan-generation scenarios.
-4. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-5. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
-6. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+1. `acceptance/lifecycle/<id>.md` — the flat per-scenario lifecycle pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
+2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -216,7 +219,7 @@ kind: adapter
 adapter: contracts@v1
 backend: manual
 entrypoint: /spec:refine
-stages: [define, build, merge]
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: prose
 assertions:
@@ -291,9 +294,9 @@ FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/
   at adapters/shared/rules/universal/example.md:1
 FAIL: rules.schema-violation: Rule body: adapters/shared/rules/universal/example.md — missing required '## Rule' heading
   at adapters/shared/rules/universal/example.md:1
-FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/rules/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/shared/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
   at adapters/shared/rules/universal/example.md:1
-FAIL: codex.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
+FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -317,9 +320,23 @@ Two surfaces are available for new framework checks: a declarative `CORE-*` rule
 
 > **Declarative lint program (complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records live under specify-cli `docs/standards/` (phase 1 and phase 2 spike docs, sidecar schema notes); posture is documented in DECISIONS and the diagnostics annex on declarative lint.
 
+### Parity contract for predicate retirement
+
+Authoritative harness: [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs). When replacing an `authoring-predicate` bridge with native hints or deleting an imperative row, both passes must agree before merge:
+
+| Dimension | Required? |
+| --- | --- |
+| Flagged file set (and line numbers for line-scoped checks) | **Yes** |
+| `rule_id` (`CORE-NNN`), `severity`, `kind` | **Yes** |
+| `title` and `evidence` payload shape (keys and counts) | **Yes** |
+| Byte-identical message strings | No |
+| `fingerprint`, sequential `FIND-NNNN` ids | No — assigned only by the finalize pass |
+
+Land the declarative rule file(s), a green `mod core_NNN` parity submodule, and deletion of the imperative branch in the **same PR**. Do not weaken checks to fake completion.
+
 ### Choose `CORE-*` (declarative) when
 
-- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, `tool`, `fenced-block`, or the fact-consuming kinds already wired for `CORE-001..008` (see [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md)).
 - The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
 - A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
 
@@ -333,16 +350,17 @@ To add a `CORE-*` rule:
 
 ### Choose an imperative `Check` when
 
-- The predicate genuinely needs subprocess orchestration or stateful behaviour the hint interpreter cannot model (e.g. spawning a long-running validator with multi-turn interaction).
+- The check matches **CORE-009**-class fused logic (namespace ownership, dynamic registries, subprocess orchestration the hint interpreter cannot model).
 - The predicate is exploratory and you are not ready to commit to a stable `CORE-NNN` id.
-- You are extending an existing imperative module with a small adjacent row that does not yet warrant a dedicated `CORE-*` rule.
 
-To add an imperative check:
+New product checks should still land as `CORE-*` rules first; use `kind: authoring-predicate` only when native hints are not yet at parity. Extending `framework/check/` beyond the CORE-009 bridge requires the same parity contract and a `core_parity.rs` module.
 
-1. Add a module under [`crates/standards/src/framework/check/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/src/framework/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Diagnostic>`).
-2. Register the check in the `checks` array in [`crates/standards/src/framework/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/check.rs).
-3. Add a fixture-based integration test under [`crates/standards/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/tests/) when the predicate needs regression coverage.
-4. Run `make lint` to verify the new check works.
+To extend the CORE-009 bridge in specify-cli:
+
+1. Edit [`crates/standards/src/framework/check/rules.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/check/rules.rs) (or the fused module owning the behaviour).
+2. Keep `check::run` as namespace-bridge-only; do not reintroduce a full imperative batch on every `specify lint framework` run.
+3. Add or extend a `mod core_NNN` parity submodule when behaviour is non-trivial.
+4. Run `make lint` on `augentic/specify` and `cargo make check` on specify-cli.
 
 Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 

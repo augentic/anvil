@@ -3,7 +3,7 @@
 Key architectural decisions in Specify, distilled from the design RFCs. Each entry explains the *why* behind a design choice. For full context, follow the links to the original RFCs.
 
 > [!NOTE]
-> This is a design archive, not an onboarding page. It records *why* Specify is built the way it is, including decisions that have since been **superseded** (kept and labelled so the reasoning is not lost). If you are learning Specify, start with [Core concepts](concepts.md) and [From sources to slices](reconciliation.md) instead. Use the **On this page** sidebar to jump straight to a specific decision; superseded entries name what replaced them.
+> This is a design archive, not an onboarding page. It records *why* Specify is built the way it is, including decisions that have since been **superseded** (kept and labelled so the reasoning is not lost). If you are learning Specify, start with [Core concepts](concepts.md) and [From sources to slices](reconciliation.md) instead. Use the **On this page** sidebar to jump straight to a specific decision; superseded entries name what replaced them. Each entry carries a `**Status:**` marker — `current` for decisions still in force, `historical` for ones describing a retired or superseded surface (kept for the reasoning trail).
 
 ## CLI owns correctness, agent owns judgment
 
@@ -12,6 +12,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Rationale:** LLM-interpreted prose rules for structured operations (validation, task parsing, directory manipulation) produced unreliable results. A binary that returns structured JSON and exit codes gives deterministic correctness where it matters, while the agent retains judgment for semantic decisions.
 
 **Litmus test:** "Would this operation need to understand `.specify/` directory structure or spec format?" If yes, it belongs in the CLI. If no (like running `cargo test`), it stays with the agent.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -23,6 +25,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale (unchanged):** Some checks are purely structural (file exists, format correct) and can be answered definitively by the CLI. Others require understanding context ("is this design adequate?"). The split lets the CLI handle what it can and explicitly flags what needs agent judgment, rather than pretending everything is binary — now expressed via the `kind` axis instead of a dedicated validation-only enum.
 
+**Status:** historical
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Lint and validate share a substrate but stay distinct surfaces
@@ -30,6 +34,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** `lint` and `validate` are unified onto one `Diagnostic` substrate (data type, fingerprint, validator, renderer, blocking predicate) but remain conceptually distinct surfaces with different authority. `validate` gates a lifecycle transition (`refining → refined`): workflow-owned, non-negotiable, non-silenceable. `lint` is standards/policy compliance: codex-owned, versioned, lifecycle-neutral (may block CI, never transitions a slice), silenceable with an in-source rationale.
 
 **Rationale:** The analogy is LSP — `rustc`, `clippy`, and `rust-analyzer` all emit one `Diagnostic` with a `source` without becoming the same tool. Convergence applies to the substrate, never to the concepts or their gate policies. The neutrality is encoded one layer down at the crate graph: the shared machinery lives in a neutral `specify-diagnostics` leaf, and the litmus test is that `validate` (or any non-lint producer) must not depend on anything named `lint`. A uniform blocking predicate (`kind == violation && status == open && severity ∈ {critical, important}`) serves both surfaces; they differ only in whether ignore directives apply (lint: yes; validate: no).
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -42,6 +48,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specrun plan *` / `specrun registry *` / `specrun workspace *` verbs they wrap.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -57,6 +65,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** CI-native standards enforcement (`specrun lint`) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `approved` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Plan as a data file, not a configuration
@@ -65,6 +75,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Configurability adds a debugging surface ("why did step X run?") before the system is well-understood. A fixed flow with no config is easier to reason about, and configurability can be added later without migration.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Analyze/extract split
@@ -72,6 +84,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Plan-time adapter discovery (`/change:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
 
 **Rationale:** A large monolith cannot be fully extracted in one pass -- it would be too slow and expensive. The two-skill split makes large migrations tractable: cheap scanning builds the inventory, deep extraction happens per-slice where it is focused and affordable.
+
+**Status:** historical
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -83,6 +97,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Superseded in part by:** the registry no longer authors a project's adapter/description for topology purposes (it carries membership + location plus an optional greenfield adapter seed). Authored intent (`adapter`, `description`) lives in each project's `project.yaml`; derived identity (`surface[]` / `recent[]`) is projected from each project's baseline into the committed `.specify/topology.lock`. See "Project intent is authored in project.yaml; identity is derived from the baseline" and "Topology cache (lockfile) for plan-time availability" below.
 
+**Status:** historical
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Project intent is authored in project.yaml; identity is derived from the baseline
@@ -90,6 +106,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** A project's *authored intent* (`adapter`, `description`) lives solely in each project's `.specify/project.yaml`. Its *routing identity* is **derived, not authored** — a deterministic structural projection of the project's own baseline: `surface[]` (owned unit slugs + requirement titles from `.specify/specs/`) and `recent[]` (the merge-outcome tail from `.specify/journal.jsonl`). The hand-authored `capabilities` / `keywords` facets are removed. `registry.yaml` is reduced to membership + location (`name`, `url`, optional `contracts`, optional `adapter` greenfield seed) and no longer authors a project's target adapter or description for plan-time topology.
 
 **Rationale:** A fact with two authored homes drifts; a hand-authored tag rots independently of the project it describes. Previously a project's adapter/description lived in both its `project.yaml` and the workspace's `registry.yaml` (the registry copy silently won at plan time), and `capabilities` / `keywords` duplicated what the baseline already states. Inverting authority — the project owns what it *intends* to be, identity is *derived* from what it *actually owns* — gives every fact one writer and introduces no new authored fact: the baseline is authored through the slice loop, the journal is machine-written, and `description` already exists. Routing quality auto-sharpens as slices merge, with zero operator tag maintenance. The registry's optional `adapter` survives only as a greenfield scaffold seed; once a project's `project.yaml` exists it is authoritative. (Supersedes the earlier "hand-authored project facets" draft.)
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -99,6 +117,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Deriving identity at propose time would couple plan-time topology to a synced (and for remotes, reachable) workspace whose baselines are all readable. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the derived truth. Because the projection is deterministic, "sync" is idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## CWD-based routing for multi-repo execution
@@ -106,6 +126,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** The execute driver routes each change to its target project by changing working directory to the workspace clone before invoking phase skills. Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`) are completely unaware of multi-repo routing -- they run unmodified in whatever directory the driver places them in.
 
 **Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the adapter via their normal `.specify/project.yaml` walk from CWD.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -115,6 +137,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Allowing a single slice to span repos would require the execution loop to manage multiple project roots, multiple adapters, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting adapters into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Project binding happens in the propose response
@@ -122,6 +146,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Each slice's registry project is bound by the **agent inside the `specrun plan propose --from` response**, not by a separate post-propose assignment step. The dry-run request (`specrun plan propose --dry-run`) carries a `projects[]` topology (always at least one project; a single regular project synthesized from `project.yaml`, each entry carrying its normalized `target` adapter), and the agent names a `project` on each response slice. When exactly one project exists the agent may omit `project` and the kernel auto-binds it; the kernel then resolves each slice's `target` on demand from the bound project (the `target` is not written to `plan.yaml`). Propose is the slice writer — no project-less entries linger for a later assignment pass.
 
 **Rationale:** Cross-source lead matching and project binding are the same agent judgment over the same request envelope, so splitting binding into a second skill step would re-read state the agent already holds and reintroduce an ordering problem. Folding binding into the propose response keeps the projection kernel the single writer of `plan.yaml.slices[].project` (the `target` is resolved on demand from the project, never written to disk), and keeps the N=1 case ergonomic via auto-bind. The earlier "assignment runs after propose in the plan skill" framing predates the agent-led `propose --from` kernel and is superseded.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -131,6 +157,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Automatic pushes during execution would make the driver non-idempotent and create a rollback problem -- a failed change that was already pushed cannot be cleanly undone. Keeping pushes explicit gives the operator a review gate between "execution produced artifacts" and "artifacts are published." The workspace is the staging area; `workspace push` is the release gate.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Composition as a separate artifact, not embedded in specs or design
@@ -138,6 +166,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Introduce `composition.yaml` as a new Vectis-specific artifact that describes spatial screen layout, rather than extending specs or design with layout concerns.
 
 **Rationale:** Specs define observable behavior ("the user sees their todo items"); they should not specify how items are arranged on screen. Design defines the type system; embedding layout in design would make it responsible for both data shape and visual arrangement. A separate artifact preserves the existing separation of concerns: specs drive the core, design defines the type contract, and composition drives the shell. This also enables multi-source authoring -- Figma adapters, legacy extractors, and manual editing can all produce composition artifacts without touching specs or design.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -147,6 +177,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Layout is fundamentally structural data -- a tree of components with properties. Shell writers and the validation CLI consume it programmatically against a JSON Schema. A markdown representation would require pattern-matching on indented lists to reconstruct the component tree -- fragile and impossible to schema-validate. YAML also aligns with `tokens.yaml` as a structured design-layer artifact and enables same-format diffing for re-imports from design tools.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Screen-level delta merge for composition
@@ -154,6 +186,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Composition deltas operate at the screen level (`added`/`modified`/`removed` per screen), with `modified` performing full screen replacement rather than region-level or item-level merging.
 
 **Rationale:** Merging independently edited region structures at the item level would require positional diff logic with ambiguous conflict resolution. Full-screen replacement is simple, predictable, and sufficient because the define pipeline always produces complete screen entries. Per-screen SHA-256 checksums in `.composition-checksums.yaml` provide conflict detection when two changes modify the same screen.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -163,6 +197,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's adapter tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Platform artifacts at the repo root, framework state under `.specify/`
@@ -170,6 +206,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. Generated `AGENTS.md` guidance also lives at the root, with Specify owning only its fenced block. `.specify/` retains framework-managed state: `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`.
 
 **Rationale:** The operator-facing artifacts (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understates their importance and forces operators to navigate framework internals to inspect or hand-edit them. Keeping them at the root makes the boundary explicit: framework owns `.specify/`; operators own everything else.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -179,6 +217,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** JSON Schema is the common denominator -- both OpenAPI 3.1 and AsyncAPI 3.0 use it for payload definitions. Defining domain types as JSON Schema files means both protocol bindings reference a single source of truth. The Rust code generation ecosystem (`schemars` + `typify`, `progenitor`) can consume these artifacts directly. Introducing a proprietary format or a less common IDL (Smithy, Protobuf) would narrow the ecosystem without clear benefit.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Opaque replacement for contract merge
@@ -186,6 +226,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Contract files use opaque file replacement during merge -- the entire file is replaced rather than delta-merged. Unlike spec files (which use ADDED/MODIFIED/REMOVED sections), contract files are replaced wholesale.
 
 **Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specrun slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -195,17 +237,23 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** When specs evolve over multiple changes, the system needs a way to match "this modification applies to that requirement." Titles are human-facing and change frequently. Stable IDs give the merge engine a reliable key while keeping the spec format readable.
 
+**Status:** current
+
 ## Adapter-agnostic lifecycle, adapter-specific briefs
 
 **Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across adapters. Adapters control the *content* of brief pipelines, may add adapter-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
 **Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this adapter-agnostic means every project gets the same tooling regardless of target platform. Adapters customise the generation content and may extend the pipeline without fragmenting the workflow.
 
+**Status:** historical
+
 ## Planning briefs ship with the skill, not the adapter manifest
 
-**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/change:plan` skill under `plugins/change/skills/plan/briefs/<adapter>/` rather than under `adapter.yaml:pipeline.plan`. The adapter manifest schema actively rejects a `pipeline.plan` block.
+**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/spec:plan` skill under `plugins/spec/skills/plan/briefs/<adapter>/` rather than under `adapter.yaml:pipeline.plan`. The adapter manifest schema actively rejects a `pipeline.plan` block.
 
 **Rationale:** Planning is orchestration, not adapter-owned slice work. A adapter decides what define/build/merge produces inside an individual slice; it does not decide how a *change* (potentially spanning many slices and projects) gets composed. Putting plan briefs in the adapter manifest blurred that boundary and forced every adapter to ship near-duplicate plan briefs. Keeping the briefs with the plan skill keeps the framework concern at the framework, with adapters free to ship their own plan-time variants by name (`briefs/<adapter>/`).
+
+**Status:** historical
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -215,6 +263,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Platform components are not adapters
@@ -222,6 +272,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** The registry and the change orchestrator are first-party **platform components**, not adapters. They have commands, libraries, and files, but they never appear in any `adapter.yaml`, never participate in the manifest protocol, and are never activated through a adapter-name switch. The dependency direction is fixed at the crate level: `specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.
 
 **Rationale:** Treating the registry and change orchestration as adapters created a circular activation problem — the surface that decides which adapters are active was itself a adapter. Promoting them to platform components keeps adapter composition strictly downward and means a adapter author never has to think about whether the registry or change loop is "available." The hard-coded crate dependency direction makes the invariant a build-time guarantee rather than a convention.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -231,6 +283,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Automated PR merge couples the framework to forge APIs, check-suite semantics, and team-specific review rules that vary across operators. Holding the framework at "prepare and publish" lets every team layer its own merge policy — checks, reviewers, merge queue, manual approval — without the framework modelling any of it. The split also gives a natural rollback surface: an unmerged PR can be closed or rebased without rewinding any framework state.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Declared WASI adapter tools
@@ -238,6 +292,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specrun tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
 
 **Rationale:** Adapters used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a adapter can ship behavior without growing the host.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -247,6 +303,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## SemVer `info.version` and rename-stable `info.x-specify-id`
@@ -254,6 +312,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Every top-level OpenAPI 3.1 and AsyncAPI 3.0 document under `contracts/` MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels. Every top-level contract MAY set `info.x-specify-id` to a kebab-case slug (`^[a-z][a-z0-9-]*$`, ≤64 characters, repo-unique) that survives file moves and `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a hint, not a substitute. Bump rules (when to advance major / minor / patch) remain skill-side judgement.
 
 **Rationale:** Earlier contract documents used a mix of `YYYY-MM-DD` dates and bare majors as `info.version`, which prevented any tooling from comparing two contract versions programmatically. Requiring SemVer aligns contract evolution with the broader ecosystem (`progenitor`, `typify`, `schemars`) and keeps adapter-owned contract validation reports machine-readable. The optional rename-stable id captures the identity of a contract independent of its file location, so a file move or a major-version rename does not look like deletion-plus-creation to baseline diff tools.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -268,6 +328,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 - **Vocabulary / guardrails consolidation** (S4) — cross-cutting guardrails (the recurring `.metadata.yaml` / slice-dir / plan-write rules) live in `docs/standards/skill-guardrails.md`; SKILL.md files link, not restate. Pre-1.0 sweep dropped "previously / migrate / backward-compat" prose that did not document a real legacy-migration feature, and stale CLI names were replaced in docs (`initiative` → `change`, `JSON_SCHEMA_VERSION` → `ENVELOPE_VERSION`).
 
 **Rationale:** The skill-discovery surface needs to match on intent ("does this skill apply to my task?") rather than vocabulary, which means the description and argument-hint shapes have to be mechanically tight. The body and section caps push depth into `references/` so a SKILL.md stays an orientation artifact. The envelope-example forbid pins one place where the wire shape can drift. The pre-1.0 vocabulary stance — no backward compatibility constraints, no migration prose unless documenting a real legacy-migration feature — keeps the skill bodies honest about what the system does today rather than how it was built.
+
+**Status:** historical
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -285,6 +347,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from earlier surfaces" parentheticals while preserving the trail for anyone tracing a stale call site.
 
+**Status:** historical
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Three-skill change lifecycle
@@ -292,6 +356,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** A May 2026 workflow cleanup split `/change:plan` (default mode + `orchestrate` umbrella) into three peer skills (`/change:draft`, `/change:execute`, `/change:finalize`); CLI verb `specify change create` renamed to `specify change draft`.
 
 **Rationale:** `/change:plan` doubled as authoring skill and orchestration umbrella, hiding the operator review pause between authoring and execution and breaking lifecycle symmetry with `/spec:define → /spec:build → /spec:merge`. Three peer skills with an explicit human seam between draft and execute restore the rhythm and make the review pause a property of the framework rather than an opt-in manual flow. The seven-step orchestration body survives, redistributed across the three skills; the umbrella mode is removed outright.
+
+**Status:** historical
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -301,6 +367,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** `/change:analyze` and `/change:survey` were two evidence sources for the same operation; `/spec:define` and `/spec:extract` repeated the pattern at slice time. Unqualified `adapter` only named outputs, leaving no symmetrical term for inputs. Qualifying by direction makes the input/output asymmetry explicit, gives third-party legacy migration a first-class home (source adapters), and lets one resolver module replace the bifurcated define/analyze surface.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Core owns synthesis
@@ -308,6 +376,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Source adapters emit `Evidence` only; target adapters supply `shape` only; **core owns canonical artifacts** (`proposal.md`, `spec.md`, `design.md`, `tasks.md`). `/spec:refine` runs extraction, synthesis, validation, and lifecycle transition. Synthesis authors from `plugins/spec/references/synthesis/`; the CLI validates structure and stamps lifecycle.
 
 **Rationale:** 1.x let each adapter author its own `spec.md` and `design.md`, which blocked multi-source synthesis (no canonical document to fold two sources into) and forced every adapter to ship near-duplicate define briefs. Pulling synthesis into core means every adapter inherits multi-source reconciliation, requirement provenance, and tag-and-proceed disagreement handling without re-implementing them.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -317,6 +387,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Combined evidence (code + documentation, intent + design notes, screenshots + product brief) is the common case for non-trivial work. Single-source slices become a degenerate one-binding case rather than the structural default. Carrying the lead id on every binding preserves the back-reference into `discovery.md` so re-survey can replace by id without disturbing the slice row.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Provenance and disagreement tags
@@ -324,6 +396,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Every requirement block in `spec.md` carries three header lines: `ID:` (stable merge key), `Sources:` (one or more source keys, highest authority first), `Status:` (closed enum `agreed` | `unknown` | `conflict` | `divergence`). Authority hierarchy is the closed enum `intent` > `documentation` > `behaviour`. Tags `[conflict]`, `[divergence]`, `[unknown]` surface inline on the requirement header; they never park the slice.
 
 **Rationale:** Multi-source synthesis routinely surfaces disagreements that cannot be auto-resolved. Tag-and-proceed keeps the slice lifecycle moving (`refining → refined → built → merged`) regardless of tag content; the operator hand-edits `spec.md` between refine and build when they want to reconcile, or amends the plan to drop a source. Parking the slice on every tag would have made multi-source slices unusable in practice.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -333,6 +407,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** 1.x's `/spec:define` shortcut for "single trivial slice" duplicated the plan-time machinery and produced an orphan path that bypassed Gate 1. Collapsing to one rhythm — `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` — means N=1 and N=12 share every skill body, every CLI verb, and every artifact. Operator ergonomics at N=1 became the release blocker for the collapse.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Gate 1 only
@@ -340,6 +416,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == approved`. The operator runs `specrun plan transition <name> approved` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `approved` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
 
 **Rationale:** Multiple gates compound operator cost and incentivise skipping. One observable gate written by the operator at one observable moment makes the review pause unambiguous and unbypassable. Synthesis-time disagreements use tag-and-proceed; the `slices[].divergence` field carries the Gate-1 acknowledgement signal a future Gate 2 would consume, so the park can be wired in later without a schema change.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -349,6 +427,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Automation flags multiplied the number of resume paths the loop had to reason about and made every failure a question of "did execute stop because it finished, because a flag tripped, or because something broke?". Stripping the flags makes re-entry trivial: read on-disk state, pick up where the active entry left off. When a real automation consumer appears, the flags can be reinstated with a clear contract.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## CLI owns workflow writes
@@ -356,6 +436,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** The CLI is the single writer for lifecycle and deterministic workflow files: `plan.yaml`, `.metadata.yaml`, archive paths, `discovery.md`, `sources.yaml`, `targets.yaml`. Skills and adapters never hand-edit these. Skills do drive content writes (evidence bodies, synthesized artifacts, implementation code) where the contract allows; adapters retain authorship of their briefs.
 
 **Rationale:** LLM-interpreted prose rules for lifecycle transitions produced unreliable results — partial writes, inconsistent state, missing validation. A binary that returns structured JSON and exit codes gives deterministic correctness for the files everyone has to trust. Skills stay agent-driven for the parts that need judgment (synthesis, code generation, review) and shell out for the parts that need determinism.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -365,6 +447,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** 1.x had separate routing paths for the loop and the manual breakouts, which meant a workspace breakout after a build failure required the operator to navigate to the right slot by hand. Sharing the routing rule means an operator can park execute, run `/spec:build` from the workspace, and have the driver place them in the correct project slot automatically.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Hard cut at 2.0
@@ -372,6 +456,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** 1.x manifests, verbs, brief paths, and `/change:*` retire together at 2.0. No interim release. No compatibility aliases.
 
 **Rationale:** Compatibility shims for an in-flight pre-1.0 redesign multiply the surface area of every change without serving real consumers (there is no production install base yet). A single cut avoids any code path having to support both shapes.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -381,6 +467,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Operator-driven lead reconciliation at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## One slice-model artifact, provenance inline
@@ -388,6 +476,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** A synthesized slice carries exactly one structured artifact, `.specify/slices/<slice>/model.yaml`, which carries provenance **inline** (`requirements[].claims[]` with `winner`, plus `resolution`). `provenance.yaml` is no longer a persisted file; the same shape is generated on demand by `specrun slice provenance`. There is a single `model.schema.json` (the retired `draft-model.schema.json` is gone): the agent's synthesis response and the persisted file validate against the same schema, with kernel-owned fields (`requirements[].id`, `.status`, `claims[].winner`) optional. The kernel re-derives those fields and ignores anything the agent supplied — **normalize, never reject** — so the `slice-synthesize-kernel-field-usurped` abort and the `slice-model-provenance-drift` finding both retire.
 
 **Rationale:** Three representations of the same provenance facts (`model.yaml`, `provenance.yaml`, and the rendered `spec.md` lines) plus drift validators to keep them in sync is complexity manufactured by materializing a projection. One source of truth with on-read projections cannot drift from itself. A dual draft/persisted schema plus a rejection finding is a firewall around fields the kernel overwrites anyway; normalizing is cheaper and removes a failure mode and an entire schema. `provenance.yaml` was audit-only and unread by downstream verbs, so persisting it bought nothing a projection does not.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -397,6 +487,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Policing the agent's intermediate reasoning with a token set-difference test is a weaker signal than checking the result: does the regenerated code reproduce the captured behavior and pass its tests. Every closed enum and probe the agent must satisfy is more surface to get wrong and more validators to maintain. Trust the agent loosely; verify the output brutally.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Authority: document-level plus one override (v1)
@@ -404,6 +496,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** v1 resolves authority at document level (the closed `intent` > `documentation` > `behaviour` enum) with a single operator override surface — the per-slice `authority-override` on `plan.yaml`, keyed by claim kind, naming the winning source. The per-Evidence `authority-overrides` surface and per-kind class-lifting are deferred to a future change.
 
 **Rationale:** Two override surfaces with different shapes and a four-tier precedence is generality designed ahead of demonstrated demand. Document-level authority plus one override covers the common case; the finer-grained surfaces can be earned back when a real slice needs them.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
@@ -413,6 +507,8 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** A date-stamped folder of dead slices in the live tree is simultaneously a worse VCS and a worse database than the tools already present: git already records every artifact at the merge commit, and a structured ledger answers "what merged, when, with what outcome" better than spec-delta fragments that no longer compose. Retaining the folder forever ages into misleading cruft; demoting it to a prunable cache while recording the real history in git + ledger keeps the audit story and clears the graveyard.
 
+**Status:** current
+
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
 ## Decision Records: append-only catalogue for the design "why"
@@ -420,5 +516,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Decision:** Design *decisions* — the immutable "why" of a choice plus its rejected alternatives — get a baseline home at `.specify/decisions/DEC-NNNN-<slug>.md`, the design counterpart to what `.specify/specs/` is for behaviour. A slice authors zero or more Decision Records under `.specify/slices/<slice>/decisions/<slug>.md` (YAML front-matter + a Nygard `## Context` / `## Decision` / `## Consequences` body); `specrun slice merge` promotes each into the catalogue by **opaque whole-file add** — never a second prose delta-merge — assigning the durable project-global `DEC-NNNN` id (`max(existing) + 1`, monotonic, never reused). The only permitted mutation to an existing record is a `supersedes:` flip to `status: superseded`. Design *state* (domain models, API shapes) stays in `design.md` and the code; there is no master `design.md`.
 
 **Rationale:** "Do for `design.md` what merge does for `spec.md`" does not fit verbatim: prose has no stable `REQ`-style merge key, and `design.md` bundles volatile *state* (best derived from ground truth) with append-only *decisions*. Only the decisions half deserves a baseline, and it reuses machinery already present — the contracts opaque-add strategy (no new merge engine) and the engine-assigned id pattern (the single-active-slice + plan-lock invariants make sequential numbering race-free). Accepted decisions then become a first-class routing-identity axis — the merged baseline counterpart the design layer previously lacked beside the behavioural surface — surfacing architectural commitment at plan time so a lead that contradicts an accepted decision can be flagged before Gate 1.
+
+**Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.

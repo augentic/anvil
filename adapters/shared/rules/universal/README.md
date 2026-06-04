@@ -12,6 +12,8 @@ Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks
 
 Rules are grouped by severity (highest first). `UNI-*` ids are stable citation keys — they are not renumbered when severity or grouping changes.
 
+**Enforcement mode (review-only vs deterministically exported).** Every `UNI-*` rule is applied as a **model-assisted review finding** by the target build review briefs during `/spec:build`; none gate deterministically by default. The single exception today is **UNI-014** ([`hardcoded-configuration.md`](hardcoded-configuration.md)), which additionally carries deterministic `rule_hints` (a `path-pattern` + `regex` pair) and is therefore the only id exported to `specify lint` as a deterministic check. Treat every other id as review-only until it grows its own `rule_hints` block.
+
 ### Critical
 
 | ID      | File                                                           |
@@ -52,7 +54,7 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specify lint framework` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are kept byte-identical by `specify lint framework`'s `rules.schema-drift` predicate. The minimum form:
+Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json` and is embedded in the CLI binary; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specify lint framework` consumes it. The minimum form:
 
 ```markdown
 ---

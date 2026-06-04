@@ -76,4 +76,4 @@ claims:
     name: plus
 ```
 
-A full input / output fixture for this example lives at [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../../../tests/fixtures/sources/screenshots/task-list-two-screen/) in the repo. When `screenshots.extract` runs against a *second* lead later in the same plan (e.g. an `archive` screen sharing the same row skeleton), the brief promotes the candidate-component note to `component: task-row` per the pipeline's stage-6 ≥2-screens rule.
+A full input / output fixture for this example lives at [`acceptance/examples/sources/screenshots/task-list-two-screen/`](../../../../../acceptance/examples/sources/screenshots/task-list-two-screen/) in the repo. When `screenshots.extract` runs against a *second* lead later in the same plan (e.g. an `archive` screen sharing the same row skeleton), the brief promotes the candidate-component note to `component: task-row` per the pipeline's stage-6 ≥2-screens rule.

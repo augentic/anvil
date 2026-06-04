@@ -20,7 +20,7 @@ Two different uses of "standards" appear in this repository:
 
 | Term | Meaning | Location |
 | --- | --- | --- |
-| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify` |
+| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../adapters/shared/rules/core/) (native declarative for `CORE-001..008`, `authoring-predicate` bridge for `CORE-010..052`, imperative-only `CORE-009` namespace ownership) |
 | **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `adapters/shared/rules/`, `adapters/targets/<name>/rules/`, and optional source overlays — resolved by `specify rules export` and enforced by `specify lint` |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.

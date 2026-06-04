@@ -1,6 +1,6 @@
 # Directory Layout
 
-Specify 2.0 draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Specify owns only its fenced generated block. The change-level artifacts (`change.md`, `plan.yaml`, `discovery.md`), every active slice, the baseline specs, and the archive live under `.specify/`.
+Specify draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Specify owns only its fenced generated block. The change-level artifacts (`change.md`, `plan.yaml`, `discovery.md`), every active slice, the baseline specs, and the archive live under `.specify/`.
 
 ## Tree overview
 

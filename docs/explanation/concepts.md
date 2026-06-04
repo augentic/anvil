@@ -140,7 +140,7 @@ A **change** is the operator-defined umbrella that coordinates one or more slice
 
 ## Source and target adapters
 
-Specify 2.0 splits adapters by direction.
+Specify splits adapters by direction.
 
 A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `captures`, `screenshots`.
 

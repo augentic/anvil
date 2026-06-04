@@ -16,7 +16,8 @@ Return one `Evidence` document for `/spec:refine` to persist at `.specify/slices
 authority: intent
 lead: <lead>
 claims:
-  - kind: intent
+  - id: <lead>
+    kind: intent
     statement: "<Source.value, verbatim>"
 ```
 
@@ -26,7 +27,7 @@ Rules:
 
 - `authority` MUST be the literal string `intent`. The `intent` adapter is the only first-party source that emits this authority class; `documentation` and code adapters emit `documentation` or `behaviour` per the authority hierarchy.
 - `lead` MUST equal the `Lead` argument (the lead id, not the slice name; the two are equal under the degenerate intent path).
-- `claims` MUST contain exactly one entry with `kind: intent` and a `statement:` field carrying the operator's intent string verbatim. `id` is optional on `kind: intent` — the Evidence schema only requires it on `requirement` and `criterion` kinds. Omit it unless the operator supplies a stable id.
+- `claims` MUST contain exactly one entry with `kind: intent`, an `id:` set to the `Lead` id, and a `statement:` field carrying the operator's intent string verbatim. The `id` is the stable anchor synthesis references — although the Evidence schema only *requires* it on `requirement` / `criterion` / `example` kinds, an id-less intent claim is unanchorable, so the slice's sole requirement would render an empty `Sources:` line and fail `specify slice validate` (`spec.requirement-sources-empty`). Setting `id` equal to the lead keeps the document deterministic and idempotent.
 - Do not emit a `path:` on the claim. The intent source has no filesystem locus; `path` is reserved for file-backed sources.
 - Do not emit additional claims. Operators who want multi-claim intent split the work into multiple slices (the lead per slice handles that).
 
@@ -44,7 +45,8 @@ Output — `Evidence` document:
 authority: intent
 lead: add-search-filter
 claims:
-  - kind: intent
+  - id: add-search-filter
+    kind: intent
     statement: "Add a search filter to the user list."
 ```
 

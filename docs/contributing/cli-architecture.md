@@ -92,4 +92,4 @@ The pattern for a command handler:
 
 ## Public Rust API
 
-The root `specify` package is a binary-only crate. It does not expose `src/lib.rs` or re-export workspace types. Code that needs Rust APIs imports the member crates directly, for example `specify_change::Plan`, `specify_config::ProjectConfig`, or `specify_error::Error`.
+The root `specify` package is a binary-only crate. It does not expose `src/lib.rs` or re-export workspace types. Code that needs Rust APIs imports the member crates directly, for example `specify_workflow::Plan`, `specify_workflow::ProjectConfig`, or `specify_error::Error`.
