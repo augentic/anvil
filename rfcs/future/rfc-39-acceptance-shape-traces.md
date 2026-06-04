@@ -122,6 +122,41 @@ specify acceptance status                    # (from the prerequisite reconciler
 | Live forge | excluded | excluded | human-driven |
 | Runs in CI | yes | yes (CI mode, D4a) | no |
 
+## Prerequisite plumbing (deferred)
+
+The two prerequisites named in §"Trigger conditions" — **typed run records** and a **status reconciler** — plus two supporting helpers were scoped out of the active acceptance remediation effort and parked here. The active effort delivered only the genuinely forward-moving items (the `specify init` first-party shorthand + `$SPECIFY_FRAMEWORK_ROOT` fallback, the `make acceptance-scenario` scaffolder, and the Makefile simplification); this plumbing is captured concretely so it is ready to build when the trigger fires.
+
+**Why deferred, not dropped.** A reconciler polices drift between run records, the catalog, and issues — but there is nothing to reconcile until the manual sweep actually runs. There are currently zero run records, so building the policing layer (especially as a native `specify lint framework` check) before the artifacts it polices exist is premature. Fix what blocks the sweep, run it, then let real run records justify the reconciler.
+
+**Promotion trigger.** Promote this plumbing from the RFC back into an active plan once the first real sweep has produced run records *and* the catalog has drifted (or is at concrete risk of drifting) in practice.
+
+### P0 — Typed run records
+
+Give run-summaries machine-readable frontmatter so verdicts can be filed and reconciled.
+
+- New `schemas/acceptance/run.schema.json` in `augentic/specify-cli`; embed it as `RUN_JSON_SCHEMA` (constant in `crates/schema/src/constants.rs`, export in `crates/schema/src/lib.rs`, parity + compile entries in `crates/schema/tests/schemas.rs` — mirroring every other embedded schema constant).
+- Add the frontmatter block to [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) and reverse the prose-only note in [`acceptance/runs/README.md`](../../acceptance/runs/README.md) (and the matching note in `docs/contributing/checks.md`).
+- Fields: `scenario`, `date`, `verdict` (`pass | fail | deferred`), `wave`, `binary { version, path }`, `issues[]`, `operator`.
+
+### P1 — Status reconciler
+
+A native `specify lint framework` check (no Python), modelled on the existing cross-file `scenarios.duplicate-id` check.
+
+- Implement `crates/standards/src/framework/check/acceptance.rs` in `augentic/specify-cli`, bridged by a `CORE-053` `kind: authoring-predicate` rule file in `augentic/specify`.
+- Validates: catalog status vs. the typed run records (P0) vs. each scenario's `## Automated coverage` section.
+- Blocking findings *are* the gate signal — no separate `specify acceptance status` command is required for the gate (the `status` verb in the CLI surface above stays an optional reporter).
+
+### P2 — Evidence capture helper
+
+A small bash `tee` / `script(1)` helper that writes each command's output under the run's evidence directory, referenced from [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) and the run-summary template. Pure setup/capture aid — it drives no `/spec:*` command and grades nothing, so the `automated-runner-added` negative-expectation stays held.
+
+### P3 — Cross-repo coverage map
+
+Verify each `automated` (`backend: fixture`) scenario's named test actually exists in `augentic/specify-cli`. This is a poor fit for `specify lint framework` (the framework repo cannot see the sibling repo's test tree), hence RFC-only for now. Two candidate designs to decide at promotion time:
+
+- **Test-name manifest** — `specify-cli` exports a manifest of test names that the reconciler (P1) cross-references. Keeps the framework repo self-contained.
+- **`SPECIFY_CLI_ROOT`-gated probe** — the reconciler probes the sibling repo when an env var points at it, and gracefully skips when absent.
+
 ## Alternatives considered
 
 **Recorded-transcript replay only (no shape layer).** Rejected as insufficient. Replaying a transcript proves the *orchestration* held but says nothing about whether the synthesized `spec.md` has the right structure for a *different* (live) run. Shape assertions are needed to check live output during the sweep, which transcript replay cannot do.

@@ -28,6 +28,12 @@ Inputs:
 - Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
+Shortcut: for single-project scenarios you may run `make acceptance-scenario
+ID=<id>` (setup helper only — it creates the temp project, runs the named
+`specify init`, exports SPECIFY_FRAMEWORK_ROOT for offline adapters, and stops
+before /spec:*). Verify its captured output, then continue from step 3. Do the
+steps by hand for cross-repo workspace scenarios.
+
 Do, in order, capturing each exact command and its verbatim output:
 1. Create the disposable directories the scenario/setup names under a fresh temp
    root. Never reuse an existing project or a non-empty Specify state.

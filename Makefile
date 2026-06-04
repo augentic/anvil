@@ -12,7 +12,7 @@ SPECIFY_BIN_DIR := $(abspath $(dir $(SPECIFY_MANIFEST))target/release)
 INSTALL_DIR ?= $(HOME)/.local/bin
 SPECIFY_LINK := $(INSTALL_DIR)/specify
 
-.PHONY: lint acceptance use-local-plugins use-team-plugins
+.PHONY: lint acceptance acceptance-scenario use-local-plugins use-team-plugins
 
 lint:
 	cargo run --release --manifest-path $(SPECIFY_MANIFEST) --bin specify -- lint framework --framework-root .
@@ -28,25 +28,19 @@ acceptance:
 	cargo build --release --manifest-path $(SPECIFY_MANIFEST) --bin specify
 	@$(MAKE) lint
 	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test fan_in_fan_out --test source_extract --test slice --test plan_orchestrate --test workspace
-	
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
 	@echo
-	@echo "Symlinked specify -> $(SPECIFY_LINK) ($$("$(SPECIFY_LINK)" --version))"
-	@case ":$$PATH:" in \
-	  *":$(INSTALL_DIR):"*) \
-	    resolved="$$(command -v specify 2>/dev/null || true)"; \
-	    if [ "$$resolved" != "$(SPECIFY_LINK)" ]; then \
-	      echo "WARNING: specify resolves to $$resolved, which shadows $(SPECIFY_LINK)."; \
-	      echo "         Move $(INSTALL_DIR) earlier on your PATH or remove the other copy."; \
-	    else \
-	      echo "Ready: the manual sweep can now call \`specify\` directly."; \
-	    fi ;; \
-	  *) \
-	    echo "WARNING: $(INSTALL_DIR) is not on your PATH."; \
-	    echo "         Add to your shell profile: export PATH=\"$(INSTALL_DIR):\$$PATH\""; \
-	    echo "         Then re-open your shell (or source the profile) before the sweep." ;; \
-	esac
+	@echo "Symlinked specify -> $(SPECIFY_LINK)"
+	@echo "Bare 'specify' resolves to: $$(command -v specify 2>/dev/null || echo '<not on PATH>')"
+	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
+
+# Scaffold one acceptance scenario's disposable environment up to its
+# pre-invocation state (setup helper only — drives no /spec:* command).
+# Run `make acceptance` first so the bare `specify` resolves to the build
+# under test. Usage: make acceptance-scenario ID=pure-intent
+acceptance-scenario:
+	@bash ./scripts/acceptance-scenario.sh "$(ID)"
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh
