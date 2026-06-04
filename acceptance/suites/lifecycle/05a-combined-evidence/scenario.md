@@ -2,7 +2,7 @@
 id: combined-evidence
 owner: lifecycle
 kind: suite
-backend: manual
+backend: fixture
 entrypoint: /spec:plan
 stages: [plan, refine]
 isolation: fresh-project
@@ -13,12 +13,6 @@ assertions:
   - sources-line-carries-both
   - deterministic-reconciliation
   - lifecycle-reaches-refined
-negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
 expected-artifacts:
   - plan.yaml
   - .specify/slices/inventory-sync/spec.md
@@ -28,32 +22,25 @@ expected-artifacts:
 
 Scenario ID: `combined-evidence`
 
+> **Automated (`backend: fixture`).** This scenario's assertions are deterministic and proven by fixture-driven tests in the deterministic surface — no manual sweep run is required. See [Automated coverage](#automated-coverage).
+
 ## Intent
 
 Prove synthesis end to end when two agreeing sources are bound on one slice: serial `extract` per source, a two-entry `Evidence[]`, a `Sources:` line carrying both keys, deterministic reconciliation by `id` correlation, and a clean transition to `refined`.
 
-## Setup
+## Automated coverage
 
-Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`. Bind a legacy repo path and a design-notes docs path that describe the same behavior without disagreement. Plan a one-slice change named `inventory-sync` with both sources bound.
+Proven by `fan_in_twice_fan_out_once` in [`augentic/specify-cli` `tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs) (with `tests/slice/synthesize.rs::synthesize_from_is_deterministic`), run under `cargo make test`. The two sources agreeing is a fixture-Evidence input; the reconciliation over that Evidence is deterministic.
 
-## Invocation
+Assertion → coverage map:
 
-1. **Plan** — `/spec:plan inventory-sync` binding both the legacy and design-notes sources; stamp Gate 1.
-2. **Refine** — `/spec:refine` (or `/spec:execute` to refine); inspect `.specify/slices/inventory-sync/spec.md` and the evidence directory.
+- `plan-exists`: the fan-in fixture seeds a plan binding two sources (`docs`, `legacy`).
+- `serial-extract-per-source`: `source extract` runs once per bound source, persisting `evidence/docs.yaml` and `evidence/legacy.yaml`.
+- `two-entry-evidence`: both Evidence files are asserted present on the slice before synthesis.
+- `sources-line-carries-both`: synthesis renders the combined ordered `Sources:` list (see also the `Sources: docs, legacy` assertion in `tests/slice/synthesize.rs`).
+- `deterministic-reconciliation`: `synthesize_from_is_deterministic` proves byte-identical re-projection; `kernel_projection_deterministic` proves `id`-correlated requirements are stable.
+- `lifecycle-reaches-refined`: the slice synthesizes drift-clean and transitions through `refined` to `built` in the fan-in path.
 
-## Assertions
+## Reproducing by hand (optional)
 
-- `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `serial-extract-per-source`: `extract` runs once per bound source.
-- `two-entry-evidence`: the slice carries a two-entry `Evidence[]`.
-- `sources-line-carries-both`: the requirement `Sources:` line lists both source keys.
-- `deterministic-reconciliation`: `id` correlation produces stable reconciliation across re-runs.
-- `lifecycle-reaches-refined`: the slice transitions to `refined` cleanly when the sources agree.
-
-## Negative expectations
-
-Manual by design — see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
-
-## Recording
-
-Capture with [`shared/run-summary-template.md`](../../shared/run-summary-template.md) under [`acceptance/runs/`](../../../runs/README.md).
+The fixture tests are the source of truth; the steps below only reproduce it for inspection. Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`, bind a legacy repo path and an agreeing design-notes docs path, plan a one-slice change named `inventory-sync` with both sources, stamp Gate 1, then `/spec:refine` and inspect the slice's `spec.md` and evidence directory.

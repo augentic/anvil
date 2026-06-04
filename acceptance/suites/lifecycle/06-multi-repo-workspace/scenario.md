@@ -2,7 +2,7 @@
 id: multi-repo-workspace
 owner: lifecycle
 kind: suite
-backend: manual
+backend: fixture
 entrypoint: /spec:plan
 stages: [plan]
 isolation: fresh-project
@@ -12,12 +12,6 @@ assertions:
   - workspace-discriminator-set
   - per-candidate-project-routing
   - workspace-sync-before-propose
-negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
 expected-artifacts:
   - plan.yaml
   - registry.yaml
@@ -27,31 +21,21 @@ expected-artifacts:
 
 Scenario ID: `multi-repo-workspace`
 
+> **Automated (`backend: fixture`).** This scenario's routing assertions are a deterministic kernel projection and proven by fixture-driven tests in the deterministic surface — no manual sweep run is required. See [Automated coverage](#automated-coverage).
+
 ## Intent
 
 Prove multi-repo plan authoring from a registry-only workspace: the `workspace:` discriminator is set, the propose step routes each candidate to a project via `--project`, and `workspace sync` runs at the right time so routing sees materialised peers. The scenario stops at Gate 1.
 
-## Setup
+## Automated coverage
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../../shared/setup.md) (workspace plus registered `shop-backend` / `shop-mobile`) and the **OAuth login brief**.
+Proven by the propose kernel and workspace-sync tests in [`augentic/specify-cli`](https://github.com/augentic/specify-cli), run under `cargo make test`. The agent groups leads into a response; the kernel's routing over that response is deterministic (the response is fixture-provided here):
 
-## Invocation
+- `plan-exists` / `plan-validates`: `tests/plan_orchestrate/validate.rs::plan_validate_clean_json`.
+- `workspace-discriminator-set`: workspace mode is established by `specify init --workspace`, exercised by `tests/workspace.rs` (sync over a registry-only workspace).
+- `per-candidate-project-routing`: `tests/plan_orchestrate/propose.rs::propose_from_fan_out_golden` writes single-target slices each bound to their `project`; `reconcile_project_binding_required` / `propose_reconcile_project_orphan` pin the routing guards.
+- `workspace-sync-before-propose`: `tests/workspace.rs::planning_sync_two_symlink_peers` materialises the peer context that routing reads (no orphan/unrouted candidate).
 
-1. **Plan** — `/spec:plan oauth-login source brief=docs/oauth-login.md` from the workspace; confirm the propose step assigns each candidate to a project.
-2. **Review** — inspect `plan.yaml`; confirm per-candidate project routing matches the registry descriptions. Stop at Gate 1.
+## Reproducing by hand (optional)
 
-## Assertions
-
-- `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly.
-- `workspace-discriminator-set`: the plan carries the `workspace:` discriminator.
-- `per-candidate-project-routing`: each routed slice carries an explicit `--project` assignment.
-- `workspace-sync-before-propose`: routing reflects synced peer context (no orphan/unrouted candidate).
-
-## Negative expectations
-
-Manual by design — see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
-
-## Recording
-
-Capture with [`shared/run-summary-template.md`](../../shared/run-summary-template.md) under [`acceptance/runs/`](../../../runs/README.md).
+The fixture tests are the source of truth; the steps below only reproduce it for inspection. Follow the **cross-repo workspace setup** in [`shared/setup.md`](../../shared/setup.md) (workspace plus registered `shop-backend` / `shop-mobile`) and the **OAuth login brief**, run `/spec:plan oauth-login source brief=docs/oauth-login.md` from the workspace, and inspect per-candidate routing in `plan.yaml`. Stop at Gate 1.

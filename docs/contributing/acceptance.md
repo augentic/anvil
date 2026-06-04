@@ -13,14 +13,16 @@ A release is proven only when **both** surfaces are green:
 
 The scenario sweep is intentionally **not** an automated harness: no runner, fake forge, recorded transcript, CI target, or golden-output comparison. That posture is encoded as the `negative-expectations` frontmatter on every scenario and is the one place this rationale is stated — individual scenarios do not repeat it in prose. It remains manual because it involves LLM-emitted prose; `specify lint framework` does not pin synthesised bytes.
 
+**Fixture-backed scenarios are the exception.** A scenario whose assertions are entirely deterministic CLI/host behavior — no LLM prose to judge — is promoted to `backend: fixture` and proven by a named test in surface 1, not the manual sweep. Its scenario file carries an **Automated coverage** section naming the test (e.g. `source-sandbox-denied` → `tests/source_extract.rs::sandbox_denies_out_of_scope`), and its catalog status is `automated`. The manual sweep skips these; the deterministic surface covers them on every commit. The `negative-expectations` (no runner / no CI target) apply only to the manual-prose scenarios, so a fixture-backed scenario drops them.
+
 ## Running the automated surface
 
 ```bash
 make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
-make acceptance    # builds the release binary, runs make lint + the fan_in_fan_out proof, then prints the SPECIFY_BIN export line for the sweep
+make acceptance    # builds the release binary, runs make lint + the fixture-backed acceptance tests, then prints the SPECIFY_BIN export line for the sweep
 ```
 
-`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, prints an `export SPECIFY_BIN=…` line, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
+`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the fixture-backed acceptance tests against the sibling `specify-cli` checkout — `fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, and `workspace`, which carry the named tests behind every `automated` catalog entry — prints an `export SPECIFY_BIN=…` line, then points at the manual sweep below. (`cargo make test` in `specify-cli` remains the full deterministic surface, including the wasm-tool suites `make acceptance` skips for portability.) It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
 
 `make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
@@ -42,7 +44,7 @@ Operators who prefer an agent to do the clerical work can paste the reusable pro
 
 When asked to "run specify's acceptance tests and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
 
-1. **Automated surface.** Run `make acceptance` (or `make lint` plus `cargo test --manifest-path ../specify-cli/Cargo.toml --test fan_in_fan_out`). Report pass/fail with the failing finding ids. This needs no human input.
+1. **Automated surface.** Run `make acceptance` — it runs `make lint` plus the fixture-backed acceptance tests (`fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, `workspace`), which prove every `automated` catalog entry. Report pass/fail with the failing finding/test ids. For the full deterministic surface (including the wasm-tool suites), run `cargo make test` in the `specify-cli` checkout. This step needs no human input.
 2. **Manual sweep — per scenario, in wave order** (see [catalog](../../acceptance/suites/lifecycle/README.md)):
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.

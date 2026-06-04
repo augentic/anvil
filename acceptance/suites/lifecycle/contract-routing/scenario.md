@@ -2,7 +2,7 @@
 id: contract-routing
 owner: lifecycle
 kind: suite
-backend: manual
+backend: fixture
 entrypoint: /spec:plan
 stages: [plan]
 isolation: fresh-project
@@ -19,44 +19,27 @@ expected-artifacts:
   - .specify/plans/oauth-login-plan/discovery.md
   - .specify/plans/oauth-login-plan/proposal.md
   - .specify/plans/oauth-login-plan/workspace.md
-negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
 ---
 
 # Contract routing plan generation
 
 Scenario ID: `contract-routing`
 
+> **Automated (`backend: fixture`).** This scenario's routing/dependency assertions are a deterministic kernel projection and proven by fixture-driven tests in the deterministic surface — no manual sweep run is required. See [Automated coverage](#automated-coverage).
+
 ## Intent
 
-Prove the plan-generation half of the cross-repo contract-first path: a short feature brief becomes one contract slice and routed implementation slices, with deterministic project routing — without executing, pushing, or finalizing. This is the plan-only stop variant of [`cross-repo-contract-flow`](../cross-repo-contract-flow/scenario.md); the two share setup and may be consolidated in a future pass.
+Prove the plan-generation half of the cross-repo contract-first path: a short feature brief becomes one contract slice and routed implementation slices, with deterministic project routing — without executing, pushing, or finalizing. This is the plan-only stop variant of [`cross-repo-contract-flow`](../cross-repo-contract-flow/scenario.md), which exercises the live-forge finalize tail (and stays manual).
 
-## Setup
+## Automated coverage
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../../shared/setup.md) and the **OAuth login brief** at `docs/oauth-login.md`.
+Proven by the propose kernel tests in [`augentic/specify-cli` `tests/plan_orchestrate/propose.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan_orchestrate/propose.rs) and the depends-on ordering in `tests/fan_in_fan_out.rs`, run under `cargo make test`. The agent's grouping response is fixture-provided; the kernel's routing, binding, and `depends-on` derivation over it are deterministic:
 
-## Invocation
+- `plan-exists` / `plan-validates`: `tests/plan_orchestrate/validate.rs::plan_validate_clean_json`.
+- `contract-slice-present` / `implementation-slices-routed`: `propose_from_fan_out_golden` writes a contract-bound slice plus single-target implementation slices each bound to their project.
+- `dependencies-correct`: the same golden + `fan_in_fan_out.rs` assert the implementation slices carry `depends-on` the contract slice, and the driver never advances to a dependent before its upstream merges.
+- `routing-deterministic`: `propose_from_fan_out_golden` is a byte-stable golden, and `propose_dry_run_workspace_request_golden` pins the request envelope — routing does not depend on prose wording.
 
-1. **Plan** — `/spec:plan oauth-login-plan from docs/oauth-login.md`, asking for one contract slice plus backend and mobile implementation slices that both depend on the contract slice.
-2. **Validate + inspect** — `specify plan validate`; `specify registry validate`; inspect `plan.yaml`. Do not run `/spec:execute`, `specify workspace push`, or `specify plan archive`.
+## Reproducing by hand (optional)
 
-## Assertions
-
-- `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly.
-- `contract-slice-present`: the plan includes a contract slice before implementation work begins.
-- `implementation-slices-routed`: implementation slices route to `shop-backend` and `shop-mobile`.
-- `dependencies-correct`: each implementation slice depends on the contract slice.
-- `routing-deterministic`: project assignments match the registry descriptions and do not depend on generated prose wording.
-
-## Negative expectations
-
-Manual by design — see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
-
-## Recording
-
-Capture with [`shared/run-summary-template.md`](../../shared/run-summary-template.md) under [`acceptance/runs/`](../../../runs/README.md).
+The fixture tests are the source of truth; the steps below only reproduce it for inspection. Follow the **cross-repo workspace setup** in [`shared/setup.md`](../../shared/setup.md) and the **OAuth login brief**, run `/spec:plan oauth-login-plan from docs/oauth-login.md` asking for one contract slice plus routed backend/mobile implementation slices, then `specify plan validate` and inspect `plan.yaml`. Do not execute, push, or finalize.

@@ -2,7 +2,7 @@
 id: invalid-evidence
 owner: lifecycle
 kind: suite
-backend: manual
+backend: fixture
 entrypoint: /spec:plan
 stages: [plan, refine]
 isolation: fresh-project
@@ -11,12 +11,6 @@ assertions:
   - validation-fails-before-synthesis
   - structured-error
   - slice-stays-refining
-negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
 expected-artifacts:
   - plan.yaml
 ---
@@ -25,30 +19,23 @@ expected-artifacts:
 
 Scenario ID: `invalid-evidence`
 
+> **Automated (`backend: fixture`).** This scenario's assertions are deterministic and proven by a fixture-driven test in the deterministic surface — no manual sweep run is required. See [Automated coverage](#automated-coverage).
+
 ## Intent
 
 Prove the Evidence-validation gate: when an adapter emits `Evidence` that fails `evidence.schema.json`, validation fails before synthesis runs, a structured error is returned, and the slice stays in `refining`.
 
-## Setup
+## Automated coverage
 
-Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`. Bind a source configured to emit schema-invalid Evidence (e.g. a fixture adapter, or staged Evidence missing required fields). Plan a one-slice change named `bad-evidence`.
+Proven by `finalize_invalid_persists_no_file` in [`augentic/specify-cli` `tests/source_extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source_extract.rs), run under `cargo make test` (and `cargo nextest run --test source_extract`).
 
-## Invocation
+Assertion → coverage map:
 
-1. **Plan** — `/spec:plan bad-evidence` binding the source; stamp Gate 1.
-2. **Refine** — `/spec:refine` (or `/spec:execute` to refine) and capture the validation failure.
+- `plan-exists`: the test seeds a plan with a bound source before extracting.
+- `validation-fails-before-synthesis`: schema-invalid Evidence (missing the required `claims` field) is rejected at `source extract --phase finalize` before any synthesis runs.
+- `structured-error`: the failure surfaces as `error: evidence-schema` (exit code 2), not a panic or silent skip.
+- `slice-stays-refining`: validate-before-visible — no Evidence file lands on the slice path and no cache event is emitted, so the slice never leaves `refining`.
 
-## Assertions
+## Reproducing by hand (optional)
 
-- `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `validation-fails-before-synthesis`: schema validation rejects the Evidence before any synthesis.
-- `structured-error`: the failure surfaces as a structured error, not a panic or silent skip.
-- `slice-stays-refining`: the slice remains in `refining`.
-
-## Negative expectations
-
-Manual by design — see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
-
-## Recording
-
-Capture with [`shared/run-summary-template.md`](../../shared/run-summary-template.md) under [`acceptance/runs/`](../../../runs/README.md).
+The fixture test is the source of truth; the steps below only reproduce it for inspection. Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`, bind a source configured to emit schema-invalid Evidence, plan a one-slice change named `bad-evidence`, stamp Gate 1, then `/spec:refine` and capture the validation failure.

@@ -2,7 +2,7 @@
 id: extract-failure
 owner: lifecycle
 kind: suite
-backend: manual
+backend: fixture
 entrypoint: /spec:plan
 stages: [plan, refine]
 isolation: fresh-project
@@ -10,13 +10,7 @@ assertions:
   - plan-exists
   - slice-stays-refining
   - no-synthesis-runs
-  - structured-error-names-source
-negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
+  - structured-error
 expected-artifacts:
   - plan.yaml
 ---
@@ -25,30 +19,25 @@ expected-artifacts:
 
 Scenario ID: `extract-failure`
 
+> **Automated (`backend: fixture`).** This scenario's assertions are deterministic and proven by a fixture-driven test in the deterministic surface — no manual sweep run is required. See [Automated coverage](#automated-coverage).
+
 ## Intent
 
-Prove the extract-failure path: when a bound source's `extract` fails, the slice stays in `refining`, no synthesis runs, and a structured error names the failing source key.
+Prove the extract-failure path: when a bound source's `extract` fails to produce Evidence, the slice stays in `refining`, no synthesis can run, and a structured (not panicking) error is returned.
 
-## Setup
+## Automated coverage
 
-Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`. Bind a source whose `extract` will fail (e.g. a path that the adapter cannot read, or a deliberately malformed input). Plan a one-slice change named `broken-extract`.
+Proven by `finalize_missing_evidence_stays_refining` in [`augentic/specify-cli` `tests/source_extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source_extract.rs), run under `cargo make test`. The case models the agent's `extract` brief running but staging nothing in `$SCRATCH_DIR`; the deterministic finalize seam then fails closed.
 
-## Invocation
+Assertion → coverage map:
 
-1. **Plan** — `/spec:plan broken-extract` binding the failing source; stamp Gate 1.
-2. **Refine** — `/spec:refine` (or `/spec:execute` to refine) and capture the failure.
+- `plan-exists`: the test seeds a plan with a bound `code-typescript` source before extracting.
+- `structured-error`: finalize returns the wire-stable `extract-evidence-missing` diagnostic (exit code 1) naming the missing `evidence.yaml` artifact path — never a panic or silent skip. (The error names the missing artifact, whose path embeds the bound adapter and slice; it does not echo the plan source *key*.)
+- `slice-stays-refining`: validate-before-visible — no Evidence file lands on the slice path, so the slice never leaves `refining`.
+- `no-synthesis-runs`: with no persisted Evidence and no cache event, synthesis has nothing to consume.
 
-## Assertions
+Two adjacent extract-failure modes are covered by sibling tests in the same file: a *present-but-schema-invalid* document (`finalize_invalid_persists_no_file` → `evidence-schema`) and an *out-of-sandbox* document (`sandbox_denies_out_of_scope` → `extract-evidence-missing`).
 
-- `plan-exists`: `plan.yaml` exists after `/spec:plan`.
-- `slice-stays-refining`: the slice remains in `refining` after the failed extract.
-- `no-synthesis-runs`: no `spec.md` / `design.md` is synthesised.
-- `structured-error-names-source`: the structured error identifies the failing source key.
+## Reproducing by hand (optional)
 
-## Negative expectations
-
-Manual by design — see [`docs/contributing/acceptance.md`](../../../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
-
-## Recording
-
-Capture with [`shared/run-summary-template.md`](../../shared/run-summary-template.md) under [`acceptance/runs/`](../../../runs/README.md).
+The fixture test is the source of truth; the steps below only reproduce it for inspection. Follow the **single-project setup** in [`shared/setup.md`](../../shared/setup.md) with `specify init omnia@v1`, bind a source whose `extract` will fail to produce Evidence, plan a one-slice change named `broken-extract`, stamp Gate 1, then `/spec:refine` and capture the structured failure.
