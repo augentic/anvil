@@ -21,17 +21,24 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- SPECIFY_BIN: copy-paste the `export SPECIFY_BIN=…` line `make acceptance` printed. Use it for every
-  specify call; never the PATH `specify`, which is the historical 0.1.0 build and is wrong.
+- `specify`: `make acceptance` symlinks the build under test into ~/.local/bin, so the bare
+  `specify` command already resolves to it. Confirm with `specify --version` before any other
+  call; if it resolves elsewhere on PATH, fix PATH (see acceptance/shared/setup.md).
 - Scenario: acceptance/lifecycle/<id>.md
 - Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
+Shortcut: for single-project scenarios you may run `make acceptance-scenario
+ID=<id>` (setup helper only — it creates the temp project, runs the named
+`specify init`, exports SPECIFY_FRAMEWORK_ROOT for offline adapters, and stops
+before /spec:*). Verify its captured output, then continue from step 3. Do the
+steps by hand for cross-repo workspace scenarios.
+
 Do, in order, capturing each exact command and its verbatim output:
 1. Create the disposable directories the scenario/setup names under a fresh temp
    root. Never reuse an existing project or a non-empty Specify state.
-2. Run the init / registry-add / brief-file steps verbatim, substituting
-   $SPECIFY_BIN for `specify`.
+2. Run the init / registry-add / brief-file steps verbatim using the bare
+   `specify` command (which the PATH export resolves to the build under test).
 3. Run the scenario's validation step (e.g. `specify registry validate`) and
    confirm it exits 0.
 4. STOP before /spec:plan. Report: the temp root, every created path, and the
@@ -51,7 +58,7 @@ self-verify the structurally-checkable assertions, and fill the run-summary.
 Pause at the human-only seams; never fabricate a result.
 
 Inputs:
-- The environment left by the SETUP prompt (temp root, SPECIFY_BIN).
+- The environment left by the SETUP prompt (temp root, the PATH-resolved `specify` build).
 - acceptance/lifecycle/<id>.md (Invocation, Assertions, Negative
   Expectations).
 - acceptance/shared/run-summary-template.md field-set.

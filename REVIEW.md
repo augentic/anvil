@@ -224,7 +224,7 @@ From [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test
 
 ## Suggested 4-week attention plan (improve-only)
 
-1. **Week 1 — Gate proof:** Build `SPECIFY_BIN`, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
+1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
 2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/examples/sources/*` through `specify source survey/extract`.
 3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/examples/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
 4. **Week 4 — Lint depth:** Consumer `lint_run` hint-kind matrix + 3–5 CORE parity modules for highest-churn rules (`044`, `042`, `019`). Refresh perf docs (S1).

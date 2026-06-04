@@ -14,7 +14,7 @@ Copy this into `acceptance/runs/<id>-<date>.md`, fill it against the live run, a
 - **Operator / agent:** `<name or model identifier>`
 - **Run id:** `<timestamp or uuid>`
 - **Started at / finished at:** `<ISO 8601>` / `<ISO 8601>`
-- **`SPECIFY_BIN`:** `<path or "PATH default">`
+- **`specify` build:** `<output of \`command -v specify\` + \`specify --version\`>`
 - **Workspace / project roots:** `<temporary roots created for this run>`
 
 ## Inputs created
