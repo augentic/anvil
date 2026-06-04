@@ -52,7 +52,7 @@ Three tracks run in parallel:
 #### RM-05: Multi-repo acceptance suite
 
 **Goal:** Prove the `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` loop end-to-end on realistic multi-repo flows — not only isolated command behaviour.
-**Status:** Partial — `tests/cross-repo/runs/2.0.0/` defines 20 scenarios including extract failure (`05f`), invalid evidence (`05g`), source sandbox denial (`05j`), execute build failure (`09`), step-through breakout (`08`), workspace breakout (`11`), and dual-driving refusal (`12`). **All run-summaries are still pending**; scenario #1 (pure intent, N=1) is the release blocker per the queue README.
+**Status:** Partial — `acceptance/suites/cross-repo-workflow/queue/` defines 20 scenarios including extract failure (`05f`), invalid evidence (`05g`), source sandbox denial (`05j`), execute build failure (`09`), step-through breakout (`08`), workspace breakout (`11`), and dual-driving refusal (`12`). **All run-summaries are still pending**; scenario #1 (pure intent, N=1) is the release blocker per the queue README.
 **Immediate task:** Run scenario #1 against the live 2.0 binary and fill the run-summary. Halt on failure; triage before continuing.
 **Remaining fixture gap:** A dedicated stale-workspace recovery scenario (not yet stubbed).
 **Acceptance surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs)). RM-05 owns the remaining debt: manual LLM-driven scenario sweeps and per-target generated-output correctness (see [docs/contributing/acceptance.md](../docs/contributing/acceptance.md)).

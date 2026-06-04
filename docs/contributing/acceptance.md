@@ -3,7 +3,7 @@
 The acceptance surface has two layers:
 
 1. **Static repository checks** — `make lint` runs `specify lint framework --framework-root .` against the live tree. This is the only deterministic surface this repo owns; it validates skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, and scenario frontmatter. The `specify-standards` framework predicate *regression* suite (broken-fixture tests that prove each predicate fires correctly) lives in and is run by `augentic/specify-cli` — its `cargo make test` covers the whole workspace, including `specify-standards` framework — so this repo does not re-run it.
-2. **Manual scenario sweep** — The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation pack at [`tests/plan/`](../../tests/plan/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specify lint framework` does **not** pin synthesised bytes.
+2. **Manual scenario sweep** — The cross-repo scenario pack at [`acceptance/suites/cross-repo-workflow/`](../../acceptance/suites/cross-repo-workflow/) and the plan-generation pack at [`acceptance/suites/plan-authoring/`](../../acceptance/suites/plan-authoring/) are operator-driven scripts that exercise the full `/spec:plan` → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`. They remain manual because they involve LLM-emitted prose; `specify lint framework` does **not** pin synthesised bytes.
 
 ## Running checks locally
 
@@ -18,8 +18,8 @@ Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directl
 - `make lint` runs `specify lint framework` — static repository checks, including scenario frontmatter validation.
 - `make ci` runs `make lint` plus the `check-schemas` target (`scripts/check-schema-mirror.sh`, which verifies the `.cursor/schemas/` mirrors match the CLI). Bare `make lint` does not run the schema-mirror check.
 - The `specify-standards` framework predicate regression suite is run by `cargo make test` in the `specify-cli` repo.
-- The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
-- The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
+- The cross-repo scenario is run manually from [`acceptance/suites/cross-repo-workflow/scenario.md`](../../acceptance/suites/cross-repo-workflow/scenario.md).
+- The plan-generation scenarios are run manually from [`acceptance/suites/plan-authoring/`](../../acceptance/suites/plan-authoring/).
 
 ## Synthesis byte-replay (deferred)
 
@@ -58,34 +58,34 @@ The cross-source fan-in / cross-slice fan-out acceptance splits across two disti
 
 ## Scenario IDs
 
-The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row numbers. The canonical queue lives in [`tests/cross-repo/runs/2.0.0/`](../../tests/cross-repo/runs/2.0.0/); each stub links back here so acceptance references survive archive cleanup.
+The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row numbers. The canonical queue lives in [`acceptance/suites/cross-repo-workflow/queue/`](../../acceptance/suites/cross-repo-workflow/queue/); each stub links back here so acceptance references survive archive cleanup.
 
 | Scenario ID | Meaning | Stub |
 | --- | --- | --- |
-| `1` | Pure intent, one slice | [`01-pure-intent.md`](../../tests/cross-repo/runs/2.0.0/01-pure-intent.md) |
-| `2` | Documentation, one slice | [`02-documentation-one-slice.md`](../../tests/cross-repo/runs/2.0.0/02-documentation-one-slice.md) |
-| `3` | Documentation, multi-slice | [`03-documentation-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/03-documentation-multi-slice.md) |
-| `4` | Code, multi-slice | [`04-code-multi-slice.md`](../../tests/cross-repo/runs/2.0.0/04-code-multi-slice.md) |
-| `5` | Intra-Evidence `[conflict]` | [`05-intra-evidence-conflict.md`](../../tests/cross-repo/runs/2.0.0/05-intra-evidence-conflict.md) |
-| `5a` | Combined evidence from code and documentation | [`05a-combined-evidence.md`](../../tests/cross-repo/runs/2.0.0/05a-combined-evidence.md) |
-| `5b` | `[divergence]` from authority resolution | [`05b-divergence-authority.md`](../../tests/cross-repo/runs/2.0.0/05b-divergence-authority.md) |
-| `5c` | `[conflict]` from same-authority disagreement | [`05c-same-authority-conflict.md`](../../tests/cross-repo/runs/2.0.0/05c-same-authority-conflict.md) |
-| `5e` | Cross-source propose-time merge | [`05e-cross-source-merge.md`](../../tests/cross-repo/runs/2.0.0/05e-cross-source-merge.md) |
-| `5f` | Extract failure | [`05f-extract-failure.md`](../../tests/cross-repo/runs/2.0.0/05f-extract-failure.md) |
-| `5g` | Invalid Evidence schema rejection | [`05g-invalid-evidence.md`](../../tests/cross-repo/runs/2.0.0/05g-invalid-evidence.md) |
-| `5h` | Target `shape` injection | [`05h-target-shape-injection.md`](../../tests/cross-repo/runs/2.0.0/05h-target-shape-injection.md) |
-| `5j` | Source-adapter sandbox path-denied | [`05j-source-sandbox-denied.md`](../../tests/cross-repo/runs/2.0.0/05j-source-sandbox-denied.md) |
-| `6` | Multi-repo assignment from a workspace | [`06-multi-repo-workspace.md`](../../tests/cross-repo/runs/2.0.0/06-multi-repo-workspace.md) |
-| `7` | Operator amends one-slice plan into two slices at Gate 1 | [`07-amend-into-two.md`](../../tests/cross-repo/runs/2.0.0/07-amend-into-two.md) |
-| `8` | Step-through breakout mid-execute | [`08-stepthrough-breakout.md`](../../tests/cross-repo/runs/2.0.0/08-stepthrough-breakout.md) |
-| `9` | `/spec:execute` parks on a build failure, operator fixes, resumes | [`09-execute-build-failure.md`](../../tests/cross-repo/runs/2.0.0/09-execute-build-failure.md) |
-| `10` | Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects.md`](../../tests/cross-repo/runs/2.0.0/10-workspace-execute-two-projects.md) |
-| `11` | Workspace breakout after build failure in a slot | [`11-workspace-breakout.md`](../../tests/cross-repo/runs/2.0.0/11-workspace-breakout.md) |
-| `12` | Dual-driving refused | [`12-dual-driving-refused.md`](../../tests/cross-repo/runs/2.0.0/12-dual-driving-refused.md) |
-| `13` | Stale-workspace recovery | [`13-stale-workspace-recovery.md`](../../tests/cross-repo/runs/2.0.0/13-stale-workspace-recovery.md) |
+| `1` | Pure intent, one slice | [`01-pure-intent.md`](../../acceptance/suites/cross-repo-workflow/queue/01-pure-intent.md) |
+| `2` | Documentation, one slice | [`02-documentation-one-slice.md`](../../acceptance/suites/cross-repo-workflow/queue/02-documentation-one-slice.md) |
+| `3` | Documentation, multi-slice | [`03-documentation-multi-slice.md`](../../acceptance/suites/cross-repo-workflow/queue/03-documentation-multi-slice.md) |
+| `4` | Code, multi-slice | [`04-code-multi-slice.md`](../../acceptance/suites/cross-repo-workflow/queue/04-code-multi-slice.md) |
+| `5` | Intra-Evidence `[conflict]` | [`05-intra-evidence-conflict.md`](../../acceptance/suites/cross-repo-workflow/queue/05-intra-evidence-conflict.md) |
+| `5a` | Combined evidence from code and documentation | [`05a-combined-evidence.md`](../../acceptance/suites/cross-repo-workflow/queue/05a-combined-evidence.md) |
+| `5b` | `[divergence]` from authority resolution | [`05b-divergence-authority.md`](../../acceptance/suites/cross-repo-workflow/queue/05b-divergence-authority.md) |
+| `5c` | `[conflict]` from same-authority disagreement | [`05c-same-authority-conflict.md`](../../acceptance/suites/cross-repo-workflow/queue/05c-same-authority-conflict.md) |
+| `5e` | Cross-source propose-time merge | [`05e-cross-source-merge.md`](../../acceptance/suites/cross-repo-workflow/queue/05e-cross-source-merge.md) |
+| `5f` | Extract failure | [`05f-extract-failure.md`](../../acceptance/suites/cross-repo-workflow/queue/05f-extract-failure.md) |
+| `5g` | Invalid Evidence schema rejection | [`05g-invalid-evidence.md`](../../acceptance/suites/cross-repo-workflow/queue/05g-invalid-evidence.md) |
+| `5h` | Target `shape` injection | [`05h-target-shape-injection.md`](../../acceptance/suites/cross-repo-workflow/queue/05h-target-shape-injection.md) |
+| `5j` | Source-adapter sandbox path-denied | [`05j-source-sandbox-denied.md`](../../acceptance/suites/cross-repo-workflow/queue/05j-source-sandbox-denied.md) |
+| `6` | Multi-repo assignment from a workspace | [`06-multi-repo-workspace.md`](../../acceptance/suites/cross-repo-workflow/queue/06-multi-repo-workspace.md) |
+| `7` | Operator amends one-slice plan into two slices at Gate 1 | [`07-amend-into-two.md`](../../acceptance/suites/cross-repo-workflow/queue/07-amend-into-two.md) |
+| `8` | Step-through breakout mid-execute | [`08-stepthrough-breakout.md`](../../acceptance/suites/cross-repo-workflow/queue/08-stepthrough-breakout.md) |
+| `9` | `/spec:execute` parks on a build failure, operator fixes, resumes | [`09-execute-build-failure.md`](../../acceptance/suites/cross-repo-workflow/queue/09-execute-build-failure.md) |
+| `10` | Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects.md`](../../acceptance/suites/cross-repo-workflow/queue/10-workspace-execute-two-projects.md) |
+| `11` | Workspace breakout after build failure in a slot | [`11-workspace-breakout.md`](../../acceptance/suites/cross-repo-workflow/queue/11-workspace-breakout.md) |
+| `12` | Dual-driving refused | [`12-dual-driving-refused.md`](../../acceptance/suites/cross-repo-workflow/queue/12-dual-driving-refused.md) |
+| `13` | Stale-workspace recovery | [`13-stale-workspace-recovery.md`](../../acceptance/suites/cross-repo-workflow/queue/13-stale-workspace-recovery.md) |
 
 ## Evidence
 
-Each cross-repo manual run should fill out [`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md). On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.
+Each cross-repo manual run should fill out [`acceptance/suites/cross-repo-workflow/operator/run-summary-template.md`](../../acceptance/suites/cross-repo-workflow/operator/run-summary-template.md). On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.
 
-Each plan-generation run should fill out [`tests/plan/run-summary-template.md`](../../tests/plan/run-summary-template.md). On failure, preserve the workspace state, exact `/spec:plan` prompt, `plan.yaml`, `.specify/discovery.md` lead inventory, validation output, and any `specify plan show` output.
+Each plan-generation run should fill out [`acceptance/suites/plan-authoring/run-summary-template.md`](../../acceptance/suites/plan-authoring/run-summary-template.md). On failure, preserve the workspace state, exact `/spec:plan` prompt, `plan.yaml`, `.specify/discovery.md` lead inventory, validation output, and any `specify plan show` output.

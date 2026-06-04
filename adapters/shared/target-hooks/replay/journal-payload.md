@@ -38,8 +38,8 @@ replay:
 
 Worked examples:
 
-- With block: [`tests/fixtures/targets/omnia/with-replay/`](../../../../tests/fixtures/targets/omnia/with-replay/)
-- Without block (omission-is-not-an-error): [`tests/fixtures/targets/omnia/without-replay/`](../../../../tests/fixtures/targets/omnia/without-replay/)
+- With block: [`acceptance/examples/targets/omnia/with-replay/`](../../../../acceptance/examples/targets/omnia/with-replay/)
+- Without block (omission-is-not-an-error): [`acceptance/examples/targets/omnia/without-replay/`](../../../../acceptance/examples/targets/omnia/without-replay/)
 
 The block is additive; it must not reshape other `.metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
 

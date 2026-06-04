@@ -109,11 +109,11 @@ All commands are run from the repository root:
 
 The `specify-standards` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-standards` framework); this repo's CI runs only `make lint` against the live tree.
 
-Full acceptance guidance, including the manual cross-repo scenario, lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
+Full acceptance guidance, including manual scenario packs under [`acceptance/`](acceptance/README.md), lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Predicate implementations live in the `specify-standards` crate in `augentic/specify-cli`. Enforced strictly by `specify lint framework` (`make lint` locally) — every predicate fails on the first violation, with no per-file grandfathering.
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are declarative [`CORE-*` rules](adapters/shared/rules/core/) resolved by `specify lint framework`; behaviour for `CORE-010..052` runs through `kind: authoring-predicate` bridges in `augentic/specify-cli` until native hint parity lands (`CORE-009` namespace ownership stays imperative-only). Enforced strictly by `make lint` — every check fails on the first violation, with no per-file grandfathering. Extension and parity contract: [docs/contributing/checks.md](docs/contributing/checks.md).
 
 ## Gotchas
 

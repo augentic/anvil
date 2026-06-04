@@ -37,7 +37,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 ## Acceptance scenarios
 
-The cross-repo acceptance pack includes a code-multi-slice scenario under `tests/cross-repo/runs/2.0.0/` for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
+The cross-repo acceptance pack includes a code-multi-slice scenario under `acceptance/suites/cross-repo-workflow/queue/` for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
 
 ## Next steps
 

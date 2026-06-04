@@ -43,7 +43,7 @@ make lint
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Compare before/after with `/usr/bin/time make lint` when benchmarking locally.
+**Performance (post–RFC-31).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch no longer runs on every `make lint`; migratable predicates are reached via `kind: authoring-predicate` on their `CORE-*` rule files until native hints replace each bridge. Post–Phase-4 wall time on this tree was **~247s** (`real 246.75`, 2026-06-04); compare locally with `/usr/bin/time make lint`.
 
 Tooling contributors run the full local CI subset with:
 
@@ -73,17 +73,23 @@ FAIL: <rule-id>: <message>
   at <repo-relative-path>:<line>
 ```
 
-`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `codex.namespace-ownership-violation`). The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
+`<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `rules.namespace-ownership-violation`). Human text output may still say `codex.*` in older examples; wire ids use the `rules.*` family for codex shape checks. The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
 
-| Rule id prefix | Check module | Topic |
+| Tier | `CORE-*` | How enforced |
 | --- | --- | --- |
-| `adapter.*` | `check::adapter` | Adapter manifest schema and missing manifests |
-| `links.*` | `check::links`, `check::schema_links` | Markdown links, skill references, skill directives, tool-owned schema URLs |
-| `skill.*` | `check::skill_frontmatter`, `check::skill_body` | SKILL.md frontmatter and body discipline |
-| `scenarios.*` | `check::scenarios` | Acceptance scenario frontmatter and recorded traces |
-| `codex.*` | `check::rules` | Rule shape and namespace ownership |
+| Native declarative | `CORE-001..008` | `rule_hints` on rule files (no imperative batch) |
+| Imperative | `CORE-009` | Namespace bridge only (`rules.namespace-ownership-violation`) |
+| Declarative + bridge | `CORE-010..052` | `CORE-*` rule files; `kind: authoring-predicate` until native parity |
 
-See the `specify-standards` crate's `check` module for the full predicate list.
+| Authoring `rule_id` prefix | Topic |
+| --- | --- |
+| `adapter.*` | Adapter manifests |
+| `links.*` | Markdown links, skill references, directives, tool-owned schema URLs |
+| `skill.*` | `SKILL.md` frontmatter and body |
+| `scenarios.*` | Acceptance scenario frontmatter and recorded traces |
+| `rules.*` | Rule shape, namespace ownership (`CORE-009` bridge) |
+
+Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). Predicate implementations for bridges and `CORE-009` live in `augentic/specify-cli` under `crates/standards/src/framework/check/` and `lint/eval/authoring_predicate.rs`.
 
 ### JSON output
 
@@ -197,14 +203,13 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `tests/<suite>/scenario.md` — shared outside-in suites.
-2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
-3. `tests/plan/<scenario>.md` — shared plan-generation scenarios.
-4. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-5. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
-6. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+1. `acceptance/suites/<pack>/scenario.md` — umbrella shared suite (e.g. cross-repo change lifecycle).
+2. `acceptance/suites/<pack>/<scenario-id>/scenario.md` — per-scenario shared suites (e.g. plan authoring).
+3. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+4. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `run-summary-template.md`, `acceptance/_lint/`, queue stubs, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`acceptance/suites/cross-repo-workflow/`](../../acceptance/suites/cross-repo-workflow/) and the plan-generation scenario pack under [`acceptance/suites/plan-authoring/`](../../acceptance/suites/plan-authoring/). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -315,11 +320,25 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specify lint`.
 
-> **Declarative lint program (complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records live under specify-cli `docs/standards/` (phase 1 and phase 2 spike docs, sidecar schema notes); posture is documented in DECISIONS and the diagnostics annex on declarative lint.
+> **Declarative lint (RFC-31 complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Historical program: [`rfcs/done/rfc-31-declarative-lints.md`](../../rfcs/done/rfc-31-declarative-lints.md). Engine spike docs: specify-cli `docs/standards/rfc-31-phase{1,2}-spike.md`, `rfc-31-sidecar-schemas.md`; runtime posture: [specify-cli DIAGNOSTICS.md §A16](https://github.com/augentic/specify-cli/blob/main/DIAGNOSTICS.md#a16--imperativetodeclarative-lint-burn-down--complete-steady-state).
+
+### Parity contract for predicate retirement
+
+Authoritative harness: [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs). When replacing an `authoring-predicate` bridge with native hints or deleting an imperative row, both passes must agree before merge:
+
+| Dimension | Required? |
+| --- | --- |
+| Flagged file set (and line numbers for line-scoped checks) | **Yes** |
+| `rule_id` (`CORE-NNN`), `severity`, `kind` | **Yes** |
+| `title` and `evidence` payload shape (keys and counts) | **Yes** |
+| Byte-identical message strings | No |
+| `fingerprint`, sequential `FIND-NNNN` ids | No — assigned only by the finalize pass |
+
+Land the declarative rule file(s), a green `mod core_NNN` parity submodule, and deletion of the imperative branch in the **same PR**. Do not weaken checks to fake completion.
 
 ### Choose `CORE-*` (declarative) when
 
-- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, or `tool` (the kinds shipped today; reserved kinds land paired with their interpreter implementation).
+- The predicate can be expressed as one or more `rule_hints` of kind `path-pattern`, `regex`, `schema`, `tool`, `fenced-block`, or the fact-consuming kinds already wired for `CORE-001..008` (see [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md)).
 - The check fits one of the closed `applicability.artifacts` framework tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `doc`).
 - A subprocess is unnecessary, or the subprocess is already wired as a declared WASI tool reachable through a `tool` hint.
 
@@ -333,16 +352,17 @@ To add a `CORE-*` rule:
 
 ### Choose an imperative `Check` when
 
-- The predicate genuinely needs subprocess orchestration or stateful behaviour the hint interpreter cannot model (e.g. spawning a long-running validator with multi-turn interaction).
+- The check matches **CORE-009**-class fused logic (namespace ownership, dynamic registries, subprocess orchestration the hint interpreter cannot model).
 - The predicate is exploratory and you are not ready to commit to a stable `CORE-NNN` id.
-- You are extending an existing imperative module with a small adjacent row that does not yet warrant a dedicated `CORE-*` rule.
 
-To add an imperative check:
+New product checks should still land as `CORE-*` rules first; use `kind: authoring-predicate` only when native hints are not yet at parity. Extending `framework/check/` beyond the CORE-009 bridge requires the same parity contract and a `core_parity.rs` module.
 
-1. Add a module under [`crates/standards/src/framework/check/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/src/framework/check/) implementing the `Check` trait (or a `run_*` helper returning `Vec<Diagnostic>`).
-2. Register the check in the `checks` array in [`crates/standards/src/framework/check.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/check.rs).
-3. Add a fixture-based integration test under [`crates/standards/tests/`](https://github.com/augentic/specify-cli/tree/main/crates/standards/tests/) when the predicate needs regression coverage.
-4. Run `make lint` to verify the new check works.
+To extend the CORE-009 bridge in specify-cli:
+
+1. Edit [`crates/standards/src/framework/check/rules.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/check/rules.rs) (or the fused module owning the behaviour).
+2. Keep `check::run` as namespace-bridge-only; do not reintroduce a full imperative batch on every `specify lint framework` run.
+3. Add or extend a `mod core_NNN` parity submodule when behaviour is non-trivial.
+4. Run `make lint` on `augentic/specify` and `cargo make check` on specify-cli.
 
 Checks are numbered 1–14 contiguously in this document. New imperative checks should use the next available number (currently 15); declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 
