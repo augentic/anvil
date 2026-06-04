@@ -43,7 +43,7 @@ make lint
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-**Performance (post–RFC-31).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch no longer runs on every `make lint`; migratable predicates are reached via `kind: authoring-predicate` on their `CORE-*` rule files until native hints replace each bridge. Post–Phase-4 wall time on this tree was **~247s** (`real 246.75`, 2026-06-04); compare locally with `/usr/bin/time make lint`.
+**Performance (declarative lints, Phase 4).** Framework lint composes a declarative pass over all resolved `CORE-*` / `UNI-*` rules plus a single imperative CORE-009 namespace bridge. The former full `Check` batch (adapter, skill, links, scenarios, …) no longer runs on every `make lint`; those predicates are reached via `kind: authoring-predicate` on their rule files. Post–Phase-4 wall time on this tree was **~247s** (`real 246.75`, 2026-06-04); compare before/after with `/usr/bin/time make lint` when benchmarking locally.
 
 Tooling contributors run the full local CI subset with:
 
@@ -320,7 +320,7 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 Two surfaces are available for new framework checks: a declarative `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), or an imperative `Check` impl in the `specify-standards` crate. **Default to a `CORE-*` rule.** Imperative `Check` impls remain a legitimate escape hatch, but new declarative rules are cheaper to author, ship with their `## Rule` body as the canonical agent-readable explanation, and run through the same deterministic-hint interpreter that consumer projects can adopt via `specify lint`.
 
-> **Declarative lint (RFC-31 complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Historical program: [`rfcs/done/rfc-31-declarative-lints.md`](../../rfcs/done/rfc-31-declarative-lints.md). Engine spike docs: specify-cli `docs/standards/rfc-31-phase{1,2}-spike.md`, `rfc-31-sidecar-schemas.md`; runtime posture: [specify-cli DIAGNOSTICS.md §A16](https://github.com/augentic/specify-cli/blob/main/DIAGNOSTICS.md#a16--imperativetodeclarative-lint-burn-down--complete-steady-state).
+> **Declarative lint program (complete).** Migratable ids run through declarative `CORE-*` rules (`kind: authoring-predicate` where native hints are not yet wired). `AuthoringProducer` is CORE-009 namespace ownership only. Spike and binding records live under specify-cli `docs/standards/` (phase 1 and phase 2 spike docs, sidecar schema notes); posture is documented in DECISIONS and the diagnostics annex on declarative lint.
 
 ### Parity contract for predicate retirement
 
