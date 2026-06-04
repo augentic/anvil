@@ -55,6 +55,20 @@ jobs:
       - name: Verify schema mirror
         run: bash scripts/check-schema-mirror.sh
 
+      - name: Verify spec-runtime symlinks resolve
+        run: |
+          status=0
+          for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
+            if [ ! -L "$d" ]; then
+              echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
+              status=1
+            elif [ ! -e "$d" ]; then
+              echo "error: $d is a broken symlink" >&2
+              status=1
+            fi
+          done
+          exit $status
+
       - name: Verify framework
         run: |
           cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .

@@ -12,6 +12,8 @@ Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks
 
 Rules are grouped by severity (highest first). `UNI-*` ids are stable citation keys — they are not renumbered when severity or grouping changes.
 
+**Enforcement mode (review-only vs deterministically exported).** Every `UNI-*` rule is applied as a **model-assisted review finding** by the target build review briefs during `/spec:build`; none gate deterministically by default. The single exception today is **UNI-014** ([`hardcoded-configuration.md`](hardcoded-configuration.md)), which additionally carries deterministic `rule_hints` (a `path-pattern` + `regex` pair) and is therefore the only id exported to `specify lint` as a deterministic check. Treat every other id as review-only until it grows its own `rule_hints` block.
+
 ### Critical
 
 | ID      | File                                                           |

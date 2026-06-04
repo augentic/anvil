@@ -5,33 +5,29 @@
 - **Purpose:** Dedicated API contract changes -- defining or importing machine-readable interface shapes
 - **Target:** Contract artifacts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) at root `contracts/`
 
-## Brief pipeline
+## Operations
 
-### Define phase
+The Contracts target declares exactly three operations — `shape`, `build`, `merge` — matching its [`adapter.yaml`](../../../adapters/targets/contracts/adapter.yaml). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
 
-| Brief | Output | Dependencies |
-|-------|--------|-------------|
-| `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<unit>/spec.md` | proposal |
-| `tasks.md` | `tasks.md` | specs |
+### shape
 
-There is no `design` stage. Contract changes define interface shapes, not implementation design. Implementation-level concerns (auth schemes, retry policies, caching strategies) belong in the implementing project's change, not in the contract change.
+`shape` is idiom guidance read into context when core synthesis writes `spec.md` and `design.md` for a `target: contracts` slice — see [`adapters/targets/contracts/briefs/shape.md`](../../../adapters/targets/contracts/briefs/shape.md). The brief is input to synthesis: it does not read sources or write artifacts. It tells the synthesiser to shape `spec.md` around what the contract promises (endpoints, channels, payloads, error responses, status codes) and `design.md` around how the contract is expressed and constrained — the format choice (OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema 2020-12), the file layout under `contracts/`, cross-contract dependencies, and the merge-gate validation rules (SemVer `info.version`, kebab-case `info.x-specify-id`, cross-repo id uniqueness).
 
-### Build phase
+Contract changes define interface shapes, not implementation design, so synthesis must keep application-layer concerns (auth schemes, retry policies, caching strategies, provider traits, crate layout) out of the artifacts — those belong in the implementing project's change or to the Omnia / Vectis target shapes.
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `build.md` | `openapi`, `asyncapi`, and `json-schema` format sub-flows (author, importer, and verifier intents) |
+### build
 
-The build brief dispatches to the relevant format sub-flow from [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md): `openapi` for HTTP / resource APIs, `asyncapi` for evented / pub-sub / streaming, and `json-schema` for shared payload schemas. It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
+| Brief | Format sub-flows |
+|-------|------------------|
+| [`build.md`](../../../adapters/targets/contracts/briefs/build.md) | `json-schema`, `openapi`, and `asyncapi` (each with author / import / verify intents) |
 
-A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent (author or importer) makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
+The build brief dispatches to the relevant format sub-flow from [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md): `openapi` for HTTP / resource APIs, `asyncapi` for evented / pub-sub / streaming, and `json-schema` for shared payload schemas. It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts under the slice-local `contracts/` directory.
 
-### Merge phase
+A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same producing intent (author or importer) makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review. A final tool gate runs `specify tool run contract` against the slice delta. `build` writes the result to `build/report.yaml`; the CLI's `specify slice build --phase finalize` owns the `built` transition.
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `merge.md` | `specify-merge` driver + `specify tool run contract` post-merge gate |
+### merge
+
+The merge brief lands the built slice through `specify slice merge` per the shared [`/spec:merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body, then runs the contracts adoption gate — see [`adapters/targets/contracts/briefs/merge.md`](../../../adapters/targets/contracts/briefs/merge.md).
 
 Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify slice merge run` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
 
@@ -45,7 +41,7 @@ Use the `contracts` adapter when:
 - **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the slice's `contracts/` directory.
 - **Standalone modification:** Modifying existing platform contracts independently of implementation slices.
 
-Use the Omnia or Vectis adapters when implementing code that conforms to existing contracts. Their specs and design briefs read baseline contracts as context, but implementation slices do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
+Use the Omnia or Vectis adapters when implementing code that conforms to existing contracts. Their `shape` briefs guide core synthesis to read baseline contracts as context, but implementation slices do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
 
 ## Contracts adapter vs implementation adapters
 

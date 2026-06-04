@@ -5,22 +5,19 @@
 - **Purpose:** Rust WASM development (greenfield or migration)
 - **Target:** Rust WASM (Omnia SDK)
 
-## Brief pipeline
+## Operations
 
-### Define phase
+The Omnia target declares exactly three operations — `shape`, `build`, `merge` — matching its [`adapter.yaml`](../../../adapters/targets/omnia/adapter.yaml). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
 
-| Brief | Output | Dependencies |
-|-------|--------|-------------|
-| `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<unit>/spec.md` | proposal |
-| `design.md` | `design.md` | proposal, specs |
-| `tasks.md` | `tasks.md` | specs, design |
+### shape
 
-When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `code-typescript`) and reconciles claims into `spec.md` requirements with `Sources:` provenance lines.
+`shape` is idiom guidance read into context when core synthesis writes `proposal.md`, `spec.md`, and `design.md` for a `target: omnia` slice — see [`adapters/targets/omnia/briefs/shape.md`](../../../adapters/targets/omnia/briefs/shape.md). The brief is input to synthesis: it does not read sources or write artifacts. It carries the Omnia idioms the synthesiser must fold into the canonical artifacts — provider-based dependency injection (the closed provider-trait set), `wasm32-wasip2` guardrails (forbidden crates / std APIs, statelessness), `omnia_sdk::Error` variant conventions, edge-vs-core validation placement, and the required `design.md` heading order (domain model, provider trait dependencies, handler delegation, external surfaces, configuration, error mapping, validation placement, observability).
 
-The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `code-typescript`) and reconciles claims into `spec.md` requirements with `Sources:` provenance lines. The same `shape` guidance applies whether the slice's evidence is pure intent, documentation, or code.
 
-### Build phase
+The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+
+### build
 
 The build brief drives implementation work directly through phase sub-briefs — there are no separate slash-command skills. The build orchestrator is [`adapters/targets/omnia/briefs/build.md`](../../../adapters/targets/omnia/briefs/build.md); the per-phase sub-briefs live under [`adapters/targets/omnia/briefs/build/`](../../../adapters/targets/omnia/briefs/build/):
 
@@ -31,13 +28,11 @@ The build brief drives implementation work directly through phase sub-briefs —
 | [`build/guest.md`](../../../adapters/targets/omnia/briefs/build/guest.md) | Scaffold the WASM guest wrapper (HTTP, messaging, WebSocket; create mode only). |
 | [`build/review.md`](../../../adapters/targets/omnia/briefs/build/review.md) | Agent-team code review (security, correctness, quality, antagonist) and remediation. |
 
-The build brief reads `tasks.md` and walks the phases in order. The typical build order is: crate implementation, test generation, guest wiring (create mode), code review.
+The build brief reads `tasks.md` and walks the phases in order. The typical build order is: crate implementation, test generation, guest wiring (create mode), code review. `build` writes its outcome to `build/report.yaml`; the CLI's `specify slice build --phase finalize` owns the `built` transition.
 
-### Merge phase
+### merge
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `merge.md` | -- (drives git operations directly; runs `cargo check`, `cargo clippy`, `cargo test`, and `wasm32-wasip2` build via [`adapters/targets/omnia/briefs/merge.md`](../../../adapters/targets/omnia/briefs/merge.md)) |
+The merge brief lands the built slice through `specify slice merge` per the shared [`/spec:merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body — see [`adapters/targets/omnia/briefs/merge.md`](../../../adapters/targets/omnia/briefs/merge.md). Omnia adds no adapter-specific adoption mechanics on top of the standard delta merge; instead it enforces an Omnia-specific *pre-merge* gate before invoking the CLI: `cargo fmt --check`, `cargo check --workspace`, `cargo clippy -- -D warnings`, `cargo test`, and the definitive `cargo build --target wasm32-wasip2 --release`. `specify slice merge` is the writer of the `merged` lifecycle transition and the archive move.
 
 ## Reference material
 

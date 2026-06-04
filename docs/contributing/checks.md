@@ -154,7 +154,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
-- **Name match** -- the `name` field must match the parent directory name
+- **Plugin-qualified name** -- `name` is **plugin-qualified** (`<plugin>-<skill>`, e.g. `specify-merge`, `omnia-crate-writer`), not the bare directory name; the per-plugin prefix invariant and global uniqueness across plugins are enforced by `specify lint framework` (CORE-043), since JSON Schema cannot see the surrounding directory
 - **Known tools** -- every entry in `allowed-tools` must be a recognized Cursor tool name or match the `mcp__*` prefix
 
 The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`, `Glob`, `ReadLints`, `WebFetch`, `WebSearch`, `AskQuestion`, `Task`, `TodoWrite`, `SemanticSearch`, `EditNotebook`, `GenerateImage`.
@@ -221,7 +221,7 @@ kind: adapter
 adapter: contracts@v1
 backend: manual
 entrypoint: /spec:refine
-stages: [define, build, merge]
+stages: [refine, build, merge]
 isolation: fresh-project
 authorship-mode: prose
 assertions:
@@ -296,9 +296,9 @@ FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/
   at adapters/shared/rules/universal/example.md:1
 FAIL: rules.schema-violation: Rule body: adapters/shared/rules/universal/example.md — missing required '## Rule' heading
   at adapters/shared/rules/universal/example.md:1
-FAIL: codex.namespace-ownership-violation: Codex namespace ownership: adapters/shared/rules/universal/example.md — codex owner 'universal' may only use UNI-* ids, got 'SEC-001'
+FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/shared/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
   at adapters/shared/rules/universal/example.md:1
-FAIL: codex.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
+FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`

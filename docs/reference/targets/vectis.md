@@ -5,23 +5,19 @@
 - **Purpose:** Cross-platform Crux application development
 - **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
 
-## Brief pipeline
+## Operations
 
-### Define phase
+The Vectis target declares exactly three operations — `shape`, `build`, `merge` — matching its [`adapter.yaml`](../../../adapters/targets/vectis/adapter.yaml). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them. The Vectis target adds no fourth slot — composition regeneration is part of `build`, not a synthesis step.
 
-| Brief | Output | Dependencies |
-|-------|--------|-------------|
-| `proposal.md` | `proposal.md` | -- |
-| `specs.md` | `specs/<feature>/spec.md` | proposal |
-| `composition.md` | `composition.yaml` | specs, proposal |
-| `design.md` | `design.md` | proposal, specs |
-| `tasks.md` | `tasks.md` | specs, design |
+### shape
 
-The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+`shape` is idiom guidance read into context when core synthesis writes `spec.md` and `design.md` for a `target: vectis` slice — see [`adapters/targets/vectis/briefs/shape.md`](../../../adapters/targets/vectis/briefs/shape.md). The brief is input to synthesis: it does not read sources, write artifacts, or transition lifecycle. It tells the synthesiser how Crux idioms organise canonical artifact content — the flat `REQ-###` namespace, the platform-neutral core body plus optional `## iOS Shell Requirements` / `## Android Shell Requirements` sections in `spec.md`, and the `design.md` domain model (`Model` / `Event` / `ViewModel` / `Route` / per-page view structs, capability matrix) that `build` later turns into code and `composition.yaml`.
 
-The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact.
+`composition.yaml` is **not** a Specify artifact and is **never** synthesised — `shape` only ensures `spec.md` + `design.md` describe screen structure precisely enough for `build` to regenerate it deterministically. Operator-curated `tokens.yaml` / `assets.yaml` / `components.yaml` are build-time inputs, never synthesis inputs; `shape` forbids restating their contents in `spec.md` / `design.md`.
 
-### Build phase
+The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+
+### build
 
 The build brief drives implementation work directly through phase sub-briefs — there are no separate slash-command skills. The build orchestrator is [`adapters/targets/vectis/briefs/build.md`](../../../adapters/targets/vectis/briefs/build.md); the per-phase sub-briefs live under [`adapters/targets/vectis/briefs/build/`](../../../adapters/targets/vectis/briefs/build/):
 
@@ -36,15 +32,16 @@ The build brief drives implementation work directly through phase sub-briefs —
 | [`build/android/write.md`](../../../adapters/targets/vectis/briefs/build/android/write.md) | Generate / update the Compose Android shell + verify. |
 | [`build/android/review.md`](../../../adapters/targets/vectis/briefs/build/android/review.md) | Agent-team review of the Android shell. |
 
-Build order: core first, shells second. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
+`build` regenerates `composition.yaml` from `spec.md` + `design.md` first, runs the deterministic composition validator gate (field coverage, event coverage, ViewModel mapping), then writes code in dependency order: core first, shells second. Shell writers use the regenerated `composition.yaml` as the primary layout guide. `build` writes the per-slice `composition.yaml` and the implementation code, then records the result in `build/report.yaml`; the CLI's `specify slice build --phase finalize` owns the `built` transition.
 
-### Merge phase
+### merge
 
-| Brief | Skills invoked |
-|-------|---------------|
-| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus adapter-owned post-merge validation through `specify tool run vectis -- validate composition`) |
+The merge brief lands the built slice through `specify slice merge` (`preview`, `conflict-check`, `run`) per the shared [`/spec:merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body, then runs the Vectis-specific adoption gates — see [`adapters/targets/vectis/briefs/merge.md`](../../../adapters/targets/vectis/briefs/merge.md). Two gates are adapter-owned:
 
-The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; the merge brief at [`adapters/targets/vectis/briefs/merge.md`](../../../adapters/targets/vectis/briefs/merge.md) owns those platform workflow steps.
+- **Composition validation** — `specify tool run vectis -- validate composition` runs against the staged slice before merge and again against the merged baseline after, blocking on errors. This is the WASI [`vectis validate`](../cli/vectis.md#vectis-validate) surface.
+- **Host cap-matrix re-verification** — after `specify slice merge` lands the deltas, the brief re-runs `cargo` / `make build` / `gradlew` against the merged tree to catch cross-slice regressions. Host toolchain and cap-matrix checks are not part of the WASI tools; the merge brief owns those platform workflow steps.
+
+`specify slice merge` is the writer of the `merged` lifecycle transition and the archive move; the brief adds no merge envelope of its own.
 
 ## Reference material
 
@@ -62,7 +59,7 @@ All requirement IDs share one flat `REQ-###` namespace. Platform sections contin
 
 ## Platforms
 
-Platforms are an app-level fact declared in `project.yaml` via `specrun init vectis --platforms core,ios,android` and carried to every slice. The proposal's `## Platforms` section is stamped verbatim from `project.yaml.platforms` (not per-slice opt-in).
+Platforms are an app-level fact declared in `project.yaml` via `specify init vectis --platforms core,ios,android` and carried to every slice. The proposal's `## Platforms` section is stamped verbatim from `project.yaml.platforms` (not per-slice opt-in).
 
 | Platform | Build sub-brief | Description |
 |----------|-----------------|-------------|
@@ -83,7 +80,7 @@ The Vectis adapter's briefs and references carry domain context about:
 
 ## Project configuration
 
-After `specrun init vectis --platforms core,ios,android`, `project.yaml` carries:
+After `specify init vectis --platforms core,ios,android`, `project.yaml` carries:
 
 ```yaml
 target: https://github.com/augentic/specify/adapters/targets/vectis
@@ -95,4 +92,4 @@ rules:
   - "Project-specific constraints go here"
 ```
 
-The `platforms` field is required for vectis and must include `core`. To change platforms after init, re-run `specrun init --upgrade --platforms <csv>`.
+The `platforms` field is required for vectis and must include `core`. To change platforms after init, re-run `specify init --upgrade --platforms <csv>`.
