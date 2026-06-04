@@ -82,6 +82,7 @@ The 2.0 manual run stubs use stable scenario IDs instead of historical RFC row n
 | `10` | Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects.md`](../../tests/cross-repo/runs/2.0.0/10-workspace-execute-two-projects.md) |
 | `11` | Workspace breakout after build failure in a slot | [`11-workspace-breakout.md`](../../tests/cross-repo/runs/2.0.0/11-workspace-breakout.md) |
 | `12` | Dual-driving refused | [`12-dual-driving-refused.md`](../../tests/cross-repo/runs/2.0.0/12-dual-driving-refused.md) |
+| `13` | Stale-workspace recovery | [`13-stale-workspace-recovery.md`](../../tests/cross-repo/runs/2.0.0/13-stale-workspace-recovery.md) |
 
 ## Evidence
 

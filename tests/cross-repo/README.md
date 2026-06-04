@@ -56,6 +56,11 @@ The scenario follows the same compact shape used by
 
 ## Manual Test Flow
 
+For the full release-gate run flow — acceptance surfaces, wave ordering and halt
+gate, the meta-prompt-driven run loop, and the green-gate signal — see
+[`RUNNING.md`](RUNNING.md). The reusable operator prompts live in
+[`meta-prompts.md`](meta-prompts.md).
+
 Run the scenario from a disposable workspace. The run creates local projects and
 branches, so avoid using an important working tree.
 
