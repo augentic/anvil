@@ -21,8 +21,8 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- SPECIFY_BIN: <abs path to the 2.0 binary>. Use it for every specify call; the
-  PATH default `specify` is the historical 0.1.0 build and is wrong.
+- SPECIFY_BIN: use the path `make acceptance` printed. Use it for every specify call; never the PATH
+  `specify`, which is the historical 0.1.0 build and is wrong.
 - Scenario: acceptance/suites/lifecycle/<id>/scenario.md
 - Shared setup: acceptance/suites/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).

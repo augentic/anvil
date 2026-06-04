@@ -17,16 +17,16 @@ The scenario sweep is intentionally **not** an automated harness: no runner, fak
 
 ```bash
 make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
-make acceptance    # convenience: make lint + the deterministic fan_in_fan_out proof, then prints the manual-sweep pointer
+make acceptance    # builds the release binary, runs make lint + the fan_in_fan_out proof, then resolves SPECIFY_BIN for the sweep
 ```
 
-`make acceptance` covers the **deterministic surface only**. It runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
+`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, prints the resolved `SPECIFY_BIN`, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
 
 `make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 
-Build a 2.0 `specify` binary in the sibling [`specify-cli`](https://github.com/augentic/specify-cli) repo and export `SPECIFY_BIN=/abs/path/to/specify`. The `PATH` default `specify` is the historical 0.1.0 build and is **not** the 2.0 binary.
+The sweep needs a 2.0 `specify` binary. `make acceptance` builds one and prints the resolved path. It never falls back to the `PATH` `specify` and capability-gates its pick on the 2.0 `slice` command, so the only time you must act is when no built binary exists — build it with `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify`, or `export SPECIFY_BIN=/abs/path/to/specify` to force a specific build.
 
 For each scenario:
 
@@ -47,7 +47,7 @@ When asked to "run specify's acceptance tests and report any issues", an agent s
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
-   - Building and exporting `SPECIFY_BIN` (the agent cannot pick the right binary blindly).
+   - A missing 2.0 binary. `scripts/resolve-specify-bin.sh` resolves `$SPECIFY_BIN` → the sibling release build and capability-gates it; the agent hands back only when resolution fails (no built binary, or the candidate is not a 2.0 build), never picking a binary blindly.
    - Real forge PR merges between the two `/spec:finalize` invocations.
    - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
    - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).

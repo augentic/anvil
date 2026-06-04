@@ -6,7 +6,7 @@ Run every scenario from a disposable directory. Runs create local projects, bran
 
 ## Prerequisites
 
-- A 2.0 `specify` binary. Build it in the sibling [`specify-cli`](https://github.com/augentic/specify-cli) repo and export `SPECIFY_BIN=/abs/path/to/specify`. The `PATH` default `specify` is the historical 0.1.0 build and is **not** the 2.0 binary. Substitute `$SPECIFY_BIN` for `specify` in every command below.
+- A 2.0 `specify` binary. `make acceptance` builds one and prints its path; Build it with `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` if none exists, or `export SPECIFY_BIN=/abs/path/to/specify` to force a build. Substitute `$SPECIFY_BIN` for `specify` in every command below.
 - The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable in the local development environment.
 - Git is available for local branches and remotes. For scenarios that exercise PR/MR creation, the routed projects should be Git repositories with an `origin` remote configured before `/spec:finalize`.
 - Do not add fake `gh` or fake forge behavior. `/spec:finalize` observes PR state via `gh pr list` and never merges PRs itself; merges happen through the operator's normal forge workflow.
