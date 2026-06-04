@@ -1,11 +1,11 @@
 # Glossary
 
-Canonical definitions for terms used throughout Specify 2.0.
+Canonical definitions for terms used throughout Specify.
 
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify 2.0 splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -36,7 +36,7 @@ A markdown prompt file shipped by a source or target adapter that drives one ope
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary in 2.0, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
 
 **Change branch**
 The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
@@ -86,7 +86,7 @@ The closure skill (`/spec:finalize`) that pushes branches, observes PR state wit
 ## G
 
 **Gate 1**
-The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify 2.0 ships in v1. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
+The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 ## I
 
@@ -140,7 +140,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces 1.x `/spec:define` and `/spec:extract`.
+The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces the former `/spec:define` and `/spec:extract`.
 
 **Registry**
 `registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry carries a `name` and `url` (plus optional contract wiring and a greenfield adapter seed); a project's description, capabilities, and target live in its own `project.yaml` and are projected into `topology.lock`.
@@ -180,7 +180,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter".
+Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified "adapter".
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

@@ -6,7 +6,7 @@ argument-hint: <name> [source]...
 
 # Plan Skill
 
-`/spec:plan` is the single entry point for every Specify 2.0 change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, reconciles the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specify plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
+`/spec:plan` is the single entry point for every Specify change. It scaffolds `change.md` and `plan.yaml`, runs each bound source adapter's `survey` brief into `discovery.md`, reconciles the resulting leads into `slices[]` via the agent-driven `propose` sub-step, and exits at `pending`. The operator stamps Gate 1 by running the literal `specify plan transition <name> approved` command from step 8 — the skill never writes `approved` itself.
 
 N=1 is degenerate, not special. A single intent binding produces one lead; `propose --from` writes one slice — one structured `{ source, lead }` binding under the auto-bound sole project. Multi-source planning differs only in step counts.
 

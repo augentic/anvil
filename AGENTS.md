@@ -4,12 +4,12 @@ This is a **documentation/prompt-engineering repository**. The codebase consists
 
 ## Vocabulary
 
-Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verbatim.
+Specify names two adapter roles and three workflow nouns. Use the terms verbatim.
 
 ### Adapter roles
 
 - **source adapter** — input role with two operations: `survey` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`.
-- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified 1.x "adapter". Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
+- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified "adapter". Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
 - **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`crates/workflow/src/adapter/`](https://github.com/augentic/specify-cli/tree/main/crates/workflow/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
 
 ### Synthesis terms
@@ -26,7 +26,7 @@ Specify 2.0 names two adapter roles and three workflow nouns. Use the terms verb
 ### Workflow nouns
 
 - **slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary in 2.0, not a slash-command namespace.
+- **change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary, not a slash-command namespace.
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
 
@@ -121,7 +121,7 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 - `specify lint framework` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the shared `adapters/shared/references/runtime/review-team-protocol.md` overlay, which resolves to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
-- 2.0 is a hard cut from 1.x: no silent compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace. Crossing a major now runs through a registered migrator, not an alias — each major version bump requires a registered `MigrationKind` (with a `Migrator` impl + golden fixture) before `specify_version` rolls, so migration is a covered routine step via `specify migrate` rather than a flag-day break. See the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) "Bootstrap, upgrade, and migration lifecycle" decision.
+- Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace. Crossing a major now runs through a registered migrator, not an alias — each major version bump requires a registered `MigrationKind` (with a `Migrator` impl + golden fixture) before `specify_version` rolls, so migration is a covered routine step via `specify migrate` rather than a flag-day break. See the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) "Bootstrap, upgrade, and migration lifecycle" decision.
 
 ## Related coding standards
 

@@ -2,7 +2,7 @@
 
 > Status: Draft - Depends: RFC-20 and RFC-25 (retired milestone docs), [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
 
-> **Verbs frozen at draft time.** This draft predates the 2.0 rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
 
 ## Abstract
 

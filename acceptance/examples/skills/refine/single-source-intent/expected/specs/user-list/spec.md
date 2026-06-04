@@ -11,3 +11,8 @@ Sources: [intent]
 Status: agreed
 
 The user-list handler accepts an optional `query` parameter and, when present, returns only the users whose display fields match the query string.
+
+#### Scenario: Query returns matching users
+
+- **WHEN** a request includes `query=ann`
+- **THEN** the response contains only users whose display fields match `ann`

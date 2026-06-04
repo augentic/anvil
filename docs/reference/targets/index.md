@@ -4,7 +4,7 @@
 
 ## What is a target adapter?
 
-A **target adapter** is the output role in the Specify 2.0 plugin model. It describes how the core `refine → build → merge` slice loop produces an outcome domain's artefacts. Three operations:
+A **target adapter** is the output role in the Specify plugin model. It describes how the core `refine → build → merge` slice loop produces an outcome domain's artefacts. Three operations:
 
 - `shape` — idiom guidance consumed by core synthesis. Read into context when `/spec:refine` writes `spec.md` / `design.md`. Empty `shape` is valid.
 - `build` — implementation drive: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. Driven by `specify slice build` — see [`specify slice build`](../cli/slice.md#specify-slice-build).

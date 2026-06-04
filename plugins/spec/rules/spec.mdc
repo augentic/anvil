@@ -7,13 +7,13 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify 2.0 workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Capture, Client) and target adapters (Omnia, Vectis, Contracts) build on.
+This plugin provides the core Specify workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Capture, Client) and target adapters (Omnia, Vectis, Contracts) build on.
 
 **Purpose**: Drive the `plan -> execute` loop (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
 ## Source / target adapter structure
 
-Adapters split into two roles in 2.0:
+Adapters split into two roles:
 
 - **Source adapters** (`adapters/sources/<name>/`) supply input — `survey` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `code-typescript`, `screenshots`.
 - **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `shape`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.

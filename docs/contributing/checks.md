@@ -116,7 +116,6 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 **Severity mapping.** Authoring imperative rule ids map to `Diagnostic` severities through `severity_for` in [`crates/standards/src/framework/builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs):
 
 - `rules.schema-violation` → `critical` — a malformed rule breaks every downstream consumer of the resolved rules export.
-- `adapter.execution-agent` → `suggestion` — a first-party adapter running via `agent` is informational and must never block CI.
 - every other authoring family (`adapter.*`, `agent-teams.*`, `links.*`, `scenarios.*`, `skill.*`, …) → `important` via the default.
 
 **`rule-id` carries the closed `CORE-NNN` id.** Declarative rules set `rule_id` from the rule file's `id:` frontmatter. The imperative namespace bridge maps `rules.namespace-ownership-violation` to `CORE-009` via `CORE_ID_TABLE` in [`builder.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/src/framework/builder.rs). Migratable predicates retired from that table run through `kind: authoring-predicate` on their `CORE-*` rule files until native hint parity replaces the bridge.
@@ -139,7 +138,7 @@ Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.js
 
 ### 3. Adapter referential integrity
 
-The 1.x pipeline-graph integrity check retired at the 2.0 cut — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
+The legacy pipeline-graph integrity check has been retired — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
 
 ### 4. Symlink integrity
 
@@ -203,13 +202,12 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `acceptance/suites/<pack>/scenario.md` — umbrella shared suite (supported; not used by the `lifecycle` pack today).
-2. `acceptance/suites/<pack>/<scenario-id>/scenario.md` — per-scenario shared suites (e.g. the `lifecycle` pack).
-3. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-4. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
-5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+1. `acceptance/lifecycle/<id>.md` — the flat per-scenario lifecycle pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
+2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/suites/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/suites/lifecycle/`](../../acceptance/suites/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 

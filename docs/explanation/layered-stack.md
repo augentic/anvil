@@ -1,6 +1,6 @@
 # The Layered Stack
 
-Specify 2.0 is organised in three layers above the `specify` CLI substrate. Each layer is independently useful, and each builds on the one below it. The CLI is not itself a layer; it is the deterministic medium through which every layer enforces correctness.
+Specify is organised in three layers above the `specify` CLI substrate. Each layer is independently useful, and each builds on the one below it. The CLI is not itself a layer; it is the deterministic medium through which every layer enforces correctness.
 
 <div class="pipeline">
 
@@ -70,7 +70,7 @@ The matching CLI surface spans **`specify plan {create, propose, add, amend, rem
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify 2.0 ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan propose --from`, `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` before any per-slice work runs.
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan propose --from`, `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` before any per-slice work runs.
 
 The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 
