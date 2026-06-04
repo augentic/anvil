@@ -11,7 +11,7 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
 | **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
 
-**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/`. [`.cursor/schemas/`](../../.cursor/schemas/) holds editor-facing copies so Cursor's JSON/YAML language servers resolve the same contract. These copies must stay byte-identical to their CLI sources; [`scripts/check-schema-mirror.sh`](../../scripts/check-schema-mirror.sh) is the authoritative mirror list and fails on drift. Run it locally with `make check-schemas` (also wired into `make ci` and CI).
+**Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
@@ -51,7 +51,7 @@ Tooling contributors run the full local CI subset with:
 make ci
 ```
 
-`make ci` runs `lint` and `check-schemas` (the schema-mirror check above). When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
+`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
 
 Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
 
@@ -151,7 +151,7 @@ The companion `checkAgentTeamsCanonical` predicate additionally enforces the cro
 
 ### 5. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (editor alias: [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json)):
+Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (the embedded `schemas/authoring/skill.schema.json`):
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Plugin-qualified name** -- `name` is **plugin-qualified** (`<plugin>-<skill>`, e.g. `specify-merge`, `omnia-crate-writer`), not the bare directory name; the per-plugin prefix invariant and global uniqueness across plugins are enforced by `specify lint framework` (CORE-043), since JSON Schema cannot see the surrounding directory

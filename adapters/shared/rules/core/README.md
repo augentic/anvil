@@ -8,7 +8,7 @@ See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter and a required `## Rule` body — same shape as `UNI-*`, validated against the canonical `rule.schema.json` distributed by the CLI (editor-mirrored at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json)). The `id` follows the `CORE-NNN` pattern; the filename mirrors the id and the kebab-case title (for example `CORE-001-adapter-schema.md`).
+Each rule is a small markdown file with YAML frontmatter and a required `## Rule` body — same shape as `UNI-*`, validated against the canonical `rule.schema.json` embedded in the CLI binary. The `id` follows the `CORE-NNN` pattern; the filename mirrors the id and the kebab-case title (for example `CORE-001-adapter-schema.md`).
 
 ```markdown
 ---
@@ -64,7 +64,7 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 ## Hint-kind preference
 
-Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate`. Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, `fenced-block`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json). The reserved-kind machinery survives as forward-compat scaffolding only.
+Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate`. Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, `fenced-block`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`. The reserved-kind machinery survives as forward-compat scaffolding only.
 
 **Lint performance (post–RFC-31).** `specify lint framework` no longer runs the full imperative `Check` batch on every invocation; migratable predicates run through declarative hints (mostly `authoring-predicate` today). The imperative producer is CORE-009 namespace ownership only. Post–Phase-4 `make lint` on this tree was **~247s** wall (2026-06-04); benchmark locally with `/usr/bin/time make lint`.
 

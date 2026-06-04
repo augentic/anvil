@@ -70,7 +70,6 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   └── shared/               # Shared adapter support material, not adapters
       ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
       └── target-hooks/replay/
-/.cursor/schemas/         # Editor-facing JSON Schema mirrors (adapter, skill, rule, scenario, marketplace); authoritative schemas live in augentic/specify-cli
 /scripts/                 # Validation and plugin management
 ```
 
@@ -137,7 +136,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) plus specify-cli bridges (`authoring-predicate` for `CORE-010..052`, imperative-only `CORE-009`); schema aliases live under [.cursor/schemas/](../../.cursor/schemas/). `specify lint framework` (`make lint` locally) enforces both. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for extension and parity.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) plus specify-cli bridges (`authoring-predicate` for `CORE-010..052`, imperative-only `CORE-009`); the authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces both. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for extension and parity.
 
 ## For Contributors
 

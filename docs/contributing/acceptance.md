@@ -22,7 +22,7 @@ make acceptance    # convenience: make lint + the deterministic fan_in_fan_out p
 
 `make acceptance` covers the **deterministic surface only**. It runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
 
-`make ci` runs `make lint` plus `check-schemas` (`scripts/check-schema-mirror.sh`, verifying the `.cursor/schemas/` mirrors match the CLI). Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
+`make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 

@@ -54,7 +54,7 @@ Rules are grouped by severity (highest first). `UNI-*` ids are stable citation k
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json`; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specify lint framework` consumes it. An editor-side mirror at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json) keeps Cursor's JSON language server aligned with the same shape; the two are kept byte-identical by `specify lint framework`'s `rules.schema-drift` predicate. The minimum form:
+Each rule is a small markdown file with YAML frontmatter followed by a required `## Rule` heading. The canonical schema lives in the `augentic/specify-cli` workspace at `schemas/rules/rule.schema.json` and is embedded in the CLI binary; see [`docs/contributing/checks.md`](../../../../docs/contributing/checks.md) for how `specify lint framework` consumes it. The minimum form:
 
 ```markdown
 ---
