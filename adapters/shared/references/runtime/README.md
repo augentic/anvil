@@ -1,8 +1,10 @@
-# Shared spec runtime references
+# Shared spec runtime bundle
 
-Symlinks point at canonical files under `plugins/spec/references/` (and `review-team-protocol.md` under `docs/reference/`). `specify init` vendors dereferenced copies into each cached target adapter at `references/spec-runtime/` so briefs can link with `../references/spec-runtime/...` inside the adapter tree only.
+This directory is the single **spec-runtime bundle**: a tree of relative symlinks pointing at the canonical references under `plugins/spec/references/`. Each source and target adapter exposes it as `references/spec-runtime/` via a single directory symlink (`adapters/{sources,targets}/<name>/references/spec-runtime -> ../../../shared/references/runtime`), so adapter briefs can link with `../references/spec-runtime/...` without escaping the adapter tree. `specify init` dereferences the symlinks when it vendors the bundle into each cached adapter, so consumer projects receive self-contained regular files.
 
-| Symlink | Canonical |
+There are no generated copies and no sync step: a symlink can never drift from its target. Edit the canonical file under `plugins/spec/references/` and every adapter sees the change immediately.
+
+| Bundle path (symlink) | Canonical target |
 | --- | --- |
 | `guardrails.md` | `plugins/spec/references/guardrails.md` |
 | `specialist-usage.md` | `plugins/spec/references/specialist-usage.md` |
@@ -10,17 +12,23 @@ Symlinks point at canonical files under `plugins/spec/references/` (and `review-
 | `components.md` | `plugins/spec/references/components.md` |
 | `standards-layer-snippet.md` | `plugins/spec/references/standards-layer-snippet.md` |
 | `artifact-validation-checklist.md` | `plugins/spec/references/artifact-validation-checklist.md` |
-| `cli/plan-propose.md` | `plugins/spec/references/cli/plan-propose.md` (symlink uses five `../` segments — nested under `runtime/cli/`) |
-| `synthesis/authority.md` | `plugins/spec/references/synthesis/authority.md` (symlink uses five `../` segments — nested under `runtime/synthesis/`) |
-| `review-team-protocol.md` | `docs/reference/review-team-protocol.md` |
 | `phase-outcome-contract.md` | `plugins/spec/references/phase-outcome-contract.md` |
+| `plan-lock.md` | `plugins/spec/references/plan-lock.md` |
+| `stop-conditions.md` | `plugins/spec/references/stop-conditions.md` |
+| `cli/plan-propose.md` | `plugins/spec/references/cli/plan-propose.md` |
+| `synthesis/authority.md` | `plugins/spec/references/synthesis/authority.md` |
+| `synthesis/tags.md` | `plugins/spec/references/synthesis/tags.md` |
+| `synthesis/provenance.md` | `plugins/spec/references/synthesis/provenance.md` |
+| `synthesis/claim-reconciliation.md` | `plugins/spec/references/synthesis/claim-reconciliation.md` |
 
-Do not add agent-critical prose only under `docs/` — extend the plugin canonical file, then refresh symlinks here.
+Top-level symlinks use four `../` segments; `cli/` and `synthesis/` entries use five (they sit one level deeper).
 
-## Edit the canonical source only
+## Editing rules
 
-The per-adapter `references/spec-runtime/` trees (~120 files across `adapters/{sources,targets}/*/`) are **generated artifacts**, not editable sources. They are materialised by [`scripts/sync-adapter-spec-runtime.sh`](../../../../scripts/sync-adapter-spec-runtime.sh) from the canonical files listed above (plus `synthesis/{authority,tags,provenance,claim-reconciliation}.md`, `cli/plan-propose.md`, `stop-conditions.md`, and `plan-lock.md`). Edit the canonical file — never hand-edit a materialised `references/spec-runtime/` copy; the next sync will overwrite it.
+- Edit the canonical file under `plugins/spec/references/`. Never replace a bundle entry with a regular-file copy, and never replace an adapter's `references/spec-runtime` symlink with a directory of copies — CI's "Verify spec-runtime symlinks resolve" step fails on either regression.
+- Adding a new shared reference: drop the canonical file under `plugins/spec/references/`, then add one symlink here. Every adapter inherits it through its directory symlink automatically.
+- Do not add agent-critical prose only under `docs/`; the spec-runtime bundle resolves into `plugins/spec/references/`, which is the surface the Cursor plugin cache and `specify init` ship.
 
-After editing any canonical file, run `bash ./scripts/sync-adapter-spec-runtime.sh` (or `make lint` / `make ci`, which both run the `sync-spec-runtime` target first) so the materialised copies match, then commit the regenerated trees in the same change. There is currently no CI diff gate that fails when the materialised trees drift from canonical — a `sync-spec-runtime`-then-`git diff --exit-code` gate is a tracked follow-up; until it lands, the canonical-only discipline above is enforced by convention.
+## Review-team protocol
 
-Per-target `references/agent-teams.md` symlinks to `review-team-protocol.md` here so review briefs keep a stable relative link; `specify init` vendors the dereferenced bytes into `references/spec-runtime/review-team-protocol.md`.
+The review-team protocol is a separate surface and is **not** part of this bundle. Each target adapter exposes it as `references/agent-teams.md`, content-pinned to the canonical `docs/reference/review-team-protocol.md` by `CORE-008` / `CORE-012`.

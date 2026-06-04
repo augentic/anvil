@@ -79,7 +79,7 @@ Expected output (alphabetically by `lead`; `task-list-populated.png` and `task-l
 - synopsis: Task list: today's open tasks for the signed-in user.
 ```
 
-A full input / output fixture for this example lives at [`tests/fixtures/sources/screenshots/task-list-two-screen/`](../../../../tests/fixtures/sources/screenshots/task-list-two-screen/) in the repo.
+A full input / output fixture for this example lives at [`acceptance/examples/sources/screenshots/task-list-two-screen/`](../../../../acceptance/examples/sources/screenshots/task-list-two-screen/) in the repo.
 
 ## Determinism
 

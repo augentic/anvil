@@ -14,7 +14,7 @@ rule_hints:
 
 ## Rule
 
-Every platform declared in `project.yaml.platforms` and carried through `proposal.md ## Platforms` must have a corresponding on-disk shell tree by the time the slice reaches `built`. The vectis verify tool (`specrun tool run vectis -- verify --mode verify "${PROJECT_DIR}"`) is the deterministic authority: `core` requires `shared/src/app.rs`, `ios` requires the `iOS/` tree with at least one `.swift` file and the Crux bridge, `android` requires the `Android/` tree with at least one `.kt` file and the Gradle/Cargo bridge.
+Every platform declared in `project.yaml.platforms` and carried through `proposal.md ## Platforms` must have a corresponding on-disk shell tree by the time the slice reaches `built`. The vectis verify tool (`specify tool run vectis -- verify --mode verify "${PROJECT_DIR}"`) is the deterministic authority: `core` requires `shared/src/app.rs`, `ios` requires the `iOS/` tree with at least one `.swift` file and the Crux bridge, `android` requires the `Android/` tree with at least one `.kt` file and the Gradle/Cargo bridge.
 
 `web` and `desktop` are valid platform tokens but have no on-disk interpretation yet — the tool emits a `platform-not-yet-supported` info finding and treats them as present.
 

@@ -104,7 +104,7 @@ Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`]
 
 Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 
-Adapter briefs link to vendored copies at `references/spec-runtime/` inside each cached target adapter (see [`adapters/shared/references/runtime/README.md`](../../adapters/shared/references/runtime/README.md)). Monorepo maintenance uses symlinks from that tree to the plugin canonical files; run `make sync-spec-runtime` (or `bash scripts/sync-adapter-spec-runtime.sh`) before `make lint` to materialise the same tree under each adapter's `references/spec-runtime/`. `specify init` dereferences them into the cached adapter copy.
+Adapter briefs link to `references/spec-runtime/` inside each adapter (see [`adapters/shared/references/runtime/README.md`](../../adapters/shared/references/runtime/README.md)). Each adapter's `references/spec-runtime` is a single directory symlink to the shared bundle at `adapters/shared/references/runtime/`, which is itself a tree of symlinks to the plugin canonical files — so there is nothing to materialise or keep in sync. Edit the canonical file under `plugins/spec/references/`; `specify init` dereferences the symlinks into the cached adapter copy.
 
 | Book-only (not agent runtime) | Purpose |
 |------|---------|

@@ -8,7 +8,7 @@ See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards
 
 ## File shape
 
-Each rule is a small markdown file with YAML frontmatter and a required `## Rule` body — same shape as `UNI-*`, validated against the canonical `rule.schema.json` distributed by the CLI (editor-mirrored at [`.cursor/schemas/rule.schema.json`](../../../../.cursor/schemas/rule.schema.json)). The `id` follows the `CORE-NNN` pattern; the filename mirrors the id and the kebab-case title (for example `CORE-001-adapter-schema.md`).
+Each rule is a small markdown file with YAML frontmatter and a required `## Rule` body — same shape as `UNI-*`, validated against the canonical `rule.schema.json` embedded in the CLI binary. The `id` follows the `CORE-NNN` pattern; the filename mirrors the id and the kebab-case title (for example `CORE-001-adapter-schema.md`).
 
 ```markdown
 ---
@@ -55,19 +55,40 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 **Chassis quirk — prefer `path-pattern` over `applicability.artifacts` until further notice.** The framework-profile resolver passes `include_unmatched: false` into `artifact_dimension_matches`, which drops any rule that declares a populated `applicability.artifacts` set from the resolved output before hints run. Until the chassis flips that behaviour for the framework profile (or wires artifact-kind facts off `WorkspaceModel`), leave `applicability.artifacts` unset and narrow the candidate file set with a `kind: path-pattern` deterministic hint instead (see [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md) for the worked example). Revisit once a chassis follow-up enabling artifact-token filtering for the framework profile lands.
 
+**Authoring checklist (avoid the `applicability.artifacts` footgun):**
+
+- [ ] **Do not** rely on `applicability.artifacts` to scope a framework rule — on the framework profile it silently drops the rule from the resolved set before any hint runs.
+- [ ] **Do** add a `kind: path-pattern` hint whose `value` glob matches the target files (e.g. `plugins/**/SKILL.md`, `adapters/**/adapter.yaml`).
+- [ ] Run `make lint` and confirm the new rule actually fires on a known-bad fixture; a rule that resolves but matches nothing is the usual symptom of the quirk.
+- [ ] Cross-check against [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md), which scopes with `path-pattern` rather than `applicability.artifacts`.
+
 ## Hint-kind preference
 
-Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate` (declarative-lints Phase 3 bridge: runs a closed imperative `rule_id` until native hint parity lands). Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in [`rule.schema.json`](../../../../.cursor/schemas/rule.schema.json). The reserved-kind machinery survives as forward-compat scaffolding only.
+Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate`. Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, `fenced-block`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`. The reserved-kind machinery survives as forward-compat scaffolding only.
 
-**Lint performance (declarative lints, Phase 4).** `specify lint framework` no longer runs the full imperative `Check` batch on every invocation; migratable predicates run through declarative hints (mostly `authoring-predicate` today). The imperative producer is CORE-009 namespace ownership only. Time locally with `/usr/bin/time make lint` after pulling specify-cli changes.
+**Lint performance (post–RFC-31).** `specify lint framework` no longer runs the full imperative `Check` batch on every invocation; migratable predicates run through declarative hints (mostly `authoring-predicate` today). The imperative producer is CORE-009 namespace ownership only. Post–Phase-4 `make lint` on this tree was **~247s** wall (2026-06-04); benchmark locally with `/usr/bin/time make lint`.
+
+### `kind: authoring-predicate` (bridge)
+
+Use only when native hints cannot yet reach parity with the closed imperative predicate for that `rule_id`. The hint's `value` must be the stable kebab-case authoring id (for example `skill.section-line-count`). The evaluator dispatches to the matching predicate implementation in `augentic/specify-cli` (`lint/eval/authoring_predicate.rs`); unknown ids fail closed. The bridge is not a permanent target — replace it with native `rule_hints` once a green parity module exists. **CORE-009** never uses this kind; namespace ownership stays on the imperative producer.
+
+### Hint config cookbook (native rules)
+
+Extended evaluators landed in RFC-31; examples live in specify-cli spike docs:
+
+| Mechanism | Doc |
+| --- | --- |
+| `regex` + optional `config` (capture threshold, negative-match, suffix guard) | [`rfc-31-phase1-spike.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-phase1-spike.md) |
+| `path-pattern` with `!` exclusion globs | [`rfc-31-phase2-spike.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-phase2-spike.md) |
+| Sidecar schemas (CORE-035/036/047 vs CORE-044) | [`rfc-31-sidecar-schemas.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-sidecar-schemas.md) |
 
 ## Authoring conventions
 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
 3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
-4. If retiring an imperative `Check` row alongside the rule, land the parity test at `crates/standards/tests/core_parity_<rule>.rs` in `augentic/specify-cli` and delete the predicate row in the same PR; the existing fingerprint algorithm collapses duplicate findings during the overlap.
-5. Pair each new `CORE-*` rule with the existing imperative predicate it replaces by consulting the **predicate migration map** in the standards-enforcement decision record (filed in the design-history tree). The map names which `Check` row each reserved hint kind is intended to retire; rules without a mapped predecessor are still legal but should land with a smoke-test fixture rather than a parity test.
+4. When retiring an imperative `Check` row or replacing an `authoring-predicate` bridge with native hints, add a `mod core_NNN` submodule in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) and delete the predicate row in the **same PR**. See [parity contract](../../../../docs/contributing/checks.md#parity-contract-for-predicate-retirement) in `docs/contributing/checks.md`.
+5. New rules without a predecessor should land with a smoke-test fixture in `core_parity.rs` when behaviour is non-trivial.
 
 ## References
 

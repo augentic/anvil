@@ -94,7 +94,7 @@ negative-expectations:                # optional, free-form forbidden-condition 
 ---
 ```
 
-The fields are intentionally compatible with `.cursor/schemas/scenario.schema.json`.
+The fields are intentionally compatible with the canonical `schemas/authoring/scenario.schema.json` (embedded in the CLI binary).
 Static validation in `scripts/check.ts` enforces the frontmatter shape.
 
 ## Manual Test Flow

@@ -1,5 +1,5 @@
 {
-  "$schema": "../.cursor/schemas/marketplace.schema.json",
+  "$schema": "https://github.com/augentic/specify-cli/raw/main/schemas/authoring/marketplace.schema.json",
   "name": "augentic",
   "owner": {
     "name": "augentic",

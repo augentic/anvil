@@ -12,7 +12,7 @@ description: Drive an approved plan through refine → build → merge per entry
 1. Verify `plan.lifecycle == approved` via `specify plan next`; refuse with the literal `specify plan transition <name> approved` hint when the plan is still `pending`.
 2. Acquire the exclusive lock on `.specify/plan.lock` (workspace in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid.
 3. For each `specify plan next` result, route the active slice into its workspace slot when `project` is set, then invoke `/spec:refine` (when the slice is fresh), `/spec:build`, and `/spec:merge` — the only writer of per-entry `done`.
-4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`references/stop-conditions.md`](references/stop-conditions.md).
+4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`../../references/stop-conditions.md`](../../references/stop-conditions.md).
 5. On `drained`, print `drained — run /spec:finalize <name>` and exit — without acquiring the lock when the first `specify plan next` returns drained; otherwise release the lock after the loop.
 6. Re-entry is implicit: re-running `/spec:execute` after any stop reads `plan.yaml` + slice `.metadata.yaml`, picks up the active `in-progress` entry, and resumes mid-loop — no flags, no resume tokens.
 

@@ -6,7 +6,7 @@
     "json.schemas": [
         {
             "fileMatch": [".cursor-plugin/marketplace.json"],
-            "url": "./.cursor/schemas/marketplace.schema.json"
+            "url": "https://github.com/augentic/specify-cli/raw/main/schemas/authoring/marketplace.schema.json"
         }
     ],
     "yaml.schemas": {
@@ -15,9 +15,6 @@
         ],
         "https://github.com/augentic/specify-cli/raw/main/schemas/target.schema.json": [
             "adapters/targets/*/adapter.yaml"
-        ],
-        "./.cursor/schemas/skill.schema.json": [],
-        "./.cursor/schemas/scenario.schema.json": [],
-        "./.cursor/schemas/rule.schema.json": []
+        ]
     }
 }

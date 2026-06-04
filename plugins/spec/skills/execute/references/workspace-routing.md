@@ -31,7 +31,7 @@ For every iteration of the loop where `entry.project` is non-null:
 4. Run the single phase the operator asked for.
 5. Restore CWD before exit; release the lock on the trailing edge of the snippet.
 
-The plan lock at the workspace is what guarantees that an operator running `/spec:build` from the workspace cannot race a background `/spec:execute` (or a sibling operator running `/spec:merge`) on the same plan. Scenario #11 in [`../../../../../tests/fixtures/skills/execute/`](../../../../../tests/fixtures/skills/execute/) pins the breakout-after-build-failure path: `/spec:execute` parks on `auth-rotate` in `project-a`, releases the lock, and the operator runs `/spec:build` from the workspace — which re-acquires the lock, resolves `auth-rotate → project-a`, `chdir`s into the slot, and resumes the failing task.
+The plan lock at the workspace is what guarantees that an operator running `/spec:build` from the workspace cannot race a background `/spec:execute` (or a sibling operator running `/spec:merge`) on the same plan. Scenario #11 in [`../../../../../acceptance/examples/skills/execute/`](../../../../../acceptance/examples/skills/execute/) pins the breakout-after-build-failure path: `/spec:execute` parks on `auth-rotate` in `project-a`, releases the lock, and the operator runs `/spec:build` from the workspace — which re-acquires the lock, resolves `auth-rotate → project-a`, `chdir`s into the slot, and resumes the failing task.
 
 ## CWD restore in the loop
 

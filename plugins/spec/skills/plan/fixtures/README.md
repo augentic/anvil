@@ -1,6 +1,6 @@
 # `/spec:plan` scenario goldens
 
-Reference outputs for the stable scenario IDs `/spec:plan` exercises end-to-end (see [Scenario IDs](https://specify.augentic.io/contributing/acceptance.html#scenario-ids)). Each subdirectory pins the artifacts a clean `/spec:plan` run produces against the documented inputs; the harness re-runs the skill and diffs against these files.
+Reference outputs for the stable scenario IDs `/spec:plan` exercises end-to-end (see the [lifecycle scenario catalog](https://specify.augentic.io/contributing/acceptance.html)). Each subdirectory pins the artifacts a clean `/spec:plan` run produces against the documented inputs; the harness re-runs the skill and diffs against these files.
 
 | Fixture | Scenario | What it pins |
 |---|---|---|

@@ -40,7 +40,7 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 
 Every slice carries the full app platform set from `project.yaml.platforms` (stamped verbatim into `proposal.md ## Platforms` by synthesis). Each slice signifies core + all declared shell work; build determines the **actual per-platform work**:
 
-- **create** — the shell tree is absent on disk → the bootstrap slice's build runs `specrun tool run vectis -- scaffold <platform> <APP_NAME> [--caps <csv>]` to stand up the minimum shell. Only `core`, `ios`, and `android` have scaffold support today.
+- **create** — the shell tree is absent on disk → the bootstrap slice's build runs `specify tool run vectis -- scaffold <platform> <APP_NAME> [--caps <csv>]` to stand up the minimum shell. Only `core`, `ios`, and `android` have scaffold support today.
 - **update** — the shell tree exists → diff core types against existing code and apply targeted edits (the normal feature-slice path).
 - **no-op** — the platform is in scope but the slice introduces no changes for that shell (skip the sub-brief).
 
@@ -63,7 +63,7 @@ If the platform set contains `core` only, skip the iOS and Android phase sub-bri
 5. (When `android` is in scope) Load [`build/android/write.md`](build/android/write.md) — generate / update the Compose shell, then its verify loop.
 6. Load [`build/core/review.md`](build/core/review.md) and, when in-scope, [`build/ios/review.md`](build/ios/review.md) and [`build/android/review.md`](build/android/review.md). Reviewers run in parallel.
 7. Run § Consolidate review findings.
-8. **Shell verify gate.** Run `specrun tool run vectis -- verify --mode verify "${PROJECT_DIR}"`. A missing or empty tree for any supported declared platform (`core`, `ios`, `android`) forces `status: failure`. `web` and `desktop` are valid tokens but have no on-disk interpretation yet — the tool emits a `platform-not-yet-supported` info finding and treats them as present.
+8. **Shell verify gate.** Run `specify tool run vectis -- verify --mode verify "${PROJECT_DIR}"`. A missing or empty tree for any supported declared platform (`core`, `ios`, `android`) forces `status: failure`. `web` and `desktop` are valid tokens but have no on-disk interpretation yet — the tool emits a `platform-not-yet-supported` info finding and treats them as present.
 9. Mark `tasks.md` checkboxes complete as each phase lands, then write the build report (§ Build report). The brief never transitions the slice — the CLI's `--phase finalize` validates the report and owns the `Refined → Built` transition.
 
 ## § Sub-agent delegation contract

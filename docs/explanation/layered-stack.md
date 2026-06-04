@@ -18,7 +18,7 @@ The configuration surfaces:
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [survey, extract]`).
 - **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
-- **JSON Schemas** — the authoritative `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary (sources live in [`augentic/specify-cli`](https://github.com/augentic/specify-cli/tree/main/schemas)); this repo carries only editor-facing mirrors under `.cursor/schemas/`, not a top-level `schemas/` directory.
+- **JSON Schemas** — the authoritative `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary (sources live in [`augentic/specify-cli`](https://github.com/augentic/specify-cli/tree/main/schemas)); this repo carries no `schemas/` directory and no vendored mirror — editors bind to the published schemas via remote URLs in [`.vscode/settings.json`](../../.vscode/settings.json).
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
