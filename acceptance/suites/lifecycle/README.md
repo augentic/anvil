@@ -21,7 +21,6 @@ The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` f
 | Documentation, one slice | [`02-documentation-one-slice/`](02-documentation-one-slice/scenario.md) | pending |
 | Documentation, multi-slice | [`03-documentation-multi-slice/`](03-documentation-multi-slice/scenario.md) | pending |
 | Code, multi-slice | [`04-code-multi-slice/`](04-code-multi-slice/scenario.md) | pending |
-| Intra-Evidence `[conflict]` | [`05-intra-evidence-conflict/`](05-intra-evidence-conflict/scenario.md) | pending |
 | Combined evidence (code + docs) | [`05a-combined-evidence/`](05a-combined-evidence/scenario.md) | automated |
 | `[divergence]` from authority resolution | [`05b-divergence-authority/`](05b-divergence-authority/scenario.md) | automated |
 | `[conflict]` from same-authority disagreement | [`05c-same-authority-conflict/`](05c-same-authority-conflict/scenario.md) | automated |
@@ -47,7 +46,7 @@ The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` f
 | Dual-driving refused | [`12-dual-driving-refused/`](12-dual-driving-refused/scenario.md) | pending |
 | Stale-workspace recovery | [`13-stale-workspace-recovery/`](13-stale-workspace-recovery/scenario.md) | pending |
 
-24 scenarios. Directory numbering preserves the historical queue ordering (`5x` ids verbatim) so cross-references stay stable; the frontmatter `id` is the letter-led form the scenario schema requires.
+23 scenarios. Directory numbering preserves the historical queue ordering (`5x` ids verbatim) so cross-references stay stable; the frontmatter `id` is the letter-led form the scenario schema requires.
 
 ## Status legend
 

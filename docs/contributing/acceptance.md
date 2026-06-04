@@ -15,6 +15,14 @@ The scenario sweep is intentionally **not** an automated harness: no runner, fak
 
 **Fixture-backed scenarios are the exception.** A scenario whose assertions are entirely deterministic CLI/host behavior — no LLM prose to judge — is promoted to `backend: fixture` and proven by a named test in surface 1, not the manual sweep. Its scenario file carries an **Automated coverage** section naming the test (e.g. `source-sandbox-denied` → `tests/source_extract.rs::sandbox_denies_out_of_scope`), and its catalog status is `automated`. The manual sweep skips these; the deterministic surface covers them on every commit. The `negative-expectations` (no runner / no CI target) apply only to the manual-prose scenarios, so a fixture-backed scenario drops them.
 
+**What keeps a scenario manual.** A scenario stays on the manual sweep when at least one assertion is irreducible to deterministic CLI/host behavior. Three categories, each with the deterministic substrate that *is* covered by surface 1 named alongside:
+
+1. **LLM-prose judgment** — whether a synthesized `spec.md` / `design.md` reads correctly, or a plan decomposes a brief sensibly (e.g. `pure-intent`, `documentation-one-slice`, `plan-single-project`, `target-shape-injection`, `cross-source-merge`). The CLI substrate — provenance/`Sources:` rendering, `[conflict]`/`[divergence]` tagging, propose routing, the embedded `shape` brief in the synthesis envelope — is covered by `tests/slice/synthesize.rs`, `tests/plan_orchestrate/`, and `tests/fan_in_fan_out.rs`.
+2. **Skill-loop orchestration** — the `/spec:execute` stop / resume / `all-done` behavior emitted by skill markdown, not by any single CLI verb (e.g. `execute-build-failure`, `stepthrough-breakout`, `stale-workspace-recovery`, `workspace-breakout`). The per-step primitives — build-finalize gating (`tests/slice_build.rs`), `plan next` advance, `slice merge` stamping `done`, `workspace sync` dirty-slot detection (`tests/workspace.rs`) — are covered; the loop that sequences them is not.
+3. **Live-forge interaction** — real PR pushes/merges between `/spec:finalize` invocations (e.g. `cross-repo-contract-flow`, `workspace-execute-two-projects`), and skill-enforced pre-flight refusals (`dual-driving-refused`). No deterministic fixture stands in for a live forge or a live `cursor-agent` pre-flight.
+
+This is the boundary: a scenario is promotable to `backend: fixture` only when *every* assertion falls outside these three categories. Re-confirm against this list before adding a scenario to the manual sweep — if all its assertions are deterministic, it belongs in surface 1 instead.
+
 ## Running the automated surface
 
 ```bash
@@ -77,7 +85,7 @@ When the whole catalog is `passed` (or `deferred` with sign-off), record the gat
 The `lifecycle` pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Highlights:
 
 - **N=1 and single-project planning** (`pure-intent`, `documentation-one-slice`, `plan-single-project`): degenerate `intent` / `documentation` survey, Gate-1 ergonomics, `Sources:` provenance, plans that stop at `pending` and print the literal Gate-1 transition command.
-- **Synthesis and reconciliation** (`intra-evidence-conflict`, `combined-evidence`, `divergence-authority`, `same-authority-conflict`, `cross-source-merge`): inline `[conflict]` / `[divergence]` tagging, authority resolution, deterministic cross-source reconciliation, lifecycle reaching `refined` cleanly.
+- **Synthesis and reconciliation** (`combined-evidence`, `divergence-authority`, `same-authority-conflict`, `cross-source-merge`): inline `[conflict]` / `[divergence]` tagging, authority resolution, deterministic cross-source reconciliation, lifecycle reaching `refined` cleanly.
 - **Cross-repo routing** (`contract-routing`, `cross-repo-contract-flow`, `multi-repo-workspace`, `workspace-execute-two-projects`): contract-first plans, registry-driven routing, workspace slot materialisation, durable end-state (archived plan path, one merged PR per routed project, archived `change.md`).
 - **Failure and breakout** (`extract-failure`, `invalid-evidence`, `target-shape-injection`, `source-sandbox-denied`, `amend-into-two`, `stepthrough-breakout`, `execute-build-failure`, `workspace-breakout`, `dual-driving-refused`, `stale-workspace-recovery`): structured errors that keep the slice in `refining`, build-failure stop/resume, breakout verbs, sandbox enforcement, and stale-slot recovery.
 
