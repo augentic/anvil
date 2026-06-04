@@ -21,9 +21,9 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- PATH: copy-paste the `export PATH="…:$PATH"` line `make acceptance` printed so the bare
-  `specify` command resolves to the build under test. Confirm with `specify --version` before
-  any other call; a stale build elsewhere on PATH would be wrong.
+- `specify`: `make acceptance` symlinks the build under test into ~/.local/bin, so the bare
+  `specify` command already resolves to it. Confirm with `specify --version` before any other
+  call; if it resolves elsewhere on PATH, fix PATH (see acceptance/shared/setup.md).
 - Scenario: acceptance/lifecycle/<id>.md
 - Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).

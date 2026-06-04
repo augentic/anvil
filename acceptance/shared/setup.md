@@ -6,7 +6,7 @@ Run every scenario from a disposable directory. Runs create local projects, bran
 
 ## Prerequisites
 
-- A `specify` binary on your PATH that is the build under test. `make acceptance` builds one and prints an `export PATH="…:$PATH"` line to copy-paste — run it before the sweep so the bare `specify` command below resolves to this build. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and prepend `../specify-cli/target/release` to your PATH. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
+- A `specify` binary on your PATH that is the build under test. `make acceptance` builds one and symlinks it into `~/.local/bin` (override with `INSTALL_DIR=…`), so the bare `specify` commands below resolve to this build with no further setup — it warns if `~/.local/bin` is not on your PATH. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
 - The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable in the local development environment.
 - Git is available for local branches and remotes. For scenarios that exercise PR/MR creation, the routed projects should be Git repositories with an `origin` remote configured before `/spec:finalize`.
 - Do not add fake `gh` or fake forge behavior. `/spec:finalize` observes PR state via `gh pr list` and never merges PRs itself; merges happen through the operator's normal forge workflow.

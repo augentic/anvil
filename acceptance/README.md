@@ -7,9 +7,12 @@ A release is green only when **both** surfaces below pass.
 ## Automated surface — run it yourself
 
 ```bash
-# build and export `specify`, run automated acceptance tests
+# build `specify`, run the automated acceptance tests, and symlink the
+# build onto your PATH (~/.local/bin) so the manual sweep can call it
 make acceptance
 ```
+
+`make acceptance` symlinks the freshly built `specify` into `~/.local/bin` (override with `INSTALL_DIR=…`) and warns if that directory is not on your `PATH`. The symlink always points at the latest build, so the bare `specify` command stays current — confirm with `specify --version`.
 
 ## Manual sweep — hand it to a Cursor agent
 
