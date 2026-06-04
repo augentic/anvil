@@ -27,16 +27,16 @@ This is the boundary: a scenario is promotable to `backend: fixture` only when *
 
 ```bash
 make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
-make acceptance    # builds the release binary, runs make lint + the fixture-backed acceptance tests, then prints the SPECIFY_BIN export line for the sweep
+make acceptance    # builds the release binary, runs make lint + the fixture-backed acceptance tests, then prints the PATH export line for the sweep
 ```
 
-`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the fixture-backed acceptance tests against the sibling `specify-cli` checkout — `fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, and `workspace`, which carry the named tests behind every `automated` catalog entry — prints an `export SPECIFY_BIN=…` line, then points at the manual sweep below. (`cargo make test` in `specify-cli` remains the full deterministic surface, including the wasm-tool suites `make acceptance` skips for portability.) It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
+`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the fixture-backed acceptance tests against the sibling `specify-cli` checkout — `fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, and `workspace`, which carry the named tests behind every `automated` catalog entry — prints an `export PATH="…:$PATH"` line, then points at the manual sweep below. (`cargo make test` in `specify-cli` remains the full deterministic surface, including the wasm-tool suites `make acceptance` skips for portability.) It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
 
 `make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 
-The sweep needs a `specify` binary. `make acceptance` builds one and prints an `export SPECIFY_BIN=…` line — copy-paste it before running the sweep. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and `export SPECIFY_BIN=/abs/path/to/specify-cli/target/release/specify` yourself.
+The sweep needs the build under test on your PATH. `make acceptance` builds one and prints an `export PATH="…:$PATH"` line — copy-paste it before running the sweep so the bare `specify` commands in the scenarios resolve to this build. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and prepend `../specify-cli/target/release` to your PATH yourself; confirm it with `specify --version`.
 
 For each scenario:
 
@@ -57,7 +57,7 @@ When asked to "run specify's acceptance tests and report any issues", an agent s
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
-   - A missing `specify` binary. `make acceptance` builds one and prints the `export SPECIFY_BIN=…` line to copy-paste, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists.
+   - A missing `specify` binary. `make acceptance` builds one and prints the `export PATH="…:$PATH"` line to copy-paste, or prepend the sibling `specify-cli/target/release` dir to PATH yourself; the agent hands back when no built binary exists.
    - Real forge PR merges between the two `/spec:finalize` invocations.
    - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
    - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).

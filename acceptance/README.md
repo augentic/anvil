@@ -7,7 +7,8 @@ A release is green only when **both** surfaces below pass.
 ## Automated surface — run it yourself
 
 ```bash
-make acceptance   # build the binary, run lint + the fixture-backed acceptance tests, print the SPECIFY_BIN export line
+# build and export `specify`, run automated acceptance tests
+make acceptance
 ```
 
 ## Manual sweep — hand it to a Cursor agent
@@ -23,13 +24,13 @@ It follows the runbook in `[docs/contributing/acceptance.md](../docs/contributin
 ## Layout
 
 
-| Path                                              | Role                                                                   |
-| ------------------------------------------------- | ---------------------------------------------------------------------- |
-| `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario. |
-| `[shared/](shared/setup.md)`        | Shared `setup.md`, `meta-prompts.md`, `run-summary-template.md`.       |
-| `[runs/](runs/README.md)`                         | Filled run records — the audit trail.                                  |
-| `[examples/](examples/)`                          | Reference inputs and expected artifact shapes.                         |
-| `[_lint/](_lint/)`                                | Fixtures for framework checks.                                         |
+| Path                                | Role                                                             |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.    |
+| `[shared/](shared/setup.md)`        | Shared `setup.md`, `meta-prompts.md`, `run-summary-template.md`. |
+| `[runs/](runs/README.md)`           | Filled run records — the audit trail.                            |
+| `[examples/](examples/)`            | Reference inputs and expected artifact shapes.                   |
+| `[_lint/](_lint/)`                  | Fixtures for framework checks.                                   |
 
 
 Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](../adapters/targets/contracts/tests/README.md)`.

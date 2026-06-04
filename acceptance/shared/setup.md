@@ -6,7 +6,7 @@ Run every scenario from a disposable directory. Runs create local projects, bran
 
 ## Prerequisites
 
-- A `specify` binary. `make acceptance` builds one and prints an `export SPECIFY_BIN=…` line to copy-paste; build it with `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` if none exists, or `export SPECIFY_BIN=/abs/path/to/specify` to force a build. Substitute `$SPECIFY_BIN` for `specify` in every command below.
+- A `specify` binary on your PATH that is the build under test. `make acceptance` builds one and prints an `export PATH="…:$PATH"` line to copy-paste — run it before the sweep so the bare `specify` command below resolves to this build. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and prepend `../specify-cli/target/release` to your PATH. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
 - The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable in the local development environment.
 - Git is available for local branches and remotes. For scenarios that exercise PR/MR creation, the routed projects should be Git repositories with an `origin` remote configured before `/spec:finalize`.
 - Do not add fake `gh` or fake forge behavior. `/spec:finalize` observes PR state via `gh pr list` and never merges PRs itself; merges happen through the operator's normal forge workflow.
@@ -17,7 +17,7 @@ For scenarios that run against one initialized project (no registry):
 
 ```bash
 mkdir specify-acceptance-<scenario> && cd specify-acceptance-<scenario>
-$SPECIFY_BIN init <adapter>     # e.g. omnia@v1
+specify init <adapter>     # e.g. omnia@v1
 ```
 
 Then create the scenario's brief (see its **Setup** section) and run its **Invocation**.
@@ -38,22 +38,22 @@ Initialize them:
 
 ```bash
 cd shop-platform
-$SPECIFY_BIN init --workspace
+specify init --workspace
 
 cd ../shop-backend
-$SPECIFY_BIN init omnia@v1
+specify init omnia@v1
 
 cd ../shop-mobile
-$SPECIFY_BIN init vectis@v1
+specify init vectis@v1
 ```
 
 Return to the workspace and register the implementation projects with descriptions that make routing unambiguous:
 
 ```bash
 cd ../shop-platform
-$SPECIFY_BIN registry add shop-backend --url ../shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
-$SPECIFY_BIN registry add shop-mobile --url ../shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
-$SPECIFY_BIN registry validate
+specify registry add shop-backend --url ../shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
+specify registry add shop-mobile --url ../shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+specify registry validate
 ```
 
 Then create the brief (below) and run the scenario's **Invocation**.
