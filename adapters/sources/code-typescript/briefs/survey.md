@@ -28,7 +28,7 @@ Emit one fenced block per identified unit, in the shape the CLI appends under `#
 
 ## Internal staging
 
-Survey grammar is **adapter-internal** — there is no `surfaces.json` sibling artifact in 2.0 and no published schema for the intermediate shape. You MAY stage a working JSON document under `$SCRATCH_DIR/staged.json` to keep the framework walk auditable during the run; treat its shape as adapter-private (see [Working JSON shape](#working-json-shape)). Only lead blocks are visible to downstream synthesis; the staged JSON does not survive the run.
+Survey grammar is **adapter-internal** — there is no `surfaces.json` sibling artifact and no published schema for the intermediate shape. You MAY stage a working JSON document under `$SCRATCH_DIR/staged.json` to keep the framework walk auditable during the run; treat its shape as adapter-private (see [Working JSON shape](#working-json-shape)). Only lead blocks are visible to downstream synthesis; the staged JSON does not survive the run.
 
 ## Framework grammar
 

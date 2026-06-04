@@ -20,7 +20,7 @@
 | **6** | **`docs/quality-debt.md` burn-down** | `framework.rs` module `#![allow(pedantic, …)]` (T2) and `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green. |
 | **7** | **Native-hint migration (optional)** | Steady state is correct; migrating `CORE-010..052` off `authoring-predicate` is maintainability, not correctness. Do one id at a time per [checks parity contract](docs/contributing/checks.md#parity-contract-for-predicate-retirement). |
 
-**Explicitly deprioritize in this mode:** new roadmap items (RM-11+, native-hint work), client/AsyncAPI/captures *feature* scenarios, and re-litigating retired 1.x verbs.
+**Explicitly deprioritize in this mode:** new roadmap items (RM-11+, native-hint work), client/AsyncAPI/captures *feature* scenarios, and re-litigating retired legacy verbs.
 
 ---
 

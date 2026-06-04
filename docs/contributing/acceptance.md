@@ -17,16 +17,16 @@ The scenario sweep is intentionally **not** an automated harness: no runner, fak
 
 ```bash
 make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
-make acceptance    # builds the release binary, runs make lint + the fan_in_fan_out proof, then resolves SPECIFY_BIN for the sweep
+make acceptance    # builds the release binary, runs make lint + the fan_in_fan_out proof, then prints the SPECIFY_BIN export line for the sweep
 ```
 
-`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, prints the resolved `SPECIFY_BIN`, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
+`make acceptance` covers the **deterministic surface only**. It builds the release binary, runs `make lint` plus the `fan_in_fan_out` proof against the sibling `specify-cli` checkout, prints an `export SPECIFY_BIN=…` line, then points at the manual sweep below. It does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every scenario `negative-expectation` stays held.
 
 `make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 
-The sweep needs a 2.0 `specify` binary. `make acceptance` builds one and prints the resolved path. It never falls back to the `PATH` `specify` and capability-gates its pick on the 2.0 `slice` command, so the only time you must act is when no built binary exists — build it with `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify`, or `export SPECIFY_BIN=/abs/path/to/specify` to force a specific build.
+The sweep needs a `specify` binary. `make acceptance` builds one and prints an `export SPECIFY_BIN=…` line — copy-paste it before running the sweep. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and `export SPECIFY_BIN=/abs/path/to/specify-cli/target/release/specify` yourself.
 
 For each scenario:
 
@@ -47,7 +47,7 @@ When asked to "run specify's acceptance tests and report any issues", an agent s
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
-   - A missing `specify` binary. `make acceptance` builds one and prints the resolved path, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists (or the candidate is not a `specify` build), never picking a binary blindly.
+   - A missing `specify` binary. `make acceptance` builds one and prints the `export SPECIFY_BIN=…` line to copy-paste, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists.
    - Real forge PR merges between the two `/spec:finalize` invocations.
    - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
    - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).
@@ -88,4 +88,4 @@ The cross-source fan-in / cross-slice fan-out acceptance splits across the two s
 
 ## Synthesis byte-replay (deferred)
 
-The `specify-standards` harness covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. A byte-equivalent "synthesis golden" requires either a recorded-transcript layer (capture a `cursor-agent` run via `@cursor/sdk` and replay it) or a structured-trace assertion library (compare the *shape* of synthesised artifacts rather than the bytes). Both are out of scope for the 2.0 cutover; a follow-up RFC will pick one. Until then, the manual sweep is the source of truth for end-to-end LLM-driven correctness.
+The `specify-standards` harness covers checker regressions and repo consistency, but does **not** assert on the bytes a `/spec:refine` or `/spec:build` skill body emits. A byte-equivalent "synthesis golden" requires either a recorded-transcript layer (capture a `cursor-agent` run via `@cursor/sdk` and replay it) or a structured-trace assertion library (compare the *shape* of synthesised artifacts rather than the bytes). Both are out of scope for now; a follow-up RFC will pick one. Until then, the manual sweep is the source of truth for end-to-end LLM-driven correctness.

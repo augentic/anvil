@@ -7,7 +7,7 @@ A release is green only when **both** surfaces below pass.
 ## Automated surface — run it yourself
 
 ```bash
-make acceptance   # build the binary, run lints
+make acceptance   # build the binary, run lint + the fan_in_fan_out proof, print the SPECIFY_BIN export line
 ```
 
 ## Manual sweep — hand it to a Cursor agent

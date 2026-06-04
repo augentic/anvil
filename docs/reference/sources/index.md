@@ -4,7 +4,7 @@
 
 ## What is a source adapter?
 
-A **source adapter** is the input role in the Specify 2.0 plugin model. It reads external material — operator intent, written documentation, legacy code, screenshots, runtime captures — and turns it into structured `Evidence` that core synthesis can reconcile. Two operations:
+A **source adapter** is the input role in the Specify plugin model. It reads external material — operator intent, written documentation, legacy code, screenshots, runtime captures — and turns it into structured `Evidence` that core synthesis can reconcile. Two operations:
 
 - `survey` — plan-time. Reads the operator-bound source and emits one **lead** block per slice-sized unit of work under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.
 - `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`. Runs inside `/spec:refine`.

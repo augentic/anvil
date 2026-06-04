@@ -12,7 +12,7 @@ The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` f
 
 | Scenario | Directory | Status |
 | --- | --- | --- |
-| Pure intent, one slice | [`01-pure-intent/`](01-pure-intent/scenario.md) | pending |
+| Pure intent, one slice | [`01-pure-intent/`](01-pure-intent/scenario.md) | failed |
 
 ### Wave 1 — core synthesis, planning, and routing
 
