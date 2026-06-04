@@ -4,12 +4,10 @@ else
   SPECIFY_MANIFEST := specify-cli/Cargo.toml
 endif
 
-.PHONY: lint ci acceptance use-local-plugins use-team-plugins
+.PHONY: lint use-local-plugins use-team-plugins
 
 lint:
 	cargo run --release --manifest-path $(SPECIFY_MANIFEST) --bin specify -- lint framework --framework-root .
-
-ci: lint
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh
