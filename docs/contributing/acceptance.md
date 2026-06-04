@@ -2,14 +2,14 @@
 
 This is the single entry point for Specify acceptance. It defines the two acceptance surfaces, how an operator (or agent) runs them, the wave ordering and halt gate, and the green-gate signal.
 
-The scenario catalog — the canonical list of every scenario, its wave, release-blocker status, and run status — lives in [`acceptance/suites/lifecycle/README.md`](../../acceptance/suites/lifecycle/README.md). This document does not duplicate that table.
+The scenario catalog — the canonical list of every scenario, its wave, release-blocker status, and run status — lives in [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md). This document does not duplicate that table.
 
 ## The two acceptance surfaces
 
 A release is proven only when **both** surfaces are green:
 
 1. **Deterministic CLI proof — automated.** `cargo make test` in [`augentic/specify-cli`](https://github.com/augentic/specify-cli) (including [`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs)) asserts the envelope, ordering, and re-projection determinism of the whole CLI path: `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen. Plus the static repository checks: `make lint` runs `specify lint framework --framework-root .` against the live tree (skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, scenario frontmatter).
-2. **Operator scenario sweep — manual.** The `lifecycle` scenarios in [`acceptance/suites/lifecycle/`](../../acceptance/suites/lifecycle/) exercise the full `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`, plus the per-target generated-output-correctness gate. A schema-valid `build/report.yaml` with `status: success` proves the build envelope held, **not** that the generated code compiles or replays — so each exercised target must also pass `cargo check` / `cargo test` / its replay suite (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of envelope validity.
+2. **Operator scenario sweep — manual.** The `lifecycle` scenarios in [`acceptance/lifecycle/`](../../acceptance/lifecycle/) exercise the full `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`, plus the per-target generated-output-correctness gate. A schema-valid `build/report.yaml` with `status: success` proves the build envelope held, **not** that the generated code compiles or replays — so each exercised target must also pass `cargo check` / `cargo test` / its replay suite (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of envelope validity.
 
 The scenario sweep is intentionally **not** an automated harness: no runner, fake forge, recorded transcript, CI target, or golden-output comparison. That posture is encoded as the `negative-expectations` frontmatter on every scenario and is the one place this rationale is stated — individual scenarios do not repeat it in prose. It remains manual because it involves LLM-emitted prose; `specify lint framework` does not pin synthesised bytes.
 
@@ -40,21 +40,21 @@ The sweep needs a `specify` binary. `make acceptance` builds one and prints an `
 
 For each scenario:
 
-1. Open the scenario file under [`acceptance/suites/lifecycle/<id>/scenario.md`](../../acceptance/suites/lifecycle/) — each is self-contained (intent, setup, invocation, assertions).
-2. Bring up a fresh disposable environment per the scenario's **Setup** (common steps factored into [`acceptance/suites/shared/setup.md`](../../acceptance/suites/shared/setup.md)).
+1. Open the scenario file under [`acceptance/lifecycle/<id>.md`](../../acceptance/lifecycle/) — each is self-contained (intent, setup, invocation, assertions).
+2. Bring up a fresh disposable environment per the scenario's **Setup** (common steps factored into [`acceptance/shared/setup.md`](../../acceptance/shared/setup.md)).
 3. Run the scenario's **Invocation** exactly as written, stamping Gate 1 yourself (`specify plan transition <name> approved`) — the skills never auto-stamp.
 4. Check each **Assertion** on durable structure only (never a byte/golden compare).
-5. Record the run with [`acceptance/suites/shared/run-summary-template.md`](../../acceptance/suites/shared/run-summary-template.md), filed under [`acceptance/runs/`](../../acceptance/runs/README.md), and update the scenario's status in the [catalog](../../acceptance/suites/lifecycle/README.md).
+5. Record the run with [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md), filed under [`acceptance/runs/`](../../acceptance/runs/README.md), and update the scenario's status in the [catalog](../../acceptance/lifecycle/README.md).
 
-Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/suites/shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) into a live `cursor-agent` session.
+Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) into a live `cursor-agent` session.
 
 ## Agent runbook — "run specify's acceptance tests"
 
 When asked to "run specify's acceptance tests and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
 
 1. **Automated surface.** Run `make acceptance` — it runs `make lint` plus the fixture-backed acceptance tests (`fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, `workspace`), which prove every `automated` catalog entry. Report pass/fail with the failing finding/test ids. For the full deterministic surface (including the wasm-tool suites), run `cargo make test` in the `specify-cli` checkout. This step needs no human input.
-2. **Manual sweep — per scenario, in wave order** (see [catalog](../../acceptance/suites/lifecycle/README.md)):
-   - Drive setup with [`shared/meta-prompts.md`](../../acceptance/suites/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
+2. **Manual sweep — per scenario, in wave order** (see [catalog](../../acceptance/lifecycle/README.md)):
+   - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
    - A missing `specify` binary. `make acceptance` builds one and prints the `export SPECIFY_BIN=…` line to copy-paste, or set `$SPECIFY_BIN` to the sibling release build; the agent hands back when no built binary exists.
@@ -78,7 +78,7 @@ Within a wave, scenarios are independent and may run in any order; a failure out
 - On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template, and file a follow-up issue in `augentic/specify` linked back to the run-summary.
 - The **release gate is green** when `tests/fan_in_fan_out.rs` passes under `cargo make test`, scenario `pure-intent` is `passed`, and every non-deferred catalog entry is `passed`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
 
-When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../acceptance/suites/lifecycle/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
+When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../acceptance/lifecycle/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
 
 ## What the scenarios prove
 

@@ -202,13 +202,12 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `acceptance/suites/<pack>/scenario.md` — umbrella shared suite (supported; not used by the `lifecycle` pack today).
-2. `acceptance/suites/<pack>/<scenario-id>/scenario.md` — per-scenario shared suites (e.g. the `lifecycle` pack).
-3. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-4. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
-5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+1. `acceptance/lifecycle/<id>.md` — the flat per-scenario lifecycle pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
+2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/suites/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/suites/lifecycle/`](../../acceptance/suites/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 

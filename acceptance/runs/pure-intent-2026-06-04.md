@@ -3,7 +3,7 @@
 ## Run header
 
 - **Scenario id:** `pure-intent`
-- **Scenario file:** `acceptance/suites/lifecycle/01-pure-intent/scenario.md`
+- **Scenario file:** `acceptance/lifecycle/01-pure-intent.md`
 - **Backend:** `manual`
 - **Operator / agent:** `Claude Opus 4.8 (Cursor agent)`
 - **Run id:** `pure-intent-2026-06-04`

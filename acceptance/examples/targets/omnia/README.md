@@ -35,4 +35,4 @@ This fixture is a documentation pin for the target adapter. No automated harness
 
 - `targets/omnia/briefs/shape.md` — the idiom guidance this fixture's `input/` reflects.
 - `targets/omnia/briefs/build.md` — the orchestration this fixture's `expected/crate/` reflects.
-- [`target-shape-injection` scenario](../../../suites/lifecycle/05h-target-shape-injection/scenario.md) and the [acceptance entry point](../../../../docs/contributing/acceptance.md).
+- [`target-shape-injection` scenario](../../../lifecycle/05h-target-shape-injection.md) and the [acceptance entry point](../../../../docs/contributing/acceptance.md).

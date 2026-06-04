@@ -37,7 +37,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 ## Acceptance scenarios
 
-The `lifecycle` acceptance pack includes a code-multi-slice scenario under `acceptance/suites/lifecycle/04-code-multi-slice/` for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
+The `lifecycle` acceptance pack includes a code-multi-slice scenario under `acceptance/lifecycle/04-code-multi-slice/` for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
 
 ## Next steps
 
