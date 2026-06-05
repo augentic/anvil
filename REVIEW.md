@@ -13,7 +13,7 @@
 | Rank | Focus | Why (optimize lens) |
 | --- | --- | --- |
 | **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live `specify` binary. Catalog: [`acceptance/lifecycle/README.md`](acceptance/lifecycle/README.md). |
-| **2** | **Executable harness for `acceptance/examples/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/examples` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
+| **2** | **Executable harness for `acceptance/fixtures/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/fixtures` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
 | **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint run`) is thinly covered (`tests/lint_run.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
 | **4** | **CORE parity coverage gaps** | `crates/standards/tests/core_parity.rs` pins **16** ids; **36** `CORE-*` rule files still run via `authoring-predicate` bridge without parity tests. Incremental parity reduces bridge retirement risk. |
 | **5** | **Doc / Makefile hygiene** | `make acceptance` is documented but **not implemented** in [`Makefile`](Makefile). Performance notes cite **~247s** `make lint` while release runs measure **~1.2–1.4s** — stale guidance mis-prioritizes perf work. |
@@ -49,20 +49,20 @@ See [`docs/contributing/acceptance.md`](docs/contributing/acceptance.md) and [`d
 
 ### High-ROI automated additions
 
-#### A. Wire `acceptance/examples/` into `specify-cli` tests
+#### A. Wire `acceptance/fixtures/` into `specify-cli` tests
 
 The tree is intentionally aligned for chaining (e.g. screenshots source fixture ↔ vectis `task-list` target fixture). Today it is **documentation-only**.
 
 | Example area | Suggested test shape | CLI verbs exercised |
 | --- | --- | --- |
-| [`acceptance/examples/sources/intent/`](acceptance/examples/sources/intent/) | Copy fixture → `specify source survey` / `extract` → compare `discovery.md` / `evidence/*.yaml` to `expected-*` (normalise paths) | `source survey`, `source extract` |
-| [`acceptance/examples/sources/documentation/`](acceptance/examples/sources/documentation/) | Same pattern | survey + extract |
-| [`acceptance/examples/sources/code-typescript/`](acceptance/examples/sources/code-typescript/) | Same; bound to tempdir TypeScript tree | survey + extract |
-| [`acceptance/examples/sources/captures/`](acceptance/examples/sources/captures/) | Assert `kind: example` + `replay-digest` in evidence | extract |
-| [`acceptance/examples/sources/screenshots/`](acceptance/examples/sources/screenshots/) | Evidence YAML shape + discovery lead blocks | survey + extract |
-| [`acceptance/examples/skills/refine/*/`](acceptance/examples/skills/refine/) | Pre-seed slice tree + evidence → `specify slice synthesize` (if inputs are kernel-complete) **or** structural diff on `expected/` artifacts after hand-staged synthesis | `slice synthesize`, `slice validate` |
-| [`acceptance/examples/targets/omnia/expected/crate/`](acceptance/examples/targets/omnia/expected/crate/) | Static file presence + `cargo check` in fixture crate (no LLM) | optional `slice build` prepare-only |
-| [`acceptance/examples/targets/vectis/task-list/`](acceptance/examples/targets/vectis/task-list/) | `composition.yaml` schema + key paths vs `expected/composition.yaml` | `specify tool run vectis -- validate composition` |
+| [`acceptance/fixtures/sources/intent/`](acceptance/fixtures/sources/intent/) | Copy fixture → `specify source survey` / `extract` → compare `discovery.md` / `evidence/*.yaml` to `expected-*` (normalise paths) | `source survey`, `source extract` |
+| [`acceptance/fixtures/sources/documentation/`](acceptance/fixtures/sources/documentation/) | Same pattern | survey + extract |
+| [`acceptance/fixtures/sources/code-typescript/`](acceptance/fixtures/sources/code-typescript/) | Same; bound to tempdir TypeScript tree | survey + extract |
+| [`acceptance/fixtures/sources/captures/`](acceptance/fixtures/sources/captures/) | Assert `kind: example` + `replay-digest` in evidence | extract |
+| [`acceptance/fixtures/sources/screenshots/`](acceptance/fixtures/sources/screenshots/) | Evidence YAML shape + discovery lead blocks | survey + extract |
+| [`acceptance/fixtures/skills/refine/*/`](acceptance/fixtures/skills/refine/) | Pre-seed slice tree + evidence → `specify slice synthesize` (if inputs are kernel-complete) **or** structural diff on `expected/` artifacts after hand-staged synthesis | `slice synthesize`, `slice validate` |
+| [`acceptance/fixtures/targets/omnia/expected/crate/`](acceptance/fixtures/targets/omnia/expected/crate/) | Static file presence + `cargo check` in fixture crate (no LLM) | optional `slice build` prepare-only |
+| [`acceptance/fixtures/targets/vectis/task-list/`](acceptance/fixtures/targets/vectis/task-list/) | `composition.yaml` schema + key paths vs `expected/composition.yaml` | `specify tool run vectis -- validate composition` |
 
 **Pattern to copy:** [`tests/fan_in_fan_out.rs`](../specify-cli/tests/fan_in_fan_out.rs) (tempdir + `specify_cmd` + structural JSON asserts) and golden discipline in [`tests/README.md`](../specify-cli/tests/README.md).
 
@@ -218,15 +218,15 @@ From [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test
 | partial | 5 | build, merge, omnia build brief, vectis build + merge briefs |
 | gap | 5 | client SoW, contract AsyncAPI, captures adapter, wiretapper, drop (lifecycle) |
 
-**Optimize-mode recommendation:** Do not author new skills — close gaps by (1) running existing lifecycle scenarios, (2) promoting `acceptance/examples/` into CLI tests (table above), (3) adding **one** focused contracts-style target test pack for omnia/vectis *only if* generated-output asserts are required before RM-05 sign-off.
+**Optimize-mode recommendation:** Do not author new skills — close gaps by (1) running existing lifecycle scenarios, (2) promoting `acceptance/fixtures/` into CLI tests (table above), (3) adding **one** focused contracts-style target test pack for omnia/vectis *only if* generated-output asserts are required before RM-05 sign-off.
 
 ---
 
 ## Suggested 4-week attention plan (improve-only)
 
 1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
-2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/examples/sources/*` through `specify source survey/extract`.
-3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/examples/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
+2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/fixtures/sources/*` through `specify source survey/extract`.
+3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/fixtures/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
 4. **Week 4 — Lint depth:** Consumer `lint_run` hint-kind matrix + 3–5 CORE parity modules for highest-churn rules (`044`, `042`, `019`). Refresh perf docs (S1).
 
 ---

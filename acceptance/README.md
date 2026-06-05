@@ -41,7 +41,7 @@ make acceptance
 | `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.    |
 | `[shared/](shared/setup.md)`        | Shared `setup.md`, `meta-prompts.md`, `run-summary-template.md`. |
 | `[runs/](runs/README.md)`           | Filled run records — the audit trail.                            |
-| `[examples/](examples/)`            | Reference inputs and expected artifact shapes.                   |
+| `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                   |
 | `[_lint/](_lint/)`                  | Fixtures for framework checks.                                   |
 
 

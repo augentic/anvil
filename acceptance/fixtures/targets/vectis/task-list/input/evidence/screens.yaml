@@ -1,7 +1,7 @@
 # Hand-authored stand-in for what `sources/screenshots/extract` would emit on
 # the matching source-side fixture
-# (`acceptance/examples/sources/screenshots/task-list-two-screen/`). The shape
-# mirrors `acceptance/examples/sources/screenshots/task-list-two-screen/expected/evidence/`.
+# (`acceptance/fixtures/sources/screenshots/task-list-two-screen/`). The shape
+# mirrors `acceptance/fixtures/sources/screenshots/task-list-two-screen/expected/evidence/`.
 # Replace with the live extractor output once W2.4 + W2.6 land together
 # (W5.3 acceptance sweep).
 

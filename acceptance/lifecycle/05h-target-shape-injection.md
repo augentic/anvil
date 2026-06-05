@@ -29,7 +29,7 @@ Scenario ID: `target-shape-injection`
 
 ## Intent
 
-Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`acceptance/examples/targets/omnia/`](../../../examples/targets/omnia/README.md).
+Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`acceptance/fixtures/targets/omnia/`](../fixtures/targets/omnia/README.md).
 
 ## Setup
 

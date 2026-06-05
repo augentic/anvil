@@ -1,4 +1,4 @@
-# `acceptance/examples/targets/omnia/`
+# `acceptance/fixtures/targets/omnia/`
 
 Fixture for the Omnia target adapter (Wave 2.5, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
 
@@ -11,7 +11,7 @@ This fixture pins the *output* shape: it shows what synthesised `spec.md`, `desi
 ## Layout
 
 ```text
-acceptance/examples/targets/omnia/
+acceptance/fixtures/targets/omnia/
 ├── README.md
 ├── input/                       # synthesised slice artifacts (post-shape-injection)
 │   ├── spec.md                  # requirement blocks with ID / Sources / Status

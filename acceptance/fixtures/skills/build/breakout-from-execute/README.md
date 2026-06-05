@@ -13,4 +13,4 @@ The skill body MUST:
 3. Inherit `SPECIFY_PLAN_LOCK_HELD=1` to any sub-invocations it spawns (the same brief-loaded child shells, the verify-repair loop sub-shells, `specify` invocations).
 4. Otherwise behave identically to the standalone path — same slice resolution, same brief execution, same success/failure transitions.
 
-The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`acceptance/examples/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.
+The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`acceptance/fixtures/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.

@@ -104,7 +104,7 @@ claims:
     decision: "Use the existing transactional email provider rather than introducing a new notification service."
 ```
 
-A full input/output fixture for this example lives at [`acceptance/examples/sources/documentation/`](../../../../acceptance/examples/sources/documentation/) in the repo.
+A full input/output fixture for this example lives at [`acceptance/fixtures/sources/documentation/`](../../../../acceptance/fixtures/sources/documentation/) in the repo.
 
 ## Determinism
 

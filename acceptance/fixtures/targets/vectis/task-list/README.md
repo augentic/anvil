@@ -1,13 +1,13 @@
-# `acceptance/examples/targets/vectis/task-list/`
+# `acceptance/fixtures/targets/vectis/task-list/`
 
 End-to-end fixture covering a Vectis slice that exercises `screenshots`-sourced spatial Evidence → `spec.md` + `design.md` → `composition.yaml` regeneration (Wave 2.6 / scenario #5h).
 
-The fixture is paired with [`acceptance/examples/sources/screenshots/task-list-two-screen/`](../../../sources/screenshots/task-list-two-screen/) — the source-side fixture (W2.4) whose `expected/evidence/` is the same shape as this fixture's `input/evidence/screens.yaml`. The two fixtures are intentionally aligned so the full plan-time → slice-time chain can be wired end-to-end once both chunks land.
+The fixture is paired with [`acceptance/fixtures/sources/screenshots/task-list-two-screen/`](../../../sources/screenshots/task-list-two-screen/) — the source-side fixture (W2.4) whose `expected/evidence/` is the same shape as this fixture's `input/evidence/screens.yaml`. The two fixtures are intentionally aligned so the full plan-time → slice-time chain can be wired end-to-end once both chunks land.
 
 ## Layout
 
 ```text
-acceptance/examples/targets/vectis/task-list/
+acceptance/fixtures/targets/vectis/task-list/
 ├── README.md
 ├── input/                          # synthesised slice artifacts (post-shape-injection)
 │   ├── proposal.md                 # Platforms: core, ios, android
@@ -29,6 +29,6 @@ This fixture is a documentation pin for the Vectis target. No automated harness 
 
 ## See also
 
-- [`acceptance/examples/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
+- [`acceptance/fixtures/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
 - [`adapters/targets/vectis/briefs/shape.md`](../../../../../adapters/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/specs/task-list/spec.md` + `input/design.md`.
 - [`adapters/targets/vectis/briefs/build.md`](../../../../../adapters/targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.
