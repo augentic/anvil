@@ -16,9 +16,8 @@ assertions:
 expected-artifacts:
   - plan.yaml
   - registry.yaml
-  - .specify/plans/oauth-login-plan/discovery.md
-  - .specify/plans/oauth-login-plan/proposal.md
-  - .specify/plans/oauth-login-plan/workspace.md
+  - change.md
+  - discovery.md
 ---
 
 # Contract routing plan generation

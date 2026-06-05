@@ -449,7 +449,7 @@ A project owed a migration carries a populated `plan`:
       "kind": "v1-to-v2",
       "actions": [
         { "action": "move", "from": "adapters/omnia/adapter.yaml", "to": "adapters/targets/omnia/adapter.yaml" },
-        { "action": "rewrite", "path": ".specify/discovery.md", "contents": "## Lead inventory\n…" }
+        { "action": "rewrite", "path": "discovery.md", "contents": "## Lead inventory\n…" }
       ]
     }
   ]

@@ -13,8 +13,7 @@ assertions:
   - no-project-routing-required
 expected-artifacts:
   - plan.yaml
-  - .specify/plans/inventory-adjustments/discovery.md
-  - .specify/plans/inventory-adjustments/proposal.md
+  - discovery.md
 negative-expectations:
   - automated-runner-added
   - fake-forge-added

@@ -14,8 +14,7 @@ assertions:
   - gate-1-amendment
 expected-artifacts:
   - plan.yaml
-  - .specify/plans/catalog-revamp/discovery.md
-  - .specify/plans/catalog-revamp/proposal.md
+  - discovery.md
 negative-expectations:
   - automated-runner-added
   - fake-forge-added

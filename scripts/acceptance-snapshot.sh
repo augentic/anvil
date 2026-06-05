@@ -45,9 +45,9 @@ else
   ( cd "$ROOT" && find . -path ./.git -prune -o -path '*/target' -prune -o -path '*/node_modules' -prune -o -print | sort )
 fi
 
-# Plan + change live at the project root today (path drift, see findings); also
-# probe under .specify/ so the snapshot stays correct if the location moves.
-for rel in plan.yaml discovery.md registry.yaml topology.lock \
+# Plan + change are operator-facing artifacts at the project root (canonical;
+# see decision-log "F4"). The .specify/ probes are belt-and-suspenders only.
+for rel in plan.yaml change.md discovery.md registry.yaml topology.lock \
            .specify/plan.yaml .specify/discovery.md .specify/registry.yaml; do
   dump "$rel"
 done

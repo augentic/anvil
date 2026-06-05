@@ -520,3 +520,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Status:** current
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
+
+## Change-level artifacts live at the project root, not under `.specify/`
+
+**Decision:** `change.md`, `plan.yaml`, and `discovery.md` are operator-facing platform artifacts and live at the **project root** alongside `registry.yaml` (workspace mode: at the workspace root), not under `.specify/`. This matches the binary's `Layout` (`crates/workflow/src/config.rs`), whose `plan_path` / `change_path` / `discovery_path` resolve to `<project_dir>/…` and document the placement as intentional ("Platform-level artifact, lives at the repo root"). `.specify/` remains the home for framework-managed workflow state: active slices, the baseline `specs/`, the cache, and the prunable archive (the archived plan trail still lives under `.specify/archive/plans/`).
+
+**Rationale:** These three artifacts carry operator intent and review well in ordinary PRs — the same reason `registry.yaml` and `contracts/` sit at the root — so hiding them under `.specify/` worked against their purpose. The decision resolves the acceptance-sweep "F4" drift, where docs and several scenario `expected-artifacts` claimed `.specify/` (and a non-existent `.specify/plans/<name>/` subtree) while the binary had always written to the root. Aligning the docs to the binary was the low-risk fix: the alternative (moving the binary under `.specify/`) is an on-disk layout change that would require a registered migrator with no offsetting benefit. The mistaken plan-time `proposal.md` entries were also dropped — `proposal.md` is a refine-time slice artifact at `.specify/slices/<slice>/proposal.md`.
+
+**Status:** current
+
+**Source:** Acceptance run [`findings-2026-06-06.md`](../../acceptance/runs/findings-2026-06-06.md) F4; the binary `Layout` in `augentic/specify-cli`.

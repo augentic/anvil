@@ -86,7 +86,7 @@ The accompanying optional `disposition` object names *who* set the status. `disp
 
 ## Exit-code semantics
 
-`specify lint run` uses **status-aware severity** when deciding the process exit:
+`specify lint` uses **status-aware severity** when deciding the process exit:
 
 > Exit `2` only when there is a finding with `status: open` AND `severity ∈ {critical, important}`.
 
@@ -96,7 +96,7 @@ The accompanying optional `disposition` object names *who* set the status. `disp
 
 - **Missing or too-short rationale** — emits [`UNI-022`](../../adapters/shared/rules/universal/ignore-directive-missing-rationale.md). The 16-character floor is the threshold at which a rationale is long enough to be useful to a future reviewer.
 - **Orphan directive** — a directive whose rule id matches no finding on its target line emits [`UNI-023`](../../adapters/shared/rules/universal/ignore-directive-orphan.md). Common causes: the rule was retired, the protected code was refactored, an intervening reformat moved the target, or the directive was copy-pasted into a context where the targeted finding never fired.
-- **Shared-codex tree absent** — when the codex resolver does not produce `UNI-022` or `UNI-023` (for example, a consumer project that has not yet picked up the shared codex tree), the matching/demotion step still runs but the synthetic findings for malformed and orphan directives are silently skipped. Run `specify rules sync` (or `specify init`) to distribute the shared codex into `.specify/.cache/codex/`, or pass `--rules-root` to `specify lint run`, to restore them.
+- **Shared-codex tree absent** — when the codex resolver does not produce `UNI-022` or `UNI-023` (for example, a consumer project that has not yet picked up the shared codex tree), the matching/demotion step still runs but the synthetic findings for malformed and orphan directives are silently skipped. Run `specify rules sync` (or `specify init`) to distribute the shared codex into `.specify/.cache/codex/`, or pass `--rules-root` to `specify lint`, to restore them.
 
 ## Related reading
 

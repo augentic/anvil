@@ -14,7 +14,7 @@ assertions:
   - execute-loop-all-done
 expected-artifacts:
   - plan.yaml
-  - .specify/plans/feature-doc/discovery.md
+  - discovery.md
 negative-expectations:
   - automated-runner-added
   - fake-forge-added

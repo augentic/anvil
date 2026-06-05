@@ -15,7 +15,7 @@ assertions:
   - refine-reaches-refined
 expected-artifacts:
   - plan.yaml
-  - .specify/plans/fix-typo/discovery.md
+  - discovery.md
 negative-expectations:
   - automated-runner-added
   - fake-forge-added

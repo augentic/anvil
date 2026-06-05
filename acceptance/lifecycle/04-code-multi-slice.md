@@ -14,7 +14,7 @@ assertions:
   - no-under-slicing
 expected-artifacts:
   - plan.yaml
-  - .specify/plans/legacy-port/discovery.md
+  - discovery.md
 negative-expectations:
   - automated-runner-added
   - fake-forge-added

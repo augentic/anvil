@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live `specify` binary. Catalog: [`acceptance/lifecycle/README.md`](acceptance/lifecycle/README.md). |
 | **2** | **Executable harness for `acceptance/fixtures/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/fixtures` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
-| **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint run`) is thinly covered (`tests/lint_run.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
+| **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint`) is thinly covered (`tests/lint_product.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
 | **4** | **CORE parity coverage gaps** | `crates/standards/tests/core_parity.rs` pins **16** ids; **36** `CORE-*` rule files still run via `authoring-predicate` bridge without parity tests. Incremental parity reduces bridge retirement risk. |
 | **5** | **Doc / Makefile hygiene** | `make acceptance` is documented but **not implemented** in [`Makefile`](Makefile). Performance notes cite **~247s** `make lint` while release runs measure **~1.2–1.4s** — stale guidance mis-prioritizes perf work. |
 | **6** | **`docs/quality-debt.md` burn-down** | `framework.rs` module `#![allow(pedantic, …)]` (T2) and `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green. |
@@ -92,9 +92,9 @@ Keep it **out of** `specify` CI if the policy is unchanged; wire only in docs/Ma
 
 | Gap | Today | Suggested |
 | --- | --- | --- |
-| Hint kinds | `lint_run.rs` exercises regex (`UNI-100` TODO) | Add one integration case each for `path-pattern`, `schema`, `tool` (mirror `crates/standards/tests/lint_hint_*.rs` at binary level) |
-| `--dump-model` | Covered in `lint_run.rs` | Keep; extend with monorepo + `rules-root` edge cases from [`tests/rules_export.rs`](../specify-cli/tests/rules_export.rs) |
-| Silence / ignore directives | `lint_ignore_directive_pass` (crate) | One `tests/lint_run.rs` case mirroring UNI-100 demotion pattern |
+| Hint kinds | `lint_product.rs` exercises regex (`UNI-100` TODO) | Add one integration case each for `path-pattern`, `schema`, `tool` (mirror `crates/standards/tests/lint_hint_*.rs` at binary level) |
+| `--dump-model` | Covered in `lint_product.rs` | Keep; extend with monorepo + `rules-root` edge cases from [`tests/rules_export.rs`](../specify-cli/tests/rules_export.rs) |
+| Silence / ignore directives | `lint_ignore_directive_pass` (crate) | One `tests/lint_product.rs` case mirroring UNI-100 demotion pattern |
 | Blocking vs review | Partial | Assert exit code `2` vs `0` with `deny_blocking_findings` on mixed severity fixtures |
 
 #### D. CORE parity harness
@@ -227,7 +227,7 @@ From [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test
 1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
 2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/fixtures/sources/*` through `specify source survey/extract`.
 3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/fixtures/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
-4. **Week 4 — Lint depth:** Consumer `lint_run` hint-kind matrix + 3–5 CORE parity modules for highest-churn rules (`044`, `042`, `019`). Refresh perf docs (S1).
+4. **Week 4 — Lint depth:** Consumer `lint_product` hint-kind matrix + 3–5 CORE parity modules for highest-churn rules (`044`, `042`, `019`). Refresh perf docs (S1).
 
 ---
 
