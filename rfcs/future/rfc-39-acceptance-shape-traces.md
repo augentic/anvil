@@ -124,7 +124,7 @@ specify acceptance status                    # (from the prerequisite reconciler
 
 ## Prerequisite plumbing (deferred)
 
-The two prerequisites named in §"Trigger conditions" — **typed run records** and a **status reconciler** — plus two supporting helpers were scoped out of the active acceptance remediation effort and parked here. The active effort delivered only the genuinely forward-moving items (the `specify init` first-party shorthand + `$SPECIFY_FRAMEWORK_ROOT` fallback, the `make acceptance-scenario` scaffolder, and the Makefile simplification); this plumbing is captured concretely so it is ready to build when the trigger fires.
+The two prerequisites named in §"Trigger conditions" — **typed run records** and a **status reconciler** — plus two supporting helpers were scoped out of the active acceptance remediation effort and parked here. The active effort delivered only the genuinely forward-moving items (the `specify init` first-party shorthand + `$SPECIFY_FRAMEWORK_ROOT` fallback and the Makefile simplification); this plumbing is captured concretely so it is ready to build when the trigger fires.
 
 **Why deferred, not dropped.** A reconciler polices drift between run records, the catalog, and issues — but there is nothing to reconcile until the manual sweep actually runs. There are currently zero run records, so building the policing layer (especially as a native `specify lint framework` check) before the artifacts it polices exist is premature. Fix what blocks the sweep, run it, then let real run records justify the reconciler.
 

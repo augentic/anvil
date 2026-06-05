@@ -12,18 +12,17 @@ SPECIFY_BIN_DIR := $(abspath $(dir $(SPECIFY_MANIFEST))target/release)
 INSTALL_DIR ?= $(HOME)/.local/bin
 SPECIFY_LINK := $(INSTALL_DIR)/specify
 
-.PHONY: lint acceptance acceptance-scenario use-local-plugins use-team-plugins
+.PHONY: lint acceptance use-local-plugins use-team-plugins
 
 lint:
 	cargo run --release --manifest-path $(SPECIFY_MANIFEST) --bin specify -- lint framework --framework-root .
 
-# Deterministic acceptance surface only. Builds the release binary, runs the
-# static checks plus the fixture-backed acceptance tests (the deterministic
-# proof for every scenario marked `automated` in the catalog), then symlinks
-# this build's `specify` into INSTALL_DIR so the manual sweep resolves the bare
-# `specify` command. The symlink always points at the latest build, so it never
-# goes stale. Deliberately NOT wired into CI. `cargo make test` in specify-cli
-# remains the full deterministic surface.
+# Deterministic acceptance tests only. Builds the release binary, runs the
+# static checks plus the fixture-backed acceptance tests (scenarios marked 
+# `automated`), then symlinks this build's `specify` into INSTALL_DIR so the
+# manual sweep resolves the bare `specify` command. The symlink always points
+# at the latest build, so it never goes stale. Deliberately NOT wired into CI.
+# `cargo make test` in specify-cli remains the full deterministic surface.
 acceptance:
 	cargo build --release --manifest-path $(SPECIFY_MANIFEST) --bin specify
 	@$(MAKE) lint
@@ -31,13 +30,6 @@ acceptance:
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
-
-# Scaffold one acceptance scenario's disposable environment up to its
-# pre-invocation state (setup helper only — drives no /spec:* command).
-# Run `make acceptance` first so the bare `specify` resolves to the build
-# under test. Usage: make acceptance-scenario ID=pure-intent
-acceptance-scenario:
-	@bash ./scripts/acceptance-scenario.sh "$(ID)"
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

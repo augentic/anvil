@@ -21,18 +21,14 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- `specify`: `make acceptance` symlinks the build under test into ~/.local/bin, so the bare
-  `specify` command already resolves to it. Confirm with `specify --version` before any other
-  call; if it resolves elsewhere on PATH, fix PATH (see acceptance/shared/setup.md).
+- `specify`: the automated surface (runbook step 1) already ran `make acceptance`, which
+  symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
+  other call; if the bare command does not resolve to that build, prepend the symlink dir to
+  PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
+  `../specify-cli/target/release/specify` path (see acceptance/shared/setup.md).
 - Scenario: acceptance/lifecycle/<id>.md
 - Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
-
-Shortcut: for single-project scenarios you may run `make acceptance-scenario
-ID=<id>` (setup helper only — it creates the temp project, runs the named
-`specify init`, exports SPECIFY_FRAMEWORK_ROOT for offline adapters, and stops
-before /spec:*). Verify its captured output, then continue from step 3. Do the
-steps by hand for cross-repo workspace scenarios.
 
 Do, in order, capturing each exact command and its verbatim output:
 1. Create the disposable directories the scenario/setup names under a fresh temp
