@@ -42,7 +42,6 @@ make acceptance
 | `[shared/](shared/setup.md)`        | Shared `setup.md`, `meta-prompts.md`, `run-summary-template.md`. |
 | `[runs/](runs/README.md)`           | Filled run records — the audit trail.                            |
 | `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                   |
-| `[_lint/](_lint/)`                  | Fixtures for framework checks.                                   |
 
 
 Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](../adapters/targets/contracts/tests/README.md)`.

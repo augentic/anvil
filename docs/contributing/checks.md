@@ -207,7 +207,7 @@ Acceptance scenario files are validated against [`schemas/scenario.schema.json`]
 3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, `acceptance/_lint/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the unified `lifecycle` pack under [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
