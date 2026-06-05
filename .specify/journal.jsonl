@@ -292,3 +292,5 @@
 {"timestamp":"2026-06-05T20:00:29Z","event":"lint-completed","payload":{"scope":{"target":null,"slice":null,"artifact":null},"duration_ms":376,"counts":{"open":0,"ignored":0,"false_positive":0},"baseline_present":false,"exit_code":0}}
 {"timestamp":"2026-06-05T20:12:04Z","event":"lint-completed","payload":{"scope":{"target":null,"slice":null,"artifact":null},"duration_ms":485,"counts":{"open":0,"ignored":0,"false_positive":0},"baseline_present":false,"exit_code":0}}
 {"timestamp":"2026-06-05T20:20:13Z","event":"lint-completed","payload":{"scope":{"target":null,"slice":null,"artifact":null},"duration_ms":381,"counts":{"open":0,"ignored":0,"false_positive":0},"baseline_present":false,"exit_code":0}}
+{"timestamp":"2026-06-05T20:23:15Z","event":"lint-completed","payload":{"scope":{"target":null,"slice":null,"artifact":null},"duration_ms":427,"counts":{"open":1,"ignored":0,"false_positive":0},"baseline_present":false,"exit_code":2}}
+{"timestamp":"2026-06-05T20:33:14Z","event":"lint-completed","payload":{"scope":{"target":null,"slice":null,"artifact":null},"duration_ms":474,"counts":{"open":0,"ignored":0,"false_positive":0},"baseline_present":false,"exit_code":0}}

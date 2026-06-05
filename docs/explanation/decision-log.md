@@ -529,4 +529,4 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Status:** current
 
-**Source:** Acceptance run [`findings-2026-06-06.md`](../../acceptance/runs/findings-2026-06-06.md) F4; the binary `Layout` in `augentic/specify-cli`.
+**Source:** Acceptance run finding F4 (see [`acceptance/runs/`](../../acceptance/runs/README.md)); the binary `Layout` in `augentic/specify-cli`.

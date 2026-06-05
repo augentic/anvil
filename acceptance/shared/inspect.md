@@ -1,6 +1,6 @@
 # Inspecting run state
 
-Read-only ways to see what an acceptance run produced. Prefer the CLI's own render verbs over hunting raw files: the rendered views are the canonical surface, they stay stable while on-disk artifact locations are still settling (see the plan-artifact path drift noted in [`runs/findings-2026-06-06.md`](../runs/findings-2026-06-06.md)), and they read state the same way the skills and CI do.
+Read-only ways to see what an acceptance run produced. Prefer the CLI's own render verbs over hunting raw files: the rendered views are the canonical surface, they stay stable while on-disk artifact locations are still settling, and they read state the same way the skills and CI do.
 
 Every run lives at the pinned sandbox `acceptance/.sandbox/<scenario>/` ([`setup.md`](setup.md)). Run these from that directory (or the routed project / workspace root within it). All are read-only — none drive a `/spec:*` command or mutate state.
 
