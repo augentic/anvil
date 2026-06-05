@@ -4,7 +4,7 @@ owner: lifecycle
 kind: suite
 backend: manual
 entrypoint: /spec:plan
-stages: [plan, refine, build, merge]
+stages: [plan, refine]
 isolation: fresh-project
 assertions:
   - plan-exists
@@ -12,7 +12,7 @@ assertions:
   - intent-single-lead
   - gate-1-not-auto-stamped
   - sources-intent-only
-  - execute-loop-all-done
+  - refine-reaches-refined
 expected-artifacts:
   - plan.yaml
   - .specify/plans/fix-typo/discovery.md
@@ -42,7 +42,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 1. **Plan** — `/spec:plan fix-typo "fix typo in user.rs"`. Confirm it writes `change.md` + `plan.yaml`, validates, and stops at `pending` printing the literal `specify plan transition fix-typo approved`.
 2. **Stamp Gate 1** — run that literal transition command.
-3. **Execute** — `/spec:execute` (or the loop); confirm it reaches `all-done`.
+3. **Refine** — `/spec:execute` drives the approved entry through `/spec:refine`; confirm the slice synthesizes and transitions to `refined` with `Sources: [intent]` provenance. Stop after `refined` — `build` / `merge` are out of scope (see [Scope](#scope)).
 
 ## Assertions
 
@@ -51,7 +51,13 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 - `intent-single-lead`: the degenerate `intent` survey produces exactly one lead / one slice.
 - `gate-1-not-auto-stamped`: `/spec:plan` exits at `pending` and prints the transition command; it does not stamp `approved` itself.
 - `sources-intent-only`: the slice's provenance is `Sources: [intent]`.
-- `execute-loop-all-done`: after the operator stamps Gate 1, `/spec:execute` reaches `all-done`.
+- `refine-reaches-refined`: after the operator stamps Gate 1, `/spec:execute` drives the entry through `/spec:refine`, the slice validates cleanly, and it transitions to `refined`.
+
+## Scope
+
+This scenario is the **N=1 planning-and-synthesis gate**, not a codegen gate. Its `stages` stop at `refine` deliberately: every in-scope assertion is deterministic structure (plan shape, Gate-1 ergonomics, `Sources:` provenance, lifecycle `refined`), so the Wave-0 hard halt never depends on a non-deterministic surface.
+
+`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface ([RFC-40 §Capability coverage map, row 2](../../rfcs/rfc-40-acceptance-capability.md)). That gate belongs to a dedicated per-target build scenario ([RFC-40 Phase 2](../../rfcs/rfc-40-acceptance-capability.md#phase-2--the-generated-output-gate-capability-2)); the orchestration half (`/spec:execute` reaching `all-done`) graduates separately via the `shape` / trace tier ([RFC-39](../../rfcs/future/rfc-39-acceptance-shape-traces.md)).
 
 ## Negative expectations
 

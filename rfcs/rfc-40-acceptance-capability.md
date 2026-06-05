@@ -64,7 +64,7 @@ Headline: capabilities 1 and 4 are mature and want more deterministic edge cases
 ### Phase 0 — instrument before enriching (once)
 
 - **Assertion-id taxonomy.** Assertion ids are free-form kebab strings reused across files (`plan-exists`, `plan-validates`, …). Write them down (a short reference doc) before multiplying scenario count, so ids stay consistent and greppable.
-- **Drain the existing catalog to green first.** `01-pure-intent` is currently `failed` and is a **hard halt** (Wave 0). No new manual scenario is meaningful while Wave 0 is red. This aligns with RM-05's immediate task.
+- **Drain the existing catalog to green first.** `01-pure-intent` is the **hard halt** (Wave 0); it is now `passed` after being rescoped to `stages: [plan, refine]` so the gate rests only on deterministic plan/synthesis structure, not the non-deterministic codegen surface (capability 2 / Phase 2). No new manual scenario is meaningful while Wave 0 is red. This aligns with RM-05's immediate task.
 
 ### Phase 1 — deepen the deterministic floor (capabilities 1 & 4)
 
