@@ -31,13 +31,15 @@ Inputs:
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
 Do, in order, capturing each exact command and its verbatim output:
-1. Create the disposable directories the scenario/setup names under a fresh temp
-   root. Never reuse an existing project or a non-empty Specify state.
+1. Create the disposable directories the scenario/setup names under the pinned
+   sandbox `acceptance/.sandbox/<id>/` (recreate it clean, per
+   acceptance/shared/setup.md). Never reuse an existing project or a non-empty
+   Specify state.
 2. Run the init / registry-add / brief-file steps verbatim using the bare
    `specify` command (which the PATH export resolves to the build under test).
 3. Run the scenario's validation step (e.g. `specify registry validate`) and
    confirm it exits 0.
-4. STOP before /spec:plan. Report: the temp root, every created path, and the
+4. STOP before /spec:plan. Report: the sandbox path, every created path, and the
    captured command log.
 
 Guardrails:
@@ -54,10 +56,12 @@ self-verify the structurally-checkable assertions, and fill the run-summary.
 Pause at the human-only seams; never fabricate a result.
 
 Inputs:
-- The environment left by the SETUP prompt (temp root, the PATH-resolved `specify` build).
+- The environment left by the SETUP prompt (the `acceptance/.sandbox/<id>/`
+  sandbox, the PATH-resolved `specify` build).
 - acceptance/lifecycle/<id>.md (Invocation, Assertions, Negative
   Expectations).
 - acceptance/shared/run-summary-template.md field-set.
+- acceptance/shared/inspect.md (the read-only render verbs for reviewing state).
 
 Drive, in order, recording the exact invocation and verbatim output for each
 stage the scenario's `stages` declares:
@@ -65,7 +69,9 @@ stage the scenario's `stages` declares:
    hand-off / `pending` and prints the literal Gate-1 transition command. Do NOT
    auto-stamp approval.
 2. Review seam: run `specify plan validate` and inspect plan.yaml read-only;
-   record the slice shape.
+   record the slice shape. Use the read-only render verbs in
+   acceptance/shared/inspect.md to review state through the CLI rather than
+   hunting raw files.
 3. If the scenario executes: stamp Gate 1 only by running the literal
    `specify plan transition <name> approved` the plan printed.
 4. If the scenario executes: /spec:execute loop. Answer only genuine
@@ -84,6 +90,9 @@ Confirm (self-grade on durable STRUCTURE only — never a byte/golden compare):
   validate`, inspect plan.yaml, inspect .specify/archive/plans/, `gh pr view`)
   and record pass/fail/skipped with an evidence pointer.
 - For each negative expectation, record held/violated/untested.
+- Capture an artefact snapshot of the sandbox
+  (`scripts/acceptance-snapshot.sh "$SANDBOX"`) and paste it into the
+  run-summary's **Artefact snapshot** section, so the record is self-contained.
 - Fill the run-summary template and file it under acceptance/runs/
   <id>-<date>.md; update the scenario's status in the catalog.
 

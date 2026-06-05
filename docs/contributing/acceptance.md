@@ -75,7 +75,7 @@ Within a wave, scenarios are independent and may run in any order; a failure out
 ## The gate signal
 
 - Each run commits its filled run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md) as the audit trail.
-- On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template, and file a follow-up issue in `augentic/specify` linked back to the run-summary.
+- On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template. The sandbox at `acceptance/.sandbox/<scenario>/` ([`setup.md`](../../acceptance/shared/setup.md)) is stable and gitignored, so it survives for inspection; capture an `scripts/acceptance-snapshot.sh` snapshot into the run-summary's **Artefact snapshot** section so evidence is self-contained rather than tied to a temp root. File a follow-up issue in `augentic/specify` linked back to the run-summary.
 - The **release gate is green** when `tests/fan_in_fan_out.rs` passes under `cargo make test`, scenario `pure-intent` is `passed`, and every non-deferred catalog entry is `passed`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
 
 When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../acceptance/lifecycle/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).

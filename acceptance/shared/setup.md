@@ -2,7 +2,7 @@
 
 Reusable environment setup for the `lifecycle` acceptance scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
 
-Run every scenario from a disposable directory. Runs create local projects, branches, and Specify state, so never use an important working tree.
+Run every scenario from the repo-local sandbox at `acceptance/.sandbox/<scenario>/` (gitignored). Pin it instead of an ad-hoc `mktemp` root so the tree is stable across runs, survives reboots, and is browsable in the IDE — add `acceptance/.sandbox/` as a second Cursor workspace folder to watch `.specify/`, `plan.yaml`, and `journal.jsonl` populate live. Isolation comes from recreating the directory at the start of each run, not from a unique suffix. Override the base with `SPECIFY_SANDBOX=/abs/path` if you want it outside the repo. These are throwaway projects, branches, and Specify state — never run a scenario from an important working tree. To inspect what a run produced, see [`inspect.md`](inspect.md).
 
 ## Prerequisites
 
@@ -16,7 +16,8 @@ Run every scenario from a disposable directory. Runs create local projects, bran
 For scenarios that run against one initialized project (no registry):
 
 ```bash
-mkdir specify-acceptance-<scenario> && cd specify-acceptance-<scenario>
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/acceptance/.sandbox}/<scenario>"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX" && cd "$SANDBOX"
 specify init <adapter>     # e.g. omnia@v1
 ```
 
@@ -26,17 +27,20 @@ Then create the scenario's brief (see its **Setup** section) and run its **Invoc
 
 For scenarios that coordinate work across multiple project repos from a registry-only workspace:
 
-Create three disposable directories:
+Create three disposable directories under the pinned sandbox:
 
 ```text
-shop-platform/      # registry-only workspace
-shop-backend/       # omnia@v1 project
-shop-mobile/        # vectis@v1 project
+acceptance/.sandbox/<scenario>/shop-platform/   # registry-only workspace
+acceptance/.sandbox/<scenario>/shop-backend/    # omnia@v1 project
+acceptance/.sandbox/<scenario>/shop-mobile/     # vectis@v1 project
 ```
 
 Initialize them:
 
 ```bash
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/acceptance/.sandbox}/<scenario>"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{shop-platform,shop-backend,shop-mobile} && cd "$SANDBOX"
+
 cd shop-platform
 specify init --workspace
 

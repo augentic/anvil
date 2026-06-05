@@ -36,12 +36,13 @@ make acceptance
 ## Layout
 
 
-| Path                                | Role                                                             |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.    |
-| `[shared/](shared/setup.md)`        | Shared `setup.md`, `meta-prompts.md`, `run-summary-template.md`. |
-| `[runs/](runs/README.md)`           | Filled run records — the audit trail.                            |
-| `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                   |
+| Path                                | Role                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.                  |
+| `[shared/](shared/setup.md)`        | Shared `setup.md`, `inspect.md`, `meta-prompts.md`, `run-summary-template.md`. |
+| `[runs/](runs/README.md)`           | Filled run records — the audit trail.                                          |
+| `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                                 |
+| `.sandbox/` (gitignored)            | Stable per-scenario run roots — browsable, inspectable, recreated per run.     |
 
 
 Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](../adapters/targets/contracts/tests/README.md)`.

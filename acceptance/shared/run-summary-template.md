@@ -15,7 +15,7 @@ Copy this into `acceptance/runs/<id>-<date>.md`, fill it against the live run, a
 - **Run id:** `<timestamp or uuid>`
 - **Started at / finished at:** `<ISO 8601>` / `<ISO 8601>`
 - **`specify` build:** `<output of \`command -v specify\` + \`specify --version\`>`
-- **Workspace / project roots:** `<temporary roots created for this run>`
+- **Workspace / project roots:** `<sandbox path, e.g. acceptance/.sandbox/<id>/>`
 
 ## Inputs created
 
@@ -99,6 +99,14 @@ Capture the important command output, or point to files that contain it.
 - **Plan validation:** `<summary or path>`
 - **Execute loop:** `<summary or path, or n/a>`
 - **Finalize invocations:** `<summary or path, or n/a>`
+
+## Artefact snapshot
+
+A read-only snapshot of the sandbox so this record is self-contained — no dependence on a temp dir surviving. Generate it with `scripts/acceptance-snapshot.sh "$SANDBOX"` (sandbox tree + `plan.yaml` / `discovery.md` / `registry.yaml` / `journal.jsonl` bodies + `specify slice model show` per slice). For deeper inspection use the render verbs in [`inspect.md`](inspect.md).
+
+```text
+<paste scripts/acceptance-snapshot.sh output, or a trimmed excerpt + the path under acceptance/.sandbox/>
+```
 
 ## Cleanup
 
