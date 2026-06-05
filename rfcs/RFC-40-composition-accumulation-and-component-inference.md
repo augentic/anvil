@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for review. A first-scan consistency review surfaced one material issue and four secondary accuracy fixes — see [Review findings (first scan)](#review-findings-first-scan). These are folded in below as discrete, numbered items (R1–R5) to be resolved one-by-one before the RFC is accepted.
+Ready for review. A first-scan consistency review surfaced one material issue and four secondary accuracy fixes — see [Review findings](#review-findings). R1 (the one blocking issue) is now **resolved** and folded into the design (§A4, Problem 1 point 3); R2 is **resolved** and folded into §A3 + the A3 touchpoints row; R3 is **resolved** and folded into §B2 (step 3 + "Implementation placement") and §B4; R4–R5 remain as discrete, numbered items to be resolved one-by-one before the RFC is accepted.
 
 ## Motivation
 
@@ -21,7 +21,7 @@ In a 14-slice plan:
 
 1. Each per-screen slice produced a composition with 1 screen.
 2. Each merge replaced the baseline — not accumulated into it.
-3. A late documentation-only slice (`platform-requirements`) generated `screens: {}` because it had no UI surface but the agent did not skip the composition step as instructed.
+3. A late documentation-only slice (`platform-requirements`) generated `screens: {}` because it had no UI surface. The composition brief's skip instruction was keyed on `proposal.md ## Platforms` — an app-level constant carried verbatim to every slice — so for a non-UI slice in a multi-platform (`core, ios, android`) app the skip condition was **structurally unreachable**; the agent was effectively instructed *not* to skip. This is a contract defect, not (only) agent non-compliance (see [R1](#review-findings)).
 4. That empty document replaced the rich 8-screen composition the prior slice had deposited.
 5. Final baseline: `version: 1\nscreens: {}` — total data loss.
 
@@ -31,7 +31,7 @@ The journal tells the story: every merge says "created baseline with N requireme
 
 - The build brief does not instruct the agent to read the existing baseline composition and produce a superset or a delta.
 - The merge engine has no guard against replacing a richer baseline with a poorer one.
-- Non-UI slices are supposed to skip composition entirely ("When the slice has no UI surface at all… this step writes no `composition.yaml`") but this relies on agent compliance with no CLI-enforced gate.
+- Non-UI slices are supposed to skip composition entirely ("When the slice has no UI surface at all… this step writes no `composition.yaml`"), but the skip was *detected* from `proposal.md ## Platforms` — which never narrows per slice — so the detection was unreachable for a non-UI slice in a multi-platform app, and even a correct detection relied on agent compliance with no CLI-enforced gate.
 
 ### Problem 2: Component catalog is operator-curated when it should be agent-inferred
 
@@ -125,16 +125,23 @@ Region-level delta merge (merging `header` / `body` / `footer` / `states` / `ove
 - Error message: "Slice composition uses whole-document replacement format but a non-empty baseline exists. Use `delta:` format, or pass `--allow-composition-replace` to authorise full replacement."
 - The narrow, self-documenting `--allow-composition-replace` flag on `specify slice merge` is the **only** override, reserved for intentional full-baseline rewrites (e.g., a dedicated refactoring slice). A generic `--force` is deliberately **not** introduced: whole-document replacement is extremely rare (routine per-screen edits — add, modify, or remove — flow through `delta:` and never reach this gate), so there is no ergonomic case for a broad override, and a habitual `--force` would re-open the accidental-wipe vector this gate exists to close.
 
+**Placement — the gate is a precondition, not a merge-engine concern.** The override flag and baseline-emptiness policy stay out of the pure merge kernel. `composition::merge(baseline, delta_text)` keeps its signature and behaviour unchanged — it answers only the mechanical question "how do I combine this baseline with this delta," and its existing `screens:`-format branch (today returning `CreatedBaseline`) runs unchanged in the authorised path. The authorisation question — "may a whole-document replacement overwrite a non-empty baseline?" — is a separate, single-responsibility precondition (`composition_overwrite_gate`) enforced in `specify_workflow::merge::slice::commit`, alongside the existing `LifecycleStatus::Built` gate and *before* `plan_three_way` runs. The gate reuses a **pure** shape predicate exported from `composition.rs` (whole-document-replacement detection) and reads the slice composition + first-three-way baseline via the existing `slice/read.rs` helpers. Consequently `--allow-composition-replace` threads exactly two hops — CLI handler → `slice::commit` — and deliberately **never** reaches `plan_three_way`, `merge_composition_delta`, or `composition::merge`. The gate runs on `commit` only; `preview` (a read-only dry run) does not abort, so the shared `plan_three_way` path is untouched.
+
 This makes it impossible for a non-UI slice to accidentally wipe the composition baseline, regardless of agent compliance.
 
-#### A4. CLI enforcement: skip composition for non-UI slices
+#### A4. CLI enforcement: composition must match the slice's UI surface
 
-`specify slice build --phase finalize` gains a new validation check:
+`## Platforms` is an **app-level constant** — stamped verbatim from `project.yaml.platforms` and carried to every slice; it never narrows per slice (see [R1](#review-findings)). It therefore cannot signal whether *this slice* contributes any UI, and any check keyed on it is inert for a non-UI slice in a multi-platform app. The per-slice "has UI surface" signal is instead **authored by the build brief into the build report**, derived from the same screen-identification judgement composition regeneration already performs (`composition.md` step 1, "walk every `### Requirement:` block in `spec.md`"):
 
-- When `proposal.md` declares only `core` in its `## Platforms` section AND the build report includes a `composition.yaml` output, emit a **warning diagnostic** (`composition-unexpected-for-core-only`).
-- When the slice's `composition.yaml` contains `screens: {}` (explicitly empty) AND the proposal declares UI platforms, emit a **warning diagnostic** (`composition-empty-for-ui-slice`).
+- The build report gains a `ui_surface` field carrying the count of screen-bearing requirements the slice introduces or modifies (`ui_surface: { screens: <N> }`; `screens: 0` means "no UI surface"). The brief sets this from its own `spec.md`, **never** from `## Platforms`.
+- The composition skip rule in `composition.md` is re-keyed off the same judgement: skip composition when the slice's `spec.md` describes **no** screen-bearing requirements, regardless of which platforms `## Platforms` lists.
 
-These are warnings (non-blocking) that surface agent non-compliance without halting the build.
+`specify slice build --phase finalize` then runs two deterministic coherence checks comparing the authored `ui_surface` against the produced `composition.yaml` (declared intent × actual artifact — never against `## Platforms`):
+
+- When `ui_surface.screens == 0` AND a non-empty `composition.yaml` was produced (a `screens:` map with ≥1 entry, or a non-empty `delta:`), emit a **warning diagnostic** (`composition-unexpected-for-non-ui-slice`). This is the real catch for the motivating documentation-only `platform-requirements` slice; A3 remains the hard merge gate, and A4 surfaces the non-compliance one phase earlier.
+- When `ui_surface.screens > 0` AND the slice's `composition.yaml` is absent or empty (`screens: {}` / an all-empty `delta:`), emit a **warning diagnostic** (`composition-empty-for-ui-slice`).
+
+Because both the UI-surface judgement and the composition output come from the agent, A4 is exactly a *self-consistency* check: it catches the agent contradicting itself, deterministically, without re-deriving screen identification in the host (which would be a model judgement, not a deterministic parse). These are warnings (non-blocking) that surface agent non-compliance without halting the build.
 
 ### Part B: Agent-driven component inference
 
@@ -154,7 +161,7 @@ specify catalog infer [--dry-run] [--min-occurrences <N>]
 
 1. Load `.specify/specs/composition.yaml` (the merged baseline).
 2. For every screen, extract the structural skeleton of each `group` subtree (strip `bind`, `event`, `*-when` values but retain the tree shape, item kinds, and nesting depth).
-3. Compute a structural fingerprint (SHA-256 of the normalized skeleton) for each group.
+3. Compute a structural fingerprint over the **normalized skeleton** (not raw content): a canonical serialization of the skeleton tree followed by SHA-256. Because normalization (step 2) has already stripped every wiring value, the fingerprint tolerates value-, state-, and asset-level variation by construction (see "Implementation placement" — this fingerprint is new, thin work, not an existing engine feature).
 4. Identify groups that appear across ≥N **screens** (default N=2; counted per screen, not per group instance — a group repeated within a single screen's list counts once) with identical structural fingerprints.
 5. For each cluster of identical groups:
   - Derive a slug from the group's semantic content (e.g., `footer` group with `icon-button` items mapping to `Navigate(*)` events → `tab-bar`; repeating `card` with `checkbox` + `text` → `task-row`).
@@ -180,7 +187,11 @@ When the heuristic cannot derive a meaningful slug, emit `component-<fingerprint
 - This honours the downstream invariant: the composition validator's `check_structural_identity` rejects two different skeletons sharing one `component: <slug>` directive (`wasi-tools/vectis/src/validate/engine/composition.rs`), so inference must never emit a colliding slug in the first place.
 - Operators rename auto-suffixed slugs (B5); B6's no-overwrite rule keeps the rename stable on subsequent runs.
 
-**Implementation placement — reuse the existing skeleton engine, do not re-derive it.** Steps 2–4 (skeleton normalization + structural fingerprint) are already implemented in the vectis WASI tool at `wasi-tools/vectis/src/validate/engine/composition.rs` — `build_group_skeleton`, `check_structural_identity`, and `walk_for_components` strip `bind` / `event` / `error` / `*-when` / asset / token / free-text values and compare the residual group skeleton across instances. This is the same normalization the inference verb needs. The verb MUST reuse that logic rather than re-deriving a second skeleton algorithm in the host crate (a divergence between the two would let inference propose a `component: <slug>` directive that the composition validator then rejects under its own structural-identity rule). Two viable shapes, to be settled before Phase 2:
+**Implementation placement — reuse the existing skeleton engine, do not re-derive it.** Step 2 (skeleton normalization) is already implemented in the vectis WASI tool at `wasi-tools/vectis/src/validate/engine/composition.rs` — `build_group_skeleton`, `check_structural_identity`, and `walk_for_components` strip `bind` / `event` / `error` / `*-when` condition values / asset / token / free-text values and compare the residual group skeleton across instances. This is the same normalization the inference verb needs. **Step 3's structural fingerprint is *not* yet implemented:** the engine compares the `Skeleton` enum by `PartialEq` (`#[derive(Eq, PartialEq, Clone)]`), with no SHA-256 anywhere. Fingerprinting is a thin, additive layer over the existing normalization — a deterministic canonical serialization of the `Skeleton` tree followed by SHA-256 — and is new work this RFC introduces, not an existing engine feature. In-process clustering does not strictly need the hash at all (it can key on `Skeleton` directly via a derived `Ord` / `Hash`); the fingerprint *string* is required only where a stable cross-process key is needed — the B4 candidate-cache entry and the `card-row-<fp-prefix>` disambiguation suffix. The verb MUST reuse `build_group_skeleton` rather than re-deriving a second skeleton algorithm in the host crate (a divergence would let inference propose a `component: <slug>` directive that the composition validator then rejects under its own structural-identity rule).
+
+**Identity is exact by mandate; tolerance lives in normalization, not in the hash.** The fingerprint comparison is exact (byte-equal skeletons) and MUST stay exact: the downstream `check_structural_identity` rule enforces exact skeleton equality per `component: <slug>` slug, so inference must never cluster two groups the validator would later split — a fuzzy identity would simply manufacture compositions the validator rejects. This exactness adds no strictness, because `build_group_skeleton` has already discarded every value-, state-, and asset-level difference before the hash is taken. The motivating "same tab-bar across screens, different active-navigation state, icon shown as a different variant" case is exactly that: the active-state condition is a stripped `*-when` value and the icon variant is a stripped asset / `bind` value, so both variants normalize to one skeleton — and therefore one fingerprint — with no fuzzy matching required. Genuinely *structural* divergence (an extra item, a badge node one variant lacks, a different child count) yields distinct skeletons; those groups are distinct candidates, surfaced separately rather than force-merged, because the contract cannot express them under one slug. Parametric *structural* variation under a single slug would require a schema mechanism — mirroring the existing `platforms.*` override exemption, where per-platform skeletons MAY diverge from the base (`in_platform_override` in `composition.rs`) — and is deferred as future work, consistent with the schema-change non-goal and the "model-assisted detection rejected for the deterministic path" stance under "Alternatives considered."
+
+Two viable shapes, to be settled before Phase 2:
 
 - **(preferred) Add an `infer` mode to the vectis tool** alongside its existing `verify` (`--mode detect` / `--mode verify`) subcommand, and have the host invoke it via `specify tool run vectis -- infer …`. This keeps all skeleton logic inside the WASI carve-out.
 - **Extract the skeleton normalization** into a shared crate consumed by both the vectis tool and a host-side `specify catalog infer`.
@@ -201,7 +212,7 @@ This makes component detection a **build-time, agent-driven, deterministic** pro
 
 Stage-6 `notes.candidate_component` hints currently dead-end at Evidence and surface as `[unknown]` tags. Under this RFC:
 
-- Stage-6 gains an additional output: when the hint is emitted, the adapter also writes a structured sidecar entry to `.specify/.cache/component-candidates/<fingerprint>.yaml` recording the structural skeleton that triggered the hint. **The cache is keyed by structural fingerprint, not slug** — keying by `<slug>.yaml` would let two distinct skeletons that derive the same heuristic slug silently overwrite each other (the same clobber failure mode A3 guards against in the composition baseline). The candidate's derived slug is stored *inside* the entry as a label, alongside the skeleton.
+- Stage-6 gains an additional output: when the hint is emitted, the adapter also writes a structured sidecar entry to `.specify/.cache/component-candidates/<fingerprint>.yaml` recording the structural skeleton that triggered the hint. **The cache is keyed by structural fingerprint, not slug** — keying by `<slug>.yaml` would let two distinct skeletons that derive the same heuristic slug silently overwrite each other (the same clobber failure mode A3 guards against in the composition baseline). That fingerprint is produced by the new shared hasher introduced in B2 (canonical serialization of the `Skeleton` tree + SHA-256), reusing the single `build_group_skeleton` normalizer so a cached candidate and a baseline group that are the same component always hash alike; how stage-6 — an agent / vision brief, not the deterministic tool — obtains a tool-consistent fingerprint is tracked as R4. The candidate's derived slug is stored *inside* the entry as a label, alongside the skeleton.
 - `specify catalog infer` reads both the composition baseline AND the candidate cache, using cached skeletons as supplementary evidence for cross-slice structural identity. Candidates are deduplicated and clustered by fingerprint (see B2 "Identity is the structural fingerprint"), so a cached skeleton and a baseline group with the same fingerprint are recognised as one component.
 
 This gives the inference verb memory across slices even before the composition baseline accumulates the screens — it can detect shared structures from extraction evidence before those structures reach the composition.
@@ -248,7 +259,7 @@ Component inference is incremental (B3): a shared component only becomes detecta
 
 1. **Brief amendment.** Update `adapters/targets/vectis/briefs/build/composition.md` with the baseline-reading and delta-format instructions (A1, A2).
 2. **CLI regression gate.** Implement `composition-baseline-overwrite-blocked` check in `specify slice merge` with the `--allow-composition-replace` escape hatch (A3).
-3. **CLI warnings.** Implement `composition-unexpected-for-core-only` and `composition-empty-for-ui-slice` in `specify slice build --phase finalize` (A4).
+3. **CLI warnings + UI-surface signal.** Add the `ui_surface` field to the build report (schema + `BuildReport` DTO), re-key the `composition.md` skip rule off `spec.md` screen-bearing requirements (and document `ui_surface` in `build.md`), and implement `composition-unexpected-for-non-ui-slice` and `composition-empty-for-ui-slice` in `specify slice build --phase finalize` as coherence checks against `ui_surface` (A4).
 4. **Tests.** Extend `tests/fan_in_fan_out.rs` with a multi-slice composition accumulation scenario asserting the baseline grows monotonically across screen-introducing slices.
 
 ### Phase 2 — Component inference
@@ -293,8 +304,9 @@ Phase 2 is **additive**: `specify catalog infer` is a new verb; the candidate ca
 | Retroactive cross-slice factoring (B7)   | specify     | `adapters/targets/vectis/briefs/build/composition.md` (directive-only `delta.modified` for prior-slice screens), `adapters/targets/vectis/briefs/build/{core,ios,android}/write.md` (refactor prior-slice views to consume the shared component) |
 | Screenshots stage-6 candidate cache (B4) | specify     | `adapters/sources/screenshots/briefs/extract/pipeline.md`                                                                                                                                                                                        |
 | Components explanation rewrite (B6)      | specify     | `plugins/spec/references/components.md` (canonical; `docs/explanation/components.md` + screenshots `spec-runtime/components.md` symlink resolve here)                                                                                            |
-| Composition regression gate (A3)         | specify-cli | `crates/workflow/src/merge/composition.rs`, `crates/workflow/src/merge/slice.rs` (apply path), `src/runtime/commands/slice/merge.rs`                                                                                                             |
-| Build finalize warnings (A4)             | specify-cli | `src/runtime/commands/slice/build.rs`                                                                                                                                                                                                            |
+| Composition regression gate (A3)         | specify-cli | `src/runtime/commands/slice/cli.rs` (`--allow-composition-replace` on `SliceMergeAction::Run`), `src/runtime/commands/slice/merge.rs` (plumb the flag through `run` / `commit_run`), `crates/workflow/src/merge/slice.rs` (`commit` gains the flag param and invokes the gate as a precondition), `crates/workflow/src/merge/slice/read.rs` (new `composition_overwrite_gate` precondition + composition-shape read), `crates/workflow/src/merge/composition.rs` (pure whole-document-replacement predicate only — `merge` behaviour unchanged) |
+| Composition skip-rule re-key + `ui_surface` doc (A4) | specify | `adapters/targets/vectis/briefs/build/composition.md` (skip when `spec.md` has no screen-bearing requirements), `adapters/targets/vectis/briefs/build.md` (document the `ui_surface` report field) |
+| Build finalize warnings + `ui_surface` signal (A4) | specify-cli | `src/runtime/commands/slice/build.rs` (coherence checks), `crates/workflow/src/slice/build/wire.rs` (`BuildReport` `ui_surface` field), `schemas/target/build-report.schema.json` (additive field) |
 | `specify catalog infer` verb (B2)        | specify-cli | `src/runtime/commands/catalog/infer.rs` (new) — thin dispatch if the vectis-tool-subcommand shape is chosen (see B2 "Implementation placement")                                                                                                  |
 | Skeleton engine reuse (B2)               | specify-cli | `wasi-tools/vectis/src/validate/engine/composition.rs` (`build_group_skeleton`, `check_structural_identity`) — reuse, do not re-derive                                                                                                           |
 | Candidate cache reader                   | specify-cli | `crates/workflow/src/design_system.rs` (extend — load-only today; B2/B6 add the writer)                                                                                                                                                          |
@@ -312,7 +324,7 @@ Phase 2 is **additive**: `specify catalog infer` is a new verb; the candidate ca
 
 ## Review findings
 
-### R1 — A4's "core-only slice" premise contradicts how `proposal.md ## Platforms` is populated (blocking)
+### R1 — A4's "core-only slice" premise contradicts how `proposal.md ## Platforms` is populated (resolved)
 
 **Affects:** §A4, Problem 1 point 3, the `composition-unexpected-for-core-only` check.
 
@@ -329,27 +341,25 @@ Consequences:
 
 What this means for the plan: A3 (the merge gate) still catches the actual data-loss, because `screens: {}` is the `screens:` format and the baseline is non-empty → `composition-baseline-overwrite-blocked` fires regardless of platforms. So Phase 1's safety net holds. But A4 needs a real per-slice "has UI surface" signal (`proposal ## Platforms` is **not** one), and the Problem 1.3 root-cause prose must be corrected.
 
-**Resolution options to settle in the RFC** (pick one for A4's per-slice "has UI surface" signal — but *not* `## Platforms`):
+**Resolution (settled).** `## Platforms` stays the verbatim app-level set — it is what carries forward to every slice and what *grows* when a platform is single-added to an existing solution (bootstrap-slice reconciliation depends on it); it is **not** narrowed per slice. A4's per-slice "has UI surface" signal is instead authored by the build brief into the build report as `ui_surface.screens` (the count of screen-bearing requirements the slice introduces or modifies), derived from the same `spec.md` screen-identification judgement composition regeneration already performs — never from `## Platforms`. The `composition.md` skip rule is re-keyed off the same judgement. A4's two checks (renamed `composition-unexpected-for-non-ui-slice`, plus `composition-empty-for-ui-slice`) become deterministic coherence checks comparing the authored `ui_surface` against the produced `composition.yaml`. Problem 1 point 3's root-cause prose is corrected: the platform-keyed skip rule was structurally unreachable for a non-UI slice in a multi-platform app — a contract defect, not (only) agent non-compliance. Folded into §A4, Problem 1 point 3, and the Phase 1 / Cross-repo-touchpoints tables above.
 
-- Derive the signal from the build report `outputs[]` / `composition` presence.
-- Derive it from whether `spec.md` yields any screens.
-- Introduce a new per-slice marker.
+A platform-derived signal was rejected on two independent grounds: (1) `## Platforms` never narrows per slice, so it cannot distinguish a non-UI slice; (2) composition is platform-neutral — a future `bootstrap-<platform>` slice touches a new platform yet introduces zero new screens, so "has UI surface" is inherently a question about screens, not platforms. A host-side re-parse of `spec.md` was also rejected: screen identification is a model judgement, and folding it into a deterministic finalize gate would either duplicate the heuristic or risk disagreeing with the agent's own output. Authoring the intent in the report and verifying consistency mirrors the A2a/A3 principle ("intent is authored, not inferred").
 
-### R2 — A3 call-site and flag plumbing are understated in the Cross-repo touchpoints table (non-blocking)
+### R2 — A3 call-site and flag plumbing are understated in the Cross-repo touchpoints table (resolved)
 
 **Affects:** §A3, Cross-repo touchpoints table.
 
-The table lists `merge/composition.rs`, `merge/slice.rs`, `slice/merge.rs`. But the actual composition-merge invocation is in `crates/workflow/src/merge/slice/read.rs::merge_composition_delta` (not `slice.rs` directly), and `composition::merge` currently takes only `(baseline, delta_text)` with no baseline-empty / override awareness — today the `has_screens && !has_delta` branch in `composition.rs` unconditionally returns `CreatedBaseline`, ignoring whether the baseline is non-empty. The `--allow-composition-replace` flag has to thread CLI handler → `slice::commit` → `plan_three_way` → `merge_composition_delta` → `composition::merge`.
+The table listed `merge/composition.rs`, `merge/slice.rs`, `slice/merge.rs`. But the actual composition-merge invocation is in `crates/workflow/src/merge/slice/read.rs::merge_composition_delta` (not `slice.rs` directly), and `composition::merge` currently takes only `(baseline, delta_text)` with no baseline-empty / override awareness — today the `has_screens && !has_delta` branch in `composition.rs` unconditionally returns `CreatedBaseline`, ignoring whether the baseline is non-empty. Read naively, this invites threading `--allow-composition-replace` CLI handler → `slice::commit` → `plan_three_way` → `merge_composition_delta` → `composition::merge` — pushing a CLI authorisation concern into the pure merge kernel.
 
-**Resolution:** add `crates/workflow/src/merge/slice/read.rs` to the table and acknowledge the flag-threading path through the merge call chain.
+**Resolution (settled).** Separate the two concerns rather than thread the flag through the kernel. The A3 gate is enforced as a **single-responsibility precondition** (`composition_overwrite_gate`) in `slice::commit`, beside the existing `LifecycleStatus::Built` gate and before `plan_three_way`; the override flag threads exactly two hops (CLI handler → `slice::commit`) and never reaches `plan_three_way` / `merge_composition_delta` / `composition::merge`. The merge kernel stays pure and signature-stable — `composition::merge(baseline, delta_text)` is unchanged, and its `screens:`-format `CreatedBaseline` branch runs unchanged only in the authorised path; A3 adds at most a **pure** whole-document-replacement predicate to `composition.rs`, not policy. The gate runs on `commit` only (read-only `preview` does not abort), so the shared `plan_three_way` path is untouched. Folded into §A3 ("Placement — the gate is a precondition…") and the A3 Cross-repo-touchpoints row, which now enumerates `slice/cli.rs` (flag), `slice/merge.rs` (plumb), `slice.rs` (`commit` + gate), `slice/read.rs` (`composition_overwrite_gate` + shape read), and `composition.rs` (pure predicate only).
 
-### R3 — B2 overstates "fingerprint already implemented" (non-blocking)
+### R3 — B2 overstates "fingerprint already implemented" (resolved)
 
 **Affects:** §B2 (step 3, "Implementation placement"), §B4 cache key.
 
 The WASI engine (`wasi-tools/vectis/src/validate/engine/composition.rs`) compares the `Skeleton` enum by `PartialEq` (`#[derive(Debug, Eq, PartialEq, Clone)]`) — there is **no** SHA-256 fingerprint. B2 step 3 ("SHA-256 of the normalized skeleton") and the B4 cache key `<fingerprint>.yaml` both require **adding** a canonical serialization + hash over `Skeleton`. "Reuse the skeleton normalization" is correct; "the structural fingerprint is already implemented" is not.
 
-**Resolution:** reword B2's "Implementation placement" to "skeleton normalization is implemented; fingerprinting is a thin addition over it," and make explicit that canonical serialization + hashing of `Skeleton` is new work.
+**Resolution (settled).** B2 is corrected on three points, folded into §B2 step 3 and "Implementation placement" above. (1) **Factual:** skeleton *normalization* (`build_group_skeleton`) is implemented and reused verbatim, but the structural *fingerprint* is **not** — the engine compares `Skeleton` by `PartialEq` with no SHA-256 — so canonical serialization + hashing of `Skeleton` is named as new, thin, additive work (and in-process clustering can key on the enum directly; the fingerprint string is needed only for cross-process keys). (2) **Layering:** the fingerprint is taken over the *normalized* skeleton, so all value-, state-, and asset-level variation — including the motivating active-navigation-state and icon-variant differences — is stripped before hashing and collapses to one fingerprint by construction; identity must stay *exact* because the downstream `check_structural_identity` rule is exact, so tolerance lives in normalization, never in a fuzzy hash. (3) **Scope:** genuinely structural divergence yields distinct candidates surfaced separately; parametric structural variation under one slug is deferred as future work (a schema mechanism mirroring the `platforms.*` divergence exemption). The agent-computed-vs-canonical fingerprint coherence at the cache↔baseline boundary remains tracked separately as R4.
 
 ### R4 — B4 fingerprint-coherence gap (non-blocking)
 
