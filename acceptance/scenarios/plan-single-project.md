@@ -1,6 +1,6 @@
 ---
 id: plan-single-project
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: manual
 entrypoint: /spec:plan

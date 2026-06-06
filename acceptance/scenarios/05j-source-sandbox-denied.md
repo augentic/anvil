@@ -1,6 +1,6 @@
 ---
 id: source-sandbox-denied
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: fixture
 entrypoint: /spec:plan

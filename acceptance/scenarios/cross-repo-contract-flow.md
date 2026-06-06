@@ -1,6 +1,6 @@
 ---
 id: cross-repo-contract-flow
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: manual
 entrypoint: /spec:plan

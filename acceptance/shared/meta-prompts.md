@@ -1,6 +1,6 @@
 # Operator meta prompts
 
-Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single `lifecycle` acceptance scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator (`backend: manual`, "a human **or** agent follows this script").
+Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single platform acceptance scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator (`backend: manual`, "a human **or** agent follows this script").
 
 **These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Keep them as documentation next to the scenarios, never as an unattended job.
 
@@ -26,7 +26,7 @@ Inputs:
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
   `../specify-cli/target/release/specify` path (see acceptance/shared/setup.md).
-- Scenario: acceptance/lifecycle/<id>.md
+- Scenario: acceptance/scenarios/<id>.md
 - Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
@@ -58,7 +58,7 @@ Pause at the human-only seams; never fabricate a result.
 Inputs:
 - The environment left by the SETUP prompt (the `acceptance/.sandbox/<id>/`
   sandbox, the PATH-resolved `specify` build).
-- acceptance/lifecycle/<id>.md (Invocation, Assertions, Negative
+- acceptance/scenarios/<id>.md (Invocation, Assertions, Negative
   Expectations).
 - acceptance/shared/run-summary-template.md field-set.
 - acceptance/shared/inspect.md (the read-only render verbs for reviewing state).

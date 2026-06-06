@@ -4,7 +4,7 @@
 
 ## Abstract
 
-The acceptance suite today is organised by **lifecycle-phase difficulty** — Wave 0 (N=1) through Wave 2 (failure/breakout) in [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md). That axis proves the `/spec:*` loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
+The acceptance suite today is organised by **lifecycle-phase difficulty** — Wave 0 (N=1) through Wave 2 (failure/breakout) in [`acceptance/scenarios/`](../../acceptance/scenarios/README.md). That axis proves the `/spec:*` loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
 
 The plan rests on one decision rule (fixture vs. manual), one repeatable authoring recipe, a coverage map of the named capabilities against today's catalog, and a four-phase rollout ordered by return on investment. It adds no new lifecycle authority: acceptance evidence remains evidence, never a transition.
 
@@ -20,7 +20,7 @@ Three forces make a capability-axis enrichment timely:
 
 ## Principles
 
-- **One catalog, capability tags — not a fork.** Keep `acceptance/lifecycle/` as the single catalog. Express capability themes through a consistent `owner:` / id-prefix convention so scenarios are filterable by capability. Introduce sibling suite packs only if the catalog becomes unwieldy; do not split eagerly, because one catalog is easier to keep green.
+- **One catalog, capability tags — not a fork.** Keep `acceptance/scenarios/` as the single catalog. Express capability themes through a consistent `owner:` / id-prefix convention so scenarios are filterable by capability. Introduce sibling suite packs only if the catalog becomes unwieldy; do not split eagerly, because one catalog is easier to keep green.
 - **Bias toward the deterministic surface.** Every new scenario forces the fixture-vs-manual decision. Prefer `backend: fixture` (a named test in `augentic/specify-cli`, run every commit) and keep only the irreducibly-prose, irreducibly-orchestration, or live-forge part manual.
 - **Split a capability across surfaces rather than over-charging the sweep.** The existing `contract-routing` (fixture, deterministic routing) vs. `cross-repo-contract-flow` (manual, live-forge tail) pairing is the model: prove the deterministic half cheaply and reserve the manual half for what only a human or live agent can judge.
 - **The CLI is authoritative.** Deterministic acceptance primitives (assertion evaluators, named tests, schemas) live in `augentic/specify-cli`; scenario files and fixtures live in `augentic/specify`.
@@ -30,7 +30,7 @@ Three forces make a capability-axis enrichment timely:
 
 Every new acceptance test classifies once, and the classification picks the repo it lives in:
 
-- **All assertions reducible to deterministic CLI/host behaviour** → `backend: fixture`. Proof is a *named Rust test* in `augentic/specify-cli`; the `.md` under `acceptance/lifecycle/` is a catalog stub with an **Automated coverage** section pointing at that test.
+- **All assertions reducible to deterministic CLI/host behaviour** → `backend: fixture`. Proof is a *named Rust test* in `augentic/specify-cli`; the `.md` under `acceptance/scenarios/` is a catalog stub with an **Automated coverage** section pointing at that test.
 - **At least one assertion needs LLM-prose judgment, skill-loop orchestration, or a live forge** → `backend: manual`. Proven by the operator/agent sweep with `negative-expectations` held.
 
 This is the single most load-bearing decision for each new scenario; make it *before* authoring. (RFC-39's `shape` tier, once landed, inserts an intermediate `backend: shape` rung for scenarios whose structural and orchestration assertions are machine-checkable but whose residual prose is not.)
@@ -43,7 +43,7 @@ A repeatable loop for adding one scenario:
 2. **Pick the backend** with the decision rule above.
 3. **If fixture** — add or extend the named test in `augentic/specify-cli` (`tests/plan_orchestrate/`, `tests/fan_in_fan_out.rs`, `tests/slice/synthesize.rs`, `tests/slice_build.rs`, `tests/workspace.rs`) and reference its corpus under `acceptance/fixtures/`. The `.md` carries the "Automated (`backend: fixture`)" callout plus an assertion→coverage map.
 4. **If manual** — factor shared setup into [`shared/setup.md`](../../acceptance/shared/setup.md), inline only the scenario delta, and rely on the Prompt A / Prompt B [meta-prompts](../../acceptance/shared/meta-prompts.md) to drive it.
-5. **Register it** in the [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md) catalog (wave + status). That table is the single source of truth.
+5. **Register it** in the [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) catalog (wave + status). That table is the single source of truth.
 6. **Validate** — `make lint` checks frontmatter, id-uniqueness, artifact-path safety, and links.
 
 ## Capability coverage map
@@ -84,7 +84,7 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 
 ## Non-Goals
 
-- **No catalog fork.** This RFC does not split `acceptance/lifecycle/` into per-capability packs by default; capability is a *tag*, not a directory, until the single catalog is demonstrably unwieldy.
+- **No catalog fork.** This RFC does not split `acceptance/scenarios/` into per-capability packs by default; capability is a *tag*, not a directory, until the single catalog is demonstrably unwieldy.
 - **No new tiering mechanism.** The `manual → shape → fixture` tiering and its primitives are RFC-39's scope; this RFC consumes them.
 - **No prose-quality grading by machine.** Residual prose assertions stay human-judged.
 - **No fake forge, no golden bytes.** The deliberate `fake-forge-added` and `golden-output-required` negative-expectations stay forbidden on every tier.
@@ -100,9 +100,9 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 ## References
 
 - [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model and the "what keeps a scenario manual" categories.
-- [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md) — the scenario catalog, waves, and status legend.
+- [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog, waves, and status legend.
 - [`acceptance/shared/setup.md`](../../acceptance/shared/setup.md) and [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) — shared setup and the Prompt A / B operator aids.
-- [`acceptance/lifecycle/contract-routing.md`](../../acceptance/lifecycle/contract-routing.md) and [`cross-repo-contract-flow.md`](../../acceptance/lifecycle/cross-repo-contract-flow.md) — the fixture/manual split-by-surface precedent.
+- [`acceptance/scenarios/contract-routing.md`](../../acceptance/scenarios/contract-routing.md) and [`cross-repo-contract-flow.md`](../../acceptance/scenarios/cross-repo-contract-flow.md) — the fixture/manual split-by-surface precedent.
 - [`schemas/authoring/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json) — the scenario frontmatter contract.
 - [RFC-39](rfc-39-acceptance-shape-traces.md) — the `shape` tier and promotion path these scenarios graduate through.
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

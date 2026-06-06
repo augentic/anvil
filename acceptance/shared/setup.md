@@ -1,6 +1,6 @@
 # Shared scenario setup
 
-Reusable environment setup for the `lifecycle` acceptance scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
+Reusable environment setup for the platform acceptance scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
 
 Run every scenario from the repo-local sandbox at `acceptance/.sandbox/<scenario>/` (gitignored). Pin it instead of an ad-hoc `mktemp` root so the tree is stable across runs, survives reboots, and is browsable in the IDE — add `acceptance/.sandbox/` as a second Cursor workspace folder to watch `.specify/`, `plan.yaml`, and `journal.jsonl` populate live. Isolation comes from recreating the directory at the start of each run, not from a unique suffix. Override the base with `SPECIFY_SANDBOX=/abs/path` if you want it outside the repo. These are throwaway projects, branches, and Specify state — never run a scenario from an important working tree. To inspect what a run produced, see [`inspect.md`](inspect.md).
 
@@ -117,4 +117,4 @@ the callback, and call the backend exchange endpoint using the shared contract.
 
 ## Recording the run
 
-Capture each run with [`run-summary-template.md`](run-summary-template.md), filed under [`acceptance/runs/`](../runs/README.md), then update the scenario's status in the [catalog](../lifecycle/README.md).
+Capture each run with [`run-summary-template.md`](run-summary-template.md), filed under [`acceptance/runs/`](../runs/README.md), then update the scenario's status in the [catalog](../scenarios/README.md).

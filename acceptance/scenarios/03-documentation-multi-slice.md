@@ -1,6 +1,6 @@
 ---
 id: documentation-multi-slice
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: manual
 entrypoint: /spec:plan

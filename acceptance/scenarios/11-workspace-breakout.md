@@ -1,6 +1,6 @@
 ---
 id: workspace-breakout
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: manual
 entrypoint: /spec:plan

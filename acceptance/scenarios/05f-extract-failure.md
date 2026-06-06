@@ -1,6 +1,6 @@
 ---
 id: extract-failure
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: fixture
 entrypoint: /spec:plan

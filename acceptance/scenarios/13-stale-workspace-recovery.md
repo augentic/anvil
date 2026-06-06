@@ -1,6 +1,6 @@
 ---
 id: stale-workspace-recovery
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: manual
 entrypoint: /spec:plan

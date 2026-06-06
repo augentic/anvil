@@ -12,11 +12,9 @@
 
 | Rank | Focus | Why (optimize lens) |
 | --- | --- | --- |
-| **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live `specify` binary. Catalog: [`acceptance/lifecycle/README.md`](acceptance/lifecycle/README.md). |
 | **2** | **Executable harness for `acceptance/fixtures/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/fixtures` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
 | **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint`) is thinly covered (`tests/lint_product.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
 | **4** | **CORE parity coverage gaps** | `crates/standards/tests/core_parity.rs` pins **16** ids; **36** `CORE-*` rule files still run via `authoring-predicate` bridge without parity tests. Incremental parity reduces bridge retirement risk. |
-| **5** | **Doc / Makefile hygiene** | `make acceptance` is documented but **not implemented** in [`Makefile`](Makefile). Performance notes cite **~247s** `make lint` while release runs measure **~1.2–1.4s** — stale guidance mis-prioritizes perf work. |
 | **6** | **`docs/quality-debt.md` burn-down** | `framework.rs` module `#![allow(pedantic, …)]` (T2) and `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green. |
 | **7** | **Native-hint migration (optional)** | Steady state is correct; migrating `CORE-010..052` off `authoring-predicate` is maintainability, not correctness. Do one id at a time per [checks parity contract](docs/contributing/checks.md#parity-contract-for-predicate-retirement). |
 
@@ -43,7 +41,7 @@
 ### Two acceptance surfaces (do not conflate)
 
 1. **Automated (CLI):** `cargo make test` in `specify-cli`, especially [`tests/fan_in_fan_out.rs`](../specify-cli/tests/fan_in_fan_out.rs). Proves envelopes, ordering, determinism — **not** real target codegen quality.
-2. **Manual (operator + agent):** 24 lifecycle scenarios under [`acceptance/lifecycle/`](acceptance/lifecycle/) — all **`pending`**. Proves `/spec:*` rhythm and (when run fully) generated-output correctness.
+2. **Manual (operator + agent):** 24 lifecycle scenarios under [`acceptance/scenarios/`](acceptance/scenarios/) — all **`pending`**. Proves `/spec:*` rhythm and (when run fully) generated-output correctness.
 
 See [`docs/contributing/acceptance.md`](docs/contributing/acceptance.md) and [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test-coverage.md).
 
@@ -263,4 +261,4 @@ REGENERATE_GOLDENS=1 cargo nextest run --test e2e   # review diff before commit
 
 ---
 
-*Generated for improve/optimize mode. Re-run `make lint`, `cargo make check`, and skim `acceptance/lifecycle/README.md` status before acting on stale scenario counts.*
+*Generated for improve/optimize mode. Re-run `make lint`, `cargo make check`, and skim `acceptance/scenarios/README.md` status before acting on stale scenario counts.*

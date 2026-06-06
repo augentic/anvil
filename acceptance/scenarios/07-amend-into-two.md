@@ -1,6 +1,6 @@
 ---
 id: amend-into-two
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: fixture
 entrypoint: /spec:plan

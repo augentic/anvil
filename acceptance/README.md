@@ -15,7 +15,7 @@ Run Specify's acceptance tests and report your findings for me to review.
 The prompt tells the agent to follow the runbook in [docs/contributing/acceptance.md](../docs/contributing/acceptance.md#agent-runbook): 
 
 1. It runs the  non-agent, "mechanical" tests (`make acceptance`)
-2. Then drives each agent-based scenario in [lifecycle/](lifecycle/README.md) in wave order
+2. Then drives each agent-based scenario in [scenarios/](scenarios/README.md) in wave order
 3. The agent self-grades and files a report under [runs/](runs/README.md),
 4. Once done, the agent hands back at the human seams (forge merges, judgment calls, sign-off). 
 
@@ -38,7 +38,7 @@ make acceptance
 
 | Path                                | Role                                                                          |
 | ----------------------------------- | ----------------------------------------------------------------------------- |
-| `[lifecycle/](lifecycle/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.                  |
+| `[scenarios/](scenarios/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.                  |
 | `[shared/](shared/setup.md)`        | Shared `setup.md`, `inspect.md`, `meta-prompts.md`, `run-summary-template.md`. |
 | `[runs/](runs/README.md)`           | Filled run records — the audit trail.                                          |
 | `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                                 |

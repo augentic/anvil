@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Today acceptance has exactly two tiers: a **deterministic surface** (`cargo make test` in `augentic/specify-cli`, fed by fixtures) and a **manual operator sweep** (the [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md) scenarios, judged by a human or `cursor-agent`). A scenario is either fully automatable (`backend: fixture`) or fully manual (`backend: manual`); there is nothing in between. As a result the manual sweep is the *only* end-to-end proof of LLM-driven correctness, it is labour-intensive and non-reproducible, and it conflates two unlike concerns under one verdict: **was the workflow orchestrated correctly** (largely deterministic) versus **is the synthesized prose good** (irreducibly subjective).
+Today acceptance has exactly two tiers: a **deterministic surface** (`cargo make test` in `augentic/specify-cli`, fed by fixtures) and a **manual operator sweep** (the [`acceptance/scenarios/`](../../acceptance/scenarios/README.md) scenarios, judged by a human or `cursor-agent`). A scenario is either fully automatable (`backend: fixture`) or fully manual (`backend: manual`); there is nothing in between. As a result the manual sweep is the *only* end-to-end proof of LLM-driven correctness, it is labour-intensive and non-reproducible, and it conflates two unlike concerns under one verdict: **was the workflow orchestrated correctly** (largely deterministic) versus **is the synthesized prose good** (irreducibly subjective).
 
 This RFC introduces two intermediate mechanisms and the scenario tier that carries them:
 
@@ -187,8 +187,8 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 ## References
 
 - [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the superseded "Synthesis byte-replay (deferred)" note.
-- [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md) — the scenario catalog and status legend (`automated` / `manual`).
-- [`acceptance/lifecycle/01-pure-intent.md`](../../acceptance/lifecycle/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/lifecycle/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
+- [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog and status legend (`automated` / `manual`).
+- [`acceptance/scenarios/01-pure-intent.md`](../../acceptance/scenarios/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/scenarios/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
 - [`acceptance/fixtures/skills/build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
 - [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) — where shape/trace verdicts are filed.
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

@@ -1,6 +1,6 @@
-# Lifecycle acceptance scenarios
+# Acceptance scenarios
 
-The `lifecycle` pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Each scenario is a self-contained, schema-validated `<id>.md`: open one file and you have its intent, setup, invocation, and assertions.
+The platform scenario pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Each scenario is a self-contained, schema-validated `<id>.md`: open one file and you have its intent, setup, invocation, and assertions.
 
 This README is the **single catalog** — the canonical list of scenarios, their wave, release-blocker status, and run status. How to run the sweep (surfaces, the `specify` build on PATH, the agent runbook, the gate signal) lives in [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). Common setup is factored into [`shared/setup.md`](../shared/setup.md); reusable operator prompts into [`shared/meta-prompts.md`](../shared/meta-prompts.md); run records into [`acceptance/runs/`](../runs/README.md).
 

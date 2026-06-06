@@ -1,6 +1,6 @@
 ---
 id: multi-repo-workspace
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: fixture
 entrypoint: /spec:plan

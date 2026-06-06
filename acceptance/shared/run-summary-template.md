@@ -1,15 +1,15 @@
 # Scenario run summary
 
-> Reusable template for capturing one manual `lifecycle` scenario run. Parameterised for the full range of scenarios — fill the stages the scenario's `stages` frontmatter declares and mark the rest `n/a`.
+> Reusable template for capturing one manual scenario run. Parameterised for the full range of scenarios — fill the stages the scenario's `stages` frontmatter declares and mark the rest `n/a`.
 
-Copy this into `acceptance/runs/<id>-<date>.md`, fill it against the live run, and update the scenario's status in the [catalog](../lifecycle/README.md). On failure, preserve enough evidence for another operator to reproduce the state.
+Copy this into `acceptance/runs/<id>-<date>.md`, fill it against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). On failure, preserve enough evidence for another operator to reproduce the state.
 
 ---
 
 ## Run header
 
 - **Scenario id:** `<id>`
-- **Scenario file:** `acceptance/lifecycle/<id>.md`
+- **Scenario file:** `acceptance/scenarios/<id>.md`
 - **Backend:** `manual`
 - **Operator / agent:** `<name or model identifier>`
 - **Run id:** `<timestamp or uuid>`

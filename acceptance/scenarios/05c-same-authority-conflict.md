@@ -1,6 +1,6 @@
 ---
 id: same-authority-conflict
-owner: lifecycle
+owner: scenarios
 kind: suite
 backend: fixture
 entrypoint: /spec:plan
