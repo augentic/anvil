@@ -16,7 +16,7 @@ Author the response so its prose reads top-down in the same order the artifacts 
 1. **`proposal.md`** — why, units, non-goals. Carries the slice's *why*.
 2. **`specs/<unit>/spec.md` bodies** — behavioural requirement prose. One spec body per `## Units` entry. The kernel injects the provenance lines; you write the heading and body only.
 3. **`design.md`** — domain model, APIs, integrations, configuration, technical logic, target-idiom folding (provider DI / Crux idioms / contract format choice), and the UI / layout subsection that spatial Evidence (`region` / `container` / `leaf` from the `screenshots` source adapter) folds into.
-4. **`tasks.md`** — implementation sequencing as plain markdown checkboxes (`- [ ] …`).
+4. **`tasks.md`** — implementation sequencing as numbered checkboxes (`- [ ] X.Y …`) grouped under `## N. <Group>` headings.
 
 See [`substeps.md`](substeps.md) for the per-section contract.
 
