@@ -2,7 +2,7 @@
 
 **Mode:** subtraction, determinism, test depth, and operator proof — not new features (native-hint work, RM-12, synthesis transcript replay, etc. stay deferred).
 
-**Baseline (re-verified 2026-06-04):** `specify` @ `e502e450`, `specify-cli` @ `07e9d6e7`.
+**Baseline (re-verified 2026-06-07):** `specify` @ `f6de3016`, `specify-cli` @ `c4dc3b40`.
 
 ---
 
@@ -11,9 +11,8 @@
 
 | Rank  | Focus                                             | Why (optimize lens)                                                                                                                                                                                                                                                 |
 | ----- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1** | **Executable harness for `acceptance/fixtures/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/fixtures` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes.                                                              |
-| **2** | **Consumer `specify lint` integration depth**     | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint project`) is thinly covered (`tests/lint_project.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
-| **3** | `**docs/quality-debt.md` burn-down**              | `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green.                                                                                                                                                                    |
+| **1** | **Consumer `specify lint` integration depth**     | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint project`) is thinly covered (`tests/lint_project.rs` + a few `crates/standards/tests/lint_hint/`); engineering-standards regressions are easier to miss. |
+| **2** | `**docs/quality-debt.md` burn-down**              | `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green.                                                                                                                                                                    |
 
 
 **Explicitly deprioritize in this mode:** new roadmap items (RM-11+, native-hint work), client/AsyncAPI/captures *feature* scenarios, and re-litigating retired legacy verbs.
@@ -31,51 +30,30 @@ See `[docs/contributing/acceptance.md](docs/contributing/acceptance.md)` and `[d
 
 ### High-ROI automated additions
 
-#### A. Wire acceptance/fixtures/ into specify-cli tests
+#### A. The `make acceptance` target
 
-The tree is intentionally aligned for chaining (e.g. screenshots source fixture ↔ vectis `task-list` target fixture). Today it is **documentation-only**. Own the harness in the `specify` repo (driving the built `specify` binary against the in-repo fixtures), not in `specify-cli` tests.
-
-
-| Example area                                                                                             | Suggested test shape                                                                                                                                                    | CLI verbs exercised                               |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `[acceptance/fixtures/sources/intent/](acceptance/fixtures/sources/intent/)`                             | Copy fixture → `specify source survey` / `extract` → compare `discovery.md` / `evidence/*.yaml` to `expected-`* (normalise paths)                                       | `source survey`, `source extract`                 |
-| `[acceptance/fixtures/sources/documentation/](acceptance/fixtures/sources/documentation/)`               | Same pattern                                                                                                                                                            | survey + extract                                  |
-| `[acceptance/fixtures/sources/code-typescript/](acceptance/fixtures/sources/code-typescript/)`           | Same; bound to tempdir TypeScript tree                                                                                                                                  | survey + extract                                  |
-| `[acceptance/fixtures/sources/captures/](acceptance/fixtures/sources/captures/)`                         | Assert `kind: example` + `replay-digest` in evidence                                                                                                                    | extract                                           |
-| `[acceptance/fixtures/sources/screenshots/](acceptance/fixtures/sources/screenshots/)`                   | Evidence YAML shape + discovery lead blocks                                                                                                                             | survey + extract                                  |
-| `[acceptance/fixtures/skills/refine/*/](acceptance/fixtures/skills/refine/)`                             | Pre-seed slice tree + evidence → `specify slice synthesize` (if inputs are kernel-complete) **or** structural diff on `expected/` artifacts after hand-staged synthesis | `slice synthesize`, `slice validate`              |
-| `[acceptance/fixtures/targets/omnia/expected/crate/](acceptance/fixtures/targets/omnia/expected/crate/)` | Static file presence + `cargo check` in fixture crate (no LLM)                                                                                                          | optional `slice build` prepare-only               |
-| `[acceptance/fixtures/targets/vectis/task-list/](acceptance/fixtures/targets/vectis/task-list/)`         | `composition.yaml` schema + key paths vs `expected/composition.yaml`                                                                                                    | `specify tool run vectis -- validate composition` |
-
-
-**Pattern to copy:** `[tests/fan_in_fan_out.rs](../specify-cli/tests/fan_in_fan_out.rs)` (tempdir + `specify_cmd` + structural JSON asserts) and golden discipline in `[tests/README.md](../specify-cli/tests/README.md)`.
-
-**Defer (per acceptance doc):** byte-for-byte `/spec:refine` or `/spec:build` skill body replay — needs transcript or structured-trace RFC (`[acceptance.md` § Synthesis byte-replay](docs/contributing/acceptance.md#synthesis-byte-replay-deferred)).
-
-#### B. Extend the existing `make acceptance`
-
-The `[Makefile](Makefile)` `acceptance` target now **exists** — it builds the release `specify`, runs `make lint`, runs a set of `specify-cli` integration tests (`fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, `workspace`), and symlinks the build onto `PATH`. Remaining work is to wire the §A fixtures harness into it so one command covers both the deterministic CLI tests and the specify-side fixture asserts.
+The `[Makefile](Makefile)` `acceptance` target **exists** — it builds the release `specify`, runs `make lint`, runs a set of `specify-cli` integration tests (`fan_in_fan_out`, `source_extract`, `slice`, `plan_orchestrate`, `workspace`), and symlinks the build onto `PATH`.
 
 Keep it **out of** `specify` CI unless you accept the cross-repo clone/build cost (today `specify` CI = lint + symlink check).
 
-#### C. Expand consumer `specify lint` tests
+#### B. Expand consumer `specify lint` tests
 
 
 | Gap                         | Today                                              | Suggested                                                                                                                           |
 | --------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Hint kinds                  | `lint_product.rs` exercises regex (`UNI-100` TODO) | Add one integration case each for `path-pattern`, `schema`, `tool` (mirror `crates/standards/tests/lint_hint_*.rs` at binary level) |
-| `--dump-model`              | Covered in `lint_product.rs`                       | Keep; extend with monorepo + `rules-root` edge cases from `[tests/rules_export.rs](../specify-cli/tests/rules_export.rs)`           |
-| Silence / ignore directives | `lint_ignore_directive_pass` (crate)               | One `tests/lint_product.rs` case mirroring UNI-100 demotion pattern                                                                 |
+| Hint kinds                  | `lint_project.rs` exercises regex (`UNI-100` TODO) | Add one integration case each for `path-pattern`, `schema`, `tool` (mirror `crates/standards/tests/lint_hint/*.rs` at binary level) |
+| `--dump-model`              | Covered in `lint_project.rs`                       | Keep; extend with monorepo + `rules-root` edge cases from `[tests/rules_export.rs](../specify-cli/tests/rules_export.rs)`           |
+| Silence / ignore directives | `lint_hint/ignore_directive_pass` (crate)          | One `tests/lint_project.rs` case mirroring UNI-100 demotion pattern                                                                 |
 | Blocking vs review          | Partial                                            | Assert exit code `2` vs `0` with `deny_blocking_findings` on mixed severity fixtures                                                |
 
 
-#### D. `rules_export` sibling checkout
+#### C. `rules_export` sibling checkout
 
 `[tests/rules_export.rs](../specify-cli/tests/rules_export.rs)` **skips** when `../specify` is absent. CI for `specify` checks out both repos; local solo clones silently skip goldens.
 
 **Optimize:** document in AGENTS/contributing that monorepo/sibling layout is required for full test parity; optionally `#[ignore]` with explicit message vs silent `SKIP` eprintln (harder to notice in nextest summary).
 
-#### E. Lifecycle gaps with **CLI** tests but **no** scenario
+#### D. Lifecycle gaps with **CLI** tests but **no** scenario
 
 
 | Skill / path                | CLI test                                                    | Lifecycle scenario                                                          |
@@ -145,7 +123,7 @@ cargo run --release … framework  → real ~1.4s  (--framework-root ../specify)
 
 **Optimize CI time:** `specify-cli` `cargo make test` builds `vectis-wasm` first — cache that artifact in CI; use `cargo nextest run --test <area>` locally when iterating.
 
-**Cross-repo coupling:** Framework rules live in `specify/adapters/shared/rules/core/`; predicates run in `specify-cli`. Any rule change should run **both** `make lint` and `cargo nextest run -p specify-standards`.
+**Cross-repo coupling:** Framework rules live in `specify/adapters/shared/rules/core/`; their generic dispatcher (declarative hints Road A / WASI tools Road B) runs in `specify-cli` — the imperative `authoring-predicate` bridge has been removed. Any rule change should run **both** `make lint` and `cargo nextest run -p specify-standards`.
 
 ---
 
@@ -161,16 +139,14 @@ From `[docs/contributing/skills-test-coverage.md](docs/contributing/skills-test-
 | gap     | 5     | client SoW, contract AsyncAPI, captures adapter, wiretapper, drop (lifecycle) |
 
 
-**Optimize-mode recommendation:** Do not author new skills — close gaps by (1) running existing lifecycle scenarios, (2) promoting `acceptance/fixtures/` into CLI tests (table above), (3) adding **one** focused contracts-style target test pack for omnia/vectis *only if* generated-output asserts are required before RM-05 sign-off.
+**Optimize-mode recommendation:** Do not author new skills — close gaps by (1) running existing lifecycle scenarios, (2) adding **one** focused contracts-style target test pack for omnia/vectis *only if* generated-output asserts are required before RM-05 sign-off.
 
 ---
 
 ## Suggested 4-week attention plan (improve-only)
 
-1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
-2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/fixtures/sources/`* through `specify source survey/extract`.
-3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/fixtures/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
-4. **Week 4 — Lint depth:** Consumer `lint_product` hint-kind matrix (§C). Refresh perf docs (S1).
+1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green.
+2. **Week 2 — Lint depth:** Consumer `lint_project` hint-kind matrix (§B). Refresh perf docs (S1).
 
 ---
 
