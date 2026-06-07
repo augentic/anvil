@@ -4,19 +4,29 @@ title: Skill Invalid Critical Path
 severity: important
 trigger: Skill critical-path frontmatter is invalid.
 rule_hints:
-  - kind: authoring-predicate
-    value: skill.invalid-critical-path
-    description: Run the retired imperative `skill.invalid-critical-path` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-040-skill-invalid-critical-path.md
+    description: Sentinel path so the whole-tree skill-body tool runs exactly once; the tool walks PROJECT_DIR/plugins itself rather than the passed candidate.
+  - kind: tool
+    value: skill-body
+    config:
+      min-body-lines: 150
+      min-items: 5
+      max-items: 7
+    description: Run the `skill-body` framework checker, which flags any long SKILL.md whose `## Critical Path` section does not list between min-items and max-items steps. The thresholds are policy carried here, not in the tool.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `skill.invalid-critical-path` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+A skill whose body is at least `min-body-lines` lines long and carries a `## Critical Path` section must list between `min-items` and `max-items` entries (numbered list, bullet list, or H3 headings). The Critical Path is the skill's table of contents; a section with too few or too many entries no longer maps faithfully to the body.
+
+This check is whole-tree: the `skill-body` framework tool discovers every `SKILL.md` under `plugins/`, then validates the Critical Path shape of each long skill. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself. The line threshold and item bounds are supplied in `config:` so the policy lives in this rule file, not the tool.
 
 ## Look For
 
-Violations surfaced by `skill.invalid-critical-path` on the framework tree.
+- A long skill whose `## Critical Path` lists fewer than `min-items` steps.
+- A long skill whose `## Critical Path` lists more than `max-items` steps.
 
 ## Fix
 
-Resolve the violation described in the finding message for `skill.invalid-critical-path`.
+Rewrite the `## Critical Path` section to list the configured number of bullets, numbered items, or H3 step headings — a concise table of contents for the skill body.

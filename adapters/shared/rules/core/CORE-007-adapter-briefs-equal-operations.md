@@ -11,8 +11,12 @@ rule_hints:
     value: "adapters/targets/*/adapter.yaml"
     description: Target adapter manifests; `briefs.keys()` must equal exactly `shape`, `build`, and `merge`.
   - kind: set-eq
-    value: adapter-briefs-equal-operations
-    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` is exactly the closed axis-appropriate operation enum (`SourceOperation::{Survey, Extract}` xor `TargetOperation::{Shape, Build, Merge}`). One finding per divergence — `missing` for an absent required operation, `unexpected` for a stray key.
+    value: adapter-briefs
+    config:
+      expected-operations:
+        sources: [survey, extract]
+        targets: [shape, build, merge]
+    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` is exactly the per-axis operation set the rule supplies in `config`. One finding per divergence — `missing` for an absent required operation, `unexpected` for a stray key.
 ---
 
 ## Rule

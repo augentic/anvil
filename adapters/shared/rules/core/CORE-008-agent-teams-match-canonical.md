@@ -6,7 +6,9 @@ trigger: A framework `agent-teams.md` symlink overlay resolves to content whose 
 rule_hints:
   - kind: content-digest-eq
     value: agent-teams-match-canonical
-    description: For each followed `agent-teams.md` symlink fact, assert that the resolved target's SHA-256 equals the canonical `docs/reference/review-team-protocol.md` digest. One finding per symlink whose target digest diverges, with the `(resolved-target, expected-digest, actual-digest)` shape surfaced as structured evidence.
+    config:
+      canonical-path: docs/reference/review-team-protocol.md
+    description: For each followed `agent-teams.md` symlink fact, assert that the resolved target's SHA-256 equals the `config.canonical-path` document's digest. One finding per symlink whose target digest diverges, with the `(resolved-target, expected-digest, actual-digest)` shape surfaced as structured evidence.
 ---
 
 ## Rule

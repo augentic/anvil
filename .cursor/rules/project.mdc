@@ -136,7 +136,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) plus specify-cli bridges (`authoring-predicate` for `CORE-010..052`, imperative-only `CORE-009`); the authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces both. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for extension and parity.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved WASI tool (Road B), with all policy carried in the rule's `config:`; the `authoring-predicate` bridge has been removed. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

@@ -4,19 +4,26 @@ title: Skill Missing Critical Path
 severity: important
 trigger: Skill is missing required critical-path frontmatter.
 rule_hints:
-  - kind: authoring-predicate
-    value: skill.missing-critical-path
-    description: Run the retired imperative `skill.missing-critical-path` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-041-skill-missing-critical-path.md
+    description: Sentinel path so the whole-tree skill-body tool runs exactly once; the tool walks PROJECT_DIR/plugins itself rather than the passed candidate.
+  - kind: tool
+    value: skill-body
+    config:
+      min-body-lines: 150
+    description: Run the `skill-body` framework checker, which flags any SKILL.md whose body reaches min-body-lines but omits a `## Critical Path` section. The threshold is policy carried here, not in the tool.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `skill.missing-critical-path` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+A skill whose body is at least `min-body-lines` lines long must carry a `## Critical Path` section. Long skills need a table of contents so a reader can navigate the body; the threshold gates the requirement so short skills are exempt.
+
+This check is whole-tree: the `skill-body` framework tool discovers every `SKILL.md` under `plugins/`, then flags any long skill missing the section. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself. The line threshold is supplied in `config:` so the policy lives in this rule file, not the tool.
 
 ## Look For
 
-Violations surfaced by `skill.missing-critical-path` on the framework tree.
+- A `SKILL.md` whose body reaches `min-body-lines` lines but has no `## Critical Path` heading.
 
 ## Fix
 
-Resolve the violation described in the finding message for `skill.missing-critical-path`.
+Add a `## Critical Path` section summarising the skill's steps as a short table of contents, or shorten the body below the threshold if the skill does not warrant one.

@@ -8,8 +8,10 @@ rule_hints:
     value: "plugins/**/SKILL.md"
     description: Narrow the candidate set to plugin skill manifests before the uniqueness check fires.
   - kind: unique
-    value: skill-name
-    description: Walk every `Skill` fact the framework-profile indexer extracted and flag each `name:` value that appears on two or more SKILL.md files.
+    value: skill
+    config:
+      field: skill-name
+    description: Walk every `Skill` fact the framework-profile indexer extracted and flag each `name:` value that appears on two or more SKILL.md files. The field selector lives in `config`.
 ---
 
 ## Rule

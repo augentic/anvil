@@ -5,20 +5,30 @@ severity: important
 trigger: A rule markdown file declares an id whose namespace prefix is not owned by the rules directory it lives under, so a `CORE-`, `UNI-`, `OMNIA-`, `VECTIS-`, `IFACE-`, or `SRC-` rule has been authored in the wrong tree.
 rule_hints:
   - kind: path-pattern
-    value: adapters/**/rules/**/*.md
-    description: Narrow the candidate set to rule markdown files under any adapter or shared rules tree.
-  - kind: namespace-owner
-    value: rule-namespace-matches-owner
-    description: For each candidate rule file, read its `id` frontmatter, derive the namespace prefix, and assert that prefix is owned by the containing rules directory. One finding per rule whose prefix is not owned by its directory.
+    value: adapters/shared/rules/core/CORE-009-rule-namespace-owner.md
+    description: Sentinel path so the whole-tree rules tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
+  - kind: tool
+    value: rules
+    config:
+      owner-prefixes:
+        universal: [UNI]
+        core: [CORE]
+        omnia: [OMNIA, RUST, SEC]
+        contracts: [IFACE]
+        vectis: [VECTIS]
+      source-axis-prefixes: [SRC]
+      reserved-namespaces:
+        FRAME: universal
+    description: Run the `rules` framework checker scoped to CORE-009. It reads each rule file's `id`, derives the namespace prefix and the rules-directory owner, and flags any rule whose prefix is not owned by its directory. The owner→prefix map, the source-axis prefixes, and the reserved-namespace owners are policy carried here, not in the tool.
 ---
 
 ## Rule
 
 Rule ids are namespaced by a prefix (`CORE-009`, `UNI-014`, `OMNIA-001`, …), and each namespace prefix has exactly one owning rules directory. `CORE-*` rules live under `adapters/shared/rules/core/`; `UNI-*` rules live under `adapters/shared/rules/universal/`; each target adapter owns its own prefixes (`omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`; `vectis` owns `VECTIS-*`) under `adapters/targets/<name>/rules/`; and every source adapter shares the `SRC-*` prefix under `adapters/sources/<name>/rules/`. This rule asserts the placement invariant behind that arrangement: a rule's id-namespace prefix must match the namespace its containing directory owns.
 
-The deterministic-hint interpreter narrows the candidate set to rule markdown files with a `path-pattern` hint, then reads each candidate's `id` from the frontmatter fact the indexer already produced. It derives the `PREFIX` from a well-formed `PREFIX-NNN` id, resolves the prefix set owned by the rule's directory, and flags any rule whose prefix is not in that set. A file that is not under a recognised rules directory, or whose id is missing or malformed, is left to the hand-written namespace-ownership and schema predicates rather than flagged here.
+The check is whole-tree: the `rules` framework tool walks `PROJECT_DIR` itself, reads each rule file's `id`, derives the rules-directory owner from the path, and resolves the allowed prefix set. The owner→prefix map, the `SRC-*` source-axis prefixes, and the reserved-namespace owners (`FRAME-*` is reserved for the framework `universal` pack) all live in this rule's `config:` so they are framework-owned policy, not baked into the checker; the engine relays the config to the tool. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint.
 
-This rule is the declarative companion to the hand-written namespace-ownership predicate, not a replacement for it. The imperative predicate additionally reserves the framework-only `FRAME-*` namespace, discovers source-adapter owners dynamically, reports unconfigured owners, validates rule frontmatter against the schema, and detects duplicate ids across files — branches a single declarative hint cannot express. Because every rule in the framework tree is already authored under its owning directory, this rule fires zero findings against the current tree and surfaces only on misplacement.
+The tool preserves the four branches of the historical namespace check: the reserved-namespace reservation (`FRAME-*` may only be authored under the `universal` owner), dynamic source-owner discovery (every `adapters/sources/<name>/rules/` directory contributes a `SRC-*` owner found at runtime), the unknown-owner diagnostic (a rules directory whose owner is not in `owner-prefixes`), and the placement check (a well-formed `PREFIX-NNN` id whose prefix is not in its owner's allowed set). A file that is not under a recognised rules directory, or whose id is missing or malformed, is left to the schema rule rather than flagged here.
 
 ## Look For
 

@@ -142,7 +142,7 @@ Give run-summaries machine-readable frontmatter so verdicts can be filed and rec
 
 A native `specify lint framework` check (no Python), modelled on the existing cross-file `scenarios.duplicate-id` check.
 
-- Implement `crates/standards/src/framework/check/acceptance.rs` in `augentic/specify-cli`, bridged by a `CORE-053` `kind: authoring-predicate` rule file in `augentic/specify`.
+- Implement the check as a Road B referenced WASI tool in `augentic/specify-cli` (extend the existing `scenarios` family tool under `wasi-tools/scenarios/`, which already does cross-file `scenarios.duplicate-id` discovery), exposed by a `CORE-053` `kind: tool` rule file in `augentic/specify`. (The `kind: authoring-predicate` bridge was retired — a new CORE rule must use a declarative hint (Road A) or a referenced tool (Road B); a whole-tree cross-file reconciler fits Road B.)
 - Validates: catalog status vs. the typed run records (P0) vs. each scenario's `## Automated coverage` section.
 - Blocking findings *are* the gate signal — no separate `specify acceptance status` command is required for the gate (the `status` verb in the CLI surface above stays an optional reporter).
 
