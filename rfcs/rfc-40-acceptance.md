@@ -1,10 +1,10 @@
-# RFC-40: Acceptance Capability Coverage
+# RFC-40: Acceptance Coverage
 
-> Status: Draft · Serves: [RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) · Complements: [RFC-39](rfc-39-acceptance-shape-traces.md) (the `shape` tier these scenarios graduate through), [RFC-38 reconciliation polish](../roadmap.md#current-priorities) (the kernel several Phase 1 fixtures exercise)
+> Status: Draft · Serves: [RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) · Complements: [RFC-39](future/rfc-39-acceptance-shape-traces.md) (deferred — the `shape` tier Phases 2–3 graduate through once it lands), [RFC-38 reconciliation polish](../roadmap.md#current-priorities) (the kernel several Phase 1 fixtures exercise)
 
 ## Abstract
 
-The acceptance suite today is organised by **lifecycle-phase difficulty** — from N=1 through failure/breakout in [`acceptance/scenarios/`](../../acceptance/scenarios/README.md). That axis proves the `/spec:*` loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
+The acceptance suite today is organised by **lifecycle-phase difficulty** — from N=1 through failure/breakout in `[acceptance/scenarios/](../../acceptance/scenarios/README.md)`. That axis proves the `/spec:`* loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
 
 The plan rests on one decision rule (fixture vs. manual), one repeatable authoring recipe, a coverage map of the named capabilities against today's catalog, and a four-phase rollout ordered by return on investment. It adds no new lifecycle authority: acceptance evidence remains evidence, never a transition.
 
@@ -33,33 +33,37 @@ Every new acceptance test classifies once, and the classification picks the repo
 - **All assertions reducible to deterministic CLI/host behaviour** → `backend: fixture`. Proof is a *named Rust test* in `augentic/specify-cli`; the `.md` under `acceptance/scenarios/` is a catalog stub with an **Automated coverage** section pointing at that test.
 - **At least one assertion needs LLM-prose judgment, skill-loop orchestration, or a live forge** → `backend: manual`. Proven by the operator/agent sweep with `negative-expectations` held.
 
-This is the single most load-bearing decision for each new scenario; make it *before* authoring. (RFC-39's `shape` tier, once landed, inserts an intermediate `backend: shape` rung for scenarios whose structural and orchestration assertions are machine-checkable but whose residual prose is not.)
+This is the single most load-bearing decision for each new scenario; make it *before* authoring. ([RFC-39](future/rfc-39-acceptance-shape-traces.md)'s `shape` tier is currently deferred; if it lands it inserts an intermediate `backend: shape` rung for scenarios whose structural and orchestration assertions are machine-checkable but whose residual prose is not. Until then the decision stays binary — `fixture` xor `manual`.)
 
 ## The authoring recipe
 
 A repeatable loop for adding one scenario:
 
-1. **Write the frontmatter** against the scenario schema ([`schemas/authoring/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json) in `augentic/specify-cli`). Closed fields: `kind` (`suite` for these), `backend`, `entrypoint`, `stages` (a contiguous prefix of `[plan, refine, build, merge, drop]`), `isolation`. `assertions` / `expected-artifacts` are free-form kebab-case.
+1. **Write the frontmatter** against the scenario schema (`[schemas/authoring/scenario.schema.json](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json)` in `augentic/specify-cli`). Closed fields: `kind` (`suite` for these), `backend`, `entrypoint`, `stages` (a contiguous prefix of `[plan, refine, build, merge, drop]`), `isolation`. `assertions` / `expected-artifacts` are free-form kebab-case.
 2. **Pick the backend** with the decision rule above.
 3. **If fixture** — add or extend the named test in `augentic/specify-cli` (`tests/workflow/`, `tests/plan/end_to_end.rs`, `tests/slice/synthesize.rs`, `tests/slice/build.rs`, `tests/workspace.rs`) and reference its corpus under `acceptance/fixtures/`. The `.md` carries the "Automated (`backend: fixture`)" callout plus an assertion→coverage map.
-4. **If manual** — factor shared setup into [`shared/setup.md`](../../acceptance/shared/setup.md), inline only the scenario delta, and rely on the Prompt A / Prompt B [meta-prompts](../../acceptance/shared/meta-prompts.md) to drive it.
-5. **Register it** in the [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) catalog (wave + status). That table is the single source of truth.
+4. **If manual** — factor shared setup into `[shared/setup.md](../../acceptance/shared/setup.md)`, inline only the scenario delta, and rely on the Prompt A / Prompt B [meta-prompts](../../acceptance/shared/meta-prompts.md) to drive it.
+5. **Register it** in the `[acceptance/scenarios/README.md](../../acceptance/scenarios/README.md)` catalog (wave + status). That table is the single source of truth.
 6. **Validate** — `make lint` checks frontmatter, id-uniqueness, artifact-path safety, and links.
 
 ## Capability coverage map
 
 The honest picture today, so enrichment deepens rather than duplicates:
 
-| Capability | Today | Gap to fill | Dominant backend |
-| --- | --- | --- | --- |
-| **1. Reconcile sources → plan** | Strong. `cross-source-merge` (manual), `combined-evidence` + `contract-routing` (fixture); kernel in `propose.rs` tested by `tests/workflow/propose.rs` + `tests/plan/end_to_end.rs`. | 3+-source fan-in, *partial*-overlap merges, plan-time `--authority-override`, tentative-merge → amend → split. | fixture |
-| **2. Synthesise sources → build a component** | Partial. `combined-evidence` / `divergence` / `conflict` cover synthesis; `fixtures/targets/{omnia,vectis}` cover the build *envelope*; `components.yaml` factoring exists. | The generated-output-correctness gate (real `cargo check` / `test` / replay) — the thinnest surface. The envelope + component-catalog factoring is fixture-able; the codegen correctness is not. | split (manual gate + fixture envelope) |
-| **3. Merge specs/design → composition, decision records** | Thin. `fixtures/skills/merge/{success,conflict-replay}` exist; vectis `composition.yaml` has a build brief; "ADR" maps to `docs/explanation/decision-log.md`, **not a first-class Specify artifact**. | No dedicated lifecycle merge scenario beyond full flows. ADR-generation is not yet a real artifact — decide *specify-new-capability* vs. *test-existing-capability* before authoring. | RFC-first, then mixed |
-| **4. Select target project from synopsis** | Decent. `contract-routing`, `multi-repo-workspace`, `workspace-execute-two-projects`; `resolve_topology` / `propose_from` deterministic. | Routing *ambiguity* and *mis-routing* (vague descriptions, two plausible targets, registry drift). | fixture (routing) + manual (synopsis reading) |
+
+| Capability                                                | Today                                                                                                                                                                                                 | Gap to fill                                                                                                                                                                                      | Dominant backend                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| **1. Reconcile sources → plan**                           | Strong. `cross-source-merge` (manual), `combined-evidence` + `contract-routing` (fixture); kernel in `propose.rs` tested by `tests/workflow/propose.rs` + `tests/plan/end_to_end.rs`.                 | 3+-source fan-in, *partial*-overlap merges, plan-time `--authority-override`, tentative-merge → amend → split.                                                                                   | fixture                                       |
+| **2. Synthesise sources → build a component**             | Partial. `combined-evidence` / `divergence` / `conflict` cover synthesis; `fixtures/targets/{omnia,vectis}` cover the build *envelope*; `components.yaml` factoring exists.                           | The generated-output-correctness gate (real `cargo check` / `test` / replay) — the thinnest surface. The envelope + component-catalog factoring is fixture-able; the codegen correctness is not. | split (manual gate + fixture envelope)        |
+| **3. Merge specs/design → composition, decision records** | Thin. `fixtures/skills/merge/{success,conflict-replay}` exist; vectis `composition.yaml` has a build brief; "ADR" maps to `docs/explanation/decision-log.md`, **not a first-class Specify artifact**. | No dedicated lifecycle merge scenario beyond full flows. ADR-generation is not yet a real artifact — decide *specify-new-capability* vs. *test-existing-capability* before authoring.            | RFC-first, then mixed                         |
+| **4. Select target project from synopsis**                | Decent. `contract-routing`, `multi-repo-workspace`, `workspace-execute-two-projects`; `resolve_topology` / `propose_from` deterministic.                                                              | Routing *ambiguity* and *mis-routing* (vague descriptions, two plausible targets, registry drift).                                                                                               | fixture (routing) + manual (synopsis reading) |
+
 
 Headline: capabilities 1 and 4 are mature and want more deterministic edge cases (cheap); capability 2 needs a real generated-output gate (expensive, manual); capability 3 is partly a design question and should go through an RFC before it is tested.
 
 ## Phased rollout
+
+Phases 0, 1, and 4 stand on their own — they need only fixtures plus the assertion-id taxonomy doc, none of [RFC-39](future/rfc-39-acceptance-shape-traces.md)'s `shape`-tier machinery — so they remain actionable while RFC-39 is deferred. Phases 2 and 3 benefit from the `shape` tier but do not block on it: Phase 2 lands as `manual` + fixture-envelope pairs today and graduates structural assertions to `shape` only if RFC-39 lands, and Phase 3 is RFC-gated regardless.
 
 ### Phase 0 — instrument before enriching (once)
 
@@ -85,7 +89,7 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 ## Non-Goals
 
 - **No catalog fork.** This RFC does not split `acceptance/scenarios/` into per-capability packs by default; capability is a *tag*, not a directory, until the single catalog is demonstrably unwieldy.
-- **No new tiering mechanism.** The `manual → shape → fixture` tiering and its primitives are RFC-39's scope; this RFC consumes them.
+- **No new tiering mechanism.** The `manual → shape → fixture` tiering and its primitives are [RFC-39](future/rfc-39-acceptance-shape-traces.md)'s scope (currently deferred); this RFC consumes them if and when they land, and stays binary (`fixture` xor `manual`) until then.
 - **No prose-quality grading by machine.** Residual prose assertions stay human-judged.
 - **No fake forge, no golden bytes.** The deliberate `fake-forge-added` and `golden-output-required` negative-expectations stay forbidden on every tier.
 - **No lifecycle authority** from acceptance evidence.
@@ -99,10 +103,11 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 
 ## References
 
-- [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model and the "what keeps a scenario manual" categories.
-- [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog, waves, and status legend.
-- [`acceptance/shared/setup.md`](../../acceptance/shared/setup.md) and [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) — shared setup and the Prompt A / B operator aids.
-- [`acceptance/scenarios/contract-routing.md`](../../acceptance/scenarios/contract-routing.md) and [`cross-repo-contract-flow.md`](../../acceptance/scenarios/cross-repo-contract-flow.md) — the fixture/manual split-by-surface precedent.
-- [`schemas/authoring/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json) — the scenario frontmatter contract.
-- [RFC-39](rfc-39-acceptance-shape-traces.md) — the `shape` tier and promotion path these scenarios graduate through.
+- `[docs/contributing/acceptance.md](../../docs/contributing/acceptance.md)` — the two-surface model and the "what keeps a scenario manual" categories.
+- `[acceptance/scenarios/README.md](../../acceptance/scenarios/README.md)` — the scenario catalog, waves, and status legend.
+- `[acceptance/shared/setup.md](../../acceptance/shared/setup.md)` and `[acceptance/shared/meta-prompts.md](../../acceptance/shared/meta-prompts.md)` — shared setup and the Prompt A / B operator aids.
+- `[acceptance/scenarios/contract-routing.md](../../acceptance/scenarios/contract-routing.md)` and `[cross-repo-contract-flow.md](../../acceptance/scenarios/cross-repo-contract-flow.md)` — the fixture/manual split-by-surface precedent.
+- `[schemas/authoring/scenario.schema.json](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json)` — the scenario frontmatter contract.
+- [RFC-39](future/rfc-39-acceptance-shape-traces.md) — the `shape` tier and promotion path these scenarios graduate through (deferred).
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.
+
