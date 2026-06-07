@@ -77,8 +77,8 @@ FAIL: <rule-id>: <message>
 
 | Road | `CORE-*` | How enforced |
 | --- | --- | --- |
-| Road A — declarative hint | most of `CORE-001..052` | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`), interpreted over the workspace model |
-| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, and the scenarios / skill / skill-body / agent-teams / adapter / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings |
+| Road A — declarative hint | most of `CORE-001..052` | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
+| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
 
@@ -318,11 +318,18 @@ Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](.
 
 ### Road A — declarative hint
 
-The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, line caps, uniqueness, fenced-block scans, regex/path scoping). The kinds:
+The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, line caps, uniqueness, fenced-block scans, regex/path scoping, required-artifact presence, frontmatter-field grammar, and relational cross-reference joins). The kinds:
 
-`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`.
+`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`.
 
-Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path) from the rule's `config:`, never from a constant in the engine. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+`hint.value` names the mechanism selector each kind dispatches on:
+
+- **`presence`** — `frontmatter` (a candidate file lacking frontmatter), `file` + `config: { path }` (a missing required path), or `markdown-section` + `config: { title, level, when: { metric, min } }` (a candidate over a metric threshold lacking the section).
+- **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
+- **`cross-reference`** — a relational join from an `adapter-dir` (fact-family set difference) or `expected-set` + `config: { entries: [{ key, value }] }` (value-equality) source against a `config: { target }` family (`adapter-manifest`, `adapter-tool`).
+- **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
+
+Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** test in `crates/standards/tests/lint_hint_<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -330,7 +337,19 @@ Each evaluator is generic: it reads its policy (cap, allowed set, owner map, exp
 
 The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named tool from the embedded framework inventory (`src/runtime/commands/lint/framework_tools.rs`), runs it once per lint, and folds its `DiagnosticReport`; the tool stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `acceptance/`).
 
-The nine framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill`, `skill-body`, `agent-teams`, `adapter`, `links-registry`, `marketplace`, `prose`, `rules`). To add or extend one:
+The seven framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill-body`, `agent-teams`, `links-registry`, `marketplace`, `prose`, `rules`). Each one and the `CORE-*` rules it serves:
+
+| Tool | Serves |
+| --- | --- |
+| `scenarios` | CORE-028, 029, 031, 033 |
+| `skill-body` | CORE-040, 046, 048 |
+| `agent-teams` | CORE-012 |
+| `links-registry` | CORE-018, 020 |
+| `marketplace` | CORE-022 |
+| `prose` | CORE-024 |
+| `rules` | CORE-009, 026 |
+
+To add or extend one:
 
 1. Add the pure check fn to the family tool's `src/lib.rs`, stamping findings with the owning `CORE-NNN` / `severity`. Read any policy from the rule's `config:` (forwarded by the engine as a second positional argument) — never bake it into the tool. A tool's emitted `Artifact` must be a valid enum value (e.g. `"unknown"`) or the host silently drops the report.
 2. Rebuild the prebuilt component with `cargo make <tool>-wasm` (mirrors `contract-wasm`); the embedded `dist/<tool>-<ver>.wasm` is what the binary runs.

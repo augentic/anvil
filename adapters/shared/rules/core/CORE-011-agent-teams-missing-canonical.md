@@ -6,24 +6,24 @@ trigger: The canonical review-team-protocol document is missing so overlays cann
 rule_hints:
   - kind: path-pattern
     value: adapters/shared/rules/core/CORE-011-agent-teams-missing-canonical.md
-    description: Sentinel path so the whole-tree agent-teams tool runs exactly once; the tool walks PROJECT_DIR/adapters/targets itself rather than the passed candidate.
-  - kind: tool
-    value: agent-teams
+    description: Sentinel include so the rule carries a candidate set; the `presence` file selector evaluates the whole file fact family and ignores the candidate set.
+  - kind: presence
+    value: file
     config:
-      canonical-path: docs/reference/review-team-protocol.md
-    description: Run the `agent-teams` framework checker, which flags an absent canonical review-team-protocol document. The canonical path is policy carried here, not in the tool.
+      path: docs/reference/review-team-protocol.md
+    description: Flag the canonical review-team-protocol document when no file fact carries its path. The required path is policy carried here, not in the engine.
 ---
 
 ## Rule
 
-Per-target `agent-teams.md` overlays are validated against a single canonical review-team-protocol document. When that canonical document is absent the overlays cannot be checked against any baseline, so its absence is itself a violation. The canonical path is supplied in `config:` so the policy lives in this rule file, not the tool.
+Per-target `agent-teams.md` overlays are validated against a single canonical review-team-protocol document. When that canonical document is absent the overlays cannot be checked against any baseline, so its absence is itself a violation. The required path is supplied in `config:` so the policy lives in this rule file, not the engine.
 
-This check is whole-tree: the `agent-teams` framework tool reads the canonical document named in `config:` and, when it is missing, reports exactly once. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check runs natively: the `kind: presence` hint with `value: file` and `config: { path }` flags the required document whenever the lint indexer recorded no file fact at that path. The rule's `path-pattern` is a sentinel include; the file presence selector evaluates the whole file fact family regardless of the candidate set.
 
 ## Look For
 
-- The canonical review-team-protocol document named in `canonical-path` is missing.
+- The canonical review-team-protocol document named in `config: { path }` is missing.
 
 ## Fix
 
-Restore the canonical review-team-protocol document at the path named in `canonical-path`.
+Restore the canonical review-team-protocol document at the path named in `config: { path }`.

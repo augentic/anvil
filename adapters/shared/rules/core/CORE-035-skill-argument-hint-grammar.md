@@ -5,20 +5,21 @@ severity: important
 trigger: SKILL.md argument-hint violates authoring grammar.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/rules/core/CORE-035-skill-argument-hint-grammar.md
-    description: Sentinel path so the whole-tree skill tool runs exactly once; the tool walks PROJECT_DIR/plugins itself rather than the passed candidate.
-  - kind: tool
-    value: skill
+    value: plugins/**/SKILL.md
+    description: Candidate set of every SKILL.md the `field-grammar` field-tokens mode then narrows on.
+  - kind: field-grammar
+    value: field-tokens
     config:
+      field: argument-hint
       token-pattern: '^(?:<[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*>(?:\.\.\.)?|\[[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*\](?:\.\.\.)?|--[a-z][a-z0-9]*(?:-[a-z0-9]+)*)$'
-    description: Run the `skill` framework checker, which flags any SKILL.md whose `argument-hint` carries a whitespace-separated token that does not match the grammar. The token grammar is policy carried here, not in the tool.
+    description: Flag any SKILL.md whose `argument-hint` carries a whitespace-separated token that does not match the grammar. The field name and token grammar are policy carried here, not in the engine.
 ---
 
 ## Rule
 
-A skill's `argument-hint` frontmatter field, when present, must be a string whose whitespace-separated tokens each match the closed slash-command argument grammar: `<name>`, `[name]`, `<a|b>`, `[a|b]`, `<name>...`, `[name]...`, or `--flag`, with kebab-case names. The grammar is supplied as the `token-pattern` regex in `config:` so the policy lives in this rule file, not the tool.
+A skill's `argument-hint` frontmatter field, when present, must be a string whose whitespace-separated tokens each match the closed slash-command argument grammar: `<name>`, `[name]`, `<a|b>`, `[a|b]`, `<name>...`, `[name]...`, or `--flag`, with kebab-case names. The grammar is supplied as the `token-pattern` regex in `config:` so the policy lives in this rule file, not the engine.
 
-This check is whole-tree: the `skill` framework tool discovers every `SKILL.md` under `plugins/`, then validates each one's `argument-hint`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check runs natively: the `path-pattern` hint selects every `SKILL.md` under `plugins/`, and the `kind: field-grammar` hint with `value: field-tokens` splits each candidate's `argument-hint` field on whitespace and flags any token that fails the `token-pattern` regex (a present `argument-hint` that is not a string is flagged outright).
 
 ## Look For
 

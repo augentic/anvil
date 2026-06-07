@@ -5,12 +5,13 @@ severity: important
 trigger: SKILL.md description violates authoring grammar.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/rules/core/CORE-036-skill-description-grammar.md
-    description: Sentinel path so the whole-tree skill tool runs exactly once; the tool walks PROJECT_DIR/plugins itself rather than the passed candidate.
-  - kind: tool
-    value: skill
+    value: plugins/**/SKILL.md
+    description: Candidate set of every SKILL.md the `field-grammar` field-first-word mode then narrows on.
+  - kind: field-grammar
+    value: field-first-word
     config:
-      allowed-verbs:
+      field: description
+      allowed:
         - add
         - annotate
         - apply
@@ -86,20 +87,20 @@ rule_hints:
         - wire
         - wrap
         - write
-    description: Run the `skill` framework checker, which flags any SKILL.md whose `description` does not start with a verb in the allow-list. The allow-list is policy carried here, not in the tool.
+    description: Flag any SKILL.md whose `description` does not start with a verb in the allow-list. The field name and allow-list are policy carried here, not in the engine.
 ---
 
 ## Rule
 
-A skill's `description` frontmatter field must begin with an approved imperative verb so the skill catalog reads consistently. The first alphabetic word of the description (lowercased) must be a member of the `allowed-verbs` allow-list, which is supplied in `config:` so the policy lives in this rule file, not the tool.
+A skill's `description` frontmatter field must begin with an approved imperative verb so the skill catalog reads consistently. The first alphabetic word of the description (lowercased) must be a member of the `allowed` allow-list, which is supplied in `config:` so the policy lives in this rule file, not the engine.
 
-This check is whole-tree: the `skill` framework tool discovers every `SKILL.md` under `plugins/`, then checks each one's `description`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check runs natively: the `path-pattern` hint selects every `SKILL.md` under `plugins/`, and the `kind: field-grammar` hint with `value: field-first-word` takes the first alphabetic word of each candidate's `description` field and flags it when it is not a member of the `allowed` list.
 
 ## Look For
 
 - A `description` with no leading alphabetic word.
-- A `description` whose first word is not in the `allowed-verbs` allow-list.
+- A `description` whose first word is not in the `allowed` allow-list.
 
 ## Fix
 
-Begin the `description` with an imperative verb from the approved allow-list; if a genuinely imperative verb is missing, add it to the rule's `allowed-verbs` list.
+Begin the `description` with an imperative verb from the approved allow-list; if a genuinely imperative verb is missing, add it to the rule's `allowed` list.

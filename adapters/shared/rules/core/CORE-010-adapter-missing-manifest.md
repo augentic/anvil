@@ -6,17 +6,19 @@ trigger: An adapter directory under adapters/sources or adapters/targets lacks a
 rule_hints:
   - kind: path-pattern
     value: adapters/shared/rules/core/CORE-010-adapter-missing-manifest.md
-    description: Sentinel path so the whole-tree adapter tool runs exactly once; the tool walks PROJECT_DIR/adapters itself rather than the passed candidate.
-  - kind: tool
-    value: adapter
-    description: Run the `adapter` framework checker, which flags any adapter directory under adapters/sources or adapters/targets that has no adapter.yaml manifest. Cross-fact presence check; carries no policy.
+    description: Sentinel include so the rule carries a candidate set; the `cross-reference` join evaluates the whole adapter-dir / adapter-manifest fact families and ignores the candidate set.
+  - kind: cross-reference
+    value: adapter-dir
+    config:
+      target: adapter-manifest
+    description: Join the `adapter-dir` fact family (every immediate child of adapters/sources and adapters/targets) against the `adapter-manifest` family on the manifest's containing directory; flag any adapter directory with no resolvable adapter.yaml. The source and target family selectors are policy carried here, not in the engine.
 ---
 
 ## Rule
 
 Every adapter directory under `adapters/sources/` and `adapters/targets/` ships an `adapter.yaml` manifest. The loader resolves an adapter by reading that manifest, so a directory with no `adapter.yaml` is an orphan the loader cannot bind.
 
-This check is whole-tree and cross-fact: the manifest-fact passes only see present-but-incomplete manifests, so an axis directory missing its `adapter.yaml` is invisible to them. The `adapter` framework tool discovers every immediate directory under `adapters/{sources,targets}` and flags those with no manifest. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree and relational: the `kind: cross-reference` hint with `value: adapter-dir` and `config: { target: adapter-manifest }` joins the adapter-directory fact family (one fact per immediate child of `adapters/{sources,targets}`) against the adapter-manifest fact family, keyed on the manifest's containing directory, and flags any adapter directory that has no corresponding manifest. The rule's `path-pattern` is a sentinel include; the cross-reference join evaluates the whole fact families regardless of the candidate set.
 
 ## Look For
 

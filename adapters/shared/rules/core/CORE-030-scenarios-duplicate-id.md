@@ -6,17 +6,19 @@ trigger: Duplicate scenario ids across files.
 rule_hints:
   - kind: path-pattern
     value: adapters/shared/rules/core/CORE-030-scenarios-duplicate-id.md
-    description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
-  - kind: tool
-    value: scenarios
-    description: Run the `scenarios` framework checker, which discovers scenario packs under PROJECT_DIR and flags any frontmatter `id` shared by more than one scenario file.
+    description: Sentinel include so the rule carries a candidate set; the `scenario` unique selector evaluates the whole scenario fact family and ignores the candidate set.
+  - kind: unique
+    value: scenario
+    config:
+      field: id
+    description: Flag any frontmatter `id` shared by more than one discovered scenario, across the whole tree.
 ---
 
 ## Rule
 
 Each scenario's frontmatter `id` must be unique across the whole tree. A duplicate id makes scenario citations ambiguous and breaks cross-references.
 
-This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the acceptance scenario pack, target adapter tests, and plugin skill fixtures, then groups them by `id` and flags any id claimed by more than one file. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree: the `kind: unique` hint with `value: scenario` and `config: { field: id }` groups the `scenario` fact family by frontmatter `id` and flags any id claimed by more than one file. The rule's `path-pattern` is a sentinel include; the scenario unique selector evaluates the whole fact family regardless of the candidate set.
 
 ## Look For
 
