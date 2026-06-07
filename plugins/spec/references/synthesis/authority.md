@@ -107,7 +107,7 @@ No contributing source supplied a claim for this requirement. Operator review re
 
 The document-level `authority:` rule is the default. One opt-in override surface sharpens it for the cases the rule gets wrong — most often legacy migrations where production behaviour is the truth and the `documentation > behaviour` default would otherwise drop the operative value into a `Note:` line.
 
-> **Deferred (future RFC).** A per-Evidence per-kind `authority-overrides: { <claim-kind>: <authority-class> }` map on each Evidence document — which would let one document lift a kind's authority class — is out of scope for v1 (decision-log §"Authority: document-level plus one override (v1)"). v1 resolves authority at document level and offers only the per-slice override below.
+> **Deferred (future RFC).** A per-Evidence per-kind `authority-overrides: { <claim-kind>: <authority-class> }` map on each Evidence document — which would let one document lift a kind's authority class — is out of scope for v1. v1 resolves authority at document level and offers only the per-slice override below.
 
 ### Per-slice overrides on `plan.yaml`
 

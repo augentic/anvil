@@ -2,7 +2,7 @@
 
 Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make lint` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
 
-This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. the `code-typescript` source adapter consuming a legacy codebase).
+This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Phase 3.7 renamed it …" / "the v1.x verb was …" prose is deleted, not relocated; git history is the record, and the skill describes only what it does today. Migration prose only stays in a SKILL.md when the skill itself documents a real migration feature (e.g. the `code-typescript` source adapter consuming a legacy codebase).
 
 ## Description grammar
 
@@ -47,7 +47,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 
 1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
-3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Move durable rationale to [docs/explanation/decision-log.md](../explanation/decision-log.md) and cite current references from the skill body. Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
+3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Delete the historical reference and cite current references from the skill body. Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
 4. **If present, `## Phase outcome contract` is a single-line link, not a paragraph.** Phase skills are *not* required to carry this section — none do today, and no predicate enforces its presence; the canonical contract lives in [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). When a skill does include the section, replace any opening prose with the single-line `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract.
 
 ## Cross-cutting guardrails
@@ -114,7 +114,7 @@ The skill-authoring consequence is the rule unique to this page: when a skill cu
 
 ## Rationale
 
-The upstream specs are Anthropic's [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices). Where this repository diverges, the reasoning is below. Pre-cutover history and the chunk-by-chunk rename trail live in [docs/explanation/decision-log.md](../explanation/decision-log.md).
+The upstream specs are Anthropic's [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices). Where this repository diverges, the reasoning is below.
 
 **Discovery model: two-stage loading.** Every SKILL.md *frontmatter* in the repo is loaded into context at session start so the agent can pick which skill applies (Stage 1); the *body* is loaded once the skill triggers (Stage 2). Stage 1 metadata is therefore precious — with ~10 skills, ~100 tokens of metadata per skill is ~1,000 tokens spent before the operator has typed a request. Stage 2 should layer via [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns): the body keeps the algorithm spine plus the Critical Path; long-form rules, code examples, output templates, and edge-case enumerations move into siblings the body links to. The `name` field is global across every loaded SKILL.md, which is why every name carries its plugin directory as a `<plugin>-` prefix (the `spec/` plugin uses `specify-` for product-name alignment).
 
@@ -138,7 +138,7 @@ What is fine; *when* is missing. `AI-powered` is filler — the scorer cannot te
 
 > "Review code (per the internal §3B writer-protocol classification)."
 
-Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no adapter or trigger. Repo-history references belong in [docs/explanation/decision-log.md](../explanation/decision-log.md), not in a discovery `description`.
+Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no adapter or trigger. Repo-history references do not belong in a discovery `description`.
 
 **Forbidden frontmatter (and why).** The Anthropic spec is permissive; this repository narrows the surface explicitly. Enforced via `additionalProperties: false` in the CLI-embedded `schemas/authoring/skill.schema.json`, applied by `specify lint framework`.
 

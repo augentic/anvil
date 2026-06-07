@@ -4,19 +4,26 @@ title: Scenarios Recorded Trace Violation
 severity: important
 trigger: Recorded trace content violates scenario contract.
 rule_hints:
-  - kind: authoring-predicate
-    value: scenarios.recorded-trace-violation
-    description: Run the retired imperative `scenarios.recorded-trace-violation` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-031-scenarios-recorded-trace-violation.md
+    description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
+  - kind: tool
+    value: scenarios
+    description: Run the `scenarios` framework checker, which validates every `acceptance/recorded/**/*.jsonl` trace's first line as a well-formed `recorded-trace-header`.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `scenarios.recorded-trace-violation` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+Each recorded-trace file under `acceptance/recorded/` must begin with a single-line JSON `recorded-trace-header` object whose `schemaVersion` is `1` and whose required fields (`kind`, `schemaVersion`, `sourceBackend`, `sourceRunId`, `sourceTimestamp`, `scenarioId`) are present and non-empty. A malformed header makes the trace unreplayable and breaks provenance.
+
+This check is whole-tree and opt-in: it fires nothing until an `acceptance/recorded/` tree exists. The `scenarios` framework tool reads `PROJECT_DIR`, walks `acceptance/recorded/`, and validates every `.jsonl` trace header. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint.
 
 ## Look For
 
-Violations surfaced by `scenarios.recorded-trace-violation` on the framework tree.
+- A `.jsonl` trace whose first line is empty, not valid JSON, or not a JSON object.
+- A first line whose `kind` is not `recorded-trace-header`.
+- A header with `schemaVersion` other than `1`, or a missing/empty required field.
 
 ## Fix
 
-Resolve the violation described in the finding message for `scenarios.recorded-trace-violation`.
+Make the first line a JSON `recorded-trace-header` object with `schemaVersion: 1` and every required field populated.

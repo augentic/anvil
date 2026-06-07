@@ -136,7 +136,7 @@ Future slices read from the baseline. When you describe a new piece of work, ref
 
 A **slice** is one trip through the refine → build → merge loop. It lives at `.specify/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
-A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace — 2.0 drives every change through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
+A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
 
 ## Source and target adapters
 
@@ -162,7 +162,7 @@ Sources: [identity-design-notes, legacy-monolith]
 Status: agreed
 ```
 
-`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds, and the operator reconciles by hand-editing `spec.md` or by amending the plan to drop a source.
+`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds. The `ID:` / `Sources:` / `Status:` lines and headline tags are kernel-rendered; the operator reconciles by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing those kernel lines (doing so trips `slice-spec-provenance-stale`). See [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
 
 ## Skills
 

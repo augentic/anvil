@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) when `android` is in the platform set (carried from `project.yaml.platforms` via `proposal.md ## Platforms`). The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
 
-Carries the body of the retired `vectis-android-writer` skill. Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`../../../references/android/`](../../../references/android/).
+Compose patterns, Crux Android shell anatomy, Kotlin token templates, and design-system integration depth live in [`../../../references/android/`](../../../references/android/).
 
 ## Mode detection
 

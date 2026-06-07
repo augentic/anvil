@@ -15,6 +15,7 @@ There are no generated copies and no sync step: a symlink can never drift from i
 | `phase-outcome-contract.md` | `plugins/spec/references/phase-outcome-contract.md` |
 | `plan-lock.md` | `plugins/spec/references/plan-lock.md` |
 | `stop-conditions.md` | `plugins/spec/references/stop-conditions.md` |
+| `spec-to-test-mapping.md` | `plugins/spec/references/spec-to-test-mapping.md` |
 | `cli/plan-propose.md` | `plugins/spec/references/cli/plan-propose.md` |
 | `synthesis/authority.md` | `plugins/spec/references/synthesis/authority.md` |
 | `synthesis/tags.md` | `plugins/spec/references/synthesis/tags.md` |
@@ -31,4 +32,4 @@ Top-level symlinks use four `../` segments; `cli/` and `synthesis/` entries use 
 
 ## Review-team protocol
 
-The review-team protocol is a separate surface and is **not** part of this bundle. Each target adapter exposes it as `references/agent-teams.md`, content-pinned to the canonical `docs/reference/review-team-protocol.md` by `CORE-008` / `CORE-012`.
+The review-team protocol is a separate surface and is **not** part of the spec-runtime bundle above (it resolves into `docs/`, not `plugins/spec/references/`). It is exposed here as a single overlay symlink, `review-team-protocol.md -> ../../../../docs/reference/review-team-protocol.md`, and each target adapter exposes it as `references/agent-teams.md -> ../../../shared/references/runtime/review-team-protocol.md`, content-pinned to the canonical `docs/reference/review-team-protocol.md` through that overlay by `CORE-008` / `CORE-011` / `CORE-012`.

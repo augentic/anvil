@@ -55,7 +55,7 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 <h2><span class="num">2</span> When execute parks on merge conflict</h2>
 
 1. Read conflicting baseline paths from the stop hint.
-2. Re-run refine against the current baseline, or hand-edit slice specs.
+2. Re-run refine against the current baseline, or hand-edit the slice's spec body prose (never the kernel-rendered `ID:` / `Sources:` / `Status:` lines).
 3. Retry merge:
 
 ```text

@@ -1,12 +1,12 @@
 # Shared scenario setup
 
-Reusable environment setup for the `lifecycle` acceptance scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
+Reusable environment setup for the platform acceptance scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
 
-Run every scenario from a disposable directory. Runs create local projects, branches, and Specify state, so never use an important working tree.
+Run every scenario from the repo-local sandbox at `acceptance/.sandbox/<scenario>/` (gitignored). Pin it instead of an ad-hoc `mktemp` root so the tree is stable across runs, survives reboots, and is browsable in the IDE — add `acceptance/.sandbox/` as a second Cursor workspace folder to watch `.specify/`, `plan.yaml`, and `journal.jsonl` populate live. Isolation comes from recreating the directory at the start of each run, not from a unique suffix. Override the base with `SPECIFY_SANDBOX=/abs/path` if you want it outside the repo. These are throwaway projects, branches, and Specify state — never run a scenario from an important working tree. To inspect what a run produced, see [`inspect.md`](inspect.md).
 
 ## Prerequisites
 
-- A `specify` binary on your PATH that is the build under test. `make acceptance` builds one and symlinks it into `~/.local/bin` (override with `INSTALL_DIR=…`), so the bare `specify` commands below resolve to this build with no further setup — it warns if `~/.local/bin` is not on your PATH. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
+- A `specify` binary on your PATH that is the build under test. `make acceptance` builds one and symlinks it into `~/.local/bin` (override with `INSTALL_DIR=…`), so the bare `specify` commands below resolve to this build with no further setup — it warns if `~/.local/bin` is not on your PATH. An agent driving the sweep self-heals this: if `specify --version` does not resolve to the build under test, prepend the symlink dir to PATH for its own shells (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute `../specify-cli/target/release/specify` path. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
 - The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable. The first-party shorthand resolves offline against a checkout of this framework repo: export `SPECIFY_FRAMEWORK_ROOT=/abs/path/to/augentic/specify` (the repo root that holds `adapters/`) before running `specify init`. No hand-made `adapters/` symlink is needed. Without that env var, `specify init omnia@v1` falls back to fetching the published adapter from GitHub.
 - Git is available for local branches and remotes. For scenarios that exercise PR/MR creation, the routed projects should be Git repositories with an `origin` remote configured before `/spec:finalize`.
 - Do not add fake `gh` or fake forge behavior. `/spec:finalize` observes PR state via `gh pr list` and never merges PRs itself; merges happen through the operator's normal forge workflow.
@@ -16,7 +16,8 @@ Run every scenario from a disposable directory. Runs create local projects, bran
 For scenarios that run against one initialized project (no registry):
 
 ```bash
-mkdir specify-acceptance-<scenario> && cd specify-acceptance-<scenario>
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/acceptance/.sandbox}/<scenario>"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX" && cd "$SANDBOX"
 specify init <adapter>     # e.g. omnia@v1
 ```
 
@@ -26,17 +27,20 @@ Then create the scenario's brief (see its **Setup** section) and run its **Invoc
 
 For scenarios that coordinate work across multiple project repos from a registry-only workspace:
 
-Create three disposable directories:
+Create three disposable directories under the pinned sandbox:
 
 ```text
-shop-platform/      # registry-only workspace
-shop-backend/       # omnia@v1 project
-shop-mobile/        # vectis@v1 project
+acceptance/.sandbox/<scenario>/shop-platform/   # registry-only workspace
+acceptance/.sandbox/<scenario>/shop-backend/    # omnia@v1 project
+acceptance/.sandbox/<scenario>/shop-mobile/     # vectis@v1 project
 ```
 
 Initialize them:
 
 ```bash
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/acceptance/.sandbox}/<scenario>"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{shop-platform,shop-backend,shop-mobile} && cd "$SANDBOX"
+
 cd shop-platform
 specify init --workspace
 
@@ -113,4 +117,4 @@ the callback, and call the backend exchange endpoint using the shared contract.
 
 ## Recording the run
 
-Capture each run with [`run-summary-template.md`](run-summary-template.md), filed under [`acceptance/runs/`](../runs/README.md), then update the scenario's status in the [catalog](../lifecycle/README.md).
+Capture each run with [`run-summary-template.md`](run-summary-template.md), filed under [`acceptance/runs/`](../runs/README.md), then update the scenario's status in the [catalog](../scenarios/README.md).

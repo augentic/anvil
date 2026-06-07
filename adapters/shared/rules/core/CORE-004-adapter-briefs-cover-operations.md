@@ -11,8 +11,12 @@ rule_hints:
     value: "adapters/targets/*/adapter.yaml"
     description: Target adapter manifests; `briefs.keys()` must cover `shape`, `build`, and `merge`.
   - kind: set-coverage
-    value: adapter-briefs-cover-operations
-    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` covers the closed axis-appropriate operation enum (`SourceOperation::{Survey, Extract}` xor `TargetOperation::{Shape, Build, Merge}`). One finding per missing `(adapter, operation)` pair; extras are silent until the `set-eq` reserved kind lands.
+    value: adapter-briefs
+    config:
+      expected-operations:
+        sources: [survey, extract]
+        targets: [shape, build, merge]
+    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` covers the per-axis operation set the rule supplies in `config`. One finding per missing `(adapter, operation)` pair; extras are silent (the `set-eq` kind tightens that).
 ---
 
 ## Rule

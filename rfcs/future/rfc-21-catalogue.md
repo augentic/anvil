@@ -1,8 +1,6 @@
 # RFC-21: Source Catalogue and Tier-1 Cache
 
-> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (retired milestone docs; superseded by the RFC-29 source-adapter flow — see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
-
-> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) for the current source-adapter flow)
 
 ## Abstract
 
@@ -255,7 +253,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## References
 
-- RFC-3a / RFC-3b / RFC-9 / RFC-14 / RFC-20 / RFC-25 (retired milestone docs) — predecessors this RFC updates toward the RFC-29 source-adapter flow.
+- RFC-3a / RFC-3b / RFC-9 / RFC-14 / RFC-20 / RFC-25 — predecessors this RFC updates toward the RFC-29 source-adapter flow.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.

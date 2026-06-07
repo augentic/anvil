@@ -1,6 +1,6 @@
 # `screenshots.extract` — vision pipeline
 
-Loaded by [../extract.md](../extract.md) at the § Pipeline step. Carries the v1 spatial-inference pipeline that preserves the algorithm of the retired `vectis-image-layout-inferer` skill verbatim — triage → chrome cropping → regions → containers → leaves → conservative component detection. Only the *output* shape changed (flat claims instead of a hierarchical `layout.yaml`).
+Loaded by [../extract.md](../extract.md) at the § Pipeline step. Carries the v1 spatial-inference pipeline — triage → chrome cropping → regions → containers → leaves → conservative component detection. The pipeline emits flat claims, not a hierarchical `layout.yaml`.
 
 The pipeline runs top-down. Each stage produces evidence the next refines; uncertainty is recorded in `notes:` on the affected claim so the operator can act on it without re-running.
 

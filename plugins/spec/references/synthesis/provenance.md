@@ -172,11 +172,11 @@ The closed set matches the resolution-order taxonomy in [`authority.md` §Resolu
 
 The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specify slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
-The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to record a synthesis decision long-term hand-edit `spec.md` (which the next refine reads back) or amend `plan.yaml.slices[].authority-override` via `specify plan amend`.
+The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `specify plan amend` (or adjust the source set) and re-run `/spec:refine`; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
 
 ## No drift surface
 
-Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift, and the retired `slice-provenance-drift` validator is gone. `specify slice validate` still checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `specify slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
 
 ## Worked example
 
@@ -241,7 +241,7 @@ requirements:
     resolution: tied-conflict
 ```
 
-REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by hand-editing `spec.md` (and re-running `/spec:refine`) before `/spec:build`.
+REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by recording a per-slice authority override (or amending the source set) and re-running `/spec:refine` before `/spec:build`.
 
 ## References
 

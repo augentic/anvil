@@ -12,7 +12,7 @@
 
 ## Reference shelf
 
-Load on demand when the lead's surface needs deeper analysis. The bodies are TypeScript-specific extraction depth restored from the retired `/spec:extract` skill.
+Load on demand when the lead's surface needs deeper analysis. The bodies carry TypeScript-specific extraction depth.
 
 - [`references/business-logic.md`](../references/business-logic.md) — depth-first domain extraction by handler / module.
 - [`references/component-structure.md`](../references/component-structure.md) — language detection, entry points, module organisation, async patterns.

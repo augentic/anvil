@@ -2,7 +2,7 @@
 
 Loaded by [../build.md](../build.md) Step 5 (write tests) and Step 6 (verify-repair the shared core). Both phases run in their own sub-agents with clean context windows.
 
-Carries the body of the retired `vectis-test-writer` skill plus the cross-cutting Rust verify-repair loop. The spec-to-test mapping rules live in [`test-spec-mapping.md`](../../references/test-spec-mapping.md) and the operational runbook lives in [`test-runbook.md`](../../references/test-runbook.md).
+Carries the cross-cutting Rust verify-repair loop. The spec-to-test mapping rules live in [`test-spec-mapping.md`](../../references/test-spec-mapping.md) and the operational runbook lives in [`test-runbook.md`](../../references/test-runbook.md).
 
 ## Step 5 — Crux tests (test-writer body)
 

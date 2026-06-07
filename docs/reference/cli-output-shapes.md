@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/acceptance/examples/plan/`](https://github.com/augentic/specify-cli/tree/main/acceptance/examples/plan) and [`augentic/specify-cli/acceptance/examples/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/acceptance/examples/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`augentic/specify-cli/tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan create`
 
@@ -331,7 +331,7 @@ Runs the slice-shape brief and cross-check predicates and renders a **`Diagnosti
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 
 - `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
-- `kind: "review"` — a deterministically-raised request for agent/human judgment (the former `deferred` semantic checks). Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
+- `kind: "review"` — a deterministically-raised request for agent/human judgment. Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
 
 `summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
 
@@ -449,7 +449,7 @@ A project owed a migration carries a populated `plan`:
       "kind": "v1-to-v2",
       "actions": [
         { "action": "move", "from": "adapters/omnia/adapter.yaml", "to": "adapters/targets/omnia/adapter.yaml" },
-        { "action": "rewrite", "path": ".specify/discovery.md", "contents": "## Lead inventory\n…" }
+        { "action": "rewrite", "path": "discovery.md", "contents": "## Lead inventory\n…" }
       ]
     }
   ]

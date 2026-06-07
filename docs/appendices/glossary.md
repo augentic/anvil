@@ -45,7 +45,7 @@ The Git branch used to publish a multi-repo change from a workspace slot. Form: 
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
 
 **Conflict**
-Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by hand-editing `spec.md` or by amending sources. Tags never park the slice.
+Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`specify plan amend --authority-override`) or amending sources, then re-running `/spec:refine` — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
 
 **Contract id**
 The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. Rename-stable hint that survives file moves and `info.version` bumps.
@@ -59,7 +59,7 @@ An Augentic product: a cross-platform application framework (Rust core, native i
 The neutral finding currency every check surface emits (`specify slice validate`, `specify lint`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
-The plan-time discovery artifact at `.specify/discovery.md` (workspace mode: at the workspace). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
+The plan-time discovery artifact at `discovery.md` in the project root (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
 
 **Divergence**
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
@@ -140,7 +140,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces the former `/spec:define` and `/spec:extract`.
+The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 
 **Registry**
 `registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry carries a `name` and `url` (plus optional contract wiring and a greenfield adapter seed); a project's description, capabilities, and target live in its own `project.yaml` and are projected into `topology.lock`.
@@ -180,7 +180,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified "adapter".
+Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

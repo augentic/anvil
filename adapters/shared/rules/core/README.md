@@ -2,7 +2,7 @@
 
 First-party rules that enforce framework-repository invariants through the shared deterministic-hint interpreter. The pack root activates the second shared resolution root (`adapters/shared/rules/<pack>/`) with pack name `core`; resolved rules carry `origin: core`. `CORE-*` rules participate in `specify lint framework` runs by default and are excluded from consumer-side `specify rules export` / `specify lint` unless the operator passes `--include-core`.
 
-This directory is the peer of [`adapters/shared/rules/universal/`](../universal/README.md): same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `adapters/shared/rules/core/`; the placement predicate in `check::rules` rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
+This directory is the peer of [`adapters/shared/rules/universal/`](../universal/README.md): same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `adapters/shared/rules/core/`; the `rules` WASI tool (CORE-009) rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
 
 See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
@@ -62,36 +62,53 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 - [ ] Run `make lint` and confirm the new rule actually fires on a known-bad fixture; a rule that resolves but matches nothing is the usual symptom of the quirk.
 - [ ] Cross-check against [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md), which scopes with `path-pattern` rather than `applicability.artifacts`.
 
+[`CORE-054-rule-applicability-artifacts.md`](CORE-054-rule-applicability-artifacts.md) enforces this checklist: it fails `make lint` when any `CORE-*` rule declares a populated `applicability.artifacts` set (the degenerate empty `artifacts: []` form is admitted). Until the chassis flips the framework-profile behaviour, that guard is the backstop against silently shipping a dead rule.
+
 ## Hint-kind preference
 
-Every v1 hint kind is executable, including `fenced-block`, `namespace-owner`, and `authoring-predicate`. Prefer native kinds (`path-pattern`, `schema`, `regex`, `unique`, `fenced-block`, …) over `authoring-predicate` for new rules. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`. The reserved-kind machinery survives as forward-compat scaffolding only.
+Every v1 hint kind is executable: `path-pattern`, `schema`, `regex`, `tool`, `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `fenced-block`, `presence`, `field-grammar`, and `cross-reference`. Prefer native declarative kinds for new rules; reach for `kind: tool` (a referenced WASI tool) only when a check is branchy, whole-tree, cross-fact, or registry-backed. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`.
 
-**Lint performance (post–RFC-31).** `specify lint framework` no longer runs the full imperative `Check` batch on every invocation; migratable predicates run through declarative hints (mostly `authoring-predicate` today). The imperative producer is CORE-009 namespace ownership only. Post–Phase-4 `make lint` on this tree was **~247s** wall (2026-06-04); benchmark locally with `/usr/bin/time make lint`.
+The three relational / presence kinds dispatch on a `value:` mechanism selector with policy in `config:`: `presence` (`frontmatter`, `file`, `markdown-section`) for a missing required artifact, `field-grammar` (`field-tokens`, `field-first-word`) for a frontmatter field grammar, and `cross-reference` (`adapter-dir` / `expected-set` source against an `adapter-manifest` / `adapter-tool` target) for a relational set-difference / value-equality join. The `schema` and `unique` kinds additionally accept a whole-tree `value: scenario` selector over the scenario fact family. These serve `presence` → CORE-042 / CORE-011 / CORE-041, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, `schema` scenario → CORE-032, and `unique` scenario → CORE-030.
 
-### `kind: authoring-predicate` (bridge)
-
-Use only when native hints cannot yet reach parity with the closed imperative predicate for that `rule_id`. The hint's `value` must be the stable kebab-case authoring id (for example `skill.section-line-count`). The evaluator dispatches to the matching predicate implementation in `augentic/specify-cli` (`lint/eval/authoring_predicate.rs`); unknown ids fail closed. The bridge is not a permanent target — replace it with native `rule_hints` once a green parity module exists. **CORE-009** never uses this kind; namespace ownership stays on the imperative producer.
+**Lint posture.** `specify lint framework` is a generic dispatcher running entirely through declarative hints (Road A) and name-resolved WASI tools (Road B) — there is no imperative `Check` rule producer and no imperative-predicate bridge. Whole-tree and branchy checks (CORE-009 namespace ownership, CORE-026 duplicate id, and the `scenarios` / `skill-body` / `agent-teams` / `links-registry` / `marketplace` / `prose` families) run through their `kind: tool` family tool; all policy rides the rule's `config:`. Benchmark locally with `/usr/bin/time make lint`.
 
 ### Hint config cookbook (native rules)
 
-Extended evaluators landed in RFC-31; examples live in specify-cli spike docs:
-
-| Mechanism | Doc |
-| --- | --- |
-| `regex` + optional `config` (capture threshold, negative-match, suffix guard) | [`rfc-31-phase1-spike.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-phase1-spike.md) |
-| `path-pattern` with `!` exclusion globs | [`rfc-31-phase2-spike.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-phase2-spike.md) |
-| Sidecar schemas (CORE-035/036/047 vs CORE-044) | [`rfc-31-sidecar-schemas.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/rfc-31-sidecar-schemas.md) |
+`config:`-driven evaluators carry rule policy out of the engine. Examples: `regex` accepts optional `config` (capture-group threshold, negative-match, suffix guard), `path-pattern` `value`s accept `!` exclusion globs, and the fact-consuming kinds (`cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`) read their cap / set / map / constant from `config:`. The canonical `config:` shape for each kind is pinned by the `$def`s in `schemas/rules/rule.schema.json` (embedded in the `specify` binary); see existing `CORE-*` rule files for worked examples.
 
 ## Authoring conventions
 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
-3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR.
-4. When retiring an imperative `Check` row or replacing an `authoring-predicate` bridge with native hints, add a `mod core_NNN` submodule in [`crates/standards/tests/core_parity.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/core_parity.rs) and delete the predicate row in the **same PR**. See [parity contract](../../../../docs/contributing/checks.md#parity-contract-for-predicate-retirement) in `docs/contributing/checks.md`.
-5. New rules without a predecessor should land with a smoke-test fixture in `core_parity.rs` when behaviour is non-trivial.
+3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR. Confirm the rule actually fires against a known-bad fixture — a rule that resolves but matches nothing is the usual failure mode.
+4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the family tool under `wasi-tools/<name>/` and rebuild with `cargo make <name>-wasm` (see [docs/contributing/checks.md](../../../../docs/contributing/checks.md)).
+5. New engine behaviour is covered by mechanism-named, rule-agnostic tests (`crates/standards/tests/lint_hint_<kind>.rs`) and each tool's in-crate tests — not by per-rule parity tests.
+
+## Rule families and overlapping concerns
+
+Two concerns are split across several cooperating `CORE-*` rules. They are intentionally separate (each is a distinct, line-scoped failure mode), but knowing the family up front lowers the learning cost when one fires.
+
+**Agent-teams overlay integrity** — keeps every target adapter's `agent-teams.md` symlink overlay faithful to the canonical `docs/reference/review-team-protocol.md`:
+
+| Rule | Title | Role |
+| --- | --- | --- |
+| CORE-008 | Agent Teams Match Canonical | The resolved overlay's SHA-256 digest must equal the canonical document (catches drift / staleness). |
+| CORE-011 | Agent Teams Missing Canonical | The canonical document itself must exist, otherwise no overlay can be validated (presence guard). |
+| CORE-012 | Agent Teams Non Canonical Overlay | A target adapter's overlay must resolve to the canonical content (path/identity guard). |
+
+**Link and reference resolution** — keeps cross-document references from rotting, each scoped to a different surface:
+
+| Rule | Title | Role |
+| --- | --- | --- |
+| CORE-002 | Markdown Links Resolve | Generic `[label](target)` relative links resolve on disk. |
+| CORE-018 | Links Brief Schema Link Resolve | Adapter briefs cite only known `schemas.specify.dev` tool-schema URLs. |
+| CORE-019 | Links Broken Reference | `SKILL.md` references to bundled `references/` / `examples/` paths exist. |
+| CORE-020 | Links Unresolved Directive | Skill directive paths resolve. |
+
+When editing one member of a family, check whether the sibling rules need a matching update — for example, moving the review-team-protocol document touches all three agent-teams rules at once.
 
 ## References
 
 - [Shared engineering standards (`UNI-*`)](../universal/README.md) — sibling pack; same file shape, different namespace ownership.
 - [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) — how workflow, artifacts, and engineering standards compose.
-- [docs/contributing/checks.md](../../../../docs/contributing/checks.md) — when to author a new imperative `Check` versus a declarative `CORE-*` rule.
+- [docs/contributing/checks.md](../../../../docs/contributing/checks.md) — how to extend framework checks: Road A declarative hints versus Road B referenced WASI tools.

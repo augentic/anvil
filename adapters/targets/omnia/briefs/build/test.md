@@ -1,6 +1,6 @@
 # Omnia build — test writer
 
-Loaded by [../build.md](../build.md) phase 3. Reads `specs/<unit>/spec.md` + `design.md` + the existing crate inventory and writes `$CRATE_PATH/tests/`. Carries the body of the retired `omnia-test-writer` skill.
+Loaded by [../build.md](../build.md) phase 3. Reads `specs/<unit>/spec.md` + `design.md` + the existing crate inventory and writes `$CRATE_PATH/tests/`.
 
 Tests are spec-driven, not code-driven — generate the side-effect assertion implied by `design.md` even when the current handler does not yet satisfy it; a failing test is the right signal back to the [crate writer](crate.md) step.
 

@@ -31,7 +31,7 @@ Writes `plan.yaml` at the repo root with the given kebab-case name and an empty 
 ### specify plan validate
 
 Check structural and referential integrity of the plan, plus the four
-health diagnostics that previously lived on `change plan doctor`.
+health diagnostics below.
 
 ```bash
 specify plan validate
@@ -41,7 +41,7 @@ Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on
 
 - `project-not-in-registry` (important) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
-- `topology-cache-stale` (suggestion) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specify workspace sync` to regenerate the cache. Replaces the former `adapter-mismatch-workspace` / `description-missing-multi-repo` registry-authored checks.
+- `topology-cache-stale` (suggestion) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specify workspace sync` to regenerate the cache.
 
 Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
 
@@ -115,7 +115,7 @@ specify plan propose --from <response.json> [--format json]
 
 Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
 
-**Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise it fails with `plan-reconcile-plan-not-replaceable`. Re-proposing on a still-pending plan wholesale-replaces every slice. Each slice's registry project is bound by the agent inside the response, not by a later assignment pass — see [Project binding happens in the propose response](../../explanation/decision-log.md#project-binding-happens-in-the-propose-response).
+**Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise it fails with `plan-reconcile-plan-not-replaceable`. Re-proposing on a still-pending plan wholesale-replaces every slice. Each slice's registry project is bound by the agent inside the response, not by a later assignment pass.
 
 Validation codes (all exit 2):
 

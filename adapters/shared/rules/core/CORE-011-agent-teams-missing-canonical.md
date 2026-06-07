@@ -4,19 +4,26 @@ title: Agent Teams Missing Canonical
 severity: important
 trigger: The canonical review-team-protocol document is missing so overlays cannot be validated.
 rule_hints:
-  - kind: authoring-predicate
-    value: agent-teams.missing-canonical
-    description: Run the retired imperative `agent-teams.missing-canonical` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-011-agent-teams-missing-canonical.md
+    description: Sentinel include so the rule carries a candidate set; the `presence` file selector evaluates the whole file fact family and ignores the candidate set.
+  - kind: presence
+    value: file
+    config:
+      path: docs/reference/review-team-protocol.md
+    description: Flag the canonical review-team-protocol document when no file fact carries its path. The required path is policy carried here, not in the engine.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `agent-teams.missing-canonical` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+Per-target `agent-teams.md` overlays are validated against a single canonical review-team-protocol document. When that canonical document is absent the overlays cannot be checked against any baseline, so its absence is itself a violation. The required path is supplied in `config:` so the policy lives in this rule file, not the engine.
+
+This check runs natively: the `kind: presence` hint with `value: file` and `config: { path }` flags the required document whenever the lint indexer recorded no file fact at that path. The rule's `path-pattern` is a sentinel include; the file presence selector evaluates the whole file fact family regardless of the candidate set.
 
 ## Look For
 
-Violations surfaced by `agent-teams.missing-canonical` on the framework tree.
+- The canonical review-team-protocol document named in `config: { path }` is missing.
 
 ## Fix
 
-Resolve the violation described in the finding message for `agent-teams.missing-canonical`.
+Restore the canonical review-team-protocol document at the path named in `config: { path }`.
