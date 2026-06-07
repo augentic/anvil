@@ -27,7 +27,7 @@ Prove the Evidence-validation gate: when an adapter emits `Evidence` that fails 
 
 ## Automated coverage
 
-Proven by `finalize_invalid_persists_no_file` in [`augentic/specify-cli` `tests/source_extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source_extract.rs), run under `cargo make test` (and `cargo nextest run --test source_extract`).
+Proven by `finalize_invalid_persists_no_file` in [`augentic/specify-cli` `tests/source/extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source/extract.rs), run under `cargo make test` (and `cargo nextest run --test source`).
 
 Assertion → coverage map:
 

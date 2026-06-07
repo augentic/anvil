@@ -27,7 +27,7 @@ Prove the extract-failure path: when a bound source's `extract` fails to produce
 
 ## Automated coverage
 
-Proven by `finalize_missing_evidence_stays_refining` in [`augentic/specify-cli` `tests/source_extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source_extract.rs), run under `cargo make test`. The case models the agent's `extract` brief running but staging nothing in `$SCRATCH_DIR`; the deterministic finalize seam then fails closed.
+Proven by `finalize_missing_evidence_stays_refining` in [`augentic/specify-cli` `tests/source/extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source/extract.rs), run under `cargo make test`. The case models the agent's `extract` brief running but staging nothing in `$SCRATCH_DIR`; the deterministic finalize seam then fails closed.
 
 Assertion → coverage map:
 

@@ -36,7 +36,7 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 Three tracks run in parallel:
 
-1. **Acceptance proof (RM-05)** — the release gate. The 2.0.0 cross-repo queue is the blocker; scenario #1 (pure intent, N=1) must pass before the rest of the queue drains. The deterministic CLI proof for fan-in/fan-out runs under `cargo make test` in `specify-cli` ([`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs)); the remaining debt is manual LLM-driven scenario sweeps and generated-output-correctness gates per target.
+1. **Acceptance proof (RM-05)** — the release gate. The 2.0.0 cross-repo queue is the blocker; scenario #1 (pure intent, N=1) must pass before the rest of the queue drains. The deterministic CLI proof for fan-in/fan-out runs under `cargo make test` in `specify-cli` ([`tests/plan/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/fan_in_fan_out.rs)); the remaining debt is manual LLM-driven scenario sweeps and generated-output-correctness gates per target.
 2. **Reconciliation polish (RFC-38)** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
 3. **Observability and portability (RM-14 / RM-15 / RM-18)** — most valuable once RM-05 proves the loop on realistic flows.
 
@@ -55,7 +55,7 @@ Three tracks run in parallel:
 **Status:** Partial — the unified [`acceptance/scenarios/`](../acceptance/scenarios/README.md) pack defines 24 scenarios including extract failure (`extract-failure`), invalid evidence (`invalid-evidence`), source sandbox denial (`source-sandbox-denied`), execute build failure (`execute-build-failure`), step-through breakout (`stepthrough-breakout`), workspace breakout (`workspace-breakout`), dual-driving refusal (`dual-driving-refused`), and stale-workspace recovery (`stale-workspace-recovery`). **All run-summaries are still pending**; `pure-intent` (N=1) is the release blocker per the catalog.
 **Immediate task:** Run scenario #1 against the live `specify` binary and fill the run-summary. Halt on failure; triage before continuing.
 **Remaining fixture gap:** None outstanding in the catalog; the stale-workspace recovery scenario is now authored as `stale-workspace-recovery`.
-**Acceptance surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs)). RM-05 owns the remaining debt: manual LLM-driven scenario sweeps and per-target generated-output correctness (see [docs/contributing/acceptance.md](../docs/contributing/acceptance.md)).
+**Acceptance surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/plan/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/fan_in_fan_out.rs)). RM-05 owns the remaining debt: manual LLM-driven scenario sweeps and per-target generated-output correctness (see [docs/contributing/acceptance.md](../docs/contributing/acceptance.md)).
 
 ---
 

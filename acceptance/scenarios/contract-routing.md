@@ -32,11 +32,11 @@ Prove the plan-generation half of the cross-repo contract-first path: a short fe
 
 ## Automated coverage
 
-Proven by the propose kernel tests in [`augentic/specify-cli` `tests/plan_orchestrate/propose.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan_orchestrate/propose.rs) and the depends-on ordering in `tests/fan_in_fan_out.rs`, run under `cargo make test`. The agent's grouping response is fixture-provided; the kernel's routing, binding, and `depends-on` derivation over it are deterministic:
+Proven by the propose kernel tests in [`augentic/specify-cli` `tests/plan_orchestrate/propose.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan_orchestrate/propose.rs) and the depends-on ordering in `tests/plan/fan_in_fan_out.rs`, run under `cargo make test`. The agent's grouping response is fixture-provided; the kernel's routing, binding, and `depends-on` derivation over it are deterministic:
 
 - `plan-exists` / `plan-validates`: `tests/plan_orchestrate/validate.rs::plan_validate_clean_json`.
 - `contract-slice-present` / `implementation-slices-routed`: `propose_from_fan_out_golden` writes a contract-bound slice plus single-target implementation slices each bound to their project.
-- `dependencies-correct`: the same golden + `fan_in_fan_out.rs` assert the implementation slices carry `depends-on` the contract slice, and the driver never advances to a dependent before its upstream merges.
+- `dependencies-correct`: the same golden + `tests/plan/fan_in_fan_out.rs` assert the implementation slices carry `depends-on` the contract slice, and the driver never advances to a dependent before its upstream merges.
 - `routing-deterministic`: `propose_from_fan_out_golden` is a byte-stable golden, and `propose_dry_run_workspace_request_golden` pins the request envelope — routing does not depend on prose wording.
 
 ## Reproducing by hand (optional)

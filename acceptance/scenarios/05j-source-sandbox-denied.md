@@ -30,8 +30,8 @@ Prove the source-adapter sandbox holds: a `survey` or `extract` that attempts to
 
 The sandbox assertions are deterministic CLI/host behavior — no LLM prose is involved — so they are proven by a fixture-driven test rather than the manual sweep:
 
-- Test: `sandbox_denies_out_of_scope` in [`augentic/specify-cli` `tests/source_extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source_extract.rs).
-- Runs under `cargo make test` (and `cargo nextest run --test source_extract`) on every commit, as part of the deterministic surface in [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md).
+- Test: `sandbox_denies_out_of_scope` in [`augentic/specify-cli` `tests/source/extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source/extract.rs).
+- Runs under `cargo make test` (and `cargo nextest run --test source`) on every commit, as part of the deterministic surface in [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md).
 
 Assertion → coverage map:
 

@@ -26,7 +26,7 @@ lint:
 acceptance:
 	cargo build --release --manifest-path $(SPECIFY_MANIFEST) --bin specify
 	@$(MAKE) lint
-	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test fan_in_fan_out --test source_extract --test slice --test plan_orchestrate --test workspace
+	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test plan --test source --test slice --test workspace
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."

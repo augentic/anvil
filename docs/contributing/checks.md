@@ -77,8 +77,8 @@ FAIL: <rule-id>: <message>
 
 | Road | `CORE-*` | How enforced |
 | --- | --- | --- |
-| Road A — declarative hint | most of `CORE-001..052` | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
-| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings |
+| Road A — declarative hint | most of `CORE-001..053` | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
+| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
 
@@ -347,7 +347,7 @@ The seven framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill-body
 | `links-registry` | CORE-018, 020 |
 | `marketplace` | CORE-022 |
 | `prose` | CORE-024 |
-| `rules` | CORE-009, 026 |
+| `rules` | CORE-009, 026, 053 |
 
 To add or extend one:
 

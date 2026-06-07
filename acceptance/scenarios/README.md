@@ -56,6 +56,6 @@ The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` f
 - **deferred** — could not run on this binary (capability missing); follow-up issue linked + release-owner sign-off required before the gate counts it.
 - **automated** — `backend: fixture`; the scenario's structural assertions are proven by a named deterministic test in `augentic/specify-cli` (run under `cargo make test`), not by a manual sweep. The scenario file's **Automated coverage** section names the test. These drop out of the manual sweep.
 
-The **release gate is green** when `tests/fan_in_fan_out.rs` passes under `cargo make test`, `pure-intent` is `passed`, every `automated` entry's named test passes under `cargo make test`, and every other non-deferred entry is `passed`. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
+The **release gate is green** when `tests/plan/fan_in_fan_out.rs` passes under `cargo make test`, `pure-intent` is `passed`, every `automated` entry's named test passes under `cargo make test`, and every other non-deferred entry is `passed`. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
 
 Owner-local adapter scenarios stay under [`adapters/targets/<name>/tests/`](../../adapters/targets/contracts/tests/README.md).

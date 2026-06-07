@@ -19,7 +19,7 @@ rule_hints:
 
 Every first-party and adapter rule ships as a markdown file with a leading YAML frontmatter block matching `rule.schema.json`: required `id`, `title`, `severity`, and `trigger` keys, a closed `severity` enum, closed `rule_hints[].kind` constants, and no unknown properties. The CLI parses these files at resolve time to build the codex `specify lint` and `specify rules export` consume, so a frontmatter block that does not match the schema is a hard failure for the rest of the standards layer.
 
-`rule.schema.json` validates only the machine-readable frontmatter between the opening and closing `---` delimiters. Markdown body conventions (the `## Rule` heading) and cross-file duplicate-id detection are validated separately by `specify lint framework`.
+`rule.schema.json` validates only the machine-readable frontmatter between the opening and closing `---` delimiters. Markdown body conventions (the `## Rule` heading, enforced by CORE-053) and cross-file duplicate-id detection (CORE-026) are validated separately by `specify lint framework`.
 
 ## Look For
 

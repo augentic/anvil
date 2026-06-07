@@ -30,7 +30,7 @@ Prove synthesis end to end when two agreeing sources are bound on one slice: ser
 
 ## Automated coverage
 
-Proven by `fan_in_twice_fan_out_once` in [`augentic/specify-cli` `tests/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/fan_in_fan_out.rs) (with `tests/slice/synthesize.rs::synthesize_from_is_deterministic`), run under `cargo make test`. The two sources agreeing is a fixture-Evidence input; the reconciliation over that Evidence is deterministic.
+Proven by `fan_in_twice_fan_out_once` in [`augentic/specify-cli` `tests/plan/fan_in_fan_out.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/fan_in_fan_out.rs) (with `tests/slice/synthesize.rs::synthesize_from_is_deterministic`), run under `cargo make test`. The two sources agreeing is a fixture-Evidence input; the reconciliation over that Evidence is deterministic.
 
 Assertion → coverage map:
 
