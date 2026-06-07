@@ -50,11 +50,11 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | --- | --- | --- |
 | **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specify slice transition` |
 | **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint` |
+| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint project` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specify lint framework` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specify rules export` and enforced by `specify lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specify lint framework` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specify rules export` and enforced by `specify lint project`) govern generated and hand-written code in consumer projects. Do not conflate them.
 
-`specify lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
+`specify lint project` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
 ### Authority and reconciliation mechanics
 

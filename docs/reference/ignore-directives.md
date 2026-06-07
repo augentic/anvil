@@ -1,6 +1,6 @@
 # Ignore directives
 
-Operators tolerate a single legitimate exception to an engineering-standards finding by writing an in-source `specify-ignore` directive next to the offending line. The directive carries the rule id and a non-empty rationale; the scanner picks it up unconditionally and demotes the matching finding's status to `ignored` (or `false-positive` for prefixed rationale) on the next run of `specify lint`.
+Operators tolerate a single legitimate exception to an engineering-standards finding by writing an in-source `specify-ignore` directive next to the offending line. The directive carries the rule id and a non-empty rationale; the scanner picks it up unconditionally and demotes the matching finding's status to `ignored` (or `false-positive` for prefixed rationale) on the next run of `specify lint project`.
 
 This page is the single durable reference for the directive grammar, scope rules, status taxonomy, and exit-code semantics. The grammar is identical across every supported language family — the only thing that changes is the comment delimiter the directive lives inside.
 
@@ -86,7 +86,7 @@ The accompanying optional `disposition` object names *who* set the status. `disp
 
 ## Exit-code semantics
 
-`specify lint` uses **status-aware severity** when deciding the process exit:
+`specify lint project` uses **status-aware severity** when deciding the process exit:
 
 > Exit `2` only when there is a finding with `status: open` AND `severity ∈ {critical, important}`.
 
@@ -96,10 +96,10 @@ The accompanying optional `disposition` object names *who* set the status. `disp
 
 - **Missing or too-short rationale** — emits [`UNI-022`](../../adapters/shared/rules/universal/ignore-directive-missing-rationale.md). The 16-character floor is the threshold at which a rationale is long enough to be useful to a future reviewer.
 - **Orphan directive** — a directive whose rule id matches no finding on its target line emits [`UNI-023`](../../adapters/shared/rules/universal/ignore-directive-orphan.md). Common causes: the rule was retired, the protected code was refactored, an intervening reformat moved the target, or the directive was copy-pasted into a context where the targeted finding never fired.
-- **Shared-codex tree absent** — when the codex resolver does not produce `UNI-022` or `UNI-023` (for example, a consumer project that has not yet picked up the shared codex tree), the matching/demotion step still runs but the synthetic findings for malformed and orphan directives are silently skipped. Run `specify rules sync` (or `specify init`) to distribute the shared codex into `.specify/.cache/codex/`, or pass `--rules-root` to `specify lint`, to restore them.
+- **Shared-codex tree absent** — when the codex resolver does not produce `UNI-022` or `UNI-023` (for example, a consumer project that has not yet picked up the shared codex tree), the matching/demotion step still runs but the synthetic findings for malformed and orphan directives are silently skipped. Run `specify rules sync` (or `specify init`) to distribute the shared codex into `.specify/.cache/codex/`, or pass `--rules-root` to `specify lint project`, to restore them.
 
 ## Related reading
 
-- [Engineering standards layer](../explanation/standards-layer.md) — how `specify lint` fits next to workflow and artifacts
+- [Engineering standards layer](../explanation/standards-layer.md) — how `specify lint project` fits next to workflow and artifacts
 - [Shared `UNI-*` codex inventory](../../adapters/shared/rules/universal/README.md) — every shared rule, including `UNI-022` and `UNI-023`
-- [Consistency checks](../contributing/checks.md) — `specify lint framework` (framework authoring) vs `specify lint` (consumer standards)
+- [Consistency checks](../contributing/checks.md) — `specify lint framework` (framework authoring) vs `specify lint project` (consumer standards)

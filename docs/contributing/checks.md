@@ -30,7 +30,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 | Surface | Command | Audience | Enforces |
 | --- | --- | --- | --- |
 | **Authoring standards** | `specify lint framework` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specify lint` | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI |
+| **Engineering standards** | `specify lint project` | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI |
 | **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
 
 Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
@@ -94,7 +94,7 @@ Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rule
 
 ### JSON output
 
-`specify lint framework` can emit the same structured result shape consumed by CI integrations. Run `specify lint framework --format json` (or set `SPECIFY_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specify lint` output.
+`specify lint framework` can emit the same structured result shape consumed by CI integrations. Run `specify lint framework --format json` (or set `SPECIFY_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specify lint project` output.
 
 ```bash
 specify lint framework --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
@@ -118,7 +118,7 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 
 **`rule-id` carries the closed `CORE-NNN` id.** Both roads set `rule_id` from the rule file's `id:` frontmatter — Road A hints inherit it directly, and Road B tools stamp each finding with the owning `CORE-NNN`. `CORE_ID_TABLE` is empty: there is no imperative namespace bridge.
 
-**Consumer-project counterpart.** `specify lint framework --format json` is the **framework-repo** authoring surface; `specify lint` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
+**Consumer-project counterpart.** `specify lint framework --format json` is the **framework-repo** authoring surface; `specify lint project` is its **consumer-project** counterpart, scanning `.specify/`-bearing trees with deterministic codex hints. Both emit the same `LintFinding` envelope so CI tooling, dashboards, and PR bots that consume one can consume the other unchanged. See [Standards layer](../explanation/standards-layer.md) for the consumer-side scanner contract.
 
 ## What the checks enforce
 
@@ -344,7 +344,7 @@ The nine framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill`, `sk
 To add a `CORE-*` rule (either road):
 
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
-2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
+2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
 Checks are numbered 1–14 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 
