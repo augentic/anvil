@@ -1,46 +1,23 @@
-# Spec-to-Test Mapping for Crux
+# Spec-to-Test Mapping (Vectis / Crux)
 
-How Specify spec scenarios map to test functions in a Crux shared crate. This mapping is deterministic -- the same spec always produces the same test structure.
+Vectis-specific deltas on top of the shared [spec-to-test mapping discipline](spec-runtime/spec-to-test-mapping.md). The shared base owns the target-neutral rules: scenario → one test function, the `test_<unit_snake>_<scenario_snake>` naming convention, REQ-ID traceability comments, requirement coverage (N scenarios → N tests), and drift-detection mechanics. This file carries only what is specific to a Crux shared crate.
 
-## Mapping Rules
+## Test location and attribute
 
-### Spec File to Test Module
-
-Each unit spec maps to tests inside the `#[cfg(test)] mod tests` block in `shared/src/app.rs` (Crux convention -- tests live alongside the app, not in a separate `tests/` directory):
+Each unit spec maps to tests inside the `#[cfg(test)] mod tests` block in `shared/src/app.rs` (Crux convention — tests live alongside the app, not in a separate `tests/` directory):
 
 ```text
 specs/<unit>/spec.md  →  #[cfg(test)] mod tests { ... } in app.rs
 ```
 
-### Scenario to Test Function
-
-Each scenario under a requirement maps to one test function. The requirement's stable `ID: REQ-XXX` line is the traceability key:
+All spec-mapped tests are synchronous `#[test]` — Crux's testing model does not require an async runtime:
 
 ```text
 #### Scenario: Successful item fetch
   →  #[test] fn test_<unit_snake>_successful_item_fetch()
-
-#### Scenario: Item not found
-  →  #[test] fn test_<unit_snake>_item_not_found()
 ```
 
-Naming convention: `test_<unit_snake>_<scenario_snake>` where `<unit_snake>` is the spec folder name converted to snake_case (replace `-` with `_`).
-
-All tests are synchronous `#[test]` -- Crux's testing model does not require an async runtime.
-
-### Traceability Comments
-
-Every spec-mapped test must have a doc comment linking it to the source requirement and scenario using the stable `REQ-XXX` ID:
-
-```rust
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Successful item fetch
-#[test]
-fn test_<unit_snake>_successful_item_fetch() { ... }
-```
-
-The REQ-ID is the traceability key. If a requirement title is renamed but keeps the same ID, the test is still linked. If a scenario title changes, update the comment but keep the REQ-ID reference.
-
-### WHEN Clause to Test Setup
+## WHEN clause to test setup
 
 The WHEN clause determines how the test constructs initial model state and which Event to send:
 
@@ -56,7 +33,7 @@ The WHEN clause determines how the test constructs initial model state and which
 | WHEN KV key is missing | Resolve KV get with `None` |
 | WHEN SSE stream delivers event | Resolve SSE effect with `SseResponse::Chunk(data)` |
 
-### THEN Clause to Assertions
+## THEN clause to assertions
 
 The THEN clause determines what the test asserts:
 
@@ -72,7 +49,7 @@ The THEN clause determines what the test asserts:
 | THEN app renders and fetches data | `cmd.expect_effect().expect_render();` then `cmd.expect_one_effect().expect_http();` |
 | THEN field F has value V | `assert_eq!(model.field, expected_value);` or `assert_eq!(view.field, expected_value);` |
 
-### Effect Chain Mapping
+## Effect chain mapping
 
 Scenarios describing async operations map to multi-step tests that resolve effects and feed events back:
 
@@ -124,39 +101,9 @@ fn test_<unit_snake>_fetch_items_on_load() {
 }
 ```
 
-## Requirement Coverage
+## Worked example — validation requirement
 
-### Requirements with Multiple Scenarios
-
-Each scenario becomes its own test. A requirement with 3 scenarios produces 3 test functions:
-
-```markdown
-### Requirement: Item management
-ID: REQ-001
-#### Scenario: Add new item
-#### Scenario: Delete existing item
-#### Scenario: Delete non-existent item
-```
-
-Produces:
-
-```rust
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Add new item
-#[test]
-fn test_<unit_snake>_add_new_item() { ... }
-
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Delete existing item
-#[test]
-fn test_<unit_snake>_delete_existing_item() { ... }
-
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Delete non-existent item
-#[test]
-fn test_<unit_snake>_delete_non_existent_item() { ... }
-```
-
-### Validation Requirements
-
-Validation requirements produce tests that send invalid input and assert on the resulting model/view state:
+Validation requirements (per the shared base) construct invalid input and assert the resulting model/view state:
 
 ```markdown
 ### Requirement: Input validation
@@ -165,8 +112,6 @@ ID: REQ-002
 - WHEN user submits item with empty title
 - THEN app shows validation error "Title is required"
 ```
-
-Produces:
 
 ```rust
 /// Spec: specs/<unit>/spec.md > REQ-002 > Scenario: Empty title rejected
@@ -187,7 +132,7 @@ fn test_<unit_snake>_empty_title_rejected() {
 }
 ```
 
-### Navigation Requirements
+## Navigation requirements
 
 Navigation scenarios test page transitions:
 
@@ -198,8 +143,6 @@ ID: REQ-003
 - WHEN user is on error page and taps retry
 - THEN app returns to loading and re-fetches data
 ```
-
-Produces:
 
 ```rust
 /// Spec: specs/<unit>/spec.md > REQ-003 > Scenario: Retry from error page
@@ -221,40 +164,6 @@ fn test_<unit_snake>_retry_from_error_page() {
 }
 ```
 
-## Traceability
+## Drift detection (Vectis specifics)
 
-Each generated test includes a traceability comment linking back to the spec with the stable requirement ID:
-
-```rust
-/// Spec: specs/todo/spec.md > REQ-001 > Scenario: Add new item
-#[test]
-fn test_todo_add_new_item() { ... }
-```
-
-This enables automated drift detection: parse test comments to find the source scenario and requirement ID, then verify the requirement and scenario still exist in the spec with matching WHEN/THEN clauses.
-
-## Drift Detection Mechanics
-
-### Detecting Missing Tests
-
-1. Parse all requirement blocks from the spec, including each `### Requirement:`, `ID: REQ-XXX`, and `#### Scenario:` entry
-2. Parse all `#[test]` functions with `/// Spec:` comments from `app.rs`
-3. For each scenario, check if a corresponding test exists (match on REQ-ID + scenario title)
-4. Report scenarios without tests as **missing coverage**
-
-### Detecting Stale Tests
-
-1. Parse all test functions with `/// Spec:` traceability comments
-2. Check if the referenced requirement ID and scenario still exist in the spec
-3. Report tests referencing removed scenarios as **stale tests**
-
-Tests without `/// Spec:` comments are treated as manually added and are not flagged by drift detection.
-
-### Detecting Assertion Drift
-
-1. Parse THEN clauses from the spec scenario
-2. Parse assertions from the test function
-3. Compare expected values (page states, view fields, effect types)
-4. Report mismatches as **assertion drift**
-
-This comparison is approximate -- it catches obvious divergences (wrong page state, missing effect assertion, wrong field value) but may not detect subtle logic changes.
+The drift-detection mechanics live in the [shared base](spec-runtime/spec-to-test-mapping.md#drift-detection-mechanics). For Vectis, the test side of the comparison parses `#[test]` functions with `/// Spec:` comments from `app.rs`; assertion-drift comparison focuses on page states, view fields, and effect types.

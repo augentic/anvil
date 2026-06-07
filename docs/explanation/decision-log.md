@@ -7,7 +7,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## CLI owns correctness, agent owns judgment
 
-**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specrun` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
+**Decision:** All deterministic operations (validation, lifecycle transitions, spec merging, task parsing, plan management) run through the `specify` CLI. Skills never hand-edit `.metadata.yaml` or manipulate the `.specify/` directory directly.
 
 **Rationale:** LLM-interpreted prose rules for structured operations (validation, task parsing, directory manipulation) produced unreliable results. A binary that returns structured JSON and exit codes gives deterministic correctness where it matters, while the agent retains judgment for semantic decisions.
 
@@ -41,11 +41,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Independently useful layers
 
-**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specrun` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
+**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `tools.yaml`, `specrun init`, and the axis-split `specrun source resolve` / `specrun target resolve` (which replaced the retired `specify adapter` family). JSON Schemas are owned by and distributed with the `specrun` binary, not a top-level repo directory.
-2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specrun slice *` verbs they wrap.
-3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specrun plan *` / `specrun registry *` / `specrun workspace *` verbs they wrap.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `adapter.yaml`, `tools.yaml`, `specify init`, and the axis-split `specify source resolve` / `specify target resolve` (which replaced the retired `specify adapter` family). JSON Schemas are owned by and distributed with the `specify` binary, not a top-level repo directory.
+2. **Layer 1 — Executing a change.** The single-slice refine-build-merge loop: `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, and the `specify slice *` verbs they wrap.
+3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/spec:plan`, `/spec:execute`, `/spec:finalize`, and the `specify plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
@@ -57,13 +57,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Specify separates three concerns that must not collapse into one surface:
 
-1. **Workflow** — phase skills and lifecycle CLI verbs (`/spec:plan` … `/spec:finalize`, `specrun slice *`, `specrun plan *`). Mutates `.specify/` state through a closed verb set.
+1. **Workflow** — phase skills and lifecycle CLI verbs (`/spec:plan` … `/spec:finalize`, `specify slice *`, `specify plan *`). Mutates `.specify/` state through a closed verb set.
 2. **Artifacts** — slice-local and baseline product intent (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, baseline specs). Records what to build; does not encode durable engineering policy.
-3. **Engineering standards** — rules under `adapters/**/rules/` plus future `specrun rules export` and `specrun lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
+3. **Engineering standards** — rules under `adapters/**/rules/` plus future `specify rules export` and `specify lint`. Durable policy that outlives any slice; read-only enforcement — findings may block CI but never transition plans or slices.
 
 **Authoring standards** (`docs/standards/`, enforced by `specdev lint` on the plugin repo) govern skill and doc house style. **Engineering standards** govern generated and hand-written code in consumer projects. The word "standards" appears in both paths; the enforcement surfaces do not overlap.
 
-**Rationale:** CI-native standards enforcement (`specrun lint`) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `approved` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specrun lint` from being mistaken for a phase skill.
+**Rationale:** CI-native standards enforcement (`specify lint`) must run continuously on consumer repos without entering the interactive slice loop. Build-time `REVIEW.md` applies standards with model-assisted judgment during `/spec:build`. Plan Gate 1 `approved` is operator approval of a plan — a third, lifecycle-only meaning of "review." Keeping workflow, artifacts, and engineering standards explicit prevents `specify lint` from being mistaken for a phase skill.
 
 **Status:** current
 
@@ -113,7 +113,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Topology cache (lockfile) for plan-time availability
 
-**Decision:** `specrun workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); workspace plan-time topology (`workspace_topology`) reads the cache, and `specrun plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a workspace has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
+**Decision:** `specify workspace sync` regenerates a committed `.specify/topology.lock` from each materialised slot's `project.yaml` plus its deterministic baseline projection (`surface[]` / `recent[]`); workspace plan-time topology (`workspace_topology`) reads the cache, and `specify plan validate` emits `topology-cache-stale` when it diverges from a slot's `project.yaml` or baseline projection, and `topology-cache-missing` when a workspace has none. The lockfile is machine-written (write-if-changed); operators never hand-edit it.
 
 **Rationale:** Deriving identity at propose time would couple plan-time topology to a synced (and for remotes, reachable) workspace whose baselines are all readable. A committed, derived lockfile — the same discipline as `.specify/context.lock` — keeps propose offline and fast while a staleness check (CI-blockable, fixed by `workspace sync`) guarantees the cache tracks the derived truth. Because the projection is deterministic, "sync" is idempotent regenerate-and-verify, never a top-down overwrite of an authored file.
 
@@ -143,7 +143,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Project binding happens in the propose response
 
-**Decision:** Each slice's registry project is bound by the **agent inside the `specrun plan propose --from` response**, not by a separate post-propose assignment step. The dry-run request (`specrun plan propose --dry-run`) carries a `projects[]` topology (always at least one project; a single regular project synthesized from `project.yaml`, each entry carrying its normalized `target` adapter), and the agent names a `project` on each response slice. When exactly one project exists the agent may omit `project` and the kernel auto-binds it; the kernel then resolves each slice's `target` on demand from the bound project (the `target` is not written to `plan.yaml`). Propose is the slice writer — no project-less entries linger for a later assignment pass.
+**Decision:** Each slice's registry project is bound by the **agent inside the `specify plan propose --from` response**, not by a separate post-propose assignment step. The dry-run request (`specify plan propose --dry-run`) carries a `projects[]` topology (always at least one project; a single regular project synthesized from `project.yaml`, each entry carrying its normalized `target` adapter), and the agent names a `project` on each response slice. When exactly one project exists the agent may omit `project` and the kernel auto-binds it; the kernel then resolves each slice's `target` on demand from the bound project (the `target` is not written to `plan.yaml`). Propose is the slice writer — no project-less entries linger for a later assignment pass.
 
 **Rationale:** Cross-source lead matching and project binding are the same agent judgment over the same request envelope, so splitting binding into a second skill step would re-read state the agent already holds and reintroduce an ordering problem. Folding binding into the propose response keeps the projection kernel the single writer of `plan.yaml.slices[].project` (the `target` is resolved on demand from the project, never written to disk), and keeps the N=1 case ergonomic via auto-bind. The earlier "assignment runs after propose in the plan skill" framing predates the agent-led `propose --from` kernel and is superseded.
 
@@ -153,7 +153,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Workspace-centric execution with explicit push
 
-**Decision:** All multi-repo execution happens inside workspace clones under the initiating repo's `.specify/workspace/`. Local commits from merge accumulate in the clones. Changes are published to remotes only when the operator explicitly runs `specrun workspace push`.
+**Decision:** All multi-repo execution happens inside workspace clones under the initiating repo's `.specify/workspace/`. Local commits from merge accumulate in the clones. Changes are published to remotes only when the operator explicitly runs `specify workspace push`.
 
 **Rationale:** Automatic pushes during execution would make the driver non-idempotent and create a rollback problem -- a failed change that was already pushed cannot be cleanly undone. Keeping pushes explicit gives the operator a review gate between "execution produced artifacts" and "artifacts are published." The workspace is the staging area; `workspace push` is the release gate.
 
@@ -225,7 +225,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Contract files use opaque file replacement during merge -- the entire file is replaced rather than delta-merged. Unlike spec files (which use ADDED/MODIFIED/REMOVED sections), contract files are replaced wholesale.
 
-**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specrun slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
+**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specify slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
 
 **Status:** current
 
@@ -259,7 +259,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Adapter vs `--workspace` is mutually exclusive at init
 
-**Decision:** `specrun init` accepts either a adapter positional or `--workspace`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a workspace carries `workspace: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--workspace`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
+**Decision:** `specify init` accepts either a adapter positional or `--workspace`, never both and never neither. A regular project carries a `adapter:` in `.specify/project.yaml`; a workspace carries `workspace: true` and never carries a `adapter:`. The CLI rejects the two pathological combinations (no positional + no `--workspace`, or both supplied) through clap, exiting `2` with its standard parse-error diagnostic.
 
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no adapter to resolve. Allowing an empty adapter would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
@@ -279,7 +279,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Operator owns PR merge; Specify prepares and publishes
 
-**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specrun workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specrun workspace merge` is removed.
+**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specify workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specify workspace merge` is removed.
 
 **Rationale:** Automated PR merge couples the framework to forge APIs, check-suite semantics, and team-specific review rules that vary across operators. Holding the framework at "prepare and publish" lets every team layer its own merge policy — checks, reviewers, merge queue, manual approval — without the framework modelling any of it. The split also gives a natural rollback surface: an unmerged PR can be closed or rebased without rewinding any framework state.
 
@@ -289,7 +289,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Declared WASI adapter tools
 
-**Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specrun tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
+**Decision:** Helper tools shipped by adapters or projects are declared as WASI command components in a `tools.yaml` sidecar (adapter scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a adapter-shipped tool to a local build or pinned mirror without editing the adapter. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations use exact `specify:*@<semver>` package requests resolved through wasm-pkg metadata.
 
 **Rationale:** Adapters used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a adapter can ship behavior without growing the host.
 
@@ -297,9 +297,9 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** Current maintained docs, schemas, and CLI implementation surfaces.
 
-## One `specrun` binary; adapter-specific helpers ship as declared tools
+## One `specify` binary; adapter-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specrun`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`). Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs as ordinary shell commands the agent runs and journals.
 
 **Rationale:** A separate adapter-specific binary would double the install, packaging, release, and version-coordination surface for every adapter that needs helpers. Applying the declared-tool model keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
@@ -337,13 +337,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Several CLI verb groups were renamed during the historical design record → historical design record cutover so the top-level surface matches the operator-facing nouns (slice / change / registry / workspace / adapter):
 
-- `specify change *` (per-slice verbs) → `specrun slice *`.
+- `specify change *` (per-slice verbs) → `specify slice *`.
 - `specify change *` (umbrella verbs) → `specify change *`; `specify change create` was renamed from the v1 `specify change init`.
 - `specify schema {resolve, check, pipeline}` → `specify adapter {resolve, check, pipeline}`.
-- `specrun registry {add, remove}` were added by historical design record.
-- The pre-historical design record in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specrun tool run contract` as the post-merge baseline gate.
-- `specrun init --workspace` is the mutually exclusive alternative to `specrun init <adapter>` — it scaffolds a registry-only workspace whose `project.yaml` carries only `workspace: true`.
-- `specrun workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
+- `specify registry {add, remove}` were added by historical design record.
+- The pre-historical design record in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party adapter owning its own validation behaviour; the contracts merge brief now shells out through `specify tool run contract` as the post-merge baseline gate.
+- `specify init --workspace` is the mutually exclusive alternative to `specify init <adapter>` — it scaffolds a registry-only workspace whose `project.yaml` carries only `workspace: true`.
+- `specify workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
 
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from earlier surfaces" parentheticals while preserving the trail for anyone tracing a stale call site.
 
@@ -395,7 +395,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** Every requirement block in `spec.md` carries three header lines: `ID:` (stable merge key), `Sources:` (one or more source keys, highest authority first), `Status:` (closed enum `agreed` | `unknown` | `conflict` | `divergence`). Authority hierarchy is the closed enum `intent` > `documentation` > `behaviour`. Tags `[conflict]`, `[divergence]`, `[unknown]` surface inline on the requirement header; they never park the slice.
 
-**Rationale:** Multi-source synthesis routinely surfaces disagreements that cannot be auto-resolved. Tag-and-proceed keeps the slice lifecycle moving (`refining → refined → built → merged`) regardless of tag content; the operator hand-edits `spec.md` between refine and build when they want to reconcile, or amends the plan to drop a source. Parking the slice on every tag would have made multi-source slices unusable in practice.
+**Rationale:** Multi-source synthesis routinely surfaces disagreements that cannot be auto-resolved. Tag-and-proceed keeps the slice lifecycle moving (`refining → refined → built → merged`) regardless of tag content; the operator reconciles between refine and build by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources and re-running `/spec:refine`. The `ID:` / `Sources:` / `Status:` lines are kernel-rendered and are never hand-edited (the provenance parser reports `slice-spec-provenance-stale` otherwise); prose-only edits outside those lines are fine. Parking the slice on every tag would have made multi-source slices unusable in practice.
 
 **Status:** current
 
@@ -413,7 +413,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Gate 1 only
 
-**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == approved`. The operator runs `specrun plan transition <name> approved` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `approved` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
+**Decision:** Human review happens at exactly one place in v1: between planning and execution, via `plan.lifecycle == approved`. The operator runs `specify plan transition <name> approved` explicitly; `/spec:plan` exits at `pending` and prints the literal command but never stamps `approved` itself. No Gate 2 (post-synthesis park) and no synthesis review state ship in v1.
 
 **Rationale:** Multiple gates compound operator cost and incentivise skipping. One observable gate written by the operator at one observable moment makes the review pause unambiguous and unbypassable. Synthesis-time disagreements use tag-and-proceed; the `slices[].divergence` field carries the Gate-1 acknowledgement signal a future Gate 2 would consume, so the park can be wired in later without a schema change.
 
@@ -463,7 +463,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Automated propose
 
-**Decision:** The `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` through `specrun plan propose --from`. Uncertain cross-source merges surface in a `## Tentative merges` block in `change.md` (the agent never edits `discovery.md`); materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specrun plan amend` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specrun plan amend`, `specrun plan add`, and `specrun plan remove` (split, merge, relabel, rebind, defer, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands. The hosting skill is `/spec:plan`.
+**Decision:** The `propose` sub-step reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` through `specify plan propose --from`. Uncertain cross-source merges surface in a `## Tentative merges` block in `change.md` (the agent never edits `discovery.md`); materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend` and surface in a `## Likely divergences` block. The operator overrides at Gate 1 with `specify plan amend`, `specify plan add`, and `specify plan remove` (split, merge, relabel, rebind, defer, accept/reject divergence). Authority hierarchy does not apply at propose — reconciliation runs on lead headlines alone; authority activates at slice-time synthesis once `Evidence` lands. The hosting skill is `/spec:plan`.
 
 **Rationale:** Operator-driven lead reconciliation at the planning step would have added a second review ceremony before Gate 1 with no automation hook. Tag-and-proceed at propose mirrors tag-and-proceed at slice synthesis: the workflow keeps moving, uncertainty surfaces as review signals the operator inspects at Gate 1, and the operator's amendment is the override path. The `slices[].divergence` enum (`none` / `likely` / `accepted` / `rejected`) is advisory in v1 — no halt is wired against any value — but gives a durable record of "operator was warned at Gate 1" that future workflow gates can consume without a schema change.
 
@@ -473,7 +473,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## One slice-model artifact, provenance inline
 
-**Decision:** A synthesized slice carries exactly one structured artifact, `.specify/slices/<slice>/model.yaml`, which carries provenance **inline** (`requirements[].claims[]` with `winner`, plus `resolution`). `provenance.yaml` is no longer a persisted file; the same shape is generated on demand by `specrun slice provenance`. There is a single `model.schema.json` (the retired `draft-model.schema.json` is gone): the agent's synthesis response and the persisted file validate against the same schema, with kernel-owned fields (`requirements[].id`, `.status`, `claims[].winner`) optional. The kernel re-derives those fields and ignores anything the agent supplied — **normalize, never reject** — so the `slice-synthesize-kernel-field-usurped` abort and the `slice-model-provenance-drift` finding both retire.
+**Decision:** A synthesized slice carries exactly one structured artifact, `.specify/slices/<slice>/model.yaml`, which carries provenance **inline** (`requirements[].claims[]` with `winner`, plus `resolution`). `provenance.yaml` is no longer a persisted file; the same shape is generated on demand by `specify slice provenance`. There is a single `model.schema.json` (the retired `draft-model.schema.json` is gone): the agent's synthesis response and the persisted file validate against the same schema, with kernel-owned fields (`requirements[].id`, `.status`, `claims[].winner`) optional. The kernel re-derives those fields and ignores anything the agent supplied — **normalize, never reject** — so the `slice-synthesize-kernel-field-usurped` abort and the `slice-model-provenance-drift` finding both retire.
 
 **Rationale:** Three representations of the same provenance facts (`model.yaml`, `provenance.yaml`, and the rendered `spec.md` lines) plus drift validators to keep them in sync is complexity manufactured by materializing a projection. One source of truth with on-read projections cannot drift from itself. A dual draft/persisted schema plus a rejection finding is a firewall around fields the kernel overwrites anyway; normalizing is cheaper and removes a failure mode and an entire schema. `provenance.yaml` was audit-only and unread by downstream verbs, so persisting it bought nothing a projection does not.
 
@@ -503,7 +503,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## History via git plus an outcome ledger, not a slice graveyard
 
-**Decision (revises archive posture):** The durable record of merged work is git history of the committed `.specify/specs/` baseline plus an append-only outcome ledger (the `slice.archive.created` journal entries: slice, touched-specs, outcome summary, merge SHA). The archived slice folder under `.specify/archive/YYYY-MM-DD-<slice>/` becomes a prunable convenience cache governed by `specrun archive prune`, not the system of record.
+**Decision (revises archive posture):** The durable record of merged work is git history of the committed `.specify/specs/` baseline plus an append-only outcome ledger (the `slice.archive.created` journal entries: slice, touched-specs, outcome summary, merge SHA). The archived slice folder under `.specify/archive/YYYY-MM-DD-<slice>/` becomes a prunable convenience cache governed by `specify archive prune`, not the system of record.
 
 **Rationale:** A date-stamped folder of dead slices in the live tree is simultaneously a worse VCS and a worse database than the tools already present: git already records every artifact at the merge commit, and a structured ledger answers "what merged, when, with what outcome" better than spec-delta fragments that no longer compose. Retaining the folder forever ages into misleading cruft; demoting it to a prunable cache while recording the real history in git + ledger keeps the audit story and clears the graveyard.
 
@@ -513,7 +513,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Decision Records: append-only catalogue for the design "why"
 
-**Decision:** Design *decisions* — the immutable "why" of a choice plus its rejected alternatives — get a baseline home at `.specify/decisions/DEC-NNNN-<slug>.md`, the design counterpart to what `.specify/specs/` is for behaviour. A slice authors zero or more Decision Records under `.specify/slices/<slice>/decisions/<slug>.md` (YAML front-matter + a Nygard `## Context` / `## Decision` / `## Consequences` body); `specrun slice merge` promotes each into the catalogue by **opaque whole-file add** — never a second prose delta-merge — assigning the durable project-global `DEC-NNNN` id (`max(existing) + 1`, monotonic, never reused). The only permitted mutation to an existing record is a `supersedes:` flip to `status: superseded`. Design *state* (domain models, API shapes) stays in `design.md` and the code; there is no master `design.md`.
+**Decision:** Design *decisions* — the immutable "why" of a choice plus its rejected alternatives — get a baseline home at `.specify/decisions/DEC-NNNN-<slug>.md`, the design counterpart to what `.specify/specs/` is for behaviour. A slice authors zero or more Decision Records under `.specify/slices/<slice>/decisions/<slug>.md` (YAML front-matter + a Nygard `## Context` / `## Decision` / `## Consequences` body); `specify slice merge` promotes each into the catalogue by **opaque whole-file add** — never a second prose delta-merge — assigning the durable project-global `DEC-NNNN` id (`max(existing) + 1`, monotonic, never reused). The only permitted mutation to an existing record is a `supersedes:` flip to `status: superseded`. Design *state* (domain models, API shapes) stays in `design.md` and the code; there is no master `design.md`.
 
 **Rationale:** "Do for `design.md` what merge does for `spec.md`" does not fit verbatim: prose has no stable `REQ`-style merge key, and `design.md` bundles volatile *state* (best derived from ground truth) with append-only *decisions*. Only the decisions half deserves a baseline, and it reuses machinery already present — the contracts opaque-add strategy (no new merge engine) and the engine-assigned id pattern (the single-active-slice + plan-lock invariants make sequential numbering race-free). Accepted decisions then become a first-class routing-identity axis — the merged baseline counterpart the design layer previously lacked beside the behavioural surface — surfacing architectural commitment at plan time so a lead that contradicts an accepted decision can be flagged before Gate 1.
 

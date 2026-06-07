@@ -3,9 +3,6 @@ id: CORE-025
 title: Operational Vocabulary
 severity: important
 trigger: Retired Specify vocabulary appears outside the allowlisted decision-log, release-notes, fixtures, and archive carve-outs.
-applicability:
-  artifacts:
-    - doc
 rule_hints:
   - kind: path-pattern
     value: "docs/**/*.md"
@@ -28,6 +25,8 @@ rule_hints:
   - kind: regex
     value: "\\.specify/changes/"
   - kind: regex
+    value: "\\bspecrun\\b"
+  - kind: regex
     value: "\\bspecify validate\\b"
   - kind: regex
     value: "\\bspecify merge\\b"
@@ -47,6 +46,7 @@ Scan framework prose for retired Specify vocabulary. Path exclusions mirror the 
 
 - `.specify/changes/` paths instead of `.specify/slices/`
 - `specify validate` instead of `specify slice validate`
+- `specrun` instead of the shipped `specify` binary name
 - `Initiative` instead of `change` / `slice`
 
 ## Fix

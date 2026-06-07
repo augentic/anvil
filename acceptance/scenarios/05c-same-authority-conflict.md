@@ -37,7 +37,7 @@ Assertion → coverage map:
 - `conflict-tag-written`: same-class claims tie with no unique winner, so the requirement derives `status: conflict` and `spec.md` carries the `[conflict]` heading tag and `Status: conflict`.
 - `both-values-preserved`: neither claim carries a `winner` marker; both sources survive in the requirement's `sources` list and in `spec.md`.
 - `lifecycle-reaches-refined`: synthesis succeeds (exit 0) and persists the model, so the slice transitions to `refined` despite the conflict.
-- `operator-must-reconcile`: the requirement is tagged `[conflict]` (not operative) until the operator edits or amends a source — the recovery is the general `specify plan amend` / hand-edit path.
+- `operator-must-reconcile`: the requirement is tagged `[conflict]` (not operative) until the operator reconciles — the recovery is to record a per-slice authority override or amend the slice's sources via `specify plan amend`, then re-run `/spec:refine` (never a hand-edit of the kernel-rendered provenance lines).
 
 ## Reproducing by hand (optional)
 

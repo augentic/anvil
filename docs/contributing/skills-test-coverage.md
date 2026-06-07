@@ -20,7 +20,6 @@ or scenario lands. The checked-in fixtures under
 representative inputs and expected artifact shapes, while the compact Rust
 suite in `specify-cli/crates/standards/tests/` focuses on checker
 regressions. The manual scenarios under
-[`acceptance/scenarios/`](../../acceptance/scenarios/) and
 [`acceptance/scenarios/`](../../acceptance/scenarios/) cover the LLM-driven body bytes that the
 Rust harness intentionally does not pin.
 
@@ -42,9 +41,10 @@ Rust harness intentionally does not pin.
 
 > **Scenario fixtures (`acceptance/**/*.json`).** The cleanup-plan brief
 > mentions JSON scenario fixtures, but no such files exist in the repository at audit time. The repository's acceptance packs are the
-> markdown scenarios listed above; their YAML frontmatter (validated by
-> `specify-cli/crates/standards/src/framework/check/scenarios.rs` is the
-> closest analogue to a fixture. The matrix below uses the markdown scenarios
+> markdown scenarios listed above; their YAML frontmatter (validated by the
+> `scenarios` WASI tool at `specify-cli/wasi-tools/scenarios/`, resolved through
+> the generic Road B `kind: tool` framework lint) is the closest analogue to a
+> fixture. The matrix below uses the markdown scenarios
 > as the unit of coverage. See [Plan amendments](#plan-amendments) for
 > follow-up.
 
@@ -54,9 +54,8 @@ Rust harness intentionally does not pin.
 - **Primary trigger** -- the `argument-hint` from the skill's frontmatter, or
   a one-line description of the entrypoint when the skill has no
   `argument-hint`.
-- **Plan trace(s)** -- markdown scenarios under `acceptance/scenarios/` or
-  `acceptance/scenarios/` that exercise this skill (directly or as a documented
-  sub-step of a larger flow).
+- **Plan trace(s)** -- markdown scenarios under `acceptance/scenarios/` that
+  exercise this skill (directly or as a documented sub-step of a larger flow).
 - **Scenario fixture(s)** -- target-local scenarios under
   `adapters/targets/<name>/tests/` that exercise this skill.
 - **Status:**
@@ -116,7 +115,7 @@ issue without re-running this audit.
 | [`capture-wiretapper`](../../plugins/capture/skills/wiretapper/SKILL.md) | No wiretap scenario. | Scenario that clones a small TypeScript service fixture, runs `/capture:wiretapper <legacy-dir>`, and asserts wiretap code compiles, replay-ready JSON appears for declared entry points, and adapters wire the entrypoint without breaking the original `tsc` build. |
 | `change-analyze` (retired; plan-time adapter inference inlined into `/spec:plan`) | Reached only via plan pipeline. | Direct invocation scenario: `/spec:plan source documentation=<path>` against a documentation tree vs. `/spec:plan source code-typescript=<path>` against a code tree, asserting the emitted source-adapter summaries differ on the `kind` axis and that `discovery.md` is structured per the schema. |
 | [`specify-build`](../../plugins/spec/skills/build/SKILL.md) | Reached only as part of `[refine, build, merge]`. | Mid-flight build scenario: pre-create a slice with proposal + spec but no implementation, run `/spec:build <slice-name>`, and assert the build resumes and completes without re-running refine. |
-| [`specify-drop`](../../plugins/spec/skills/drop/SKILL.md) | No drop scenario. | Scenario that creates a slice, drops it via `/spec:drop <slice-name>`, and asserts (a) baseline specs are unchanged, (b) the slice directory is moved to `archive/dropped/`, and (c) any plan entry transitions to `dropped`. |
+| [`specify-drop`](../../plugins/spec/skills/drop/SKILL.md) | No drop scenario. | Scenario that creates a slice, drops it via `/spec:drop <slice-name>`, and asserts (a) baseline specs are unchanged, (b) the slice directory is moved to `.specify/archive/YYYY-MM-DD-<slice-name>/`, and (c) any plan entry transitions to `dropped`. |
 | [`specify-merge`](../../plugins/spec/skills/merge/SKILL.md) | Reached only via stages chain. | Targeted merge-only scenario: pre-stage a slice with completed build artifacts, run `/spec:merge <slice-name>`, and assert the baseline diff and the move-to-archive transition. |
 | `vectis` target — `build` brief ([`adapters/targets/vectis/briefs/build.md`](../../adapters/targets/vectis/briefs/build.md)) | Reached but not asserted; no scenario reviews / asserts generated Vectis artifacts or exercises template drift. | Targeted fixture under [`acceptance/fixtures/targets/vectis/`](../../acceptance/fixtures/targets/vectis/) runs the build brief end-to-end against a fixed Specify slice and asserts the produced Crux shared crate (`Cargo.toml`, `src/app.rs`, adapter wiring, UniFFI exports), the regenerated `composition.yaml` (per [`expected/composition.yaml`](../../acceptance/fixtures/targets/vectis/task-list/expected/composition.yaml)), the iOS SwiftUI shell (`iOS/project.yml`, generated views, asset catalog), the Android Compose shell (Gradle build, generated composables, drawables), the spec-traced Crux tests (synchronous `#[test]` per scenario with `/// Spec:` comments), the core / iOS / Android reviewer summaries, and the template-drift recovery path against a deliberately broken Vectis template (e.g. a stale Crux pin). |
 | `vectis` target — `merge` brief ([`adapters/targets/vectis/briefs/merge.md`](../../adapters/targets/vectis/briefs/merge.md)) | Reached only via stages chain; host cap-matrix re-verification is not asserted. | Targeted scenario that pre-stages a Vectis slice with a clean build, runs `/spec:merge <slice-name>`, and asserts the post-merge `cargo check --workspace`, `cargo clippy --workspace`, `cargo test --workspace`, `cd iOS && make build`, and `cd Android && make build` invocations all exit clean against the merged baseline, plus the deferred-merge transition when one of those host caps regresses. |

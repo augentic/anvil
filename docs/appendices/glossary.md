@@ -45,7 +45,7 @@ The Git branch used to publish a multi-repo change from a workspace slot. Form: 
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
 
 **Conflict**
-Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by hand-editing `spec.md` or by amending sources. Tags never park the slice.
+Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`specify plan amend --authority-override`) or amending sources, then re-running `/spec:refine` — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
 
 **Contract id**
 The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. Rename-stable hint that survives file moves and `info.version` bumps.

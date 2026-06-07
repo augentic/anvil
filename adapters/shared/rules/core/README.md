@@ -62,6 +62,8 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 - [ ] Run `make lint` and confirm the new rule actually fires on a known-bad fixture; a rule that resolves but matches nothing is the usual symptom of the quirk.
 - [ ] Cross-check against [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md), which scopes with `path-pattern` rather than `applicability.artifacts`.
 
+[`CORE-054-rule-applicability-artifacts.md`](CORE-054-rule-applicability-artifacts.md) enforces this checklist: it fails `make lint` when any `CORE-*` rule declares a populated `applicability.artifacts` set (the degenerate empty `artifacts: []` form is admitted). Until the chassis flips the framework-profile behaviour, that guard is the backstop against silently shipping a dead rule.
+
 ## Hint-kind preference
 
 Every v1 hint kind is executable: `path-pattern`, `schema`, `regex`, `tool`, `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `fenced-block`, `presence`, `field-grammar`, and `cross-reference`. Prefer native declarative kinds for new rules; reach for `kind: tool` (a referenced WASI tool) only when a check is branchy, whole-tree, cross-fact, or registry-backed. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`.
@@ -81,6 +83,29 @@ The three relational / presence kinds dispatch on a `value:` mechanism selector 
 3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR. Confirm the rule actually fires against a known-bad fixture — a rule that resolves but matches nothing is the usual failure mode.
 4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the family tool under `wasi-tools/<name>/` and rebuild with `cargo make <name>-wasm` (see [docs/contributing/checks.md](../../../../docs/contributing/checks.md)).
 5. New engine behaviour is covered by mechanism-named, rule-agnostic tests (`crates/standards/tests/lint_hint_<kind>.rs`) and each tool's in-crate tests — not by per-rule parity tests.
+
+## Rule families and overlapping concerns
+
+Two concerns are split across several cooperating `CORE-*` rules. They are intentionally separate (each is a distinct, line-scoped failure mode), but knowing the family up front lowers the learning cost when one fires.
+
+**Agent-teams overlay integrity** — keeps every target adapter's `agent-teams.md` symlink overlay faithful to the canonical `docs/reference/review-team-protocol.md`:
+
+| Rule | Title | Role |
+| --- | --- | --- |
+| CORE-008 | Agent Teams Match Canonical | The resolved overlay's SHA-256 digest must equal the canonical document (catches drift / staleness). |
+| CORE-011 | Agent Teams Missing Canonical | The canonical document itself must exist, otherwise no overlay can be validated (presence guard). |
+| CORE-012 | Agent Teams Non Canonical Overlay | A target adapter's overlay must resolve to the canonical content (path/identity guard). |
+
+**Link and reference resolution** — keeps cross-document references from rotting, each scoped to a different surface:
+
+| Rule | Title | Role |
+| --- | --- | --- |
+| CORE-002 | Markdown Links Resolve | Generic `[label](target)` relative links resolve on disk. |
+| CORE-018 | Links Brief Schema Link Resolve | Adapter briefs cite only known `schemas.specify.dev` tool-schema URLs. |
+| CORE-019 | Links Broken Reference | `SKILL.md` references to bundled `references/` / `examples/` paths exist. |
+| CORE-020 | Links Unresolved Directive | Skill directive paths resolve. |
+
+When editing one member of a family, check whether the sibling rules need a matching update — for example, moving the review-team-protocol document touches all three agent-teams rules at once.
 
 ## References
 

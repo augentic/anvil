@@ -8,7 +8,7 @@ argument-hint: "[slice-name]"
 
 Build the active `in-progress` slice. The skill body is shared with the `/spec:execute` loop — when the loop runs build, it loads this same body. Both the loop and standalone breakouts resolve the active slice from `specify plan next`, hold the same plan lock, and drive the two-phase `specify slice build` verb (prepare → brief → finalize), mirroring how `specify source survey` / `extract` split. Deterministic work — slice resolution, lifecycle reads, target resolution, build-request assembly, report schema-validation, the `target-build-*` aborts, the `slice.build.*` events, and the `Refined → Built` transition gate — flows through the `specify` CLI; this body owns ONLY running the target build brief against the prepared request.
 
-The skill refuses only on slice lifecycle. Synthesis review tags (`[unknown]`, `[conflict]`, `[divergence]`) carried in `spec.md` are review signals, not build blockers — operators may have hand-edited the spec after `/spec:refine` surfaced the tags, and the brief proceeds against whatever spec is on disk.
+The skill refuses only on slice lifecycle. Synthesis review tags (`[unknown]`, `[conflict]`, `[divergence]`) carried in `spec.md` are review signals, not build blockers — operators may have reconciled the tags after `/spec:refine` (via `specify plan amend --authority-override` + re-refine, or prose edits outside the kernel-rendered provenance lines), and the brief proceeds against whatever spec is on disk.
 
 ## Bindings
 

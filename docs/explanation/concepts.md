@@ -162,7 +162,7 @@ Sources: [identity-design-notes, legacy-monolith]
 Status: agreed
 ```
 
-`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds, and the operator reconciles by hand-editing `spec.md` or by amending the plan to drop a source.
+`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds. The `ID:` / `Sources:` / `Status:` lines and headline tags are kernel-rendered; the operator reconciles by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing those kernel lines (doing so trips `slice-spec-provenance-stale`). See [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
 
 ## Skills
 
