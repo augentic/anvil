@@ -31,9 +31,9 @@ Prove multi-repo plan authoring from a registry-only workspace: the `workspace:`
 
 Proven by the propose kernel and workspace-sync tests in [`augentic/specify-cli`](https://github.com/augentic/specify-cli), run under `cargo make test`. The agent groups leads into a response; the kernel's routing over that response is deterministic (the response is fixture-provided here):
 
-- `plan-exists` / `plan-validates`: `tests/plan_orchestrate/validate.rs::plan_validate_clean_json`.
+- `plan-exists` / `plan-validates`: `tests/workflow/validate.rs::plan_validate_clean_json`.
 - `workspace-discriminator-set`: workspace mode is established by `specify init --workspace`, exercised by `tests/workspace.rs` (sync over a registry-only workspace).
-- `per-candidate-project-routing`: `tests/plan_orchestrate/propose.rs::propose_from_fan_out_golden` writes single-target slices each bound to their `project`; `reconcile_project_binding_required` / `propose_reconcile_project_orphan` pin the routing guards.
+- `per-candidate-project-routing`: `tests/workflow/propose.rs::propose_from_fan_out_golden` writes single-target slices each bound to their `project`; `reconcile_project_binding_required` / `propose_reconcile_project_orphan` pin the routing guards.
 - `workspace-sync-before-propose`: `tests/workspace.rs::planning_sync_two_symlink_peers` materialises the peer context that routing reads (no orphan/unrouted candidate).
 
 ## Reproducing by hand (optional)

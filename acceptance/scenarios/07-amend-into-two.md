@@ -28,7 +28,7 @@ Prove the Gate-1 amendment flow: an operator splits a one-slice plan into two sl
 
 ## Automated coverage
 
-Proven by the plan-mutation and transition tests in [`augentic/specify-cli` `tests/plan_orchestrate/`](https://github.com/augentic/specify-cli/tree/main/tests/plan_orchestrate), run under `cargo make test`. The slice decomposition itself is an operator judgment; the CLI mechanics that make it safe are deterministic:
+Proven by the plan-mutation and transition tests in [`augentic/specify-cli` `tests/workflow/`](https://github.com/augentic/specify-cli/tree/main/tests/workflow), run under `cargo make test`. The slice decomposition itself is an operator judgment; the CLI mechanics that make it safe are deterministic:
 
 - `plan-exists` / `plan-validates`: `validate.rs::plan_validate_clean_json` and `create.rs::plan_create_then_validate_passes_clean`.
 - `amend-splits-into-two`: `mutate.rs::plan_add_appends_pending_entry_json` (add the second slice) — `plan.yaml` round-trips with both entries.
