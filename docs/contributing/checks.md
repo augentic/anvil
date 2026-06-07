@@ -43,7 +43,7 @@ make lint
 
 This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-**Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved WASI tool (Road B). No imperative `Check` rule producer runs on `make lint`. Wall time on this tree was **~247s** (`real 246.75`, 2026-06-04); compare before/after with `/usr/bin/time make lint` when benchmarking locally.
+**Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved WASI tool (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds — measured **~8s** wall (`real 8.7` for `make lint`, `real 7.8` for the bare release binary, 2026-06-07); benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative (the obsolete `~247s` figure was a pre-migration debug-era measurement).
 
 Tooling contributors run the full local CI subset with:
 
