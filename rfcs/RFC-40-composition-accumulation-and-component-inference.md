@@ -4,6 +4,8 @@
 
 Ready for review. A first-scan consistency review surfaced one material issue and four secondary accuracy fixes — see [Review findings](#review-findings). R1 (the one blocking issue) is now **resolved** and folded into the design (§A4, Problem 1 point 3); R2 is **resolved** and folded into §A3 + the A3 touchpoints row; R3 is **resolved** and folded into §B2 (step 3 + "Implementation placement") and §B4; R4 is **resolved** and folded into §B4 (the cache stores the normalized skeleton keyed by provenance, and `specify catalog infer` computes the canonical fingerprint at read time) with matching cache-key wording in §B2 and Open question 4; R5 is **resolved** and folded into Phase 2 step 5 and the B6 cross-repo-touchpoints row (the doc-inversion sweep now enumerates every brief location, the two bullets to delete, and the third — `No CLI verbs for catalog edits` — to reframe for `specify catalog infer`). All review findings are now resolved.
 
+Beyond the original two-part design, this revision adds **Part C** (operator-defined component parts): a new operator-authored `parts.yaml` input that lets operators pre-define authoritative, schema-compliant component specifications which **seed and constrain** agent inference — carrying naming, promotion, and assurance authority — so the "operator defines, inference augments" scenario is first-class rather than unsupported. Incorporated per the operator-pre-definition requirement.
+
 ## Motivation
 
 Two design defects surfaced during end-to-end acceptance testing of the Vectis target on a multi-slice plan (14 slices, screenshots + documentation sources):
@@ -48,12 +50,16 @@ This contradicts the design intent established through the RFC process: componen
 - The "opt-in" posture means the feature effectively never activates on first-time projects.
 - The tab-bar-across-7-screens pattern (the canonical example in `plugins/spec/references/components.md`) is trivially detectable by an agent that reads the accumulated composition baseline.
 
+### Problem 3: Pure inference offers operators no authoritative seed
+
+Problem 2 swings the catalog from operator-authored to agent-authored — but it leaves no path for an operator to *pre-define* a component that inference must then honour and augment. Operator entries in `components.yaml` carry only a slug + status, with no structural payload, while inference identity is the structural fingerprint recomputed from the composition baseline (B2). The two never bind: a hand-written entry cannot anchor a fingerprint, cannot drive retroactive factoring (B7), cannot force a sub-threshold structure to be treated as shared, and cannot be verified. Operators frequently know the shared parts of a design *up front* (a tab bar, a list row, a card) and need to declare them once, change-wide, with naming and promotion authority — and have inference discover the remaining instances and wire them up. Pure inference leaves this scenario unsupported. Part C resolves it.
+
 ## Non-goals
 
 - Fixing up any specific generated project (test outputs have been discarded).
 - Changing the `composition.yaml` schema or the Vectis WASI tool validator.
 - Changing the merged baseline path (`.specify/specs/composition.yaml`).
-- Removing operator override capability — operators can still reject or confirm components, but inference is the default path.
+- Removing operator override capability — operators can still reject or confirm components, and may pre-define authoritative parts (Part C); inference remains the default path for everything not pinned.
 - Introducing composition generation into synthesis/refine (it remains a build-time concern).
 
 ## Design
@@ -255,6 +261,88 @@ Component inference is incremental (B3): a shared component only becomes detecta
 
 **Why this reconciles cleanly (no cross-branch hazard).** `/spec:execute` drives slices sequentially under an exclusive plan lock, and each slice merges into the baseline before the next begins. So when slice N builds, every prior slice's screens and code are already merged into the project tree; slice N edits the *current* state, not a divergent branch — there is no concurrent-edit / merge-conflict hazard between slices for this refactor. Idempotence holds: once the directive and shared code land, a later build's inference sees the component as already `confirmed` (B6 no-overwrite) and the prior screens already carrying the directive, so re-runs are no-ops.
 
+### Part C: Operator-defined component parts (`parts.yaml`)
+
+Part B makes inference the default author of the catalog. Part C restores — and strengthens — operator authorship by giving the operator an **authoritative, structure-bearing input** that inference must honour. This resolves Problem 3.
+
+#### C1. `parts.yaml` — operator-authored component parts
+
+A new operator-curated file declares **parts**: authoritative, schema-compliant component specifications scoped to the whole change.
+
+```text
+.specify/design-system/parts.yaml
+```
+
+Workspace mode: `<coordinator-root>/.specify/workspace/<project>/.specify/design-system/parts.yaml`.
+
+`parts.yaml` is an **input**, hand-authored and owned by the operator, sitting beside `tokens.yaml` and `assets.yaml`; the agent-written `components.yaml` (B1) remains the **resolved** catalog. This is an inputs-vs-resolved split, not a second writer over one file — so it never collides with B6's no-overwrite rules.
+
+Each part is a slug → a schema-compliant composition `group` fragment plus operator metadata. Identity is the **normalized skeleton** of that `group` (the exact artifact `build_group_skeleton` already produces in `wasi-tools/vectis/src/validate/engine/composition.rs`); the wiring inside the fragment (`bind` / `event` / `*-when` *values*) is illustrative and stripped before fingerprinting, so the operator may paste a representative real group.
+
+```yaml
+version: 1
+parts:
+  tab-bar:
+    description: "Bottom navigation across primary sections."
+    required: true          # assurance authority (C6); default false
+    group:                  # schema-compliant composition `group` fragment
+      active-when: "$route" # *-when key participates in identity (presence only)
+      items:
+        - icon-button: { bind: "home",     event: "Navigate(Home)" }
+        - icon-button: { bind: "search",   event: "Navigate(Search)" }
+        - icon-button: { bind: "settings", event: "Navigate(Settings)" }
+```
+
+- **`group`** — required; the structural payload. MUST validate against the composition `group` schema so it round-trips through `build_group_skeleton`.
+- **`description`** — optional; carried into the resolved catalog entry.
+- **`required`** — optional, default `false`; `true` enables assurance authority (C6).
+- Slugs: same kebab-case pattern as the catalog (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
+
+A part carries three authorities over inference: **naming** (the operator's slug wins), **promotion** (a pinned part is shared even below `--min-occurrences`), and **assurance** (`required` parts must be factored — C6).
+
+#### C2. Early validation gate (`specify slice validate`)
+
+`parts.yaml` is schema-validated on read, and `specify slice validate` gains intra-file coherence checks that catch operator authoring errors before any build:
+
+- `part-duplicate-slug` — two parts share a slug.
+- `part-fingerprint-collision` — two parts normalize to the **same** fingerprint under **different** slugs (illegal: the downstream `check_structural_identity` rule requires one skeleton per slug).
+- `part-rejected-conflict` — a part slug also appears as `status: rejected` in `components.yaml` (two contradictory operator surfaces; the operator resolves by removing one, rather than the engine silently choosing).
+
+#### C3. Seed at inference (amends the B2 algorithm)
+
+`specify catalog infer` reads `parts.yaml` as a **third authoritative input** alongside the composition baseline and the B4 candidate cache. The B2 algorithm gains:
+
+- **Step 0 (new).** For each part, run `build_group_skeleton` over its `group`, compute the canonical fingerprint at read time, and register a **pinned binding** `{ fingerprint → slug, required }`. Because this is the same normalizer used for baseline groups and cached skeletons (R4's "one normalizer, fingerprint at read time"), the pin is byte-comparable with discovered fingerprints by construction — no agent ever computes a hash.
+- **Step 4 (threshold).** `--min-occurrences` does **not** apply to a fingerprint matching a pinned binding (promotion authority): a pinned part is confirmed at one occurrence, or at zero (seeded ahead of the screen that will carry it).
+- **Step 5 (slug + reconciliation).** When a cluster's fingerprint matches a pinned binding, use the **operator's slug** and skip heuristic derivation and first-writer-wins suffixing for that fingerprint. The operator slug is the first-writer by mandate, so a heuristic cluster with a *different* fingerprint that happens to derive the same name is suffixed `slug-<fp-prefix>` (existing B2 rule), deterministically resolved in the operator's favour.
+
+#### C4. Resolved-catalog projection (idempotent)
+
+`specify catalog infer` projects pinned parts into `components.yaml` as `status: confirmed`, re-derived from `parts.yaml` on every run. Because the part file is the durable source and the catalog is derived, re-runs are no-ops and there is no clobber concern — this sidesteps B6's no-overwrite handling for operator entries entirely.
+
+#### C5. Retroactive factoring reaches backward (reuses B7)
+
+Because pinned parts carry live fingerprints in the clustering table, **B7 applies unchanged**: any baseline screen — including those authored by prior, already-merged slices — whose group matches a pinned fingerprint receives the directive-only `component: <slug>` `delta.modified` and has its generated views refactored to consume the shared component. So a part introduced mid-plan propagates backward over screens that already landed, with no dedicated refactoring slice, under the same sequential-execution safety argument B7 already makes.
+
+#### C6. Assurance gate (`required` parts)
+
+For parts marked `required: true`, `specify slice build --phase finalize` adds a coherence check against the accumulated baseline, surfaced through A4's non-blocking diagnostic channel:
+
+- `part-unsatisfied` — a `required` part whose fingerprint matched **no** group in the accumulated baseline. This is the symmetric counterpart to the composition validator's existing catalog cross-reference ("every `component:` must be `confirmed`"): here, "every `required` part must be factored somewhere." A warning by default; it MAY be promoted to a hard `specify slice merge` precondition behind an A3-style override if operators want "must" to block.
+
+#### C7. Reconciliation precedence (operator part vs inference)
+
+| Situation | Resolution |
+| --- | --- |
+| Part fingerprint == an inferred cluster fingerprint | Same component; operator slug wins; one `confirmed` entry, no duplicate. |
+| Part fingerprint != any cluster; part slug == a heuristic slug for a different fingerprint | Operator part is first-writer, keeps the bare slug; the heuristic cluster is suffixed `slug-<fp-prefix>` (B2). |
+| Two parts, same slug | `part-duplicate-slug` (C2) — reject. |
+| Two parts, same fingerprint, different slugs | `part-fingerprint-collision` (C2) — reject (violates `check_structural_identity`). |
+| Part slug == existing `rejected` catalog entry | `part-rejected-conflict` (C2) — reject; operator resolves. |
+| `required` part matches no baseline group | `part-unsatisfied` (C6). |
+
+The throughline: **operator parts win naming and promotion; inference augments by discovering further instances of pinned fingerprints and by detecting unpinned components alongside.**
+
 ## Implementation plan
 
 ### Phase 1 — Composition accumulation (critical path)
@@ -271,6 +359,8 @@ Component inference is incremental (B3): a shared component only becomes detecta
 3. **Candidate cache.** Update the screenshots adapter pipeline brief (stage 6) to write normalized `group` skeletons to `.specify/.cache/component-candidates/` keyed by provenance (B4). Update `specify catalog infer` to read from the cache and compute the canonical fingerprint at read time.
 4. **Retroactive factoring briefs.** Update `build/composition.md` to emit directive-only `delta.modified` for prior-slice screens that match a newly promoted component, and update the writer sub-briefs (`build/core/write.md`, `build/ios/write.md`, `build/android/write.md`) to generate the shared component and refactor the affected prior screens' views (B7).
 5. **Documentation (doc-inversion sweep — R5).** Rewrite the canonical runtime explainer `plugins/spec/references/components.md` to reflect the agent-inferred model: **delete** the two "What the catalog does not do" bullets ("No auto-population — operator-curated only"; "No retroactive baseline rewrite without a refactor slice"), both inverted by B1/B7, **reframe** the third bullet ("No CLI verbs for catalog edits — edit YAML directly like tokens/assets") to note that `specify catalog infer` now writes the catalog while operators still hand-edit to reject/rename (the fourth bullet, "No sharing across projects", stays accurate), and invert the residual operator-curated framing (the "Vectis-only, opt-in" lede → agent-inferred/operator-reviewable with auto-creation by `specify catalog infer`; the "cross-slice component drift" close → agent inference over the accumulated baseline + candidate cache; the "Operator workflow" section → inference-first review/reject per B5). The `docs/explanation/components.md` mdBook stub and the `adapters/sources/screenshots/references/spec-runtime/components.md` symlink both resolve here — do not edit them directly. Sweep the same posture flip through the build briefs in one pass: `adapters/targets/vectis/briefs/build.md` (re-key line 7 to split tokens/assets = operator-curated from components = agent-inferred/operator-reviewable; line 22 "opt-in component catalog" → "agent-inferred component catalog") and `adapters/targets/vectis/briefs/build/composition.md` (input #4 "operator-curated, read-only" → "agent-inferred, read-only"). The other catalog mentions (`build.md` lines 37 / 142 / 144, `composition.md` step 6, the write sub-briefs) describe path / merge / factoring behaviour that stays correct under B1 and are **not** swept; `merge.md` carries no operator-curated catalog language and is out of scope.
+6. **Operator parts (`parts.yaml`).** Add `schemas/design-system/parts.schema.json` + the `PARTS_JSON_SCHEMA` constant (and its `crates/schema/tests/schemas.rs` parity assertion), extend `crates/workflow/src/design_system.rs` to load `parts.yaml`, seed pinned bindings into `specify catalog infer` with `--min-occurrences` bypass and slug precedence (C3/C4), and add the `part-duplicate-slug` / `part-fingerprint-collision` / `part-rejected-conflict` validation findings (C2) plus the `part-unsatisfied` finalize coherence check (C6). Tests: seeding + reconciliation in `tests/catalog_infer.rs`; `part-*` findings in `tests/slice/validate_catalog.rs`.
+7. **Operator parts doc + brief.** Document `parts.yaml` (the inputs-vs-resolved split and the naming / promotion / assurance authorities) in `plugins/spec/references/components.md`, and note its consumption in `adapters/targets/vectis/briefs/build.md` (step 0.5 reads `parts.yaml`) and `adapters/targets/vectis/briefs/build/composition.md` (pinned parts participate in factoring per C5/B7).
 
 ### Phase 3 — Acceptance
 
@@ -281,6 +371,8 @@ Component inference is incremental (B3): a shared component only becomes detecta
 Phase 1 is **schema-compatible**: no changes to `composition.yaml` format, `plan.yaml`, or any existing schema. The brief amendment is advisory (agents read it on next invocation); the CLI gate is additive.
 
 Phase 2 is **additive**: `specify catalog infer` is a new verb; the candidate cache is a new directory under `.specify/.cache/`; catalog inference adds entries but never removes them.
+
+**Operator parts are additive.** `parts.yaml` is a new operator-authored input under `.specify/design-system/`; an absent file preserves the Part B behaviour exactly (inference with no pins). Parts only ever *add* pinned bindings and project `confirmed` entries; they never remove catalog entries. Existing `rejected` entries still win unless the operator removes the conflicting part (surfaced as `part-rejected-conflict`).
 
 **Breaking change:** The posture flip from "operator-curated, opt-in" to "agent-inferred, operator-reviewable" is a documentation and workflow expectation change. Existing projects with `status: rejected` entries are unaffected (those entries are respected). Projects relying on the absent-catalog-means-no-factoring guarantee will see component factoring activate once any shared structures exist — this is the intended improvement.
 
@@ -313,6 +405,12 @@ Phase 2 is **additive**: `specify catalog infer` is a new verb; the candidate ca
 | Skeleton engine reuse (B2)               | specify-cli | `wasi-tools/vectis/src/validate/engine/composition.rs` (`build_group_skeleton`, `check_structural_identity`) — reuse, do not re-derive                                                                                                           |
 | Candidate cache reader                   | specify-cli | `crates/workflow/src/design_system.rs` (extend — load-only today; B2/B6 add the writer)                                                                                                                                                          |
 | Composition accumulation tests           | specify-cli | `crates/workflow/tests/merge_slice.rs` (kernel accumulation + A3 gate) and `tests/plan/end_to_end.rs` (multi-slice e2e — the relocated fan-in/fan-out suite; `tests/fan_in_fan_out.rs` no longer exists) |
+| Operator parts schema (C1)               | specify-cli | `schemas/design-system/parts.schema.json` (new), `crates/schema/src/constants.rs` (`PARTS_JSON_SCHEMA`), `crates/schema/tests/schemas.rs` (parity) |
+| Operator parts loader (C1)               | specify-cli | `crates/workflow/src/design_system.rs` (load `parts.yaml` beside the candidate cache) |
+| Parts seeding into inference (C3/C4)      | specify-cli | `src/runtime/commands/catalog/infer.rs` (pin registration, `--min-occurrences` bypass, slug precedence, projection), `wasi-tools/vectis/src/validate/engine/composition.rs` (`build_group_skeleton` reuse over each part's `group`) |
+| Parts validation findings (C2/C6)        | specify-cli | `crates/workflow/src/slice/validate/catalog.rs` (`part-duplicate-slug` / `part-fingerprint-collision` / `part-rejected-conflict`), `src/runtime/commands/slice/build.rs` (`part-unsatisfied` finalize check) |
+| Operator parts doc + brief (C1–C6)       | specify     | `plugins/spec/references/components.md` (document `parts.yaml`), `adapters/targets/vectis/briefs/build.md` (step 0.5 reads `parts.yaml`), `adapters/targets/vectis/briefs/build/composition.md` (pinned parts factor per C5) |
+| Operator parts tests                     | specify-cli | `tests/catalog_infer.rs` (seeding + reconciliation), `tests/slice/validate_catalog.rs` (`part-*` findings) |
 | Catalog inference tests                  | specify-cli | `tests/catalog_infer.rs` (new)                                                                                                                                                                                                                   |
 
 
@@ -323,6 +421,9 @@ Phase 2 is **additive**: `specify catalog infer` is a new verb; the candidate ca
 3. **Resolved (hard error, narrow override).** The A3 gate aborts the merge with a typed error (`composition-baseline-overwrite-blocked`), consistent with the existing `composition-`* aborts in the merge engine — not a non-blocking finding. The **only** override is the narrow, self-documenting `--allow-composition-replace` flag; no generic `specify slice merge --force` is introduced. Rationale: whole-document replacement is extremely rare (routine per-screen add/modify/remove flows through `delta:` and never reaches the gate), so there is no ergonomic case for a broad override, and a habitual `--force` would re-open the accidental-wipe vector the gate closes. See A3, and A2a for why the explicit delta envelope (including first-class, explicit `removed`) is necessary rather than an implicit sectional upsert.
 4. **Resolved (fingerprint is identity; slug is a disambiguated label).** Identity is the structural fingerprint, not the slug. The candidate cache stores the normalized skeleton keyed by provenance (`<slice>/<screen>/<group-path>.yaml`) — not `<slug>.yaml` (which would silently clobber) and not `<fingerprint>.yaml` (which stage-6 cannot compute consistently with the deterministic tool; see R4/B4) — and `specify catalog infer` recomputes the canonical fingerprint at read time, clustering and deduplicating by that fingerprint. When two distinct fingerprints derive the same heuristic slug, first-writer-wins keeps the bare slug and later fingerprints are suffixed with a stable, fingerprint-derived prefix (`card-row-<fp-prefix>`, never an ordinal), reproducible across runs. This respects the downstream `check_structural_identity` invariant (one skeleton per `component: <slug>`), so inference never emits a colliding slug. Operators rename auto-suffixed slugs (B5), kept stable by B6's no-overwrite rule. See B2 "Identity is the structural fingerprint" and the B4 cache-key change.
 5. **Resolved (yes — directive-only inline factoring; see B7).** A slice may modify baseline screens it did not author, for the specific purpose of folding in a cross-slice component discovery, without a dedicated refactoring slice. Inference is incremental, so the build that detects the Nth instance of a shared structure attaches the `component:` directive to the prior-slice screens (directive-only `delta.modified`, structurally identical by construction, behaviour-preserving) and refactors their generated code to consume the newly factored shared component. This reconciles cleanly because `/spec:execute` runs slices sequentially under an exclusive plan lock — prior screens and code are already merged into the project tree when slice N builds, so there is no cross-branch conflict. **Restructuring** a prior screen's layout (as opposed to attaching a directive to an already-matching group) remains out of scope for inline factoring and stays on the dedicated-refactoring-slice path (A2a case 2, A3).
+6. **`required` part enforcement strength.** A `part-unsatisfied` result is a non-blocking warning at finalize by default (consistent with A4). Should `required: true` additionally support a hard `specify slice merge` precondition behind an A3-style `--allow-unsatisfied-parts` override, for operators who want "required" to block the merge?
+7. **Provenance discriminant on `components.yaml`.** Should resolved entries gain an optional `source: operator | inferred` field so the `specify catalog infer --dry-run` diff and B6 reconciliation make a part's origin explicit, or does the durable `parts.yaml` source make this redundant (catalog kept minimal)?
+8. **Forward-seeding zero-instance parts.** When a `required` part matches zero baseline groups, should `specify catalog infer` still project a `confirmed` `components.yaml` entry immediately (so code-gen can scaffold the shared component ahead of first use), or only once the first matching instance lands (catalog stays strictly reflective of the baseline)?
 
 ## Review findings
 
