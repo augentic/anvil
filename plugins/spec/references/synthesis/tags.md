@@ -6,9 +6,9 @@ The kernel renders three review-signal tags into `spec.md` from each requirement
 
 | Tag             | Mirrors `Status:` | Meaning                                                                          | Operator action                                            |
 | --------------- | ----------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `[unknown]`     | `unknown`         | No contributing Evidence supplied a claim for this requirement.                  | Add a source via `specify plan amend --add-source` and re-refine, or hand-edit. |
-| `[conflict]`    | `conflict`        | Multiple sources at the same authority class disagree; no winner.                | Hand-edit `spec.md` to pick a value and flip `Status: agreed`, or amend the plan to drop the losing source. |
-| `[divergence]`  | `divergence`      | Multiple sources disagree, but one wins by authority class (`intent > documentation > behaviour`). | Hand-edit `spec.md` if the authority-resolved winner is wrong, otherwise proceed. |
+| `[unknown]`     | `unknown`         | No contributing Evidence supplied a claim for this requirement.                  | Add a source via `specify plan amend --add-source` and re-run `/spec:refine`. |
+| `[conflict]`    | `conflict`        | Multiple sources at the same authority class disagree; no winner.                | Pin the winner via `specify plan amend --authority-override` (or amend the plan to drop the losing source), then re-run `/spec:refine`. |
+| `[divergence]`  | `divergence`      | Multiple sources disagree, but one wins by authority class (`intent > documentation > behaviour`). | If the authority-resolved winner is wrong, pin the right source via `specify plan amend --authority-override` and re-run `/spec:refine`; otherwise proceed. |
 
 Headline shape:
 
@@ -82,7 +82,7 @@ For each requirement block written with a `[unknown]` / `[conflict]` / `[diverge
 | `[conflict]`    | `slice.synthesis.conflict`     | `{ slice-name, requirement-id }`         |
 | `[divergence]`  | `slice.synthesis.divergence`   | `{ slice-name, requirement-id }`         |
 
-The event is the durable hand-off `/spec:execute` and downstream review tooling consume to surface synthesis tags at loop boundaries. The journal event is emitted regardless of whether the operator subsequently reconciles by hand-editing `spec.md`.
+The event is the durable hand-off `/spec:execute` and downstream review tooling consume to surface synthesis tags at loop boundaries. The journal event is emitted regardless of whether the operator subsequently reconciles by re-running `/spec:refine` (after amending an `authority-override` or the source set).
 
 ## Anti-patterns
 

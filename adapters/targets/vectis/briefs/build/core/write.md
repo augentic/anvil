@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) Step 4. Generates or updates the Crux shared Rust core under `${PROJECT_DIR}/shared/`. Run inside its own sub-agent with a clean context window.
 
-Carries the body of the retired `vectis-core-writer` skill. The Crux 0.17 idioms and the artifact-to-code mapping live in the [`../../../references/crux/`](../../../references/crux/) reference shelf.
+The Crux 0.17 idioms and the artifact-to-code mapping live in the [`../../../references/crux/`](../../../references/crux/) reference shelf.
 
 ## Mode detection
 

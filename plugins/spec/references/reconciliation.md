@@ -63,7 +63,7 @@ Synthesis walks three steps in order:
 2. **Default ordering.** Otherwise the higher authority class wins. The losing claim survives as inline commentary, the requirement is tagged `[divergence]`, and `Status:` becomes `divergence`.
 3. **Still tied.** If both claims sit at the same authority class and disagree, neither wins: the requirement is tagged `[conflict]` and `Status:` becomes `conflict`.
 
-Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by hand-editing `spec.md` or amending the plan to drop a source.
+Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing the kernel-rendered `spec.md` provenance lines.
 
 ## model.yaml and the provenance trail
 

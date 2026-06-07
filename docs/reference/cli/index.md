@@ -23,7 +23,7 @@ See [Prerequisites](../../orientation/prerequisites.md) for all install paths an
 
 The CLI owns operations that require understanding `.specify/` directory structure or spec format. Operations that require semantic understanding or context (like deciding what to build) stay with the agent.
 
-For the rationale behind this split, see [CLI owns correctness, agent owns judgment](../../explanation/decision-log.md#cli-owns-correctness-agent-owns-judgment) in the Decision Log.
+The CLI owns correctness (deterministic structural invariants); the agent owns judgment (semantic evaluation).
 
 | Use CLI when | Use agent when |
 |-------------|---------------|

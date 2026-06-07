@@ -47,16 +47,18 @@ Technical implementation guidance. Folds in the target `shape` brief (`adapters/
 
 ## 4. `tasks.md`
 
-Implementation sequencing as plain markdown checkboxes. Order follows the target's `shape` brief's `tasks.md` skeleton (the Omnia shape brief prescribes `crate → tests → guest wiring → review`; Vectis prescribes `core → tests → shells`; contracts prescribes `author → import → verify`).
+Implementation sequencing as numbered markdown checkboxes grouped under `## N. <Group>` headings. Group order follows the target's `shape` brief's `tasks.md` skeleton (the Omnia shape brief prescribes `crate → tests → guest wiring → review`; Vectis prescribes `core → tests → shells`; contracts prescribes `author → import → verify`).
 
-Format:
+Format — one `## N. <Group>` heading per stage, then one `- [ ] N.M <description>` checkbox per task:
 
 ```markdown
-- [ ] <Imperative task description>
-- [ ] <Next task>
+## 1. <Group>
+
+- [ ] 1.1 <Imperative task description>
+- [ ] 1.2 <Next task>
 ```
 
-One bullet per task. Nesting (`  - [ ]`) is allowed for sub-tasks but discouraged — prefer flat lists per H2 section. `tasks.md` carries no provenance and no narrative prose outside the checkbox list.
+`specify slice validate` gates the shape: every task line MUST match `- [ ] X.Y <description>` (the dotted number is required) and sit under a `## ` heading — a bare `- <item>` or an un-numbered `- [ ] <item>` fails `tasks.use-checkbox-format` / `tasks.grouped-under-headings`. An optional `<!-- skill: plugin:skill-name -->` directive may trail a task (see [`../artifact-conventions.md`](../artifact-conventions.md)). `tasks.md` carries no provenance and no narrative prose outside the checkbox list.
 
 ## What synthesis never does
 

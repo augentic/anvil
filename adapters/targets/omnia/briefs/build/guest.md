@@ -2,7 +2,7 @@
 
 Loaded by [../build.md](../build.md) phase 4 on **first build only** (when no `src/lib.rs` exists at the workspace root). Subsequent builds skip this step; route / topic / WebSocket wiring updates are folded into [crate writer](crate.md)'s four-category cadence.
 
-Carries the body of the retired `omnia-guest-writer` skill. The guest is a thin WASI/wasm32 wrapper — it owns HTTP routing, topic dispatch, WebSocket exports, provider setup, and config validation; ALL business logic lives in domain crates under `crates/`.
+The guest is a thin WASI/wasm32 wrapper — it owns HTTP routing, topic dispatch, WebSocket exports, provider setup, and config validation; ALL business logic lives in domain crates under `crates/`.
 
 ## Hard rules
 

@@ -5,7 +5,7 @@ This catalogue has two readers:
 - **Operators** triaging a `deferred` outcome from [`../briefs/build.md`](../briefs/build.md) § Template / version-pin drift handling, or a Mode 3 cap-matrix failure from [`../briefs/merge.md`](../briefs/merge.md). Match the symptom to one of the items below, then escalate via a template-fix slice rooted in the CLI repo.
 - **The host-side template-updater workflow** living in `augentic/specify-cli`'s vectis carve-out. The workflow checks this list **first** when a fresh `specify vectis update-versions --verify` run fails: if the reproduced failure matches an item below, the workflow follows that item's playbook rather than re-diagnosing from scratch.
 
-Concrete fix items carried into this catalogue from earlier Vectis template-update chunks. Each item is reproducible today via:
+Concrete fix items in this catalogue from Vectis template-update work. Each item is reproducible today via:
 
 ```sh
 specify vectis update-versions --dry-run --verify
@@ -23,7 +23,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
 
 **Root cause**: `crux_core 0.17.0`'s `cli` feature transitively pins `uniffi_bindgen = "=0.29.4"`. `<specify-cli>/templates/vectis/core/codegen.rs` calls `crux_core::cli::bindgen(...)` for Kotlin bindings. Mixing a 0.31 runtime (in `shared`) with a 0.29 bindgen fails. There is no Crux release today that tracks `uniffi_bindgen 0.31`.
 
-**Why it cannot be hotfixed by pin bumping**: tried and reverted during chunk 11. The Xcode 26+ iOS concern that originally motivated the bump (`import sharedFFI` failing under cargo-swift 0.9's bindgen output) is already addressed by bumping the *per-developer* cargo-swift install to 0.11; cargo-swift 0.11's bindgen reads uniffi 0.29.4 metadata correctly because the metadata format is stable across 0.29 → 0.31.
+**Why it cannot be hotfixed by pin bumping**: tried and reverted. The Xcode 26+ iOS concern that originally motivated the bump (`import sharedFFI` failing under cargo-swift 0.9's bindgen output) is already addressed by bumping the *per-developer* cargo-swift install to 0.11; cargo-swift 0.11's bindgen reads uniffi 0.29.4 metadata correctly because the metadata format is stable across 0.29 → 0.31.
 
 **Fix path** (structural, scoped by this item):
 
@@ -52,7 +52,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
 - **Cap AGP below 9.0 in `update-versions`**: teach `update_versions::query::google_maven_latest_stable` (or the coordinate-specific query fn for AGP) in `<specify-cli>/crates/vectis/src/update_versions/query.rs` to filter on a max-version constraint `< 9.0`. Add the cap as a constant in `update_versions::query` with a comment citing this entry. This is the narrower fix and correctly reflects that *Vectis's Android plugin choice* is what blocks AGP 9.x, not a user preference.
 - **Drive `rust-android-gradle` upstream**: file or contribute a PR that removes the `setFileMode(Integer)` call. When a new release ships, drop the cap added above.
 
-Chunk 8 already pinned Gradle-the-wrapper to 8.13 via a scratch bootstrap (`init::android::bootstrap_wrapper` in `<specify-cli>/crates/vectis/src/init/android.rs`), so the bundled wrapper works today. The cap prevents the *system* Gradle on the developer's machine from being driven into 9.x territory by a stale AGP pin. Do not remove the bootstrap workaround when this entry is fixed -- the two are independent.
+Gradle-the-wrapper is pinned to 8.13 via a scratch bootstrap (`init::android::bootstrap_wrapper` in `<specify-cli>/crates/vectis/src/init/android.rs`), so the bundled wrapper works today. The cap prevents the *system* Gradle on the developer's machine from being driven into 9.x territory by a stale AGP pin. Do not remove the bootstrap workaround when this entry is fixed -- the two are independent.
 
 ---
 
@@ -104,4 +104,4 @@ This item is purely cosmetic -- no build or verify step actually fails. It is li
 
 ## Sizing reminder
 
-All four items above were concretely produced by chunk 11's `specify vectis update-versions --verify` verification. When chunk 13 (this skill) runs for the first time against live registries, the only item it is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.
+All four items above were concretely produced by a `specify vectis update-versions --verify` verification run. When this skill runs for the first time against live registries, the only item it is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.

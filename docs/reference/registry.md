@@ -71,7 +71,7 @@ The registry crate owns the materialiser and workspace verbs:
 
 Selection is resolved once, before side effects. A human-invoked `workspace sync` with no selectors refreshes every registered project. `/spec:execute` uses selected sync behavior to materialise only the next plan entry's target slot before execution.
 
-Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. The `workspace merge` verb was removed pre-2.0 — landing is an explicit operator action outside Specify.
+Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. There is no `workspace merge` verb — landing is an explicit operator action outside Specify.
 
 After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` verifies each required per-project PR with `gh pr view`, then invokes `specify plan archive` to archive the plan; it never merges PRs.
 

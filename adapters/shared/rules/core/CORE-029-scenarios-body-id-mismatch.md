@@ -4,19 +4,24 @@ title: Scenarios Body Id Mismatch
 severity: important
 trigger: Scenario body id disagrees with frontmatter id.
 rule_hints:
-  - kind: authoring-predicate
-    value: scenarios.body-id-mismatch
-    description: Run the retired imperative `scenarios.body-id-mismatch` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-029-scenarios-body-id-mismatch.md
+    description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
+  - kind: tool
+    value: scenarios
+    description: Run the `scenarios` framework checker, which discovers scenario packs under PROJECT_DIR and flags any whose visible `Scenario ID:` body line disagrees with the frontmatter `id`.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `scenarios.body-id-mismatch` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+A scenario's visible `Scenario ID:` body line must match its frontmatter `id`. When the two disagree, readers cannot trust the citation that links the prose back to the structured scenario.
+
+This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the acceptance scenario pack, target adapter tests, and plugin skill fixtures, then compares each one's body id against its frontmatter id. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 
-Violations surfaced by `scenarios.body-id-mismatch` on the framework tree.
+- A visible `Scenario ID:` body line whose id differs from the frontmatter `id`.
 
 ## Fix
 
-Resolve the violation described in the finding message for `scenarios.body-id-mismatch`.
+Align the body `Scenario ID:` line with the frontmatter `id`.

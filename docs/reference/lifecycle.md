@@ -9,7 +9,7 @@ Specify carries three stacked lifecycles. The plan lifecycle gates execution; th
 <p class="pipeline-caption">Plan pending→approved; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
 </div>
 
-Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md).
+Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md).
 
 ## Plan lifecycle
 

@@ -19,7 +19,7 @@ Runtime checklist for source adapters and synthesis self-review. Full artifact r
 
 - `tasks.md` exists when `/spec:build` depends on it
 - Tasks are implementation steps and checkpoints only
-- Every task uses checkbox format (`- [ ]`)
+- Every task uses numbered checkbox format (`- [ ] X.Y …`) grouped under `## N.` headings
 
 ## Composition (Vectis only)
 

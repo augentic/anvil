@@ -52,4 +52,3 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ## Design decisions
 
-For the reasoning behind Specify's architectural choices, see the [Decision Log](../explanation/decision-log.md).

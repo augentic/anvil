@@ -1,8 +1,6 @@
 # RFC-24: Omnia Plan Composition
 
-> Status: Draft - Depends: RFC-20 and RFC-25 (retired milestone docs), [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
-
-> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> Status: Draft - Depends: RFC-20 and RFC-25, [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
 
 ## Abstract
 
@@ -282,7 +280,7 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 
 ## References
 
-- RFC-20 (retired milestone doc) — surfaces, adapter leaves, and the routing-hint precedence this RFC's `plan compose` predecessor joins against.
+- RFC-20 — surfaces, adapter leaves, and the routing-hint precedence this RFC's `plan compose` predecessor joins against.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache that backs source candidate sidecars between plan and execute.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) — the build brief whose `$CRATE_NAME` contract this RFC formalises into a schema field, and which owns the Omnia service workspace into which handlers land.

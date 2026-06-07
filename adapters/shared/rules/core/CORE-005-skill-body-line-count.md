@@ -8,17 +8,19 @@ rule_hints:
     value: "plugins/**/SKILL.md"
     description: Narrow the candidate set to plugin skill manifests before the body-size check fires.
   - kind: cardinality
-    value: skill-body-line-count-max-200
-    description: For each `Skill` fact in the candidate set, assert that `body_line_count` is at most 200. One finding per over-budget skill, with the `(actual, max)` pair surfaced as structured evidence.
+    value: skill-body-line-count
+    config:
+      max: 200
+    description: For each `Skill` fact in the candidate set, assert that `body_line_count` is at most the `config.max` cap. One finding per over-budget skill, with the `(actual, max)` pair surfaced as structured evidence.
 ---
 
 ## Rule
 
 Every `SKILL.md` body under `plugins/<plugin>/skills/<skill>/` stays within the 200-line cap. Skill bodies load into context the moment the skill triggers; a 1,200-line skill crowds out the operator's request, the artifacts under inspection, and every other skill body that fires later in the same turn. 200 specifically leaves room for the algorithm spine, the Critical Path, and a moderate amount of inline prose — but not enough to absorb every example, every flag re-documentation, and every edge case forever. Overflow is the cue to relocate prose to `references/<topic>.md` and link from the SKILL.md body, not to raise the cap.
 
-The path scope mirrors the retired imperative `skill.body-line-count` predicate: only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths participate. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the cardinality check.
+The path scope covers only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the cardinality check.
 
-The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/standards/src/lint/index/skill.rs::extract`, whose `body_line_count` field counts non-frontmatter body lines verbatim), so the rule cost is one bound check per candidate skill at lint time. The single source discriminator hardcodes both the metric (`Skill.body_line_count`) and the upper bound (200); a richer config shape (`metric: …, max: …`) is deferred until a second consumer arrives.
+The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/standards/src/lint/index/skill.rs::extract`, whose `body_line_count` field counts non-frontmatter body lines verbatim), so the rule cost is one bound check per candidate skill at lint time. The `value` selects the `skill-body-line-count` metric; the 200-line cap is policy carried in the rule's `config: { max }`, never a `const` in the engine arm.
 
 ## Look For
 

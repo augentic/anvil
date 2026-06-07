@@ -34,9 +34,9 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 
 | Artifact            | Question                            | Location                                                          |
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `change.md`         | Why is the change happening?        | `.specify/change.md` (workspace mode: at workspace)          |
-| `plan.yaml`         | Which slices, in what order?        | `.specify/plan.yaml`                                              |
-| `discovery.md`      | What leads did sources surface? | `.specify/discovery.md`                                           |
+| `change.md`         | Why is the change happening?        | `change.md` (project root; workspace mode: at workspace)          |
+| `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
+| `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
 | `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
 | `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<unit>/spec.md`                     |
 | `design.md`         | How will it be implemented?         | `.specify/slices/<name>/design.md`                                |

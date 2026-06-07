@@ -881,7 +881,7 @@ html.ayu {
   background: var(--spec-danger-soft);
 }
 
-/* Authority widget (Wave 4) ------------------------------------------- */
+/* Authority widget ------------------------------------------- */
 .content main .authority-widget {
   background: var(--spec-panel);
   border: 1px solid var(--spec-rule);
@@ -1090,7 +1090,7 @@ html.ayu {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Native admonitions — styled to match the former .callout variants.
+ * Native admonitions.
  * mdBook 0.5 renders `> [!KIND]` as blockquote.blockquote-tag-* .
  * ──────────────────────────────────────────────────────────────────────── */
 

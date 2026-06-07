@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) Step 11 after [Android verify](write.md#verify-max-3-iterations) succeeds. Scope: every Kotlin file under `${ANDROID_SHELL_DIR}` plus read-only access to `${PROJECT_DIR}/shared/src/app.rs` and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml`).
 
-Carries the body of the retired `vectis-android-reviewer` skill. The Android-specific team-spawn protocol lives in [`review/team-protocol-android.md`](../../../references/review/team-protocol-android.md).
+The Android-specific team-spawn protocol lives in [`review/team-protocol-android.md`](../../../references/review/team-protocol-android.md).
 
 ## Pipeline
 

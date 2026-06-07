@@ -4,19 +4,25 @@ title: Scenarios Schema Violation
 severity: important
 trigger: Scenario frontmatter fails scenario.schema.json.
 rule_hints:
-  - kind: authoring-predicate
-    value: scenarios.schema-violation
-    description: Run the retired imperative `scenarios.schema-violation` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: adapters/shared/rules/core/CORE-032-scenarios-schema-violation.md
+    description: Sentinel include so the rule carries a candidate set; the `scenario` schema selector validates the whole scenario fact family and ignores the candidate set.
+  - kind: schema
+    value: scenario
+    description: Validate every discovered scenario's frontmatter against the registered `scenario` schema, whole-tree, emitting one finding per schema error.
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `scenarios.schema-violation` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+Every scenario file's YAML frontmatter must satisfy the scenario schema (`scenario.schema.json`): valid YAML, the required fields, and the declared field shapes. The scenario files live partly under the un-indexed `acceptance/` tree, so the lint indexer runs a dedicated scenario discovery pass that walks the scenario roots itself and emits a `scenario` fact family carrying each file's parsed frontmatter.
+
+This check is whole-tree: the `kind: schema` hint with `value: scenario` validates every discovered scenario's frontmatter against the registered scenario schema, emitting one finding per schema error. The rule's `path-pattern` is a sentinel include; the scenario schema selector evaluates the whole fact family regardless of the candidate set.
 
 ## Look For
 
-Violations surfaced by `scenarios.schema-violation` on the framework tree.
+- Frontmatter that is not valid YAML.
+- Missing required fields or values that violate the scenario schema's shapes.
 
 ## Fix
 
-Resolve the violation described in the finding message for `scenarios.schema-violation`.
+Correct the scenario frontmatter to satisfy `scenario.schema.json`; the finding message names the failing field and constraint.

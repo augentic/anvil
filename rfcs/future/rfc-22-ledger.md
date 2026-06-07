@@ -1,8 +1,6 @@
 # RFC-22: Migration Ledger and Slice Mapping
 
-> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-20, RFC-25 (retired milestone docs), [RFC-21](rfc-21-catalogue.md)
-
-> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-20, RFC-25, [RFC-21](rfc-21-catalogue.md)
 
 ## Abstract
 
@@ -286,7 +284,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 ## References
 
-- RFC-3a / RFC-3b / RFC-9 / RFC-20 / RFC-25 (retired milestone docs) — predecessors this RFC annotates toward the RFC-29 source-adapter flow.
+- RFC-3a / RFC-3b / RFC-9 / RFC-20 / RFC-25 — predecessors this RFC annotates toward the RFC-29 source-adapter flow.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
 - [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the ledger preserves.

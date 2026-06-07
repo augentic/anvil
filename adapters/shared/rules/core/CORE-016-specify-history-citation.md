@@ -38,4 +38,4 @@ Retired Specify design-history citations (`RFC-N` where `N < 100`, `rfcs/…`, a
 
 ## Fix
 
-Cite the live decision topic in [docs/explanation/decision-log.md](../../../../docs/explanation/decision-log.md) or strip the historical reference.
+Strip the historical reference, or cite a current reference doc instead.

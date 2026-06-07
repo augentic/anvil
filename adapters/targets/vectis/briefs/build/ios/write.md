@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) when `ios` is in the platform set (carried from `project.yaml.platforms` via `proposal.md ## Platforms`). The composition validation gate ([../composition.md](../composition.md)) MUST have passed first.
 
-Carries the body of the retired `vectis-ios-writer` skill. The SwiftUI patterns, Crux iOS shell anatomy, token templates, and design-system integration depth live in [`../../../references/ios/`](../../../references/ios/).
+The SwiftUI patterns, Crux iOS shell anatomy, token templates, and design-system integration depth live in [`../../../references/ios/`](../../../references/ios/).
 
 ## Mode detection
 

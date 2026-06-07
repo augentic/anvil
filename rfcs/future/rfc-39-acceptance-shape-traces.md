@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Today acceptance has exactly two tiers: a **deterministic surface** (`cargo make test` in `augentic/specify-cli`, fed by fixtures) and a **manual operator sweep** (the [`acceptance/lifecycle/`](../../acceptance/lifecycle/README.md) scenarios, judged by a human or `cursor-agent`). A scenario is either fully automatable (`backend: fixture`) or fully manual (`backend: manual`); there is nothing in between. As a result the manual sweep is the *only* end-to-end proof of LLM-driven correctness, it is labour-intensive and non-reproducible, and it conflates two unlike concerns under one verdict: **was the workflow orchestrated correctly** (largely deterministic) versus **is the synthesized prose good** (irreducibly subjective).
+Today acceptance has exactly two tiers: a **deterministic surface** (`cargo make test` in `augentic/specify-cli`, fed by fixtures) and a **manual operator sweep** (the [`acceptance/scenarios/`](../../acceptance/scenarios/README.md) scenarios, judged by a human or `cursor-agent`). A scenario is either fully automatable (`backend: fixture`) or fully manual (`backend: manual`); there is nothing in between. As a result the manual sweep is the *only* end-to-end proof of LLM-driven correctness, it is labour-intensive and non-reproducible, and it conflates two unlike concerns under one verdict: **was the workflow orchestrated correctly** (largely deterministic) versus **is the synthesized prose good** (irreducibly subjective).
 
 This RFC introduces two intermediate mechanisms and the scenario tier that carries them:
 
@@ -20,7 +20,7 @@ This RFC adds no lifecycle authority. Shape checks and trace replays are accepta
 [`docs/contributing/acceptance.md` §"What keeps a scenario manual"](../../docs/contributing/acceptance.md) names three categories that keep a scenario off the deterministic surface: **LLM-prose judgment**, **skill-loop orchestration**, and **live-forge interaction**. The current binary tiering forces all three into the same fully-manual bucket, which over-charges the sweep:
 
 - **The manual sweep is the only E2E LLM-correctness proof.** The deferred "Synthesis byte-replay" note (`acceptance.md` §"Synthesis byte-replay (deferred)") already flags that nothing asserts on the bytes a `/spec:refine` or `/spec:build` body emits, and explicitly leaves the choice between a recorded-transcript layer and a structured-trace assertion library to a follow-up RFC. **This is that RFC**, and it picks *both*, scoped to different concerns.
-- **Orchestration is deterministic but trapped in the manual tier.** Whether `/spec:execute` parks on a build failure, resumes, and reaches `all-done` is control flow, not prose. The `acceptance/examples/**/expected-trace.md` files (e.g. [`build/success/expected-trace.md`](../../acceptance/examples/skills/build/success/expected-trace.md)) already describe these visible side effects in prose — they are one capture format away from being machine-checkable.
+- **Orchestration is deterministic but trapped in the manual tier.** Whether `/spec:execute` parks on a build failure, resumes, and reaches `all-done` is control flow, not prose. The `acceptance/fixtures/**/expected-trace.md` files (e.g. [`build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md)) already describe these visible side effects in prose — they are one capture format away from being machine-checkable.
 - **Operator self-grading is error-prone.** During the sweep the agent eyeballs structure ("does the `Sources:` line carry both keys?"). A shape-check verb lets the operator self-grade the *structural* assertions deterministically and reserve human attention for the prose.
 
 ### Trigger conditions
@@ -50,15 +50,15 @@ Triggers:
 
 ### Normative decisions
 
-| ID | Decision | Implementation consequence |
-| --- | --- | --- |
-| **D1 `shape` backend tier** | Add `shape` to the scenario `backend` enum, between `manual` and `fixture`. A `backend: shape` scenario carries machine-checkable shape assertions and/or an orchestration trace, plus (optionally) residual prose assertions that stay human-judged. | Widen `schemas/scenario.schema.json` `backend` enum additively; `specify lint framework` scenario-frontmatter check accepts the new value. |
-| **D2 Shape-assertion DTO** | A closed set of structural predicates over a slice/plan artifact tree: `artifact-present`, `requirement-count`, `sources-line-contains`, `tag-present` (`conflict` / `divergence` / `unknown`), `scenario-heading-present`, `lifecycle-state`. Each predicate names its target path and expected value. | New `schemas/acceptance/shape.schema.json`; new `ShapeAssertion` DTO + evaluator in `specify-cli` over the `specify-model` parsers (reusing the `spec.md` provenance parser). |
-| **D3 Orchestration trace format** | A recorded `cursor-agent` session: ordered agent turns + the CLI verbs they invoked, captured via `@cursor/sdk`. Replay runs the recorded agent outputs against the *real* CLI in a disposable project and asserts the **control-flow trace** (verbs called, in order; stop hints emitted; terminal `all-done` / parked state) — never the prose bytes. | New `schemas/acceptance/trace.schema.json`; a replay harness in `specify-cli` that drives the recorded turns and diffs the observed control-flow trace against the recorded one. |
-| **D4 Two consumption modes** | Shape assertions are authored once and consumed two ways: **(a) CI mode** over recorded artifact fixtures under `acceptance/examples/` (deterministic, runs under `cargo make test`); **(b) live mode** during the manual sweep, against the just-produced live output, so the operator self-grades structure deterministically. | One evaluator, two entry points: a test harness (CI) and a `specify acceptance shape-check <id>` verb (live). |
-| **D5 Promotion path** | `manual → shape → fixture`. A scenario graduates to `shape` when its orchestration and structural assertions are captured as a trace + shape set; it graduates to `fixture` only when *zero* residual prose assertions remain. Demotion is allowed and recorded when a shape assertion can no longer hold. | The status reconciler (prerequisite) validates that a `shape` scenario names a trace and/or shape set; a `fixture` scenario names a deterministic test (existing rule, RFC-bound here). |
-| **D6 Negative-expectation evolution** | Add `shape-assertion-added` and `orchestration-trace-added` as **sanctioned** mechanisms (they drop from a scenario's forbidden list when it reaches `shape`). `fake-forge-added` and `golden-output-required` stay forbidden on every tier. `automated-runner-added` stays forbidden for the *prose-grading* loop but does not forbid trace replay of *orchestration*. | Scenario schema: `negative-expectations` enum gains the two sanctioned ids; `docs/contributing/acceptance.md` documents the per-tier forbidden set in one place. |
-| **D7 Repo split** | Deterministic primitives (shape evaluator, trace replay harness, schemas) live in `augentic/specify-cli`. Scenario files, recorded traces, and artifact fixtures live in `augentic/specify`. | New schemas in `crates/schema/`; evaluator/harness in a workflow- or acceptance-scoped module; recorded traces under `acceptance/examples/traces/`. |
+| ID                                    | Decision                                                                                                                                                                                                                                                                                                                                                                | Implementation consequence                                                                                                                                                              |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1 `shape` backend tier**           | Add `shape` to the scenario `backend` enum, between `manual` and `fixture`. A `backend: shape` scenario carries machine-checkable shape assertions and/or an orchestration trace, plus (optionally) residual prose assertions that stay human-judged.                                                                                                                   | Widen `schemas/scenario.schema.json` `backend` enum additively; `specify lint framework` scenario-frontmatter check accepts the new value.                                              |
+| **D2 Shape-assertion DTO**            | A closed set of structural predicates over a slice/plan artifact tree: `artifact-present`, `requirement-count`, `sources-line-contains`, `tag-present` (`conflict` / `divergence` / `unknown`), `scenario-heading-present`, `lifecycle-state`. Each predicate names its target path and expected value.                                                                 | New `schemas/acceptance/shape.schema.json`; new `ShapeAssertion` DTO + evaluator in `specify-cli` over the `specify-model` parsers (reusing the `spec.md` provenance parser).           |
+| **D3 Orchestration trace format**     | A recorded `cursor-agent` session: ordered agent turns + the CLI verbs they invoked, captured via `@cursor/sdk`. Replay runs the recorded agent outputs against the *real* CLI in a disposable project and asserts the **control-flow trace** (verbs called, in order; stop hints emitted; terminal `all-done` / parked state) — never the prose bytes.                 | New `schemas/acceptance/trace.schema.json`; a replay harness in `specify-cli` that drives the recorded turns and diffs the observed control-flow trace against the recorded one.        |
+| **D4 Two consumption modes**          | Shape assertions are authored once and consumed two ways: **(a) CI mode** over recorded artifact fixtures under `acceptance/fixtures/` (deterministic, runs under `cargo make test`); **(b) live mode** during the manual sweep, against the just-produced live output, so the operator self-grades structure deterministically.                                        | One evaluator, two entry points: a test harness (CI) and a `specify acceptance shape-check <id>` verb (live).                                                                           |
+| **D5 Promotion path**                 | `manual → shape → fixture`. A scenario graduates to `shape` when its orchestration and structural assertions are captured as a trace + shape set; it graduates to `fixture` only when *zero* residual prose assertions remain. Demotion is allowed and recorded when a shape assertion can no longer hold.                                                              | The status reconciler (prerequisite) validates that a `shape` scenario names a trace and/or shape set; a `fixture` scenario names a deterministic test (existing rule, RFC-bound here). |
+| **D6 Negative-expectation evolution** | Add `shape-assertion-added` and `orchestration-trace-added` as **sanctioned** mechanisms (they drop from a scenario's forbidden list when it reaches `shape`). `fake-forge-added` and `golden-output-required` stay forbidden on every tier. `automated-runner-added` stays forbidden for the *prose-grading* loop but does not forbid trace replay of *orchestration*. | Scenario schema: `negative-expectations` enum gains the two sanctioned ids; `docs/contributing/acceptance.md` documents the per-tier forbidden set in one place.                        |
+| **D7 Repo split**                     | Deterministic primitives (shape evaluator, trace replay harness, schemas) live in `augentic/specify-cli`. Scenario files, recorded traces, and artifact fixtures live in `augentic/specify`.                                                                                                                                                                            | New schemas in `crates/schema/`; evaluator/harness in a workflow- or acceptance-scoped module; recorded traces under `acceptance/fixtures/traces/`.                                     |
 
 ### The `shape` tier in a scenario file
 
@@ -89,14 +89,14 @@ A scenario with **no** residual `assertions` block and a passing shape set + tra
 
 The evaluator is a pure function over a slice/plan artifact tree and a `ShapeAssertion[]`. It reuses the existing `specify-model` parsers — notably the `spec.md` requirement-block parser (`crates/model/src/spec/provenance.rs`) — so `requirement-count`, `sources-line-contains`, and `tag-present` are read from the same structures the product itself uses, not a bespoke re-parse.
 
-- **CI mode** runs the evaluator over a recorded artifact fixture checked into `acceptance/examples/`. Deterministic; runs under `cargo make test`; the scenario's **Automated coverage** section names the test (mirroring the existing `fixture` convention).
+- **CI mode** runs the evaluator over a recorded artifact fixture checked into `acceptance/fixtures/`. Deterministic; runs under `cargo make test`; the scenario's **Automated coverage** section names the test (mirroring the existing `fixture` convention).
 - **Live mode** runs `specify acceptance shape-check <id>` against the project the operator just drove. It emits a per-predicate pass/fail table the operator pastes into the run record. This replaces eyeballing for the structural assertions; the human still judges the residual prose.
 
 ### Orchestration trace capture and replay
 
-Capture records a real `cursor-agent` run of a scenario via `@cursor/sdk`: each agent turn and the CLI verbs it invoked, plus the observed control-flow markers (stop hints, terminal state). The recording is stored as `acceptance/examples/traces/<id>.trace.json`.
+Capture records a real `cursor-agent` run of a scenario via `@cursor/sdk`: each agent turn and the CLI verbs it invoked, plus the observed control-flow markers (stop hints, terminal state). The recording is stored as `acceptance/fixtures/traces/<id>.trace.json`.
 
-Replay drives the recorded agent turns against the **real** CLI in a fresh disposable project and asserts the **control-flow trace** matches: the same verbs in the same order, the same stop hints at the same points, the same terminal `all-done` / parked outcome. The `expected-trace.md` files already capture exactly this kind of side-effect sequence in prose (see [`build/success/expected-trace.md`](../../acceptance/examples/skills/build/success/expected-trace.md)) — this decision makes that sequence executable.
+Replay drives the recorded agent turns against the **real** CLI in a fresh disposable project and asserts the **control-flow trace** matches: the same verbs in the same order, the same stop hints at the same points, the same terminal `all-done` / parked outcome. The `expected-trace.md` files already capture exactly this kind of side-effect sequence in prose (see [`build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md)) — this decision makes that sequence executable.
 
 What replay deliberately does **not** assert: the prose content of the agent's turns, the bytes of synthesized artifacts (that is D2's shape job), or anything involving a live forge (those scenarios stay manual).
 
@@ -104,27 +104,27 @@ What replay deliberately does **not** assert: the prose content of the agent's t
 
 ```bash
 specify acceptance shape-check <id>          # live mode: evaluate the scenario's shape set against the current project
-specify acceptance trace record <id>         # capture a cursor-agent run into acceptance/examples/traces/<id>.trace.json
+specify acceptance trace record <id>         # capture a cursor-agent run into acceptance/fixtures/traces/<id>.trace.json
 specify acceptance trace replay <id>         # replay a recorded trace against the real CLI; assert the control-flow trace
 specify acceptance status                    # (from the prerequisite reconciler) now also reports shape/trace coverage
 ```
 
-`shape-check` and `trace replay` are read-only with respect to project lifecycle; `trace record` writes only under `acceptance/examples/traces/`.
+`shape-check` and `trace replay` are read-only with respect to project lifecycle; `trace record` writes only under `acceptance/fixtures/traces/`.
 
 ### Relationship to the existing surfaces
 
-| Concern | Deterministic fixture (`backend: fixture`) | This RFC (`backend: shape`) | Manual (`backend: manual`) |
-| --- | --- | --- | --- |
-| Synthesized-artifact bytes | not asserted | not asserted | human-judged |
-| Synthesized-artifact **structure** | asserted (where deterministic) | **asserted (shape, D2)** | human-judged |
-| Skill-loop orchestration | partial (per-verb primitives) | **asserted (trace replay, D3)** | human-judged |
-| Prose quality | n/a | residual `assertions` only | human-judged |
-| Live forge | excluded | excluded | human-driven |
-| Runs in CI | yes | yes (CI mode, D4a) | no |
+| Concern                            | Deterministic fixture (`backend: fixture`) | This RFC (`backend: shape`)     | Manual (`backend: manual`) |
+| ---------------------------------- | ------------------------------------------ | ------------------------------- | -------------------------- |
+| Synthesized-artifact bytes         | not asserted                               | not asserted                    | human-judged               |
+| Synthesized-artifact **structure** | asserted (where deterministic)             | **asserted (shape, D2)**        | human-judged               |
+| Skill-loop orchestration           | partial (per-verb primitives)              | **asserted (trace replay, D3)** | human-judged               |
+| Prose quality                      | n/a                                        | residual `assertions` only      | human-judged               |
+| Live forge                         | excluded                                   | excluded                        | human-driven               |
+| Runs in CI                         | yes                                        | yes (CI mode, D4a)              | no                         |
 
 ## Prerequisite plumbing (deferred)
 
-The two prerequisites named in §"Trigger conditions" — **typed run records** and a **status reconciler** — plus two supporting helpers were scoped out of the active acceptance remediation effort and parked here. The active effort delivered only the genuinely forward-moving items (the `specify init` first-party shorthand + `$SPECIFY_FRAMEWORK_ROOT` fallback, the `make acceptance-scenario` scaffolder, and the Makefile simplification); this plumbing is captured concretely so it is ready to build when the trigger fires.
+The two prerequisites named in §"Trigger conditions" — **typed run records** and a **status reconciler** — plus two supporting helpers were scoped out of the active acceptance remediation effort and parked here. The active effort delivered only the genuinely forward-moving items (the `specify init` first-party shorthand + `$SPECIFY_ROOT` fallback and the Makefile simplification); this plumbing is captured concretely so it is ready to build when the trigger fires.
 
 **Why deferred, not dropped.** A reconciler polices drift between run records, the catalog, and issues — but there is nothing to reconcile until the manual sweep actually runs. There are currently zero run records, so building the policing layer (especially as a native `specify lint framework` check) before the artifacts it polices exist is premature. Fix what blocks the sweep, run it, then let real run records justify the reconciler.
 
@@ -142,7 +142,7 @@ Give run-summaries machine-readable frontmatter so verdicts can be filed and rec
 
 A native `specify lint framework` check (no Python), modelled on the existing cross-file `scenarios.duplicate-id` check.
 
-- Implement `crates/standards/src/framework/check/acceptance.rs` in `augentic/specify-cli`, bridged by a `CORE-053` `kind: authoring-predicate` rule file in `augentic/specify`.
+- Implement the check as a Road B referenced WASI tool in `augentic/specify-cli` (extend the existing `scenarios` family tool under `wasi-tools/scenarios/`, which already does cross-file `scenarios.duplicate-id` discovery), exposed by a `CORE-053` `kind: tool` rule file in `augentic/specify`. (A new CORE rule must use a declarative hint (Road A) or a referenced tool (Road B); a whole-tree cross-file reconciler fits Road B.)
 - Validates: catalog status vs. the typed run records (P0) vs. each scenario's `## Automated coverage` section.
 - Blocking findings *are* the gate signal — no separate `specify acceptance status` command is required for the gate (the `status` verb in the CLI surface above stays an optional reporter).
 
@@ -181,14 +181,14 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 
 1. **Trace stability.** How tolerant should trace replay be to benign verb-ordering differences (e.g. two independent `specify ... --format json` reads)? Current preference: assert a partial order derived from declared `stages`, not a strict total order.
 2. **Trace capture cost.** Is `@cursor/sdk` recording cheap and stable enough to keep traces current as skills evolve, or do traces become stale fixtures that mask drift? Revisit once the SDK surface settles (trigger 3).
-3. **Where shape fixtures live vs. the existing corpus.** Should recorded artifact fixtures reuse `acceptance/examples/skills/**` or get a dedicated `acceptance/examples/shape/**` tree? Current preference: reuse the existing corpus and add a shape set beside the existing `expected/` outputs.
+3. **Where shape fixtures live vs. the existing corpus.** Should recorded artifact fixtures reuse `acceptance/fixtures/skills/**` or get a dedicated `acceptance/fixtures/shape/**` tree? Current preference: reuse the existing corpus and add a shape set beside the existing `expected/` outputs.
 4. **Promotion ratchet enforcement.** Should the reconciler *block* a scenario that has zero residual prose assertions from staying `shape` (forcing promotion to `fixture`), or only warn? Current preference: warn first, enforce once the tier is established.
 
 ## References
 
-- [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the superseded "Synthesis byte-replay (deferred)" note.
-- [`acceptance/lifecycle/README.md`](../../acceptance/lifecycle/README.md) — the scenario catalog and status legend (`automated` / `manual`).
-- [`acceptance/lifecycle/01-pure-intent.md`](../../acceptance/lifecycle/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/lifecycle/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
-- [`acceptance/examples/skills/build/success/expected-trace.md`](../../acceptance/examples/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
+- [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the "Synthesis byte-replay (deferred)" note.
+- [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog and status legend (`automated` / `manual`).
+- [`acceptance/scenarios/01-pure-intent.md`](../../acceptance/scenarios/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/scenarios/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
+- [`acceptance/fixtures/skills/build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
 - [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) — where shape/trace verdicts are filed.
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

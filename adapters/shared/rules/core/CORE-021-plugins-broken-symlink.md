@@ -2,21 +2,26 @@
 id: CORE-021
 title: Plugins Broken Symlink
 severity: important
-trigger: A symlink under plugins/ does not resolve.
+trigger: A symlink under plugins/ points at a target that does not exist on disk.
 rule_hints:
-  - kind: authoring-predicate
-    value: plugins.broken-symlink
-    description: Run the retired imperative `plugins.broken-symlink` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: reference-resolves
+    value: symlink
+    description: Flag every symlink recorded under `plugins/` whose target does not resolve on disk.
+    config:
+      path-prefix: "plugins/"
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `plugins.broken-symlink` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+Every symlink under `plugins/` must resolve to an existing target on disk. Marketplace plugins share reference and example material through symlinks; a dangling link breaks the published plugin tree for every consumer that materialises it.
+
+The deterministic-hint interpreter consumes the `symlink` facts the indexer records and flags those whose `broken` flag is set, scoped to the `plugins/` path prefix carried in `config`.
 
 ## Look For
 
-Violations surfaced by `plugins.broken-symlink` on the framework tree.
+- A symlink under `plugins/` whose target was renamed, moved, or never committed.
+- A relative symlink target that escapes the plugin tree and no longer resolves.
 
 ## Fix
 
-Resolve the violation described in the finding message for `plugins.broken-symlink`.
+Repoint the symlink at its current target, recreate the missing target, or remove the stale link. Cross-check with `git log --diff-filter=D` to confirm whether the target was renamed or deleted.

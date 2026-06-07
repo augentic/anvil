@@ -1,245 +1,220 @@
 # Specify + Specify-CLI — improve & optimize review
 
-**Mode:** subtraction, determinism, test depth, and operator proof — not new features (native-hint work, RM-12, synthesis transcript replay, etc. stay deferred).
+**Mode:** improve / optimize / subtract — *not* new features. Native-hint work, RM-11+, shape-trace work, AsyncAPI/captures feature scenarios all stay deferred.
 
-**Baseline (re-verified 2026-06-04):** `specify` @ `e502e450`, `specify-cli` @ `07e9d6e7`.
+**Baseline:** `specify` @ `764a27cd`, `specify-cli` @ `79add50d` (both 2026-06-07).
 
-**Prior pass:** The subtraction items in the previous `REVIEW.md` post-mortem (CORE-051 removal, `merge-runbook.md` deletion, `from_evidence_yaml` visibility, drop skill `argument-hint`) are **landed** — do not re-open them.
-
----
-
-## Where to focus (ranked)
-
-| Rank | Focus | Why (optimize lens) |
-| --- | --- | --- |
-| **1** | **RM-05 manual acceptance** — Wave 0 `pure-intent` first | Release gate is **0/24** lifecycle scenarios `passed`; deterministic CLI proof is green. No amount of repo lint fixes substitutes for proving N=1 on a live `specify` binary. Catalog: [`acceptance/lifecycle/README.md`](acceptance/lifecycle/README.md). |
-| **2** | **Executable harness for `acceptance/examples/`** | ~132 fixture files document inputs/expected shapes but **zero** Rust tests reference them (`rg acceptance/examples` in `specify-cli` → empty). Highest ROI for automated test depth without LLM bytes. |
-| **3** | **Consumer `specify lint` integration depth** | Framework lint is CI-native and fast (~1.4s release on full `specify` tree locally). Consumer lint (`specify lint run`) is thinly covered (`tests/lint_run.rs` + a few `crates/standards/tests/lint_hint_*`); engineering-standards regressions are easier to miss. |
-| **4** | **CORE parity coverage gaps** | `crates/standards/tests/core_parity.rs` pins **16** ids; **36** `CORE-*` rule files still run via `authoring-predicate` bridge without parity tests. Incremental parity reduces bridge retirement risk. |
-| **5** | **Doc / Makefile hygiene** | `make acceptance` is documented but **not implemented** in [`Makefile`](Makefile). Performance notes cite **~247s** `make lint` while release runs measure **~1.2–1.4s** — stale guidance mis-prioritizes perf work. |
-| **6** | **`docs/quality-debt.md` burn-down** | `framework.rs` module `#![allow(pedantic, …)]` (T2) and `rust.archaeology-in-doc-comment` (202 residual, burn-down-only). Low urgency while CI is green. |
-| **7** | **Native-hint migration (optional)** | Steady state is correct; migrating `CORE-010..052` off `authoring-predicate` is maintainability, not correctness. Do one id at a time per [checks parity contract](docs/contributing/checks.md#parity-contract-for-predicate-retirement). |
-
-**Explicitly deprioritize in this mode:** new roadmap items (RM-11+, native-hint work), client/AsyncAPI/captures *feature* scenarios, and re-litigating retired legacy verbs.
+**Method:** Verified against the live tree (file sizes, test counts, lint suppressions, checked-in artifacts, doc cross-refs). Where the previous REVIEW.md was stale, it is corrected and called out below.
 
 ---
 
-## Health snapshot (what is already strong)
+## TL;DR — where to focus, ranked
 
-| Surface | Status | Notes |
-| --- | --- | --- |
-| `make lint` (`specify lint framework`) | **0 findings** | Release binary; ~1.4s wall on full `specify` tree (2026-06-04 local). |
-| `cargo clippy -D warnings` | Pass | Per prior pass; re-run before large refactors. |
-| Production `unwrap`/`expect` | **0** in `crates/` + `src/` | All confined to `#[cfg(test)]`. |
-| `tests/fan_in_fan_out.rs` | Shipped | RM-05 deterministic proof: survey → propose → extract → synthesize → build → merge + `depends-on` + re-projection determinism. |
-| Test count | **~1773** nextest cases, **~1699** `#[test]` fns | `specify-cli`; integration-first layout per [`docs/standards/testing.md`](../specify-cli/docs/standards/testing.md). |
-| Spec-runtime symlinks | Enforced in CI | [`specify/.github/workflows/ci.yaml`](.github/workflows/ci.yaml) rejects materialised copies. |
-| Declarative lint architecture | Steady state | Declarative pass + CORE-009 bridge only; full imperative `Check` batch retired from hot path. |
+| # | Focus | Effort | Payoff | Why |
+| - | ----- | ------ | ------ | --- |
+| **1** | **Doc/vocabulary drift in `specify`** (`specrun`→`specify`, conflict-resolution story) | M | High | Operator-facing contradictions; `Status: current` docs ship the retired binary name and three incompatible conflict-resolution recipes. |
+| **2** | **Consumer `specify lint project` hint-kind breadth** | M | High | Only 4 binary-level tests, exercising 3 of ~14 hint kinds (regex/schema/tool). `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `set-eq`, `cardinality` have unit tests but no end-to-end coverage. |
+| **3** | **Checked-in WASI `.wasm` blobs (~10 MB) with `sha256: None`** | M | Med | 8 prebuilt components committed + embedded, regenerated by 7 near-identical `cargo-make` tasks, with digest pinning deferred. Repo bloat + supply-chain gap + manual-sync drift risk. |
+| **4** | **Agent-teams 3-way file duplication in `specify`** | S | Med | Docs prescribe symlinks to a shared overlay that *does not exist*; three byte-identical ~200-line copies kept in sync only by a lint digest check. |
+| **5** | **Stale meta-docs** (this file's predecessor, `skills-test-coverage.md`) | S | Med | Counts and paths disagree with the live tree; misleads the next optimizer. |
 
----
-
-## Test improvement guide
-
-### Two acceptance surfaces (do not conflate)
-
-1. **Automated (CLI):** `cargo make test` in `specify-cli`, especially [`tests/fan_in_fan_out.rs`](../specify-cli/tests/fan_in_fan_out.rs). Proves envelopes, ordering, determinism — **not** real target codegen quality.
-2. **Manual (operator + agent):** 24 lifecycle scenarios under [`acceptance/lifecycle/`](acceptance/lifecycle/) — all **`pending`**. Proves `/spec:*` rhythm and (when run fully) generated-output correctness.
-
-See [`docs/contributing/acceptance.md`](docs/contributing/acceptance.md) and [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test-coverage.md).
-
-### High-ROI automated additions
-
-#### A. Wire `acceptance/examples/` into `specify-cli` tests
-
-The tree is intentionally aligned for chaining (e.g. screenshots source fixture ↔ vectis `task-list` target fixture). Today it is **documentation-only**.
-
-| Example area | Suggested test shape | CLI verbs exercised |
-| --- | --- | --- |
-| [`acceptance/examples/sources/intent/`](acceptance/examples/sources/intent/) | Copy fixture → `specify source survey` / `extract` → compare `discovery.md` / `evidence/*.yaml` to `expected-*` (normalise paths) | `source survey`, `source extract` |
-| [`acceptance/examples/sources/documentation/`](acceptance/examples/sources/documentation/) | Same pattern | survey + extract |
-| [`acceptance/examples/sources/code-typescript/`](acceptance/examples/sources/code-typescript/) | Same; bound to tempdir TypeScript tree | survey + extract |
-| [`acceptance/examples/sources/captures/`](acceptance/examples/sources/captures/) | Assert `kind: example` + `replay-digest` in evidence | extract |
-| [`acceptance/examples/sources/screenshots/`](acceptance/examples/sources/screenshots/) | Evidence YAML shape + discovery lead blocks | survey + extract |
-| [`acceptance/examples/skills/refine/*/`](acceptance/examples/skills/refine/) | Pre-seed slice tree + evidence → `specify slice synthesize` (if inputs are kernel-complete) **or** structural diff on `expected/` artifacts after hand-staged synthesis | `slice synthesize`, `slice validate` |
-| [`acceptance/examples/targets/omnia/expected/crate/`](acceptance/examples/targets/omnia/expected/crate/) | Static file presence + `cargo check` in fixture crate (no LLM) | optional `slice build` prepare-only |
-| [`acceptance/examples/targets/vectis/task-list/`](acceptance/examples/targets/vectis/task-list/) | `composition.yaml` schema + key paths vs `expected/composition.yaml` | `specify tool run vectis -- validate composition` |
-
-**Pattern to copy:** [`tests/fan_in_fan_out.rs`](../specify-cli/tests/fan_in_fan_out.rs) (tempdir + `specify_cmd` + structural JSON asserts) and golden discipline in [`tests/README.md`](../specify-cli/tests/README.md).
-
-**Defer (per acceptance doc):** byte-for-byte `/spec:refine` or `/spec:build` skill body replay — needs transcript or structured-trace RFC ([`acceptance.md` § Synthesis byte-replay](docs/contributing/acceptance.md#synthesis-byte-replay-deferred)).
-
-#### B. Add `make acceptance` (doc–code alignment)
-
-[`docs/contributing/acceptance.md`](docs/contributing/acceptance.md) documents:
-
-```bash
-make acceptance   # make lint + fan_in_fan_out
-```
-
-[`Makefile`](Makefile) has **no** `acceptance` target — only `lint`, `use-local-plugins`, `use-team-plugins`. Implementing this removes recurring operator/agent confusion and gives a one-command pre-release smoke.
-
-Suggested recipe:
-
-```makefile
-acceptance: lint
-	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test fan_in_fan_out
-	@echo "Manual sweep: docs/contributing/acceptance.md"
-```
-
-Keep it **out of** `specify` CI if the policy is unchanged; wire only in docs/Makefile until you want cross-repo CI cost.
-
-#### C. Expand consumer `specify lint` tests
-
-| Gap | Today | Suggested |
-| --- | --- | --- |
-| Hint kinds | `lint_run.rs` exercises regex (`UNI-100` TODO) | Add one integration case each for `path-pattern`, `schema`, `tool` (mirror `crates/standards/tests/lint_hint_*.rs` at binary level) |
-| `--dump-model` | Covered in `lint_run.rs` | Keep; extend with monorepo + `rules-root` edge cases from [`tests/rules_export.rs`](../specify-cli/tests/rules_export.rs) |
-| Silence / ignore directives | `lint_ignore_directive_pass` (crate) | One `tests/lint_run.rs` case mirroring UNI-100 demotion pattern |
-| Blocking vs review | Partial | Assert exit code `2` vs `0` with `deny_blocking_findings` on mixed severity fixtures |
-
-#### D. CORE parity harness
-
-[`crates/standards/tests/core_parity.rs`](../specify-cli/crates/standards/tests/core_parity.rs) modules today: `001–009`, `014`, `016`, `023`, `025`, `037`, `038`, `050`.
-
-**Missing parity modules** (bridge-only, regression risk): e.g. `010`, `011–013`, `015`, `017–022`, `024`, `026–036`, `039–049`, `052` — prioritise rules that encode non-trivial imperative semantics (skill frontmatter, links, scenarios, brief size).
-
-Workflow: one `core_parity/core_NNN.rs` per rule → synthetic fixture → imperative reference set == declarative finding set (existing contract in file header).
-
-#### E. `rules_export` sibling checkout
-
-[`tests/rules_export.rs`](../specify-cli/tests/rules_export.rs) **skips** when `../specify` is absent. CI for `specify` checks out both repos; local solo clones silently skip goldens.
-
-**Optimize:** document in AGENTS/contributing that monorepo/sibling layout is required for full test parity; optionally `#[ignore]` with explicit message vs silent `SKIP` eprintln (harder to notice in nextest summary).
-
-#### F. Lifecycle gaps with **CLI** tests but **no** scenario
-
-| Skill / path | CLI test | Lifecycle scenario |
-| --- | --- | --- |
-| `/spec:drop` | [`tests/slice/drop.rs`](../specify-cli/tests/slice/drop.rs) | **gap** ([skills-test-coverage](docs/contributing/skills-test-coverage.md)) |
-| `captures` adapter | journal / plan fixtures only | **gap** |
-| Omnia / Vectis build output | reached in cross-repo scenario, **not asserted** | **partial** |
-
-Automating drop via CLI is cheap; proving drop in a lifecycle scenario is manual-only today.
-
-### Unit vs integration balance (CLI repo)
-
-| Layer | Strength | Stretch |
-| --- | --- | --- |
-| **Integration (`tests/*.rs`)** | Broad command coverage: plan, slice, source, workspace, tool, migrate, journal | Parametrise over `tests/fixtures/` trees; reduce per-binary `copy_dir` duplication via `tests/common` only |
-| **Crate unit tests** | Workflow goldens, merge, propose kernel, model parsers | `split_frontmatter` still duplicated (`rules/parse.rs` vs `model/decision.rs`) — unify only if you accept a small shared crate or move parser to `specify-model` |
-| **WASI tools** | `contract` + `vectis` CLI tests; vectis engine tests | Carved out; `cargo make test` depends on **`vectis-wasm`** build — budget ~cold CI time when optimizing pipelines |
-| **Framework checks** | Many `crates/standards/tests/check_*.rs` + lint indexers | Run `cargo nextest run -p specify-standards` when touching rules/hints |
-
-### What not to chase (test anti-patterns for this mode)
-
-- Golden-comparing LLM prose from `/spec:refine` / `/spec:build` (explicitly out of scope).
-- Collapsing `tests/*.rs` into one binary (measured **7.3%** win, rejected in DECISIONS).
-- Adding `make acceptance` to `specify` CI without agreeing cross-repo clone cost (today `specify` CI = lint + symlink check only).
+**Explicitly de-prioritize:** new skills, RM-11+ roadmap, re-litigating retired verbs, golden-comparing LLM prose, collapsing test binaries (measured 7.3% win, rejected in DECISIONS).
 
 ---
 
-## Subtraction & maintainability (code/docs)
+## Health snapshot (what's already good)
 
-### S1 — Refresh stale `make lint` performance docs
+The codebases are disciplined. Don't waste optimize-budget here:
 
-**Evidence.** Local release runs:
+- **Lint hygiene is clean.** Zero genuine bare `#[allow]` in `crates/`+`src/` (the gate `tests/rust_quality.rs::no_bare_allow_attributes` holds). The 5 module-level `#![allow(...)]` are all contract-locked T0/T2 entries in `docs/quality-debt.md`; the 2 test-helper allows carry `reason =`.
+- **Test volume is high:** ~1,333 unit `#[test]`/`#[tokio::test]` fns inline in `crates/`+`src/`, plus ~356 integration tests across 69 binaries. Golden discipline is single-sourced (`REGENERATE_GOLDENS=1`, documented in `tests/README.md`).
+- **Crate graph is a clean DAG** with the standards/workflow sibling split enforced by dependency direction (type-system invariant, not convention).
+- **Perf docs are current** — `DIAGNOSTICS.md` now cites ~8s release (`real 8.7` `make lint`), and the obsolete ~247s debug-era figure is explicitly retired. *The previous REVIEW.md's "S1 — refresh stale 247s docs" is DONE; drop it.*
+- **Skill caps respected** — all 10 `SKILL.md` files are well under the 200/45/512 caps (largest body: `wiretapper` at 79 lines).
+
+---
+
+## Part A — Test improvements (unit + integration)
+
+This is the area you flagged. Findings ordered by ROI.
+
+### A2. Broaden consumer `specify lint project` hint-kind coverage
+
+`tests/lint/project.rs` has **4** test fns (`bare_lint_requires_subcommand`, `review_run_byte_stable`, `emits_lint_completed_event`, `blocking_tier_drives_exit`). Its fixture only exercises `regex`, `schema`, and `kind: tool` end-to-end. The other Road A kinds — `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `set-eq`, `set-coverage`, `cardinality`, `constant-eq`, `content-digest-eq`, `unique`, `reference-resolves`, `fenced-block` — are unit-tested in `crates/standards/tests/lint_hint/` but never proven through the binary.
+
+**Action:** add one integration case per missing kind (mirror the crate-level hint tests at binary level). This is the single biggest *coverage* gap — engineering-standards rules in consumer projects are where regressions are most expensive and least observed.
+
+### A3. Rebalance unit-test density toward the thin crates
+
+Test density (unit `#[test]` fns per source LOC), computed from the live tree:
+
+| Crate | src LOC | unit tests | ~LOC/test |
+| --- | ---: | ---: | ---: |
+| `workflow` | 31,635 | 537 | 59 |
+| `standards` | 13,968 | 175 | **80** |
+| `tool` | 4,404 | 64 | **69** |
+| `agents` | 1,998 | 29 | **69** |
+| `model` | 3,697 | 88 | 42 |
+| `diagnostics` | 2,285 | 55 | 42 |
+| `validate` | 2,159 | 68 | 32 |
+| `schema` | 617 | 10 | 62 |
+
+`standards` (the lint engine), `tool` (WASI host/runner — `host.rs` 481 LOC, `manifest.rs` 499, `resolver.rs` 385), and `agents` (context-fence generation) are the thinnest relative to size and complexity. The lint engine and WASI host are exactly the surfaces where a subtle bug is hard to spot by inspection — prioritize unit tests there over the already-dense `validate`/`model`.
+
+### A4. Don't chase these (anti-patterns for this mode)
+
+- Golden-comparing LLM prose from `/spec:refine` / `/spec:build` — explicitly out of scope.
+- Collapsing `tests/*.rs` into one binary — measured 7.3% win, rejected in DECISIONS.
+- Adding `make acceptance` to `specify` CI without first accepting the cross-repo clone/build cost (today `specify` CI = lint + symlink check by design).
+
+### A5. Lifecycle scenarios vs CLI tests (manual-debt map)
+
+Per `acceptance/scenarios/README.md`: **23** scenarios — 1 `passed` (`01-pure-intent`), 10 `automated`, 12 `pending` manual. Skills with CLI coverage but **no** lifecycle scenario: `/spec:drop` (`tests/slice/drop.rs` exists), `captures` adapter, omnia/vectis build-output assertions (reached, not asserted). Automating drop end-to-end is cheap; proving it in a lifecycle scenario is manual-only today. **Note:** `rfcs/roadmap.md` RM-05 says 24 scenarios — off by one vs the catalog's 23; reconcile.
+
+---
+
+## Part B — Code quality & maintainability (specify-cli)
+
+### B1. Checked-in `.wasm` blobs + deferred digest pinning
+
+Eight prebuilt components are committed under `wasi-tools/*/dist/` and `include`d into the binary:
 
 ```text
-/usr/bin/time make lint          → real ~1.2s  (specify repo)
-cargo run --release … framework  → real ~1.4s  (--framework-root ../specify)
+marketplace  3.30 MB     scenarios  1.90 MB     contract   1.08 MB
+links-reg    1.26 MB     skill-body 1.28 MB     rules      0.83 MB
+agent-teams  0.18 MB     prose      0.13 MB      → ~10 MB total in git
 ```
 
-[`docs/contributing/checks.md`](docs/contributing/checks.md) and [`specify-cli/DIAGNOSTICS.md`](../specify-cli/DIAGNOSTICS.md) still cite **~247s** from the pre-migration lint era (2026-06-04). That number is misleading for current release builds and can send optimizers down the wrong path.
+`FrameworkToolRunner` embeds each with `sha256: None` (`framework_tools.rs:209`; the module doc-comment notes "no digest pinning yet"). Three coupled issues:
 
-**Action.** Replace with measured release guidance + note that debug/unoptimized binaries are not representative; drop the obsolete 247s figure or label it historical.
+1. **Repo bloat / churn** — every rebuild rewrites a multi-MB binary in git history.
+2. **Supply-chain gap** — the rest of the tool runner pins by sha256; these embeds don't, so a stale/mismatched `dist/` blob is silently trusted.
+3. **Manual sync drift** — the blob is only as fresh as the last `cargo make <tool>-wasm` run; nothing fails if it's out of date vs source.
 
-**Done when.** `rg '247' docs/contributing/checks.md specify-cli/DIAGNOSTICS.md` → only historical context or empty.
+**Action (optimize):** pin the embedded sha256 (the AGENTS.md note says this is "deferred until the source moves to its colocated home" — even an interim digest constant closes the trust gap), and/or build the components in CI rather than committing them. At minimum add a check that `dist/*.wasm` matches a rebuild.
 
----
+### B2. Collapse 7 near-identical `*-wasm` cargo-make tasks
 
-### S2 — Implement `make acceptance` or fix docs
+`Makefile.toml` carries 7 copy-paste blocks (`scenarios-wasm`, `skill-body-wasm`, `agent-teams-wasm`, `links-registry-wasm`, `marketplace-wasm`, `prose-wasm`, `rules-wasm`) differing only by tool name — each ~8 lines of identical `cargo build … && cp … && echo`. Replace with one parameterized task / loop script driven by a tool list. ~50 lines removed, one place to change the build recipe.
 
-**Evidence.** `docs/contributing/acceptance.md` references `make acceptance`; root `Makefile` has no target.
+### B3. `split_frontmatter` duplication (constrained)
 
-**Action.** Add Makefile target (see §Test B) **or** change docs to the explicit two-command sequence only.
+Two implementations remain:
 
----
+- `crates/standards/src/rules/parse.rs:146` (private, `Result`-returning)
+- `crates/model/src/decision.rs:271` (`pub`, `Option`-returning)
 
-### S3 — `framework.rs` module allows (T2)
+Consolidation is blocked by the dependency-direction invariant (`specify-standards` must not depend on `specify-model`). Only worth it if a lower leaf (`specify-error`/a new tiny markdown leaf) is the right home, or if you're already touching markdown helpers. ~30–40 LOC. **Low priority — note, don't force.**
 
-**Evidence.** [`specify-cli/docs/quality-debt.md`](../specify-cli/docs/quality-debt.md): `crates/standards/src/framework.rs` carries a broad `#![allow(pedantic, missing_docs, …)]` tied to dissolved `specify-authoring` posture.
+### B4. Large-module refactor candidates (informational, not urgent)
 
-**Action.** Burn down incrementally as predicates move to declarative-only paths (already complete for hot path); shrink allow list when touching `framework/check/*`.
+Biggest non-test source files (all coherent today; flag only if you're already in them):
 
-**Net.** Maintainability; not blocking CI.
+```text
+611  crates/diagnostics/src/diagnostic.rs
+599  crates/workflow/src/change/plan/core/model.rs
+593  crates/workflow/src/journal/event.rs
+590  crates/workflow/src/schema.rs
+578  crates/model/src/spec/provenance.rs
+540  crates/workflow/src/migrate.rs
+524  crates/workflow/src/plugins.rs
+521  crates/workflow/src/adapter/core.rs
+```
 
----
+None scream for a split; `workflow` at 31.6k LOC / 1 crate is the structural giant but is already sub-moduled. No action recommended beyond opportunistic tidying.
 
-### S4 — `split_frontmatter` duplication
+### B5. `unwrap()`/`expect()` density (spot-check, low priority)
 
-**Evidence.** Two implementations: `crates/standards/src/rules/parse.rs` and `crates/model/src/decision.rs` (prior review deferred due to crate graph).
-
-**Action.** Only if you are already moving markdown helpers: expose one `specify-model` helper and delete the duplicate (~30–40 LOC).
-
-**Risk.** Dependency-direction invariant — do not pull `specify-standards` into `specify-model`.
-
----
-
-### S5 — Archaeology predicate (202 findings, burn-down-only)
-
-**Evidence.** [`quality-debt.md`](../specify-cli/docs/quality-debt.md): `rust.archaeology-in-doc-comment` over-fires on legitimate `RFC-NN` / `Phase N` anchor vocabulary.
-
-**Action options:** (a) narrow predicate markers to history phrases only, then gate; (b) leave as burn-down; (c) strip anchors from code comments into `DECISIONS.md` links (high churn, low value).
-
-**Recommendation.** (b) unless you need a hard gate — promoting now would be perpetually red.
+~1,039 `.unwrap()`/`.expect()` in non-`tests.rs` source. Most are legitimate (const regex compile, infallible serde). Not worth a sweep, but if touching the WASI host or migrate paths, prefer typed errors over `expect()` on fallible I/O. No gate recommended.
 
 ---
 
-## CI & repo boundaries
+## Part C — `specify` (docs / skills / adapters)
 
-| Repo | CI does | Does not |
-| --- | --- | --- |
-| **specify** | `lint framework` + spec-runtime symlink check; checks out matching `specify-cli` branch | `cargo make test` (by design) |
-| **specify-cli** | Full `cargo make ci` via reusable workflow | Framework lint of `specify` unless you add a job |
+From a thorough pass of the markdown repo. The top two are operator-facing and should lead any cleanup.
 
-**Optimize CI time:** `specify-cli` `cargo make test` builds `vectis-wasm` first — cache that artifact in CI; use `cargo nextest run --test <area>` locally when iterating.
+### C1. `specrun` → `specify` in docs — resolved
 
-**Cross-repo coupling:** Framework rules live in `specify/adapters/shared/rules/core/`; predicates run in `specify-cli`. Any rule change should run **both** `make lint` and `cargo nextest run -p specify-standards`.
+The `decision-log.md` archive that carried the `specrun` drift has been removed, and `CORE-025` flags `\bspecrun\b` in non-roadmap docs (`rfcs/**` exempt, where `specrun`/`specdev` are forward-looking split-binary design naming). The shipped binary is `specify`.
+
+### C2. One conflict/divergence resolution story *(P0)*
+
+Three incompatible operator recipes ship simultaneously:
+
+| Source | Says |
+| --- | --- |
+| `plugins/spec/references/synthesis/authority.md:194` | Re-refine or `plan amend --authority-override`; **never** hand-edit kernel-rendered `spec.md` provenance |
+| `docs/how-to/resolve-spec-conflicts.md:21-29` | **Hand-edit** `spec.md`, change `Status:`, remove tags |
+| `docs/explanation/concepts.md:165` | Hand-edit `spec.md` between refine and build |
+
+`/spec:refine` warns that editing `ID:`/`Sources:`/`Status:` triggers `slice-spec-provenance-stale`. Pick one canonical path (amend + re-refine, or authority-override; prose-only edits outside kernel lines) and align how-to, concepts, authority.md, and refine fixtures. Also fix `docs/explanation/adapter-anatomy.md:32` ("override by hand-editing `spec.md`") to the `plan amend --authority-override` mechanism.
+
+### C3. Implement the agent-teams symlink architecture (remove 3-way duplication) *(P1)*
+
+`AGENTS.md`/`CORE-008` describe `adapters/targets/<name>/references/agent-teams.md` symlinking to a shared overlay `adapters/shared/references/runtime/review-team-protocol.md`. Reality:
+
+- `adapters/targets/omnia/references/agent-teams.md` — **regular file**, 9,992 B
+- `adapters/targets/vectis/references/agent-teams.md` — **regular file**, byte-identical
+- `docs/reference/review-team-protocol.md` — same content
+- the prescribed shared overlay file **does not exist**
+
+Three copies kept in sync only by the CORE-008 digest check. Add the shared overlay and repoint the two target files as symlinks, as documented.
+
+### C4. Sync stale meta-docs *(P1–P2)*
+
+- This file's predecessor claimed "24 scenarios all pending" — wrong (23; 1 passed, 10 automated). **This rewrite fixes it.**
+- `docs/contributing/skills-test-coverage.md`: duplicated "`acceptance/scenarios/` or `acceptance/scenarios/`" copy-paste (L32–34, L57–58); stale `framework/check/scenarios.rs` path (scenarios moved to the generic lint + `scenarios` WASI tool); wrong drop-archive path L119.
+- `.cursor-plugin/marketplace.json` version (`0.27.0`) vs `plugins/spec/.cursor-plugin/plugin.json` (`0.26.0`) — align.
+
+### C5. Rule-framework footguns (maintainability, P2)
+
+- `applicability.artifacts` rules are **silently dropped** on the framework profile (`adapters/shared/rules/core/README.md:54-63`) — authors must use `path-pattern`. Easy to add a dead rule. Consider a lint that flags `applicability.artifacts` on a framework rule.
+- Agent-teams concern spans **three** rules (CORE-008 digest, CORE-011, CORE-012 path/type) and link-checking spans **four** (CORE-002/018/019/020). Documented overlap, but high learning cost; candidate for consolidation notes.
+- Deduplicate the parallel traceability docs `adapters/targets/omnia/references/spec-to-test-mapping.md` (139 L) vs `vectis/references/test-spec-mapping.md` (260 L) into a shared base + per-target deltas.
 
 ---
 
-## Skill / scenario coverage (manual debt map)
+## Prioritized backlog
 
-From [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test-coverage.md) (unchanged audit):
-
-| Status | Count | Examples |
-| --- | --- | --- |
-| ✓ | 7 | plan, refine, init, finalize, execute, contract OpenAPI/JSON Schema |
-| partial | 5 | build, merge, omnia build brief, vectis build + merge briefs |
-| gap | 5 | client SoW, contract AsyncAPI, captures adapter, wiretapper, drop (lifecycle) |
-
-**Optimize-mode recommendation:** Do not author new skills — close gaps by (1) running existing lifecycle scenarios, (2) promoting `acceptance/examples/` into CLI tests (table above), (3) adding **one** focused contracts-style target test pack for omnia/vectis *only if* generated-output asserts are required before RM-05 sign-off.
-
----
-
-## Suggested 4-week attention plan (improve-only)
-
-1. **Week 1 — Gate proof:** Build the release `specify` and put it on PATH, run `01-pure-intent`, file run-summary, halt/fix until green. Parallel: add `make acceptance` to `Makefile`.
-2. **Week 2 — Fixture harness (sources):** One `tests/acceptance_sources.rs` (or per-adapter binaries) driving `acceptance/examples/sources/*` through `specify source survey/extract`.
-3. **Week 3 — Fixture harness (refine/synthesize):** Structural asserts on `acceptance/examples/skills/refine/*/expected` where inputs are complete; `slice validate` on outputs.
-4. **Week 4 — Lint depth:** Consumer `lint_run` hint-kind matrix + 3–5 CORE parity modules for highest-churn rules (`044`, `042`, `019`). Refresh perf docs (S1).
+| P | Item | Repo | Section |
+| - | ---- | ---- | ------- |
+| P0 | `specrun`→`specify` in `Status: current` docs | specify | C1 |
+| P0 | Single conflict/divergence resolution story | specify | C2 |
+| P1 | Consumer-lint hint-kind integration matrix | specify-cli | A2 |
+| P1 | Agent-teams shared overlay + symlinks | specify | C3 |
+| P1 | Sync stale meta-docs (counts, paths, version) | both | A5, C4 |
+| P2 | Pin embedded `.wasm` sha256 / build in CI | specify-cli | B1 |
+| P2 | Collapse 7 `*-wasm` cargo-make tasks | specify-cli | B2 |
+| P2 | Unit tests for `standards`/`tool`/`agents` | specify-cli | A3 |
+| P2 | Rule footgun lint + traceability dedup | specify | C5 |
+| P3 | `split_frontmatter` dedup (if leaf appears) | specify-cli | B3 |
 
 ---
 
-## Dropped / do not re-litigate
+## Post-mortem
 
-- CORE-051 `adapter.execution-agent` — deleted.
-- `merge-runbook.md` orphan — deleted.
-- `from_evidence_yaml` `pub(crate)` — done.
-- Drop skill `argument-hint` — done.
-- `ToolSource` serde impls, `validate_*_json` wrappers, `migrate`/`upgrade` emit helpers — still justified (prior review).
-- Materialising `spec-runtime` copies — CI forbids.
-- Feature roadmap (native-hint work, RM-11, RM-12, synthesis transcript golden) — out of scope for this review mode.
+Applied-finding calibration log. One line per finding: actual ΔLOC vs predicted, whether the "done-when" assertion flipped cleanly, and whether anything regressed. Validated with `cargo make check` (specify-cli) / `make lint` (specify).
+
+**Calibration priors (from the prior REVIEW execution session):**
+
+- Helper-extraction / dedupe findings systematically **over-predict** LOC reduction — the shared helper adds its body back, so net is less negative than a pure-deletion estimate.
+- Deleting a production method often deletes its **sole test caller** too → can over-deliver vs a body-only prediction.
+- Inlining a helper into a call site can **eat the deletion** when the call expands to a multi-line argument list.
+- Doc-comment fold-ups and orphaned blank separators expose **extra** deletions.
+- Struct-update / skeleton refactors backfire when most fields vary — revert honestly if a finding fails its own LOC premise.
+
+| Item | Predicted | Actual ΔLOC | Done-when flipped? | Regressions | Notes |
+| ---- | --------- | ----------- | ------------------ | ----------- | ----- |
+| C1 | unstated (rename) | +3 (30 ins / 27 del) | Yes — `specrun` in non-roadmap docs 27→0 | None | 43 occurrences renamed in `decision-log.md`; 0 reclassified (all were stale binary names). Also extended `CORE-025` with a `\bspecrun\b` regex guard (pure rule-config, no engine change; `rfcs/**` stays exempt). Surfaced a pre-existing `CORE-016` hit on `REVIEW.md:3` (a sub-100 design-history RFC citation); parent stripped it so `make lint` is clean. |
+| C2 | unstated (doc align) | +14 (43 ins / 29 del, 12 files +1 net) | Yes — "hand-edit spec.md to resolve conflicts" recipe gone from how-to/concepts/adapter-anatomy | None | Standardized on `authority.md`'s story: never hand-edit kernel-rendered `ID:`/`Sources:`/`Status:`/tags; reconcile via `plan amend --authority-override` (or `--add-source`) + re-refine; prose-only edits outside kernel lines allowed. Also aligned glossary, reconciliation, tags, provenance refs, build SKILL, both refine fixtures, and scenario 05c. CLI surfaces verified real. |
+| A2 | unstated (additive coverage) | +637 (637 ins / 0 del) | Yes — `project.rs` `#[test]` 8→15, `framework.rs` 5→10 | None | 12/12 missing Road A kinds now proven end-to-end. Discovery: only 7 reachable via `lint project` (`ScanProfile::Project`); the other 5 (`unique`, `constant-eq`, `set-eq`, `content-digest-eq`, `cross-reference`) read framework-only fact families, so proven via `lint framework --rule`. No goldens regenerated. |
+| C3 | ~−400 (dedup) | −393 (+6 / −399 tracked) | Yes — both `agent-teams.md` now mode 120000; overlay exists; chain resolves to canonical sha `5512a3ce…` | None | Created the documented chain: target `agent-teams.md` → `shared/references/runtime/review-team-protocol.md` overlay → canonical `docs/reference/review-team-protocol.md`. All relative symlinks. CORE-008/011/012 stay green (digest still matches through symlink-follow). Overlay README updated; new overlay symlink is untracked. |
+| A5+C4 | unstated (doc sync) | −1 (9 ins / 10 del, 3 files) | Yes — `24 scenario`→0 in roadmap, `framework/check/scenarios`→0 in docs, both manifests 0.27.0 | None | Fixed roadmap scenario count 24→23 + stale "all pending" claim (pure-intent is `passed`); collapsed two duplicate `acceptance/scenarios/` links; repointed dead `framework/check/scenarios.rs` to the `scenarios` WASI tool; corrected drop-archive path to `.specify/archive/<date>-<slice>/` (evidenced from drop SKILL + cli/slice.md). Aligned `spec` plugin version up to 0.27.0 (matches `capture` + marketplace). |
+| B1 | unstated (additive hardening) | +75 (+85 / −10) | Yes — `dist_digests_pinned` drift test passes; verified red-on-tamper then reverted | None | Key judgment: host (`tool/src/host.rs`) never reads `sha256: Some` (only `resolver::resolve` does, which the framework runner bypasses), so flipping `None`→`Some` would be dead+circular. Instead added 7 checked-in `.wasm.sha256` sidecars (untracked) + a drift test recomputing embedded-byte digests, and appended sidecar generation to each `*-wasm` recipe (co-located to survive B2). Kept blobs committed (no CI-build churn). |
+| B2 | ~−50 | −92 on Makefile.toml (+13 / −105) | Yes — `*-wasm` task defs 7→0; `contract`/`vectis` untouched | None | Over-delivered vs prediction (matches the doc-comment-fold prior): each of the 7 blocks carried an ~8-line comment header on top of the ~8-line script. Collapsed to one `framework-wasm` loop task with `${@:-<list>}` so single-tool builds still work; preserved B1's sidecar line. Updated 12 stale `<tool>-wasm` references (framework_tools.rs ×8, AGENTS.md, DECISIONS.md). Validated statically via `cargo make --list-all-steps` (didn't rebuild blobs). |
+| A3 | 15–30 tests (parent target) | +811 (37 tests, additive) | Yes — net-new `#[test]`: tool 16, agents 17, standards 4; 374 passed | None | Weighted to high-risk surfaces: tool cache path-traversal guard, `map_guest_error` exit clamp, `.specify` lifecycle boundary; agents `markers.rs` (1 test → full grammar coverage incl. `.PHONY` edge), fingerprint/lock/fence error paths. Judged `standards` already well-covered (resolve/filter/sort 15–25 tests each; eval kinds integration-tested) → redirected budget, added only the 2 genuine gaps. No test-only traits added. |
+| C5 | unstated (footgun + dedup) | ≈−110 (+58 / −191 tracked; +CORE-054 27L, +shared base 54L, +1 symlink) | Yes — CORE-025 now fires (was a dead rule!); no populated `applicability.artifacts` remains in core rules; CORE-054 resolves | None | **Material finding: CORE-025 was a silently-dropped dead rule** (no-op in CI) — its `applicability.artifacts: [doc]` triggered the framework-profile drop, so its `specify validate`/`specrun`/`Initiative` guards (incl. C1's) never fired. Proved empirically (scratch `specrun` → 0 findings), removed the block, re-proved it fires, then added Road A guard **CORE-054** flagging any core rule with populated `applicability.artifacts` (uses real `suffix-must-not-start-with` regex config). Added rule-family overlap notes to README; deduped traceability docs to a shared base (`plugins/spec/references/spec-to-test-mapping.md` + overlay symlink) keeping per-target deltas. |
+| B3 | ~−30 to −40 (consolidate) OR note | +8 (documented, not consolidated) | N/A — chose document-the-split path | None | Honest "don't force" call (matches the S4 revert prior): the two impls differ only in failure currency (`Result`+`ParseError` vs `Option`); no crate both depend on (`specify-error`/`specify-diagnostics`) is a semantic home for a markdown splitter, and a new `specify-markdown` leaf for ~20 LOC is net-positive + graph overhead. Consolidation would fail its own LOC premise. Added 3-line cross-reference doc-comments on each so the deliberate dup (blocked by `standards` ⊥ `model`) won't be wrongly "fixed". |
 
 ---
 
@@ -247,20 +222,13 @@ From [`docs/contributing/skills-test-coverage.md`](docs/contributing/skills-test
 
 ```bash
 # specify repo
-make lint
-# after adding target:
-make acceptance
+make lint                       # ~8s release; framework rule enforcement
 
-# specify-cli repo (full CI)
-cargo make ci
-
-# targeted
-cargo nextest run --test fan_in_fan_out
+# specify-cli repo
+cargo make ci                   # full gate (fmt + lint + test + docs + vet + deny)
+cargo make check                # pre-commit subset
+cargo nextest run --test lint   # consumer + framework lint binaries
 cargo nextest run -p specify-standards
-cargo test --test rust_quality
-REGENERATE_GOLDENS=1 cargo nextest run --test e2e   # review diff before commit
+cargo test --test rust_quality  # naming / archaeology / bare-allow gates
+REGENERATE_GOLDENS=1 cargo nextest run --test <binary>   # review diff before commit
 ```
-
----
-
-*Generated for improve/optimize mode. Re-run `make lint`, `cargo make check`, and skim `acceptance/lifecycle/README.md` status before acting on stale scenario counts.*

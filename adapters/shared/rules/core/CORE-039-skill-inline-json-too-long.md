@@ -4,19 +4,30 @@ title: Skill Inline Json Too Long
 severity: important
 trigger: Inline JSON in a skill body exceeds the length cap.
 rule_hints:
-  - kind: authoring-predicate
-    value: skill.inline-json-too-long
-    description: Run the retired imperative `skill.inline-json-too-long` predicate via the RFC-31 bridge until native hint parity lands.
+  - kind: path-pattern
+    value: "plugins/**/SKILL.md"
+    description: Narrow the candidate set to plugin skill manifests before the inline-JSON length check fires.
+  - kind: fenced-block
+    value: inline-json-too-long
+    description: Flag every `json` / `jsonc` fenced block in the candidate set whose body exceeds `config.max-lines`. One finding per over-budget fence.
+    config:
+      langs:
+        - json
+        - jsonc
+      max-lines: 30
 ---
 
 ## Rule
 
-This rule delegates to the closed imperative predicate `skill.inline-json-too-long` through `kind: authoring-predicate`. Behaviour matches the former `framework::check` row; migrate to native deterministic hints when parity tests cover the fact-iterating form.
+Inline `json` / `jsonc` fences in a skill body stay within the length cap. A long output shape inlined in a skill body crowds out the algorithm spine and duplicates material that belongs in a single canonical reference; relocate it to `docs/reference/cli-output-shapes.md` and link to it instead.
+
+The deterministic-hint interpreter consumes the `FencedBlock` facts the framework indexer already produced, restricted to the `json` / `jsonc` info strings in the `plugins/**/SKILL.md` candidate set. The language allow-list and the line cap are policy carried in the rule's `config:`, not the engine.
 
 ## Look For
 
-Violations surfaced by `skill.inline-json-too-long` on the framework tree.
+- A `json` fence in a skill body that pasted an entire CLI envelope or large config example.
+- A `jsonc` fence inlining a long annotated configuration that belongs in a reference.
 
 ## Fix
 
-Resolve the violation described in the finding message for `skill.inline-json-too-long`.
+Move the large output shape to `docs/reference/cli-output-shapes.md` (or the appropriate reference) and replace the fence with a link to it.

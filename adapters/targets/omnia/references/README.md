@@ -2,7 +2,7 @@
 
 Reference documentation for the Omnia target adapter at [`adapters/targets/omnia/`](..). In Specify, Omnia is a **target adapter** — `shape`, `build`, `merge` — not a slash-command plugin.
 
-The orchestration of the retired `omnia-crate-writer`, `omnia-test-writer`, `omnia-guest-writer`, and `omnia-code-reviewer` skills now lives in [`../briefs/build.md`](../briefs/build.md) and five phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, rules) and worked examples live in this folder.
+The Omnia crate / test / guest / review orchestration lives in [`../briefs/build.md`](../briefs/build.md) and five phase sub-briefs under [`../briefs/build/`](../briefs/build/). The depth (templates, hard rules, mapping tables, mock-provider patterns, specialist prompts, rules) and worked examples live in this folder.
 
 ## Briefs
 

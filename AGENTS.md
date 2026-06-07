@@ -9,7 +9,7 @@ Specify names two adapter roles and three workflow nouns. Use the terms verbatim
 ### Adapter roles
 
 - **source adapter** — input role with two operations: `survey` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`.
-- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified "adapter". Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
+- **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
 - **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`crates/workflow/src/adapter/`](https://github.com/augentic/specify-cli/tree/main/crates/workflow/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
 
 ### Synthesis terms
@@ -34,11 +34,11 @@ Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk u
 
 The word **workspace** overloads three related concepts. Use them verbatim:
 
-| Term | Meaning |
-| --- | --- |
-| **Workspace** | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
-| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/` |
-| **Workspace sync** | `specify workspace sync` — materialise slots and regenerate `topology.lock` |
+| Term               | Meaning                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **Workspace**      | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
+| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/`                                                               |
+| **Workspace sync** | `specify workspace sync` — materialise slots and regenerate `topology.lock`                                        |
 
 `/spec:init workspace` and `specify init --workspace` scaffold a workspace; the CLI chains an initial workspace sync before returning.
 
@@ -46,15 +46,15 @@ The word **workspace** overloads three related concepts. Use them verbatim:
 
 Specify separates three concerns. Use the terms verbatim; see [docs/explanation/standards-layer.md](docs/explanation/standards-layer.md) for the full picture.
 
-| Layer | Role | Examples |
-| --- | --- | --- |
-| **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specify slice transition` |
-| **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint` |
+| Layer                     | Role                                          | Examples                                                                            |
+| ------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Workflow**              | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specify slice transition`                           |
+| **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                           |
+| **Engineering standards** | Durable policy that outlives any slice        | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint project` |
 
-**Authoring standards** (`docs/standards/`, enforced by `specify lint framework` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specify rules export` and enforced by `specify lint`) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by `specify lint framework` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specify rules export` and enforced by `specify lint project`) govern generated and hand-written code in consumer projects. Do not conflate them.
 
-`specify lint` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
+`specify lint project` is CI-native **standards enforcement**, not a workflow phase — findings may block CI but never transition plans or slices. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
 ### Authority and reconciliation mechanics
 
@@ -113,16 +113,16 @@ Full acceptance guidance, including manual scenario packs under [`acceptance/`](
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are declarative [`CORE-*` rules](adapters/shared/rules/core/) resolved by `specify lint framework`; behaviour for `CORE-010..052` runs through `kind: authoring-predicate` bridges in `augentic/specify-cli` until native hint parity lands (`CORE-009` namespace ownership stays imperative-only). Enforced strictly by `make lint` — every check fails on the first violation, with no per-file grandfathering. Extension and parity contract: [docs/contributing/checks.md](docs/contributing/checks.md).
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are [`CORE-*` rules](adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher. Each rule is either a **declarative hint** (Road A — `kind:` ∈ `schema | reference-resolves | cardinality | set-coverage | set-eq | constant-eq | content-digest-eq | unique | fenced-block | regex | path-pattern | presence | field-grammar | cross-reference`, interpreted over the workspace model) or a **name-resolved WASI tool** (Road B — `kind: tool`, e.g. the `rules` / `scenarios` / `skill-body` / `agent-teams` / `links-registry` / `marketplace` / `prose` family tools). All policy (caps, allow-lists, owner maps, expected sets) lives in the rule's `config:`, never in the engine. The `kind: authoring-predicate` bridge has been fully removed — no imperative bridge remains. Enforced strictly by `make lint` — every check fails on the first violation, with no per-file grandfathering. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md).
 
 ## Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `specify lint framework` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
-- **`$SPECIFY_FRAMEWORK_ROOT` resolves first-party adapters offline** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@v1`; ref defaults to `v1`), and both `init` and the adapter resolver fall back to `$SPECIFY_FRAMEWORK_ROOT/adapters/{sources,targets}/<name>/` (a checkout of *this* repo) when a project has no vendored `adapters/` tree or manifest-cache mirror. This is what lets the acceptance sweep run `specify init omnia@v1` in a disposable dir with no hand-made symlink. Probed last, so a project that vendors its own adapter always wins; skipped when the env var is unset. See [DECISIONS.md §"Adapter loader axis routing"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
+- **First-party adapters resolve project-locally or from GitHub** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@v1`; ref defaults to `v1`) that resolves to the published adapter on GitHub (a networked sparse checkout). The adapter resolver itself is project-local only — manifest-cache mirror then vendored `adapters/` tree — with no environment-variable fallback to an out-of-tree framework checkout. See [DECISIONS.md §"Adapter loader axis routing"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the shared `adapters/shared/references/runtime/review-team-protocol.md` overlay, which resolves to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
-- Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or the retired `change:` slash-namespace. Crossing a major now runs through a registered migrator, not an alias — each major version bump requires a registered `MigrationKind` (with a `Migrator` impl + golden fixture) before `specify_version` rolls, so migration is a covered routine step via `specify migrate` rather than a flag-day break. See the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) "Bootstrap, upgrade, and migration lifecycle" decision.
+- Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or slash-namespaces. Crossing a major runs through a registered migrator, not an alias — each major version bump requires a registered `MigrationKind` (with a `Migrator` impl + golden fixture) before `specify_version` rolls, so migration is a covered routine step via `specify migrate` rather than a flag-day break. See the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) "Bootstrap, upgrade, and migration lifecycle" decision.
 
 ## Related coding standards
 

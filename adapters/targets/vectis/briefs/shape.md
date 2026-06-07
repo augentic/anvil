@@ -10,7 +10,7 @@ A Vectis slice produces a buildable cross-platform application:
 
 - One Crux **shared core** (Rust crate under `shared/`) carrying every requirement that is platform-neutral.
 - Zero or more **platform shells** (`ios`, `android`, future `web`) that render the core's `ViewModel`, dispatch `Event` values from user interactions, and translate the core's `Effect`s into host I/O.
-- A **`composition.yaml` manifest** regenerated each build from `spec.md` + `design.md` (see `build.md`). `composition.yaml` is no longer a Specify artifact — synthesis never writes it. The synthesiser must still describe screen-level structure precisely enough for `build` to reconstruct the composition deterministically.
+- A **`composition.yaml` manifest** regenerated each build from `spec.md` + `design.md` (see `build.md`). `composition.yaml` is not a Specify artifact — synthesis never writes it. The synthesiser must still describe screen-level structure precisely enough for `build` to reconstruct the composition deterministically.
 
 `core` is always in scope. Platforms are an **app-level fact** declared once in `project.yaml.platforms` and carried verbatim to every slice's `proposal.md ## Platforms` (see below) — they are not per-slice opt-in.
 

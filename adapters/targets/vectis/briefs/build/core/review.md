@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) Step 11 after the core verify-repair loop succeeds. Scope: the Rust `shared` crate. Drives an agent team — three specialists plus an antagonist — through a bounded review-fix loop (max 3 iterations).
 
-Carries the body of the retired `vectis-core-reviewer` skill. The shared agent-team protocol lives in [`../../../references/agent-teams.md`](../../../references/agent-teams.md); the core-specific team-spawn protocol lives in [`review/team-protocol-core.md`](../../../references/review/team-protocol-core.md).
+The shared agent-team protocol lives in [`../../../references/agent-teams.md`](../../../references/agent-teams.md); the core-specific team-spawn protocol lives in [`review/team-protocol-core.md`](../../../references/review/team-protocol-core.md).
 
 ## Pipeline
 

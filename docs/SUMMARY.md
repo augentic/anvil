@@ -91,9 +91,6 @@
 # Appendices
 
 - [Glossary](appendices/glossary.md)
-- [Decision log](explanation/decision-log.md)
-- [Release notes](explanation/release-notes.md)
-
 ---
 
 # Contributing
