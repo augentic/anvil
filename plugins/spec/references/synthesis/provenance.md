@@ -176,7 +176,7 @@ The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerat
 
 ## No drift surface
 
-Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift, and the retired `slice-provenance-drift` validator is gone. `specify slice validate` still checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `specify slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
 
 ## Worked example
 

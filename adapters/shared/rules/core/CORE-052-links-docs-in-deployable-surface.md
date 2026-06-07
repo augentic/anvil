@@ -22,7 +22,7 @@ rule_hints:
 
 Deployable surfaces — marketplace skills and the briefs and references that ship inside an adapter — must not link into the repository's `docs/` tree. `docs/` is contributor documentation that does not travel with a published plugin or adapter, so a `docs/`-targeted link resolves in this repo but dangles wherever the surface is deployed.
 
-The deterministic-hint interpreter narrows to the deployable file set with `path-pattern` hints, then flags any `[label](target)` link whose target is root-relative (`docs/…`) or escapes upward into `../docs/…` (mirroring the retired imperative `links.docs-in-deployable-surface` predicate). URL targets are not matched because they begin with a scheme rather than `docs/` or `../docs/`.
+The deterministic-hint interpreter narrows to the deployable file set with `path-pattern` hints, then flags any `[label](target)` link whose target is root-relative (`docs/…`) or escapes upward into `../docs/…`. URL targets are not matched because they begin with a scheme rather than `docs/` or `../docs/`.
 
 ## Look For
 

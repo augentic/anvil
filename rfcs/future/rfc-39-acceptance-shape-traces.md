@@ -142,7 +142,7 @@ Give run-summaries machine-readable frontmatter so verdicts can be filed and rec
 
 A native `specify lint framework` check (no Python), modelled on the existing cross-file `scenarios.duplicate-id` check.
 
-- Implement the check as a Road B referenced WASI tool in `augentic/specify-cli` (extend the existing `scenarios` family tool under `wasi-tools/scenarios/`, which already does cross-file `scenarios.duplicate-id` discovery), exposed by a `CORE-053` `kind: tool` rule file in `augentic/specify`. (The `kind: authoring-predicate` bridge was retired — a new CORE rule must use a declarative hint (Road A) or a referenced tool (Road B); a whole-tree cross-file reconciler fits Road B.)
+- Implement the check as a Road B referenced WASI tool in `augentic/specify-cli` (extend the existing `scenarios` family tool under `wasi-tools/scenarios/`, which already does cross-file `scenarios.duplicate-id` discovery), exposed by a `CORE-053` `kind: tool` rule file in `augentic/specify`. (A new CORE rule must use a declarative hint (Road A) or a referenced tool (Road B); a whole-tree cross-file reconciler fits Road B.)
 - Validates: catalog status vs. the typed run records (P0) vs. each scenario's `## Automated coverage` section.
 - Blocking findings *are* the gate signal — no separate `specify acceptance status` command is required for the gate (the `status` verb in the CLI surface above stays an optional reporter).
 
@@ -186,7 +186,7 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 
 ## References
 
-- [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the superseded "Synthesis byte-replay (deferred)" note.
+- [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the "Synthesis byte-replay (deferred)" note.
 - [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog and status legend (`automated` / `manual`).
 - [`acceptance/scenarios/01-pure-intent.md`](../../acceptance/scenarios/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/scenarios/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
 - [`acceptance/fixtures/skills/build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).

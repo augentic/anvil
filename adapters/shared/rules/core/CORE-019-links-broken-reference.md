@@ -20,7 +20,7 @@ rule_hints:
 
 Every `[label](references/…)` or `[label](examples/…)` link inside a `SKILL.md` must resolve to a file that exists on disk after the target is joined against the skill's own directory. These links point at a skill's bundled reference and example material; a broken one means the skill cites support content that was renamed, moved, or never committed.
 
-This is a narrower surface than CORE-002 (which checks every relative markdown link under `adapters/`, `plugins/`, `docs/`, and `.cursor/`): CORE-019 is scoped to skill bodies and to their `references/`/`examples/` payload, mirroring the retired imperative `links.broken-reference` predicate. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced, restricted to the `references/`/`examples/` target prefixes carried in `config`.
+This is a narrower surface than CORE-002 (which checks every relative markdown link under `adapters/`, `plugins/`, `docs/`, and `.cursor/`): CORE-019 is scoped to skill bodies and to their `references/`/`examples/` payload. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced, restricted to the `references/`/`examples/` target prefixes carried in `config`.
 
 ## Look For
 

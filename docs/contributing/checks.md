@@ -136,7 +136,7 @@ Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.js
 
 ### 3. Adapter referential integrity
 
-The legacy pipeline-graph integrity check has been retired — manifests no longer carry a `pipeline:` field. Brief existence and operation coverage are now enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
+Manifests do not carry a `pipeline:` field. Brief existence and operation coverage are enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
 
 ### 4. Symlink integrity
 
@@ -358,7 +358,7 @@ To add or extend one:
 
 > **Policy never lives in the engine.** The `lint_no_embedded_policy` Layer-3 guard test ([`crates/standards/tests/lint_no_embedded_policy.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/lint_no_embedded_policy.rs)) fails if any eval arm or `framework/check` module reintroduces a rule-specific literal (operation-set array, owner→prefix map, value-bearing discriminator, canonical-doc path, or an un-allow-listed numeric cap). Put the value in the rule's `config:`.
 
-> **Historical note.** The `kind: authoring-predicate` bridge that once compiled imperative rule predicates into the engine has been retired; there is no imperative escape hatch for a `CORE-*` rule. The transitional `core_parity` test family (which proved each cutover against its retiring predicate) was cutover-only scaffolding and has been deleted — ongoing coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each tool's in-crate tests.
+> **No imperative escape hatch.** There is no `kind: authoring-predicate` bridge: a `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved WASI tool (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each tool's in-crate tests.
 
 To add a `CORE-*` rule (either road):
 

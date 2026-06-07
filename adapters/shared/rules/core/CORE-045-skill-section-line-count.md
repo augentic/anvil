@@ -18,7 +18,7 @@ rule_hints:
 
 Every `##` section in a `SKILL.md` body stays within the per-section line budget. A section that grows past the cap is the cue to relocate depth into a `references/<topic>.md` sibling and link to it from the H2, keeping the skill body scannable.
 
-The deterministic-hint interpreter consumes the `MarkdownSection` facts the framework indexer already produced, restricted to level-2 sections in the `plugins/**/SKILL.md` candidate set. The line cap is policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `skill.section-line-count` predicate.
+The deterministic-hint interpreter consumes the `MarkdownSection` facts the framework indexer already produced, restricted to level-2 sections in the `plugins/**/SKILL.md` candidate set. The line cap is policy carried in the rule's `config:`, not the engine.
 
 ## Look For
 

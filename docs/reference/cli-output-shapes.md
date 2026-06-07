@@ -331,7 +331,7 @@ Runs the slice-shape brief and cross-check predicates and renders a **`Diagnosti
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 
 - `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
-- `kind: "review"` — a deterministically-raised request for agent/human judgment (the former `deferred` semantic checks). Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
+- `kind: "review"` — a deterministically-raised request for agent/human judgment. Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
 
 `summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
 

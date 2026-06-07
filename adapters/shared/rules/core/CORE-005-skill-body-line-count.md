@@ -18,7 +18,7 @@ rule_hints:
 
 Every `SKILL.md` body under `plugins/<plugin>/skills/<skill>/` stays within the 200-line cap. Skill bodies load into context the moment the skill triggers; a 1,200-line skill crowds out the operator's request, the artifacts under inspection, and every other skill body that fires later in the same turn. 200 specifically leaves room for the algorithm spine, the Critical Path, and a moderate amount of inline prose — but not enough to absorb every example, every flag re-documentation, and every edge case forever. Overflow is the cue to relocate prose to `references/<topic>.md` and link from the SKILL.md body, not to raise the cap.
 
-The path scope mirrors the retired imperative `skill.body-line-count` predicate: only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths participate. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the cardinality check.
+The path scope covers only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the cardinality check.
 
 The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/standards/src/lint/index/skill.rs::extract`, whose `body_line_count` field counts non-frontmatter body lines verbatim), so the rule cost is one bound check per candidate skill at lint time. The `value` selects the `skill-body-line-count` metric; the 200-line cap is policy carried in the rule's `config: { max }`, never a `const` in the engine arm.
 

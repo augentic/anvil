@@ -19,7 +19,7 @@ rule_hints:
 
 Every skill `name` must begin with the discovery prefix of the plugin that owns it: a skill under `plugins/<plugin>/skills/.../SKILL.md` must be named `<plugin>-<skill>`. Cursor discovers skills by this prefix, so a mismatch makes the skill undiscoverable under its plugin. Where a plugin directory differs from its published prefix the rule carries an override (the `spec` plugin publishes the `specify-` prefix).
 
-The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`name` plus owning `plugin` slug), restricted to the `plugins/**/SKILL.md` candidate set. The override map is policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `skill.name-directory-mismatch` predicate. Names that are not well-formed kebab-case are left to the schema and grammar predicates.
+The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`name` plus owning `plugin` slug), restricted to the `plugins/**/SKILL.md` candidate set. The override map is policy carried in the rule's `config:`, not the engine. Names that are not well-formed kebab-case are left to the schema and grammar predicates.
 
 ## Look For
 

@@ -1,6 +1,6 @@
 # Omnia build — crate writer
 
-Loaded by [../build.md](../build.md) phase 2. Reads `specs/<unit>/spec.md` + `design.md`, writes `$CRATE_PATH`. Carries the body of the retired `omnia-crate-writer` skill, sequenced after [shape.md](../shape.md) (idiom guidance already folded into spec + design by core synthesis).
+Loaded by [../build.md](../build.md) phase 2. Reads `specs/<unit>/spec.md` + `design.md`, writes `$CRATE_PATH`. Sequenced after [shape.md](../shape.md) (idiom guidance already folded into spec + design by core synthesis).
 
 ## Authority hierarchy
 

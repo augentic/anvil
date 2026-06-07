@@ -2,7 +2,7 @@
 
 Worked example for the [`screenshots` source adapter](../../../../../adapters/sources/screenshots/adapter.yaml). Exercises both operations of the contract: `survey` emits one lead per screen under `## Lead inventory` in `discovery.md`; `extract` returns one Evidence YAML per lead with `documentation` authority and the `region` / `container` / `leaf` claim kinds co-introduced for spatial Evidence.
 
-This fixture preserves the regression input from the retired `vectis-image-layout-inferer` skill. The `input/` directory holds the synthetic screen image; the `design-system/` directory holds the sibling token and asset manifests downstream `targets/vectis/build` consumes when reconciling the Evidence back into `composition.yaml`.
+This fixture preserves the regression input for the `vectis-image-layout-inferer` behavior, which now lives in the `screenshots` source adapter. The `input/` directory holds the synthetic screen image; the `design-system/` directory holds the sibling token and asset manifests downstream `targets/vectis/build` consumes when reconciling the Evidence back into `composition.yaml`.
 
 ## Layout
 
@@ -31,7 +31,7 @@ The single input image depicts two screens stacked vertically. Vision triage dec
 
 The Evidence YAMLs under `expected/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/evidence.schema.json) in the CLI repo (the spatial `region` / `container` / `leaf` claim kinds land alongside the textual kinds in the closed `kind` enum). The lead blocks in `expected/discovery.md` follow the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/discovery/lead.schema.json).
 
-Downstream `targets/vectis/build` (W2.6) consumes the spatial Evidence — after core synthesis (W3.1) folds the claims into `spec.md` / `design.md`, the Vectis target rebuilds `composition.yaml` from the synthesised hierarchy and the sibling `tokens.yaml` / `assets.yaml` in `design-system/`.
+Downstream `targets/vectis/build` consumes the spatial Evidence — after core synthesis folds the claims into `spec.md` / `design.md`, the Vectis target rebuilds `composition.yaml` from the synthesised hierarchy and the sibling `tokens.yaml` / `assets.yaml` in `design-system/`.
 
 ## Component-detection note
 

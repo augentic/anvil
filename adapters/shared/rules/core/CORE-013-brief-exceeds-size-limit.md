@@ -20,7 +20,7 @@ rule_hints:
 
 Adapter briefs stay within their line budget. Parent orchestrator briefs (`adapters/<axis>/<adapter>/briefs/<op>.md`) coordinate phases and stay terse — at most 150 non-blank body lines; operational depth belongs in a phase sub-brief or a `references/` document. Phase sub-briefs (`adapters/<axis>/<adapter>/briefs/{build,extract}/**/*.md`) carry the operational detail but still cap at 800 non-blank body lines; past that, split into sub-phases or move worked examples into `references/`.
 
-The deterministic-hint interpreter consumes the `Brief` facts the framework indexer already produced, each carrying a `parent` / `phase` scope discriminator and a non-blank `body-line-count`. The two caps are policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `brief.exceeds-size-limit` predicate (the advisory soft cap it once warned on emitted no finding and is not reinstated here).
+The deterministic-hint interpreter consumes the `Brief` facts the framework indexer already produced, each carrying a `parent` / `phase` scope discriminator and a non-blank `body-line-count`. The two caps are policy carried in the rule's `config:`, not the engine; there is no advisory soft-cap finding.
 
 ## Look For
 

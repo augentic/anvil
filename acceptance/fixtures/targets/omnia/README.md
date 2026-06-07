@@ -1,10 +1,10 @@
 # `acceptance/fixtures/targets/omnia/`
 
-Fixture for the Omnia target adapter (Wave 2.5, acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
+Fixture for the Omnia target adapter (acceptance scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
 
 ## What this fixture demonstrates
 
-The Omnia target's `shape` brief carries idiom guidance — provider-based DI, WASM-Preview-2 guardrails, error-variant conventions, validation placement — that **core synthesis** (W3.1, `/spec:refine`) folds into a slice's `spec.md` and `design.md` regardless of source. Two fixtures (one pure-intent, one documentation-sourced) should produce artifacts that both honour the same idioms.
+The Omnia target's `shape` brief carries idiom guidance — provider-based DI, WASM-Preview-2 guardrails, error-variant conventions, validation placement — that **core synthesis** (`/spec:refine`) folds into a slice's `spec.md` and `design.md` regardless of source. Two fixtures (one pure-intent, one documentation-sourced) should produce artifacts that both honour the same idioms.
 
 This fixture pins the *output* shape: it shows what synthesised `spec.md`, `design.md`, and `tasks.md` look like once the `shape` brief has been consumed, and the crate skeleton that `targets/omnia/briefs/build.md` produces from those artifacts.
 

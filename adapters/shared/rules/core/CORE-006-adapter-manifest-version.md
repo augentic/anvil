@@ -24,7 +24,7 @@ Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its manifest wir
 
 The deterministic-hint interpreter consumes the `AdapterManifest` facts the framework-profile indexer already produced (`crates/standards/src/lint/index/adapter.rs::extract`, whose `version` field stringifies both integer (`1`) and quoted-string (`"2.1"`) YAML forms verbatim), so the rule cost is one string-equality compare per candidate manifest at lint time. The `value` selects the `adapter-manifest-field` source; both the field (`version`) and the expected constant (`1`) are policy carried in the rule's `config: { field, equals }`, never a `const` in the engine arm.
 
-No imperative `Check` row is retired by this rule: the workflow contract pins `version: 1` but no existing predicate enforces it on disk. CORE-006 is the first declarative enforcement of the invariant and the smoke-test landing path for the `constant-eq` deterministic hint kind (the migration-cadence fallback permitted when no imperative row maps cleanly to a hint kind). Every adapter manifest in the framework repo already declares `version: 1`, so the rule fires zero findings against the current tree and surfaces only on drift.
+CORE-006 enforces the workflow contract's `version: 1` pin on disk and is the landing path for the `constant-eq` deterministic hint kind. Every adapter manifest in the framework repo already declares `version: 1`, so the rule fires zero findings against the current tree and surfaces only on drift.
 
 ## Look For
 

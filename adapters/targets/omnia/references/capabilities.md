@@ -296,7 +296,7 @@ Database access (queries, CRUD, and statements) for SQL databases. An ORM layer 
 |                 |                                                                                        |
 | --------------- | -------------------------------------------------------------------------------------- |
 | **Crate**       | `omnia_sdk`                                                                            |
-| **WASI module** | `omnia_wasi_sql` (name is historical — covers both SQL and NoSQL stores)               |
+| **WASI module** | `omnia_wasi_sql` (covers both SQL and NoSQL stores)               |
 | **Import**      | `use omnia_orm::{SelectBuilder, InsertBuilder, UpdateBuilder, DeleteBuilder, Filter};` |
 
 ```rust

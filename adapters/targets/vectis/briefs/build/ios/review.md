@@ -2,7 +2,7 @@
 
 Loaded by [../../build.md](../../build.md) Step 11 after [iOS verify](write.md#verify-max-3-iterations) succeeds. Scope: every Swift file under `${IOS_SHELL_DIR}` plus read-only access to `${PROJECT_DIR}/shared/src/app.rs` and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml`).
 
-Carries the body of the retired `vectis-ios-reviewer` skill. The iOS-specific team-spawn protocol lives in [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md).
+The iOS-specific team-spawn protocol lives in [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md).
 
 ## Pipeline
 

@@ -35,7 +35,7 @@ rule_hints:
 
 Every entry in a skill's `allowed-tools` frontmatter must name a tool the framework recognises. The recognised set is the closed list of built-in Cursor tools, plus dynamically-named MCP tools whose names carry the `mcp__` prefix. A typo or an invented tool name silently disables a tool the skill expected, so unknown entries are flagged.
 
-The deterministic-hint interpreter consumes the skill frontmatter the framework indexer already produced, restricted to the `plugins/**/SKILL.md` candidate set. The recognised tool set and the `mcp__` prefix exemption are policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `skill.unknown-tool` predicate. Skills that omit `allowed-tools` declare no tools and are never flagged.
+The deterministic-hint interpreter consumes the skill frontmatter the framework indexer already produced, restricted to the `plugins/**/SKILL.md` candidate set. The recognised tool set and the `mcp__` prefix exemption are policy carried in the rule's `config:`, not the engine. Skills that omit `allowed-tools` declare no tools and are never flagged.
 
 ## Look For
 

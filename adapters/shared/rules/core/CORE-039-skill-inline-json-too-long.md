@@ -21,7 +21,7 @@ rule_hints:
 
 Inline `json` / `jsonc` fences in a skill body stay within the length cap. A long output shape inlined in a skill body crowds out the algorithm spine and duplicates material that belongs in a single canonical reference; relocate it to `docs/reference/cli-output-shapes.md` and link to it instead.
 
-The deterministic-hint interpreter consumes the `FencedBlock` facts the framework indexer already produced, restricted to the `json` / `jsonc` info strings in the `plugins/**/SKILL.md` candidate set. The language allow-list and the line cap are policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `skill.inline-json-too-long` predicate.
+The deterministic-hint interpreter consumes the `FencedBlock` facts the framework indexer already produced, restricted to the `json` / `jsonc` info strings in the `plugins/**/SKILL.md` candidate set. The language allow-list and the line cap are policy carried in the rule's `config:`, not the engine.
 
 ## Look For
 

@@ -4,7 +4,7 @@
 
 ## Abstract
 
-The acceptance suite today is organised by **lifecycle-phase difficulty** — Wave 0 (N=1) through Wave 2 (failure/breakout) in [`acceptance/scenarios/`](../../acceptance/scenarios/README.md). That axis proves the `/spec:*` loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
+The acceptance suite today is organised by **lifecycle-phase difficulty** — from N=1 through failure/breakout in [`acceptance/scenarios/`](../../acceptance/scenarios/README.md). That axis proves the `/spec:*` loop runs end-to-end, but it does not deliberately exercise the framework's distinct **capabilities** at depth: source→plan reconciliation, source→component synthesis-and-build, slice→baseline merge (composition and decision records), and target-project routing from a source synopsis. This RFC proposes a structured, phased plan to enrich acceptance along that **capability** axis without forking the catalog or weakening the deliberate `negative-expectations` posture.
 
 The plan rests on one decision rule (fixture vs. manual), one repeatable authoring recipe, a coverage map of the named capabilities against today's catalog, and a four-phase rollout ordered by return on investment. It adds no new lifecycle authority: acceptance evidence remains evidence, never a transition.
 
@@ -64,7 +64,7 @@ Headline: capabilities 1 and 4 are mature and want more deterministic edge cases
 ### Phase 0 — instrument before enriching (once)
 
 - **Assertion-id taxonomy.** Assertion ids are free-form kebab strings reused across files (`plan-exists`, `plan-validates`, …). Write them down (a short reference doc) before multiplying scenario count, so ids stay consistent and greppable.
-- **Drain the existing catalog to green first.** `01-pure-intent` is the **hard halt** (Wave 0); it is now `passed` after being rescoped to `stages: [plan, refine]` so the gate rests only on deterministic plan/synthesis structure, not the non-deterministic codegen surface (capability 2 / Phase 2). No new manual scenario is meaningful while Wave 0 is red. This aligns with RM-05's immediate task.
+- **Drain the existing catalog to green first.** `01-pure-intent` is the **hard halt** (N=1); it is now `passed` after being rescoped to `stages: [plan, refine]` so the gate rests only on deterministic plan/synthesis structure, not the non-deterministic codegen surface (capability 2 / Phase 2). No new manual scenario is meaningful while the N=1 scenario is red. This aligns with RM-05's immediate task.
 
 ### Phase 1 — deepen the deterministic floor (capabilities 1 & 4)
 

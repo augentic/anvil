@@ -1,6 +1,6 @@
 # Shape-evidence checklist
 
-Sections that MUST appear in `input/specs/task-list/spec.md` and `input/design.md` because the Vectis target's `shape` brief was injected during core synthesis (W3.1 / `/spec:refine`). The synthesis golden test should validate each item; the items are stable across alternate source mixes (pure-intent vs. screenshots-sourced) — only the `Sources:` lines differ.
+Sections that MUST appear in `input/specs/task-list/spec.md` and `input/design.md` because the Vectis target's `shape` brief was injected during core synthesis (`/spec:refine`). The synthesis golden test should validate each item; the items are stable across alternate source mixes (pure-intent vs. screenshots-sourced) — only the `Sources:` lines differ.
 
 ## `input/specs/task-list/spec.md`
 

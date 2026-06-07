@@ -1,6 +1,6 @@
 # Fixture: single-source intent
 
-Pure-intent slice with one binding. Exercises the degenerate path the W2.1 `intent` adapter ships: one `kind: intent` claim, `authority: intent`, no filesystem locus.
+Pure-intent slice with one binding. Exercises the degenerate path the `intent` adapter ships: one `kind: intent` claim, `authority: intent`, no filesystem locus.
 
 Playbook rules exercised:
 

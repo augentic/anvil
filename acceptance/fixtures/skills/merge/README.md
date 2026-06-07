@@ -23,4 +23,4 @@ Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge
   expected-trace.md       # for success cases: the body's visible behaviour
 ```
 
-The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` (W3.3) and the per-target merge briefs (W2.5–W2.7) are wired into a CLI-side acceptance harness.
+The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` and the per-target merge briefs are wired into a CLI-side acceptance harness.

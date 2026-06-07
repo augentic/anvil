@@ -19,7 +19,7 @@ The deterministic-hint interpreter consumes the `AgentTeam` facts the framework-
 
 This rule narrows on a fact family rather than a file glob, so it carries no `path-pattern` hint. The framework walker records an `agent-teams.md` symlink as an `AgentTeam` fact and emits no `file` fact for the symlink path, so the file-derived candidate set a `path-pattern` builds can never select these overlays; the interpreter evaluates the full `agent_teams` fact family directly.
 
-No imperative `Check` row is retired by this rule. The hand-written `check::agent_teams` predicate enforces a *path*-equality invariant (the symlink must canonicalize to the canonical document's path) and additionally owns the regular-file, missing-canonical, and unsupported-entry branches that produce no `AgentTeam` fact. Those branches are structurally invisible to a fact-iterating digest evaluator, and path equality is a stricter check than content-digest equality, so this rule is the smoke-test landing path for the `content-digest-eq` deterministic hint kind, not a replacement for the predicate. Every `agent-teams.md` overlay in the framework repo already resolves to the canonical document, so the rule fires zero findings against the current tree and surfaces only on drift.
+CORE-008 is the landing path for the `content-digest-eq` deterministic hint kind: it checks that each `agent-teams.md` overlay's resolved content digest matches the canonical document. Every `agent-teams.md` overlay in the framework repo already resolves to the canonical document, so the rule fires zero findings against the current tree and surfaces only on drift.
 
 ## Look For
 

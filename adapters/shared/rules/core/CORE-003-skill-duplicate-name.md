@@ -18,7 +18,7 @@ rule_hints:
 
 Every `SKILL.md` under `plugins/<plugin>/skills/<skill>/` declares a single `name:` field in its YAML frontmatter, and that name must be globally unique across the framework repo. The Cursor plugin marketplace, the discovery prefix predicate, and the per-plugin invocation router all key off this value: two skills sharing one name leave the marketplace with an ambiguous slash-command resolution and the prefix-mismatch rule with no stable owner to attribute against.
 
-The path scope mirrors the retired imperative `skill.duplicate-name` predicate: only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths participate. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the uniqueness check.
+The path scope covers only well-formed `plugins/<plugin>/skills/<skill>/SKILL.md` paths. Files that the framework-profile indexer drops upstream (non-skill markdown, malformed frontmatter, missing `name:`) never reach the uniqueness check.
 
 The deterministic-hint interpreter consumes the `Skill` facts the framework indexer already produced (`crates/standards/src/lint/index/skill.rs::extract`), so the rule cost is one grouping pass over `WorkspaceModel.skills` at lint time.
 

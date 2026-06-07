@@ -15,7 +15,7 @@ Use this document when adding or changing a first-party deterministic helper. A 
 These active callers are expected to use declared tools and should be kept in sync with the declarations above.
 
 - Contract merge and validation: [`adapters/targets/contracts/briefs/merge.md`](../../adapters/targets/contracts/briefs/merge.md), [`adapters/targets/contracts/briefs/build.md`](../../adapters/targets/contracts/briefs/build.md), and the verifier siblings under [`adapters/targets/contracts/references/`](../../adapters/targets/contracts/references/) (`openapi/verifier.md`, `asyncapi/verifier.md`, `json-schema/verifier.md`).
-- Vectis validation and scaffold rendering: [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/) (the consolidated `shape` / `build` / `merge` briefs that absorbed the retired `vectis-{core,test,ios,android}-writer`, `vectis-{core,ios,android}-reviewer`, and `vectis-template-updater` skill bodies), the [`screenshots` source adapter](../../adapters/sources/screenshots/adapter.yaml) (which houses the body of the retired `vectis-image-layout-inferer` skill), and [`adapters/targets/vectis/references/layout-inferer-contract.md`](../../adapters/targets/vectis/references/layout-inferer-contract.md).
+- Vectis validation and scaffold rendering: [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/) (the consolidated `shape` / `build` / `merge` briefs that carry the `vectis-{core,test,ios,android}-writer`, `vectis-{core,ios,android}-reviewer`, and `vectis-template-updater` behaviors), the [`screenshots` source adapter](../../adapters/sources/screenshots/adapter.yaml) (which houses the `vectis-image-layout-inferer` body), and [`adapters/targets/vectis/references/layout-inferer-contract.md`](../../adapters/targets/vectis/references/layout-inferer-contract.md).
 - Operator docs: [`docs/reference/cli/contract.md`](cli/contract.md), [`docs/reference/cli/vectis.md`](cli/vectis.md), and [`docs/explanation/tool-declarations.md`](../explanation/tool-declarations.md).
 
 ## Host-Owned Surfaces
@@ -32,7 +32,7 @@ The following command families are intentionally outside this scope. They are no
 
 No additional first-party helper binary in the active skill and brief surface currently meets the migration threshold. Contracts and the filesystem-only Vectis helpers are already declared tools. `omnia` does not currently expose a first-party helper that should become a WASI component.
 
-Future migrations should update this inventory first, then add the WASI component, declare it in the owning target's `adapter.yaml` `tools[]`, rewrite active callers to `specify tool run`, and extend the consistency check for retired host-helper spellings. See the [Decision Log](../explanation/decision-log.md) for the longer-form rationale.
+Future migrations should update this inventory first, then add the WASI component, declare it in the owning target's `adapter.yaml` `tools[]`, rewrite active callers to `specify tool run`, and extend the consistency check for host-helper spellings.
 
 ## Enforcement
 

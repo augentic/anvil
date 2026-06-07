@@ -140,7 +140,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`. Replaces the former `/spec:define` and `/spec:extract`.
+The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`, serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 
 **Registry**
 `registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry carries a `name` and `url` (plus optional contract wiring and a greenfield adapter seed); a project's description, capabilities, and target live in its own `project.yaml` and are projected into `topology.lock`.
@@ -180,7 +180,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`. Replaces the unqualified "adapter".
+Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

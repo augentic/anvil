@@ -1,8 +1,8 @@
 # Running Acceptance
 
-This is the single entry point for Specify acceptance. It defines the two acceptance surfaces, how an operator (or agent) runs them, the wave ordering and halt gate, and the green-gate signal.
+This is the single entry point for Specify acceptance. It defines the two acceptance surfaces, how an operator (or agent) runs them, the group ordering and halt gate, and the green-gate signal.
 
-The scenario catalog — the canonical list of every scenario, its wave, release-blocker status, and run status — lives in [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md). This document does not duplicate that table.
+The scenario catalog — the canonical list of every scenario, its grouping, release-blocker status, and run status — lives in [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md). This document does not duplicate that table.
 
 ## The two acceptance surfaces
 
@@ -53,7 +53,7 @@ Operators who prefer an agent to do the clerical work can paste the reusable pro
 When asked to "run specify's acceptance tests and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
 
 1. **Automated surface.** Run `make acceptance` — it runs `make lint` plus the fixture-backed acceptance tests (`plan`, `source`, `slice`, `workspace`), which prove every `automated` catalog entry. Report pass/fail with the failing finding/test ids. For the full deterministic surface (including the wasm-tool suites), run `cargo make test` in the `specify-cli` checkout. This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make acceptance`'s `INSTALL_DIR`) or fall back to the absolute `../specify-cli/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
-2. **Manual sweep — per scenario, in wave order** (see [catalog](../../acceptance/scenarios/README.md)):
+2. **Manual sweep — per scenario, in group order** (see [catalog](../../acceptance/scenarios/README.md)):
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
@@ -64,13 +64,13 @@ When asked to "run specify's acceptance tests and report any issues", an agent s
 
 ## Execution order and the halt gate
 
-The catalog is drained in three waves. Each run fills a run-summary and flips the scenario's catalog status to `passed` / `failed` / `deferred`.
+The catalog is drained in groups. Each run fills a run-summary and flips the scenario's catalog status to `passed` / `failed` / `deferred`.
 
-1. **Wave 0 — release blocker.** Scenario `pure-intent` (N=1). **Hard halt:** if it fails, record the failure, do not run any other scenario, triage, then resume once green. No later scenario is meaningful while it is red.
-2. **Wave 1 — core synthesis + routing.** The happy-path planning, multi-slice, multi-repo routing, authority/conflict tagging, and Gate-1 amend scenarios.
-3. **Wave 2 — failure and breakout paths.** The negative, recovery, and breakout scenarios.
+1. **N=1 hard halt — release blocker.** Scenario `pure-intent` (N=1). **Hard halt:** if it fails, record the failure, do not run any other scenario, triage, then resume once green. No later scenario is meaningful while it is red.
+2. **Core synthesis + routing.** The happy-path planning, multi-slice, multi-repo routing, authority/conflict tagging, and Gate-1 amend scenarios.
+3. **Failure and breakout paths.** The negative, recovery, and breakout scenarios.
 
-Within a wave, scenarios are independent and may run in any order; a failure outside Wave 0 is recorded and triaged but does not halt sibling runs.
+Within a group, scenarios are independent and may run in any order; a failure outside the `pure-intent` hard halt is recorded and triaged but does not halt sibling runs.
 
 ## The gate signal
 

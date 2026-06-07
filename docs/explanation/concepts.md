@@ -136,7 +136,7 @@ Future slices read from the baseline. When you describe a new piece of work, ref
 
 A **slice** is one trip through the refine → build → merge loop. It lives at `.specify/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
-A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace — 2.0 drives every change through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
+A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
 
 ## Source and target adapters
 

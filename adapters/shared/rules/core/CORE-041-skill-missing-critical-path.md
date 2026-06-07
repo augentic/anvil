@@ -24,7 +24,7 @@ A skill whose body is long enough must carry a `## Critical Path` section. Long 
 
 This check runs natively: the `kind: presence` hint with `value: markdown-section` iterates the skill fact family, and for each skill whose `skill-body-line-count` reaches `when.min` flags those lacking a markdown section with the configured `title` and `level`. The rule's `path-pattern` is a sentinel include; the markdown-section selector evaluates the whole skill fact family regardless of the candidate set. The title, level, and threshold are supplied in `config:` so the policy lives in this rule file, not the engine.
 
-The threshold is expressed against the indexer's `skill-body-line-count` metric, which counts the markdown body lines after the closing frontmatter delimiter. The retired `skill-body` tool counted the closing `---` delimiter line as one extra body line, so its documented `150` threshold corresponds to `149` on this metric; the value is chosen so this rule fires on exactly the same skills as the tool did.
+The threshold is expressed against the indexer's `skill-body-line-count` metric, which counts the markdown body lines after the closing frontmatter delimiter.
 
 ## Look For
 

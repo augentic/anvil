@@ -4,7 +4,7 @@
 
 Two things make the Vectis `merge` brief different from the bare slice merge:
 
-1. **`composition.yaml` is a build output that lands at merge time.** It is no longer a Specify artifact under `.specify/specs/`; the `build` brief regenerated it from `spec.md` + `design.md`, and `merge` promotes it into the baseline alongside the implementation code. The pre- and post-merge composition validators are the gate.
+1. **`composition.yaml` is a build output that lands at merge time.** It is not a Specify artifact under `.specify/specs/`; the `build` brief regenerates it from `spec.md` + `design.md`, and `merge` promotes it into the baseline alongside the implementation code. The pre- and post-merge composition validators are the gate.
 2. **The cap matrix is re-verified against the merged baseline.** A green slice build is necessary but not sufficient — the merge brief re-runs `cargo` / `make build` / `gradlew` against the merged tree because cross-slice regressions (UniFFI bridging drift, Java 21 / Gradle wrapper changes, cargo-swift drift, cap-marker expansion) only surface after deltas land.
 
 ## Prerequisites

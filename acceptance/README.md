@@ -15,11 +15,11 @@ Run Specify's acceptance tests and report your findings for me to review.
 The prompt tells the agent to follow the runbook in [docs/contributing/acceptance.md](../docs/contributing/acceptance.md#agent-runbook): 
 
 1. It runs the  non-agent, "mechanical" tests (`make acceptance`)
-2. Then drives each agent-based scenario in [scenarios/](scenarios/README.md) in wave order
+2. Then drives each agent-based scenario in [scenarios/](scenarios/README.md) in group order
 3. The agent self-grades and files a report under [runs/](runs/README.md),
 4. Once done, the agent hands back at the human seams (forge merges, judgment calls, sign-off). 
 
-**N.B. Wave 0 (**`01-pure-intent`**) is a hard halt.**
+**N.B. the N=1 hard halt (**`01-pure-intent`**) is a hard halt.**
 
 ## Running the automated tests
 

@@ -46,5 +46,4 @@ See [specify plan](../reference/cli/plan.md) and [specify workspace](../referenc
 ## See also
 
 - [Drive a slice manually](drive-slice-manually.md) — breakout after execute parks
-- [Decision log](../explanation/decision-log.md) — why layers compose this way
 - [Lifecycle](../reference/lifecycle.md) — legal transitions the CLI enforces

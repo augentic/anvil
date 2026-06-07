@@ -31,7 +31,7 @@ rule_hints:
 
 Prose documentation under `docs/explanation/`, `docs/orientation/`, `docs/tutorials/`, and `docs/how-to/` does not draw pipeline or flow diagrams inside a ` ```text ` fence. A fenced text block whose body contains a flow arrow (`->` or `→`) is a diagram in disguise; replace it with an SVG under `docs/assets/diagrams/` and embed the asset (see `docs/assets/diagrams/_STYLE.md`).
 
-The deterministic-hint interpreter consumes the `FencedBlock` facts the framework indexer already produced, restricted to the `text` info string in the candidate set. The language allow-list and the banned arrow glyphs are policy carried in the rule's `config:`, not the engine — mirroring the retired imperative `docs.text-pipeline-diagram` predicate.
+The deterministic-hint interpreter consumes the `FencedBlock` facts the framework indexer already produced, restricted to the `text` info string in the candidate set. The language allow-list and the banned arrow glyphs are policy carried in the rule's `config:`, not the engine.
 
 ## Look For
 

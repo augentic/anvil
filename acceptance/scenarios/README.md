@@ -2,19 +2,19 @@
 
 The platform scenario pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Each scenario is a self-contained, schema-validated `<id>.md`: open one file and you have its intent, setup, invocation, and assertions.
 
-This README is the **single catalog** — the canonical list of scenarios, their wave, release-blocker status, and run status. How to run the sweep (surfaces, the `specify` build on PATH, the agent runbook, the gate signal) lives in [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). Common setup is factored into [`shared/setup.md`](../shared/setup.md); reusable operator prompts into [`shared/meta-prompts.md`](../shared/meta-prompts.md); run records into [`acceptance/runs/`](../runs/README.md).
+This README is the **single catalog** — the canonical list of scenarios, their grouping, release-blocker status, and run status. How to run the sweep (surfaces, the `specify` build on PATH, the agent runbook, the gate signal) lives in [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). Common setup is factored into [`shared/setup.md`](../shared/setup.md); reusable operator prompts into [`shared/meta-prompts.md`](../shared/meta-prompts.md); run records into [`acceptance/runs/`](../runs/README.md).
 
-## Waves
+## Groups
 
-The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` fails, record it, run nothing else, triage, resume once green. Within Wave 1 and Wave 2 scenarios are independent and may run in any order.
+The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt**: if `pure-intent` fails, record it, run nothing else, triage, resume once green. Within the remaining groups scenarios are independent and may run in any order.
 
-### Wave 0 — release blocker
+### N=1 hard halt — release blocker
 
 | Scenario | File | Status |
 | --- | --- | --- |
 | Pure intent, one slice | [`01-pure-intent`](01-pure-intent.md) | passed |
 
-### Wave 1 — core synthesis, planning, and routing
+### Core synthesis, planning, and routing
 
 | Scenario | File | Status |
 | --- | --- | --- |
@@ -31,7 +31,7 @@ The catalog drains in three waves. Wave 0 is a **hard halt**: if `pure-intent` f
 | Contract routing plan generation | [`contract-routing`](contract-routing.md) | automated |
 | Cross-repo contract flow (full lifecycle) | [`cross-repo-contract-flow`](cross-repo-contract-flow.md) | pending |
 
-### Wave 2 — failure and breakout paths
+### Failure and breakout paths
 
 | Scenario | File | Status |
 | --- | --- | --- |

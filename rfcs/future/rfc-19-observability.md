@@ -1,8 +1,6 @@
 # RFC-19: CLI Observability
 
-> Status: Draft - Depends: RFC-1, RFC-2, and RFC-15 (retired milestone docs; durable CLI behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
-
-> **Verbs frozen at draft time.** This draft predates the rename: `specify <verb>` is now `specrun <verb>`, and the `specify adapter` family is now the axis-split `specrun source` / `specrun target`. Read verb spellings below as historical design intent, not the current CLI surface.
+> Status: Draft - Depends: RFC-1, RFC-2, and RFC-15 (durable CLI behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md))
 
 ## Abstract
 
@@ -299,6 +297,6 @@ For CLI maintainers:
 
 ## References
 
-- RFC-1 / RFC-2 / RFC-15 (retired milestone docs) — CLI and WASI tool predecessors.
+- RFC-1 / RFC-2 / RFC-15 — CLI and WASI tool predecessors.
 - `specify-cli/src/output.rs`
 - `specify-cli/docs/contributing/cli-architecture.md`
