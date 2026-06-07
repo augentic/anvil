@@ -17,16 +17,15 @@ SPECIFY_LINK := $(INSTALL_DIR)/specify
 lint:
 	cargo run --release --manifest-path $(SPECIFY_MANIFEST) --bin specify -- lint framework --framework-root .
 
-# Deterministic acceptance tests only. Builds the release binary, runs the
-# static checks plus the fixture-backed acceptance tests (scenarios marked 
-# `automated`), then symlinks this build's `specify` into INSTALL_DIR so the
+# Prepares the manual operator sweep. Builds the release binary, runs the
+# static checks, then symlinks this build's `specify` into INSTALL_DIR so the
 # manual sweep resolves the bare `specify` command. The symlink always points
 # at the latest build, so it never goes stale. Deliberately NOT wired into CI.
-# `cargo make test` in specify-cli remains the full deterministic surface.
+# The deterministic acceptance tests are not re-run here — `cargo make test` in
+# specify-cli is the single, authoritative deterministic surface.
 acceptance:
 	cargo build --release --manifest-path $(SPECIFY_MANIFEST) --bin specify
 	@$(MAKE) lint
-	cargo test --release --manifest-path $(SPECIFY_MANIFEST) --test plan --test source --test slice --test workspace
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
