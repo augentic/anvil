@@ -32,7 +32,7 @@ make acceptance    # builds the release binary, runs make lint, then symlinks sp
 
 `make acceptance` **prepares the manual sweep**: it builds the release binary from the sibling `specify-cli` checkout, runs `make lint`, and symlinks the build into `~/.local/bin` (warning if it is not on your `PATH`), then points at the manual sweep below. It does **not** re-run the deterministic acceptance tests — `cargo make test` in `specify-cli` is the single authoritative deterministic surface (including the wasm-tool suites), and it runs there on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries from this repo would only duplicate that work. `make acceptance` does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
 
-`make ci` runs `make lint`. Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
+`make ci` runs `make lint`. Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 

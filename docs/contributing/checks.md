@@ -6,10 +6,10 @@ The `specify` repo is linted by `specify lint framework` from `augentic/specify-
 
 Framework validation splits into two surfaces:
 
-| Surface | When it runs | What it covers |
-| --- | --- | --- |
-| **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express |
+| Surface                                              | When it runs                                                                                       | What it covers                                                                                                                                                                    |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
 **Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
@@ -27,11 +27,11 @@ Use the same pattern for other plain YAML files when a framework or runtime sche
 
 Framework and consumer validation are intentionally separate. See [Standards layer](../explanation/standards-layer.md).
 
-| Surface | Command | Audience | Enforces |
-| --- | --- | --- | --- |
-| **Authoring standards** | `specify lint framework` (`make lint`) | `augentic/specify` contributors | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specify lint project` | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI |
-| **Build-time judgment** | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted codex policy → `REVIEW.md` |
+| Surface                   | Command                                | Audience                           | Enforces                                                        |
+| ------------------------- | -------------------------------------- | ---------------------------------- | --------------------------------------------------------------- |
+| **Authoring standards**   | `specify lint framework` (`make lint`) | `augentic/specify` contributors    | Skill frontmatter, rule *shape*, links, marketplace consistency |
+| **Engineering standards** | `specify lint project`                 | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI  |
+| **Build-time judgment**   | Target `build/review.md` briefs        | Active slice during `/spec:build`  | Model-assisted codex policy → `REVIEW.md`                       |
 
 Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
 
@@ -62,7 +62,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
 
-Set `SPECIFY_FRAMEWORK_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
+Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
 
 ### Diagnostic format
 
@@ -75,20 +75,20 @@ FAIL: <rule-id>: <message>
 
 `<rule-id>` is stable kebab-case (for example `links.unresolved`, `scenarios.schema-violation`, `rules.namespace-ownership-violation`). Human text output may still say `codex.*` in older examples; wire ids use the `rules.*` family for codex shape checks. The location line is omitted when a finding is repo-wide (duplicate ids, missing checkout). A summary line reports the total failure count; success prints `All checks passed.` on stdout.
 
-| Road | `CORE-*` | How enforced |
-| --- | --- | --- |
-| Road A — declarative hint | most of `CORE-001..053` | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
-| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings |
+| Road                          | `CORE-*`                                                                                                                         | How enforced                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Road A — declarative hint     | most of `CORE-001..053`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
+| Road B — referenced WASI tool | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings                                                                                                                                                                                            |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
 
-| Authoring `rule_id` prefix | Topic |
-| --- | --- |
-| `adapter.*` | Adapter manifests |
-| `links.*` | Markdown links, skill references, directives, tool-owned schema URLs |
-| `skill.*` | `SKILL.md` frontmatter and body |
-| `scenarios.*` | Acceptance scenario frontmatter and recorded traces |
-| `rules.*` | Rule shape, namespace ownership |
+| Authoring `rule_id` prefix | Topic                                                                |
+| -------------------------- | -------------------------------------------------------------------- |
+| `adapter.*`                | Adapter manifests                                                    |
+| `links.*`                  | Markdown links, skill references, directives, tool-owned schema URLs |
+| `skill.*`                  | `SKILL.md` frontmatter and body                                      |
+| `scenarios.*`              | Acceptance scenario frontmatter and recorded traces                  |
+| `rules.*`                  | Rule shape, namespace ownership                                      |
 
 Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B tool source lives under `wasi-tools/<name>/`.
 
@@ -339,15 +339,15 @@ The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. 
 
 The seven framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill-body`, `agent-teams`, `links-registry`, `marketplace`, `prose`, `rules`). Each one and the `CORE-*` rules it serves:
 
-| Tool | Serves |
-| --- | --- |
-| `scenarios` | CORE-028, 029, 031, 033 |
-| `skill-body` | CORE-040, 046, 048 |
-| `agent-teams` | CORE-012 |
-| `links-registry` | CORE-018, 020 |
-| `marketplace` | CORE-022 |
-| `prose` | CORE-024 |
-| `rules` | CORE-009, 026, 053 |
+| Tool             | Serves                  |
+| ---------------- | ----------------------- |
+| `scenarios`      | CORE-028, 029, 031, 033 |
+| `skill-body`     | CORE-040, 046, 048      |
+| `agent-teams`    | CORE-012                |
+| `links-registry` | CORE-018, 020           |
+| `marketplace`    | CORE-022                |
+| `prose`          | CORE-024                |
+| `rules`          | CORE-009, 026, 053      |
 
 To add or extend one:
 

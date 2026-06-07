@@ -34,11 +34,11 @@ Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk u
 
 The word **workspace** overloads three related concepts. Use them verbatim:
 
-| Term | Meaning |
-| --- | --- |
-| **Workspace** | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
-| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/` |
-| **Workspace sync** | `specify workspace sync` — materialise slots and regenerate `topology.lock` |
+| Term               | Meaning                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **Workspace**      | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
+| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/`                                                               |
+| **Workspace sync** | `specify workspace sync` — materialise slots and regenerate `topology.lock`                                        |
 
 `/spec:init workspace` and `specify init --workspace` scaffold a workspace; the CLI chains an initial workspace sync before returning.
 
@@ -46,11 +46,11 @@ The word **workspace** overloads three related concepts. Use them verbatim:
 
 Specify separates three concerns. Use the terms verbatim; see [docs/explanation/standards-layer.md](docs/explanation/standards-layer.md) for the full picture.
 
-| Layer | Role | Examples |
-| --- | --- | --- |
-| **Workflow** | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specify slice transition` |
-| **Artifacts** | Slice-local and baseline product intent | `spec.md`, `plan.yaml`, `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint project` |
+| Layer                     | Role                                          | Examples                                                                            |
+| ------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Workflow**              | Phase orchestration and lifecycle transitions | `/spec:plan`, `/spec:execute`, `specify slice transition`                           |
+| **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                           |
+| **Engineering standards** | Durable policy that outlives any slice        | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint project` |
 
 **Authoring standards** (`docs/standards/`, enforced by `specify lint framework` / `make lint` on this repo) govern skill and doc house style. **Engineering standards** (rules under `adapters/**/rules/`, exported by `specify rules export` and enforced by `specify lint project`) govern generated and hand-written code in consumer projects. Do not conflate them.
 
@@ -120,7 +120,7 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `specify lint framework` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-name-uniqueness).
-- **`$SPECIFY_FRAMEWORK_ROOT` resolves first-party adapters offline** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@v1`; ref defaults to `v1`), and both `init` and the adapter resolver fall back to `$SPECIFY_FRAMEWORK_ROOT/adapters/{sources,targets}/<name>/` (a checkout of *this* repo) when a project has no vendored `adapters/` tree or manifest-cache mirror. This is what lets the acceptance sweep run `specify init omnia@v1` in a disposable dir with no hand-made symlink. Probed last, so a project that vendors its own adapter always wins; skipped when the env var is unset. See [DECISIONS.md §"Adapter loader axis routing"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
+- **First-party adapters resolve project-locally or from GitHub** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@v1`; ref defaults to `v1`) that resolves to the published adapter on GitHub (a networked sparse checkout). The adapter resolver itself is project-local only — manifest-cache mirror then vendored `adapters/` tree — with no environment-variable fallback to an out-of-tree framework checkout. See [DECISIONS.md §"Adapter loader axis routing"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the shared `adapters/shared/references/runtime/review-team-protocol.md` overlay, which resolves to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
 - Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or slash-namespaces. Crossing a major runs through a registered migrator, not an alias — each major version bump requires a registered `MigrationKind` (with a `Migrator` impl + golden fixture) before `specify_version` rolls, so migration is a covered routine step via `specify migrate` rather than a flag-day break. See the cli repo's [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) "Bootstrap, upgrade, and migration lifecycle" decision.
 
