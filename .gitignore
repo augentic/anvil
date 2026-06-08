@@ -3,6 +3,9 @@
 __pycache__/
 specify
 docs/book/
+
+# Repo-local acquired binaries
+.bin/
 target/
 tooling/target/
 

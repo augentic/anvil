@@ -32,7 +32,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 ### Skills and documentation (specify)
 
 - Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Skill Authoring Standards](docs/standards/skill-authoring.md)
-- `make lint` must pass before submitting a pull request
+- `make lint` must pass before submitting a pull request. It needs no `specify-cli` checkout or Rust toolchain: when no checkout is present, it acquires the `.specify-version`-pinned published `specify` binary into a repo-local `./.bin`. See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-binary).
 - Use kebab-case for file names, change names, and adapter identifiers
 
 ## Developer's Certificate of Origin

@@ -26,13 +26,15 @@ This is the boundary: a scenario is promotable to `backend: fixture` only when *
 ## Running the automated surface
 
 ```bash
-make lint          # static repository checks (links, scenario frontmatter, skill/adapter/rule shape)
-make acceptance    # builds the release binary, runs make lint, then symlinks specify onto your PATH for the sweep
+make lint          # static repository checks; no specify-cli checkout required
+make acceptance    # builds the release binary from specify-cli, runs make lint, then symlinks specify onto your PATH for the sweep
 ```
 
-`make acceptance` **prepares the manual sweep**: it builds the release binary from the sibling `specify-cli` checkout, runs `make lint`, and symlinks the build into `~/.local/bin` (warning if it is not on your `PATH`), then points at the manual sweep below. It does **not** re-run the deterministic acceptance tests — `cargo make test` in `specify-cli` is the single authoritative deterministic surface (including the wasm-tool suites), and it runs there on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries from this repo would only duplicate that work. `make acceptance` does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into `make ci`, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
+The two targets differ in what they require on disk. `make lint` does **not** need a `specify-cli` checkout: it resolves a `specify` binary through [`scripts/specify.sh`](../../scripts/specify.sh), falling back to acquiring the [`.specify-version`](../../.specify-version) pin into `./.bin` when no source checkout is present (see [Consistency Checks — binding model](checks.md#binding-to-a-specify-binary)). `make acceptance` is different: it **requires** a `specify-cli` checkout because it builds the release binary from source (it does not consume a published `./.bin` binary), and it fails fast if the sibling `specify-cli` checkout is missing. The no-checkout fallback is scoped to `lint` only; acceptance prep stays co-development-only.
 
-`make ci` runs `make lint`. Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
+`make acceptance` **prepares the manual sweep**: it builds the release binary from the sibling `specify-cli` checkout, runs `make lint`, and symlinks the build into `~/.local/bin` (warning if it is not on your `PATH`), then points at the manual sweep below. It does **not** re-run the deterministic acceptance tests — `cargo make test` in `specify-cli` is the single authoritative deterministic surface (including the wasm-tool suites), and it runs there on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries from this repo would only duplicate that work. `make acceptance` does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into CI, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
+
+Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 

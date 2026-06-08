@@ -76,7 +76,7 @@ Run documentation and consistency checks from the repository root:
 make lint
 ```
 
-This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.
+This delegates to [`scripts/specify.sh`](scripts/specify.sh), which resolves a `specify` binary per `SPECIFY_VERSION` (default `next`: build from a sibling `specify-cli` checkout when present, else acquire the [`.specify-version`](.specify-version) pin into `./.bin`). No `specify-cli` checkout or Rust toolchain is required. See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
 
 ### Local plugin development
 

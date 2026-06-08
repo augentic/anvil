@@ -10,12 +10,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_INCREMENTAL: 0
-  CARGO_NET_RETRY: 10
-  CARGO_TERM_COLOR: always
-  RUSTUP_MAX_RETRIES: 10
-
 jobs:
   checks:
     name: Checks
@@ -26,31 +20,29 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Choose specify-cli ref
-        id: specify-cli-ref
+      - name: Resolve SPECIFY_VERSION
+        id: specify-version
         shell: bash
         run: |
-          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
-            echo "ref=$branch" >> "$GITHUB_OUTPUT"
+          if [ -n "${SPECIFY_VERSION:-}" ]; then
+            resolved="${SPECIFY_VERSION}"
           else
-            echo "ref=main" >> "$GITHUB_OUTPUT"
+            resolved="$(tr -d '[:space:]' < .specify-version)"
           fi
+          echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+          echo "SPECIFY_VERSION=$resolved" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v6
+      - name: Cache acquired binary
+        uses: actions/cache@v4
         with:
-          repository: augentic/specify-cli
-          path: specify-cli
-          ref: ${{ steps.specify-cli-ref.outputs.ref }}
-          fetch-depth: 1
+          path: .bin
+          key: specify-${{ runner.os }}-${{ steps.specify-version.outputs.resolved }}
 
+      # Minimal Rust for scripts/specify.sh acquisition when the cache misses.
+      # Remove once release assets or install.sh cover the pinned version.
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: specify-cli
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
+          profile: minimal
 
       - name: Verify spec-runtime symlinks resolve
         run: |
@@ -67,5 +59,4 @@ jobs:
           exit $status
 
       - name: Verify framework
-        run: |
-          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
+        run: make lint
