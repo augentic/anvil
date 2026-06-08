@@ -36,7 +36,7 @@ So the honest picture is three tiers, only the third of which is Cargo-bound:
 | Tier | Surface | Config | Rust? |
 | --- | --- | --- | --- |
 | **1. Runtime** | `specrun` (`plan`, `slice`, `workspace`, `init`, `migrate`, `lint project`) | `.specify/project.yaml` | No |
-| **2. Framework authoring** | `specdev` (`lint framework`, acceptance frontmatter) | `specify-authoring.yaml` (RFC-43) | No |
+| **2. Framework authoring** | `specdev` (`lint framework`, acceptance frontmatter) | `Specify.toml` (RFC-43) | No |
 | **3. Toolsmith / CLI dev** | `cargo make` in `specify-cli` | `Makefile.toml` | Yes |
 
 Tiers 1 and 2 are the *same binary* under two names. Tier 3 is the existing Cargo workflow and is out of scope for the binary surface.
@@ -56,7 +56,7 @@ Installation places `specify` and adds `specrun` / `specdev` as hardlinks or sym
 | Property | One binary + `argv[0]` | Two separate binaries |
 | --- | --- | --- |
 | Release pipelines | One | Two |
-| Version-compat matrix | One pin (RFC-43 `cli.version`) | Two pins + a matrix |
+| Version-compat matrix | One `[cli]` binding (`RFC-43` `version` / `binary`) | Two pins + a matrix |
 | Shared `Ctx` / `Out` / dispatch / exit-code map | Reused | Duplicated or extracted to a shared crate |
 | Embedded WASI framework checkers | Carried once | Must be excluded from `specrun`, carried by `specdev` |
 | RFC-41 Rust-free authoring | Preserved trivially | Preserved only if `specdev` is also a published standalone binary |
@@ -71,7 +71,7 @@ The one-binary form delivers the *entire* ergonomic and conceptual benefit (clea
 
 ### Consuming the RFC-43 authoring config
 
-When invoked as `specdev` (or `specify` in a framework-root context), the binary auto-discovers `specify-authoring.yaml` at the repo root and reads `lint.framework-root`, `cli.*`, and `platforms` as defaults — the values an explicit flag still overrides. This is the step that lets [`scripts/specify.sh`](../scripts/specify.sh) shrink: once the binary reads the file itself, the script's responsibility collapses to *acquiring* a binary into `cli.bin-dir` and exec'ing it, with the declared values living in YAML rather than duplicated in Bash.
+When invoked as `specdev` (or `specify` in an authoring-repo context), the binary auto-discovers `Specify.toml` at the repo root and reads `cli.version`, `cli.binary`, and optional `cli.path` as defaults — explicit flags and `SPECIFY_VERSION` still override. The authoring lint scan root is not read from the file: `specify lint framework` keeps `--framework-root` (default `.`), and auto-discovery may later infer the root from the directory containing `Specify.toml`. This is the step that lets [`scripts/specify.sh`](../scripts/specify.sh) shrink: once the binary reads the file itself, the script's responsibility collapses to materializing into `cli.binary` and exec'ing it, with the declared values living in TOML rather than duplicated in Bash.
 
 ### Migration
 
@@ -80,7 +80,7 @@ Additive, no behaviour removed:
 - Factor `Commands` into runtime / authoring subsets in `src/runtime/cli.rs`; keep `specify` presenting the union.
 - Add `argv[0]` resolution at binary entry; register the subset for `specrun` / `specdev`.
 - Update `install.sh`, the Homebrew formula, and the `cargo install` docs to create all three names.
-- Add `specdev` auto-discovery of `specify-authoring.yaml` (depends on [RFC-43](./rfc-43-authoring-config.md) having defined the file).
+- Add `specdev` auto-discovery of `Specify.toml` (depends on [RFC-43](./rfc-43-authoring-config.md) having defined the file).
 - Update `docs/contributing/`, `AGENTS.md`, and skill briefs that say `specify lint framework` to also recognise `specdev lint framework`; the `specify`-prefixed forms keep working.
 
 Order: RFC-43 defines the file; RFC-44 consumes it. RFC-44's `argv[0]` and clap-factoring work has no dependency on RFC-43 and can land first; only the auto-discovery step waits on it.
@@ -106,14 +106,14 @@ This RFC deliberately does **not** split the binary into two build artifacts. It
 
 - **No Cargo-gated authoring surface.** `specdev` stays a standalone, Rust-free published binary; the Cargo-bound work stays in Tier 3 (`cargo make`). This RFC explicitly rejects making authoring a `cargo` subcommand, which would regress [RFC-41](./rfc-41-version-binding.md).
 - **No two build artifacts now.** The hard split is reserved, not landed.
-- **No change to runtime config or authoring config shape.** `.specify/project.yaml` is untouched; `specify-authoring.yaml` is defined by [RFC-43](./rfc-43-authoring-config.md), consumed here.
+- **No change to runtime config or authoring config shape.** `.specify/project.yaml` is untouched; `Specify.toml` is defined by [RFC-43](./rfc-43-authoring-config.md), consumed here.
 - **No new lifecycle or gate authority.** Renaming surfaces does not move the lint/validate authority boundary; `lint` stays lifecycle-neutral and silenceable, `validate` stays gating.
 - **No removal of the `specify` name.** `specify` remains the union surface for back-compat with every existing doc, skill brief, and `scripts/specify.sh` passthrough.
 
 ## Open Questions
 
 1. **Default surface for a bare `specify`.** Keep the full union (chosen here), or have `specify` print a chooser/deprecation nudge toward `specrun` / `specdev` over time?
-2. **Where `specdev` looks for `specify-authoring.yaml`.** Nearest-ancestor walk (like `lint project`'s `.specify/project.yaml` resolution) vs. require it at the invocation root.
+2. **Where `specdev` looks for `Specify.toml`.** Nearest-ancestor walk (like `lint project`'s `.specify/project.yaml` resolution) vs. require it at the invocation root.
 3. **Completion packaging.** Three completion scripts (one per name) vs. one script that detects the invoked name.
 4. **Decision home.** Does the accepted `argv[0]` design graduate into `specify-cli` `DECISIONS.md` (consistent with how that repo records standing decisions), with this RFC retained as the rationale, or stay solely as an RFC?
 

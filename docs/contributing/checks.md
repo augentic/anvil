@@ -45,7 +45,7 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 ### Binding to a `specify` binary
 
-`make lint` delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework --framework-root .` against this repo. You do **not** need a `specify-cli` checkout: when none is found, the script acquires the `.specify-version`-pinned published release into a gitignored, repo-local `./.bin` and uses that.
+`make lint` delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework` against this repo (from the repo root). You do **not** need a `specify-cli` checkout: when none is found, the script acquires the `.specify-version`-pinned published release into a gitignored, repo-local `./.bin` and uses that.
 
 | `SPECIFY_VERSION` | Binary comes from | Notes |
 | ----------------- | ----------------- | ----- |
@@ -72,7 +72,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 CI does not clone `specify-cli` or compile the framework tree. It resolves `SPECIFY_VERSION` from a workflow-level env var when set, otherwise from the single-line `.specify-version` at the repo root, acquires that published binary into `./.bin`, and runs `make lint`. The resolved pin is deterministic, so the job is never silently a source build one run and a published binary the next. Maintainers can override the workflow env var to pin a different published release without touching `.specify-version`. CI installs a minimal Rust toolchain so `scripts/specify.sh` can bootstrap `./.bin` via `cargo install --git`.
 
-Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Authoritative schemas are embedded in the `specify` binary.
+When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
 ### Diagnostic format
 
@@ -107,7 +107,7 @@ Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rule
 `specify lint framework` can emit the same structured result shape consumed by CI integrations. Run `specify lint framework --format json` (or set `SPECIFY_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specify lint project` output.
 
 ```bash
-specify lint framework --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+specify lint framework --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 Envelope shape:

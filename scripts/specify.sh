@@ -4,7 +4,7 @@
 # binary per SPECIFY_VERSION. See docs/contributing/checks.md#binding-to-a-specify-binary.
 #
 # Usage:
-#   scripts/specify.sh lint                   # → lint framework --framework-root .
+#   scripts/specify.sh lint                   # → lint framework
 #   scripts/specify.sh --mode bin-path        # print resolved binary path (SPECIFY_VERSION-driven)
 #
 # Env:
@@ -189,7 +189,7 @@ if [ "${1:-}" = "--mode" ]; then
   [ "$#" -eq 0 ] || die "--mode $mode takes no further arguments"
 elif [ "${1:-}" = "lint" ]; then
   shift
-  args=(lint framework --framework-root . "$@")
+  args=(lint framework "$@")
 else
   die "usage: specify.sh lint [args…] | --mode bin-path"
 fi

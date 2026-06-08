@@ -68,7 +68,7 @@ The `cargo` and `brew` executors are fully wired; the `binary`-channel in-proces
 
 ### Contributing to the framework repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — does **not** require a `specify-cli` checkout. `make lint` (the only framework check) delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary per the `SPECIFY_VERSION` environment variable and runs `specify lint framework --framework-root .`:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — does **not** require a `specify-cli` checkout. `make lint` (the only framework check) delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary per the `SPECIFY_VERSION` environment variable and runs `specify lint framework` from the repo root:
 
 | `SPECIFY_VERSION` | Binary comes from |
 | ----------------- | ----------------- |
