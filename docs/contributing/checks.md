@@ -45,11 +45,11 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 ### Binding to a `specify` binary
 
-`make lint` delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework --framework-root .` against this repo. You do **not** need a `specify-cli` checkout: when none is found, the script acquires a published release into a gitignored, repo-local `./.bin` and uses that — no Rust toolchain required.
+`make lint` delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework --framework-root .` against this repo. You do **not** need a `specify-cli` checkout: when none is found, the script acquires the `.specify-version`-pinned published release into a gitignored, repo-local `./.bin` and uses that.
 
 | `SPECIFY_VERSION` | Binary comes from | Notes |
 | ----------------- | ----------------- | ----- |
-| `next` (default) | a sibling/nested `specify-cli` checkout (`cargo run --release`), **falling back to the `.specify-version` pin acquired into `./.bin`** when no checkout is found | co-development default; the fallback prints a one-line notice and needs no Rust toolchain |
+| `next` (default) | a sibling/nested `specify-cli` checkout (`cargo run --release`), **falling back to the `.specify-version` pin acquired into `./.bin`** when no checkout is found | co-development default; the fallback prints a one-line notice and acquires the published pin |
 | `X.Y.Z` (e.g. `0.1.0`) | one pinned published release | prefers an installed `specify` on `PATH` that matches, else acquires into `./.bin`; idempotent re-runs skip reinstall |
 
 `./scripts/specify.sh lint` is the direct replacement for the former `cargo fcheck` alias and works from any subdirectory — the script finds the repo root and `cd`s before running.
@@ -58,7 +58,7 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 [`.specify-version`](../../.specify-version) is a single-line file at the repo root carrying the published CLI release the framework currently targets. It is the one place `make lint`, `scripts/specify.sh`, and CI read the pinned version. The runtime `SPECIFY_VERSION` knob overrides it; the file is consulted only when acquisition needs an explicit version — the `next` fallback, and CI when no workflow override is set — so the resolved pin is deterministic.
 
-**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `.specify-version` to that published version in the same framework PR that relies on the new behaviour. Source-build (`next`) co-development is unaffected; the pin governs only the published-binary paths. Until a release ships installable assets (GitHub release archives or `install.sh`) for the pinned version, acquisition may require a Rust toolchain locally (`cargo install --git`) or fall back to `main` when the pinned tag predates `lint framework`.
+**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `.specify-version` to that published version in the same framework PR that relies on the new behaviour. Source-build (`next`) co-development is unaffected; the pin governs only the published-binary paths. Acquisition goes through `cargo install --git --tag v<pin>`, so a Rust toolchain is required locally to bootstrap `./.bin` — unless a matching `specify` is already on `PATH`, in which case it is reused.
 
 **Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved WASI tool (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds — measured **~8s** wall (`real 8.7` for `make lint`, `real 7.8` for the bare release binary, 2026-06-07); benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative (the obsolete `~247s` figure was a pre-migration debug-era measurement).
 
@@ -70,7 +70,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 ### CI
 
-CI does not clone `specify-cli` or compile the framework tree. It resolves `SPECIFY_VERSION` from a workflow-level env var when set, otherwise from the single-line `.specify-version` at the repo root, acquires that published binary into `./.bin`, and runs `make lint`. The resolved pin is deterministic, so the job is never silently a source build one run and a published binary the next. Maintainers can override the workflow env var to pin a different published release without touching `.specify-version`. Until installable release assets or `install.sh` cover the pinned version, CI installs a minimal Rust toolchain solely so `scripts/specify.sh` can bootstrap `./.bin` via `cargo install --git`.
+CI does not clone `specify-cli` or compile the framework tree. It resolves `SPECIFY_VERSION` from a workflow-level env var when set, otherwise from the single-line `.specify-version` at the repo root, acquires that published binary into `./.bin`, and runs `make lint`. The resolved pin is deterministic, so the job is never silently a source build one run and a published binary the next. Maintainers can override the workflow env var to pin a different published release without touching `.specify-version`. CI installs a minimal Rust toolchain so `scripts/specify.sh` can bootstrap `./.bin` via `cargo install --git`.
 
 Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Authoritative schemas are embedded in the `specify` binary.
 

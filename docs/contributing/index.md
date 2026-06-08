@@ -19,12 +19,12 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 Two audiences share this repository:
 
-| Audience | Typical edits | Rust required locally? |
-|----------|---------------|------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; `make lint` runs locally without a `specify-cli` checkout |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
+| Audience | Typical edits | `specify-cli` checkout needed? |
+|----------|---------------|--------------------------------|
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — they work in the Rust workspace |
 
-Markdown-only contributors can run `make lint` locally without installing Rust or checking out `specify-cli`: it acquires a published `specify` binary into a repo-local `./.bin` (see [Consistency Checks](checks.md#binding-to-a-specify-binary)). Tooling contributors keep a sibling `specify-cli` checkout — `make lint` then builds the binary from source (the default `next` mode), and `cargo make test` in that checkout exercises the `specify-standards` framework predicate suite before opening a PR.
+Markdown-only contributors can run `make lint` locally without a `specify-cli` checkout: it acquires the `.specify-version`-pinned published `specify` binary into a repo-local `./.bin` (see [Consistency Checks](checks.md#binding-to-a-specify-binary)). Tooling contributors keep a sibling `specify-cli` checkout — `make lint` then builds the binary from source (the default `next` mode), and `cargo make test` in that checkout exercises the `specify-standards` framework predicate suite before opening a PR.
 
 ## Development environment
 
@@ -50,7 +50,7 @@ Markdown-only contributors can run `make lint` locally without installing Rust o
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make lint` in the specify repo (works for every contributor — no `specify-cli` checkout or Rust toolchain required). `cargo make ci` in the specify-cli repo for CLI work. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` in the specify repo (works for every contributor — no `specify-cli` checkout required). `cargo make ci` in the specify-cli repo for CLI work. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 

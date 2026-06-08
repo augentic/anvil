@@ -81,66 +81,36 @@ version_satisfies() {
   esac
 }
 
-# Install the requested semver into ./.bin via cargo install --git.
+# Install the requested semver into ./.bin via `cargo install --git`.
 # Idempotent: skips work when ./.bin/specify already satisfies the pin.
+# Acquisition currently goes only through cargo, so a Rust toolchain is
+# required unless a matching `specify` is already on PATH (see `resolve_published`).
 acquire() {
   local want="$1" have
   if [ -x "$SPECIFY_LOCAL" ]; then
     have="$(path_specify_version "$SPECIFY_LOCAL" || true)"
-    if version_satisfies "$have" ge "$want"; then
-      return 0
-    fi
+    version_satisfies "$have" ge "$want" && return 0
   fi
+
+  command -v cargo >/dev/null 2>&1 \
+    || die "cargo not found; install Rust to bootstrap specify $want into ./.bin, or put a matching specify on PATH"
 
   mkdir -p "$BIN_DIR"
-  if try_acquire_cargo_git "$want"; then
-    :
-  else
-    die "failed to acquire specify $want into ./.bin (tried git tag, release asset, curl installer)"
-  fi
-
-  have="$(path_specify_version "$SPECIFY_LOCAL" || true)"
-  [ -n "$have" ] || die "acquired specify at $SPECIFY_LOCAL is not runnable"
-  if ! version_satisfies "$have" ge "$want"; then
-    die "acquired specify reports '${have}', expected pin '$want' or newer"
-  fi
-  if [ "$have" != "$want" ]; then
-    note "acquired specify $have for pin $want (release tag may ship a newer workspace version)"
-  fi
-}
-
-try_acquire_cargo_git() {
-  local want="$1"
-  command -v cargo >/dev/null 2>&1 || return 1
-  note "acquiring specify $want via cargo install --git v$want → ./.bin"
-  if ! cargo install specify \
+  note "acquiring specify $want via cargo install --git --tag v$want → ./.bin"
+  cargo install specify \
     --git https://github.com/augentic/specify-cli \
     --tag "v$want" \
     --root "$BIN_DIR" \
-    --locked 2>/dev/null; then
-    return 1
-  fi
-  stage_cargo_install
-}
+    --locked >&2 \
+    || die "cargo install --git failed for specify $want"
+  [ -x "$BIN_DIR/bin/specify" ] && cp -f "$BIN_DIR/bin/specify" "$SPECIFY_LOCAL"
 
-stage_cargo_install() {
-  if [ -x "$BIN_DIR/bin/specify" ]; then
-    cp -f "$BIN_DIR/bin/specify" "$SPECIFY_LOCAL"
-  fi
-  [ -x "$SPECIFY_LOCAL" ]
-}
-
-# Run the published curl installer, pinning the version into ./.bin.
-curl_install() {
-  local want="$1" url
-  for url in \
-    "https://specify.sh/install.sh" \
-    "https://raw.githubusercontent.com/augentic/specify-cli/main/install.sh"; do
-    if curl -sSfL "$url" | SPECIFY_INSTALL_DIR="$BIN_DIR" SPECIFY_VERSION="v$want" sh >&2; then
-      [ -x "$SPECIFY_LOCAL" ] && return 0
-    fi
-  done
-  return 1
+  have="$(path_specify_version "$SPECIFY_LOCAL" || true)"
+  [ -n "$have" ] || die "acquired specify at $SPECIFY_LOCAL is not runnable"
+  version_satisfies "$have" ge "$want" \
+    || die "acquired specify reports '${have}', expected pin '$want' or newer"
+  [ "$have" = "$want" ] \
+    || note "acquired specify $have for pin $want (release tag may ship a newer workspace version)"
 }
 
 # Prefer an already-installed PATH `specify` matching the pin, else acquire ./.bin.
