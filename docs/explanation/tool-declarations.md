@@ -49,7 +49,7 @@ tools:
     version: 0.3.0
 ```
 
-First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specify tool run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `scripts/use-local-dev.rs` writes it with a `source:` pointing to a locally-built WASM binary. The sidecar is gitignored and never checked in.
+First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specify tool run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `make use-local-dev` (after a gitignored `Specify.local.toml` `cli = { path = … }` overlay) builds adapter WASI tools from that checkout and writes a sidecar with a `source:` pointing at the locally-built WASM binary. CLI install is delegated to `scripts/specify.rs --install`. The sidecar is gitignored and never checked in.
 
 Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 

@@ -14,9 +14,11 @@ RESOLVE := cargo +nightly -Zscript scripts/specify.rs
 lint:
 	$(RESOLVE) lint framework
 
-# Build specify-cli + WASI tools from the sibling tree, install, write tools.yaml
-# sidecars, and repopulate the plugin cache. `make use-local-dev ARGS=--skip-wasi`
-# skips the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
+# Adapter-local dev: materialize specify via scripts/specify.rs --install (same cli
+# contract as make lint / make install-specify), build WASI tools from cli.path,
+# write tools.yaml sidecars, and repopulate the plugin cache. Requires a gitignored
+# Specify.local.toml with cli = { path = "../specify-cli" }. ARGS=--skip-wasi skips
+# the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
 use-local-dev:
 	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
 

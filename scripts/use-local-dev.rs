@@ -7,11 +7,14 @@ edition = "2021"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
+toml = "0.8"
 ---
-//! Build specify-cli + its WASI tools from the sibling working tree, install the
-//! binary, write each target adapter's `tools.yaml` sidecar, and repopulate the
-//! Cursor plugin cache. Run from the repo root (the Makefile always is); paths
-//! are resolved against the current directory like `scripts/specify.rs`.
+//! Adapter-local dev setup: materialize `specify` via [`scripts/specify.rs`](specify.rs),
+//! build adapter WASI tools from the local `cli.path` checkout, write each target
+//! adapter's gitignored `tools.yaml` sidecar, and repopulate the Cursor plugin cache.
+//!
+//! Requires a gitignored `Specify.local.toml` overlay with `cli = { path = "…" }` so
+//! WASI builds have a checkout; CLI install itself delegates to `specify.rs --install`.
 //!
 //! Usage: cargo +nightly -Zscript scripts/use-local-dev.rs [--skip-wasi]
 //! Env:   SPECIFY_BIN_DIR (install dir; default ~/.local/bin)
@@ -22,8 +25,12 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 
 use serde::Serialize;
+
+include!("load_cli.rs");
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -54,12 +61,16 @@ fn run() -> Result<()> {
         }
     }
 
-    // Repo root is the CWD (the Makefile + CI always run from here), matching
-    // scripts/specify.rs. CLI repo is the conventional sibling.
     let repo_root = env::current_dir()?;
-    let cli_root = repo_root.join("../specify-cli").canonicalize().map_err(|_| {
-        "specify-cli not found at ../specify-cli (expected sibling layout)".to_string()
+    let cli = read_cli_spec().ok_or("no `cli` source spec in Specify.toml")?;
+    let path = cli_path(&cli).ok_or(
+        "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" } \
+         (local checkout needed for WASI tool builds)",
+    )?;
+    let cli_root = repo_root.join(path).canonicalize().map_err(|_| {
+        format!("cli.path `{path}` not found (relative to {})", repo_root.display())
     })?;
+
     let install_dir = match env::var_os("SPECIFY_BIN_DIR") {
         Some(dir) => PathBuf::from(dir),
         None => env::var_os("HOME")
@@ -68,16 +79,11 @@ fn run() -> Result<()> {
     };
     fs::create_dir_all(&install_dir)?;
 
-    // ── Build and install the CLI ────────────────────────────────
-    println!("Building specify from {} …", cli_root.display());
-    cargo(&["build", "--release", "--bin", "specify"], &cli_root)?;
-
-    let built = cli_root.join("target/release/specify");
-    if !built.is_file() {
-        return Err(format!("specify not found at {}", built.display()).into());
-    }
+    // ── Install the CLI (via the shared resolver) ────────────────
+    println!("Materializing specify via scripts/specify.rs --install …");
+    let built = materialize_specify(&repo_root)?;
     let installed = install_dir.join("specify");
-    fs::copy(&built, &installed)?;
+    link_or_copy(&built, &installed)?;
     println!("Installed specify → {}", installed.display());
     warn_path(&install_dir, "specify");
 
@@ -146,6 +152,41 @@ fn run() -> Result<()> {
     println!("  1. Restart Cursor to pick up local plugin changes.");
     println!("  2. Open your project (e.g. ../todo-app) in Cursor.");
     println!("  3. Run /spec:init to scaffold .specify/ and bind adapters.");
+    Ok(())
+}
+
+/// Run `scripts/specify.rs --install` and return the repo-relative `.bin/bin/specify` path.
+fn materialize_specify(repo_root: &Path) -> Result<PathBuf> {
+    // Always invoke the rustup `cargo` shim — not `$CARGO` from a cargo-script parent,
+    // which points at the active toolchain binary and rejects `+nightly`.
+    let output = Command::new("cargo")
+        .args(["+nightly", "-Zscript", "scripts/specify.rs", "--install"])
+        .current_dir(repo_root)
+        .output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("scripts/specify.rs --install failed: {stderr}").into());
+    }
+    let rel = String::from_utf8(output.stdout)?.trim().to_string();
+    let bin = repo_root.join(&rel);
+    if !bin.is_file() {
+        return Err(format!("specify bootstrap did not produce {}", bin.display()).into());
+    }
+    Ok(bin)
+}
+
+fn link_or_copy(source: &Path, dest: &Path) -> Result<()> {
+    if dest.exists() {
+        fs::remove_file(dest)?;
+    }
+    #[cfg(unix)]
+    {
+        symlink(source, dest)?;
+    }
+    #[cfg(not(unix))]
+    {
+        fs::copy(source, dest)?;
+    }
     Ok(())
 }
 
