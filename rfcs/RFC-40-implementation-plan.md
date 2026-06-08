@@ -2,6 +2,32 @@
 
 This is the step-by-step build plan for [RFC-40](./RFC-40-composition-accumulation-and-component-inference.md). The RFC itself is the source of intent — read it first; this document is the execution contract. Each step is sized for a single agent session, assumes every preceding step has merged, and lists the concrete files, symbols, error codes, and tests it must touch. Steps are ordered so that dependencies always flow downward.
 
+## Progress tracker
+
+This section is the live record of where the implementation stands. **Update it as part of every step**: flip the step's status the moment it lands (and in the matching per-step **Status** line below), keep `Last updated` current, and note any deviation from the plan in the step's row. The plan is dynamically maintained — the tracker is the source of truth for "what is done".
+
+**Status legend.** `Not started` · `In progress` · `Blocked` · `Done`.
+
+**Last updated:** 2026-06-08 — tracking scaffold added; no implementation steps landed yet.
+
+| Step | Repo | Concern | Key artifacts | Status | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs` | Not started | |
+| 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` | Not started | |
+| 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` | Not started | |
+| 4 | specify-cli | Phase 1 e2e test | `tests/plan/end_to_end.rs` | Not started | |
+| 5 | specify-cli (wasi) | Fingerprint + `infer` (baseline) | `wasi-tools/vectis/src/infer.rs`, `…/engine/composition.rs`, `…/lib.rs` | Not started | |
+| 6 | specify-cli | `specify catalog infer` + B6 | `runtime/cli.rs`, `commands/catalog/*`, `design_system.rs` | Not started | |
+| 7 | specify + cli | B4 candidate cache | `screenshots/.../pipeline.md`, `infer.rs`, `commands/catalog/infer.rs` | Not started | |
+| 8 | specify | B3 build brief step 0.5 | `briefs/build.md` | Not started | |
+| 9 | specify | B7 retroactive factoring briefs | `briefs/build/composition.md`, `build/{core,ios,android}/write.md` | Not started | |
+| 10 | specify | R5 doc-inversion sweep | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` | Not started | |
+| 11 | specify-cli | C1/C2/C3 parts schema/loader/seeding/report | `parts.schema.json`, `constants.rs`, `design_system.rs`, `infer.rs`, `commands/catalog/infer.rs` | Not started | |
+| 12 | specify | C1–C6 parts doc + briefs | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` | Not started | |
+| 13 | specify-cli | Acceptance capstone | `tests/plan/end_to_end.rs` | Not started | |
+
+**Phase rollup.** Phase 1 (Steps 1–4): Not started · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
+
 ## How to use this plan
 
 - **Two repos.** `specify` (this repo) holds adapter briefs, references, and docs. `specify-cli` (sibling at `../specify-cli`) holds the Rust CLI, schemas, and the `wasi-tools/` carve-out. Each step names its repo. A step never spans both repos unless explicitly noted.
@@ -26,6 +52,8 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 1 — A3: composition-overwrite merge gate (`specify-cli`)
 
+**Status.** Not started.
+
 **Goal.** Make it impossible for a whole-document (`screens:`) slice composition to silently replace a non-empty baseline at merge time, with a single narrow override.
 
 **Files.**
@@ -44,6 +72,8 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 2 — A4: `ui_surface` report field, finalize coherence checks, non-blocking warning channel (`specify-cli`)
 
+**Status.** Not started.
+
 **Goal.** Add a per-slice "has UI surface" signal authored by the build brief, and two deterministic self-consistency warnings at `--phase finalize` — without changing the verb's exit code.
 
 **Files.**
@@ -59,6 +89,8 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 **Done when.** `cargo make ci` green; warnings appear in both text and JSON finalize output and never alter the exit code.
 
 ### Step 3 — A1/A2/A4 brief amendments: composition accumulation + delta format + skip re-key (`specify`)
+
+**Status.** Not started.
 
 **Goal.** Teach the composition build brief to read the baseline and emit accumulating deltas, and re-key the non-UI skip off `spec.md` (not `## Platforms`).
 
@@ -81,6 +113,8 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 4 — Phase 1 end-to-end accumulation test (`specify-cli`)
 
+**Status.** Not started.
+
 **Goal.** Prove the baseline grows monotonically across screen-introducing slices and that the A3 gate fires in a realistic multi-slice run.
 
 **Files.**
@@ -99,6 +133,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 5 — Structural fingerprint + `vectis infer` subcommand, baseline-only (`specify-cli`, `wasi-tools/vectis`)
 
+**Status.** Not started.
+
 **Goal.** Land the deterministic detection core: a canonical fingerprint over the existing `Skeleton`, and an `infer` subcommand that clusters identical groups across the composition baseline and proposes catalog candidates as JSON.
 
 **Files (all under `wasi-tools/vectis/`).**
@@ -114,6 +150,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 **Done when.** The tool's own tests pass and `vectis infer --composition <baseline>` emits the proposal JSON.
 
 ### Step 6 — `specify catalog infer` host verb + B6 reconciliation (`specify-cli`)
+
+**Status.** Not started.
 
 **Goal.** Add the host verb that drives the tool, reconciles against the existing catalog, and writes `components.yaml` (or prints the diff). No parts/cache yet (added in Steps 7/11).
 
@@ -132,6 +170,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 7 — B4: screenshots candidate cache + infer reads it (`specify` brief + `specify-cli`)
 
+**Status.** Not started.
+
 **Goal.** Give inference cross-slice memory before the baseline accumulates, by caching normalized group skeletons from screenshots stage-6 and feeding them into clustering.
 
 **Files.**
@@ -148,6 +188,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 8 — B3: build brief invokes inference before composition regeneration (`specify`)
 
+**Status.** Not started.
+
 **Goal.** Make component detection a build-time, agent-driven, deterministic step ahead of composition regeneration.
 
 **Files.**
@@ -161,6 +203,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 **Done when.** The build brief runs inference before regeneration.
 
 ### Step 9 — B7: retroactive cross-slice factoring briefs (`specify`)
+
+**Status.** Not started.
 
 **Goal.** When a build promotes a component whose other instances live in prior-slice screens, fold the component back into those screens (directive-only) and refactor their generated code.
 
@@ -178,6 +222,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 10 — R5: doc-inversion sweep (`specify`)
 
+**Status.** Not started.
+
 **Goal.** Flip the operator-curated framing to agent-inferred / operator-reviewable everywhere the prose still asserts the old posture.
 
 **Files.**
@@ -193,6 +239,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 **Done when.** No "operator-curated" / "opt-in" / "no auto-population" catalog framing remains in the swept files; `make lint` passes.
 
 ### Step 11 — C1/C2/C3: operator parts (`parts.yaml`) schema, loader, infer seeding, unused-parts report (`specify-cli`)
+
+**Status.** Not started.
 
 **Goal.** Add the authoritative operator-defined parts input that seeds inference with naming + promotion authority, projects matched parts into the catalog, and reports unmatched parts non-blockingly.
 
@@ -213,6 +261,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 12 — C1–C6: operator parts doc + brief consumption (`specify`)
 
+**Status.** Not started.
+
 **Goal.** Document `parts.yaml` and note its consumption in the build briefs.
 
 **Files.**
@@ -231,6 +281,8 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 
 ### Step 13 — Cross-repo acceptance scenario (`specify-cli`, optionally `specify`)
 
+**Status.** Not started.
+
 **Goal.** Exercise the full loop end-to-end and lock the headline behaviours.
 
 **Files.**
@@ -242,24 +294,6 @@ Phase 2 is additive. Steps 5–7 build the deterministic engine and the host ver
 **Done when.** `cargo make ci` green; the scenario asserts auto-population, retroactive factoring, and monotonic accumulation.
 
 ---
-
-## Sequencing summary
-
-| Step | Repo | Concern | Key artifacts |
-| --- | --- | --- | --- |
-| 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs` |
-| 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` |
-| 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` |
-| 4 | specify-cli | Phase 1 e2e test | `tests/plan/end_to_end.rs` |
-| 5 | specify-cli (wasi) | Fingerprint + `infer` (baseline) | `wasi-tools/vectis/src/infer.rs`, `…/engine/composition.rs`, `…/lib.rs` |
-| 6 | specify-cli | `specify catalog infer` + B6 | `runtime/cli.rs`, `commands/catalog/*`, `design_system.rs` |
-| 7 | specify + cli | B4 candidate cache | `screenshots/.../pipeline.md`, `infer.rs`, `commands/catalog/infer.rs` |
-| 8 | specify | B3 build brief step 0.5 | `briefs/build.md` |
-| 9 | specify | B7 retroactive factoring briefs | `briefs/build/composition.md`, `build/{core,ios,android}/write.md` |
-| 10 | specify | R5 doc-inversion sweep | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` |
-| 11 | specify-cli | C1/C2/C3 parts schema/loader/seeding/report | `parts.schema.json`, `constants.rs`, `design_system.rs`, `infer.rs`, `commands/catalog/infer.rs` |
-| 12 | specify | C1–C6 parts doc + briefs | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` |
-| 13 | specify-cli | Acceptance capstone | `tests/plan/end_to_end.rs` |
 
 ## New error / diagnostic codes introduced
 
