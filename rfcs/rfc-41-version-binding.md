@@ -60,18 +60,17 @@ lint:
 `next` only means something if the source tree reliably carries a version *ahead* of the latest release, and `latest`/`X.Y.Z` only mean something if releases are actually cut:
 
 - **Release cadence.** Releases are cut and published manually by maintainers.
-- **One declared compatible version.** The framework repo declares the CLI version it expects in a single-line `.specify-version` file at the repo root — the one place `make lint`, `scripts/specify.sh`, and CI read the pinned published version. This is the reviewable cross-repo compatibility contract, and is good hygiene independent of this RFC. A plain file beats the alternatives: it is readable by `make`, the script, CI, and a human without parsing Make, and a release script can bump it without touching build logic. A `Makefile` variable was rejected because it couples the compatibility declaration to the build system; deriving the pin from `specify-cli`'s published tags was rejected because it would require a network call on every `make lint` and couple the declaration to GitHub availability. The runtime `SPECIFY_VERSION` knob still overrides the file (`next` / `latest` / `X.Y.Z` / `system`); the file is only read when acquisition needs an explicit version — the `next` fallback and the CI baseline job — so the resolved pin is deterministic rather than floating `latest`.
+- **One declared compatible version.** The framework repo declares the CLI version it expects in a single-line `.specify-version` file at the repo root — the one place `make lint`, `scripts/specify.sh`, and CI read the pinned published version. This is the reviewable cross-repo compatibility contract, and is good hygiene independent of this RFC. A plain file beats the alternatives: it is readable by `make`, the script, CI, and a human without parsing Make, and a release script can bump it without touching build logic. A `Makefile` variable was rejected because it couples the compatibility declaration to the build system; deriving the pin from `specify-cli`'s published tags was rejected because it would require a network call on every `make lint` and couple the declaration to GitHub availability. The runtime `SPECIFY_VERSION` knob still overrides the file (`next` / `latest` / `X.Y.Z` / `system`); the file is only read when acquisition needs an explicit version — the `next` fallback and CI when the workflow env is unset — so the resolved pin is deterministic rather than floating `latest`.
 - **No prerelease suffix.** `next` reads `specify-cli`'s `[workspace.package] version` from `Cargo.toml` as-is — it does **not** require a `-dev`/`-pre` suffix. The "source is ahead of latest" property already holds in practice (`0.2.0` source vs the latest `v0.1.0` tag), and how `specify-cli` is versioned is the maintainer's call; RFC-41 makes no demand on it. The `awk` probe (below) must therefore tolerate whatever version string the maintainer chooses.
 - **Version probe.** `specify --version | awk '{print $NF}'` (the last whitespace token) is the comparison mechanism for `latest`/`X.Y.Z`. No machine-readable `--version` form is added now; if one ever lands in the CLI repo it can replace the probe without changing this RFC.
 
 ## CI
 
-CI pins explicitly rather than relying on the `next` fallback, so a job is never silently a source build one run and a published binary the next:
+CI runs a single lint job. It does not clone `specify-cli` or compile Rust; it acquires a published binary into `./.bin` and runs `make lint`.
 
-- **Baseline job:** acquire the version pinned in `.specify-version` into `./.bin` → `make lint`. Deterministic (the declared pin, not floating `latest`), no cross-repo clone, no Rust build.
-- **Cross-repo job:** `SPECIFY_VERSION=next` plus a branch-matched `specify-cli` checkout, exercising the source build for changes that span the workflow contract. The current branch-selection logic moves to this `next` job.
+`SPECIFY_VERSION` is set from a workflow-level env var when present; otherwise it falls back to the single-line `.specify-version` at the repo root. That resolved value is deterministic (the declared pin when the env is unset, not floating `latest`), so the job is never silently a source build one run and a published binary the next.
 
-Local `make lint` uses the default `next` with its fallback; CI prefers the explicit pins above for reproducibility.
+Local `make lint` keeps the default `next` with its source-first fallback; CI uses the env/file pin for reproducibility. Co-development against a local `specify-cli` checkout remains a developer-machine concern only.
 
 ## Migration
 
@@ -81,7 +80,7 @@ This is a single, non-staged change. The source build stays the default, so exis
 - Add `scripts/specify.sh` (centralised resolution, acquisition, and invocation) with a `fcheck` shorthand and passthrough for any `specify` subcommand; add the `./.bin/` gitignore entry.
 - Set `SPECIFY_VERSION ?= next` in the `Makefile` and delegate `lint` to `./scripts/specify.sh fcheck` so a missing `specify-cli` checkout resolves to `./.bin/specify` instead of erroring.
 - Remove `.cargo/config.toml` (the framework repo is not Cargo-managed; `cargo fcheck` is replaced by `./scripts/specify.sh fcheck`).
-- Add the explicit-pin CI baseline job (acquiring `.specify-version`) and move the existing branch-matched clone+build into the `next` CI job.
+- Replace the branch-matched `specify-cli` clone+build with a single CI job that sets `SPECIFY_VERSION` from a workflow env var, falling back to `.specify-version`, then runs `make lint`.
 - Update `docs/contributing/checks.md`, `docs/contributing/acceptance.md`, and `docs/orientation/prerequisites.md` to document the default source build, its fallback, `make lint` / `./scripts/specify.sh fcheck`, and the `latest`/`X.Y.Z` pins.
 
 The hard failure when no checkout exists is the only behaviour removed; everything else is additive.

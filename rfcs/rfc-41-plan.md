@@ -15,17 +15,19 @@ flowchart TD
   C1[Change 1: Contract files]
   C2[Change 2: specify.sh]
   C3[Change 3: Makefile]
-  C4[Change 4: Contributor docs]
-  C5[Change 5: Acceptance path docs]
-  C6[Change 6: Integration verification]
+  C4[Change 4: CI workflow]
+  C5[Change 5: Contributor docs]
+  C6[Change 6: Acceptance path docs]
+  C7[Change 7: Integration verification]
 
   C1 --> C2
   C2 --> C3
-  C3 --> C6
   C3 --> C4
   C3 --> C5
-  C4 --> C6
-  C5 --> C6
+  C3 --> C6
+  C4 --> C7
+  C5 --> C7
+  C6 --> C7
 ```
 
 
@@ -37,9 +39,9 @@ flowchart TD
 | ----- | ------------------------------- | ---------------------------------------------------------------------------------------- |
 | **1** | Change 1                        | No dependencies                                                                          |
 | **2** | Change 2                        | Needs `.specify-version` + `.gitignore`                                                  |
-| **3** | Changes 3, 4 (draft), 5 (draft) | Makefile once script interface is frozen; docs can draft against RFC sketch in parallel |
-| **4** | Changes 4 + 5 (finalize)        | Align prose with landed behaviour                                                        |
-| **5** | Change 6                        | End-to-end verification                                                                  |
+| **3** | Changes 3, 4, 5 (draft), 6 (draft) | Makefile + CI once script interface is frozen; docs can draft against RFC sketch in parallel |
+| **4** | Changes 5 + 6 (finalize)        | Align prose with landed behaviour                                                        |
+| **5** | Change 7                        | End-to-end verification                                                                  |
 
 
 ---
@@ -154,7 +156,7 @@ scripts/specify.sh --mode verify-only # exit 0 when binary exists and --version 
 **Repo:** `augentic/specify`  
 **Estimate:** ~40 lines  
 **Depends on:** Change 2  
-**Parallel with:** Change 4 (draft), Change 5 (draft)
+**Parallel with:** Change 4, Change 5 (draft), Change 6 (draft)
 
 ### Deliverables
 
@@ -190,12 +192,100 @@ lint:
 
 ---
 
-## Change 4 — Contributor documentation (lint / checks)
+## Change 4 — CI workflow
+
+**Repo:** `augentic/specify`  
+**Estimate:** ~40 lines YAML  
+**Depends on:** Change 3  
+**Parallel with:** Change 5 (draft), Change 6 (draft)
+
+### Deliverables
+
+Replace the branch-matched `specify-cli` clone+compile in `.github/workflows/ci.yaml` with a single lint job that acquires a published binary and runs `make lint`. Per RFC-41 CI section: deterministic pin, no cross-repo checkout, no Rust build.
+
+#### Remove
+
+- `Choose specify-cli ref` step and second `actions/checkout` of `augentic/specify-cli`
+- `dtolnay/rust-toolchain@stable` and `Swatinem/rust-cache@v2`
+- Top-level `CARGO_*` / `RUSTUP_*` env vars (no longer used)
+- `cargo run --locked --manifest-path specify-cli/Cargo.toml …` in **Verify framework**
+
+#### Keep
+
+- Single `checks` job on `ubuntu-latest`
+- Framework repo checkout
+- **Verify spec-runtime symlinks resolve** step (unchanged)
+
+#### Add / replace
+
+1. **Resolve `SPECIFY_VERSION`** — workflow-level `env.SPECIFY_VERSION` when set; otherwise read the single-line `.specify-version` at the repo root (trim whitespace). Emit the resolved semver into the job env for downstream steps. CI must pass an explicit `X.Y.Z` pin to `make lint`, not `next`, so the job never silently becomes a source build when a checkout appears on disk.
+2. **Cache `./.bin`** — optional `actions/cache` keyed on resolved `SPECIFY_VERSION` + runner OS to skip re-acquire on warm runs.
+3. **Verify framework** — `make lint` with `SPECIFY_VERSION` set to the resolved pin (acquisition handled by `scripts/specify.sh`).
+
+#### Target workflow sketch
+
+```yaml
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Resolve SPECIFY_VERSION
+        id: specify-version
+        shell: bash
+        run: |
+          if [ -n "${SPECIFY_VERSION:-}" ]; then
+            resolved="${SPECIFY_VERSION}"
+          else
+            resolved="$(tr -d '[:space:]' < .specify-version)"
+          fi
+          echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+          echo "SPECIFY_VERSION=$resolved" >> "$GITHUB_ENV"
+
+      - name: Cache acquired binary
+        uses: actions/cache@v4
+        with:
+          path: .bin
+          key: specify-${{ runner.os }}-${{ steps.specify-version.outputs.resolved }}
+
+      - name: Verify spec-runtime symlinks resolve
+        run: |
+          # … unchanged …
+
+      - name: Verify framework
+        run: make lint
+```
+
+Workflow-level `env.SPECIFY_VERSION` remains unset by default so CI falls back to `.specify-version`; maintainers may override the env var in the workflow file to pin a different published release without bumping the contract file.
+
+### Files touched
+
+- `.github/workflows/ci.yaml`
+
+### Acceptance criteria
+
+- CI job does not clone `specify-cli` or install a Rust toolchain.
+- Push to a branch with only framework changes runs `make lint` against the version in `.specify-version` (or workflow override).
+- Symlink verification still fails on broken/missing `spec-runtime` links.
+- Warm-cache run skips redundant acquire when `./.bin/specify --version` already satisfies the pin.
+
+### Subagent prompt seed
+
+> Rewrite `.github/workflows/ci.yaml` per RFC-41 CI section and Change 4 sketch. Single job; resolve `SPECIFY_VERSION` from workflow env with fallback to `.specify-version`; `make lint` not `cargo run`.
+
+---
+
+## Change 5 — Contributor documentation (lint / checks)
 
 **Repo:** `augentic/specify`  
 **Estimate:** ~80 lines prose  
 **Depends on:** Change 3 (finalize after behaviour lands)  
-**Parallel with:** Change 5
+**Parallel with:** Change 6
 
 ### Deliverables
 
@@ -204,7 +294,7 @@ Update contributor-facing docs for the new binding model:
 
 | File                          | Updates                                                                                                                                                                                                                                                                                         |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/contributing/checks.md` | `SPECIFY_VERSION` table; default `next` + fallback; `./.bin`; `.specify-version` contract; replace `cargo run --manifest-path ../specify-cli/...` and `cargo fcheck` with `make lint` / `./scripts/specify.sh fcheck`; fix `make ci` wording (Makefile has no `ci` target — say `make lint` or add `ci` phony in Change 3 if desired). |
+| `docs/contributing/checks.md` | `SPECIFY_VERSION` table; default `next` + fallback; `./.bin`; `.specify-version` contract; CI single-job pin path (`env.SPECIFY_VERSION` override, else file fallback); replace `cargo run --manifest-path ../specify-cli/...` and `cargo fcheck` with `make lint` / `./scripts/specify.sh fcheck`; fix `make ci` wording (Makefile has no `ci` target — say `make lint` or add `ci` phony in Change 3 if desired). |
 | `docs/contributing/index.md`  | Prerequisites: markdown-only contributors can `make lint` without `specify-cli`; tooling contributors still use sibling checkout for `cargo make test`.                                                                                                                                         |
 | `AGENTS.md`                   | Update `make lint` one-liner under Commands.                                                                                                                                                                                                                                                    |
 | `.cursor/rules/project.mdc`   | Update Validation section `make lint` description.                                                                                                                                                                                                                                              |
@@ -223,12 +313,12 @@ Update contributor-facing docs for the new binding model:
 
 ---
 
-## Change 5 — Acceptance / sweep documentation
+## Change 6 — Acceptance / sweep documentation
 
 **Repo:** `augentic/specify`  
 **Estimate:** ~40 lines prose  
 **Depends on:** Change 3  
-**Parallel with:** Change 4
+**Parallel with:** Change 5
 
 ### Deliverables
 
@@ -255,11 +345,11 @@ RFC-41 does not add fallback for `make acceptance` (still requires source build)
 
 ---
 
-## Change 6 — Integration verification
+## Change 7 — Integration verification
 
 **Repo:** `augentic/specify`  
 **Estimate:** manual + optional script  
-**Depends on:** Changes 3–5  
+**Depends on:** Changes 3–6  
 **Parallel with:** nothing (final gate)
 
 ### Verification matrix
@@ -274,6 +364,8 @@ RFC-41 does not add fallback for `make acceptance` (still requires source build)
 | fcheck shorthand            | `cd adapters && ../../scripts/specify.sh fcheck`                 | Same as lint; works from subdirectory                |
 | Pin mode (no checkout)      | `SPECIFY_VERSION=0.1.0 make lint`                                | No Rust required                                     |
 | Idempotency                 | Run lint twice in pin mode                                       | Second run skips reinstall                           |
+| CI pin path                 | Push branch; observe Actions run                                 | No `specify-cli` checkout; lint uses `.specify-version` |
+| CI env override             | Set workflow `env.SPECIFY_VERSION` to another published pin      | Job uses override, not `.specify-version`              |
 
 
 ### Optional automation
@@ -294,7 +386,6 @@ Add `scripts/verify-version-binding.sh` smoke test (skipped in CI if too network
 ## Out of scope (explicit)
 
 - `specify-cli` code, release pipeline, or `install.sh` authorship (consume only).
-- **CI workflow changes** (`.github/workflows/ci.yaml` split) — handled manually outside this plan; see RFC-41 CI section for the intended shape.
 - `make acceptance` fallback to published binary.
 - `scripts/use-local-dev.sh` rewrite.
 - Adding `make ci` phony target (optional nice-to-have in Change 3; not required by RFC).
@@ -304,8 +395,8 @@ Add `scripts/verify-version-binding.sh` smoke test (skipped in CI if too network
 
 | PR       | Changes   | Rationale                                                    |
 | -------- | --------- | ------------------------------------------------------------ |
-| **PR 1** | 1 + 2 + 3 | Core local ergonomics; reviewable script + Makefile together |
-| **PR 2** | 4 + 5 + 6 | Docs + verification after behaviour is stable                |
+| **PR 1** | 1 + 2 + 3 + 4 | Core binding: script, Makefile, and CI pin path together     |
+| **PR 2** | 5 + 6 + 7     | Docs + verification after behaviour is stable                |
 
 
 Alternatively, **one PR** matches RFC migration ("single, non-staged change") if the team prefers a single review cycle.
@@ -317,7 +408,7 @@ Alternatively, **one PR** matches RFC migration ("single, non-staged change") if
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `install.sh` not yet in `specify-cli` tree                  | Fall back to `cargo install` when Rust present; document curl URL from RFC; verify URL in Change 2                           |
 | Published `0.1.0` binary lacks framework checks added since | Bump `.specify-version` when cutting next CLI release; pin-mode local lint catches drift before CI is updated                |
-| macOS vs Linux acquire paths                                | Manual macOS check in Change 6                                                                                               |
+| macOS vs Linux acquire paths                                | Manual macOS check in Change 7                                                                                               |
 
 
 ## Subagent handoff checklist
