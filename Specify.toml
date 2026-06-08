@@ -9,4 +9,4 @@
 # 
 # Local co-development using Specify.local.toml:
 #   cli = { path = "../specify-cli" }
-cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-44-cli-split" }
+cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-41" }
