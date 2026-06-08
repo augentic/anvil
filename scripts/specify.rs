@@ -54,7 +54,8 @@ fn load_cli() -> toml::Table {
 fn install(selector: &[&str]) {
     let mut c = Command::new("cargo");
     c.args(["install", "--quiet", "--locked", "--root", ".bin", "--bin", "specify"])
-        .args(selector);
+        .args(selector)
+        .arg("specify");
     if !c.status().map_or(false, |s| s.success()) {
         die("cargo install failed");
     }
