@@ -27,7 +27,7 @@ jobs:
           if [ -n "${SPECIFY_VERSION:-}" ]; then
             resolved="${SPECIFY_VERSION}"
           else
-            resolved="$(tr -d '[:space:]' < .specify-version)"
+            resolved="$(./scripts/specify.sh --mode config-key version)"
           fi
           echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
           echo "SPECIFY_VERSION=$resolved" >> "$GITHUB_ENV"
@@ -42,7 +42,7 @@ jobs:
       # Remove once release assets or install.sh cover the pinned version.
       - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
+          toolchain: minimal
 
       - name: Verify spec-runtime symlinks resolve
         run: |

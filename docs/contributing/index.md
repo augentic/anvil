@@ -24,7 +24,7 @@ Two audiences share this repository:
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
 | **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — they work in the Rust workspace |
 
-Markdown-only contributors can run `make lint` locally without a `specify-cli` checkout: it acquires the `.specify-version`-pinned published `specify` binary into a repo-local `./.bin` (see [Consistency Checks](checks.md#binding-to-a-specify-binary)). Tooling contributors keep a sibling `specify-cli` checkout — `make lint` then builds the binary from source (the default `next` mode), and `cargo make test` in that checkout exercises the `specify-standards` framework predicate suite before opening a PR.
+Markdown-only contributors can run `make lint` locally without a `specify-cli` checkout: under the `next` channel with no checkout, it acquires the semver pinned in [`Specify.toml`](../../Specify.toml) (`cli.version`) into `cli.binary` (see [Consistency Checks](checks.md#binding-to-a-specify-binary)). Tooling contributors keep a sibling `specify-cli` checkout — `make lint` then builds the binary from source (the default `next` mode), and `cargo make test` in that checkout exercises the `specify-standards` framework predicate suite before opening a PR.
 
 ## Development environment
 

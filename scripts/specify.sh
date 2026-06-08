@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 #
 # Central resolver + runner that binds the framework repo to a `specify`
-# binary per SPECIFY_VERSION. See docs/contributing/checks.md#binding-to-a-specify-binary.
+# binary per SPECIFY_VERSION / Specify.toml. See docs/contributing/checks.md#binding-to-a-specify-binary.
 #
 # Usage:
 #   scripts/specify.sh lint                   # → lint framework
-#   scripts/specify.sh --mode bin-path        # print resolved binary path (SPECIFY_VERSION-driven)
+#   scripts/specify.sh --mode bin-path        # print materialized binary path
+#   scripts/specify.sh --mode config-key KEY  # print a [cli] value from Specify.toml
 #
 # Env:
-#   SPECIFY_VERSION  next | X.Y.Z   (default: next)
+#   SPECIFY_VERSION  next | latest | X.Y.Z   (Make default: next; overrides Specify.toml)
 #   REPO_ROOT        optional; defaults to git root / script parent
 
 set -euo pipefail
-
-SPECIFY_VERSION="${SPECIFY_VERSION:-next}"
 
 # ── Repo root ────────────────────────────────────────────────
 
@@ -23,14 +22,60 @@ if [ -z "${REPO_ROOT:-}" ]; then
   [ -n "$REPO_ROOT" ] || REPO_ROOT="$(cd "$script_dir/.." && pwd)"
 fi
 
-BIN_DIR="$REPO_ROOT/.bin"
-SPECIFY_LOCAL="$BIN_DIR/specify"
-PIN_FILE="$REPO_ROOT/.specify-version"
+SPECIFY_FILE="$REPO_ROOT/Specify.toml"
 
 # ── Helpers ──────────────────────────────────────────────────
 
 note() { printf 'specify.sh: %s\n' "$1" >&2; }
 die() { printf 'specify.sh: error: %s\n' "$1" >&2; exit 1; }
+
+# Read a flat key from [cli] in Specify.toml (no nested tables).
+read_cli_key() {
+  local key="$1" default="${2:-}"
+  local val
+  if [ ! -f "$SPECIFY_FILE" ]; then
+    [ -n "$default" ] && printf '%s\n' "$default"
+    return 0
+  fi
+  val="$(awk -v key="$key" '
+    BEGIN { in_cli = 0 }
+    /^\[cli\][[:space:]]*$/ { in_cli = 1; next }
+    /^\[/ { in_cli = 0 }
+    in_cli && $1 == key {
+      line = $0
+      sub(/^[^=]+=[[:space:]]*/, "", line)
+      sub(/[[:space:]]+#.*$/, "", line)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      gsub(/^["'\''"]|["'\''"]$/, "", line)
+      print line
+      exit
+    }
+  ' "$SPECIFY_FILE")"
+  if [ -n "$val" ]; then
+    printf '%s\n' "$val"
+  elif [ -n "$default" ]; then
+    printf '%s\n' "$default"
+  fi
+}
+
+expand_tilde() {
+  local path="$1"
+  if [[ "$path" == "~/"* ]]; then
+    printf '%s/%s\n' "$HOME" "${path:2}"
+  elif [[ "$path" == "~" ]]; then
+    printf '%s\n' "$HOME"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+cli_binary_rel() {
+  read_cli_key binary ".bin/specify"
+}
+
+cli_binary_abs() {
+  printf '%s\n' "$REPO_ROOT/$(cli_binary_rel)"
+}
 
 # firstword(wildcard specify-cli/Cargo.toml ../specify-cli/Cargo.toml)
 find_manifest() {
@@ -42,15 +87,6 @@ find_manifest() {
     fi
   done
   return 1
-}
-
-# Trim .specify-version to the bare semver pin.
-read_pin() {
-  [ -f "$PIN_FILE" ] || die ".specify-version not found at $PIN_FILE"
-  local pin
-  pin="$(tr -d '[:space:]' < "$PIN_FILE")"
-  [ -n "$pin" ] || die ".specify-version is empty"
-  printf '%s\n' "$pin"
 }
 
 # Last whitespace token of `<bin> --version` (e.g. "specify 0.1.0" → "0.1.0").
@@ -81,129 +117,187 @@ version_satisfies() {
   esac
 }
 
-# Install the requested semver into ./.bin via `cargo install --git`.
-# Idempotent: skips work when ./.bin/specify already satisfies the pin.
-# Acquisition currently goes only through cargo, so a Rust toolchain is
-# required unless a matching `specify` is already on PATH (see `resolve_published`).
-acquire() {
-  local want="$1" have
-  if [ -x "$SPECIFY_LOCAL" ]; then
-    have="$(path_specify_version "$SPECIFY_LOCAL" || true)"
-    version_satisfies "$have" ge "$want" && return 0
+resolved_version() {
+  if [ -n "${SPECIFY_VERSION:-}" ]; then
+    printf '%s\n' "$SPECIFY_VERSION"
+    return 0
+  fi
+  local from_file
+  from_file="$(read_cli_key version "")"
+  if [ -n "$from_file" ]; then
+    printf '%s\n' "$from_file"
+  else
+    printf '%s\n' "next"
+  fi
+}
+
+file_fallback_version() {
+  local pin
+  pin="$(read_cli_key version "")"
+  if validate_semver "$pin"; then
+    printf '%s\n' "$pin"
+    return 0
+  fi
+  return 1
+}
+
+probe_latest_release() {
+  local tag
+  tag="$(curl -fsSL "https://api.github.com/repos/augentic/specify-cli/releases/latest" \
+    | awk -F'"' '/"tag_name"/ { gsub(/^v/, "", $4); print $4; exit }')" \
+    || die "failed to probe latest specify-cli release from GitHub"
+  validate_semver "$tag" || die "latest release tag is not semver: $tag"
+  printf '%s\n' "$tag"
+}
+
+# Install the requested semver into cli.binary via `cargo install --git`.
+acquire_published() {
+  local want="$1" dest bin_root have
+  dest="$(cli_binary_abs)"
+  bin_root="$(dirname "$dest")"
+
+  if [ -x "$dest" ]; then
+    have="$(path_specify_version "$dest" || true)"
+    if [ "$want" = "latest" ]; then
+      version_satisfies "$have" ge "$(probe_latest_release)" && return 0
+    else
+      version_satisfies "$have" ge "$want" && return 0
+    fi
+  fi
+
+  if [ "$want" = "latest" ]; then
+    want="$(probe_latest_release)"
+  fi
+
+  if command -v specify >/dev/null 2>&1; then
+    have="$(path_specify_version specify || true)"
+    if version_satisfies "$have" eq "$want"; then
+      mkdir -p "$bin_root"
+      cp -f "$(command -v specify)" "$dest"
+      return 0
+    fi
   fi
 
   command -v cargo >/dev/null 2>&1 \
-    || die "cargo not found; install Rust to bootstrap specify $want into ./.bin, or put a matching specify on PATH"
+    || die "cargo not found; install Rust to bootstrap specify $want into $(cli_binary_rel), or put a matching specify on PATH"
 
-  mkdir -p "$BIN_DIR"
-  note "acquiring specify $want via cargo install --git --tag v$want → ./.bin"
+  mkdir -p "$bin_root"
+  note "acquiring specify $want via cargo install --git --tag v$want → $(cli_binary_rel)"
   cargo install specify \
     --git https://github.com/augentic/specify-cli \
     --tag "v$want" \
-    --root "$BIN_DIR" \
+    --root "$bin_root" \
     --locked >&2 \
     || die "cargo install --git failed for specify $want"
-  [ -x "$BIN_DIR/bin/specify" ] && cp -f "$BIN_DIR/bin/specify" "$SPECIFY_LOCAL"
 
-  have="$(path_specify_version "$SPECIFY_LOCAL" || true)"
-  [ -n "$have" ] || die "acquired specify at $SPECIFY_LOCAL is not runnable"
+  if [ -x "$bin_root/bin/specify" ] && [ "$dest" != "$bin_root/bin/specify" ]; then
+    cp -f "$bin_root/bin/specify" "$dest"
+  fi
+
+  have="$(path_specify_version "$dest" || true)"
+  [ -n "$have" ] || die "acquired specify at $dest is not runnable"
   version_satisfies "$have" ge "$want" \
     || die "acquired specify reports '${have}', expected pin '$want' or newer"
   [ "$have" = "$want" ] \
     || note "acquired specify $have for pin $want (release tag may ship a newer workspace version)"
 }
 
-# Prefer an already-installed PATH `specify` matching the pin, else acquire ./.bin.
-resolve_published() {
-  local want="$1" pv
-  if command -v specify >/dev/null 2>&1; then
-    pv="$(path_specify_version specify || true)"
-    if version_satisfies "$pv" eq "$want"; then
-      CMD=(specify)
-      return 0
-    fi
-  fi
-  acquire "$want"
-  CMD=("$SPECIFY_LOCAL")
+materialize_from_checkout() {
+  local manifest built dest
+  manifest="$(find_manifest)" || return 1
+  note "building specify from $manifest"
+  cargo build --release --manifest-path "$manifest" --bin specify >&2
+  built="$(cd "$(dirname "$manifest")" && pwd)/target/release/specify"
+  [ -x "$built" ] || die "expected built binary at $built"
+  dest="$(cli_binary_abs)"
+  mkdir -p "$(dirname "$dest")"
+  cp -f "$built" "$dest"
 }
 
-# Resolve SPECIFY_VERSION into the CMD[] command prefix.
-resolve() {
-  case "$SPECIFY_VERSION" in
+materialize_binary() {
+  local channel dest have
+  channel="$(resolved_version)"
+  dest="$(cli_binary_abs)"
+
+  case "$channel" in
     next)
-      local manifest pin
-      if manifest="$(find_manifest)"; then
-        CMD=(cargo run --release --manifest-path "$manifest" --bin specify --)
+      if materialize_from_checkout; then
+        return 0
+      fi
+      if file_fallback_version; then
+        note "no specify-cli checkout found; falling back to published specify $(file_fallback_version) in $(cli_binary_rel)"
+        acquire_published "$(file_fallback_version)"
       else
-        pin="$(read_pin)"
-        note "no specify-cli checkout found; falling back to published specify $pin in ./.bin"
-        acquire "$pin"
-        CMD=("$SPECIFY_LOCAL")
+        note "no specify-cli checkout found; falling back to latest published specify in $(cli_binary_rel)"
+        acquire_published "latest"
       fi
       ;;
+    latest)
+      acquire_published "latest"
+      ;;
     *)
-      validate_semver "$SPECIFY_VERSION" \
-        || die "unrecognised SPECIFY_VERSION '$SPECIFY_VERSION' (expected next|X.Y.Z)"
-      resolve_published "$SPECIFY_VERSION"
+      validate_semver "$channel" \
+        || die "unrecognised version channel '$channel' (expected next|latest|X.Y.Z)"
+      acquire_published "$channel"
       ;;
   esac
-}
 
-# Resolve SPECIFY_VERSION to a concrete binary PATH for the install-specify symlink.
-# Same channels and fallbacks as `resolve` — a checkout is the preferred source
-# under `next`, never a requirement; absent one we acquire the published binary
-# into ./.bin just like `lint`. The only translation needed is for the
-# `next` + checkout case, whose CMD is an ephemeral `cargo run` prefix: build
-# once and emit the stable target path instead.
-bin_path() {
-  resolve
-  case "${CMD[0]}" in
-    cargo)
-      local manifest
-      manifest="$(find_manifest)" \
-        || die "internal: cargo resolution without a specify-cli manifest"
-      note "building specify from $manifest"
-      cargo build --release --manifest-path "$manifest" --bin specify >&2
-      local bin
-      bin="$(cd "$(dirname "$manifest")" && pwd)/target/release/specify"
-      [ -x "$bin" ] || die "expected built binary at $bin"
-      printf '%s\n' "$bin"
-      ;;
-    specify)
-      command -v specify
-      ;;
-    *)
-      printf '%s\n' "${CMD[0]}"
-      ;;
-  esac
+  [ -x "$dest" ] || die "materialized binary is not executable at $dest"
+  have="$(path_specify_version "$dest" || true)"
+  [ -n "$have" ] || die "materialized binary at $dest is not runnable"
 }
 
 # ── Argument parsing ─────────────────────────────────────────
 
 mode="run"
+config_key=""
 args=()
 if [ "${1:-}" = "--mode" ]; then
-  [ "${2:-}" = "bin-path" ] || die "unknown --mode '${2:-}' (expected bin-path)"
-  mode="$2"
+  mode="${2:-}"
   shift 2
-  [ "$#" -eq 0 ] || die "--mode $mode takes no further arguments"
+  case "$mode" in
+    bin-path)
+      [ "$#" -eq 0 ] || die "--mode bin-path takes no further arguments"
+      ;;
+    config-key)
+      config_key="${1:-}"
+      [ -n "$config_key" ] || die "--mode config-key requires a key name"
+      shift
+      [ "$#" -eq 0 ] || die "--mode config-key takes exactly one argument"
+      ;;
+    *)
+      die "unknown --mode '$mode' (expected bin-path|config-key)"
+      ;;
+  esac
 elif [ "${1:-}" = "lint" ]; then
   shift
   args=(lint framework "$@")
 else
-  die "usage: specify.sh lint [args…] | --mode bin-path"
+  die "usage: specify.sh lint [args…] | --mode bin-path | --mode config-key <key>"
 fi
 
 # ── Resolve and dispatch ─────────────────────────────────────
 
-CMD=()
-
-# bin-path drives resolution itself (it may build) and emits a concrete path.
-if [ "$mode" = "bin-path" ]; then
-  bin_path
+if [ "$mode" = "config-key" ]; then
+  case "$config_key" in
+    version) resolved_version ;;
+    binary) cli_binary_rel ;;
+    path)
+      val="$(read_cli_key path "")"
+      [ -n "$val" ] || die "Specify.toml has no cli.path"
+      expand_tilde "$val"
+      ;;
+    *) die "unknown config key '$config_key' (expected version|binary|path)" ;;
+  esac
   exit 0
 fi
 
-resolve
+if [ "$mode" = "bin-path" ]; then
+  materialize_binary
+  cli_binary_abs
+  exit 0
+fi
+
+materialize_binary
 cd "$REPO_ROOT"
-exec "${CMD[@]}" "${args[@]}"
+exec "$(cli_binary_abs)" "${args[@]}"

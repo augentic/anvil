@@ -72,10 +72,11 @@ The above covers installing `specify` to *use* Specify in your own project. Cont
 
 | `SPECIFY_VERSION` | Binary comes from |
 | ----------------- | ----------------- |
-| `next` (default) | a sibling/nested `specify-cli` source build, **falling back to the `.specify-version` pin acquired into a repo-local `./.bin`** when no checkout is present |
-| `X.Y.Z` | one pinned published release |
+| `next` (Make default) | a sibling/nested `specify-cli` source build materialized into `cli.binary`, **falling back to the `Specify.toml` `cli.version` pin acquired into `cli.binary`** when no checkout is present |
+| `latest` | newest published `specify-cli` release acquired into `cli.binary` |
+| `X.Y.Z` | one pinned published release acquired into `cli.binary` |
 
-The default `next` keeps source builds the primary path for co-developing the workflow contract, but degrades gracefully so a docs/skills/rules contributor with no `specify-cli` checkout gets a working `make lint` with zero manual setup (acquisition uses `cargo install --git`, so a Rust toolchain is needed to bootstrap `./.bin` unless a matching `specify` is already on `PATH`). The single-line [`.specify-version`](https://github.com/augentic/specify/blob/main/.specify-version) file at that repo's root pins the published CLI release the framework currently targets; `./scripts/specify.sh lint` is the direct equivalent of `make lint` and works from any subdirectory. (This `SPECIFY_VERSION` knob is distinct from the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* rather than the binary to *bind*.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
+The default `next` keeps source builds the primary path for co-developing the workflow contract, but degrades gracefully so a docs/skills/rules contributor with no `specify-cli` checkout gets a working `make lint` with zero manual setup (acquisition uses `cargo install --git`, so a Rust toolchain is needed to bootstrap `cli.binary` unless a matching `specify` is already on `PATH`). [`Specify.toml`](https://github.com/augentic/specify/blob/main/Specify.toml) at that repo's root pins the published CLI release CI and the `next` fallback target; `./scripts/specify.sh lint` is the direct equivalent of `make lint` and works from any subdirectory. (This `SPECIFY_VERSION` knob is distinct from the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* rather than the binary to *bind*.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
 
 ## Adapter-specific prerequisites
 

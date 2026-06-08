@@ -31,7 +31,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 make install-specify
 ```
 
-`make install-specify` builds the release binary, runs `make lint`, and symlinks the freshly built `specify` into `~/.local/bin` (override with `INSTALL_DIR=…`), warning if that directory is not on your `PATH`. The symlink always points at the latest build, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
+`make install-specify` materializes the release binary, runs `make lint`, and symlinks `specify` into `cli.path` from [`Specify.toml`](Specify.toml) (default `~/.local/bin`), warning if that directory is not on your `PATH`. The symlink always points at the materialized build, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
 
 ## Layout
 
