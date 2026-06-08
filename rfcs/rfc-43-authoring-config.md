@@ -17,7 +17,7 @@ This is a configuration-consolidation RFC. It introduces no new lifecycle author
 RFC-41 landed a coherent *binding* model but spread its inputs across four surfaces:
 
 - `.specify-version` — the single-line published-CLI compatibility pin.
-- `Makefile` — `SPECIFY_VERSION ?= next`, `SPECIFY_MANIFEST`, `INSTALL_DIR`, the `acceptance` source-build posture.
+- `Makefile` — `SPECIFY_VERSION ?= next`, `SPECIFY_MANIFEST`, `INSTALL_DIR`, the `install-specify` target.
 - `scripts/specify.sh` — resolution/acquisition defaults (`lint` → `lint framework --framework-root .`), `./.bin` target, release-probe order.
 - `.github/workflows/ci.yaml` — the workflow-level `SPECIFY_VERSION` override and the `.specify-version` fallback.
 
@@ -67,7 +67,7 @@ platforms: [core, ios, android]
 | `cli.source` | `SPECIFY_VERSION ?= next` default in `Makefile` | The `next | X.Y.Z` knob keeps its env override (`SPECIFY_VERSION=…`); the file supplies the default. |
 | `cli.bin-dir` | hard-coded `./.bin` in `scripts/specify.sh` | Stays gitignored; configurable for CI caching. |
 | `lint.framework-root` | `lint` shorthand argument | The default scan root for the authoring lint. |
-| `acceptance.install-dir` | `INSTALL_DIR ?= $(HOME)/.local/bin` | Where `make acceptance` symlinks the build under test. |
+| `acceptance.install-dir` | `INSTALL_DIR ?= $(HOME)/.local/bin` | Where `make install-specify` symlinks the build under test. |
 | `acceptance.generated-output-gates` | implicit per-target list in RFC-42 | The targets whose generated output must pass `cargo check` / `test` / replay (RFC-42 Phase 2). |
 | `platforms` | nothing today (implicit) | The framework's declared platform set, mirroring the runtime `project.yaml.platforms`. |
 

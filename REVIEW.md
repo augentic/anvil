@@ -65,7 +65,7 @@ Test density (unit `#[test]` fns per source LOC), computed from the live tree:
 
 - Golden-comparing LLM prose from `/spec:refine` / `/spec:build` — explicitly out of scope.
 - Collapsing `tests/*.rs` into one binary — measured 7.3% win, rejected in DECISIONS.
-- Adding `make acceptance` to `specify` CI without first accepting the cross-repo clone/build cost (today `specify` CI = lint + symlink check by design).
+- Adding `make install-specify` to `specify` CI without first accepting the cross-repo clone/build cost (today `specify` CI = lint + symlink check by design).
 
 ### A5. Lifecycle scenarios vs CLI tests (manual-debt map)
 

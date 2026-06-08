@@ -1,20 +1,17 @@
+# The version of the `specify` binary to install. Override on the command line, e.g.
+# `make install-specify SPECIFY_VERSION=0.1.0`.
 SPECIFY_VERSION ?= next
 
-# Where `make acceptance` symlinks the freshly built `specify` so the manual
-# sweep (and an agent's spawned shells) resolve it as a bare `specify` command.
-# Override on the command line, e.g. `make acceptance INSTALL_DIR=~/bin`.
+# The location to install the `specify` binary so it can be resolved as a bare `specify` command.
+# Override on the command line, e.g. `make install-specify INSTALL_DIR=~/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
 
-.PHONY: lint acceptance use-local-plugins use-team-plugins
+.PHONY: lint install-specify
 
-# Delegates to the central resolver/runner, which binds the framework repo to a
-# `specify` binary per SPECIFY_VERSION (next | X.Y.Z).
 lint:
 	SPECIFY_VERSION=$(SPECIFY_VERSION) ./scripts/specify.sh lint
 
-# Prepares the manual operator sweep (not CI): resolve a `specify` per
-# SPECIFY_VERSION, run lint, then symlink it onto PATH so bare `specify` works.
-acceptance: lint
+install-specify:
 	@bin="$$(SPECIFY_VERSION=$(SPECIFY_VERSION) ./scripts/specify.sh --mode bin-path)" && \
 		mkdir -p "$(INSTALL_DIR)" && \
 		ln -sfn "$$bin" "$(INSTALL_DIR)/specify" && \

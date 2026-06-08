@@ -179,7 +179,7 @@ resolve() {
   esac
 }
 
-# Resolve SPECIFY_VERSION to a concrete binary PATH for the acceptance symlink.
+# Resolve SPECIFY_VERSION to a concrete binary PATH for the install-specify symlink.
 # Same channels and fallbacks as `resolve` — a checkout is the preferred source
 # under `next`, never a requirement; absent one we acquire the published binary
 # into ./.bin just like `lint`. The only translation needed is for the
