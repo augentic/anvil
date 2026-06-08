@@ -76,7 +76,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 ## Validation
 
 ```bash
-make lint   # delegates to ./scripts/specify.sh fcheck → specify lint framework
+make lint   # delegates to ./scripts/specify.sh lint → specify lint framework
 ```
 
 `make lint` resolves a `specify` binary via `scripts/specify.sh` per `SPECIFY_VERSION` (default `next`: a sibling `specify-cli` checkout, else the `.specify-version` pin acquired into `./.bin`), so no `specify-cli` checkout or Rust toolchain is required.

@@ -104,7 +104,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make lint` — delegates to `./scripts/specify.sh fcheck`, which resolves a `specify` binary per `SPECIFY_VERSION` (default `next`: build from a sibling `specify-cli` checkout, else acquire the `.specify-version` pin into `./.bin`) and runs `specify lint framework --framework-root .` for documentation and workflow consistency checks. No `specify-cli` checkout is required.
+- `make lint` — delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary per `SPECIFY_VERSION` (default `next`: build from a sibling `specify-cli` checkout, else acquire the `.specify-version` pin into `./.bin`) and runs `specify lint framework --framework-root .` for documentation and workflow consistency checks. No `specify-cli` checkout is required.
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
 The `specify-standards` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-standards` framework); this repo's CI runs only `make lint` against the live tree.

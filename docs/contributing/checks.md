@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface                                              | When it runs                                                                                       | What it covers                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `./scripts/specify.sh fcheck` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `./scripts/specify.sh lint` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
 **Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
@@ -45,20 +45,18 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 ### Binding to a `specify` binary
 
-`make lint` delegates to `./scripts/specify.sh fcheck`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework --framework-root .` against this repo. You do **not** need a `specify-cli` checkout: when none is found, the script acquires a published release into a gitignored, repo-local `./.bin` and uses that — no Rust toolchain required.
+`make lint` delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary according to the `SPECIFY_VERSION` environment variable (default `next`) and runs `lint framework --framework-root .` against this repo. You do **not** need a `specify-cli` checkout: when none is found, the script acquires a published release into a gitignored, repo-local `./.bin` and uses that — no Rust toolchain required.
 
 | `SPECIFY_VERSION` | Binary comes from | Notes |
 | ----------------- | ----------------- | ----- |
 | `next` (default) | a sibling/nested `specify-cli` checkout (`cargo run --release`), **falling back to the `.specify-version` pin acquired into `./.bin`** when no checkout is found | co-development default; the fallback prints a one-line notice and needs no Rust toolchain |
-| `latest` | the newest published release (floating) | prefers an installed `specify` on `PATH` that satisfies, else acquires into `./.bin` |
-| `X.Y.Z` (e.g. `0.1.0`) | one pinned published release | exact match; idempotent re-runs skip reinstall |
-| `system` | whatever `specify` is on `PATH` | no resolution, acquisition, or version enforcement |
+| `X.Y.Z` (e.g. `0.1.0`) | one pinned published release | prefers an installed `specify` on `PATH` that matches, else acquires into `./.bin`; idempotent re-runs skip reinstall |
 
-`./scripts/specify.sh fcheck` is the direct replacement for the former `cargo fcheck` alias and works from any subdirectory — the script finds the repo root and `cd`s before running. The same script accepts any `specify` subcommand as passthrough, e.g. `./scripts/specify.sh slice validate my-slice`.
+`./scripts/specify.sh lint` is the direct replacement for the former `cargo fcheck` alias and works from any subdirectory — the script finds the repo root and `cd`s before running.
 
 ### The `.specify-version` pin
 
-[`.specify-version`](../../.specify-version) is a single-line file at the repo root carrying the published CLI release the framework currently targets. It is the one place `make lint`, `scripts/specify.sh`, and CI read the pinned version. The runtime `SPECIFY_VERSION` knob overrides it; the file is consulted only when acquisition needs an explicit version — the `next` fallback, and CI when no workflow override is set — so the resolved pin is deterministic rather than floating `latest`.
+[`.specify-version`](../../.specify-version) is a single-line file at the repo root carrying the published CLI release the framework currently targets. It is the one place `make lint`, `scripts/specify.sh`, and CI read the pinned version. The runtime `SPECIFY_VERSION` knob overrides it; the file is consulted only when acquisition needs an explicit version — the `next` fallback, and CI when no workflow override is set — so the resolved pin is deterministic.
 
 **Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `.specify-version` to that published version in the same framework PR that relies on the new behaviour. Source-build (`next`) co-development is unaffected; the pin governs only the published-binary paths. Until a release ships installable assets (GitHub release archives or `install.sh`) for the pinned version, acquisition may require a Rust toolchain locally (`cargo install --git`) or fall back to `main` when the pinned tag predates `lint framework`.
 

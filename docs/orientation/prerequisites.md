@@ -68,16 +68,14 @@ The `cargo` and `brew` executors are fully wired; the `binary`-channel in-proces
 
 ### Contributing to the framework repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — does **not** require a `specify-cli` checkout or a Rust toolchain. `make lint` (the only framework check) delegates to `./scripts/specify.sh fcheck`, which resolves a `specify` binary per the `SPECIFY_VERSION` environment variable and runs `specify lint framework --framework-root .`:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — does **not** require a `specify-cli` checkout or a Rust toolchain. `make lint` (the only framework check) delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary per the `SPECIFY_VERSION` environment variable and runs `specify lint framework --framework-root .`:
 
 | `SPECIFY_VERSION` | Binary comes from |
 | ----------------- | ----------------- |
 | `next` (default) | a sibling/nested `specify-cli` source build, **falling back to the `.specify-version` pin acquired into a repo-local `./.bin`** when no checkout is present |
-| `latest` | the newest published release |
 | `X.Y.Z` | one pinned published release |
-| `system` | whatever `specify` is already on `PATH` |
 
-The default `next` keeps source builds the primary path for co-developing the workflow contract, but degrades gracefully so a docs/skills/rules contributor with no Rust toolchain gets a working `make lint` with zero manual setup. The single-line [`.specify-version`](https://github.com/augentic/specify/blob/main/.specify-version) file at that repo's root pins the published CLI release the framework currently targets; `./scripts/specify.sh fcheck` is the direct equivalent of `make lint` and works from any subdirectory. (This `SPECIFY_VERSION` knob is distinct from the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* rather than the binary to *bind*.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
+The default `next` keeps source builds the primary path for co-developing the workflow contract, but degrades gracefully so a docs/skills/rules contributor with no Rust toolchain gets a working `make lint` with zero manual setup. The single-line [`.specify-version`](https://github.com/augentic/specify/blob/main/.specify-version) file at that repo's root pins the published CLI release the framework currently targets; `./scripts/specify.sh lint` is the direct equivalent of `make lint` and works from any subdirectory. (This `SPECIFY_VERSION` knob is distinct from the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* rather than the binary to *bind*.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
 
 ## Adapter-specific prerequisites
 

@@ -8,8 +8,8 @@
 # This is evidence capture only — it drives no /spec:* command, runs only
 # read-only `specify` verbs, and asserts nothing. It is not a scenario runner.
 #
-# Usage: bash ./scripts/acceptance-snapshot.sh <sandbox-dir>
-#   e.g. bash ./scripts/acceptance-snapshot.sh acceptance/.sandbox/pure-intent
+# Usage: bash ./scripts/snapshot.sh <sandbox-dir>
+#   e.g. bash ./scripts/snapshot.sh acceptance/.sandbox/pure-intent
 
 set -euo pipefail
 

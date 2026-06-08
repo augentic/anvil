@@ -91,7 +91,7 @@ Confirm (self-grade on durable STRUCTURE only — never a byte/golden compare):
   and record pass/fail/skipped with an evidence pointer.
 - For each negative expectation, record held/violated/untested.
 - Capture an artefact snapshot of the sandbox
-  (`scripts/acceptance-snapshot.sh "$SANDBOX"`) and paste it into the
+  (`scripts/snapshot.sh "$SANDBOX"`) and paste it into the
   run-summary's **Artefact snapshot** section, so the record is self-contained.
 - Fill the run-summary template and file it under acceptance/runs/
   <id>-<date>.md; update the scenario's status in the catalog.
