@@ -20,18 +20,13 @@ if [ ! -f "$MARKETPLACE" ]; then
   exit 1
 fi
 
-PLUGIN_ROOT=$(python3 -c "
-import json, sys
-m = json.load(open(sys.argv[1]))
-print(m.get('metadata', {}).get('pluginRoot', 'plugins'))
-" "$MARKETPLACE")
+if ! command -v jq &>/dev/null; then
+  echo "Error: jq not found — install jq (https://jqlang.github.io/jq/)" >&2
+  exit 1
+fi
 
-PLUGINS=$(python3 -c "
-import json, sys
-m = json.load(open(sys.argv[1]))
-for p in m.get('plugins', []):
-    print(p['source'])
-" "$MARKETPLACE")
+PLUGIN_ROOT=$(jq -r '.metadata.pluginRoot // "plugins"' "$MARKETPLACE")
+PLUGINS=$(jq -r '.plugins[].source' "$MARKETPLACE")
 
 # Intentional: clear only the augentic-scoped cache so it is repopulated below;
 # CACHE_DIR is fixed to ~/.cursor/plugins/cache/augentic, never the whole cache.

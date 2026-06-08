@@ -24,7 +24,7 @@ Two audiences share this repository:
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
 | **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — they work in the Rust workspace |
 
-Markdown-only contributors can run `make lint` locally without a `specify-cli` checkout: under the `next` channel with no checkout, it acquires the semver pinned in [`Specify.toml`](../../Specify.toml) (`cli.version`) into `cli.binary` (see [Consistency Checks](checks.md#binding-to-a-specify-binary)). Tooling contributors keep a sibling `specify-cli` checkout — `make lint` then builds the binary from source (the default `next` mode), and `cargo make test` in that checkout exercises the `specify-standards` framework predicate suite before opening a PR.
+Markdown-only contributors run `make lint` locally with only a Rust toolchain: it builds the `specify-cli` source pinned by [`Specify.toml`](../../Specify.toml) `cli` and runs the framework checks (see [Consistency Checks](checks.md#binding-to-a-specify-source)). Tooling contributors actively co-developing the CLI point a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }` at their working tree — `make lint` then builds it directly — and run `cargo make test` in that checkout to exercise the `specify-standards` framework predicate suite before opening a PR.
 
 ## Development environment
 
@@ -35,8 +35,8 @@ Markdown-only contributors can run `make lint` locally without a `specify-cli` c
 
 **For tooling work** (`specify-cli` repo, `crates/standards/`):
 
-- Rust stable toolchain
-- A sibling checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) to build the framework checker from source (the default `next` mode); optional for `make lint`, which falls back to a published binary when no checkout is present
+- Rust toolchain — `make lint` builds the pinned `specify-cli` source (currently a nightly toolchain, since the `scripts/specify.rs` resolver is a cargo-script and cargo-script is still nightly-only)
+- A checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) to co-develop the framework checker, pointed at by a gitignored `Specify.local.toml` `cli = { path = … }`
 
 **For CLI work** (specify-cli repo):
 

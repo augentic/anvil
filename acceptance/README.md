@@ -26,12 +26,12 @@ The prompt tells the agent to follow the runbook in [docs/contributing/acceptanc
 The agent runs this for you as runbook step 1; run it directly only when you want the static checks and a fresh build under test without the manual sweep.
 
 ```bash
-# build `specify`, run the static checks (make lint), and symlink the
-# build onto ~/.local/bin
+# build `specify` from the pinned cli source and symlink the build onto
+# ~/.local/bin (run `make lint` separately for the static checks)
 make install-specify
 ```
 
-`make install-specify` materializes the release binary, runs `make lint`, and symlinks `specify` into `cli.path` from [`Specify.toml`](Specify.toml) (default `~/.local/bin`), warning if that directory is not on your `PATH`. The symlink always points at the materialized build, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
+`make install-specify` builds the resolved `cli` source from [`Specify.toml`](Specify.toml) (or a gitignored `Specify.local.toml` overlay), materializes `.bin/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
 
 ## Layout
 

@@ -68,15 +68,15 @@ The `cargo` and `brew` executors are fully wired; the `binary`-channel in-proces
 
 ### Contributing to the framework repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — does **not** require a `specify-cli` checkout. `make lint` (the only framework check) delegates to `./scripts/specify.sh lint`, which resolves a `specify` binary per the `SPECIFY_VERSION` environment variable and runs `specify lint framework` from the repo root:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — needs only a Rust toolchain, not a separately installed `specify`. `make lint` (the only framework check) delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`, a single-file Cargo script that reads the `cli` source spec, **builds** that `specify-cli` source, and runs `specify lint framework` from the repo root:
 
-| `SPECIFY_VERSION` | Binary comes from |
-| ----------------- | ----------------- |
-| `next` (Make default) | a sibling/nested `specify-cli` source build materialized into `cli.binary`, **falling back to the `Specify.toml` `cli.version` pin acquired into `cli.binary`** when no checkout is present |
-| `latest` | newest published `specify-cli` release acquired into `cli.binary` |
-| `X.Y.Z` | one pinned published release acquired into `cli.binary` |
+| `cli` form (in `Specify.toml`) | Source built |
+| ------------------------------ | ------------ |
+| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that git ref |
+| `cli = { path = "<dir>" }` (gitignored `Specify.local.toml` only) | a local checkout, built in place |
 
-The default `next` keeps source builds the primary path for co-developing the workflow contract, but degrades gracefully so a docs/skills/rules contributor with no `specify-cli` checkout gets a working `make lint` with zero manual setup (acquisition uses `cargo install --git`, so a Rust toolchain is needed to bootstrap `cli.binary` unless a matching `specify` is already on `PATH`). [`Specify.toml`](https://github.com/augentic/specify/blob/main/Specify.toml) at that repo's root pins the published CLI release CI and the `next` fallback target; `./scripts/specify.sh lint` is the direct equivalent of `make lint` and works from any subdirectory. (This `SPECIFY_VERSION` knob is distinct from the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* rather than the binary to *bind*.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
+Every form builds from source — no published binary is downloaded. The committed `cli` is always a fetchable form (`version` or `git` + ref) so CI and clean clones build the same source; to co-develop the CLI locally, add a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }`. cargo-script is still nightly-only (`-Zscript`), so the resolver runs under the nightly pinned in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml). [`Specify.toml`](https://github.com/augentic/specify/blob/main/Specify.toml) at that repo's root pins the CLI source; `cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-source) for the full binding model.
 
 ## Adapter-specific prerequisites
 

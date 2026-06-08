@@ -1,18 +1,29 @@
-# The version of the `specify` binary to install. Override on the command line, e.g.
-# `make install-specify SPECIFY_VERSION=0.1.0`.
-SPECIFY_VERSION ?= next
+# Directory on PATH where `make install-specify` symlinks the built binary for
+# the acceptance sweep. Override on the command line, e.g.
+# `make install-specify INSTALL_DIR=/usr/local/bin`.
+INSTALL_DIR ?= $(HOME)/.local/bin
 
-.PHONY: lint install-specify
+# cargo-script is still nightly-only (-Zscript); drop `+nightly -Zscript` once it
+# stabilizes (rust-lang/cargo#16569). Both targets drive the one resolver, which
+# resolves `cli` (Specify.toml + optional gitignored Specify.local.toml overlay)
+# and builds that specify-cli source — no `cli` parsing is duplicated here.
+RESOLVE := cargo +nightly -Zscript scripts/specify.rs
+
+.PHONY: lint install-specify use-local-dev use-local-plugins use-team-plugins
 
 lint:
-	SPECIFY_VERSION=$(SPECIFY_VERSION) ./scripts/specify.sh lint
+	$(RESOLVE) lint framework
+
+# Build specify-cli + WASI tools from the sibling tree, install, write tools.yaml
+# sidecars, and repopulate the plugin cache. `make use-local-dev ARGS=--skip-wasi`
+# skips the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
+use-local-dev:
+	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
 
 install-specify:
-	@bin="$$(SPECIFY_VERSION=$(SPECIFY_VERSION) ./scripts/specify.sh --mode bin-path)" && \
-		install_dir="$$(./scripts/specify.sh --mode config-key path)" && \
-		mkdir -p "$$install_dir" && \
-		ln -sfn "$$bin" "$$install_dir/specify" && \
-		{ specify --version 2>/dev/null || echo "Add $$install_dir to PATH before the sweep."; }
+	@mkdir -p "$(INSTALL_DIR)"
+	@ln -sfn "$(CURDIR)/$$($(RESOLVE) --install)" "$(INSTALL_DIR)/specify"
+	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

@@ -1,14 +1,12 @@
-# Specify.toml is development configuration. 
+# Specify.toml is development configuration.
 # Runtime configuration lives at .specify/project.yaml.
 
-#:schema https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/authoring/framework.schema.json
+# :schema https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/authoring/framework.schema.json
 
-[cli]
-# The version of the `specify` binary to install: next | latest | X.Y.Z
-version = "next"
-
-# The path to install the `specify` binary
-binary = ".bin/specify"
-
-# Where to symlink the installed `specify` binary in order to add it to PATH
-path = "~/.local/bin"
+# Pin specify-cli dependency:
+#   cli = { version = "X.Y.Z" }                       # git tag
+#   cli = { git = "<url>", rev|branch|tag = "…" }     # git ref
+# 
+# Local co-development using Specify.local.toml:
+#   cli = { path = "../specify-cli" }
+cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-44-cli-split" }

@@ -104,7 +104,7 @@ The matching CLI validation surface is the declared `contract` WASI tool, run vi
 
 All commands are run from the repository root:
 
-- `make lint` — delegates to `./scripts/specify.sh lint`, which materializes a `specify` binary at `Specify.toml` `cli.binary` per `SPECIFY_VERSION` (default `next`: build from a sibling `specify-cli` checkout into `cli.binary`, else acquire the `cli.version` pin) and runs `specify lint framework` for documentation and workflow consistency checks. No `specify-cli` checkout is required.
+- `make lint` — delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`, a single-file Cargo script that reads the `cli` source spec from `Specify.toml` (or a gitignored `Specify.local.toml` overlay), **builds** that pinned `specify-cli` source with Cargo, and runs `specify lint framework` for documentation and workflow consistency checks. Only a Rust toolchain is required (currently nightly, since cargo-script needs `-Zscript`); no published binary is downloaded. Co-develop the CLI with a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }`.
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
 The `specify-standards` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-standards` framework); this repo's CI runs only `make lint` against the live tree.

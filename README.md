@@ -76,7 +76,7 @@ Run documentation and consistency checks from the repository root:
 make lint
 ```
 
-This delegates to [`scripts/specify.sh`](scripts/specify.sh), which materializes a `specify` binary at [`Specify.toml`](Specify.toml) `cli.binary` per `SPECIFY_VERSION` (default `next`: build from a sibling `specify-cli` checkout when present, else acquire the `cli.version` pin). No `specify-cli` checkout is required. See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-binary) for the full binding model.
+This delegates to [`scripts/specify.rs`](scripts/specify.rs), a single-file Cargo script that reads the `cli` source spec from [`Specify.toml`](Specify.toml) (or a gitignored `Specify.local.toml` overlay) and **builds** that pinned `specify-cli` source with Cargo before running `lint framework`. Only a Rust toolchain is required (currently nightly, since the resolver is a cargo-script). See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-source) for the full binding model.
 
 ### Local plugin development
 

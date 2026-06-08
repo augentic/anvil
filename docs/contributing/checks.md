@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo is linted by `specify lint framework` from `augentic/specify-cli`. `make lint` resolves and runs that binary through [`scripts/specify.sh`](../../scripts/specify.sh) — building it from a local `specify-cli` checkout when one is present, otherwise acquiring a published release into a repo-local `./.bin`. A `specify-cli` checkout is **not** required to run `make lint`. Run checks before every pull request.
+The `specify` repo is linted by `specify lint framework` from `augentic/specify-cli`. `make lint` resolves and runs that binary through [`scripts/specify.rs`](../../scripts/specify.rs) — a single-file Cargo script that reads the `cli` source spec from [`Specify.toml`](../../Specify.toml) (or a gitignored `Specify.local.toml` overlay), **builds** that pinned `specify-cli` source with Cargo, and execs it. No published binary is downloaded; a Rust toolchain is the only prerequisite. Run checks before every pull request.
 
 ## Editor-first vs specify lint framework
 
@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface                                              | When it runs                                                                                       | What it covers                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `./scripts/specify.sh lint` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo +nightly -Zscript scripts/specify.rs lint framework` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
 **Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
@@ -43,31 +43,38 @@ make lint
 
 Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
 
-### Binding to a `specify` binary
+### Binding to a `specify` SOURCE
 
-`make lint` delegates to `./scripts/specify.sh lint`, which materializes a `specify` binary at the path declared in [`Specify.toml`](../../Specify.toml) (`cli.binary`, default `.bin/specify`) according to the `SPECIFY_VERSION` environment variable (Make default `next`) and runs `lint framework` against this repo (from the repo root). You do **not** need a `specify-cli` checkout: when none is found under the `next` channel, the script acquires the semver pinned in `Specify.toml` (`cli.version`) into `cli.binary`.
+`make lint` delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`. The resolver reads the `cli` source spec — from a gitignored `Specify.local.toml` when that overlay defines one, else from the committed [`Specify.toml`](../../Specify.toml) — **builds** that `specify-cli` source with Cargo, and runs `lint framework` against this repo (from the repo root). There is no published-binary download and no channel: every form builds from source. A Rust toolchain is the only prerequisite.
 
-| `SPECIFY_VERSION` | Binary comes from | Notes |
-| ----------------- | ----------------- | ----- |
-| `next` (Make default) | sibling/nested `specify-cli` checkout (release build copied into `cli.binary`), **falling back to `cli.version` from `Specify.toml` acquired into `cli.binary`** when no checkout is found | co-development default; the fallback prints a one-line notice and acquires the published pin |
-| `latest` | newest published `specify-cli` release | probes GitHub releases, acquires into `cli.binary` |
-| `X.Y.Z` (e.g. `0.1.0`) | one pinned published release | prefers an installed `specify` on `PATH` that matches, else acquires into `cli.binary`; idempotent re-runs skip reinstall |
+> cargo-script (single-file `.rs` packages) is still nightly-only — it requires the unstable `-Zscript` flag — so the resolver runs under nightly (pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml)). Drop `+nightly -Zscript` from the Makefile, CI, and the script shebang once cargo-script stabilizes ([rust-lang/cargo#16569](https://github.com/rust-lang/cargo/issues/16569)).
 
-`./scripts/specify.sh lint` is the direct replacement for the former `cargo fcheck` alias and works from any subdirectory — the script finds the repo root and `cd`s before running.
+| `cli` form | Resolves to | Mechanism |
+| ---------- | ----------- | --------- |
+| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` | `cargo install --git <url> --tag vX.Y.Z` into `.bin` |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that ref (the cross-repo co-dev-in-CI form) | `cargo install --git <url> <--rev\|--branch\|--tag>` into `.bin` (`--force` for `branch`) |
+| `cli = { path = "<dir>" }` (overlay only) | a local checkout | `cargo run --manifest-path <dir>/Cargo.toml` — warm incremental loop |
+
+`cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`; run it from the repo root.
 
 ### `Specify.toml` authoring config
 
-[`Specify.toml`](../../Specify.toml) at the repo root is the schema-validated blueprint for **how this framework repo is built and checked** — distinct from runtime `.specify/project.yaml`, which governs how a consumer project uses Specify. The closed `[cli]` block declares:
+[`Specify.toml`](../../Specify.toml) at the repo root is the schema-validated blueprint for **which `specify-cli` source this framework repo builds** — distinct from runtime `.specify/project.yaml`, which governs how a consumer project uses Specify. `cli` is a Cargo-shaped inline-table source spec taking exactly one of three forms:
 
-| Field | Role |
-| ----- | ---- |
-| `cli.version` | `next`, `latest`, or semver `X.Y.Z` — the version contract for the binary at `cli.binary`. CI reads this when no workflow `SPECIFY_VERSION` override is set. |
-| `cli.binary` | Repo-local executable path materialized by `scripts/specify.sh` (parent directory gitignored). |
-| `cli.path` | Optional directory for `make install-specify` to symlink `path/specify` → `cli.binary`. |
+| Form | Role |
+| ---- | ---- |
+| `cli = { version = "X.Y.Z" }` | An exact `specify-cli` release; builds git tag `vX.Y.Z`. A named exact-tag key — not a channel, not a Cargo range (`version` is pinned to `^\d+\.\d+\.\d+$`). |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | A git ref; `git` plus exactly one of `rev` / `branch` / `tag`. The committed cross-repo co-dev-in-CI lever. |
+| `cli = { path = "<dir>" }` | A local `specify-cli` checkout, built in place. Belongs in a gitignored `Specify.local.toml` overlay, never the committed file. |
 
-The `SPECIFY_VERSION` environment variable overrides `cli.version` for one-off runs. The Makefile keeps `SPECIFY_VERSION ?= next` so local co-development defaults to a source build when a sibling checkout is present.
+The committed `cli` is **always** a fetchable form (`version` or `git` + ref) so CI and every clean clone build the same source. To co-develop the CLI locally, add a gitignored `Specify.local.toml` overlay — the overlay's `cli` wins wholesale (the two documents are never merged key-by-key):
 
-**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `cli.version` in `Specify.toml` to that published version in the same framework PR that relies on the new behaviour. Source-build (`next`) co-development is unaffected; the pin governs only the published-binary paths (CI and the `next` fallback). Acquisition goes through `cargo install --git --tag v<pin>`, so a Rust toolchain is required locally to bootstrap `cli.binary` — unless a matching `specify` is already on `PATH`, in which case it is reused.
+```toml
+# Specify.local.toml — gitignored; overrides cli locally
+cli = { path = "../specify-cli" }
+```
+
+**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `cli` to `{ version = "X.Y.Z" }` in the same framework PR that relies on the new behaviour. While a CLI change is still unreleased, point the committed `cli` at its branch (`{ git = "…", branch = "…" }`) so CI exercises the framework against the unreleased CLI — still parity, because a branch ref is fetchable.
 
 CORE-055 validates `Specify.toml` on every `make lint` run against the embedded `framework.schema.json`.
 
@@ -81,7 +88,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 ### CI
 
-CI does not clone `specify-cli` or compile the framework tree. It resolves `SPECIFY_VERSION` from a workflow-level env var when set, otherwise from `cli.version` in [`Specify.toml`](../../Specify.toml), acquires that published binary into `cli.binary` (default `.bin/`), and runs `make lint`. The resolved pin is deterministic, so the job is never silently a source build one run and a published binary the next. Maintainers can override the workflow env var to pin a different published release without touching `Specify.toml`. CI installs a minimal Rust toolchain so `scripts/specify.sh` can bootstrap `cli.binary` via `cargo install --git`. CI ignores `cli.path`.
+CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.bin` install root together with `~/.cargo` (registry, git, and the cargo-script build cache), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
