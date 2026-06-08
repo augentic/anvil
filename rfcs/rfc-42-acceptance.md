@@ -1,4 +1,4 @@
-# RFC-40: Acceptance Coverage
+# RFC-42: Acceptance Coverage
 
 > Status: Draft · Serves: [RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) · Complements: [RFC-39](future/rfc-39-acceptance-shape-traces.md) (deferred — the `shape` tier Phases 2–3 graduate through once it lands), [RFC-38 reconciliation polish](../roadmap.md#current-priorities) (the kernel several Phase 1 fixtures exercise)
 
