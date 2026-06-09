@@ -3,10 +3,8 @@
 # `make install-specify INSTALL_DIR=/usr/local/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
 
-# cargo-script is still nightly-only (-Zscript); drop `+nightly -Zscript` once it
-# stabilizes (rust-lang/cargo#16569). Both targets drive the one resolver, which
-# resolves `cli` (Specify.toml + optional gitignored Specify.local.toml overlay)
-# and builds that specify-cli source — no `cli` parsing is duplicated here.
+# Resolve CLI using Specify.toml or Specify.local.toml (gitignored overlay).
+# N.B. drop `+nightly -Zscript` once it stabilizes (rust-lang/cargo#16569). 
 RESOLVE := cargo +nightly -Zscript scripts/specify.rs
 
 .PHONY: lint install-specify use-local-dev use-local-plugins use-team-plugins
