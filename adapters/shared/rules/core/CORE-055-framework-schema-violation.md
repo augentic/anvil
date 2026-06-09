@@ -2,14 +2,14 @@
 id: CORE-055
 title: Framework Authoring Config Schema
 severity: critical
-trigger: Root `Specify.toml` fails to validate against the framework authoring config schema (missing `cli`, an unknown form, or a `cli` source spec that is not exactly one of `{ version }` / `{ git, rev|branch|tag }` / `{ path }`).
+trigger: Root `Specify.toml` fails to validate against the framework authoring config schema (missing `cli`, an unknown form, or a `cli` source spec that is not exactly one of `{ version }` / `{ git }` / `{ git, rev|branch|tag }` / `{ path }`).
 rule_hints:
   - kind: path-pattern
     value: Specify.toml
     description: Narrow the candidate set to the framework authoring config before schema validation.
   - kind: schema
     value: framework
-    description: Validate Specify.toml against the embedded `framework.schema.json` shape (`cli` is a `oneOf` over `{ version }`, `{ git, rev|branch|tag }`, and `{ path }`).
+    description: Validate Specify.toml against the embedded `framework.schema.json` shape (`cli` is a `oneOf` over `{ version }`, `{ git }`, `{ git, rev|branch|tag }`, and `{ path }`).
 ---
 
 ## Rule
@@ -19,6 +19,7 @@ The framework repo carries a single authoring blueprint at `Specify.toml` that d
 `cli` is a Cargo-shaped inline-table **source spec** — never a published binary, channel, or crates.io range — taking exactly one of three forms:
 
 - `cli = { version = "X.Y.Z" }` — an exact `specify-cli` release; builds git tag `vX.Y.Z`. `version` is pinned to `^\d+\.\d+\.\d+$` (no `next` / `latest`, no caret ranges).
+- `cli = { git = "<url>" }` — the default remote; builds branch `main` when no ref is given.
 - `cli = { git = "<url>", rev|branch|tag = "…" }` — a git ref; `git` plus exactly one of `rev` / `branch` / `tag`.
 - `cli = { path = "<dir>" }` — a local checkout, built in place. Belongs in a gitignored `Specify.local.toml` overlay, not the committed file.
 
@@ -27,7 +28,7 @@ The framework repo carries a single authoring blueprint at `Specify.toml` that d
 - A missing `Specify.toml` at the repo root (presence is enforced elsewhere once the file is required).
 - A `cli` value that is not an inline table, or that matches none of the three forms.
 - A `version` outside `^\d+\.\d+\.\d+$` (e.g. `next`, `latest`, `^0.2`).
-- A `git` form with zero or more than one of `rev` / `branch` / `tag`, or missing `git`.
+- A `git` form with more than one of `rev` / `branch` / `tag`, or missing `git`.
 - Extra top-level keys, or extra keys inside the `cli` table (the schema is closed).
 
 ## Fix

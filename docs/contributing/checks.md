@@ -52,6 +52,7 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 | `cli` form | Resolves to | Mechanism |
 | ---------- | ----------- | --------- |
 | `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` | `cargo install --git <url> --tag vX.Y.Z` into `.cli` |
+| `cli = { git = "<url>" }` | branch `main` (default ref) | `cargo install --git <url> --branch main --force` into `.cli` |
 | `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that ref (the cross-repo co-dev-in-CI form) | `cargo install --git <url> <--rev\|--branch\|--tag>` into `.cli` (`--force` for `branch`) |
 | `cli = { path = "<dir>" }` (overlay only) | a local checkout | `cargo run --manifest-path <dir>/Cargo.toml` — warm incremental loop |
 
@@ -64,6 +65,7 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 | Form | Role |
 | ---- | ---- |
 | `cli = { version = "X.Y.Z" }` | An exact `specify-cli` release; builds git tag `vX.Y.Z`. A named exact-tag key — not a channel, not a Cargo range (`version` is pinned to `^\d+\.\d+\.\d+$`). |
+| `cli = { git = "<url>" }` | The default remote; builds branch `main` when no ref is given. |
 | `cli = { git = "<url>", rev\|branch\|tag = "…" }` | A git ref; `git` plus exactly one of `rev` / `branch` / `tag`. The committed cross-repo co-dev-in-CI lever. |
 | `cli = { path = "<dir>" }` | A local `specify-cli` checkout, built in place. Belongs in a gitignored `Specify.local.toml` overlay, never the committed file. |
 

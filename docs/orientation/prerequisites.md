@@ -73,6 +73,7 @@ The above covers installing `specify` to *use* Specify in your own project. Cont
 | `cli` form (in `Specify.toml`) | Source built |
 | ------------------------------ | ------------ |
 | `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` |
+| `cli = { git = "<url>" }` | branch `main` (default ref) |
 | `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that git ref |
 | `cli = { path = "<dir>" }` (gitignored `Specify.local.toml` only) | a local checkout, built in place |
 
