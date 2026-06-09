@@ -37,7 +37,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 ## Acceptance scenarios
 
-The acceptance scenario pack includes a code-multi-slice scenario under [`acceptance/scenarios/04-code-multi-slice.md`](../../acceptance/scenarios/04-code-multi-slice.md) for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
+The acceptance scenario pack includes a code-multi-slice scenario under [`acceptance/scenarios/code-multi-slice.md`](../../acceptance/scenarios/code-multi-slice.md) for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
 
 ## Next steps
 

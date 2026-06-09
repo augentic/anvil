@@ -12,19 +12,19 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 
 | Scenario | File | Status |
 | --- | --- | --- |
-| Pure intent, one slice | [`01-pure-intent`](01-pure-intent.md) | passed |
+| Pure intent, one slice | [`pure-intent`](pure-intent.md) | passed |
 
 ### Core synthesis, planning, and routing
 
 | Scenario | File | Status |
 | --- | --- | --- |
-| Documentation, one slice | [`02-documentation-one-slice`](02-documentation-one-slice.md) | pending |
-| Documentation, multi-slice | [`03-documentation-multi-slice`](03-documentation-multi-slice.md) | pending |
-| Code, multi-slice | [`04-code-multi-slice`](04-code-multi-slice.md) | pending |
+| Documentation, one slice | [`documentation-one-slice`](documentation-one-slice.md) | pending |
+| Documentation, multi-slice | [`documentation-multi-slice`](documentation-multi-slice.md) | pending |
+| Code, multi-slice | [`code-multi-slice`](code-multi-slice.md) | pending |
 | Combined evidence (code + docs) | `combined-evidence` | [automated](#automated-coverage) |
 | `[divergence]` from authority resolution | `divergence-authority` | [automated](#automated-coverage) |
 | `[conflict]` from same-authority disagreement | `same-authority-conflict` | [automated](#automated-coverage) |
-| Cross-source propose-time merge | [`05e-cross-source-merge`](05e-cross-source-merge.md) | pending |
+| Cross-source propose-time merge | [`cross-source-merge`](cross-source-merge.md) | pending |
 | Multi-repo assignment from a workspace | `multi-repo-workspace` | [automated](#automated-coverage) |
 | Operator amends one-slice plan into two | `amend-into-two` | [automated](#automated-coverage) |
 | Single-project plan generation | [`plan-single-project`](plan-single-project.md) | pending |
@@ -37,16 +37,16 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | --- | --- | --- |
 | Extract failure | `extract-failure` | [automated](#automated-coverage) |
 | Invalid Evidence schema rejection | `invalid-evidence` | [automated](#automated-coverage) |
-| Target `shape` injection | [`05h-target-shape-injection`](05h-target-shape-injection.md) | pending |
+| Target `shape` injection | [`target-shape-injection`](target-shape-injection.md) | pending |
 | Source-adapter sandbox path-denied | `source-sandbox-denied` | [automated](#automated-coverage) |
-| Step-through breakout mid-execute | [`08-stepthrough-breakout`](08-stepthrough-breakout.md) | pending |
-| `/spec:execute` parks on a build failure | [`09-execute-build-failure`](09-execute-build-failure.md) | pending |
-| Workspace `/spec:execute` across two projects | [`10-workspace-execute-two-projects`](10-workspace-execute-two-projects.md) | pending |
-| Workspace breakout after build failure | [`11-workspace-breakout`](11-workspace-breakout.md) | pending |
-| Dual-driving refused | [`12-dual-driving-refused`](12-dual-driving-refused.md) | pending |
-| Stale-workspace recovery | [`13-stale-workspace-recovery`](13-stale-workspace-recovery.md) | pending |
+| Step-through breakout mid-execute | [`stepthrough-breakout`](stepthrough-breakout.md) | pending |
+| `/spec:execute` parks on a build failure | [`execute-build-failure`](execute-build-failure.md) | pending |
+| Workspace `/spec:execute` across two projects | [`workspace-execute-two-projects`](workspace-execute-two-projects.md) | pending |
+| Workspace breakout after build failure | [`workspace-breakout`](workspace-breakout.md) | pending |
+| Dual-driving refused | [`dual-driving-refused`](dual-driving-refused.md) | pending |
+| Stale-workspace recovery | [`stale-workspace-recovery`](stale-workspace-recovery.md) | pending |
 
-23 scenarios — 14 manual `<id>.md` files driven by the sweep plus 9 `automated` (`backend: fixture`) entries whose proof lives in [Automated coverage](#automated-coverage), not a scenario file. Manual file numbering preserves the historical queue ordering (`5x` ids verbatim) so cross-references stay stable; the frontmatter `id` is the letter-led form the scenario schema requires.
+23 scenarios — 14 manual `<id>.md` files driven by the sweep plus 9 `automated` (`backend: fixture`) entries whose proof lives in [Automated coverage](#automated-coverage), not a scenario file. Each manual file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename.
 
 ## Status legend
 

@@ -66,7 +66,7 @@ When asked to "run specify's acceptance scenarios and report any issues", an age
 
 ### Running a single scenario
 
-When asked to run one named scenario (e.g. "run Specify's acceptance scenario `01-pure-intent`"), the agent follows the same runbook scoped to that id: do step 1 (install + resolve the binary under test), then drive **only** that scenario's id through [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A → Prompt B, self-grade the structurally checkable assertions, file the run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md), and report. Skip the group ordering — it governs the full-catalog sweep, not a single run. The same human seams (step 3) still apply; in particular `pure-intent` is the N=1 release blocker and carries the hard-halt + release-owner sign-off seam.
+When asked to run one named scenario (e.g. "run Specify's acceptance scenario `pure-intent`"), the agent follows the same runbook scoped to that id: do step 1 (install + resolve the binary under test), then drive **only** that scenario's id through [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A → Prompt B, self-grade the structurally checkable assertions, file the run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md), and report. Skip the group ordering — it governs the full-catalog sweep, not a single run. The same human seams (step 3) still apply; in particular `pure-intent` is the N=1 release blocker and carries the hard-halt + release-owner sign-off seam.
 
 ## Execution order and the halt gate
 

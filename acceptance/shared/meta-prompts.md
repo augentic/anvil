@@ -10,7 +10,7 @@ The three human seams the prompts always hand back to the operator:
 2. **Ergonomics / judgment assertions** the agent cannot deterministically verify — marked `needs-human` for operator confirmation.
 3. **`deferred` and `pure-intent` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `pure-intent` is the release blocker.
 
-Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `01-pure-intent`).
+Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `pure-intent`).
 
 ## Prompt A — setup
 

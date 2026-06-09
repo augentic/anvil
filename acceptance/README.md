@@ -14,35 +14,35 @@ Run Specify's acceptance scenarios and report your findings.
 
 The prompt tells the agent to follow the runbook in [docs/contributing/acceptance.md](../docs/contributing/acceptance.md#agent-runbook): it installs the build under test (`make install-cli`), drives each agent-based scenario in [scenarios/](scenarios/README.md), and files a report under [runs/](runs/README.md).
 
-**N=1 hard halt:** if `[01-pure-intent](scenarios/01-pure-intent.md)` fails, the sweep stops there — triage and resume once it is green.
+**N=1 hard halt:** if `[pure-intent](scenarios/pure-intent.md)` fails, the sweep stops there — triage and resume once it is green.
 
 ## Run a single scenario
 
 Tell a Cursor agent to run one named scenario, e.g.:
 
 ```text
-Run Specify's acceptance scenario 01-pure-intent and report your findings.
+Run Specify's acceptance scenario pure-intent and report your findings.
 ```
 
 Same delegation as **Run all scenarios**, but the agent follows the [single-scenario runbook](../docs/contributing/acceptance.md#running-a-single-scenario). Only the agent-based (`backend: manual`) scenarios are listed; the `backend: fixture` ones are proven by `cargo make test` in `specify-cli` (see [Automated coverage](scenarios/README.md#automated-coverage)), not by an agent.
 
 
-| Scenario                                                                              | What it exercises                                                        |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `[01-pure-intent](scenarios/01-pure-intent.md)`                                       | N=1 pure intent → one slice (**release blocker** — hard halt on failure) |
-| `[02-documentation-one-slice](scenarios/02-documentation-one-slice.md)`               | Documentation source, one slice                                          |
-| `[03-documentation-multi-slice](scenarios/03-documentation-multi-slice.md)`           | Documentation source, multiple slices                                    |
-| `[04-code-multi-slice](scenarios/04-code-multi-slice.md)`                             | TypeScript code source, multiple slices                                  |
-| `[05e-cross-source-merge](scenarios/05e-cross-source-merge.md)`                       | Cross-source propose-time merge                                          |
-| `[plan-single-project](scenarios/plan-single-project.md)`                             | Single-project plan generation                                           |
-| `[cross-repo-contract-flow](scenarios/cross-repo-contract-flow.md)`                   | Cross-repo contract flow (full lifecycle, live forge)                    |
-| `[05h-target-shape-injection](scenarios/05h-target-shape-injection.md)`               | Target `shape` injection                                                 |
-| `[08-stepthrough-breakout](scenarios/08-stepthrough-breakout.md)`                     | Step-through breakout mid-execute                                        |
-| `[09-execute-build-failure](scenarios/09-execute-build-failure.md)`                   | `/spec:execute` parks on a build failure                                 |
-| `[10-workspace-execute-two-projects](scenarios/10-workspace-execute-two-projects.md)` | Workspace `/spec:execute` across two projects                            |
-| `[11-workspace-breakout](scenarios/11-workspace-breakout.md)`                         | Workspace breakout after build failure                                   |
-| `[12-dual-driving-refused](scenarios/12-dual-driving-refused.md)`                     | Dual-driving refused                                                     |
-| `[13-stale-workspace-recovery](scenarios/13-stale-workspace-recovery.md)`             | Stale-workspace recovery                                                 |
+| Scenario                                                                          | What it exercises                                                        |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `[pure-intent](scenarios/pure-intent.md)`                                         | N=1 pure intent → one slice (**release blocker** — hard halt on failure) |
+| `[documentation-one-slice](scenarios/documentation-one-slice.md)`                 | Documentation source, one slice                                          |
+| `[documentation-multi-slice](scenarios/documentation-multi-slice.md)`             | Documentation source, multiple slices                                    |
+| `[code-multi-slice](scenarios/code-multi-slice.md)`                               | TypeScript code source, multiple slices                                  |
+| `[cross-source-merge](scenarios/cross-source-merge.md)`                           | Cross-source propose-time merge                                          |
+| `[plan-single-project](scenarios/plan-single-project.md)`                         | Single-project plan generation                                           |
+| `[cross-repo-contract-flow](scenarios/cross-repo-contract-flow.md)`               | Cross-repo contract flow (full lifecycle, live forge)                    |
+| `[target-shape-injection](scenarios/target-shape-injection.md)`                   | Target `shape` injection                                                 |
+| `[stepthrough-breakout](scenarios/stepthrough-breakout.md)`                       | Step-through breakout mid-execute                                        |
+| `[execute-build-failure](scenarios/execute-build-failure.md)`                     | `/spec:execute` parks on a build failure                                 |
+| `[workspace-execute-two-projects](scenarios/workspace-execute-two-projects.md)`   | Workspace `/spec:execute` across two projects                            |
+| `[workspace-breakout](scenarios/workspace-breakout.md)`                           | Workspace breakout after build failure                                   |
+| `[dual-driving-refused](scenarios/dual-driving-refused.md)`                       | Dual-driving refused                                                     |
+| `[stale-workspace-recovery](scenarios/stale-workspace-recovery.md)`               | Stale-workspace recovery                                                 |
 
 
 ## Installing `specify-cli` runtime
