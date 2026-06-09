@@ -20,24 +20,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      # - uses: dtolnay/rust-toolchain@nightly
-
-      # - name: Resolve specify-cli pin
-      #   id: pin
-      #   run: echo "sha=$(cargo +nightly -Zscript scripts/specify.rs --resolved-ref)" >> "$GITHUB_OUTPUT"
-
-      # - uses: actions/checkout@v6
-      #   with:
-      #     repository: augentic/specify-cli
-      #     ref: ${{ steps.pin.outputs.sha }}
-      #     path: specify-cli
-      #     fetch-depth: 1
-
-      # - name: Use local specify-cli checkout
-      #   run: echo 'cli = { path = "specify-cli" }' > Specify.local.toml
-
-      - name: specify-cli branch
-        id: specify-cli
+      # -------------------------------------------------------------
+      # The specify-cli version to use — sibling branch or main
+      # -------------------------------------------------------------
+      - id: specify-cli
         run: |
           branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
@@ -54,13 +40,16 @@ jobs:
           fetch-depth: 1
 
       - uses: dtolnay/rust-toolchain@stable
-        
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: specify-cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
+      # -------------------------------------------------------------
+      # CI Checks
+      # -------------------------------------------------------------
       - name: Verify symlinks
         run: |
           status=0
@@ -74,9 +63,6 @@ jobs:
             fi
           done
           exit $status
-
-      # - name: Verify framework
-      #   run: make lint
 
       - name: Verify framework
         run: |

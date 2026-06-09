@@ -1,9 +1,8 @@
 # Specify development configuration.
 
 # specify-cli dependency
-cli = { git = "https://github.com/augentic/specify-cli" }
+cli = { path = "../specify-cli" }
 
+# cli = { git = "https://github.com/augentic/specify-cli" }
 # cli = { version = "0.2.0" }
 # cli = { git = "https://github.com/augentic/specify-cli" branch = "main"}
-# optionally, use Specify.local.toml so a local path is not committed
-# cli = { path = "../specify-cli" }

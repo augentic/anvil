@@ -1,8 +1,8 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 ---cargo
 [package]
-name = "specify-bootstrap"
-edition = "2021"
+name = "bootstrap"
+edition = "2024"
 
 [dependencies]
 toml = "0.8"
