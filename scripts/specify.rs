@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 toml = "0.8"
 ---
+
 //! Resolve `cli` to a specify-cli SOURCE, then build + run it. The `cli` inline
 //! table is taken WHOLE from a gitignored Specify.local.toml when that overlay
 //! defines one, else from the committed Specify.toml — never merged key-by-key:
@@ -26,10 +27,7 @@ toml = "0.8"
 //! stabilizes (rust-lang/cargo#16569).
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
-use std::process::Command; // .exec() — replace this process
-
-// Shared `cli` resolution (read_cli_spec, cli_path) used by both dev scripts.
-include!("load_cli.rs");
+use std::process::Command;
 
 fn die(m: &str) -> ! {
     eprintln!("specify: error: {m}");
@@ -44,47 +42,60 @@ fn run(mut cmd: Command) -> ! {
     std::process::exit(cmd.status().map_or(1, |s| s.code().unwrap_or(1)));
 }
 
-// Resolved `cli` selection: a local path, or a pinned git ref. `resolve_ref`
-// applies the rev > branch > tag > version precedence and assembles the default
-// repo URL from named parts so no inline URL literal lives in source (UNI-014).
+// Resolved `cli` selection: a local `Path`, or a `Git` source carrying both the
+// resolved URL and the chosen ref. The URL rides inside `Git` — a local path has
+// none — so the warm local-dev loop assembles no throwaway URL.
 enum Sel {
     Path(String),
+    Git { url: String, git: GitRef },
+}
+
+// Git ref forms in precedence order; `version = "X.Y.Z"` is sugar for `Tag(vX.Y.Z)`.
+enum GitRef {
     Rev(String),
     Branch(String),
     Tag(String),
 }
 
-fn resolve_ref(cli: &toml::Table) -> (String, Sel) {
-    const SCHEME: &str = "https";
-    const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
+// Apply the path > rev > branch > tag > version precedence. The default repo URL
+// is assembled from named parts so no inline URL literal lives in source (UNI-014).
+fn resolve_ref(cli: &toml::Table) -> Sel {
     let key = |k: &str| cli.get(k).and_then(toml::Value::as_str).map(str::to_owned);
-    let url = key("git").unwrap_or_else(|| format!("{SCHEME}://{DEFAULT_GIT_HOST}"));
 
-    let sel = if let Some(p) = cli.get("path").and_then(toml::Value::as_str) {
-        Sel::Path(p.to_owned())
-    } else if let Some(r) = key("rev") {
-        Sel::Rev(r)
+    // A local path short-circuits before any URL is assembled (the hot dev loop).
+    if let Some(p) = key("path") {
+        return Sel::Path(p);
+    }
+
+    let git = if let Some(r) = key("rev") {
+        GitRef::Rev(r)
     } else if let Some(b) = key("branch") {
-        Sel::Branch(b)
+        GitRef::Branch(b)
     } else if let Some(t) = key("tag") {
-        Sel::Tag(t)
+        GitRef::Tag(t)
     } else if let Some(v) = key("version") {
-        Sel::Tag(format!("v{v}"))
+        GitRef::Tag(format!("v{v}"))
     } else {
         die("`cli` needs one of: path | git + rev/branch/tag | version");
     };
-    (url, sel)
+
+    const SCHEME: &str = "https";
+    const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
+    let url = key("git").unwrap_or_else(|| format!("{SCHEME}://{DEFAULT_GIT_HOST}"));
+    Sel::Git { url, git }
 }
 
 // Print a cache token for the resolved source: the upstream commit SHA for a
 // branch/tag (via `git ls-remote`), the rev passthrough for a pinned rev, or a
 // deterministic, pin-sensitive fallback (the literal ref/path) on any miss.
-fn print_resolved_ref(url: &str, sel: &Sel) {
+fn print_resolved_ref(sel: &Sel) {
     let token = match sel {
-        Sel::Rev(r) => r.clone(),
-        Sel::Branch(b) => ls_remote(url, b).unwrap_or_else(|| b.clone()),
-        Sel::Tag(t) => ls_remote(url, t).unwrap_or_else(|| t.clone()),
         Sel::Path(p) => format!("path:{p}"),
+        Sel::Git { url, git } => match git {
+            GitRef::Rev(r) => r.clone(),
+            GitRef::Branch(b) => ls_remote(url, b).unwrap_or_else(|| b.clone()),
+            GitRef::Tag(t) => ls_remote(url, t).unwrap_or_else(|| t.clone()),
+        },
     };
     println!("{token}");
 }
@@ -127,11 +138,16 @@ fn main() {
         &argv[..]
     };
 
-    let cli = read_cli_spec().unwrap_or_else(|| die("no `cli` source spec in Specify.toml"));
-    let (url, sel) = resolve_ref(&cli);
+    let cli = ["Specify.local.toml", "Specify.toml"]
+        .iter()
+        .filter_map(|f| std::fs::read_to_string(f).ok())
+        .filter_map(|s| s.parse::<toml::Table>().ok())
+        .find_map(|t| t.get("cli")?.as_table().cloned())
+        .unwrap_or_else(|| die("no `cli` source spec in Specify.toml"));
+    let sel = resolve_ref(&cli);
 
     if resolved_ref_mode {
-        return print_resolved_ref(&url, &sel);
+        return print_resolved_ref(&sel);
     }
 
     // Local path override (gitignored overlay) — the only local divergence.
@@ -158,12 +174,14 @@ fn main() {
     }
 
     // Pinned forms: Cargo fetches + builds the exact ref into .bin (cached, reproducible).
+    let Sel::Git { url, git } = &sel else {
+        unreachable!("path handled above");
+    };
     let mut sel_args: Vec<&str> = vec!["--git", url.as_str()];
-    match &sel {
-        Sel::Rev(r) => sel_args.extend(["--rev", r.as_str()]),
-        Sel::Branch(b) => sel_args.extend(["--branch", b.as_str(), "--force"]), // mutable ref → rebuild
-        Sel::Tag(t) => sel_args.extend(["--tag", t.as_str()]),
-        Sel::Path(_) => unreachable!("path handled above"),
+    match git {
+        GitRef::Rev(r) => sel_args.extend(["--rev", r.as_str()]),
+        GitRef::Branch(b) => sel_args.extend(["--branch", b.as_str(), "--force"]), // mutable ref → rebuild
+        GitRef::Tag(t) => sel_args.extend(["--tag", t.as_str()]),
     }
     install(&sel_args);
 

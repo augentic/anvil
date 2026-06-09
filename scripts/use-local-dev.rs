@@ -10,6 +10,7 @@ serde-saphyr = "0.0.26"
 serde_json = "1"
 toml = "0.8"
 ---
+
 //! Adapter-local dev setup: materialize `specify` via [`scripts/specify.rs`](specify.rs),
 //! build adapter WASI tools from the local `cli.path` checkout, write each target
 //! adapter's gitignored `tools.yaml` sidecar, and repopulate the Cursor plugin cache.
@@ -25,22 +26,25 @@ toml = "0.8"
 //! Toolchain: cargo-script is still nightly-only (-Zscript); switch the shebang,
 //! Makefile, and CI pins to stable once it stabilizes (rust-lang/cargo#16569).
 use std::error::Error;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
-#[cfg(unix)]
-use std::os::unix::fs::symlink;
 
 use serde::Serialize;
-
-include!("load_cli.rs");
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// `(cargo_pkg, bin_name, adapter_dir, tool_name)`. Omnia declares no tools.
 const WASI_TOOLS: &[(&str, &str, &str, &str)] = &[
     ("specify-vectis", "vectis", "vectis", "vectis"),
-    ("specify-contract", "specify-contract", "contracts", "contract"),
+    (
+        "specify-contract",
+        "specify-contract",
+        "contracts",
+        "contract",
+    ),
 ];
 
 fn main() {
@@ -75,13 +79,21 @@ fn run() -> Result<()> {
         return populate_plugin_cache(&repo_root);
     }
 
-    let cli = read_cli_spec().ok_or("no `cli` source spec in Specify.toml")?;
+    let cli = ["Specify.local.toml", "Specify.toml"]
+        .iter()
+        .filter_map(|f| std::fs::read_to_string(f).ok())
+        .filter_map(|s| s.parse::<toml::Table>().ok())
+        .find_map(|t| t.get("cli")?.as_table().cloned())
+        .ok_or("no `cli` source spec in Specify.toml")?;
     let path = cli.get("path").and_then(toml::Value::as_str).ok_or(
         "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" } \
          (local checkout needed for WASI tool builds)",
     )?;
     let cli_root = repo_root.join(path).canonicalize().map_err(|_| {
-        format!("cli.path `{path}` not found (relative to {})", repo_root.display())
+        format!(
+            "cli.path `{path}` not found (relative to {})",
+            repo_root.display()
+        )
     })?;
 
     let install_dir = match env::var_os("SPECIFY_BIN_DIR") {
@@ -113,7 +125,14 @@ fn run() -> Result<()> {
         for &(cargo_pkg, bin_name, adapter_dir, tool_name) in WASI_TOOLS {
             println!("Building {tool_name} WASI tool …");
             cargo(
-                &["build", "-p", cargo_pkg, "--target", "wasm32-wasip2", "--release"],
+                &[
+                    "build",
+                    "-p",
+                    cargo_pkg,
+                    "--target",
+                    "wasm32-wasip2",
+                    "--release",
+                ],
                 &wasi_dir,
             )?;
 
@@ -146,7 +165,10 @@ fn run() -> Result<()> {
 
     // ── Summary ──────────────────────────────────────────────────
     println!("\nLocal dev environment ready.");
-    println!("  specify: {}", which("specify").unwrap_or(installed).display());
+    println!(
+        "  specify: {}",
+        which("specify").unwrap_or(installed).display()
+    );
     for &(_, _, adapter_dir, tool_name) in WASI_TOOLS {
         let sidecar = repo_root
             .join("adapters/targets")
@@ -194,10 +216,18 @@ fn populate_plugin_cache(repo_root: &Path) -> Result<()> {
     }
 
     let marketplace_path = repo_root.join(".cursor-plugin/marketplace.json");
-    let text = fs::read_to_string(&marketplace_path)
-        .map_err(|_| format!("marketplace.json not found at {}", marketplace_path.display()))?;
+    let text = fs::read_to_string(&marketplace_path).map_err(|_| {
+        format!(
+            "marketplace.json not found at {}",
+            marketplace_path.display()
+        )
+    })?;
     let marketplace: Marketplace = serde_json::from_str(&text)?;
-    let plugin_root = marketplace.metadata.plugin_root.as_deref().unwrap_or("plugins");
+    let plugin_root = marketplace
+        .metadata
+        .plugin_root
+        .as_deref()
+        .unwrap_or("plugins");
 
     // Clear only the marketplace-scoped cache, then repopulate from the tree.
     let cache_dir = cursor_home()?.join("plugins/cache").join(&marketplace.name);
@@ -322,11 +352,17 @@ struct Permissions {
     write: Vec<String>,
 }
 
-// PERMISSIONS DUPLICATED — an intentional, accepted mirror of
-// specify_tool::manifest::first_party_permissions() in augentic/specify-cli.
-// No CLI verb owns dev sidecar wiring (by decision), so these literals stay here:
-// the trade-off is no dependency on specify-cli, at the cost of no compiler check.
-// Keep this table in sync with the CLI when first-party tool permissions change.
+// PERMISSIONS DUPLICATED — a deliberate, accepted mirror of `first_party_permissions`
+// in `crates/tool/src/manifest.rs` of augentic/specify-cli (its `namespace == "specify"`
+// defaults). Owning the literals here keeps the dev scripts free of a specify-cli
+// dependency, by decision — no CLI verb surfaces these permissions for a sidecar to read.
+//
+// Nothing catches drift automatically: there is no compiler check, and `specify tool`
+// validates permissions against the embedded defaults ONLY for the *package* source
+// form. Dev sidecars point `source:` at a built `.wasm` (a filesystem source), which
+// skips that validation — so this table alone is the contract. Keep the match arms and
+// permission strings identical to the upstream so a side-by-side diff stays the sync
+// mechanism whenever first-party tool permissions change.
 fn first_party_permissions(tool_name: &str) -> Result<Permissions> {
     match tool_name {
         "contract" => Ok(Permissions {
@@ -357,7 +393,10 @@ fn sidecar(tool_name: &str, version: &str, source_abs: &Path) -> Result<String> 
 
 fn cargo(args: &[&str], cwd: &Path) -> Result<()> {
     let cargo_bin = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let status = Command::new(cargo_bin).args(args).current_dir(cwd).status()?;
+    let status = Command::new(cargo_bin)
+        .args(args)
+        .current_dir(cwd)
+        .status()?;
     if !status.success() {
         return Err(format!("cargo {} failed", args.join(" ")).into());
     }
