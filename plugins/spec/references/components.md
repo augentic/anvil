@@ -1,10 +1,10 @@
 # Component catalog (runtime)
 
-Vectis-only, opt-in: `.specify/design-system/components.yaml` declares shared UI components the Vectis target factors at build time (alongside `tokens.yaml` and `assets.yaml`). Projects without the file behave as before.
+Vectis-only, agent-inferred and operator-reviewable: `.specify/design-system/components.yaml` declares shared UI components the Vectis target factors at build time (alongside `tokens.yaml` and `assets.yaml`). The catalog is written by `specify catalog infer` during each build when shared structures appear across the accumulated composition baseline — it is not hand-curated — and the operator reviews, rejects, or renames entries. Projects with no shared structures have no catalog and behave as before.
 
 ## Problem: cross-slice component drift
 
-Each `screenshots.extract` invocation only sees one lead. Stage-6 detection promotes `component: <slug>` only when two or more identical groups appear in the same run. Across slices, the adapter has no memory — repeated structures can be inlined twice and drift. The catalog lets the operator declare shared components once.
+Each `screenshots.extract` invocation only sees one lead. Stage-6 detection promotes `component: <slug>` only when two or more identical groups appear in the same run. Across slices, the adapter has no memory — repeated structures can be inlined twice and drift. `specify catalog infer` closes this gap: at build time it clusters structurally identical groups across the accumulated composition baseline (plus the screenshots candidate cache), and the build skill identifies, names, and binds each shared structure into the catalog — so components are discovered automatically rather than declared by hand.
 
 ## File location
 
@@ -22,18 +22,22 @@ components:
   tab-bar:
     status: confirmed
     description: "Bottom navigation across primary sections."
+    fingerprint: "<64-char lowercase hex>"   # optional; the structural identity bound to this slug
 ```
 
 - **`status`** — `confirmed` (build factors shared code) or `rejected` (suppresses catalog-drift warnings for that slug).
-- **`description`** — optional operator note.
+- **`description`** — optional note.
+- **`fingerprint`** — optional lowercase SHA-256 hex (`^[0-9a-f]{64}$`) of the component's normalized structural skeleton. `specify catalog infer --phase bind` writes it so a later `--phase report` echoes the bound slug for an already-named cluster (run-to-run binding stability). Hand-authored / pre-inference entries omit it.
 - Slugs: kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
 
 ## Operator workflow
 
-1. **Observe hints** — `notes.candidate_component: <slug>` on Evidence from screenshots stage-6.
-2. **Curate** — add `status: confirmed` when reuse is intentional.
-3. **Build** — Vectis reads the catalog and factors `shared/src/components/<slug>.rs`, iOS `Components/<Slug>View.swift`, Android `components/<Slug>Component.kt` per confirmed slug referenced in `composition.yaml`.
-4. **Reject false positives** — `status: rejected` suppresses drift findings without building shared code.
+Inference is the default author; the operator reviews rather than curating from nothing.
+
+1. **Infer** — each Vectis build runs `specify catalog infer --phase report` over the accumulated baseline (plus the screenshots candidate cache), the build skill identifies and names each new shared structure by judgement, and `--phase bind` writes the named entries as `status: confirmed`. This is the only writer of the catalog.
+2. **Factor** — composition regeneration attaches `component: <slug>` to every matching group, and the shell writers factor `shared/src/components/<slug>.rs`, iOS `Components/<Slug>View.swift`, Android `components/<Slug>Component.kt` per confirmed slug referenced in `composition.yaml`. Retroactive factoring reaches backward into prior-slice screens that share the structure.
+3. **Review** — inspect what was clustered and named with `specify catalog infer --phase report` (read-only) or the `--phase bind --dry-run` diff.
+4. **Reject or rename** — set `status: rejected` to permanently suppress a slug, or rename an inferred entry; `bind`'s no-overwrite rule keeps both stable on later runs.
 
 ## Validation
 
@@ -44,9 +48,7 @@ components:
 
 ## What the catalog does not do
 
-- No auto-population — operator-curated only.
-- No retroactive baseline rewrite without a refactor slice.
-- No CLI verbs for catalog edits — edit YAML directly like tokens/assets.
+- No CLI verbs for hand-editing entries — `specify catalog infer --phase bind` writes the catalog (binding the names the build skill or operator parts supply), but to reject or rename an entry the operator edits the YAML directly, like tokens / assets.
 - No sharing across projects.
 
 Full guide: [Component catalog](https://specify.augentic.io/explanation/components.html).

@@ -4,7 +4,7 @@
 
 1. **`composition.yaml` regeneration.** Synthesis does not write `composition.yaml`. This brief regenerates it from `spec.md` + `design.md` (which already carry every upstream spatial / structural claim synthesis folded in from source adapters) at the start of each build, alongside the code it accompanies. `merge` lands the regenerated file together with the implementation code.
 2. **Inline phase sub-briefs.** Each build phase body lives in a phase sub-brief under [`build/`](build/).
-3. **Operator-curated inputs are read, never authored.** `tokens.yaml`, `assets.yaml`, and `components.yaml` are operator-curated and consumed as build inputs; the brief never invents or restates their contents. The component catalog (`.specify/design-system/components.yaml`) is the third design-system input, joining `tokens.yaml` and `assets.yaml`. When present, the build reads confirmed entries and factors shared component code per in-scope shell tree; when absent, no component factoring occurs.
+3. **Design-system inputs.** `tokens.yaml` and `assets.yaml` are operator-curated and consumed as read-only build inputs; the brief never invents or restates their contents. The component catalog (`.specify/design-system/components.yaml`) is the third design-system input, joining `tokens.yaml` and `assets.yaml`, but it is **agent-inferred and operator-reviewable**, not operator-curated: `specify catalog infer --phase bind` writes it during Step 0.5 (binding the names the build skill or operator parts supply), and the brief reads the confirmed entries back during composition regeneration to factor shared component code per in-scope shell tree. Operators review and may `reject` or rename entries. When absent, no component factoring occurs.
 
 The Vectis target stays three-capability (`shape` / `build` / `merge`) — there is **no** fourth `refine` slot. Composition regeneration is part of `build`.
 
@@ -19,7 +19,7 @@ The brief runs against the build request the CLI prepared at `.specify/slices/<s
 - `inputs.artifacts.additional[]` — the three design-system inputs declared by [`adapter.yaml`](../adapter.yaml), **all optional** (`required: false`), each with an explicit absent-fallback:
   - `tokens.yaml` — design tokens; absent → HIG (iOS) / Material 3 (Android) theme fallback in the shell writers.
   - `assets.yaml` — asset inventory; the composition validator's `tokens` / `assets` modes run only when the respective file is present.
-  - `components.yaml` — the opt-in component catalog (surfaced as `CATALOG_PATH`); absent → no component factoring.
+  - `components.yaml` — the agent-inferred component catalog (surfaced as `CATALOG_PATH`); written by `specify catalog infer` at Step 0.5 and read back during composition regeneration; absent → no component factoring.
 
 ## Standard arguments
 
