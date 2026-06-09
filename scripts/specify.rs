@@ -19,6 +19,45 @@ const INSTALL_ROOT: &str = ".bin";
 const BIN: &str = ".bin/bin/specify";
 const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
 
+fn main() {
+    let (mode, args) = parse_args();
+    let sel = resolve_ref(&load_cli());
+
+    if matches!(mode, Mode::ResolvedRef) {
+        print_resolved_ref(&sel);
+        return;
+    }
+
+    match sel {
+        Sel::Path(path) => {
+            if matches!(mode, Mode::Install) {
+                install(&["--path", &path]);
+                println!("{BIN}");
+                return;
+            }
+            run_local(&path, &args);
+        }
+        Sel::Git { url, git } => {
+            let mut selector = vec!["--git".to_owned(), url];
+            match git {
+                GitRef::Rev(r) => selector.extend(["--rev".to_owned(), r.clone()]),
+                GitRef::Branch(b) => {
+                    selector.extend(["--branch".to_owned(), b.clone(), "--force".to_owned()])
+                }
+                GitRef::Tag(t) => selector.extend(["--tag".to_owned(), t.clone()]),
+            }
+
+            let selector: Vec<&str> = selector.iter().map(String::as_str).collect();
+            install(&selector);
+            if matches!(mode, Mode::Install) {
+                println!("{BIN}");
+                return;
+            }
+            run_installed(&args);
+        }
+    }
+}
+
 fn die(m: &str) -> ! {
     eprintln!("specify: error: {m}");
     std::process::exit(1);
@@ -153,44 +192,5 @@ fn parse_args() -> (Mode, Vec<String>) {
         Some("--install") => (Mode::Install, argv[1..].to_vec()),
         Some("--resolved-ref") => (Mode::ResolvedRef, argv[1..].to_vec()),
         _ => (Mode::Run, argv),
-    }
-}
-
-fn main() {
-    let (mode, args) = parse_args();
-    let sel = resolve_ref(&load_cli());
-
-    if matches!(mode, Mode::ResolvedRef) {
-        print_resolved_ref(&sel);
-        return;
-    }
-
-    match sel {
-        Sel::Path(path) => {
-            if matches!(mode, Mode::Install) {
-                install(&["--path", &path]);
-                println!("{BIN}");
-                return;
-            }
-            run_local(&path, &args);
-        }
-        Sel::Git { url, git } => {
-            let mut selector = vec!["--git".to_owned(), url];
-            match git {
-                GitRef::Rev(r) => selector.extend(["--rev".to_owned(), r.clone()]),
-                GitRef::Branch(b) => {
-                    selector.extend(["--branch".to_owned(), b.clone(), "--force".to_owned()])
-                }
-                GitRef::Tag(t) => selector.extend(["--tag".to_owned(), t.clone()]),
-            }
-
-            let selector: Vec<&str> = selector.iter().map(String::as_str).collect();
-            install(&selector);
-            if matches!(mode, Mode::Install) {
-                println!("{BIN}");
-                return;
-            }
-            run_installed(&args);
-        }
     }
 }
