@@ -10,7 +10,7 @@ The three human seams the prompts always hand back to the operator:
 2. **Ergonomics / judgment assertions** the agent cannot deterministically verify — marked `needs-human` for operator confirmation.
 3. **`deferred` and `pure-intent` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `pure-intent` is the release blocker.
 
-Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `01-pure-intent`).
+Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `pure-intent`).
 
 ## Prompt A — setup
 
@@ -21,7 +21,7 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- `specify`: the automated surface (runbook step 1) already ran `make acceptance`, which
+- `specify`: the automated surface (runbook step 1) already ran `make install-cli`, which
   symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
@@ -91,7 +91,7 @@ Confirm (self-grade on durable STRUCTURE only — never a byte/golden compare):
   and record pass/fail/skipped with an evidence pointer.
 - For each negative expectation, record held/violated/untested.
 - Capture an artefact snapshot of the sandbox
-  (`scripts/acceptance-snapshot.sh "$SANDBOX"`) and paste it into the
+  (`scripts/snapshot.sh "$SANDBOX"`) and paste it into the
   run-summary's **Artefact snapshot** section, so the record is self-contained.
 - Fill the run-summary template and file it under acceptance/runs/
   <id>-<date>.md; update the scenario's status in the catalog.

@@ -1,37 +1,36 @@
-ifeq ($(wildcard specify-cli/Cargo.toml),)
-  SPECIFY_MANIFEST ?= ../specify-cli/Cargo.toml
-else
-  SPECIFY_MANIFEST := specify-cli/Cargo.toml
-endif
-
-SPECIFY_BIN_DIR := $(abspath $(dir $(SPECIFY_MANIFEST))target/release)
-
-# Where `make acceptance` symlinks the freshly built `specify` so the manual
-# sweep (and an agent's spawned shells) resolve it as a bare `specify` command.
-# Override on the command line, e.g. `make acceptance INSTALL_DIR=~/bin`.
+# Directory on PATH where `make install-cli` symlinks the built binary for
+# the acceptance sweep. Override on the command line, e.g.
+# `make install-cli INSTALL_DIR=/usr/local/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
-SPECIFY_LINK := $(INSTALL_DIR)/specify
 
-.PHONY: lint acceptance use-local-plugins use-team-plugins
+# Resolve CLI using Specify.toml or Specify.local.toml (gitignored overlay).
+# N.B. drop `+nightly -Zscript` once it stabilizes (rust-lang/cargo#16569). 
+RESOLVE := cargo +nightly -Zscript scripts/specify.rs
+
+.PHONY: lint install-cli use-local-dev use-local-plugins use-team-plugins
 
 lint:
-	cargo run --release --manifest-path $(SPECIFY_MANIFEST) --bin specify -- lint framework --framework-root .
+	$(RESOLVE) lint framework
 
-# Prepares the manual operator sweep. Builds the release binary, runs the
-# static checks, then symlinks this build's `specify` into INSTALL_DIR so the
-# manual sweep resolves the bare `specify` command. The symlink always points
-# at the latest build, so it never goes stale. Deliberately NOT wired into CI.
-# The deterministic acceptance tests are not re-run here — `cargo make test` in
-# specify-cli is the single, authoritative deterministic surface.
-acceptance:
-	cargo build --release --manifest-path $(SPECIFY_MANIFEST) --bin specify
-	@$(MAKE) lint
+# Adapter-local dev: materialize specify via scripts/specify.rs --install (same cli
+# contract as make lint / make install-cli), build WASI tools from cli.path,
+# write tools.yaml sidecars, and repopulate the plugin cache. Requires a gitignored
+# Specify.local.toml with cli = { path = "../specify-cli" }. ARGS=--skip-wasi skips
+# the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
+use-local-dev:
+	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
+
+install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
-	@ln -sfn "$(SPECIFY_BIN_DIR)/specify" "$(SPECIFY_LINK)"
+	@ln -sfn "$(CURDIR)/$$($(RESOLVE) --install)" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
+# Repopulate the Cursor plugin cache from the working tree. The typed
+# marketplace.json parse lives in use-local-dev.rs --plugins-only (no jq/bash).
 use-local-plugins:
-	@bash ./scripts/use-local-plugins.sh
+	@cargo +nightly -Zscript scripts/use-local-dev.rs --plugins-only
 
+# Clear the augentic plugin cache via the CLI's own verb (journaled, marketplace-
+# scoped). Cursor refetches the published plugins on restart.
 use-team-plugins:
-	@bash ./scripts/use-team-plugins.sh
+	@$(RESOLVE) plugins refresh --yes

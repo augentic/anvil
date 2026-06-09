@@ -65,11 +65,11 @@ Test density (unit `#[test]` fns per source LOC), computed from the live tree:
 
 - Golden-comparing LLM prose from `/spec:refine` / `/spec:build` — explicitly out of scope.
 - Collapsing `tests/*.rs` into one binary — measured 7.3% win, rejected in DECISIONS.
-- Adding `make acceptance` to `specify` CI without first accepting the cross-repo clone/build cost (today `specify` CI = lint + symlink check by design).
+- Adding `make install-cli` to `specify` CI without first accepting the cross-repo clone/build cost (today `specify` CI = lint + symlink check by design).
 
 ### A5. Lifecycle scenarios vs CLI tests (manual-debt map)
 
-Per `acceptance/scenarios/README.md`: **23** scenarios — 1 `passed` (`01-pure-intent`), 10 `automated`, 12 `pending` manual. Skills with CLI coverage but **no** lifecycle scenario: `/spec:drop` (`tests/slice/drop.rs` exists), `captures` adapter, omnia/vectis build-output assertions (reached, not asserted). Automating drop end-to-end is cheap; proving it in a lifecycle scenario is manual-only today. **Note:** `rfcs/roadmap.md` RM-05 says 24 scenarios — off by one vs the catalog's 23; reconcile.
+Per `acceptance/scenarios/README.md`: **23** scenarios — 1 `passed` (`pure-intent`), 10 `automated`, 12 `pending` manual. Skills with CLI coverage but **no** lifecycle scenario: `/spec:drop` (`tests/slice/drop.rs` exists), `captures` adapter, omnia/vectis build-output assertions (reached, not asserted). Automating drop end-to-end is cheap; proving it in a lifecycle scenario is manual-only today. **Note:** `rfcs/roadmap.md` RM-05 says 24 scenarios — off by one vs the catalog's 23; reconcile.
 
 ---
 

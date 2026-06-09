@@ -19,12 +19,12 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 Two audiences share this repository:
 
-| Audience | Typical edits | Rust required locally? |
-|----------|---------------|------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only; CI runs `specify lint framework` on every PR |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — stable Rust and Cargo |
+| Audience | Typical edits | `specify-cli` checkout needed? |
+|----------|---------------|--------------------------------|
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — they work in the Rust workspace |
 
-Markdown-only contributors can skip installing Rust and rely on CI. Tooling contributors run `make lint` against this repo and `cargo make test` in the `specify-cli` checkout (which exercises the `specify-standards` framework predicate suite) before opening a PR.
+Markdown-only contributors run `make lint` locally with only a Rust toolchain: it builds the `specify-cli` source pinned by [`Specify.toml`](../../Specify.toml) `cli` and runs the framework checks (see [Consistency Checks](checks.md#binding-to-a-specify-source)). Tooling contributors actively co-developing the CLI point a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }` at their working tree — `make lint` then builds it directly — and run `cargo make test` in that checkout to exercise the `specify-standards` framework predicate suite before opening a PR. Slice/build work against local adapter WASM needs `make use-local-dev` (same `cli.path` overlay; installs `specify` via the shared resolver, then builds sidecars and refreshes the plugin cache).
 
 ## Development environment
 
@@ -35,8 +35,8 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 
 **For tooling work** (`specify-cli` repo, `crates/standards/`):
 
-- Rust stable toolchain
-- A sibling checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) when running framework checks locally from this repo
+- Rust toolchain — `make lint` builds the pinned `specify-cli` source (currently a nightly toolchain, since the `scripts/specify.rs` resolver is a cargo-script and cargo-script is still nightly-only)
+- A checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) to co-develop the framework checker, pointed at by a gitignored `Specify.local.toml` `cli = { path = … }`
 
 **For CLI work** (specify-cli repo):
 
@@ -50,7 +50,7 @@ Markdown-only contributors can skip installing Rust and rely on CI. Tooling cont
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make lint` in the specify repo (for tooling contributors; authors can rely on CI). `cargo make ci` in the specify-cli repo. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` in the specify repo (works for every contributor — no `specify-cli` checkout required). `cargo make ci` in the specify-cli repo for CLI work. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 

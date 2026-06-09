@@ -47,7 +47,7 @@ cat topology.lock                                      # materialised slot topol
 To capture the whole picture at once — directory tree plus the key artifact bodies — for a run record, use the snapshot helper:
 
 ```bash
-scripts/acceptance-snapshot.sh "$SANDBOX"
+scripts/snapshot.sh "$SANDBOX"
 ```
 
 It is read-only and prints text suitable for the **Artefact snapshot** section of [`run-summary-template.md`](run-summary-template.md).

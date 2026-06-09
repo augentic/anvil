@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo is linted by `specify lint framework` from `augentic/specify-cli`. `make lint` forwards to it; CI runs the same binary in release mode. Run checks before every pull request.
+The `specify` repo is linted by `specify lint framework` from `augentic/specify-cli`. `make lint` resolves and runs that binary through [`scripts/specify.rs`](../../scripts/specify.rs) — a single-file Cargo script that reads the `cli` source spec from [`Specify.toml`](../../Specify.toml) (or a gitignored `Specify.local.toml` overlay), **builds** that pinned `specify-cli` source with Cargo, and execs it. No published binary is downloaded; a Rust toolchain is the only prerequisite. Run checks before every pull request.
 
 ## Editor-first vs specify lint framework
 
@@ -9,7 +9,7 @@ Framework validation splits into two surfaces:
 | Surface                                              | When it runs                                                                                       | What it covers                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run … --bin specify -- lint framework --framework-root .` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo +nightly -Zscript scripts/specify.rs lint framework` | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
 **Authoritative schemas** live in the `augentic/specify-cli` repo under `schemas/` and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` / `github.com/.../raw/main` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
@@ -19,7 +19,7 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship from `specify-cli` under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `authoring/framework`, `rules/rule`) all ship from `specify-cli` under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json). TOML authoring config uses Taplo's schema directive — see [`Specify.toml`](../../Specify.toml).
 
 **Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specify lint framework` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
 
@@ -41,28 +41,56 @@ Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/s
 make lint
 ```
 
-This runs `cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .`. Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+Exit code `0` means all checks pass. Validation failures exit `2`; infrastructure errors exit `1`.
+
+### Binding to a `specify` SOURCE
+
+`make lint` delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`. The resolver reads the `cli` source spec — from a gitignored `Specify.local.toml` when that overlay defines one, else from the committed [`Specify.toml`](../../Specify.toml) — **builds** that `specify-cli` source with Cargo, and runs `lint framework` against this repo (from the repo root). There is no published-binary download and no channel: every form builds from source. A Rust toolchain is the only prerequisite.
+
+> cargo-script (single-file `.rs` packages) is still nightly-only — it requires the unstable `-Zscript` flag — so the resolver runs under nightly (pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml)). Drop `+nightly -Zscript` from the Makefile, CI, and the script shebang once cargo-script stabilizes ([rust-lang/cargo#16569](https://github.com/rust-lang/cargo/issues/16569)).
+
+| `cli` form | Resolves to | Mechanism |
+| ---------- | ----------- | --------- |
+| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` | `cargo install --git <url> --tag vX.Y.Z` into `.cli` |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that ref (the cross-repo co-dev-in-CI form) | `cargo install --git <url> <--rev\|--branch\|--tag>` into `.cli` (`--force` for `branch`) |
+| `cli = { path = "<dir>" }` (overlay only) | a local checkout | `cargo run --manifest-path <dir>/Cargo.toml` — warm incremental loop |
+
+`cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`; run it from the repo root.
+
+### `Specify.toml` authoring config
+
+[`Specify.toml`](../../Specify.toml) at the repo root is the schema-validated blueprint for **which `specify-cli` source this framework repo builds** — distinct from runtime `.specify/project.yaml`, which governs how a consumer project uses Specify. `cli` is a Cargo-shaped inline-table source spec taking exactly one of three forms:
+
+| Form | Role |
+| ---- | ---- |
+| `cli = { version = "X.Y.Z" }` | An exact `specify-cli` release; builds git tag `vX.Y.Z`. A named exact-tag key — not a channel, not a Cargo range (`version` is pinned to `^\d+\.\d+\.\d+$`). |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | A git ref; `git` plus exactly one of `rev` / `branch` / `tag`. The committed cross-repo co-dev-in-CI lever. |
+| `cli = { path = "<dir>" }` | A local `specify-cli` checkout, built in place. Belongs in a gitignored `Specify.local.toml` overlay, never the committed file. |
+
+The committed `cli` is **always** a fetchable form (`version` or `git` + ref) so CI and every clean clone build the same source. To co-develop the CLI locally, add a gitignored `Specify.local.toml` overlay — the overlay's `cli` wins wholesale (the two documents are never merged key-by-key):
+
+```toml
+# Specify.local.toml — gitignored; overrides cli locally
+cli = { path = "../specify-cli" }
+```
+
+**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `cli` to `{ version = "X.Y.Z" }` in the same framework PR that relies on the new behaviour. While a CLI change is still unreleased, point the committed `cli` at its branch (`{ git = "…", branch = "…" }`) so CI exercises the framework against the unreleased CLI — still parity, because a branch ref is fetchable.
+
+CORE-055 validates `Specify.toml` on every `make lint` run against the embedded `framework.schema.json`.
 
 **Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved WASI tool (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds — measured **~8s** wall (`real 8.7` for `make lint`, `real 7.8` for the bare release binary, 2026-06-07); benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative (the obsolete `~247s` figure was a pre-migration debug-era measurement).
 
-Tooling contributors run the full local CI subset with:
+The Makefile exposes `lint` for framework checks; there is no `make ci` target in this repo. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it. Tooling contributors with a `specify-cli` checkout can run the predicate suite directly:
 
 ```bash
-make ci
-```
-
-`make ci` runs `lint`. When a full `specify-cli/` checkout exists at the repo root (CI layout), the Makefile uses it; otherwise it defaults to the sibling `../specify-cli` checkout. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it.
-
-Tooling contributors can also invoke the binary directly, and run the predicate suite from a `specify-cli` checkout:
-
-```bash
-cargo run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
 cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 ```
 
-The repo also ships a workspace `[alias]` shortcut in [`.cargo/config.toml`](../../.cargo/config.toml) so `cargo fcheck` runs the framework-checker from any directory at or below the framework root without `--manifest-path` boilerplate.
+### CI
 
-Set `SPECIFY_ROOT` only when invoking `specify lint framework` directly without `--framework-root`. Adapter schemas are loaded from the local `specify-cli` workspace.
+CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.cli` install root together with `~/.cargo` (registry and git), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
+
+When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
 ### Diagnostic format
 
@@ -97,7 +125,7 @@ Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rule
 `specify lint framework` can emit the same structured result shape consumed by CI integrations. Run `specify lint framework --format json` (or set `SPECIFY_FORMAT=json`) to swap the human-oriented stderr stream for a single structured envelope written to stdout. Default `text` output remains canonical for humans; reach for `--format json` when wiring CI annotations, preparing dashboards, or comparing authoring findings with consumer-project `specify lint project` output.
 
 ```bash
-specify lint framework --framework-root . --format json | jq '.findings[] | select(.severity == "critical")'
+specify lint framework --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 Envelope shape:
