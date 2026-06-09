@@ -8,12 +8,12 @@ This section is the live record of where the implementation stands. **Update it 
 
 **Status legend.** `Not started` · `In progress` · `Blocked` · `Done`.
 
-**Last updated:** 2026-06-09 — Step 1 (A3 composition-overwrite merge gate) landed in `specify-cli`: pure shape predicates in `composition.rs`, the `composition_overwrite_gate` precondition in `slice/read.rs`, the `allow_composition_replace` flag threaded CLI → `slice::commit`, and the four gate integration tests. All Step 1 tests are green (`cargo make ci` clippy/fmt/merge-tests pass); see the Step 1 row for the one pre-existing, unrelated CI caveat.
+**Last updated:** 2026-06-09 — Step 2 (A4 `ui_surface` report field + non-blocking finalize coherence warnings) landed in `specify-cli`: the optional `ui-surface: { screens }` property on `build-report.schema.json` (with `build_report_accepts_ui_surface` / `build_report_rejects_bad_ui_surface` schema tests), the `UiSurface` DTO + `ui_surface` field + pure `evaluate_ui_surface_coherence` in `slice/build/wire.rs`, and the new `BuildResult.warnings` channel wired through `finalize_report` + `write_result_text`. The full `cargo make check` suite (fmt + lint + test + test-docs + doc; all 1723 tests) is green on `rfc-40` — the pre-existing `init::upgrade` caveat noted under Step 1 did **not** reproduce in this run.
 
 | Step | Repo | Concern | Key artifacts | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs`, `slice.rs` (router) | Done | Landed as planned. Caveat: 4 pre-existing `init::upgrade` lib tests fail on `rfc-40` (version-bump assertions, unrelated to this step), so a full `cargo make ci` is not green on the branch independent of Step 1. |
-| 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` | Not started | |
+| 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` | Done | Landed as planned. Schema property + DTO field named `ui-surface` (kebab) / `ui_surface` (struct); warnings rendered as a `warnings: <n>` count plus one `- <code>: <impact>` line each in text output, and as a `skip_serializing_if = Vec::is_empty` array in JSON. Four test fn names were shortened to satisfy the repo's ≤40-char `rust_quality` gate. |
 | 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` | Not started | |
 | 4 | specify-cli | Phase 1 e2e test | `tests/plan/end_to_end.rs` | Not started | |
 | 5 | specify-cli (wasi) | Fingerprint + `infer` report (baseline, no naming) | `wasi-tools/vectis/src/infer.rs`, `…/engine/composition.rs`, `…/lib.rs` | Not started | |
@@ -26,7 +26,7 @@ This section is the live record of where the implementation stands. **Update it 
 | 12 | specify | C1–C6 parts doc + briefs | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` | Not started | |
 | 13 | specify-cli | Acceptance capstone | `tests/plan/end_to_end.rs` | Not started | |
 
-**Phase rollup.** Phase 1 (Steps 1–4): In progress (Step 1 Done) · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
+**Phase rollup.** Phase 1 (Steps 1–4): In progress (Steps 1–2 Done) · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
 
 ## How to use this plan
 
@@ -72,7 +72,7 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 2 — A4: `ui_surface` report field, finalize coherence checks, non-blocking warning channel (`specify-cli`)
 
-**Status.** Not started.
+**Status.** Done — landed exactly as specified. `build-report.schema.json` gains an optional `ui-surface` object (`#/$defs/uiSurface`, single required `screens` integer ≥ 0, `additionalProperties: false`); `BUILD_REPORT_JSON_SCHEMA` parity holds (the constant is `include_str!`'d, so the edit is picked up automatically) and two new schema examples (`build_report_accepts_ui_surface`, `build_report_rejects_bad_ui_surface`) cover it. `slice/build/wire.rs` gained the `UiSurface { screens: u32 }` DTO, the `#[serde(default, skip_serializing_if = "Option::is_none")] ui_surface: Option<UiSurface>` field on `BuildReport`, the pure `evaluate_ui_surface_coherence(report, composition_path) -> Vec<Diagnostic>`, and a private `composition_declares_surface` helper that reads the slice composition and treats absent / `screens: {}` / all-empty `delta:` as empty (the `delta:` arm is the one detail beyond Step 1's `baseline_is_non_empty`, which only covers the `screens:` shape). Warnings are `deterministic` / `violation` / `suggestion` (non-blocking per `blocking`) with computed fingerprints, rule-ids `composition-unexpected-for-non-ui-slice` / `composition-empty-for-ui-slice`. `commands/slice/build.rs` carries the `Vec<Diagnostic>` on `BuildResult` (JSON-skipped when empty), computes the warnings in `finalize_report` after the `Built` transition (never gating it), and renders them in `write_result_text`. The four finalize integration cases and eight wire unit cases assert exit 0 + the right code on a mismatch and silence on a match / absent `ui_surface`. `cargo make check` (fmt + lint + test + test-docs + doc) is green on `rfc-40`.
 
 **Goal.** Add a per-slice "has UI surface" signal authored by the build brief, and two deterministic self-consistency warnings at `--phase finalize` — without changing the verb's exit code.
 
