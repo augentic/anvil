@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
+serde_json = "1"
 toml = "0.8"
 ---
 //! Adapter-local dev setup: materialize `specify` via [`scripts/specify.rs`](specify.rs),
@@ -16,8 +17,10 @@ toml = "0.8"
 //! Requires a gitignored `Specify.local.toml` overlay with `cli = { path = "…" }` so
 //! WASI builds have a checkout; CLI install itself delegates to `specify.rs --install`.
 //!
-//! Usage: cargo +nightly -Zscript scripts/use-local-dev.rs [--skip-wasi]
-//! Env:   SPECIFY_BIN_DIR (install dir; default ~/.local/bin)
+//! Usage: cargo +nightly -Zscript scripts/use-local-dev.rs [--skip-wasi] [--plugins-only]
+//!        --plugins-only repopulates the Cursor plugin cache from the working tree
+//!        (the `make use-local-plugins` path) and skips the CLI + WASI build.
+//! Env:   SPECIFY_BIN_DIR (install dir; default ~/.local/bin), CURSOR_HOME
 //!
 //! Toolchain: cargo-script is still nightly-only (-Zscript); switch the shebang,
 //! Makefile, and CI pins to stable once it stabilizes (rust-lang/cargo#16569).
@@ -49,12 +52,15 @@ fn main() {
 
 fn run() -> Result<()> {
     let mut skip_wasi = false;
+    let mut plugins_only = false;
     for arg in env::args().skip(1) {
         match arg.as_str() {
             "--skip-wasi" => skip_wasi = true,
+            "--plugins-only" => plugins_only = true,
             other => {
                 return Err(format!(
-                    "unknown option: {other}\nUsage: scripts/use-local-dev.rs [--skip-wasi]"
+                    "unknown option: {other}\n\
+                     Usage: scripts/use-local-dev.rs [--skip-wasi] [--plugins-only]"
                 )
                 .into());
             }
@@ -62,6 +68,13 @@ fn run() -> Result<()> {
     }
 
     let repo_root = env::current_dir()?;
+
+    // Plugin-cache population needs neither a CLI checkout nor a WASI build, so
+    // `--plugins-only` (backing `make use-local-plugins`) short-circuits here.
+    if plugins_only {
+        return populate_plugin_cache(&repo_root);
+    }
+
     let cli = read_cli_spec().ok_or("no `cli` source spec in Specify.toml")?;
     let path = cli_path(&cli).ok_or(
         "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" } \
@@ -129,12 +142,7 @@ fn run() -> Result<()> {
     }
 
     // ── Populate the plugin cache ────────────────────────────────
-    let status = Command::new("bash")
-        .arg(repo_root.join("scripts/use-local-plugins.sh"))
-        .status()?;
-    if !status.success() {
-        return Err("use-local-plugins.sh failed".into());
-    }
+    populate_plugin_cache(&repo_root)?;
 
     // ── Summary ──────────────────────────────────────────────────
     println!("\nLocal dev environment ready.");
@@ -152,6 +160,104 @@ fn run() -> Result<()> {
     println!("  1. Restart Cursor to pick up local plugin changes.");
     println!("  2. Open your project (e.g. ../todo-app) in Cursor.");
     println!("  3. Run /spec:init to scaffold .specify/ and bind adapters.");
+    Ok(())
+}
+
+// ── Plugin cache (replaces scripts/use-local-plugins.sh + jq) ─────
+//
+// Reads .cursor-plugin/marketplace.json with serde, clears the marketplace-
+// scoped Cursor cache, and copies each plugin's working-tree source in. Honors
+// CURSOR_HOME exactly like the CLI's `plugins {doctor,refresh}` verbs so the
+// populate path and the CLI's scan/clear agree on the cache root.
+
+/// Replace the marketplace-scoped Cursor plugin cache with working-tree copies
+/// so skill / rule / reference edits are testable before pushing to main.
+fn populate_plugin_cache(repo_root: &Path) -> Result<()> {
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct Marketplace {
+        name: String,
+        #[serde(default)]
+        metadata: Metadata,
+        #[serde(default)]
+        plugins: Vec<Plugin>,
+    }
+    #[derive(Deserialize, Default)]
+    struct Metadata {
+        #[serde(rename = "pluginRoot")]
+        plugin_root: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct Plugin {
+        source: String,
+    }
+
+    let marketplace_path = repo_root.join(".cursor-plugin/marketplace.json");
+    let text = fs::read_to_string(&marketplace_path)
+        .map_err(|_| format!("marketplace.json not found at {}", marketplace_path.display()))?;
+    let marketplace: Marketplace = serde_json::from_str(&text)?;
+    let plugin_root = marketplace.metadata.plugin_root.as_deref().unwrap_or("plugins");
+
+    // Clear only the marketplace-scoped cache, then repopulate from the tree.
+    let cache_dir = cursor_home()?.join("plugins/cache").join(&marketplace.name);
+    if cache_dir.exists() {
+        fs::remove_dir_all(&cache_dir)?;
+    }
+
+    for plugin in &marketplace.plugins {
+        let src = repo_root.join(plugin_root).join(&plugin.source);
+        if !src.is_dir() {
+            eprintln!("Warning: {} not found, skipping", src.display());
+            continue;
+        }
+        let dest = cache_dir.join(&plugin.source).join("main");
+        fs::create_dir_all(&dest)?;
+        copy_dir_all(&src, &dest)?;
+        println!("Cached {} from local source", plugin.source);
+    }
+
+    println!("\nRestart Cursor to pick up local plugin changes.");
+    Ok(())
+}
+
+/// `$CURSOR_HOME` when set and non-empty, else `~/.cursor` (matches the CLI).
+fn cursor_home() -> Result<PathBuf> {
+    match env::var_os("CURSOR_HOME") {
+        Some(value) if !value.is_empty() => Ok(PathBuf::from(value)),
+        _ => env::var_os("HOME")
+            .map(|home| PathBuf::from(home).join(".cursor"))
+            .ok_or_else(|| "neither CURSOR_HOME nor HOME is set".into()),
+    }
+}
+
+/// Recursively copy `src` into `dest`, preserving symlinks like `cp -R`.
+fn copy_dir_all(src: &Path, dest: &Path) -> Result<()> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            #[cfg(unix)]
+            {
+                let _ = fs::remove_file(&to);
+                symlink(fs::read_link(&from)?, &to)?;
+            }
+            #[cfg(not(unix))]
+            if from.is_dir() {
+                fs::create_dir_all(&to)?;
+                copy_dir_all(&from, &to)?;
+            } else {
+                fs::copy(&from, &to)?;
+            }
+        } else if file_type.is_dir() {
+            fs::create_dir_all(&to)?;
+            copy_dir_all(&from, &to)?;
+        } else {
+            fs::copy(&from, &to)?;
+        }
+    }
     Ok(())
 }
 

@@ -25,8 +25,12 @@ install-specify:
 	@ln -sfn "$(CURDIR)/$$($(RESOLVE) --install)" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
+# Repopulate the Cursor plugin cache from the working tree. The typed
+# marketplace.json parse lives in use-local-dev.rs --plugins-only (no jq/bash).
 use-local-plugins:
-	@bash ./scripts/use-local-plugins.sh
+	@cargo +nightly -Zscript scripts/use-local-dev.rs --plugins-only
 
+# Clear the augentic plugin cache via the CLI's own verb (journaled, marketplace-
+# scoped). Cursor refetches the published plugins on restart.
 use-team-plugins:
-	@bash ./scripts/use-team-plugins.sh
+	@$(RESOLVE) plugins refresh --yes
