@@ -59,6 +59,7 @@ jobs:
         with:
           workspaces: specify-cli
           cache-on-failure: true
+          # save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Verify symlinks
         run: |
