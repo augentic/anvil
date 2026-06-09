@@ -74,6 +74,9 @@ jobs:
           done
           exit $status
 
-      # Builds the pinned `cli` source incrementally (path mode) and runs lint framework.
+      # - name: Verify framework
+      #   run: make lint
+
       - name: Verify framework
-        run: make lint
+        run: |
+          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
