@@ -5,7 +5,7 @@ specify
 docs/book/
 
 # Repo-local built binaries (scripts/specify.rs installs the resolved CLI here)
-.bin/
+.cli/
 target/
 tooling/target/
 

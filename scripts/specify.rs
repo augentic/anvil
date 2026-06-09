@@ -15,68 +15,62 @@ toml = "0.8"
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-const INSTALL_ROOT: &str = ".bin";
-const BIN: &str = ".bin/bin/specify";
+const INSTALL_ROOT: &str = ".cli";
+// Where `cargo install --root INSTALL_ROOT` lands the binary; keep in sync with INSTALL_ROOT.
+const BIN: &str = ".cli/bin/specify";
 const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
 
 fn main() {
-    let (mode, args) = parse_args();
-    let sel = resolve_ref(&load_cli());
-
-    if matches!(mode, Mode::ResolvedRef) {
-        print_resolved_ref(&sel);
-        return;
-    }
-
-    match sel {
-        Sel::Path(path) => {
-            if matches!(mode, Mode::Install) {
-                install(&["--path", &path]);
+    let source = resolve_ref(&load_cli());
+    match parse_args() {
+        Mode::ResolvedRef => print_resolved_ref(&source),
+        Mode::Install => match source {
+            CliSource::Path(path) => {
+                build_local(&path);
+                println!("{path}/target/release/specify");
+            }
+            CliSource::Git { url, git } => {
+                install(&git.cargo_selector(url));
                 println!("{BIN}");
-                return;
             }
-            run_local(&path, &args);
-        }
-        Sel::Git { url, git } => {
-            let mut selector = vec!["--git".to_owned(), url];
-            match git {
-                GitRef::Rev(r) => selector.extend(["--rev".to_owned(), r.clone()]),
-                GitRef::Branch(b) => {
-                    selector.extend(["--branch".to_owned(), b.clone(), "--force".to_owned()])
-                }
-                GitRef::Tag(t) => selector.extend(["--tag".to_owned(), t.clone()]),
+        },
+        Mode::Run(args) => match source {
+            CliSource::Path(path) => run_local(&path, &args),
+            CliSource::Git { url, git } => {
+                install(&git.cargo_selector(url));
+                run_installed(&args);
             }
-
-            let selector: Vec<&str> = selector.iter().map(String::as_str).collect();
-            install(&selector);
-            if matches!(mode, Mode::Install) {
-                println!("{BIN}");
-                return;
-            }
-            run_installed(&args);
-        }
+        },
     }
 }
 
-fn die(m: &str) -> ! {
-    eprintln!("specify: error: {m}");
+fn die(msg: &str) -> ! {
+    eprintln!("specify: error: {msg}");
     std::process::exit(1);
 }
 
-fn run(mut cmd: Command) -> ! {
+// Hand the current process off to `cmd` and never return: exec-replace on unix,
+// else run to completion and exit with the child's status code.
+fn exec_replacing(mut cmd: Command) -> ! {
     #[cfg(unix)]
     die(&format!("exec failed: {}", cmd.exec()));
     #[cfg(not(unix))]
     std::process::exit(cmd.status().map_or(1, |s| s.code().unwrap_or(1)));
 }
 
+fn run_to_completion(mut cmd: Command, fail_msg: &str) {
+    if !cmd.status().is_ok_and(|s| s.success()) {
+        die(fail_msg);
+    }
+}
+
 enum Mode {
-    Run,
+    Run(Vec<String>),
     Install,
     ResolvedRef,
 }
 
-enum Sel {
+enum CliSource {
     Path(String),
     Git { url: String, git: GitRef },
 }
@@ -87,6 +81,20 @@ enum GitRef {
     Tag(String),
 }
 
+impl GitRef {
+    // cargo-install ref selector. A branch is mutable, so `--force` reinstalls it
+    // on every run; tags and revs are immutable and need no force.
+    fn cargo_selector(self, url: String) -> Vec<String> {
+        let mut selector = vec!["--git".to_owned(), url];
+        match self {
+            GitRef::Rev(r) => selector.extend(["--rev".to_owned(), r]),
+            GitRef::Branch(b) => selector.extend(["--branch".to_owned(), b, "--force".to_owned()]),
+            GitRef::Tag(t) => selector.extend(["--tag".to_owned(), t]),
+        }
+        selector
+    }
+}
+
 fn str_field(table: &toml::Table, key: &str) -> Option<String> {
     table
         .get(key)
@@ -94,18 +102,27 @@ fn str_field(table: &toml::Table, key: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+// Read the `cli` table whole from the first overlay that defines one — a gitignored
+// Specify.local.toml, else the committed Specify.toml. A file that exists but fails
+// to parse is a hard error, not a silent fallthrough to the next candidate.
 fn load_cli() -> toml::Table {
-    ["Specify.local.toml", "Specify.toml"]
-        .iter()
-        .filter_map(|f| std::fs::read_to_string(f).ok())
-        .filter_map(|s| s.parse::<toml::Table>().ok())
-        .find_map(|t| t.get("cli")?.as_table().cloned())
-        .unwrap_or_else(|| die("no `cli` source spec in Specify.toml"))
+    for file in ["Specify.local.toml", "Specify.toml"] {
+        let Ok(text) = std::fs::read_to_string(file) else {
+            continue;
+        };
+        let table = text
+            .parse::<toml::Table>()
+            .unwrap_or_else(|e| die(&format!("{file}: {e}")));
+        if let Some(cli) = table.get("cli").and_then(toml::Value::as_table) {
+            return cli.clone();
+        }
+    }
+    die("no `cli` source spec in Specify.local.toml or Specify.toml");
 }
 
-fn resolve_ref(cli: &toml::Table) -> Sel {
+fn resolve_ref(cli: &toml::Table) -> CliSource {
     if let Some(path) = str_field(cli, "path") {
-        return Sel::Path(path);
+        return CliSource::Path(path);
     }
 
     let git = str_field(cli, "rev")
@@ -115,18 +132,18 @@ fn resolve_ref(cli: &toml::Table) -> Sel {
         .or_else(|| str_field(cli, "version").map(|v| GitRef::Tag(format!("v{v}"))))
         .unwrap_or_else(|| die("`cli` needs one of: path | git + rev/branch/tag | version"));
 
-    const SCHEME: &str = "https";
-    let url = str_field(cli, "git").unwrap_or_else(|| format!("{SCHEME}://{DEFAULT_GIT_HOST}"));
-    Sel::Git { url, git }
+    let url = str_field(cli, "git").unwrap_or_else(|| format!("https://{DEFAULT_GIT_HOST}"));
+    CliSource::Git { url, git }
 }
 
-fn print_resolved_ref(sel: &Sel) {
-    let token = match sel {
-        Sel::Path(p) => format!("path:{p}"),
-        Sel::Git { url, git } => match git {
+fn print_resolved_ref(source: &CliSource) {
+    let token = match source {
+        CliSource::Path(p) => format!("path:{p}"),
+        CliSource::Git { url, git } => match git {
             GitRef::Rev(r) => r.clone(),
-            GitRef::Branch(b) => ls_remote(url, b).unwrap_or_else(|| b.to_owned()),
-            GitRef::Tag(t) => ls_remote(url, t).unwrap_or_else(|| t.to_owned()),
+            GitRef::Branch(name) | GitRef::Tag(name) => {
+                ls_remote(url, name).unwrap_or_else(|| name.clone())
+            }
         },
     };
     println!("{token}");
@@ -145,31 +162,50 @@ fn ls_remote(url: &str, refname: &str) -> Option<String> {
     Some(first.to_owned())
 }
 
-fn install(selector: &[&str]) {
-    let ok = Command::new("cargo")
-        .args([
-            "install",
-            "--quiet",
-            "--locked",
-            "--root",
-            INSTALL_ROOT,
-            "--bin",
-            "specify",
-        ])
-        .args(selector)
-        .arg("specify")
-        .status()
-        .is_ok_and(|s| s.success());
-    if !ok {
-        die("cargo install failed");
-    }
+fn install(selector: &[String]) {
+    let mut cmd = Command::new("cargo");
+    cmd.args([
+        "install",
+        "--quiet",
+        "--locked",
+        "--root",
+        INSTALL_ROOT,
+        "--bin",
+        "specify",
+    ])
+    .args(selector)
+    .arg("specify");
+    run_to_completion(cmd, "cargo install failed");
 }
 
+// Local-path install: build into the sibling checkout's own target dir so the
+// build is incremental and shared with normal dev builds, then hand the caller
+// the resolved binary path to symlink. Unlike `install()` (`cargo install` into
+// an isolated `.cli` root), this avoids a from-scratch release rebuild per run.
+fn build_local(path: &str) {
+    let mut cmd = Command::new("cargo");
+    cmd.args([
+        "build",
+        "--quiet",
+        "--release",
+        "--manifest-path",
+        &format!("{path}/Cargo.toml"),
+        "--bin",
+        "specify",
+    ]);
+    run_to_completion(cmd, "cargo build failed");
+}
+
+// `--release` so the heavy `lint framework` work (wasmtime + schema validation)
+// runs under an optimized binary, and so this build shares the same incremental
+// release target as `build_local` (`make install-cli`) rather than maintaining a
+// separate, slower-at-runtime debug artifact set.
 fn run_local(path: &str, args: &[String]) {
     let mut cmd = Command::new("cargo");
     cmd.args([
         "run",
         "--quiet",
+        "--release",
         "--manifest-path",
         &format!("{path}/Cargo.toml"),
         "--bin",
@@ -177,20 +213,20 @@ fn run_local(path: &str, args: &[String]) {
         "--",
     ])
     .args(args);
-    run(cmd);
+    exec_replacing(cmd);
 }
 
 fn run_installed(args: &[String]) {
     let mut cmd = Command::new(BIN);
     cmd.args(args);
-    run(cmd);
+    exec_replacing(cmd);
 }
 
-fn parse_args() -> (Mode, Vec<String>) {
+fn parse_args() -> Mode {
     let argv: Vec<String> = std::env::args().skip(1).collect();
     match argv.first().map(String::as_str) {
-        Some("--install") => (Mode::Install, argv[1..].to_vec()),
-        Some("--resolved-ref") => (Mode::ResolvedRef, argv[1..].to_vec()),
-        _ => (Mode::Run, argv),
+        Some("--install") => Mode::Install,
+        Some("--resolved-ref") => Mode::ResolvedRef,
+        _ => Mode::Run(argv),
     }
 }

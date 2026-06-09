@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .bin
+            .cli
             ~/.cargo/registry
             ~/.cargo/git
           key: specify-cli-${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ steps.pin.outputs.sha }}

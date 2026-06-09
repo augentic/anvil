@@ -55,7 +55,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 make install-cli
 ```
 
-`make install-cli` builds the resolved `cli` source from `[Specify.toml](Specify.toml)` (or a gitignored `Specify.local.toml` overlay), materializes `.bin/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
+`make install-cli` builds the resolved `cli` source from `[Specify.toml](Specify.toml)` (or a gitignored `Specify.local.toml` overlay), materializes `.cli/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
 
 ## Layout
 

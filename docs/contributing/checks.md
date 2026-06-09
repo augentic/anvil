@@ -51,8 +51,8 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 | `cli` form | Resolves to | Mechanism |
 | ---------- | ----------- | --------- |
-| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` | `cargo install --git <url> --tag vX.Y.Z` into `.bin` |
-| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that ref (the cross-repo co-dev-in-CI form) | `cargo install --git <url> <--rev\|--branch\|--tag>` into `.bin` (`--force` for `branch`) |
+| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` | `cargo install --git <url> --tag vX.Y.Z` into `.cli` |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that ref (the cross-repo co-dev-in-CI form) | `cargo install --git <url> <--rev\|--branch\|--tag>` into `.cli` (`--force` for `branch`) |
 | `cli = { path = "<dir>" }` (overlay only) | a local checkout | `cargo run --manifest-path <dir>/Cargo.toml` — warm incremental loop |
 
 `cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`; run it from the repo root.
@@ -88,7 +88,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 ### CI
 
-CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.bin` install root together with `~/.cargo` (registry and git), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
+CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.cli` install root together with `~/.cargo` (registry and git), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
