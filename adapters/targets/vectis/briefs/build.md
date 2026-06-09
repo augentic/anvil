@@ -119,6 +119,8 @@ slice: <slice-name>     # matches the build request's `slice`
 target: vectis@v1       # this adapter at its manifest version
 status: success         # or: failure
 findings: []            # structured diagnostics; default []
+ui-surface:             # optional; this slice's UI-surface signal (see below)
+  screens: 3
 outputs:                # per-platform build outputs; default []
   - platform: core
     path: shared/
@@ -127,6 +129,8 @@ outputs:                # per-platform build outputs; default []
   - platform: android
     path: Android/
 ```
+
+The optional `ui-surface: { screens: <N> }` field carries this slice's UI-surface signal: `<N>` is the count of screen-bearing requirements this slice introduces or modifies, taken from the brief's own `spec.md` screen-identification judgement (the same walk `build/composition.md` Step 1 performs) — **never** from `## Platforms`, which is an app-level constant stamped verbatim to every slice and never narrows per slice. `screens: 0` means "no UI surface" (the composition skip case). The CLI's `--phase finalize` compares this authored signal against the produced `composition.yaml` and emits non-blocking coherence warnings (`composition-unexpected-for-non-ui-slice` when `screens: 0` yet a non-empty composition was produced; `composition-empty-for-ui-slice` when `screens > 0` yet the composition is empty or absent). Omitting the field disables those warnings; set it on every slice so the self-consistency check is live.
 
 The `outputs[]` array declares the per-platform build outputs produced by this build. Each entry carries a `platform` token and a `path` relative to `PROJECT_DIR`. The CLI's `--phase finalize` verifies every declared path exists and is non-empty on disk; a missing output triggers `target-build-output-missing` (exit 2). Populate `outputs[]` with an entry for each supported platform in `project.yaml.platforms` that the build produced or maintained work for. Omit entries for platforms with no on-disk interpretation (`web`, `desktop`).
 

@@ -8,13 +8,13 @@ This section is the live record of where the implementation stands. **Update it 
 
 **Status legend.** `Not started` · `In progress` · `Blocked` · `Done`.
 
-**Last updated:** 2026-06-09 — Step 2 (A4 `ui_surface` report field + non-blocking finalize coherence warnings) landed in `specify-cli`: the optional `ui-surface: { screens }` property on `build-report.schema.json` (with `build_report_accepts_ui_surface` / `build_report_rejects_bad_ui_surface` schema tests), the `UiSurface` DTO + `ui_surface` field + pure `evaluate_ui_surface_coherence` in `slice/build/wire.rs`, and the new `BuildResult.warnings` channel wired through `finalize_report` + `write_result_text`. The full `cargo make check` suite (fmt + lint + test + test-docs + doc; all 1723 tests) is green on `rfc-40` — the pre-existing `init::upgrade` caveat noted under Step 1 did **not** reproduce in this run.
+**Last updated:** 2026-06-09 — Step 3 (A1/A2/A4 composition brief amendments) landed in `specify`: `briefs/build/composition.md` gained the priority-0 baseline input, the new-vs-modified-vs-removed + carry-forward + explicit-removal classification in Step 1, the "do not gap unreferenced baseline screens" amendment in Step 9, a new `## Output format: delta vs full document` section (with the RFC §A2 YAML example), the spec-keyed (not `## Platforms`-keyed) skip rule, and the input-#4 relabel to "agent-inferred, read-only"; `briefs/build.md` documents the optional `ui-surface: { screens: <N> }` report field (authored from `spec.md` screen-identification judgement, never from `## Platforms`). Prose-only, as specified. Verified the vectis composition validator already accepts the `delta:` shape (the `oneOf` screens/delta branch in `wasi-tools/vectis/src/validate/engine/composition.rs`), so the brief's delta instruction is actionable. `make lint` is green (0 findings).
 
 | Step | Repo | Concern | Key artifacts | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs`, `slice.rs` (router) | Done | Landed as planned. Caveat: 4 pre-existing `init::upgrade` lib tests fail on `rfc-40` (version-bump assertions, unrelated to this step), so a full `cargo make ci` is not green on the branch independent of Step 1. |
 | 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` | Done | Landed as planned. Schema property + DTO field named `ui-surface` (kebab) / `ui_surface` (struct); warnings rendered as a `warnings: <n>` count plus one `- <code>: <impact>` line each in text output, and as a `skip_serializing_if = Vec::is_empty` array in JSON. Four test fn names were shortened to satisfy the repo's ≤40-char `rust_quality` gate. |
-| 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` | Not started | |
+| 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` | Done | Landed as planned (prose-only). Priority-0 input added as a literal `0.` list item; delta-format placed as a new `## Output format: delta vs full document` section between the regeneration steps and the write block. Confirmed the vectis composition validator already accepts `delta:` (oneOf screens/delta), so the gate won't reject the new envelope. `make lint` green. |
 | 4 | specify-cli | Phase 1 e2e test | `tests/plan/end_to_end.rs` | Not started | |
 | 5 | specify-cli (wasi) | Fingerprint + `infer` report (baseline, no naming) | `wasi-tools/vectis/src/infer.rs`, `…/engine/composition.rs`, `…/lib.rs` | Not started | |
 | 6 | specify-cli | `infer --phase report`/`bind` + B6 reconciliation | `runtime/cli.rs`, `commands/catalog/*`, `design_system.rs` | Not started | |
@@ -26,7 +26,7 @@ This section is the live record of where the implementation stands. **Update it 
 | 12 | specify | C1–C6 parts doc + briefs | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` | Not started | |
 | 13 | specify-cli | Acceptance capstone | `tests/plan/end_to_end.rs` | Not started | |
 
-**Phase rollup.** Phase 1 (Steps 1–4): In progress (Steps 1–2 Done) · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
+**Phase rollup.** Phase 1 (Steps 1–4): In progress (Steps 1–3 Done) · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
 
 ## How to use this plan
 
@@ -90,7 +90,7 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 3 — A1/A2/A4 brief amendments: composition accumulation + delta format + skip re-key (`specify`)
 
-**Status.** Not started.
+**Status.** Done — landed exactly as specified, prose-only. `briefs/build/composition.md`: a priority-0 input (`${PROJECT_DIR}/.specify/specs/composition.yaml`, the merged baseline, read before Step 1) written as a literal `0.` list item; Step 1 now classifies each screen relative to the baseline (new / modified / removed) with the carry-forward and explicit-removal rules (`delta.removed` only on a positive retirement signal in this slice's own `spec.md` / `design.md`; non-mention is never a removal); Step 9 no longer surfaces unreferenced baseline screens as gaps; a new `## Output format: delta vs full document` section (placed between the regeneration steps and the write block) carries the A2 envelope rule (`delta:` when the baseline is non-empty, each `modified` entry a whole-screen faithful superset; `screens:` to establish an empty/absent baseline) plus the RFC §A2 YAML example and a pointer to the A3 merge gate; the no-UI-surface skip is re-keyed off `spec.md` screen-bearing requirements (Step 1 identifies zero screens), never `## Platforms`; input #4 relabelled "operator-curated" → "agent-inferred, read-only". `briefs/build.md`: the Build report section documents the optional `ui-surface: { screens: <N> }` field (count of screen-bearing requirements this slice introduces or modifies, from the brief's own `spec.md` judgement, never from `## Platforms`; `0` = no UI surface) and its two finalize coherence warnings. Did **not** touch `build.md` lines 7 / 22 (the operator-curated → agent-inferred posture flip there is Step 10 / R5). Verified the vectis composition validator already accepts `delta:` (the `oneOf` screens/delta branch in `wasi-tools/vectis/src/validate/engine/composition.rs`), so the validation gate will not reject the new envelope — no future-step change required. `make lint` green (0 findings).
 
 **Goal.** Teach the composition build brief to read the baseline and emit accumulating deltas, and re-key the non-UI skip off `spec.md` (not `## Platforms`).
 
