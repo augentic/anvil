@@ -66,6 +66,18 @@ specify upgrade --yes                # self-update and journal `cli.upgraded`
 
 The `cargo` and `brew` executors are fully wired; the `binary`-channel in-process self-replace is deferred to a follow-up, so today that channel emits planned-action plus manual-upgrade guidance.
 
+### Contributing to the framework repo
+
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — needs only a Rust toolchain, not a separately installed `specify`. `make lint` (the only framework check) delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`, a single-file Cargo script that reads the `cli` source spec, **builds** that `specify-cli` source, and runs `specify lint framework` from the repo root:
+
+| `cli` form (in `Specify.toml`) | Source built |
+| ------------------------------ | ------------ |
+| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` |
+| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that git ref |
+| `cli = { path = "<dir>" }` (gitignored `Specify.local.toml` only) | a local checkout, built in place |
+
+Every form builds from source — no published binary is downloaded. The committed `cli` is always a fetchable form (`version` or `git` + ref) so CI and clean clones build the same source; to co-develop the CLI locally, add a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }`. cargo-script is still nightly-only (`-Zscript`), so the resolver runs under the nightly pinned in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml). [`Specify.toml`](https://github.com/augentic/specify/blob/main/Specify.toml) at that repo's root pins the CLI source; `cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-source) for the full binding model.
+
 ## Adapter-specific prerequisites
 
 Depending on which adapter you use, you may need additional tooling.

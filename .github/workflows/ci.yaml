@@ -10,25 +10,34 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_INCREMENTAL: 0
-  CARGO_NET_RETRY: 10
-  CARGO_TERM_COLOR: always
-  RUSTUP_MAX_RETRIES: 10
-
 jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      - name: Choose specify-cli ref
-        id: specify-cli-ref
-        shell: bash
+      # - uses: dtolnay/rust-toolchain@nightly
+
+      # - name: Resolve specify-cli pin
+      #   id: pin
+      #   run: echo "sha=$(cargo +nightly -Zscript scripts/specify.rs --resolved-ref)" >> "$GITHUB_OUTPUT"
+
+      # - uses: actions/checkout@v6
+      #   with:
+      #     repository: augentic/specify-cli
+      #     ref: ${{ steps.pin.outputs.sha }}
+      #     path: specify-cli
+      #     fetch-depth: 1
+
+      # - name: Use local specify-cli checkout
+      #   run: echo 'cli = { path = "specify-cli" }' > Specify.local.toml
+
+      - name: specify-cli branch
+        id: specify-cli
         run: |
           branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
@@ -41,18 +50,18 @@ jobs:
         with:
           repository: augentic/specify-cli
           path: specify-cli
-          ref: ${{ steps.specify-cli-ref.outputs.ref }}
+          ref: ${{ steps.specify-cli.outputs.ref }}
           fetch-depth: 1
 
       - uses: dtolnay/rust-toolchain@stable
-
+        
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: specify-cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Verify spec-runtime symlinks resolve
+      - name: Verify symlinks
         run: |
           status=0
           for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
@@ -65,6 +74,9 @@ jobs:
             fi
           done
           exit $status
+
+      # - name: Verify framework
+      #   run: make lint
 
       - name: Verify framework
         run: |

@@ -1,2 +1,0 @@
-[alias]
-fcheck = "run --release --manifest-path ../specify-cli/Cargo.toml --bin specify -- lint framework --framework-root ."

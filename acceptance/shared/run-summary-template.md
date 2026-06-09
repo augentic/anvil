@@ -102,10 +102,10 @@ Capture the important command output, or point to files that contain it.
 
 ## Artefact snapshot
 
-A read-only snapshot of the sandbox so this record is self-contained — no dependence on a temp dir surviving. Generate it with `scripts/acceptance-snapshot.sh "$SANDBOX"` (sandbox tree + `plan.yaml` / `discovery.md` / `registry.yaml` / `journal.jsonl` bodies + `specify slice model show` per slice). For deeper inspection use the render verbs in [`inspect.md`](inspect.md).
+A read-only snapshot of the sandbox so this record is self-contained — no dependence on a temp dir surviving. Generate it with `scripts/snapshot.sh "$SANDBOX"` (sandbox tree + `plan.yaml` / `discovery.md` / `registry.yaml` / `journal.jsonl` bodies + `specify slice model show` per slice). For deeper inspection use the render verbs in [`inspect.md`](inspect.md).
 
 ```text
-<paste scripts/acceptance-snapshot.sh output, or a trimmed excerpt + the path under acceptance/.sandbox/>
+<paste scripts/snapshot.sh output, or a trimmed excerpt + the path under acceptance/.sandbox/>
 ```
 
 ## Cleanup

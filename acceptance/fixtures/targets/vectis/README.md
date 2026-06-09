@@ -21,4 +21,4 @@ These fixtures are documentation pins for the target adapter. No automated harne
 - [`adapters/targets/vectis/briefs/shape.md`](../../../../adapters/targets/vectis/briefs/shape.md) — the idiom guidance each fixture's `input/` reflects.
 - [`adapters/targets/vectis/briefs/build.md`](../../../../adapters/targets/vectis/briefs/build.md) — the orchestration each fixture's `expected/composition.yaml` reflects.
 - [`acceptance/fixtures/sources/screenshots/task-list-two-screen/`](../../sources/screenshots/task-list-two-screen/) — the matching source-side fixture whose `expected/evidence/` feeds these fixtures' `input/evidence/`.
-- [`target-shape-injection` scenario](../../../scenarios/05h-target-shape-injection.md) and the [acceptance entry point](../../../../docs/contributing/acceptance.md).
+- [`target-shape-injection` scenario](../../../scenarios/target-shape-injection.md) and the [acceptance entry point](../../../../docs/contributing/acceptance.md).

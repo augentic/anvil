@@ -76,7 +76,7 @@ Run documentation and consistency checks from the repository root:
 make lint
 ```
 
-This runs `scripts/check.ts` via [Deno](https://deno.land). Deno must be installed separately.
+This delegates to [`scripts/specify.rs`](scripts/specify.rs), a single-file Cargo script that reads the `cli` source spec from [`Specify.toml`](Specify.toml) (or a gitignored `Specify.local.toml` overlay) and **builds** that pinned `specify-cli` source with Cargo before running `lint framework`. Only a Rust toolchain is required (currently nightly, since the resolver is a cargo-script). See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-source) for the full binding model.
 
 ### Local plugin development
 
