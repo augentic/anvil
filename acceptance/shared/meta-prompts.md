@@ -21,7 +21,7 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- `specify`: the automated surface (runbook step 1) already ran `make install-specify`, which
+- `specify`: the automated surface (runbook step 1) already ran `make install-cli`, which
   symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute

@@ -188,7 +188,7 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 
 - [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the "Synthesis byte-replay (deferred)" note.
 - [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog and status legend (`automated` / `manual`).
-- [`acceptance/scenarios/01-pure-intent.md`](../../acceptance/scenarios/01-pure-intent.md) and [`05a-combined-evidence.md`](../../acceptance/scenarios/05a-combined-evidence.md) — `manual` and `fixture` exemplars.
+- [`acceptance/scenarios/01-pure-intent.md`](../../acceptance/scenarios/01-pure-intent.md) (manual) and the `combined-evidence` fixture row in [`acceptance/scenarios/README.md § Automated coverage`](../../acceptance/scenarios/README.md#automated-coverage) — `manual` and `fixture` exemplars.
 - [`acceptance/fixtures/skills/build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
 - [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) — where shape/trace verdicts are filed.
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

@@ -1,26 +1,26 @@
-# Directory on PATH where `make install-specify` symlinks the built binary for
+# Directory on PATH where `make install-cli` symlinks the built binary for
 # the acceptance sweep. Override on the command line, e.g.
-# `make install-specify INSTALL_DIR=/usr/local/bin`.
+# `make install-cli INSTALL_DIR=/usr/local/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
 
 # Resolve CLI using Specify.toml or Specify.local.toml (gitignored overlay).
 # N.B. drop `+nightly -Zscript` once it stabilizes (rust-lang/cargo#16569). 
 RESOLVE := cargo +nightly -Zscript scripts/specify.rs
 
-.PHONY: lint install-specify use-local-dev use-local-plugins use-team-plugins
+.PHONY: lint install-cli use-local-dev use-local-plugins use-team-plugins
 
 lint:
 	$(RESOLVE) lint framework
 
 # Adapter-local dev: materialize specify via scripts/specify.rs --install (same cli
-# contract as make lint / make install-specify), build WASI tools from cli.path,
+# contract as make lint / make install-cli), build WASI tools from cli.path,
 # write tools.yaml sidecars, and repopulate the plugin cache. Requires a gitignored
 # Specify.local.toml with cli = { path = "../specify-cli" }. ARGS=--skip-wasi skips
 # the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
 use-local-dev:
 	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
 
-install-specify:
+install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
 	@ln -sfn "$(CURDIR)/$$($(RESOLVE) --install)" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."

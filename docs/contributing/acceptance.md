@@ -27,18 +27,18 @@ This is the boundary: a scenario is promotable to `backend: fixture` only when *
 
 ```bash
 make lint          # static repository checks; builds the pinned specify-cli source
-make install-specify    # builds the resolved cli source, runs nothing else, then symlinks specify onto your PATH for the sweep
+make install-cli    # builds the resolved cli source, runs nothing else, then symlinks specify onto your PATH for the sweep
 ```
 
-Both targets resolve their `specify` source the same way — through [`scripts/specify.rs`](../../scripts/specify.rs), which reads the `cli` source spec from [`Specify.toml`](../../Specify.toml) (or a gitignored `Specify.local.toml` overlay) and **builds** it (see [Consistency Checks — binding model](checks.md#binding-to-a-specify-source)). Both forms build from source; no published binary is downloaded. `make install-specify` runs the resolver with `--install` (materializing `.bin/bin/specify`), then symlinks that onto your PATH.
+Both targets resolve their `specify` source the same way — through [`scripts/specify.rs`](../../scripts/specify.rs), which reads the `cli` source spec from [`Specify.toml`](../../Specify.toml) (or a gitignored `Specify.local.toml` overlay) and **builds** it (see [Consistency Checks — binding model](checks.md#binding-to-a-specify-source)). Both forms build from source; no published binary is downloaded. `make install-cli` runs the resolver with `--install` (materializing `.bin/bin/specify`), then symlinks that onto your PATH.
 
-`make install-specify` **prepares the manual sweep**: it builds the resolved `cli` source, materializes `.bin/bin/specify`, and symlinks it into `~/.local/bin` (overridable with `INSTALL_DIR=`, warning if it is not on your `PATH`), then points at the manual sweep below. It does **not** re-run the deterministic acceptance tests — `cargo make test` in `specify-cli` is the single authoritative deterministic surface (including the wasm-tool suites), and it runs there on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries from this repo would only duplicate that work. `make install-specify` does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into CI, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
+`make install-cli` **prepares the manual sweep**: it builds the resolved `cli` source, materializes `.bin/bin/specify`, and symlinks it into `~/.local/bin` (overridable with `INSTALL_DIR=`, warning if it is not on your `PATH`), then points at the manual sweep below. It does **not** re-run the deterministic acceptance tests — `cargo make test` in `specify-cli` is the single authoritative deterministic surface (including the wasm-tool suites), and it runs there on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries from this repo would only duplicate that work. `make install-cli` does not run, fake, record, or golden-compare the manual scenario pack, and it is deliberately **not** wired into CI, so it is not a required automated acceptance check — every manual scenario's `negative-expectation` stays held.
 
 Run `specify lint framework` from the repo root, or pass `--framework-root` / set `SPECIFY_ROOT` when invoking directly from another cwd or checkout. To run the predicate regression suite, use `cargo make test` from a `specify-cli` checkout.
 
 ## Running the manual sweep
 
-The sweep needs the binary under test on your PATH. `make install-specify` materializes one (from the resolved `cli` source) and symlinks it into `~/.local/bin` (overridable with `INSTALL_DIR=`), so the bare `specify` commands in the scenarios resolve to this binary — it warns if that directory is not on your `PATH`. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself; confirm it with `specify --version`.
+The sweep needs the binary under test on your PATH. `make install-cli` materializes one (from the resolved `cli` source) and symlinks it into `~/.local/bin` (overridable with `INSTALL_DIR=`), so the bare `specify` commands in the scenarios resolve to this binary — it warns if that directory is not on your `PATH`. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself; confirm it with `specify --version`.
 
 For each scenario:
 
@@ -50,19 +50,23 @@ For each scenario:
 
 Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) into a live `cursor-agent` session.
 
-## Agent runbook — "run specify's acceptance tests"
+## Agent runbook — "run specify's acceptance scenarios"
 
-When asked to "run specify's acceptance tests and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
+When asked to "run specify's acceptance scenarios and report any issues", an agent should follow this exact sequence. The acceptance surface is two-tier, and the manual tier has irreducible human seams, so the agent reports the automated surface as a clean pass/fail and the manual sweep as a per-scenario table that may include "paused — needs you" rows.
 
-1. **Automated surface.** Run `make lint` (builds the pinned `cli` source and runs the framework checks) and report pass/fail with the failing finding ids, then run `make install-specify` to build + symlink the binary under test. The deterministic acceptance tests (`plan`, `source`, `slice`, `workspace`, and the wasm-tool suites) are owned by `specify-cli` and run there on every commit; run `cargo make test` in the `specify-cli` checkout when you need to prove the full deterministic surface locally. This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make install-specify`'s `INSTALL_DIR`) or fall back to the absolute `../specify-cli/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
+1. **Automated surface.** Run `make lint` (builds the pinned `cli` source and runs the framework checks) and report pass/fail with the failing finding ids, then run `make install-cli` to build + symlink the binary under test. The deterministic acceptance tests (`plan`, `source`, `slice`, `workspace`, and the wasm-tool suites) are owned by `specify-cli` and run there on every commit; run `cargo make test` in the `specify-cli` checkout when you need to prove the full deterministic surface locally. This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make install-cli`'s `INSTALL_DIR`) or fall back to the absolute `../specify-cli/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
 2. **Manual sweep — per scenario, in group order** (see [catalog](../../acceptance/scenarios/README.md)):
    - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
-   - A `specify` build that cannot be produced. The agent builds and resolves the binary itself in step 1 (`make install-specify` plus the `PATH` self-heal / absolute-path fallback); it hands back only when the build itself fails — e.g. the sibling `specify-cli` checkout is missing or does not compile.
+   - A `specify` build that cannot be produced. The agent builds and resolves the binary itself in step 1 (`make install-cli` plus the `PATH` self-heal / absolute-path fallback); it hands back only when the build itself fails — e.g. the sibling `specify-cli` checkout is missing or does not compile.
    - Real forge PR merges between the two `/spec:finalize` invocations.
    - Ergonomics / judgment assertions the agent cannot deterministically verify — mark `needs-human`.
    - `deferred` entries and scenario #1 sign-off (release-blocker; see halt rule below).
+
+### Running a single scenario
+
+When asked to run one named scenario (e.g. "run Specify's acceptance scenario `01-pure-intent`"), the agent follows the same runbook scoped to that id: do step 1 (install + resolve the binary under test), then drive **only** that scenario's id through [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A → Prompt B, self-grade the structurally checkable assertions, file the run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md), and report. Skip the group ordering — it governs the full-catalog sweep, not a single run. The same human seams (step 3) still apply; in particular `pure-intent` is the N=1 release blocker and carries the hard-halt + release-owner sign-off seam.
 
 ## Execution order and the halt gate
 

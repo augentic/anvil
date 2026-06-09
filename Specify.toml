@@ -3,10 +3,8 @@
 
 # :schema https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/authoring/framework.schema.json
 
-# Pin specify-cli dependency:
-#   cli = { version = "X.Y.Z" }                       # git tag
-#   cli = { git = "<url>", rev|branch|tag = "…" }     # git ref
-# 
-# Local co-development using Specify.local.toml:
-#   cli = { path = "../specify-cli" }
-cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-41" }
+# specify-cli dependency
+# cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-41" }
+# cli = { version = "0.2.0" }
+# optionally, use Specify.local.toml to stop a local path from being committed
+cli = { path = "../specify-cli" }

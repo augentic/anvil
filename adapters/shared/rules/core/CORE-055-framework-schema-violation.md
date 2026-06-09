@@ -32,4 +32,4 @@ The framework repo carries a single authoring blueprint at `Specify.toml` that d
 
 ## Fix
 
-Open `Specify.toml`, compare it against the three forms above, and align it to exactly one. The committed `cli` must always be a **fetchable** form (`version` or `git` + ref) so CI and clean clones build the same source; use a gitignored `Specify.local.toml` `cli = { path = … }` for local co-development. The schema is the canonical authority — `scripts/specify.rs`, CI, and `make install-specify` all read the same `cli` contract.
+Open `Specify.toml`, compare it against the three forms above, and align it to exactly one. The committed `cli` must always be a **fetchable** form (`version` or `git` + ref) so CI and clean clones build the same source; use a gitignored `Specify.local.toml` `cli = { path = … }` for local co-development. The schema is the canonical authority — `scripts/specify.rs`, CI, and `make install-cli` all read the same `cli` contract.

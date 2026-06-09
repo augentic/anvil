@@ -106,7 +106,7 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 - `[docs/contributing/acceptance.md](../../docs/contributing/acceptance.md)` — the two-surface model and the "what keeps a scenario manual" categories.
 - `[acceptance/scenarios/README.md](../../acceptance/scenarios/README.md)` — the scenario catalog, waves, and status legend.
 - `[acceptance/shared/setup.md](../../acceptance/shared/setup.md)` and `[acceptance/shared/meta-prompts.md](../../acceptance/shared/meta-prompts.md)` — shared setup and the Prompt A / B operator aids.
-- `[acceptance/scenarios/contract-routing.md](../../acceptance/scenarios/contract-routing.md)` and `[cross-repo-contract-flow.md](../../acceptance/scenarios/cross-repo-contract-flow.md)` — the fixture/manual split-by-surface precedent.
+- The `contract-routing` fixture row in `[acceptance/scenarios/README.md § Automated coverage](../../acceptance/scenarios/README.md#automated-coverage)` and the manual `[cross-repo-contract-flow.md](../../acceptance/scenarios/cross-repo-contract-flow.md)` — the fixture/manual split-by-surface precedent.
 - `[schemas/authoring/scenario.schema.json](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json)` — the scenario frontmatter contract.
 - [RFC-39](future/rfc-39-acceptance-shape-traces.md) — the `shape` tier and promotion path these scenarios graduate through (deferred).
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

@@ -96,21 +96,26 @@ fn parse_options() -> Result<Options> {
     Ok(opts)
 }
 
-fn load_cli() -> Result<toml::Table> {
+// Read the `cli` table whole from the first overlay that defines one — a gitignored
+// Specify.local.toml, else the committed Specify.toml — and return its `cli.path`.
+// use-local-dev needs a local checkout for WASI builds, so a git/version pin (no
+// path) is an error here.
+fn cli_path() -> Result<String> {
     ["Specify.local.toml", "Specify.toml"]
         .iter()
         .filter_map(|f| fs::read_to_string(f).ok())
         .filter_map(|s| s.parse::<toml::Table>().ok())
         .find_map(|t| t.get("cli")?.as_table().cloned())
-        .ok_or_else(|| "no `cli` source spec in Specify.toml".into())
+        .and_then(|cli| cli.get("path")?.as_str().map(str::to_owned))
+        .ok_or_else(|| {
+            "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" }"
+                .into()
+        })
 }
 
 fn resolve_cli_checkout(repo_root: &Path) -> Result<PathBuf> {
-    let cli = load_cli()?;
-    let path = cli.get("path").and_then(toml::Value::as_str).ok_or(
-        "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" }",
-    )?;
-    repo_root.join(path).canonicalize().map_err(|_| {
+    let path = cli_path()?;
+    repo_root.join(&path).canonicalize().map_err(|_| {
         format!(
             "cli.path `{path}` not found (relative to {})",
             repo_root.display()
