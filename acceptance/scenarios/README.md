@@ -37,7 +37,7 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | --- | --- | --- |
 | Extract failure | `extract-failure` | [automated](#automated-coverage) |
 | Invalid Evidence schema rejection | `invalid-evidence` | [automated](#automated-coverage) |
-| Target `shape` injection | [`target-shape-injection`](target-shape-injection.md) | pending |
+| Target `shape` injection | [`target-shape-injection`](target-shape-injection.md) | passed |
 | Source-adapter sandbox path-denied | `source-sandbox-denied` | [automated](#automated-coverage) |
 | Step-through breakout mid-execute | [`stepthrough-breakout`](stepthrough-breakout.md) | pending |
 | `/spec:execute` parks on a build failure | [`execute-build-failure`](execute-build-failure.md) | pending |

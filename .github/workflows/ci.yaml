@@ -28,23 +28,42 @@ jobs:
         with:
           toolchain: nightly
 
-      # Resolve the committed `cli` pin to a concrete specify-cli commit SHA so the
-      # build cache is keyed on the exact source (and busts when the pin moves).
-      # The resolver script is the single source of truth (no bash re-parse here);
-      # a miss just rebuilds, so this best-effort token is fine.
+      # Resolve the committed `cli` pin (a branch) to a concrete specify-cli commit
+      # SHA via the resolver script (the single source of truth — no bash TOML
+      # re-parse here) so the checkout below pins the exact source.
       - name: Resolve specify-cli pin
         id: pin
         shell: bash
         run: echo "sha=$(cargo +nightly -Zscript scripts/specify.rs --resolved-ref)" >> "$GITHUB_OUTPUT"
 
-      - name: Cache built CLI + cargo home
-        uses: actions/cache@v4
+      # Check out the pinned specify-cli SOURCE so `make lint` builds it from a
+      # persistent, incremental target dir. The previous `cargo install --git`
+      # path built in an ephemeral temp dir (uncacheable) and, because the pin is
+      # a mutable branch, was forced to rebuild from scratch on every run.
+      # `/specify-cli/` is gitignored, so `lint framework` prunes this subtree.
+      - name: Check out specify-cli source
+        uses: actions/checkout@v6
         with:
-          path: |
-            .cli
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: specify-cli-${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ steps.pin.outputs.sha }}
+          repository: augentic/specify-cli
+          ref: ${{ steps.pin.outputs.sha }}
+          path: specify-cli
+          fetch-depth: 1
+
+      # Point the resolver at the local checkout (path mode) so `make lint` builds
+      # via `cargo run` into specify-cli/target — incremental and cacheable, with
+      # no `cargo install --force` cold rebuild. The overlay is gitignored.
+      - name: Use local specify-cli checkout
+        run: echo 'cli = { path = "specify-cli" }' > Specify.local.toml
+
+      # Cache ~/.cargo and specify-cli/target keyed on rustc + Cargo.lock, with
+      # restore-key fallback so a moved pin reuses the previous compile (wasmtime
+      # et al.) instead of cold-building from scratch. cache-on-failure keeps the
+      # build cache even when framework findings fail the job.
+      - name: Cache cargo + specify-cli build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: specify-cli
+          cache-on-failure: true
 
       - name: Verify spec-runtime symlinks resolve
         run: |
@@ -60,6 +79,6 @@ jobs:
           done
           exit $status
 
-      # Builds the committed `cli` source pin from scratch and runs lint framework.
+      # Builds the pinned `cli` source incrementally (path mode) and runs lint framework.
       - name: Verify framework
         run: make lint
