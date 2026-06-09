@@ -76,7 +76,7 @@ fn run() -> Result<()> {
     }
 
     let cli = read_cli_spec().ok_or("no `cli` source spec in Specify.toml")?;
-    let path = cli_path(&cli).ok_or(
+    let path = cli.get("path").and_then(toml::Value::as_str).ok_or(
         "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" } \
          (local checkout needed for WASI tool builds)",
     )?;

@@ -7,7 +7,3 @@ fn read_cli_spec() -> Option<toml::Table> {
         .filter_map(|s| s.parse::<toml::Table>().ok())
         .find_map(|t| t.get("cli")?.as_table().cloned())
 }
-
-fn cli_path(cli: &toml::Table) -> Option<&str> {
-    cli.get("path").and_then(toml::Value::as_str)
-}

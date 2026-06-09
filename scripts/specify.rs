@@ -24,9 +24,9 @@ toml = "0.8"
 //! invokes `cargo +nightly -Zscript scripts/specify.rs …`. Switch the shebang,
 //! Makefile, rust-toolchain.toml, and CI to a stable pin once cargo-script
 //! stabilizes (rust-lang/cargo#16569).
-use std::process::Command;
 #[cfg(unix)]
-use std::os::unix::process::CommandExt; // .exec() — replace this process
+use std::os::unix::process::CommandExt;
+use std::process::Command; // .exec() — replace this process
 
 // Shared `cli` resolution (read_cli_spec, cli_path) used by both dev scripts.
 include!("load_cli.rs");
@@ -59,7 +59,8 @@ fn resolve_ref(cli: &toml::Table) -> (String, Sel) {
     const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
     let key = |k: &str| cli.get(k).and_then(toml::Value::as_str).map(str::to_owned);
     let url = key("git").unwrap_or_else(|| format!("{SCHEME}://{DEFAULT_GIT_HOST}"));
-    let sel = if let Some(p) = cli_path(cli) {
+
+    let sel = if let Some(p) = cli.get("path").and_then(toml::Value::as_str) {
         Sel::Path(p.to_owned())
     } else if let Some(r) = key("rev") {
         Sel::Rev(r)
@@ -90,7 +91,10 @@ fn print_resolved_ref(url: &str, sel: &Sel) {
 
 // `git ls-remote <url> <ref>` first column (mirrors the old CI awk extractor).
 fn ls_remote(url: &str, refname: &str) -> Option<String> {
-    let out = Command::new("git").args(["ls-remote", url, refname]).output().ok()?;
+    let out = Command::new("git")
+        .args(["ls-remote", url, refname])
+        .output()
+        .ok()?;
     if !out.status.success() {
         return None;
     }
@@ -102,9 +106,11 @@ fn ls_remote(url: &str, refname: &str) -> Option<String> {
 // cargo install the resolved source into .bin (shared by run + --install).
 fn install(selector: &[&str]) {
     let mut c = Command::new("cargo");
-    c.args(["install", "--quiet", "--locked", "--root", ".bin", "--bin", "specify"])
-        .args(selector)
-        .arg("specify");
+    c.args([
+        "install", "--quiet", "--locked", "--root", ".bin", "--bin", "specify",
+    ])
+    .args(selector)
+    .arg("specify");
     if !c.status().map_or(false, |s| s.success()) {
         die("cargo install failed");
     }
@@ -115,7 +121,11 @@ fn main() {
     let mode = argv.first().map(String::as_str);
     let install_mode = mode == Some("--install");
     let resolved_ref_mode = mode == Some("--resolved-ref");
-    let args = if install_mode || resolved_ref_mode { &argv[1..] } else { &argv[..] };
+    let args = if install_mode || resolved_ref_mode {
+        &argv[1..]
+    } else {
+        &argv[..]
+    };
 
     let cli = read_cli_spec().unwrap_or_else(|| die("no `cli` source spec in Specify.toml"));
     let (url, sel) = resolve_ref(&cli);
@@ -134,8 +144,16 @@ fn main() {
         // "process didn't exit successfully" line — harmless (e.g. lint exit 2).
         let manifest = format!("{path}/Cargo.toml");
         let mut c = Command::new("cargo");
-        c.args(["run", "--quiet", "--manifest-path", &manifest, "--bin", "specify", "--"])
-            .args(args);
+        c.args([
+            "run",
+            "--quiet",
+            "--manifest-path",
+            &manifest,
+            "--bin",
+            "specify",
+            "--",
+        ])
+        .args(args);
         run(c);
     }
 
