@@ -11,20 +11,9 @@ serde_json = "1"
 toml = "0.8"
 ---
 
-//! Adapter-local dev setup: materialize `specify` via [`scripts/specify.rs`](specify.rs),
-//! build adapter WASI tools from the local `cli.path` checkout, write each target
-//! adapter's gitignored `tools.yaml` sidecar, and repopulate the Cursor plugin cache.
-//!
-//! Requires a gitignored `Specify.local.toml` overlay with `cli = { path = "…" }` so
-//! WASI builds have a checkout; CLI install itself delegates to `specify.rs --install`.
-//!
-//! Usage: cargo +nightly -Zscript scripts/use-local-dev.rs [--skip-wasi] [--plugins-only]
-//!        --plugins-only repopulates the Cursor plugin cache from the working tree
-//!        (the `make use-local-plugins` path) and skips the CLI + WASI build.
-//! Env:   SPECIFY_BIN_DIR (install dir; default ~/.local/bin), CURSOR_HOME
-//!
-//! Toolchain: cargo-script is still nightly-only (-Zscript); switch the shebang,
-//! Makefile, and CI pins to stable once it stabilizes (rust-lang/cargo#16569).
+//! Local dev bootstrap: install specify, build WASI tool sidecars, refresh Cursor
+//! plugin cache. Requires Specify.local.toml with `cli.path`. Flags: `--skip-wasi`,
+//! `--plugins-only`. Env: `SPECIFY_BIN_DIR`, `CURSOR_HOME`. Nightly cargo-script.
 use std::error::Error;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
@@ -36,7 +25,9 @@ use serde::Serialize;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// `(cargo_pkg, bin_name, adapter_dir, tool_name)`. Omnia declares no tools.
+const WASM_TARGET: &str = "wasm32-wasip2";
+
+/// `(cargo_pkg, bin_name, adapter_dir, tool_name)`.
 const WASI_TOOLS: &[(&str, &str, &str, &str)] = &[
     ("specify-vectis", "vectis", "vectis", "vectis"),
     (
@@ -47,6 +38,11 @@ const WASI_TOOLS: &[(&str, &str, &str, &str)] = &[
     ),
 ];
 
+struct Options {
+    skip_wasi: bool,
+    plugins_only: bool,
+}
+
 fn main() {
     if let Err(err) = run() {
         eprintln!("use-local-dev: error: {err}");
@@ -55,12 +51,39 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let mut skip_wasi = false;
-    let mut plugins_only = false;
+    let opts = parse_options()?;
+    let repo_root = env::current_dir()?;
+
+    if opts.plugins_only {
+        return populate_plugin_cache(&repo_root);
+    }
+
+    let cli_root = resolve_cli_checkout(&repo_root)?;
+    let install_dir = specify_bin_dir()?;
+    fs::create_dir_all(&install_dir)?;
+
+    let installed = install_specify(&repo_root, &install_dir)?;
+
+    if opts.skip_wasi {
+        println!("Skipping WASI tool build (--skip-wasi).");
+    } else {
+        build_wasi_sidecars(&repo_root, &cli_root)?;
+    }
+
+    populate_plugin_cache(&repo_root)?;
+    print_summary(&repo_root, &installed);
+    Ok(())
+}
+
+fn parse_options() -> Result<Options> {
+    let mut opts = Options {
+        skip_wasi: false,
+        plugins_only: false,
+    };
     for arg in env::args().skip(1) {
         match arg.as_str() {
-            "--skip-wasi" => skip_wasi = true,
-            "--plugins-only" => plugins_only = true,
+            "--skip-wasi" => opts.skip_wasi = true,
+            "--plugins-only" => opts.plugins_only = true,
             other => {
                 return Err(format!(
                     "unknown option: {other}\n\
@@ -70,110 +93,125 @@ fn run() -> Result<()> {
             }
         }
     }
+    Ok(opts)
+}
 
-    let repo_root = env::current_dir()?;
-
-    // Plugin-cache population needs neither a CLI checkout nor a WASI build, so
-    // `--plugins-only` (backing `make use-local-plugins`) short-circuits here.
-    if plugins_only {
-        return populate_plugin_cache(&repo_root);
-    }
-
-    let cli = ["Specify.local.toml", "Specify.toml"]
+fn load_cli() -> Result<toml::Table> {
+    ["Specify.local.toml", "Specify.toml"]
         .iter()
-        .filter_map(|f| std::fs::read_to_string(f).ok())
+        .filter_map(|f| fs::read_to_string(f).ok())
         .filter_map(|s| s.parse::<toml::Table>().ok())
         .find_map(|t| t.get("cli")?.as_table().cloned())
-        .ok_or("no `cli` source spec in Specify.toml")?;
+        .ok_or_else(|| "no `cli` source spec in Specify.toml".into())
+}
+
+fn resolve_cli_checkout(repo_root: &Path) -> Result<PathBuf> {
+    let cli = load_cli()?;
     let path = cli.get("path").and_then(toml::Value::as_str).ok_or(
-        "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" } \
-         (local checkout needed for WASI tool builds)",
+        "use-local-dev requires Specify.local.toml with cli = { path = \"../specify-cli\" }",
     )?;
-    let cli_root = repo_root.join(path).canonicalize().map_err(|_| {
+    repo_root.join(path).canonicalize().map_err(|_| {
         format!(
             "cli.path `{path}` not found (relative to {})",
             repo_root.display()
         )
-    })?;
+        .into()
+    })
+}
 
-    let install_dir = match env::var_os("SPECIFY_BIN_DIR") {
-        Some(dir) => PathBuf::from(dir),
-        None => env::var_os("HOME")
-            .map(|home| PathBuf::from(home).join(".local/bin"))
-            .ok_or("HOME is not set")?,
-    };
-    fs::create_dir_all(&install_dir)?;
+fn specify_bin_dir() -> Result<PathBuf> {
+    env::var_os("SPECIFY_BIN_DIR")
+        .map(PathBuf::from)
+        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/bin")))
+        .ok_or_else(|| "HOME is not set".into())
+}
 
-    // ── Install the CLI (via the shared resolver) ────────────────
+fn adapter_dir(repo_root: &Path, name: &str) -> PathBuf {
+    repo_root.join("adapters/targets").join(name)
+}
+
+fn install_specify(repo_root: &Path, install_dir: &Path) -> Result<PathBuf> {
     println!("Materializing specify via scripts/specify.rs --install …");
-    let built = materialize_specify(&repo_root)?;
+    let built = materialize_specify(repo_root)?;
     let installed = install_dir.join("specify");
     link_or_copy(&built, &installed)?;
     println!("Installed specify → {}", installed.display());
-    warn_path(&install_dir, "specify");
+    warn_path(install_dir, "specify");
+    Ok(installed)
+}
 
-    // ── Build WASI tools + write sidecars ────────────────────────
+fn build_wasi_sidecars(repo_root: &Path, cli_root: &Path) -> Result<()> {
     let wasi_dir = cli_root.join("wasi-tools");
-    if skip_wasi {
-        println!("Skipping WASI tool build (--skip-wasi).");
-    } else if !wasi_dir.is_dir() {
+    if !wasi_dir.is_dir() {
         eprintln!("Warning: wasi-tools/ not found in specify-cli, skipping WASI build");
-    } else if !wasm_target_installed() {
-        eprintln!("Warning: wasm32-wasip2 target not installed, skipping WASI build");
-        eprintln!("         Install with: rustup target add wasm32-wasip2");
-    } else {
-        for &(cargo_pkg, bin_name, adapter_dir, tool_name) in WASI_TOOLS {
-            println!("Building {tool_name} WASI tool …");
-            cargo(
-                &[
-                    "build",
-                    "-p",
-                    cargo_pkg,
-                    "--target",
-                    "wasm32-wasip2",
-                    "--release",
-                ],
-                &wasi_dir,
-            )?;
-
-            let wasm = wasi_dir
-                .join("target/wasm32-wasip2/release")
-                .join(format!("{bin_name}.wasm"));
-            if !wasm.is_file() {
-                eprintln!("Warning: {bin_name}.wasm not found after build, skipping sidecar");
-                continue;
-            }
-            let wasm_abs = wasm.canonicalize()?;
-
-            let adapter_yaml = repo_root
-                .join("adapters/targets")
-                .join(adapter_dir)
-                .join("adapter.yaml");
-            let version = adapter_tool_version(&adapter_yaml, tool_name)?;
-
-            let dest = repo_root
-                .join("adapters/targets")
-                .join(adapter_dir)
-                .join("tools.yaml");
-            fs::write(&dest, sidecar(tool_name, &version, &wasm_abs)?)?;
-            println!("Installed {tool_name} sidecar → {}", dest.display());
-        }
+        return Ok(());
+    }
+    if !wasm_target_installed() {
+        eprintln!("Warning: {WASM_TARGET} target not installed, skipping WASI build");
+        eprintln!("         Install with: rustup target add {WASM_TARGET}");
+        return Ok(());
     }
 
-    // ── Populate the plugin cache ────────────────────────────────
-    populate_plugin_cache(&repo_root)?;
+    for &(cargo_pkg, bin_name, adapter_dir_name, tool_name) in WASI_TOOLS {
+        build_wasi_sidecar(
+            repo_root,
+            &wasi_dir,
+            cargo_pkg,
+            bin_name,
+            adapter_dir_name,
+            tool_name,
+        )?;
+    }
+    Ok(())
+}
 
-    // ── Summary ──────────────────────────────────────────────────
+fn build_wasi_sidecar(
+    repo_root: &Path,
+    wasi_dir: &Path,
+    cargo_pkg: &str,
+    bin_name: &str,
+    adapter_dir_name: &str,
+    tool_name: &str,
+) -> Result<()> {
+    println!("Building {tool_name} WASI tool …");
+    cargo(
+        &[
+            "build",
+            "-p",
+            cargo_pkg,
+            "--target",
+            WASM_TARGET,
+            "--release",
+        ],
+        wasi_dir,
+    )?;
+
+    let wasm = wasi_dir
+        .join(format!("target/{WASM_TARGET}/release/{bin_name}.wasm"));
+    if !wasm.is_file() {
+        eprintln!("Warning: {bin_name}.wasm not found after build, skipping sidecar");
+        return Ok(());
+    }
+
+    let adapter_yaml = adapter_dir(repo_root, adapter_dir_name).join("adapter.yaml");
+    let version = adapter_tool_version(&adapter_yaml, tool_name)?;
+    let dest = adapter_dir(repo_root, adapter_dir_name).join("tools.yaml");
+    fs::write(
+        &dest,
+        sidecar(tool_name, &version, &wasm.canonicalize()?)?,
+    )?;
+    println!("Installed {tool_name} sidecar → {}", dest.display());
+    Ok(())
+}
+
+fn print_summary(repo_root: &Path, installed: &Path) {
     println!("\nLocal dev environment ready.");
     println!(
         "  specify: {}",
-        which("specify").unwrap_or(installed).display()
+        which("specify").unwrap_or_else(|| installed.to_path_buf()).display()
     );
-    for &(_, _, adapter_dir, tool_name) in WASI_TOOLS {
-        let sidecar = repo_root
-            .join("adapters/targets")
-            .join(adapter_dir)
-            .join("tools.yaml");
+    for &(_, _, adapter_dir_name, tool_name) in WASI_TOOLS {
+        let sidecar = adapter_dir(repo_root, adapter_dir_name).join("tools.yaml");
         if sidecar.is_file() {
             println!("  {tool_name}: {}", sidecar.display());
         }
@@ -182,18 +220,8 @@ fn run() -> Result<()> {
     println!("  1. Restart Cursor to pick up local plugin changes.");
     println!("  2. Open your project (e.g. ../todo-app) in Cursor.");
     println!("  3. Run /spec:init to scaffold .specify/ and bind adapters.");
-    Ok(())
 }
 
-// ── Plugin cache (replaces scripts/use-local-plugins.sh + jq) ─────
-//
-// Reads .cursor-plugin/marketplace.json with serde, clears the marketplace-
-// scoped Cursor cache, and copies each plugin's working-tree source in. Honors
-// CURSOR_HOME exactly like the CLI's `plugins {doctor,refresh}` verbs so the
-// populate path and the CLI's scan/clear agree on the cache root.
-
-/// Replace the marketplace-scoped Cursor plugin cache with working-tree copies
-/// so skill / rule / reference edits are testable before pushing to main.
 fn populate_plugin_cache(repo_root: &Path) -> Result<()> {
     use serde::Deserialize;
 
@@ -229,7 +257,6 @@ fn populate_plugin_cache(repo_root: &Path) -> Result<()> {
         .as_deref()
         .unwrap_or("plugins");
 
-    // Clear only the marketplace-scoped cache, then repopulate from the tree.
     let cache_dir = cursor_home()?.join("plugins/cache").join(&marketplace.name);
     if cache_dir.exists() {
         fs::remove_dir_all(&cache_dir)?;
@@ -251,7 +278,6 @@ fn populate_plugin_cache(repo_root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// `$CURSOR_HOME` when set and non-empty, else `~/.cursor` (matches the CLI).
 fn cursor_home() -> Result<PathBuf> {
     match env::var_os("CURSOR_HOME") {
         Some(value) if !value.is_empty() => Ok(PathBuf::from(value)),
@@ -261,7 +287,6 @@ fn cursor_home() -> Result<PathBuf> {
     }
 }
 
-/// Recursively copy `src` into `dest`, preserving symlinks like `cp -R`.
 fn copy_dir_all(src: &Path, dest: &Path) -> Result<()> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
@@ -291,10 +316,8 @@ fn copy_dir_all(src: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Run `scripts/specify.rs --install` and return the repo-relative `.bin/bin/specify` path.
 fn materialize_specify(repo_root: &Path) -> Result<PathBuf> {
-    // Always invoke the rustup `cargo` shim — not `$CARGO` from a cargo-script parent,
-    // which points at the active toolchain binary and rejects `+nightly`.
+    // Use the rustup shim — parent cargo-script's $CARGO rejects `+nightly`.
     let output = Command::new("cargo")
         .args(["+nightly", "-Zscript", "scripts/specify.rs", "--install"])
         .current_dir(repo_root)
@@ -316,20 +339,11 @@ fn link_or_copy(source: &Path, dest: &Path) -> Result<()> {
         fs::remove_file(dest)?;
     }
     #[cfg(unix)]
-    {
-        symlink(source, dest)?;
-    }
+    symlink(source, dest)?;
     #[cfg(not(unix))]
-    {
-        fs::copy(source, dest)?;
-    }
+    fs::copy(source, dest)?;
     Ok(())
 }
-
-// ── Sidecar model ─────────────────────────────────────────────────
-//
-// Typed mirror of the CLI's tools.yaml shape. Using serde here is the whole
-// point of the rewrite: it removes the heredoc + awk fragility.
 
 #[derive(Serialize)]
 struct Sidecar {
@@ -352,17 +366,7 @@ struct Permissions {
     write: Vec<String>,
 }
 
-// PERMISSIONS DUPLICATED — a deliberate, accepted mirror of `first_party_permissions`
-// in `crates/tool/src/manifest.rs` of augentic/specify-cli (its `namespace == "specify"`
-// defaults). Owning the literals here keeps the dev scripts free of a specify-cli
-// dependency, by decision — no CLI verb surfaces these permissions for a sidecar to read.
-//
-// Nothing catches drift automatically: there is no compiler check, and `specify tool`
-// validates permissions against the embedded defaults ONLY for the *package* source
-// form. Dev sidecars point `source:` at a built `.wasm` (a filesystem source), which
-// skips that validation — so this table alone is the contract. Keep the match arms and
-// permission strings identical to the upstream so a side-by-side diff stays the sync
-// mechanism whenever first-party tool permissions change.
+// Mirror specify-cli `first_party_permissions` (crates/tool/src/manifest.rs); sync manually.
 fn first_party_permissions(tool_name: &str) -> Result<Permissions> {
     match tool_name {
         "contract" => Ok(Permissions {
@@ -389,15 +393,13 @@ fn sidecar(tool_name: &str, version: &str, source_abs: &Path) -> Result<String> 
     Ok(serde_saphyr::to_string(&manifest)?)
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
-
 fn cargo(args: &[&str], cwd: &Path) -> Result<()> {
-    let cargo_bin = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let status = Command::new(cargo_bin)
+    let ok = Command::new(env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
         .args(args)
         .current_dir(cwd)
-        .status()?;
-    if !status.success() {
+        .status()
+        .is_ok_and(|s| s.success());
+    if !ok {
         return Err(format!("cargo {} failed", args.join(" ")).into());
     }
     Ok(())
@@ -410,13 +412,11 @@ fn wasm_target_installed() -> bool {
         .map(|out| {
             String::from_utf8_lossy(&out.stdout)
                 .lines()
-                .any(|line| line.trim() == "wasm32-wasip2")
+                .any(|line| line.trim() == WASM_TARGET)
         })
         .unwrap_or(false)
 }
 
-/// Pull `tools[].version` for `tool_name` out of adapter.yaml via serde
-/// (replaces the awk `/^tools:/ … version:` scrape).
 fn adapter_tool_version(adapter_yaml: &Path, tool_name: &str) -> Result<String> {
     use serde::Deserialize;
 
@@ -431,8 +431,7 @@ fn adapter_tool_version(adapter_yaml: &Path, tool_name: &str) -> Result<String> 
         version: String,
     }
 
-    let text = fs::read_to_string(adapter_yaml)?;
-    let adapter: Adapter = serde_saphyr::from_str(&text)?;
+    let adapter: Adapter = serde_saphyr::from_str(&fs::read_to_string(adapter_yaml)?)?;
     adapter
         .tools
         .into_iter()
