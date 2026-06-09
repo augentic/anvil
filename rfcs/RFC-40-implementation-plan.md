@@ -8,11 +8,11 @@ This section is the live record of where the implementation stands. **Update it 
 
 **Status legend.** `Not started` · `In progress` · `Blocked` · `Done`.
 
-**Last updated:** 2026-06-09 — Phase 2 reshaped for the RFC's "identity / label / bookkeeping split": naming moves to the build skill, the CLI verb becomes two-phase (`report`/`bind`) with no hard-coded component ontology, and CLI tests assert mechanism only. No implementation steps landed yet.
+**Last updated:** 2026-06-09 — Step 1 (A3 composition-overwrite merge gate) landed in `specify-cli`: pure shape predicates in `composition.rs`, the `composition_overwrite_gate` precondition in `slice/read.rs`, the `allow_composition_replace` flag threaded CLI → `slice::commit`, and the four gate integration tests. All Step 1 tests are green (`cargo make ci` clippy/fmt/merge-tests pass); see the Step 1 row for the one pre-existing, unrelated CI caveat.
 
 | Step | Repo | Concern | Key artifacts | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs` | Not started | |
+| 1 | specify-cli | A3 merge gate | `merge/composition.rs`, `merge/slice.rs`, `merge/slice/read.rs`, `slice/cli.rs`, `slice/merge.rs`, `slice.rs` (router) | Done | Landed as planned. Caveat: 4 pre-existing `init::upgrade` lib tests fail on `rfc-40` (version-bump assertions, unrelated to this step), so a full `cargo make ci` is not green on the branch independent of Step 1. |
 | 2 | specify-cli | A4 `ui_surface` + finalize warnings | `build-report.schema.json`, `slice/build/wire.rs`, `commands/slice/build.rs` | Not started | |
 | 3 | specify | A1/A2/A4 composition brief | `briefs/build/composition.md`, `briefs/build.md` | Not started | |
 | 4 | specify-cli | Phase 1 e2e test | `tests/plan/end_to_end.rs` | Not started | |
@@ -26,7 +26,7 @@ This section is the live record of where the implementation stands. **Update it 
 | 12 | specify | C1–C6 parts doc + briefs | `plugins/spec/references/components.md`, `briefs/build.md`, `briefs/build/composition.md` | Not started | |
 | 13 | specify-cli | Acceptance capstone | `tests/plan/end_to_end.rs` | Not started | |
 
-**Phase rollup.** Phase 1 (Steps 1–4): Not started · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
+**Phase rollup.** Phase 1 (Steps 1–4): In progress (Step 1 Done) · Phase 2 (Steps 5–12): Not started · Phase 3 (Step 13): Not started.
 
 ## How to use this plan
 
@@ -52,7 +52,7 @@ Phase 1 closes the data-loss bug. It is schema-compatible and self-contained; sh
 
 ### Step 1 — A3: composition-overwrite merge gate (`specify-cli`)
 
-**Status.** Not started.
+**Status.** Done — landed exactly as specified. The pure predicates (`is_whole_document_replacement`, `baseline_is_non_empty`) live in `composition.rs` with `mod tests` coverage; `composition_overwrite_gate` is a `pub(super)` precondition in `merge/slice/read.rs`; `slice::commit` gained the `allow_composition_replace: bool` parameter and invokes the gate against `first_three_way(classes)` after the `Built` check and before `plan_three_way`; the flag threads CLI handler → `slice::commit` only. The four gate cases plus the predicate unit tests are green. **Caveat (not Step 1's doing):** four pre-existing `init::upgrade::tests` lib tests fail on `rfc-40` (`specify_version_changed` assertions tied to the current version pin), so `cargo make ci` is not fully green on the branch independent of this step; verified by stashing the Step 1 diff and reproducing the same four failures.
 
 **Goal.** Make it impossible for a whole-document (`screens:`) slice composition to silently replace a non-empty baseline at merge time, with a single narrow override.
 
