@@ -1,10 +1,7 @@
-# Specify.toml is development configuration.
-# Runtime configuration lives at .specify/project.yaml.
-
-# :schema https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/authoring/framework.schema.json
+# Specify development configuration.
 
 # specify-cli dependency
-# cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-41" }
+cli = { git = "https://github.com/augentic/specify-cli", branch = "rfc-41" }
 # cli = { version = "0.2.0" }
-# optionally, use Specify.local.toml to stop a local path from being committed
-cli = { path = "../specify-cli" }
+# optionally, use Specify.local.toml so a local path is not committed
+# cli = { path = "../specify-cli" }
