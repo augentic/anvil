@@ -56,6 +56,24 @@ If the platform set contains `core` only, skip the iOS and Android phase sub-bri
 
 ## Phase order
 
+**Step 0.5 — component inference (runs before the numbered phases, ahead of composition regeneration).** Component *identity* is deterministic and owned by the CLI (a structural fingerprint over each `group`'s normalized skeleton); component *identification and naming* are model judgement and owned by this brief. The CLI carries **no** component vocabulary — it reports identity + evidence and records the names it is handed; this brief decides what each clustered structure *is* and what to call it. Run inference before regenerating composition so the regeneration at [`build/composition.md`](build/composition.md) step 6 reads an up-to-date catalog:
+
+1. **Report.** Run `specify catalog infer --phase report --format json` to obtain the deterministic, **name-free** cluster report against the current merged baseline (`${PROJECT_DIR}/.specify/specs/composition.yaml`). The verb folds the screenshots candidate cache and, when present, the operator `parts.yaml` into the same clustering pass automatically — no extra flags. An absent baseline yields an empty report (nothing to name). Each reported cluster carries a `fingerprint` (the opaque identity), an `occurrences` count, the `screens` provenance list, the representative normalized `skeleton`, an `evidence` block (`region`, `item_kinds`, `event_targets`, and an optional `candidate_names` list of stage-6 suggestions), and a `bound_slug` (the name already bound to that fingerprint, or `null`).
+2. **Identify and name by judgement.** For each reported cluster whose `bound_slug` is `null`, decide *what the component is* and *what to call it*: read its `evidence` and representative `skeleton`, and choose a kebab-case slug. There is **no fixed component vocabulary** — a repeated footer of navigation icons might be a `tab-bar`, a `rail`, or a novel navigation form this app invents; name it on its merits rather than forcing it into a known label. The `evidence.candidate_names` suggestions (when present) are non-authoritative stage-6 hints you MAY adopt or override — never an identity. A cluster whose `bound_slug` is **already populated** is already named — from a prior run's catalog binding, or from an operator `parts.yaml` pin whose name wins — so leave it untouched.
+3. **Bind.** Write your `{ fingerprint → slug }` decisions to a small bindings file (e.g. `${SLICE_DIR}/build/component-bindings.yaml`) and run `specify catalog infer --phase bind --bindings <file>` to record them. The bindings file is a `bindings:` map keyed by each cluster's `fingerprint`, valued by the bare slug (or `{ slug, description }`):
+
+```yaml
+version: 1
+bindings:
+  <fingerprint-a>: tab-bar
+  <fingerprint-b>:
+    slug: detail-card
+    description: "Repeated detail card across list rows."
+```
+
+   The CLI applies its deterministic guards — one skeleton per slug, never overwrite a `confirmed` / `rejected` entry, and stable fingerprint-derived suffixing (`slug-<fp-prefix>`) on a name collision — and is the **only** writer of `components.yaml`. Preview the catalog diff first with `--dry-run`. Skip this step when the report names no unbound clusters.
+4. **Proceed.** Continue with the numbered phases below; composition regeneration (Phase 1) reads the updated catalog at [`build/composition.md`](build/composition.md) step 6 and attaches `component: <slug>` directives to every group whose skeleton matches a `confirmed` entry.
+
 1. Load [`build/composition.md`](build/composition.md) — regenerate `composition.yaml` from `spec.md` + `design.md` and run the deterministic validator gate.
 2. Load [`build/core/write.md`](build/core/write.md) — generate / update the Crux shared core.
 3. Load [`build/test.md`](build/test.md) — generate / update Crux tests, then run the core verify-repair loop (max 3 iterations).
