@@ -88,7 +88,7 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 ### CI
 
-CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.bin` install root together with `~/.cargo` (registry, git, and the cargo-script build cache), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
+CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.bin` install root together with `~/.cargo` (registry and git), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 

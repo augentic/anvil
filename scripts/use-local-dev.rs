@@ -216,10 +216,11 @@ struct Permissions {
     write: Vec<String>,
 }
 
-// PERMISSIONS DUPLICATED — keep in sync with
+// PERMISSIONS DUPLICATED — an intentional, accepted mirror of
 // specify_tool::manifest::first_party_permissions() in augentic/specify-cli.
-// This is the deliberate trade-off of the cargo-script variant: no dependency
-// on specify-cli, at the cost of these literals not being compiler-checked.
+// No CLI verb owns dev sidecar wiring (by decision), so these literals stay here:
+// the trade-off is no dependency on specify-cli, at the cost of no compiler check.
+// Keep this table in sync with the CLI when first-party tool permissions change.
 fn first_party_permissions(tool_name: &str) -> Result<Permissions> {
     match tool_name {
         "contract" => Ok(Permissions {

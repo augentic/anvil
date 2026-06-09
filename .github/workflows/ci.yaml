@@ -30,27 +30,12 @@ jobs:
 
       # Resolve the committed `cli` pin to a concrete specify-cli commit SHA so the
       # build cache is keyed on the exact source (and busts when the pin moves).
-      # Best-effort: a miss just rebuilds, so a thin extractor is fine here.
+      # The resolver script is the single source of truth (no bash re-parse here);
+      # a miss just rebuilds, so this best-effort token is fine.
       - name: Resolve specify-cli pin
         id: pin
         shell: bash
-        run: |
-          line="$(grep -E '^cli[[:space:]]*=' Specify.toml || true)"
-          url="$(sed -nE 's/.*git[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' <<<"$line")"
-          url="${url:-https://github.com/augentic/specify-cli}"
-          ref=""
-          for k in rev branch tag; do
-            v="$(sed -nE "s/.*$k[[:space:]]*=[[:space:]]*\"([^\"]+)\".*/\1/p" <<<"$line")"
-            [ -n "$v" ] && { ref="$v"; break; }
-          done
-          if [ -z "$ref" ]; then
-            ver="$(sed -nE 's/.*version[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' <<<"$line")"
-            [ -n "$ver" ] && ref="v$ver"
-          fi
-          sha=""
-          [ -n "$ref" ] && sha="$(git ls-remote "$url" "$ref" | awk 'NR==1{print $1}')"
-          [ -n "$sha" ] || sha="$(sha256sum Specify.toml | cut -c1-16)"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(cargo +nightly -Zscript scripts/specify.rs --resolved-ref)" >> "$GITHUB_OUTPUT"
 
       - name: Cache built CLI + cargo home
         uses: actions/cache@v4
@@ -59,7 +44,6 @@ jobs:
             .bin
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/build
           key: specify-cli-${{ runner.os }}-${{ steps.toolchain.outputs.cachekey }}-${{ steps.pin.outputs.sha }}
 
       - name: Verify spec-runtime symlinks resolve
