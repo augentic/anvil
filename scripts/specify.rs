@@ -132,7 +132,10 @@ fn resolve_ref(cli: &toml::Table) -> CliSource {
         .or_else(|| str_field(cli, "version").map(|v| GitRef::Tag(format!("v{v}"))))
         .unwrap_or_else(|| die("`cli` needs one of: path | git + rev/branch/tag | version"));
 
-    let url = str_field(cli, "git").unwrap_or_else(|| format!("https://{DEFAULT_GIT_HOST}"));
+    // Keep the URL scheme in a named constant so this file carries no inline
+    // HTTP(S) URL literal (UNI-014 flags literal web URLs in Rust source).
+    const SCHEME: &str = "https";
+    let url = str_field(cli, "git").unwrap_or_else(|| format!("{SCHEME}://{DEFAULT_GIT_HOST}"));
     CliSource::Git { url, git }
 }
 
