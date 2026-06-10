@@ -32,7 +32,8 @@ Open these files at `.specify/` (workspace mode: workspace):
 Use CLI verbs — never hand-edit `plan.yaml`:
 
 ```bash
-# Add a source binding to an existing entry
+# Add a source binding to an existing entry (one lead per source key —
+# a key the entry already binds is refused as duplicate-source-key)
 specify plan amend <entry> --add-source <key>=<lead>
 
 # Remove a source binding

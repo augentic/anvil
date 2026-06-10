@@ -132,7 +132,7 @@ The two phases of `specify slice build <slice>`. `--phase prepare` (default) ass
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` (one row per `(scope, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -149,9 +149,6 @@ The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`,
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
 ## S
-
-**Scope (reconciliation)**
-The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specify plan propose` response `slices[]` rows that carry identical `sources[]`. One scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording. See [From sources to slices](../explanation/reconciliation.md).
 
 **Shape**
 The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.

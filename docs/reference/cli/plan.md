@@ -37,7 +37,7 @@ health diagnostics below.
 specify plan validate
 ```
 
-Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
+Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, duplicate source keys within one entry (`duplicate-source-key` — a slice binds at most one lead per source), at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
 - `project-not-in-registry` (important) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
@@ -90,6 +90,8 @@ specify plan amend <entry> --authority-override <entry> <kind>=<source>
 ```
 
 Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
+
+A slice binds at most one lead per source key (a duplicate would silently overwrite `evidence/<source>.yaml` at refine time). `--add-source` refuses a key the entry already binds with `duplicate-source-key` (exit 2); a duplicate introduced via the wholesale `--sources` replacement rolls back as `plan-amend-validation-failed`. Re-sizing — replacing the lead bound under an existing key via `--sources <key>=<other-lead>` — stays legal.
 
 ### specify plan remove
 

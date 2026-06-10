@@ -17,14 +17,15 @@ For example, a legacy-code source and a design-notes source might each surface a
 
 ### Propose reconciles leads across sources
 
-The cross-source matching happens in the **propose** sub-step of `/spec:plan`. The agent reads every lead and judges which ones describe the same piece of work. Each reconciled group is a **scope**: the set of leads — *at most one per source* — that belong together.
+The cross-source matching happens in the **propose** sub-step of `/spec:plan`. The agent reads every lead, judges which ones describe the same piece of work, and emits the `slices[]` rows directly — each row naming its matched leads, *at most one per source*.
 
-Two rules keep this predictable:
+Three rules keep this predictable:
 
-- **One lead per source, per scope.** A scope never fuses two leads from the *same* source. Re-sizing same-source work is an operator action at Gate 1, not something the agent does silently.
+- **One lead per source, per slice.** A slice never fuses two leads from the *same* source. Re-sizing same-source work is an operator action at Gate 1, not something the agent does silently.
+- **Coverage is at-least-once, not exactly-once.** Every surveyed lead must be referenced by at least one slice, and a lead may appear in more than one. Work that lands in more than one project becomes multiple slices joined by `depends-on`; a cross-cutting lead — say a conventions document that informs several features surfaced by another source — is bound into every slice it informs (the one-lead-per-source rule still applies inside each slice), with no `depends-on` implied. Multi-homed leads are listed in `change.md` under `## Cross-cutting leads` for Gate 1 review.
 - **Uncertain matches are surfaced, not hidden.** When the agent is unsure whether two leads are the same work, it records the pair under `## Tentative merges` in `change.md` so you can confirm or split them. When two matched leads materially disagree, the slice is flagged `divergence: likely`.
 
-Each scope becomes one or more `slices[]` rows in `plan.yaml`. (A single scope can fan out to several rows when its work lands in more than one project.) This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
+This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
 
 You review and adjust the proposed slices at **Gate 1** before stamping the plan `approved`.
 

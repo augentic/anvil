@@ -40,6 +40,10 @@ When cross-source grouping is uncertain, `/spec:plan` adds a `## Tentative merge
 
 When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `specify plan amend <entry> --divergence likely`.
 
+## Cross-cutting leads
+
+Coverage is at-least-once: a lead may be bound into more than one slice. When a lead is guidance that informs several work leads (e.g. a conventions document), propose multi-homes it across the slices it informs and lists it in `change.md` under `## Cross-cutting leads`. A slice still carries at most one lead per source — the CLI rejects a duplicate key at propose (`plan-reconcile-slice-source-collision`), `plan validate`, and `plan amend` (`duplicate-source-key`).
+
 ## See also
 
 - [/spec:plan](../reference/change-skills/plan.md) — source binding grammar
