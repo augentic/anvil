@@ -25,7 +25,7 @@ contracts/                                  # Baseline API contracts
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── cache/                                 # Memoization root: manifests, codex, extraction results
+├── cache/                                 # Memoization root: manifests, codex
 │   ├── manifests/sources/<name>/           # Source adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{survey,extract}.md
@@ -33,9 +33,7 @@ contracts/                                  # Baseline API contracts
 │   │   ├── adapter.yaml
 │   │   └── briefs/{shape,build,merge}.md
 │   ├── manifests/manifest-meta.yaml        # Manifest mirror provenance stamp
-│   ├── codex/                              # Distributed shared-rules codex (+ codex-meta.yaml)
-│   └── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
-│       └── index.jsonl
+│   └── codex/                              # Distributed shared-rules codex (+ codex-meta.yaml)
 │
 ├── scratch/                                # Transient working state (per-run lanes; wiped freely)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
@@ -103,7 +101,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `cache/`
 
-The memoization root — every subtree is keyed by content or version, and deleting it costs recomputation only. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with the mirror's provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `<fingerprint>/` plus an append-only `index.jsonl` at the adapter root; the index is cache mechanism, not audit — an adapter with an effective `cache: opt-out` writes nothing here, and the journal's cache events are the audit trail.
+The memoization root — every subtree is keyed by content or version, and deleting it costs recomputation only. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with the mirror's provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 

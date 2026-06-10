@@ -24,7 +24,7 @@ specify target resolve <value>
 
 ## Caching
 
-Resolved manifests cache under `.specify/cache/manifests/{sources,targets}/<name>/`. Cache layout is per-axis and disjoint from the extraction cache at `.specify/cache/extractions/`.
+Resolved manifests cache under `.specify/cache/manifests/{sources,targets}/<name>/`. Cache layout is per-axis.
 
 ## See also
 

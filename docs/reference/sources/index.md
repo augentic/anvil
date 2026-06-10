@@ -50,7 +50,7 @@ tools:
 | `name` | yes | Kebab-case source identifier. Must match the directory name under `adapters/sources/` and be unique across both axes. |
 | `version` | yes | Integer ≥ 1. Increments when the adapter ships breaking changes. |
 | `axis` | yes | Must be `source`. |
-| `execution` | yes | Closed mode (`agent` \| `tool`). `agent` forces `cache: opt-out` and runs the brief via an agent; all first-party sources declare `agent`. |
+| `execution` | yes | Must be `agent` — source extraction is agent-only. The brief is run by an agent via the two-phase `prepare` / `finalize` handoff. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |
 | `briefs` | yes | Map of operation → brief markdown path relative to the manifest. The keys are the operation set, closed to `survey` and `extract` by `source.schema.json`. |
 | `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
@@ -66,7 +66,7 @@ Both operations run sandboxed under the WASI Preview 2 posture — directory pre
 
 ## Validation
 
-The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation under the declared `execution` mode.
+The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation through the two-phase agent handoff.
 
 ## See also
 
