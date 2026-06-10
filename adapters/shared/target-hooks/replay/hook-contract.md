@@ -22,7 +22,7 @@ Replay failures are **advisory in v1**:
 
 - A non-zero `failed` count does **not** park the build.
 - The slice still transitions to `built`.
-- The operator inspects replay results at merge time (journal event today; future `.metadata.yaml` block when a CLI surface lands).
+- The operator inspects replay results at merge time (journal event today; future `metadata.yaml` block when a CLI surface lands).
 
 This matches the current synthesis posture on `[conflict]` and `[divergence]` tags — review signals, not automatic gates. Stricter posture belongs in a custom target adapter fork, CI policy on journal events, or a future core contract.
 
@@ -34,15 +34,15 @@ Emit `slice.replay.completed` (`EventKind::SliceReplayCompleted` in the CLI repo
 
 The implementing target's runner sub-brief supplies the `runner` string (e.g. `omnia-target@1 (cargo nextest)`).
 
-### Do not hand-edit `.metadata.yaml`
+### Do not hand-edit `metadata.yaml`
 
 Agents must not write slice metadata by hand. The current phase contract has no `specify slice outcome set` surface — see [`phase-outcome-contract.md`](../../references/runtime/phase-outcome-contract.md).
 
-A future CLI surface may persist a `replay:` block to `$SLICE_DIR/.metadata.yaml` (the capture-backed replay workflow). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
+A future CLI surface may persist a `replay:` block to `$SLICE_DIR/metadata.yaml` (the capture-backed replay workflow). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 
 ## Merge posture
 
-When a `replay:` block is present on `.metadata.yaml` (future CLI or operator tooling), `/spec:merge` surfaces a one-line summary in its closing message:
+When a `replay:` block is present on `metadata.yaml` (future CLI or operator tooling), `/spec:merge` surfaces a one-line summary in its closing message:
 
 ```text
 replay: <passed> passed, <failed> failed, <skipped> skipped

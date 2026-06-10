@@ -39,6 +39,6 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 
 ## Stress test
 
-- Re-entry without `--continue` reads `plan.yaml` and slice `.metadata.yaml` only; no resume token; no skill-side state file.
+- Re-entry without `--continue` reads `plan.yaml` and slice `metadata.yaml` only; no resume token; no skill-side state file.
 - Breakout reuses the exact lock snippet `/spec:execute` uses — no second-tier "breakout lock" exists.
 - The skill body never advances slice 2's per-entry status; only `/spec:merge` writes `done`.

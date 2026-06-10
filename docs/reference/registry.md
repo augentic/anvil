@@ -17,9 +17,9 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | `registry.yaml`               | operator | Membership + location ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
 | `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned units + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by `specify workspace sync`; never hand-edited. |
 | `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
-| `.specify/.cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `manifests/sources/` and `manifests/targets/` subdirectories, with extraction results under `extractions/`). |
+| `.specify/cache/`            | derived  | Adapter-manifest cache (owned by the plugin resolver, split into `manifests/sources/` and `manifests/targets/` subdirectories, with extraction results under `extractions/`). |
 
-`.specify/workspace/` and `.specify/.cache/` are framework-managed scratch and must never be checked in. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
+`.specify/workspace/` and `.specify/cache/` are framework-managed scratch and must never be checked in. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
 
 ## Topology shape
 

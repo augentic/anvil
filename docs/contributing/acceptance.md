@@ -46,9 +46,9 @@ For each scenario:
 2. Bring up a fresh disposable environment per the scenario's **Setup** (common steps factored into [`acceptance/shared/setup.md`](../../acceptance/shared/setup.md)).
 3. Run the scenario's **Invocation** exactly as written, stamping Gate 1 yourself (`specify plan transition <name> approved`) — the skills never auto-stamp.
 4. Check each **Assertion** on durable structure only (never a byte/golden compare).
-5. Record the run with [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md), filed under [`acceptance/runs/`](../../acceptance/runs/README.md), and update the scenario's status in the [catalog](../../acceptance/scenarios/README.md).
+5. Record the run with [`acceptance/shared/run-template.md`](../../acceptance/shared/run-template.md), filed as [`acceptance/runs/<id>.<result>.md`](../../acceptance/runs/README.md), and update the scenario's status in the [catalog](../../acceptance/scenarios/README.md).
 
-Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) into a live `cursor-agent` session.
+Operators who prefer an agent to do the clerical work can paste the reusable prompts in [`acceptance/shared/prompts.md`](../../acceptance/shared/prompts.md) into a live `cursor-agent` session.
 
 ## Agent runbook — "run specify's acceptance scenarios"
 
@@ -56,7 +56,7 @@ When asked to "run specify's acceptance scenarios and report any issues", an age
 
 1. **Automated surface.** Run `make lint` (builds the pinned `cli` source and runs the framework checks) and report pass/fail with the failing finding ids, then run `make install-cli` to build + symlink the binary under test. The deterministic acceptance tests (`plan`, `source`, `slice`, `workspace`, and the wasm-tool suites) are owned by `specify-cli` and run there on every commit; run `cargo make test` in the `specify-cli` checkout when you need to prove the full deterministic surface locally. This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make install-cli`'s `INSTALL_DIR`) or fall back to the absolute `../specify-cli/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
 2. **Manual sweep — per scenario, in group order** (see [catalog](../../acceptance/scenarios/README.md)):
-   - Drive setup with [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A, then the lifecycle with Prompt B.
+   - Drive setup with [`shared/prompts.md`](../../acceptance/shared/prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Self-grade only the **structurally checkable** assertions and negative-expectations; record pass/fail/skipped with an evidence pointer per scenario.
 3. **Stop and hand back to the operator** at the irreducible human seams — never fabricate a result for these:
    - A `specify` build that cannot be produced. The agent builds and resolves the binary itself in step 1 (`make install-cli` plus the `PATH` self-heal / absolute-path fallback); it hands back only when the build itself fails — e.g. the sibling `specify-cli` checkout is missing or does not compile.
@@ -66,7 +66,7 @@ When asked to "run specify's acceptance scenarios and report any issues", an age
 
 ### Running a single scenario
 
-When asked to run one named scenario (e.g. "run Specify's acceptance scenario `pure-intent`"), the agent follows the same runbook scoped to that id: do step 1 (install + resolve the binary under test), then drive **only** that scenario's id through [`shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) Prompt A → Prompt B, self-grade the structurally checkable assertions, file the run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md), and report. Skip the group ordering — it governs the full-catalog sweep, not a single run. The same human seams (step 3) still apply; in particular `pure-intent` is the N=1 release blocker and carries the hard-halt + release-owner sign-off seam.
+When asked to run one named scenario (e.g. "run Specify's acceptance scenario `pure-intent`"), the agent follows the same runbook scoped to that id: do step 1 (install + resolve the binary under test), then drive **only** that scenario's id through [`shared/prompts.md`](../../acceptance/shared/prompts.md) Prompt A → Prompt B, self-grade the structurally checkable assertions, file the run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md), and report. Skip the group ordering — it governs the full-catalog sweep, not a single run. The same human seams (step 3) still apply; in particular `pure-intent` is the N=1 release blocker and carries the hard-halt + release-owner sign-off seam.
 
 ## Execution order and the halt gate
 
@@ -81,7 +81,7 @@ Within a group, scenarios are independent and may run in any order; a failure ou
 ## The gate signal
 
 - Each run commits its filled run-summary under [`acceptance/runs/`](../../acceptance/runs/README.md) as the audit trail.
-- On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template. The sandbox at `acceptance/.sandbox/<scenario>/` ([`setup.md`](../../acceptance/shared/setup.md)) is stable and gitignored, so it survives for inspection; capture an `scripts/snapshot.sh` snapshot into the run-summary's **Artefact snapshot** section so evidence is self-contained rather than tied to a temp root. File a follow-up issue in `augentic/specify` linked back to the run-summary.
+- On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template. The sandbox at `acceptance/.sandbox/<scenario>/` ([`setup.md`](../../acceptance/shared/setup.md)) is stable and gitignored, so it survives for inspection; paste trimmed failure output into the run-summary's **Failure detail** section and point **Evidence** at `scripts/snapshot.sh "$SANDBOX"`. File a follow-up issue in `augentic/specify` linked back to the run-summary.
 - The **release gate is green** when `tests/plan/end_to_end.rs` passes under `cargo make test`, scenario `pure-intent` is `passed`, and every non-deferred catalog entry is `passed`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
 
 When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../acceptance/scenarios/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).

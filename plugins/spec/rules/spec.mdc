@@ -22,7 +22,7 @@ Each directory contains `adapter.yaml` plus operation briefs under `briefs/`.
 
 ## Slice lifecycle
 
-Slices track lifecycle in `.metadata.yaml`. The fixed loop is `refine -> build -> merge`, with `drop` as the rollback path:
+Slices track lifecycle in `metadata.yaml`. The fixed loop is `refine -> build -> merge`, with `drop` as the rollback path:
 
 ```text
 refining -> refined -> built -> merged
@@ -36,7 +36,7 @@ refining -> refined -> built -> merged
 - **merged**: Delta specs merged into baseline, slice archived
 - **dropped**: Slice archived without merging into baseline
 
-Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `.metadata.yaml`.
+Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata.yaml`.
 
 ## Workflow
 

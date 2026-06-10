@@ -12,6 +12,8 @@ specify plan propose --from <response.json> [--format json]
 
 Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
 
+The response file's canonical location is `.specify/cache/propose-response.json` — a gitignored, regenerable scratch path. Never write the envelope to the project root.
+
 **Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise `plan-reconcile-plan-not-replaceable`.
 
 Validation codes (all exit 2):

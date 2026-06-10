@@ -21,28 +21,28 @@ The prompt tells the agent to follow the runbook in [docs/contributing/acceptanc
 Tell a Cursor agent to run one named scenario, e.g.:
 
 ```text
-Run Specify's acceptance scenario pure-intent and report your findings.
+Run Specify's acceptance scenario <scenario> and report your findings.
 ```
 
 Same delegation as **Run all scenarios**, but the agent follows the [single-scenario runbook](../docs/contributing/acceptance.md#running-a-single-scenario). Only the agent-based (`backend: manual`) scenarios are listed; the `backend: fixture` ones are proven by `cargo make test` in `specify-cli` (see [Automated coverage](scenarios/README.md#automated-coverage)), not by an agent.
 
 
-| Scenario                                                                          | What it exercises                                                        |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `[pure-intent](scenarios/pure-intent.md)`                                         | N=1 pure intent → one slice (**release blocker** — hard halt on failure) |
-| `[documentation-one-slice](scenarios/documentation-one-slice.md)`                 | Documentation source, one slice                                          |
-| `[documentation-multi-slice](scenarios/documentation-multi-slice.md)`             | Documentation source, multiple slices                                    |
-| `[code-multi-slice](scenarios/code-multi-slice.md)`                               | TypeScript code source, multiple slices                                  |
-| `[cross-source-merge](scenarios/cross-source-merge.md)`                           | Cross-source propose-time merge                                          |
-| `[plan-single-project](scenarios/plan-single-project.md)`                         | Single-project plan generation                                           |
-| `[cross-repo-contract-flow](scenarios/cross-repo-contract-flow.md)`               | Cross-repo contract flow (full lifecycle, live forge)                    |
-| `[target-shape-injection](scenarios/target-shape-injection.md)`                   | Target `shape` injection                                                 |
-| `[stepthrough-breakout](scenarios/stepthrough-breakout.md)`                       | Step-through breakout mid-execute                                        |
-| `[execute-build-failure](scenarios/execute-build-failure.md)`                     | `/spec:execute` parks on a build failure                                 |
-| `[workspace-execute-two-projects](scenarios/workspace-execute-two-projects.md)`   | Workspace `/spec:execute` across two projects                            |
-| `[workspace-breakout](scenarios/workspace-breakout.md)`                           | Workspace breakout after build failure                                   |
-| `[dual-driving-refused](scenarios/dual-driving-refused.md)`                       | Dual-driving refused                                                     |
-| `[stale-workspace-recovery](scenarios/stale-workspace-recovery.md)`               | Stale-workspace recovery                                                 |
+| Scenario                                                                        | What it exercises                                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `[pure-intent](scenarios/pure-intent.md)`                                       | N=1 pure intent → one slice (**release blocker** — hard halt on failure) |
+| `[documentation-one-slice](scenarios/documentation-one-slice.md)`               | Documentation source, one slice                                          |
+| `[documentation-multi-slice](scenarios/documentation-multi-slice.md)`           | Documentation source, multiple slices                                    |
+| `[code-multi-slice](scenarios/code-multi-slice.md)`                             | TypeScript code source, multiple slices                                  |
+| `[cross-source-merge](scenarios/cross-source-merge.md)`                         | Cross-source propose-time merge                                          |
+| `[plan-single-project](scenarios/plan-single-project.md)`                       | Single-project plan generation                                           |
+| `[cross-repo-contract-flow](scenarios/cross-repo-contract-flow.md)`             | Cross-repo contract flow (full lifecycle, live forge)                    |
+| `[target-shape-injection](scenarios/target-shape-injection.md)`                 | Target `shape` injection                                                 |
+| `[stepthrough-breakout](scenarios/stepthrough-breakout.md)`                     | Step-through breakout mid-execute                                        |
+| `[execute-build-failure](scenarios/execute-build-failure.md)`                   | `/spec:execute` parks on a build failure                                 |
+| `[workspace-execute-two-projects](scenarios/workspace-execute-two-projects.md)` | Workspace `/spec:execute` across two projects                            |
+| `[workspace-breakout](scenarios/workspace-breakout.md)`                         | Workspace breakout after build failure                                   |
+| `[dual-driving-refused](scenarios/dual-driving-refused.md)`                     | Dual-driving refused                                                     |
+| `[stale-workspace-recovery](scenarios/stale-workspace-recovery.md)`             | Stale-workspace recovery                                                 |
 
 
 ## Installing `specify-cli` runtime
@@ -63,7 +63,7 @@ make install-cli
 | Path                                | Role                                                                           |
 | ----------------------------------- | ------------------------------------------------------------------------------ |
 | `[scenarios/](scenarios/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.                  |
-| `[shared/](shared/setup.md)`        | Shared `setup.md`, `inspect.md`, `meta-prompts.md`, `run-summary-template.md`. |
+| `[shared/](shared/setup.md)`        | Shared `setup.md`, `inspect.md`, `prompts.md`, `run-template.md`. |
 | `[runs/](runs/README.md)`           | Filled run records — the audit trail.                                          |
 | `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                                 |
 | `.sandbox/` (gitignored)            | Stable per-scenario run roots — browsable, inspectable, recreated per run.     |

@@ -1,6 +1,6 @@
 # `/spec:build` worked-example fixtures
 
-Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build/SKILL.md`](../../../../plugins/spec/skills/build/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `.metadata.yaml` + env vars) and the visible output the body must emit.
+Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build/SKILL.md`](../../../../plugins/spec/skills/build/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml` + env vars) and the visible output the body must emit.
 
 ## Fixture matrix
 
@@ -17,7 +17,7 @@ Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build
   README.md               # what the fixture exercises
   input/
     plan.yaml             # the plan state /spec:build sees on entry
-    slice-metadata.yaml   # the slice's .specify/slices/<name>/.metadata.yaml on entry
+    slice-metadata.yaml   # the slice's .specify/slices/<name>/metadata.yaml on entry
     env.txt               # (optional) env vars set by the parent (SPECIFY_PLAN_LOCK_HELD, ...)
   expected-stop-hint.md   # for failure cases: the stop hint the body emits
   expected-trace.md       # for success / breakout cases: the body's visible behaviour

@@ -50,4 +50,4 @@ To capture the whole picture at once — directory tree plus the key artifact bo
 scripts/snapshot.sh "$SANDBOX"
 ```
 
-It is read-only and prints text suitable for the **Artefact snapshot** section of [`run-summary-template.md`](run-summary-template.md).
+It is read-only and prints text suitable for the **Evidence** section of [`run-template.md`](run-template.md) (re-run the command; do not paste full output on pass).

@@ -97,4 +97,4 @@ Manual by design — see [`docs/contributing/acceptance.md`](../../docs/contribu
 
 ## Recording
 
-Capture the run with [`shared/run-summary-template.md`](../shared/run-summary-template.md) under [`acceptance/runs/`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch/PR identifiers.
+Capture the run with [`shared/run-template.md`](../shared/run-template.md) as [`acceptance/runs/<id>.<result>.md`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch/PR identifiers.

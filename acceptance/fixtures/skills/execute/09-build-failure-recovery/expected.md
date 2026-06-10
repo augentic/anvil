@@ -16,7 +16,7 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
    - `specify plan next` returns slice 2 (already `in-progress`).
    - Slice lifecycle `refined` → loop dispatches `/spec:build`.
    - `/spec:build` runs tasks 1–4 successfully (each `specify slice task mark` flips the checkbox). Task 5 (`cargo test`) fails: a regression test asserts session cookie `Secure` flag is set; production code path forgot it.
-   - `/spec:build` records `PhaseOutcome { phase: build, outcome: failure, summary: "task-5 cargo test failed: session_cookie_secure_flag_set" }` to `.specify/slices/session-cookie-harden/.metadata.yaml`, then returns non-zero.
+   - `/spec:build` records `PhaseOutcome { phase: build, outcome: failure, summary: "task-5 cargo test failed: session_cookie_secure_flag_set" }` to `.specify/slices/session-cookie-harden/metadata.yaml`, then returns non-zero.
    - `/spec:execute` reads the outcome, prints the templated stop hint from [`../../../../../plugins/spec/references/stop-conditions.md`](../../../../../plugins/spec/references/stop-conditions.md):
 
      ```text

@@ -25,7 +25,7 @@ contracts/                                  # Baseline API contracts
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── .cache/                                 # Cached adapter manifests, briefs, and extraction results
+├── cache/                                 # Cached adapter manifests, briefs, and extraction results
 │   ├── manifests/sources/<name>/           # Source adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{survey,extract}.md
@@ -37,7 +37,7 @@ contracts/                                  # Baseline API contracts
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
-│       ├── .metadata.yaml                  # Slice lifecycle (managed by CLI)
+│       ├── metadata.yaml                  # Slice lifecycle (managed by CLI)
 │       ├── proposal.md                     # Why this slice exists
 │       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
 │       ├── design.md                       # Technical design
@@ -63,7 +63,7 @@ contracts/                                  # Baseline API contracts
 │
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
     ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specify archive prune`)
-    │   ├── .metadata.yaml
+    │   ├── metadata.yaml
     │   ├── proposal.md
     │   ├── design.md
     │   ├── tasks.md
@@ -83,7 +83,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -95,9 +95,9 @@ A slice directory may also contain a `contracts/` subdirectory holding the propo
 
 The baseline. When a slice is merged, its spec deltas are applied here. Baseline specs represent the current known state of the system.
 
-### `.cache/`
+### `cache/`
 
-Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache (with an append-only `index.jsonl`). The whole `.cache/` tree is regenerable and safe to delete.
+Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `entries/<fingerprint>/`, the per-operation agent scratch lanes under `scratch/{survey,<slice>}/`, and an append-only `index.jsonl` at the adapter root. The whole `cache/` tree is regenerable and safe to delete.
 
 ### `workspace/`
 

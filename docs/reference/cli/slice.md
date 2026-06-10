@@ -8,7 +8,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
+| [`create`](#specify-slice-create) | Create a new slice directory with an initial `metadata.yaml`. |
 | [`synthesize`](#specify-slice-synthesize) | Turn the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml`: `--dry-run` emits the agent inputs envelope; `--from <response.json>` runs the projection kernel and persists. |
 | [`model`](#specify-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specify-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
@@ -34,10 +34,10 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 | Argument | Description |
 |----------|-------------|
 | `name` | Kebab-case slice name (validated) |
-| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `.metadata.yaml`), or `restart` (delete and recreate -- destructive) |
+| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `metadata.yaml`), or `restart` (delete and recreate -- destructive) |
 | `--format` | Output format: `json` for structured output |
 
-Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
+Creates `.specify/slices/<name>/` with an initial `metadata.yaml`.
 
 ### specify slice synthesize
 
@@ -107,7 +107,7 @@ specify slice transition <name> <target>
 | `name` | Slice name |
 | `target` | Target state: `refining`, `refined`, `built`, `dropped`. Skills stamp `refined` and `built` after `/spec:refine` and `/spec:build`. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
 
-Enforces legal transitions. Records timestamps in `.metadata.yaml`.
+Enforces legal transitions. Records timestamps in `metadata.yaml`.
 
 ### specify slice touched-specs
 

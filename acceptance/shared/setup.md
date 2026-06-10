@@ -117,4 +117,4 @@ the callback, and call the backend exchange endpoint using the shared contract.
 
 ## Recording the run
 
-Capture each run with [`run-summary-template.md`](run-summary-template.md), filed under [`acceptance/runs/`](../runs/README.md), then update the scenario's status in the [catalog](../scenarios/README.md).
+Capture each run with [`run-template.md`](run-template.md) as `acceptance/runs/<id>.<result>.md`, then update the scenario's status in the [catalog](../scenarios/README.md).

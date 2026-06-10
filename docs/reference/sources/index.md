@@ -53,7 +53,7 @@ tools:
 | `execution` | yes | Closed mode (`agent` \| `tool`). `agent` forces `cache: opt-out` and runs the brief via an agent; all first-party sources declare `agent`. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |
 | `briefs` | yes | Map of operation → brief markdown path relative to the manifest. The keys are the operation set, closed to `survey` and `extract` by `source.schema.json`. |
-| `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/.cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
+| `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
 
 ## How a source adapter participates in the loop
 

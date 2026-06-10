@@ -13,7 +13,7 @@ stop: build-failed
 
 ## Lifecycle invariants on this path
 
-- `.specify/slices/session-cookie-harden/.metadata.yaml` `status` stays `refined`.
+- `.specify/slices/session-cookie-harden/metadata.yaml` `status` stays `refined`.
 - `plan.yaml.slices[0].status` stays `in-progress` — `/spec:build` never writes `plan.yaml`.
 - The plan lock (acquired in standalone mode, held by parent in loop mode) releases on process exit.
 - No `specify slice transition` call was made (success-only step).

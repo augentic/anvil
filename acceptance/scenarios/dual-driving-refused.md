@@ -50,4 +50,4 @@ Manual by design — see [`docs/contributing/acceptance.md`](../../docs/contribu
 
 ## Recording
 
-Capture with [`shared/run-summary-template.md`](../shared/run-summary-template.md) under [`acceptance/runs/`](../runs/README.md).
+Capture with [`shared/run-template.md`](../shared/run-template.md) as [`acceptance/runs/<id>.<result>.md`](../runs/README.md).

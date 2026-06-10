@@ -2,8 +2,8 @@
 
 # Print a read-only snapshot of an acceptance run's artifacts: the sandbox
 # directory tree plus the bodies of the key Specify artifacts and the rendered
-# slice models. Paste the output into the "Artefact snapshot" section of a run
-# record (acceptance/shared/run-summary-template.md).
+# slice models. Reference from the **Evidence** section of a run record
+# (acceptance/shared/run-template.md); paste output on fail only.
 #
 # This is evidence capture only — it drives no /spec:* command, runs only
 # read-only `specify` verbs, and asserts nothing. It is not a scenario runner.

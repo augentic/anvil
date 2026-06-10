@@ -62,7 +62,7 @@ Format — one `## N. <Group>` heading per stage, then one `- [ ] N.M <descripti
 
 ## What synthesis never does
 
-- **Never edit `.metadata.yaml`, `plan.yaml`, or `discovery.md`.** The skill body's CLI calls own those.
+- **Never edit `metadata.yaml`, `plan.yaml`, or `discovery.md`.** The skill body's CLI calls own those.
 - **Never rewrite an earlier response section.** Author `proposal` before specs; specs before `design`.
 - **Never author kernel-owned fields.** `REQ` ids, `status`, `winner` markers, and rendered `Sources:` lists are the kernel's; the agent records `(source, id, kind)` claims and an `agreement` verdict and lets the kernel project the rest. A claim citing a `(source, id)` absent from Evidence fails projection with `slice-model-source-orphan`.
 - **Never park the slice on uncertainty.** Record the `agreement` verdict and proceed; the kernel derives `[unknown]` / `[conflict]` / `[divergence]`.

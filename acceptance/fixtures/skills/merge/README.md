@@ -1,6 +1,6 @@
 # `/spec:merge` worked-example fixtures
 
-Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge/SKILL.md`](../../../../plugins/spec/skills/merge/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `.metadata.yaml`) and the visible output the body must emit.
+Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge/SKILL.md`](../../../../plugins/spec/skills/merge/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml`) and the visible output the body must emit.
 
 ## Fixture matrix
 
@@ -18,7 +18,7 @@ Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge
   README.md               # what the fixture exercises
   input/
     plan.yaml             # the plan state /spec:merge sees on entry
-    slice-metadata.yaml   # the slice's .specify/slices/<name>/.metadata.yaml on entry
+    slice-metadata.yaml   # the slice's .specify/slices/<name>/metadata.yaml on entry
   expected-stop-hint.md   # for failure cases: the stop hint the body emits
   expected-trace.md       # for success cases: the body's visible behaviour
 ```

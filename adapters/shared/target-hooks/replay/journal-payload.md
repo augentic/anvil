@@ -23,9 +23,9 @@ Example NDJSON line (illustrative):
 
 Taxonomy reference: [specify-cli `DECISIONS.md` — journal events](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
 
-## Aspirational `.metadata.yaml` block (future CLI)
+## Aspirational `metadata.yaml` block (future CLI)
 
-the capture-backed replay workflow defines an additive block targets MAY write to `$SLICE_DIR/.metadata.yaml` once a CLI-owned surface lands. **Agents must not hand-edit this block in v1** — journal-only recording until then.
+the capture-backed replay workflow defines an additive block targets MAY write to `$SLICE_DIR/metadata.yaml` once a CLI-owned surface lands. **Agents must not hand-edit this block in v1** — journal-only recording until then.
 
 ```yaml
 replay:
@@ -41,7 +41,7 @@ Worked examples:
 - With block: [`acceptance/fixtures/targets/omnia/with-replay/`](../../../../acceptance/fixtures/targets/omnia/with-replay/)
 - Without block (omission-is-not-an-error): [`acceptance/fixtures/targets/omnia/without-replay/`](../../../../acceptance/fixtures/targets/omnia/without-replay/)
 
-The block is additive; it must not reshape other `.metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
+The block is additive; it must not reshape other `metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
 
 ## See also
 

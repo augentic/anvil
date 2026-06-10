@@ -2,13 +2,20 @@
 
 Filled run-summaries for manual scenario runs. Run records are the audit trail; they are kept **separate from the scenario catalog** so the scenarios stay pristine fixtures and the catalog (`acceptance/scenarios/README.md`) tracks only status.
 
+## How to read a run record
+
+1. **Filename** — `<id>.<result>.md` (e.g. `documentation-one-slice.pass.md`).
+2. **Title** — `# Run: <id> — **pass**` (or `fail` / `deferred`) is the headline verdict.
+3. **Assertions** — every scenario assertion should be `pass` for an overall pass.
+4. **Catalog** — [`acceptance/scenarios/README.md`](../scenarios/README.md) mirrors status (`passed` / `failed` / `deferred`).
+
 ## How to record a run
 
-1. Copy [`acceptance/shared/run-summary-template.md`](../shared/run-summary-template.md) to `acceptance/runs/<id>-<date>.md` (e.g. `pure-intent-2026-06-04.md`).
-2. Fill every section that the scenario's declared `stages` covers; mark the rest `n/a`.
-3. Capture the **Artefact snapshot** with `scripts/snapshot.sh "$SANDBOX"` so the record stands alone; deeper read-only inspection verbs are in [`acceptance/shared/inspect.md`](../shared/inspect.md).
-4. Set the **Verdict** to `pass` / `fail` / `deferred`.
+1. Copy [`acceptance/shared/run-template.md`](../shared/run-template.md) to `acceptance/runs/<id>.<result>.md` (e.g. `pure-intent.pass.md`).
+2. Set the title and fill **Context**, **Assertions**, **Deviations**, **Notes**, and **Evidence**.
+3. On `pass`, skip the fail-only sections at the bottom of the template.
+4. On `fail` or `deferred`, add **Fault**, **Failure detail**, and (when useful) **Plan structure**; link a follow-up issue from **Notes**.
 5. Update the scenario's status in the [catalog](../scenarios/README.md).
-6. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from the run record.
+6. Retain the sandbox under `acceptance/.sandbox/<id>/`; use `scripts/snapshot.sh "$SANDBOX"` to inspect (see [`acceptance/shared/inspect.md`](../shared/inspect.md)).
 
 These files are prose (no scenario frontmatter), so `specify lint framework` skips them. Commit them as the audit trail, or keep them with the run evidence for a fully local run.

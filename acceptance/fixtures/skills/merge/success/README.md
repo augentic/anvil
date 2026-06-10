@@ -14,7 +14,7 @@ The skill body MUST:
 4. Run the AskQuestion confirmation when interactive (skip when `SPECIFY_PLAN_LOCK_HELD=1`).
 5. Run `specify slice merge password-hash-rotate --format json` exactly once. The CLI atomically:
    - applies the delta merge against `.specify/specs/`,
-   - transitions `.metadata.yaml.status` to `merged`,
+   - transitions `metadata.yaml.status` to `merged`,
    - moves `.specify/slices/password-hash-rotate/` into `.specify/archive/YYYY-MM-DD-password-hash-rotate/`,
    - stamps `plan.yaml.slices[<slice>].status = done` (the sole writer of per-entry `done`).
 6. Return the merge summary (archive path + merged spec list) to the caller.

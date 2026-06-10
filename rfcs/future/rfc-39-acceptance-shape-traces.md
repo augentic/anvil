@@ -135,7 +135,7 @@ The two prerequisites named in §"Trigger conditions" — **typed run records** 
 Give run-summaries machine-readable frontmatter so verdicts can be filed and reconciled.
 
 - New `schemas/acceptance/run.schema.json` in `augentic/specify-cli`; embed it as `RUN_JSON_SCHEMA` (constant in `crates/schema/src/constants.rs`, export in `crates/schema/src/lib.rs`, parity + compile entries in `crates/schema/tests/schemas.rs` — mirroring every other embedded schema constant).
-- Add the frontmatter block to [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) and reverse the prose-only note in [`acceptance/runs/README.md`](../../acceptance/runs/README.md) (and the matching note in `docs/contributing/checks.md`).
+- Add the frontmatter block to [`acceptance/shared/run-template.md`](../../acceptance/shared/run-template.md) and reverse the prose-only note in [`acceptance/runs/README.md`](../../acceptance/runs/README.md) (and the matching note in `docs/contributing/checks.md`).
 - Fields: `scenario`, `date`, `verdict` (`pass | fail | deferred`), `wave`, `binary { version, path }`, `issues[]`, `operator`.
 
 ### P1 — Status reconciler
@@ -148,7 +148,7 @@ A native `specify lint framework` check (no Python), modelled on the existing cr
 
 ### P2 — Evidence capture helper
 
-A small bash `tee` / `script(1)` helper that writes each command's output under the run's evidence directory, referenced from [`acceptance/shared/meta-prompts.md`](../../acceptance/shared/meta-prompts.md) and the run-summary template. Pure setup/capture aid — it drives no `/spec:*` command and grades nothing, so the `automated-runner-added` negative-expectation stays held.
+A small bash `tee` / `script(1)` helper that writes each command's output under the run's evidence directory, referenced from [`acceptance/shared/prompts.md`](../../acceptance/shared/prompts.md) and the run-summary template. Pure setup/capture aid — it drives no `/spec:*` command and grades nothing, so the `automated-runner-added` negative-expectation stays held.
 
 ### P3 — Cross-repo coverage map
 
@@ -190,5 +190,5 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 - [`acceptance/scenarios/README.md`](../../acceptance/scenarios/README.md) — the scenario catalog and status legend (`automated` / `manual`).
 - [`acceptance/scenarios/pure-intent.md`](../../acceptance/scenarios/pure-intent.md) (manual) and the `combined-evidence` fixture row in [`acceptance/scenarios/README.md § Automated coverage`](../../acceptance/scenarios/README.md#automated-coverage) — `manual` and `fixture` exemplars.
 - [`acceptance/fixtures/skills/build/success/expected-trace.md`](../../acceptance/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
-- [`acceptance/shared/run-summary-template.md`](../../acceptance/shared/run-summary-template.md) — where shape/trace verdicts are filed.
+- [`acceptance/shared/run-template.md`](../../acceptance/shared/run-template.md) — where shape/trace verdicts are filed.
 - [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-acceptance-suite) — the acceptance-proof track this RFC serves.

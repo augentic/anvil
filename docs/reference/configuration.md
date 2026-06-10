@@ -1,6 +1,6 @@
 # Configuration Files
 
-Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills — direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `.metadata.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
+Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills — direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `metadata.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
 
 ## Contents
 
@@ -8,7 +8,7 @@ Specify uses several YAML and Markdown files for configuration. All are managed 
 - [plan.yaml](#planyaml)
 - [registry.yaml](#registryyaml)
 - [change.md](#changemd)
-- [.metadata.yaml](#metadatayaml)
+- [metadata.yaml](#metadatayaml)
 
 ## project.yaml
 
@@ -172,9 +172,9 @@ into Omnia. Priority: user registration, password reset.
   - `legacy-monolith`: 24 hours
 ```
 
-## .metadata.yaml
+## metadata.yaml
 
-**Location:** `.specify/slices/<name>/.metadata.yaml`
+**Location:** `.specify/slices/<name>/metadata.yaml`
 **Created by:** `specify slice create`
 **Modified by:** `specify slice transition`, `specify slice merge`
 

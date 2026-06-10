@@ -42,7 +42,7 @@ A repeatable loop for adding one scenario:
 1. **Write the frontmatter** against the scenario schema (`[schemas/authoring/scenario.schema.json](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json)` in `augentic/specify-cli`). Closed fields: `kind` (`suite` for these), `backend`, `entrypoint`, `stages` (a contiguous prefix of `[plan, refine, build, merge, drop]`), `isolation`. `assertions` / `expected-artifacts` are free-form kebab-case.
 2. **Pick the backend** with the decision rule above.
 3. **If fixture** — add or extend the named test in `augentic/specify-cli` (`tests/workflow/`, `tests/plan/end_to_end.rs`, `tests/slice/synthesize.rs`, `tests/slice/build.rs`, `tests/workspace.rs`) and reference its corpus under `acceptance/fixtures/`. The `.md` carries the "Automated (`backend: fixture`)" callout plus an assertion→coverage map.
-4. **If manual** — factor shared setup into `[shared/setup.md](../../acceptance/shared/setup.md)`, inline only the scenario delta, and rely on the Prompt A / Prompt B [meta-prompts](../../acceptance/shared/meta-prompts.md) to drive it.
+4. **If manual** — factor shared setup into `[shared/setup.md](../../acceptance/shared/setup.md)`, inline only the scenario delta, and rely on the Prompt A / Prompt B [prompts](../../acceptance/shared/prompts.md) to drive it.
 5. **Register it** in the `[acceptance/scenarios/README.md](../../acceptance/scenarios/README.md)` catalog (wave + status). That table is the single source of truth.
 6. **Validate** — `make lint` checks frontmatter, id-uniqueness, artifact-path safety, and links.
 
@@ -105,7 +105,7 @@ Once the taxonomy and the fixture-vs-manual discipline are habit, new capabiliti
 
 - `[docs/contributing/acceptance.md](../../docs/contributing/acceptance.md)` — the two-surface model and the "what keeps a scenario manual" categories.
 - `[acceptance/scenarios/README.md](../../acceptance/scenarios/README.md)` — the scenario catalog, waves, and status legend.
-- `[acceptance/shared/setup.md](../../acceptance/shared/setup.md)` and `[acceptance/shared/meta-prompts.md](../../acceptance/shared/meta-prompts.md)` — shared setup and the Prompt A / B operator aids.
+- `[acceptance/shared/setup.md](../../acceptance/shared/setup.md)` and `[acceptance/shared/prompts.md](../../acceptance/shared/prompts.md)` — shared setup and the Prompt A / B operator aids.
 - The `contract-routing` fixture row in `[acceptance/scenarios/README.md § Automated coverage](../../acceptance/scenarios/README.md#automated-coverage)` and the manual `[cross-repo-contract-flow.md](../../acceptance/scenarios/cross-repo-contract-flow.md)` — the fixture/manual split-by-surface precedent.
 - `[schemas/authoring/scenario.schema.json](https://github.com/augentic/specify-cli/blob/main/schemas/authoring/scenario.schema.json)` — the scenario frontmatter contract.
 - [RFC-39](future/rfc-39-acceptance-shape-traces.md) — the `shape` tier and promotion path these scenarios graduate through (deferred).

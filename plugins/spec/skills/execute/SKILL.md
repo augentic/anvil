@@ -14,7 +14,7 @@ description: Drive an approved plan through refine → build → merge per entry
 3. For each `specify plan next` result, route the active slice into its workspace slot when `project` is set, then invoke `/spec:refine` (when the slice is fresh), `/spec:build`, and `/spec:merge` — the only writer of per-entry `done`.
 4. Stop on the first build non-zero exit or merge baseline conflict; leave the entry `in-progress` and surface the structured hint from [`../../references/stop-conditions.md`](../../references/stop-conditions.md).
 5. On `drained`, print `drained — run /spec:finalize <name>` and exit — without acquiring the lock when the first `specify plan next` returns drained; otherwise release the lock after the loop.
-6. Re-entry is implicit: re-running `/spec:execute` after any stop reads `plan.yaml` + slice `.metadata.yaml`, picks up the active `in-progress` entry, and resumes mid-loop — no flags, no resume tokens.
+6. Re-entry is implicit: re-running `/spec:execute` after any stop reads `plan.yaml` + slice `metadata.yaml`, picks up the active `in-progress` entry, and resumes mid-loop — no flags, no resume tokens.
 
 ## Plan lock
 Every skill that touches plan state from outside the loop reuses the shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md) verbatim. On `plan-lock-busy`, exit immediately with the holder pid read from the lockfile body.
@@ -25,7 +25,7 @@ When the active plan entry carries a `project` field, plan artifacts stay at the
 
 ## Phase invocation
 
-Inside the lock, after routing, sequence the three phase skills against the active `in-progress` entry. Their skill bodies are the authoritative source of phase behaviour; this skill only sequences them and reads slice lifecycle from `.metadata.yaml` and phase exit codes; not an on-disk outcome field.
+Inside the lock, after routing, sequence the three phase skills against the active `in-progress` entry. Their skill bodies are the authoritative source of phase behaviour; this skill only sequences them and reads slice lifecycle from `metadata.yaml` and phase exit codes; not an on-disk outcome field.
 
 | Phase | Skill body | Trigger |
 |---|---|---|
