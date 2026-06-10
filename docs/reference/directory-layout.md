@@ -32,8 +32,10 @@ contracts/                                  # Baseline API contracts
 │   ├── manifests/targets/<name>/           # Target adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{shape,build,merge}.md
-│   └── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
-│       └── index.jsonl
+│   ├── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
+│   │   └── index.jsonl
+│   └── scratch/<adapter>/                  # Per-operation agent scratch lanes ($SCRATCH_DIR)
+│       └── {survey,<slice>}/
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
@@ -97,7 +99,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `cache/`
 
-Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `entries/<fingerprint>/`, the per-operation agent scratch lanes under `scratch/{survey,<slice>}/`, and an append-only `index.jsonl` at the adapter root. The whole `cache/` tree is regenerable and safe to delete.
+Three sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `<fingerprint>/` plus an append-only `index.jsonl` at the adapter root (on `cache: opt-out` only the index appears). `scratch/<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen). The whole `cache/` tree is regenerable and safe to delete.
 
 ### `workspace/`
 

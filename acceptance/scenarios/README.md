@@ -24,7 +24,7 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | Combined evidence (code + docs) | `combined-evidence` | [automated](#automated-coverage) |
 | `[divergence]` from authority resolution | `divergence-authority` | [automated](#automated-coverage) |
 | `[conflict]` from same-authority disagreement | `same-authority-conflict` | [automated](#automated-coverage) |
-| Cross-source propose-time merge | [`cross-source-merge`](cross-source-merge.md) | pending |
+| Cross-source propose-time merge | [`cross-source-merge`](cross-source-merge.md) | passed |
 | Multi-repo assignment from a workspace | `multi-repo-workspace` | [automated](#automated-coverage) |
 | Operator amends one-slice plan into two | `amend-into-two` | [automated](#automated-coverage) |
 | Single-project plan generation | [`plan-single-project`](plan-single-project.md) | pending |
