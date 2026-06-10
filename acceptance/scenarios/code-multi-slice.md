@@ -29,11 +29,11 @@ Scenario ID: `code-multi-slice`
 
 ## Intent
 
-Prove `code-typescript` survey and the enumerate / repair loop under `/spec:plan`: a bound legacy repo maps to multiple slices with `Sources: [<legacy-key>]` provenance, and the under-slicing failure mode (collapsing distinct behaviors into one slice) is caught. The scenario stops at Gate 1.
+Prove `typescript` survey and the enumerate / repair loop under `/spec:plan`: a bound legacy repo maps to multiple slices with `Sources: [<legacy-key>]` provenance, and the under-slicing failure mode (collapsing distinct behaviors into one slice) is caught. The scenario stops at Gate 1.
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Bind a small legacy TypeScript service as a `code-typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Bind a small legacy TypeScript service as a `typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
 
 ## Invocation
 

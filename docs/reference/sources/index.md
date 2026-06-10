@@ -1,6 +1,6 @@
 # Source Adapters
 
-> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `code-typescript`, `screenshots`, `captures`) live at [`adapters/sources/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/sources). The output-side counterparts are documented under [Target adapters](../targets/index.md).
+> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) live at [`adapters/sources/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/sources). The output-side counterparts are documented under [Target adapters](../targets/index.md).
 
 ## What is a source adapter?
 
@@ -19,7 +19,7 @@ You bind sources per change at plan time (`/spec:plan <name> source docs=./desig
 | ------- | ----- | ------------------ | ----------- |
 | `intent` | An operator-supplied free-form string | `intent` | The degenerate N=1 entry point; backs every plan, including pure greenfield work. |
 | `documentation` | A read-only directory of written docs | `documentation` | Design notes, specs, and operator-authored intent. |
-| `code-typescript` | A read-only TypeScript/JavaScript source tree | `behaviour` | Reconstructing behaviour from a legacy service. |
+| `typescript` | A read-only TypeScript/JavaScript source tree | `behaviour` | Reconstructing behaviour from a legacy service. |
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
@@ -31,7 +31,7 @@ Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`
 
 ```yaml
 # yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
-name: code-typescript
+name: typescript
 version: 1
 axis: source
 execution: agent

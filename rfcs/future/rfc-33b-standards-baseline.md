@@ -35,7 +35,7 @@ Any one of the following promotes RFC-33b from deferred to active:
 2. **Pre-existing codebase intake.** A consumer project onboards code that did not flow through `/spec:build` — for example the TypeScript→Rust WASM reconstruction input named in `.cursor/rules/project.mdc` §"Main Inputs". Day-one scans on that input are expected to surface mass legitimate findings that cannot be cleared before CI is enabled.
 3. **Operator policy change.** "Resolve every finding before release" stops being feasible at the team's current cadence, and staged remediation across releases becomes the norm. At that point the `last.json` + diff verb signal becomes non-trivial.
 
-Each trigger has a clean owner: (1) is detected by codex resolver output deltas, (2) is detected by the source adapter onboarding the codebase (`code-typescript`, future `code-java`, …), (3) is an explicit operator decision documented alongside the project's release runbook.
+Each trigger has a clean owner: (1) is detected by codex resolver output deltas, (2) is detected by the source adapter onboarding the codebase (`typescript`, future `java`, …), (3) is an explicit operator decision documented alongside the project's release runbook.
 
 ### What this RFC does not repeat
 

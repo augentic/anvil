@@ -34,8 +34,8 @@ The operator appends zero or more `source <key>=<adapter>:<binding>` positionals
 ```
 
 - `<key>` is a kebab-case identifier used as the slot in `plan.yaml.sources.<key>`.
-- `<adapter>` is the kebab-case name of the bound source adapter (e.g. `intent`, `documentation`, `code-typescript`, `screenshots`).
-- `<binding>` is either a path (e.g. `documentation:./design-notes/identity`, `code-typescript:./vendor/legacy-monolith`) or the literal form `value:<literal>` (e.g. `intent:value:fix typo in user.rs`). Exactly one of `path` or `value` is required per binding.
+- `<adapter>` is the kebab-case name of the bound source adapter (e.g. `intent`, `documentation`, `typescript`, `screenshots`).
+- `<binding>` is either a path (e.g. `documentation:./design-notes/identity`, `typescript:./vendor/legacy-monolith`) or the literal form `value:<literal>` (e.g. `intent:value:fix typo in user.rs`). Exactly one of `path` or `value` is required per binding.
 - When the operator passes no `source` tokens, elicit a one-line intent in step 2 and scaffold with `--source intent=intent:value:<elicited intent>`. Slice rows are written by `propose --from`, not at create time.
 
 The skill forwards every binding to `specify plan create --source <key>=<adapter>:<binding>`; the CLI canonicalises it into the structured `plan.yaml.sources.<key>: { adapter, path? | value? }` shape.

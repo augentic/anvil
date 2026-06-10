@@ -1,6 +1,6 @@
 # TypeScript / JavaScript source extract
 
-`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `code-typescript`. Your job: for a single `(source, lead)` pair, locate the matching TypeScript module(s) under `$SOURCE_DIR`, read the surrounding code, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`.
+`/spec:refine` invokes this brief once per `slices[].sources[]` binding whose adapter is `typescript`. Your job: for a single `(source, lead)` pair, locate the matching TypeScript module(s) under `$SOURCE_DIR`, read the surrounding code, and emit one Evidence YAML document the CLI persists to `.specify/slices/<slice>/evidence/<source>.yaml`.
 
 ## Inputs
 

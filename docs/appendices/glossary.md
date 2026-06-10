@@ -163,7 +163,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.

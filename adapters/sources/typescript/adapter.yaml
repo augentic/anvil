@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
-name: code-typescript
+name: typescript
 version: 1
 axis: source
 execution: agent

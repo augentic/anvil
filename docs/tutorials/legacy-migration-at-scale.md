@@ -5,14 +5,14 @@ Bring existing codebases into Specify through source adapters rather than rewrit
 ## Prerequisites
 
 - Completed [Quick start](quick-start.md)
-- A legacy codebase suitable for the `code-typescript` source adapter (TypeScript today; language siblings follow the same pattern)
+- A legacy codebase suitable for the `typescript` source adapter (TypeScript today; language siblings follow the same pattern)
 
 ## How legacy code enters Specify
 
 At plan time, bind a code source alongside or instead of documentation:
 
 ```text
-/spec:plan legacy-migration source legacy=code-typescript:./vendor/monolith
+/spec:plan legacy-migration source legacy=typescript:./vendor/monolith
 ```
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`.

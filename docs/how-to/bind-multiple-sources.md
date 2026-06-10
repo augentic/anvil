@@ -9,7 +9,7 @@ Reconcile evidence from more than one source adapter at plan time.
 Append multiple `source` positionals after the change name:
 
 ```text
-/spec:plan identity-revamp source legacy=code-typescript:./vendor/monolith source docs=documentation:./design-notes
+/spec:plan identity-revamp source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
 Each binding creates a slot in `plan.yaml.sources` and contributes leads to `discovery.md`.
@@ -20,7 +20,7 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 | ---- | ------- | -------- |
 | Path binding | `docs=documentation:./design-notes` | Filesystem tree |
 | Value binding | `intent=intent:value:fix typo in user.rs` | Inline operator intent |
-| Code binding | `legacy=code-typescript:./src` | Legacy codebase survey |
+| Code binding | `legacy=typescript:./src` | Legacy codebase survey |
 
 ## Multi-source slices
 
@@ -43,5 +43,5 @@ When summaries materially disagree on a merged slice, the plan skill adds `## Li
 ## See also
 
 - [/spec:plan](../reference/change-skills/plan.md) — source binding grammar
-- [Legacy migration at scale](../tutorials/legacy-migration-at-scale.md) — code-typescript orientation
+- [Legacy migration at scale](../tutorials/legacy-migration-at-scale.md) — typescript orientation
 - [Resolve spec conflicts](resolve-spec-conflicts.md) — after refine surfaces tags

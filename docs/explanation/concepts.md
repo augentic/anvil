@@ -142,7 +142,7 @@ A **change** is the operator-defined umbrella that coordinates one or more slice
 
 Specify splits adapters by direction.
 
-A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `captures`, `screenshots`.
+A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `typescript`, `captures`, `screenshots`.
 
 A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `shape` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 

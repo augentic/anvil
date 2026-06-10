@@ -1,6 +1,6 @@
 # Fixture: combined documentation + legacy
 
-Multi-source slice where a `documentation` Evidence and a `code-typescript` Evidence agree on a `id` after reconciliation. Matches workflow §Worked multi-source `plan.yaml` (slice `identity-user-registration`).
+Multi-source slice where a `documentation` Evidence and a `typescript` Evidence agree on a `id` after reconciliation. Matches workflow §Worked multi-source `plan.yaml` (slice `identity-user-registration`).
 
 Playbook rules exercised:
 

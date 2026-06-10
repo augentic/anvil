@@ -1,6 +1,6 @@
-# `code-typescript` source adapter fixture
+# `typescript` source adapter fixture
 
-Tiny Express service mirroring a small legacy monolith. It documents the expected `code-typescript` source-adapter shape for acceptance scenario `4` (`code, multi-slice` decomposes the source tree into leads).
+Tiny Express service mirroring a small legacy monolith. It documents the expected `typescript` source-adapter shape for acceptance scenario `4` (`code, multi-slice` decomposes the source tree into leads).
 
 ## Layout
 

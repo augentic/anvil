@@ -24,7 +24,7 @@ Specify has two adapter roles with a shared shape. **Source adapters** turn exte
 
 | Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
 | -------- | ------------ | --------------------------- | ------------------------------------------------ | ------------------------ |
-| `source` | input        | `survey`, `extract`      | `intent`, `documentation`, `code-typescript`, `screenshots` | `adapters/sources/<name>/`        |
+| `source` | input        | `survey`, `extract`      | `intent`, `documentation`, `typescript`, `screenshots` | `adapters/sources/<name>/`        |
 | `target` | output       | `shape`, `build`, `merge`   | `omnia`, `vectis`, `contracts`                   | `adapters/targets/<name>/`        |
 
 Both ship `adapter.yaml` validated by an axis-specific schema (`schemas/source.schema.json` or `schemas/target.schema.json` distributed with the CLI). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same brief layout, same WASI tool sidecar story. The axis decides the operations.
@@ -35,7 +35,7 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 
 ```yaml
 # adapters/sources/<name>/adapter.yaml
-name: code-typescript
+name: typescript
 version: 1
 axis: source
 execution: agent
@@ -121,7 +121,7 @@ Target-specific structured outputs are produced by `build` alongside the code th
 <p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target shape; target build/merge lands code.</p>
 </div>
 
-The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/code-typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
+The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and `specify plan propose --from` write slice bindings into `plan.yaml`.
 

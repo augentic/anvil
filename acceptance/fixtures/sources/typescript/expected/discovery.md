@@ -1,6 +1,6 @@
 # Discovery — fixture extract
 
-> Only the `## Lead inventory` section belongs to the source adapter; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `code-typescript` survey brief appends lead blocks under `## Lead inventory`; it never writes the heading itself.
+> Only the `## Lead inventory` section belongs to the source adapter; the surrounding sections are owned by `/spec:plan` and are reproduced here for context. The `typescript` survey brief appends lead blocks under `## Lead inventory`; it never writes the heading itself.
 
 ## Summary
 
@@ -11,7 +11,7 @@
 
 | key             | adapter         | path           |
 | --------------- | --------------- | -------------- |
-| legacy-monolith | code-typescript | ./source       |
+| legacy-monolith | typescript | ./source       |
 
 ## Lead inventory
 

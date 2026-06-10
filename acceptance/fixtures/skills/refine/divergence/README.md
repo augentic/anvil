@@ -8,4 +8,4 @@ Playbook rules exercised:
 - [`tags.md`](../../../../../plugins/spec/references/synthesis/tags.md) — tag/`Status` coherence; the `slice.synthesis.divergence` journal event the skill body emits.
 - [`claim-reconciliation.md`](../../../../../plugins/spec/references/synthesis/claim-reconciliation.md) — `excerpt` claim becomes commentary on a `[divergence]` block when the documentation `requirement` overrides it.
 
-Slice: `identity-password-reset`, target `omnia`. `documentation` says expiry is 30 minutes; `code-typescript` observed 24 hours.
+Slice: `identity-password-reset`, target `omnia`. `documentation` says expiry is 30 minutes; `typescript` observed 24 hours.

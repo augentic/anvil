@@ -13,5 +13,5 @@ plan-sources:
     adapter: documentation
     path: ./design-notes/identity
   legacy-monolith:
-    adapter: code-typescript
+    adapter: typescript
     path: ./vendor/legacy-monolith

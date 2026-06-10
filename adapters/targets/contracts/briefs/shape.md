@@ -35,7 +35,7 @@ The merge gate runs `specify tool run contract -- "$PROJECT_ROOT/contracts" --fo
 
 ## Source-driven authoring vs import
 
-The contracts target supports both contract-first authoring (specs drive a new contract) and contract-given import (operator supplies an external OpenAPI / AsyncAPI / JSON Schema file and the build step normalises it). The `Sources:` provenance on each requirement in `specs/<unit>/spec.md` tells `/spec:build` which path applies — a `documentation` or `intent` source typically signals authoring; a code-source binding (`code-typescript`, future contract source adapters) typically signals import or reverse-engineering from observed behaviour.
+The contracts target supports both contract-first authoring (specs drive a new contract) and contract-given import (operator supplies an external OpenAPI / AsyncAPI / JSON Schema file and the build step normalises it). The `Sources:` provenance on each requirement in `specs/<unit>/spec.md` tells `/spec:build` which path applies — a `documentation` or `intent` source typically signals authoring; a code-source binding (`typescript`, future contract source adapters) typically signals import or reverse-engineering from observed behaviour.
 
 When a slice is import-driven, `design.md` should name the supplied file path and the format detected. The `build` brief's format sub-flows handle version detection and upgrades (Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → AsyncAPI 3.0, JSON Schema draft-04/06/07/2019-09 → 2020-12) per `references/import-upgrade-policy.md`.
 

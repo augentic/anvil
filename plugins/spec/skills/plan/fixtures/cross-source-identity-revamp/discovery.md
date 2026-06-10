@@ -9,7 +9,7 @@ Sources: 2. Leads: 5.
 | key                  | adapter         | path                          |
 |----------------------|-----------------|-------------------------------|
 | identity-design-notes | documentation  | ./design-notes/identity       |
-| legacy-monolith      | code-typescript | ./vendor/legacy-monolith      |
+| legacy-monolith      | typescript | ./vendor/legacy-monolith      |
 
 ## Lead inventory
 

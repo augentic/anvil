@@ -23,7 +23,7 @@ Project-level configuration that persists across changes. Two shapes — the reg
 ```yaml
 name: my-project
 target: https://github.com/augentic/specify/targets/omnia
-sources: [intent, documentation, code-typescript]
+sources: [intent, documentation, typescript]
 specify-version: "2.0.0"
 workspace: false
 description: |
@@ -77,7 +77,7 @@ sources:
     adapter: documentation
     path: ./design-notes/identity
   legacy-monolith:
-    adapter: code-typescript
+    adapter: typescript
     path: ./vendor/legacy-monolith
 slices:
   - name: identity-user-registration

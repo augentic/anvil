@@ -120,7 +120,7 @@ Target adapters live under `adapters/targets/<name>/`:
 | Vectis    | `https://github.com/augentic/specify/adapters/targets/vectis`      | Crux cross-platform   |
 | Contracts | `https://github.com/augentic/specify/adapters/targets/contracts`   | API contracts         |
 
-First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `code-typescript`, `screenshots`.
+First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `typescript`, `screenshots`.
 
 ## Directory structure
 

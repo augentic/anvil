@@ -104,6 +104,6 @@ A `target: vectis` slice typically draws on one or more of:
 - **`intent`** — operator briefs and overrides (`authority: intent`).
 - **`documentation`** — written product / technical intent (`authority: documentation`).
 - **`screenshots`** — vision-assisted spatial inference producing `region` / `container` / `leaf` claims (`authority: documentation`). The spatial claims are how upstream UI evidence reaches the synthesiser; treat them as the structural backbone for screen-bearing requirements and view-struct fields.
-- **`code-typescript`** (or any future code source) — behavioural evidence from a legacy implementation (`authority: behaviour`). Useful when migrating an existing TypeScript surface to Crux.
+- **`typescript`** (or any future code source) — behavioural evidence from a legacy implementation (`authority: behaviour`). Useful when migrating an existing TypeScript surface to Crux.
 
 When sources disagree, follow the authority precedence (`intent > documentation > behaviour`) and resolution order defined in [`authority.md`](../references/spec-runtime/synthesis/authority.md) — Vectis does not override the global authority order.

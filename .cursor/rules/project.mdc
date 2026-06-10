@@ -60,7 +60,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── sources/            # Source adapters: adapter.yaml + briefs/{survey,extract}.md
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
-  │   ├── code-typescript/    # legacy TypeScript survey + extract
+  │   ├── typescript/    # legacy TypeScript survey + extract
   │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
   ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
