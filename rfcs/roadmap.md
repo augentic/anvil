@@ -152,7 +152,7 @@ specify execute resume <run-id>
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
-**Depends:** [RFC-30](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#bootstrap-upgrade-and-migration-lifecycle-rfc-30) (bootstrap/upgrade/migrate lifecycle) for adoption at scale.
+**Depends:** [RFC-30](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#bootstrap-upgrade-and-migration-lifecycle) (bootstrap/upgrade/migrate lifecycle) for adoption at scale.
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for rules, artifact templates, and tool manifests.
 
 #### RM-22: Hosted observability dashboards
