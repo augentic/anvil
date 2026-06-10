@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-# Print a read-only snapshot of an acceptance run's artifacts: the sandbox
+# Print a read-only snapshot of an eval run's artifacts: the sandbox
 # directory tree plus the bodies of the key Specify artifacts and the rendered
 # slice models. Reference from the **Evidence** section of a run record
-# (acceptance/shared/run-template.md); paste output on fail only.
+# (evals/shared/run-template.md); paste output on fail only.
 #
 # This is evidence capture only — it drives no /spec:* command, runs only
 # read-only `specify` verbs, and asserts nothing. It is not a scenario runner.
 #
 # Usage: bash ./scripts/snapshot.sh <sandbox-dir>
-#   e.g. bash ./scripts/snapshot.sh acceptance/.sandbox/pure-intent
+#   e.g. bash ./scripts/snapshot.sh evals/.sandbox/pure-intent
 
 set -euo pipefail
 

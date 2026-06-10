@@ -1,13 +1,13 @@
 # Run: `<id>` — **`<pass | fail | deferred>`**
 
-> Copy into `acceptance/runs/<id>.<result>.md` (e.g. `pure-intent.pass.md`), fill against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). Assertion ids and negative-expectations come from the scenario file — do not duplicate them in prose. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from **Notes**.
+> Copy into `evals/runs/<id>.<result>.md` (e.g. `pure-intent.pass.md`), fill against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). Assertion ids and negative-expectations come from the scenario file — do not duplicate them in prose. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from **Notes**.
 
 ## Context
 
 - **Scenario:** `<id>`
 - **Operator:** `<name or model identifier>`
 - **CLI:** `<command -v specify>` — `<specify --version>`
-- **Sandbox:** `<acceptance/.sandbox/<id>/>` (or list multiple roots for multi-fixture runs)
+- **Sandbox:** `<evals/.sandbox/<id>/>` (or list multiple roots for multi-fixture runs)
 
 ## Assertions
 

@@ -23,7 +23,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **One authored home per fact; derive the rest.** Each project's intent (`adapter`, `description`) lives in `.specify/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.specify/topology.lock` (RFC-36). `registry.yaml` carries membership and location only (plus optional greenfield adapter seed and cross-project `contracts` wiring) — not adapter/description for plan-time topology. Rich catalog metadata can still live in Backstage or another catalog; Specify consumes reviewable projections at the boundary.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
-- **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
+- **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
 - **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specdev lint`) and consumer-project **engineering standards** (`specrun lint`). Both share rule ids and the neutral `Diagnostic` finding shape via the RFC-28 substrate ([`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)); RFC-32 adds the consumer scanner substrate ([`DECISIONS.md` §Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)); RFC-34 adds declarative `CORE-*` convergence on the framework side ([standards layer](../docs/explanation/standards-layer.md)). Surfaces converge on the data type, fingerprint, validator, renderer, and blocking predicate — never on gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 - **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [From sources to slices](../docs/explanation/reconciliation.md) and [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
@@ -36,7 +36,7 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 Three tracks run in parallel:
 
-1. **Acceptance proof (RM-05)** — the release gate. The 2.0.0 cross-repo queue is the blocker; scenario #1 (pure intent, N=1) must pass before the rest of the queue drains. The deterministic CLI proof for fan-in/fan-out runs under `cargo make test` in `specify-cli` ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)); the remaining debt is manual LLM-driven scenario sweeps and generated-output-correctness gates per target.
+1. **Eval proof (RM-05)** — the release gate. The 2.0.0 cross-repo queue is the blocker; scenario #1 (pure intent, N=1) must pass before the rest of the queue drains. The deterministic CLI proof for fan-in/fan-out runs under `cargo make test` in `specify-cli` ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)); the remaining debt is the operator-driven eval sweep and generated-output-correctness gates per target.
 2. **Reconciliation polish (RFC-38)** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
 3. **Observability and portability (RM-14 / RM-15 / RM-18)** — most valuable once RM-05 proves the loop on realistic flows.
 
@@ -49,13 +49,13 @@ Three tracks run in parallel:
 
 ### Near Term
 
-#### RM-05: Multi-repo acceptance suite
+#### RM-05: Multi-repo eval suite
 
 **Goal:** Prove the `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` loop end-to-end on realistic multi-repo flows — not only isolated command behaviour.
-**Status:** Partial — the unified [`acceptance/scenarios/`](../acceptance/scenarios/README.md) pack defines 23 scenarios including extract failure (`extract-failure`), invalid evidence (`invalid-evidence`), source sandbox denial (`source-sandbox-denied`), execute build failure (`execute-build-failure`), step-through breakout (`stepthrough-breakout`), workspace breakout (`workspace-breakout`), dual-driving refusal (`dual-driving-refused`), and stale-workspace recovery (`stale-workspace-recovery`). `pure-intent` (N=1) — the N=1 release blocker — has `passed`; the rest of the catalog's run-summaries remain pending per the catalog.
+**Status:** Partial — the unified [`evals/scenarios/`](../evals/scenarios/README.md) pack defines 14 operator-driven scenarios including execute build failure (`execute-build-failure`), step-through breakout (`stepthrough-breakout`), workspace breakout (`workspace-breakout`), dual-driving refusal (`dual-driving-refused`), and stale-workspace recovery (`stale-workspace-recovery`); fully deterministic behaviors (extract failure, invalid evidence, source sandbox denial, …) are named tests in `specify-cli`, not catalog entries. `pure-intent` (N=1) — the N=1 release blocker — has `passed`; the rest of the catalog's run-summaries remain pending per the catalog.
 **Immediate task:** Run scenario #1 against the live `specify` binary and fill the run-summary. Halt on failure; triage before continuing.
 **Remaining fixture gap:** None outstanding in the catalog; the stale-workspace recovery scenario is now authored as `stale-workspace-recovery`.
-**Acceptance surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)). RM-05 owns the remaining debt: manual LLM-driven scenario sweeps and per-target generated-output correctness (see [docs/contributing/acceptance.md](../docs/contributing/acceptance.md)).
+**Proof surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)). RM-05 owns the remaining debt: the operator-driven eval sweep and per-target generated-output correctness (see [docs/contributing/evals.md](../docs/contributing/evals.md)).
 
 ---
 
@@ -178,7 +178,7 @@ specify execute resume <run-id>
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
-- Which acceptance fixtures best represent the product proof path now that scenario #1 is the release blocker?
+- Which eval fixtures best represent the product proof path now that scenario #1 is the release blocker?
 - What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work across multiple operators or agents?
 - What compatibility guarantees should adapter authors provide across adapter and declared-tool versions?

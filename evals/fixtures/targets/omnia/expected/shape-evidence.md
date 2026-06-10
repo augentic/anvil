@@ -1,6 +1,6 @@
 # Expected shape-injection evidence
 
-Synthesis (`/spec:refine`) MUST fold the Omnia `shape` brief's idiom guidance into the slice's `spec.md` and `design.md` regardless of source. A pure-intent fixture and a documentation-sourced fixture for the same slice MUST both surface every checkbox below; this is the acceptance contract for scenario #5h.
+Synthesis (`/spec:refine`) MUST fold the Omnia `shape` brief's idiom guidance into the slice's `spec.md` and `design.md` regardless of source. A pure-intent fixture and a documentation-sourced fixture for the same slice MUST both surface every checkbox below; this is the eval contract for scenario #5h.
 
 ## `spec.md` checklist
 

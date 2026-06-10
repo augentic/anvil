@@ -1,6 +1,6 @@
-# Acceptance packs
+# Eval packs
 
-Operator-driven acceptance scenarios and reference corpora for the Specify plugin repo. The scenarios covered here are agent-based. All deterministic tests live in `specify-cli`.
+Operator-driven eval scenarios and reference corpora for the Specify plugin repo. The scenarios covered here are agent-based. All deterministic tests live in `specify-cli`.
 
 Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — `Specify.toml` points to a valid `specify-cli` install location, network access for the adapter fetch, and `gh` for the finalize scenarios.
 
@@ -9,10 +9,10 @@ Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — 
 Tell a Cursor agent:
 
 ```text
-Run Specify's acceptance scenarios and report your findings.
+Run Specify's evals and report your findings.
 ```
 
-The prompt tells the agent to follow the runbook in [docs/contributing/acceptance.md](../docs/contributing/acceptance.md#agent-runbook): it installs the build under test (`make install-cli`), drives each agent-based scenario in [scenarios/](scenarios/README.md), and files a report under [runs/](runs/README.md).
+The prompt tells the agent to follow the runbook in [docs/contributing/evals.md](../docs/contributing/evals.md#agent-runbook): it installs the build under test (`make install-cli`), drives each agent-based scenario in [scenarios/](scenarios/README.md), and files a report under [runs/](runs/README.md).
 
 **N=1 hard halt:** if `[pure-intent](scenarios/pure-intent.md)` fails, the sweep stops there — triage and resume once it is green.
 
@@ -21,10 +21,10 @@ The prompt tells the agent to follow the runbook in [docs/contributing/acceptanc
 Tell a Cursor agent to run one named scenario, e.g.:
 
 ```text
-Run Specify's acceptance scenario <scenario> and report your findings.
+Run Specify's eval <scenario> and report your findings.
 ```
 
-Same delegation as **Run all scenarios**, but the agent follows the [single-scenario runbook](../docs/contributing/acceptance.md#running-a-single-scenario). Only the agent-based (`backend: manual`) scenarios are listed; the `backend: fixture` ones are proven by `cargo make test` in `specify-cli` (see [Automated coverage](scenarios/README.md#automated-coverage)), not by an agent.
+Same delegation as **Run all scenarios**, but the agent follows the [single-scenario runbook](../docs/contributing/evals.md#running-a-single-scenario).
 
 
 | Scenario                                                                        | What it exercises                                                        |
@@ -47,7 +47,7 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 
 ## Installing `specify-cli` runtime
 
-The agent runs this for you as runbook step 1; run it directly only when you want the static checks and a fresh build under test without the manual sweep.
+The agent runs this for you as runbook step 1; run it directly only when you want the static checks and a fresh build under test without the eval sweep.
 
 ```bash
 # build `specify` from the pinned cli source and symlink the build onto
@@ -55,7 +55,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 make install-cli
 ```
 
-`make install-cli` builds the resolved `cli` source from `[Specify.toml](Specify.toml)` (or a gitignored `Specify.local.toml` overlay), materializes `.cli/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic acceptance tests; those are owned by `specify-cli` (`cargo make test`).
+`make install-cli` builds the resolved `cli` source from `[Specify.toml](Specify.toml)` (or a gitignored `Specify.local.toml` overlay), materializes `.cli/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those are owned by `specify-cli` (`cargo make test`).
 
 ## Layout
 

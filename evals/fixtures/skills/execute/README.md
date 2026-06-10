@@ -1,6 +1,6 @@
 # `/spec:execute` worked-example fixtures
 
-Static fixtures pinning the four `/spec:execute` acceptance scenarios (see the [scenario catalog](../../../scenarios/README.md) and [`docs/reference/lifecycle.md`](../../../../docs/reference/lifecycle.md)):
+Static fixtures pinning the four `/spec:execute` eval scenarios (see the [scenario catalog](../../../scenarios/README.md) and [`docs/reference/lifecycle.md`](../../../../docs/reference/lifecycle.md)):
 
 | Scenario | Fixture directory | What it pins |
 |---|---|---|
@@ -14,4 +14,4 @@ Each fixture directory contains:
 - `input/plan.yaml` — the plan as it would exist on disk when `/spec:execute` runs. Always carries `lifecycle: approved`; per-entry `status` mirrors the scenario's starting state.
 - `expected.md` — narrative of the active slice, the stop reason (or drained exit), and the operator's next command.
 
-The fixtures are shape-only: they pin what the skill body must produce given a known plan state. The CLI-side acceptance harness replays them against the current lifecycle contract once `/spec:refine`, `/spec:build` + `/spec:merge`, and `/spec:finalize` have canonical envelopes.
+The fixtures are shape-only: they pin what the skill body must produce given a known plan state. The CLI-side eval harness replays them against the current lifecycle contract once `/spec:refine`, `/spec:build` + `/spec:merge`, and `/spec:finalize` have canonical envelopes.

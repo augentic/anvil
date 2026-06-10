@@ -4,7 +4,7 @@ Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build
 
 ## Fixture matrix
 
-| Fixture                     | Trigger                                             | Acceptance scenario | Expected output                                            |
+| Fixture                     | Trigger                                             | Eval scenario | Expected output                                            |
 | --------------------------- | --------------------------------------------------- | ------------------- | ---------------------------------------------------------- |
 | `failure-replay/`           | Target build brief exits non-zero on `cargo test`.  | #9 (build park)     | Stop hint with `failing-task` + `log-path`; slice stays `refined`; plan entry stays `in-progress`. |
 | `success/`                  | Target build brief completes; slice goes to `built`.| #9 happy-path       | `specify slice transition <slice> built`; control returns to caller. |
@@ -23,4 +23,4 @@ Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build
   expected-trace.md       # for success / breakout cases: the body's visible behaviour
 ```
 
-The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` and the per-target build briefs are wired into a CLI-side acceptance harness.
+The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` and the per-target build briefs are wired into a CLI-side eval harness.

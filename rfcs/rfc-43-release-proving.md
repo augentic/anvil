@@ -1,7 +1,9 @@
 # RFC-43: Release Proving
 
-> Status: Draft · Serves: [RM-05](roadmap.md#rm-05-multi-repo-acceptance-suite) · Complements: [RFC-42](rfc-42-acceptance.md) (capability-axis enrichment), [RFC-39](future/rfc-39-acceptance-shape-traces.md) (deferred shape tier), [RFC-44](rfc-44-architecture-seams.md) (the CLI-side levers), [RM-14](roadmap.md#rm-14-local-structured-workflow-events) (journal events)
+> Status: Draft · Serves: [RM-05](roadmap.md#rm-05-multi-repo-eval-suite) · Complements: [RFC-42](rfc-42-acceptance.md) (capability-axis enrichment), [RFC-39](future/rfc-39-acceptance-shape-traces.md) (deferred shape tier), [RFC-44](rfc-44-architecture-seams.md) (the CLI-side levers), [RM-14](roadmap.md#rm-14-local-structured-workflow-events) (journal events)
 > Provenance: findings from the 2026-06-11 architecture review of both repos (live trees; `specify-cli` mid extraction-cache removal). Sibling review: [REVIEW.md](../REVIEW.md), whose D2 items cover the accuracy fixes this RFC does not repeat.
+
+> **Status note.** Point (1) has since been resolved differently: the pack was renamed `acceptance/` → `evals/`, the `backend` field was removed from the scenario schema entirely (no `live`/`fixture` enum survives), the automated-coverage matrix was deleted, and deterministic proof lives only as named tests in `augentic/specify-cli` ([docs/contributing/evals.md](../docs/contributing/evals.md)). Points (2)–(4) — probe/judgment separation, lint-pinned catalog tables, and the tiered gate — remain open proposals; read their `backend:`-based mechanics against the new evals vocabulary. Body kept as written.
 
 ## Abstract
 
@@ -11,11 +13,11 @@ RFC-42's capability-axis plan, fixture-vs-manual decision rule, and one-catalog 
 
 ## Motivation — findings
 
-**F1 — "acceptance" is the wrong word, three ways.** It collides with the framework's own artifact vocabulary — requirement blocks and the SoW mapping already use *acceptance criteria* in the `spec.md` sense ([requirement-block.md](../plugins/spec/references/synthesis/requirement-block.md)). It implies customer UAT, when this is a vendor-run release gate. And the docs' own prose has already abandoned it: [docs/contributing/acceptance.md](../docs/contributing/acceptance.md) says "the deterministic CLI **proof**", "a release is **proven** only when both surfaces are green", "the manual **sweep**". `backend: manual` is similarly off — an agent drives the runbook, and the pack README has to clarify "the scenarios covered here are agent-based". The honest discriminator is **live** (live agent, live forge, live binary) vs **fixture** (deterministic, every commit).
+**F1 — "acceptance" is the wrong word, three ways.** It collides with the framework's own artifact vocabulary — requirement blocks and the SoW mapping already use *acceptance criteria* in the `spec.md` sense ([requirement-block.md](../plugins/spec/references/synthesis/requirement-block.md)). It implies customer UAT, when this is a vendor-run release gate. And the docs' own prose has already abandoned it: [docs/contributing/evals.md](../docs/contributing/evals.md) says "the deterministic CLI **proof**", "a release is **proven** only when both surfaces are green", "the manual **sweep**". `backend: manual` is similarly off — an agent drives the runbook, and the pack README has to clarify "the scenarios covered here are agent-based". The honest discriminator is **live** (live agent, live forge, live binary) vs **fixture** (deterministic, every commit).
 
-**F2 — grading is unstructured.** The agent runbook says "self-grade only the structurally checkable assertions", but no assertion defines its check. [pure-intent](../acceptance/scenarios/pure-intent.md) §Scope concedes that *every in-scope assertion is deterministic structure* — what is live is the skill loop, yet the grading of `plan-exists`, `plan-validates`, `sources-intent-only`, `refine-reaches-refined` is re-derived per run. The `negative-expectations` forbid an automated **runner**, fake forge, CI target, and golden bytes; none of them forbids a mechanical **grader** run after a live trial. The current posture conflates driving with grading.
+**F2 — grading is unstructured.** The agent runbook says "self-grade only the structurally checkable assertions", but no assertion defines its check. [pure-intent](../evals/scenarios/pure-intent.md) §Scope concedes that *every in-scope assertion is deterministic structure* — what is live is the skill loop, yet the grading of `plan-exists`, `plan-validates`, `sources-intent-only`, `refine-reaches-refined` is re-derived per run. The `negative-expectations` forbid an automated **runner**, fake forge, CI target, and golden bytes; none of them forbids a mechanical **grader** run after a live trial. The current posture conflates driving with grading.
 
-**F3 — status is hand-maintained in three places and has already rotted.** Catalog tables in [scenarios/README.md](../acceptance/scenarios/README.md), run-record filenames under [runs/](../acceptance/runs/README.md), and the RM-05 rollup each carry status by hand. [REVIEW.md](../REVIEW.md) D2 caught the automated-coverage matrix citing a test fn that does not exist (`synthesize_resolves_same_authority_conflict` vs the real `synthesize_same_authority_conflict`).
+**F3 — status is hand-maintained in three places and has already rotted.** Catalog tables in [scenarios/README.md](../evals/scenarios/README.md), run-record filenames under [runs/](../evals/runs/README.md), and the RM-05 rollup each carry status by hand. [REVIEW.md](../REVIEW.md) D2 caught the automated-coverage matrix citing a test fn that does not exist (`synthesize_resolves_same_authority_conflict` vs the real `synthesize_same_authority_conflict`).
 
 **F4 — the gate as defined has never closed.** 7 of 14 live scenarios are `pending`, and RFC-42 Phases 1–4 will grow the catalog. A single undifferentiated "every non-deferred entry passed" gate gets more expensive with every scenario added.
 
@@ -27,9 +29,9 @@ RFC-42's capability-axis plan, fixture-vs-manual decision rule, and one-catalog 
 | --- | --- | --- |
 | "acceptance" (umbrella) | **release proving** | "The release proof is green" is already the docs' sentence. |
 | Surface 1 — deterministic CLI proof | unchanged | Already well named. |
-| Surface 2 — "manual sweep" / `acceptance/` | **live trials**, directory `trials/` | Sea-trials connotation: the built system proven under real conditions before commissioning. `runs/` read naturally as trial records. |
+| Surface 2 — "manual sweep" / `evals/` | **live trials**, directory `trials/` | Sea-trials connotation: the built system proven under real conditions before commissioning. `runs/` read naturally as trial records. |
 | `backend: manual` | `backend: live` | Accurate pair with `fixture`; an agent, not a human hand, drives it. |
-| `docs/contributing/acceptance.md` | `docs/contributing/proving.md` | The umbrella doc. |
+| `docs/contributing/evals.md` | `docs/contributing/proving.md` | The umbrella doc. |
 
 Alternates considered: `proving/` for the directory too (strongest fit with existing prose, but overloads one word for umbrella and surface), `exercises/` (live-exercise sense, vaguer), `rehearsals/` (implies the run doesn't count). Keep the RFC and RM identifiers (RFC-39/40/42, RM-05); update their prose on next touch.
 
@@ -39,10 +41,10 @@ Blast radius — one lockstep change across both repos:
 | --- | --- | --- |
 | `schemas/authoring/scenario.schema.json` `backend` enum | specify-cli | `manual` → `live` (hard cut, no alias — house rule) |
 | `scenarios` wasi-tool | specify-cli | Re-validate against the new enum; rebuild `dist/` blob |
-| `acceptance/` tree | specify | Rename to `trials/`; frontmatter `backend:` flip in 14 scenario files |
-| CORE rule `config:` path globs touching `acceptance/` | specify | Update; includes the stale CORE-031 `acceptance/recorded/` reference (REVIEW D3) |
+| `evals/` tree | specify | Rename to `trials/`; frontmatter `backend:` flip in 14 scenario files |
+| CORE rule `config:` path globs touching `evals/` | specify | Update; includes the stale CORE-031 `evals/recorded/` reference (REVIEW D3) |
 | `Makefile`, `scripts/snapshot.sh`, `.gitignore` (`.sandbox`) | specify | Path updates |
-| `docs/contributing/acceptance.md`, mdBook `SUMMARY`, `AGENTS.md`, `README.md`, `rfcs/roadmap.md` prose | specify | Rename + terminology sweep |
+| `docs/contributing/evals.md`, mdBook `SUMMARY`, `AGENTS.md`, `README.md`, `rfcs/roadmap.md` prose | specify | Rename + terminology sweep |
 
 ## R2 — separate driving from grading
 
@@ -107,9 +109,9 @@ Phases 1–3 are independent of each other; only Phase 4 blocks on RFC-44. Nothi
 
 ## References
 
-- [docs/contributing/acceptance.md](../docs/contributing/acceptance.md) — the two-surface model, the "what keeps a scenario manual" categories, and the agent runbook this RFC mechanises.
-- [acceptance/scenarios/README.md](../acceptance/scenarios/README.md) — the catalog, status legend, and automated-coverage matrix.
-- [acceptance/shared/run-template.md](../acceptance/shared/run-template.md) and [acceptance/shared/prompts.md](../acceptance/shared/prompts.md) — the grading surfaces Phase 1 touches.
+- [docs/contributing/evals.md](../docs/contributing/evals.md) — the two-surface model, the "what keeps a scenario manual" categories, and the agent runbook this RFC mechanises.
+- [evals/scenarios/README.md](../evals/scenarios/README.md) — the catalog, status legend, and automated-coverage matrix.
+- [evals/shared/run-template.md](../evals/shared/run-template.md) and [evals/shared/prompts.md](../evals/shared/prompts.md) — the grading surfaces Phase 1 touches.
 - [RFC-42](rfc-42-acceptance.md) — capability axis, fixture-vs-manual rule, Phase 0 taxonomy this RFC extends.
 - [RFC-39](future/rfc-39-acceptance-shape-traces.md) — the deferred shape tier; journal probes are its cheap substitute for structural assertions.
 - [RFC-44](rfc-44-architecture-seams.md) — R2 (control flow into CLI verbs) drives Phase 4's promotions.

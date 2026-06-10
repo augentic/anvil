@@ -1,6 +1,6 @@
 # Operator prompts
 
-Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single platform acceptance scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator (`backend: manual`, "a human **or** agent follows this script").
+Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single platform eval scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator ("a human **or** agent follows this script").
 
 **These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Keep them as documentation next to the scenarios, never as an unattended job.
 
@@ -15,25 +15,25 @@ Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the 
 ## Prompt A — setup
 
 ```text
-You are the acceptance SETUP operator for Specify scenario <id>.
+You are the eval SETUP operator for Specify scenario <id>.
 Goal: bring a fresh, disposable environment to the exact pre-invocation state the
 scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- `specify`: the automated surface (runbook step 1) already ran `make install-cli`, which
+- `specify`: the deterministic surface (runbook step 1) already ran `make install-cli`, which
   symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
-  `../specify-cli/target/release/specify` path (see acceptance/shared/setup.md).
-- Scenario: acceptance/scenarios/<id>.md
-- Shared setup: acceptance/shared/setup.md (Prerequisites + the matching
+  `../specify-cli/target/release/specify` path (see evals/shared/setup.md).
+- Scenario: evals/scenarios/<id>.md
+- Shared setup: evals/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
 Do, in order, capturing each exact command and its verbatim output:
 1. Create the disposable directories the scenario/setup names under the pinned
-   sandbox `acceptance/.sandbox/<id>/` (recreate it clean, per
-   acceptance/shared/setup.md). Never reuse an existing project or a non-empty
+   sandbox `evals/.sandbox/<id>/` (recreate it clean, per
+   evals/shared/setup.md). Never reuse an existing project or a non-empty
    Specify state.
 2. Run the init / registry-add / brief-file steps verbatim using the bare
    `specify` command (which the PATH export resolves to the build under test).
@@ -50,18 +50,18 @@ Guardrails:
 ## Prompt B — run + confirm
 
 ```text
-You are the acceptance RUN+CONFIRM operator for Specify scenario <id>.
+You are the eval RUN+CONFIRM operator for Specify scenario <id>.
 Drive the live agent workflow end to end, capture evidence at every stage,
 self-verify the structurally-checkable assertions, and fill the run-summary.
 Pause at the human-only seams; never fabricate a result.
 
 Inputs:
-- The environment left by the SETUP prompt (the `acceptance/.sandbox/<id>/`
+- The environment left by the SETUP prompt (the `evals/.sandbox/<id>/`
   sandbox, the PATH-resolved `specify` build).
-- acceptance/scenarios/<id>.md (Invocation, Assertions, Negative
+- evals/scenarios/<id>.md (Invocation, Assertions, Negative
   Expectations).
-- acceptance/shared/run-template.md (simplified pass/fail layout).
-- acceptance/shared/inspect.md (the read-only render verbs for reviewing state).
+- evals/shared/run-template.md (simplified pass/fail layout).
+- evals/shared/inspect.md (the read-only render verbs for reviewing state).
 
 Drive, in order, recording the exact invocation and verbatim output for each
 stage the scenario's `stages` declares:
@@ -70,7 +70,7 @@ stage the scenario's `stages` declares:
    auto-stamp approval.
 2. Review seam: run `specify plan validate` and inspect plan.yaml read-only;
    record the slice shape. Use the read-only render verbs in
-   acceptance/shared/inspect.md to review state through the CLI rather than
+   evals/shared/inspect.md to review state through the CLI rather than
    hunting raw files.
 3. If the scenario executes: stamp Gate 1 only by running the literal
    `specify plan transition <name> approved` the plan printed.
@@ -93,7 +93,7 @@ Confirm (self-grade on durable STRUCTURE only — never a byte/golden compare):
 - On a normal pass, record negative expectations as one line: held.
 - Point **Evidence** at the retained sandbox and `scripts/snapshot.sh "$SANDBOX"`
   (do not paste full snapshot output on pass).
-- Fill the run-summary template and file it under acceptance/runs/
+- Fill the run-summary template and file it under evals/runs/
   <id>.<result>.md; set the title verdict; update the scenario's status
   in the catalog.
 

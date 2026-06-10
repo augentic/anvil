@@ -14,7 +14,7 @@ rule_hints:
 
 ## Rule
 
-Every scenario file's YAML frontmatter must satisfy the scenario schema (`scenario.schema.json`): valid YAML, the required fields, and the declared field shapes. The scenario files live partly under the un-indexed `acceptance/` tree, so the lint indexer runs a dedicated scenario discovery pass that walks the scenario roots itself and emits a `scenario` fact family carrying each file's parsed frontmatter.
+Every scenario file's YAML frontmatter must satisfy the scenario schema (`scenario.schema.json`): valid YAML, the required fields, and the declared field shapes. The scenario files live partly under the un-indexed `evals/` tree, so the lint indexer runs a dedicated scenario discovery pass that walks the scenario roots itself and emits a `scenario` fact family carrying each file's parsed frontmatter.
 
 This check is whole-tree: the `kind: schema` hint with `value: scenario` validates every discovered scenario's frontmatter against the registered scenario schema, emitting one finding per schema error. The rule's `path-pattern` is a sentinel include; the scenario schema selector evaluates the whole fact family regardless of the candidate set.
 

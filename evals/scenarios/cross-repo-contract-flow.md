@@ -2,7 +2,6 @@
 id: cross-repo-contract-flow
 owner: scenarios
 kind: suite
-backend: manual
 entrypoint: /spec:plan
 stages: [plan, refine, build, merge]
 isolation: fresh-project
@@ -93,8 +92,8 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). This scenario must not add an automated runner, fake forge, recorded transcript, CI target, or required byte-for-byte golden comparison. Parity is asserted on durable structure (archive path shape, merged-PR count and project mapping, archive directory contents).
+Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). This scenario must not add an automated runner, fake forge, recorded transcript, CI target, or required byte-for-byte golden comparison. Parity is asserted on durable structure (archive path shape, merged-PR count and project mapping, archive directory contents).
 
 ## Recording
 
-Capture the run with [`shared/run-template.md`](../shared/run-template.md) as [`acceptance/runs/<id>.<result>.md`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch/PR identifiers.
+Capture the run with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch/PR identifiers.

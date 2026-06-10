@@ -16,7 +16,7 @@ rule_hints:
 
 A scenario's visible `Scenario ID:` body line must match its frontmatter `id`. When the two disagree, readers cannot trust the citation that links the prose back to the structured scenario.
 
-This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the acceptance scenario pack, target adapter tests, and plugin skill fixtures, then compares each one's body id against its frontmatter id. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the eval scenario pack, target adapter tests, and plugin skill fixtures, then compares each one's body id against its frontmatter id. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 

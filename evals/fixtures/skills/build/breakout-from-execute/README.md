@@ -1,6 +1,6 @@
 # `build/breakout-from-execute/`
 
-Pins the plan-lock re-entrancy contract from [`plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md). Stress-tests workflow §Acceptance scenario `#11` (workspace breakout after build failure) at the env-var-detection layer — the same logic applies whether the parent is single-repo `/spec:execute` or workspace `/spec:execute`.
+Pins the plan-lock re-entrancy contract from [`plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md). Stress-tests workflow §Eval scenario `#11` (workspace breakout after build failure) at the env-var-detection layer — the same logic applies whether the parent is single-repo `/spec:execute` or workspace `/spec:execute`.
 
 ## Scenario
 
@@ -13,4 +13,4 @@ The skill body MUST:
 3. Inherit `SPECIFY_PLAN_LOCK_HELD=1` to any sub-invocations it spawns (the same brief-loaded child shells, the verify-repair loop sub-shells, `specify` invocations).
 4. Otherwise behave identically to the standalone path — same slice resolution, same brief execution, same success/failure transitions.
 
-The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`acceptance/fixtures/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.
+The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`evals/fixtures/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.

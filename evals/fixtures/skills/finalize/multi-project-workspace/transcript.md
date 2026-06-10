@@ -1,6 +1,6 @@
 # multi-project-workspace — `/spec:finalize` archives a workspace-driven change across two projects
 
-End-to-end variant of acceptance scenario #10. A workspace plan named `dark-mode` has two slices, one routed to `project-a`, one to `project-b`. Both per-entry statuses are `done` after `/spec:execute` drained the loop. `specify workspace push` reports both projects as `up-to-date` (the PRs were opened on a prior `/spec:finalize` run that halted at step 4 for operator merge). `gh pr view` reports both PRs as `MERGED`. `specify plan archive` archives the change cleanly. This is the success terminator for the workspace-driven path.
+End-to-end variant of eval scenario #10. A workspace plan named `dark-mode` has two slices, one routed to `project-a`, one to `project-b`. Both per-entry statuses are `done` after `/spec:execute` drained the loop. `specify workspace push` reports both projects as `up-to-date` (the PRs were opened on a prior `/spec:finalize` run that halted at step 4 for operator merge). `gh pr view` reports both PRs as `MERGED`. `specify plan archive` archives the change cleanly. This is the success terminator for the workspace-driven path.
 
 The PR-observation mock used by this fixture returns canned `state: MERGED` for `https://github.com/org/project-a/pull/57` and `https://github.com/org/project-b/pull/29`. No live `gh` invocation is performed.
 

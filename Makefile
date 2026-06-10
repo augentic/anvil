@@ -1,5 +1,5 @@
 # Directory on PATH where `make install-cli` symlinks the built binary for
-# the acceptance sweep. Override on the command line, e.g.
+# the eval sweep. Override on the command line, e.g.
 # `make install-cli INSTALL_DIR=/usr/local/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
 

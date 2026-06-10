@@ -108,7 +108,7 @@ All commands are run from the repository root:
 
 The `specify-standards` framework predicate regression suite is owned and run by `augentic/specify-cli` (its `cargo make test` runs the whole workspace, including `specify-standards` framework); this repo's CI runs only `make lint` against the live tree.
 
-Full acceptance guidance, including manual scenario packs under [`acceptance/`](acceptance/README.md), lives in [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
+Full evals guidance, including the scenario packs under [`evals/`](evals/README.md), lives in [docs/contributing/evals.md](docs/contributing/evals.md).
 
 ## Skill authoring
 

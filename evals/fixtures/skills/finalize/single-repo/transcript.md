@@ -1,6 +1,6 @@
 # single-repo — `/spec:finalize` runs every step to a clean archive
 
-End-to-end variant of acceptance scenario #1. The plan is drained (`fix-typo` is N=1, the slice landed on the first `/spec:execute` pass), `specify workspace push` reports the lone project as `up-to-date` (the PR was opened on a prior `/spec:finalize` run that halted at step 4 for operator merge), `gh pr view` reports the PR as `MERGED`, and `specify plan archive` archives the change cleanly. This is the success terminator for the change lifecycle in the single-repo / N=1 mode.
+End-to-end variant of eval scenario #1. The plan is drained (`fix-typo` is N=1, the slice landed on the first `/spec:execute` pass), `specify workspace push` reports the lone project as `up-to-date` (the PR was opened on a prior `/spec:finalize` run that halted at step 4 for operator merge), `gh pr view` reports the PR as `MERGED`, and `specify plan archive` archives the change cleanly. This is the success terminator for the change lifecycle in the single-repo / N=1 mode.
 
 The PR-observation mock used by this fixture returns canned `state: MERGED` for `https://github.com/org/user-svc/pull/14`. No live `gh` invocation is performed.
 

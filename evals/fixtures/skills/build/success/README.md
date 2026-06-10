@@ -1,6 +1,6 @@
 # `build/success/`
 
-Pins the happy-path output of `/spec:build` against an `omnia` slice. Stress-tests the success-side of workflow §Acceptance scenario `#9` (the failure-side lives at [`../failure-replay/`](../failure-replay/)).
+Pins the happy-path output of `/spec:build` against an `omnia` slice. Stress-tests the success-side of workflow §Eval scenario `#9` (the failure-side lives at [`../failure-replay/`](../failure-replay/)).
 
 ## Scenario
 

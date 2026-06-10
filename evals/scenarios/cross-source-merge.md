@@ -2,7 +2,6 @@
 id: cross-source-merge
 owner: scenarios
 kind: suite
-backend: manual
 entrypoint: /spec:plan
 stages: [plan, refine]
 isolation: fresh-project
@@ -53,8 +52,8 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
+Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`acceptance/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).

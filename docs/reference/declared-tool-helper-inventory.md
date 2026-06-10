@@ -25,7 +25,7 @@ The following command families are intentionally outside this scope. They are no
 - Core Specify lifecycle and orchestration: `specify slice *`, `specify plan *`, `specify source resolve`, `specify target resolve`, `specify registry *`, `specify workspace *`, and `specify init`.
 - Forge and transport commands: `git`, `gh`, SSH, PR/MR merge queues, and future forge adapters.
 - Language and platform toolchains: `cargo`, `rustup`, `swift`, `swiftformat`, `make`, `xcodebuild`, `gradle`, `./gradlew`, Java/Android SDK tools, `npm`, and `npx`.
-- Repository maintenance scripts: `deno run scripts/check.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.
+- Repository maintenance scripts: `deno run scripts/check.ts`, plugin cache helpers, eval harnesses, and release/build scripts.
 - Vectis host verification and template maintenance: verify, version-pin updates, and version queries have no direct WASI wrapper in v1; active skills express them as host workflow or template-updater work, not as declared tools.
 
 ## Current status

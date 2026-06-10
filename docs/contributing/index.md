@@ -22,7 +22,7 @@ Two audiences share this repository:
 | Audience | Typical edits | `specify-cli` checkout needed? |
 |----------|---------------|--------------------------------|
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, acceptance tests | Yes — they work in the Rust workspace |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work in the Rust workspace |
 
 Markdown-only contributors run `make lint` locally with only a Rust toolchain: it builds the `specify-cli` source pinned by [`Specify.toml`](../../Specify.toml) `cli` and runs the framework checks (see [Consistency Checks](checks.md#binding-to-a-specify-source)). Tooling contributors actively co-developing the CLI point a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }` at their working tree — `make lint` then builds it directly — and run `cargo make test` in that checkout to exercise the `specify-standards` framework predicate suite before opening a PR. Slice/build work against local adapter WASM needs `make use-local-dev` (same `cli.path` overlay; installs `specify` via the shared resolver, then builds sidecars and refreshes the plugin cache).
 
@@ -69,4 +69,4 @@ Advanced examples live beside the skills that own them, so they stay close to th
 
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this brief carries the crate-writer and test-writer behavior).
 - [`adapters/targets/vectis/references/`](../../adapters/targets/vectis/references/) and [`adapters/targets/vectis/examples/`](../../adapters/targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](../../adapters/targets/vectis/briefs/).
-- [`acceptance/scenarios/`](../../acceptance/scenarios/README.md) -- the unified scenario pack covering the `/spec:*` change lifecycle (`/spec:plan`, `/spec:execute`, `/spec:finalize`) from N=1 through multi-repo, happy-path through failure and recovery.
+- [`evals/scenarios/`](../../evals/scenarios/README.md) -- the unified scenario pack covering the `/spec:*` change lifecycle (`/spec:plan`, `/spec:execute`, `/spec:finalize`) from N=1 through multi-repo, happy-path through failure and recovery.

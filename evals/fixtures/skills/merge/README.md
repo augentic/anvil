@@ -4,7 +4,7 @@ Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge
 
 ## Fixture matrix
 
-| Fixture              | Trigger                                                         | Acceptance scenario | Expected output                                                                  |
+| Fixture              | Trigger                                                         | Eval scenario | Expected output                                                                  |
 | -------------------- | --------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------- |
 | `conflict-replay/`   | `specify slice merge` returns non-zero on a baseline overlap.   | #11 (paired with build) | Stop hint with `failure-kind: baseline-conflict` + conflict paths; slice stays `built`; plan entry stays `in-progress`. |
 | `success/`           | Pre-merge gate passes; `specify slice merge` exits zero.        | #9 happy-path       | Slice transitions to `merged`, archive moved, plan entry stamped `done`.         |
@@ -23,4 +23,4 @@ Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge
   expected-trace.md       # for success cases: the body's visible behaviour
 ```
 
-The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` and the per-target merge briefs are wired into a CLI-side acceptance harness.
+The fixtures are documentation pins for the skill body. They are not yet executable end-to-end — the runner that consumes them lands when `/spec:execute` and the per-target merge briefs are wired into a CLI-side eval harness.

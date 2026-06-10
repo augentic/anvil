@@ -117,7 +117,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `adapter.*`                | Adapter manifests                                                    |
 | `links.*`                  | Markdown links, skill references, directives, tool-owned schema URLs |
 | `skill.*`                  | `SKILL.md` frontmatter and body                                      |
-| `scenarios.*`              | Acceptance scenario frontmatter and recorded traces                  |
+| `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
 Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B tool source lives under `wasi-tools/<name>/`.
@@ -226,16 +226,16 @@ Files matching `adapters/targets/**/instructions/<name>.md` must contain an outp
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.
 
-### 11. Acceptance scenario frontmatter
+### 11. Eval scenario frontmatter
 
-Acceptance scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Eval scenario files are validated against [`schemas/scenario.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/scenario.schema.json) in the `specify-cli` repo (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `acceptance/scenarios/<id>.md` — the flat platform scenario pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
+1. `evals/scenarios/<id>.md` — the flat platform scenario pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
 2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
 3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`acceptance/README.md`](../../acceptance/README.md), `acceptance/shared/*`, `acceptance/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`acceptance/scenarios/`](../../acceptance/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -245,7 +245,6 @@ id: contracts-describe
 owner: contracts
 kind: adapter
 adapter: contracts@v1
-backend: manual
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project
@@ -266,7 +265,7 @@ Scenario ID: `contracts-describe`
 
 The check enforces:
 
-- **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `adapter` is required when `kind` is `adapter` or `adapter-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `adapter-boundary`. `kind` is an open enum (`adapter`, `adapter-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `adapter` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
+- **Schema conformance** — `id`, `owner`, `kind`, `entrypoint`, `stages`, `isolation` are required; `adapter` is required when `kind` is `adapter` or `adapter-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `adapter-boundary`. `kind` is an open enum (`adapter`, `adapter-boundary`, `suite`, `skill`); only the first two are actively required by C02. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `adapter` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
 - **Stages prefix** — `stages` must be a contiguous slice of `[plan, refine, build, merge, drop]` anchored at any element. `[plan, refine, build]` is valid; `[build, plan]`, `[plan, merge]`, `[merge]` are not.
 - **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
 - **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-adapter prefix (e.g. `contracts/`) so future adapters are not over-constrained.
@@ -365,7 +364,7 @@ Each evaluator is generic: it reads its policy (cap, allowed set, owner map, exp
 
 ### Road B — referenced WASI tool
 
-The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named tool from the embedded framework inventory (`src/runtime/commands/lint/framework_tools.rs`), runs it once per lint, and folds its `DiagnosticReport`; the tool stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `acceptance/`).
+The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named tool from the embedded framework inventory (`src/runtime/commands/lint/framework_tools.rs`), runs it once per lint, and folds its `DiagnosticReport`; the tool stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
 
 The seven framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill-body`, `agent-teams`, `links-registry`, `marketplace`, `prose`, `rules`). Each one and the `CORE-*` rules it serves:
 

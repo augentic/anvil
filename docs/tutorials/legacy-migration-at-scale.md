@@ -35,9 +35,9 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — survey vs extract operations
 4. [Target adapters](../reference/targets/omnia.md) — Omnia build and merge briefs
 
-## Acceptance scenarios
+## Eval scenarios
 
-The acceptance scenario pack includes a code-multi-slice scenario under [`acceptance/scenarios/code-multi-slice.md`](../../acceptance/scenarios/code-multi-slice.md) for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
+The eval scenario pack includes a code-multi-slice scenario under [`evals/scenarios/code-multi-slice.md`](../../evals/scenarios/code-multi-slice.md) for operators validating releases. Contributors running evals should see [Evals](../contributing/evals.md).
 
 ## Next steps
 

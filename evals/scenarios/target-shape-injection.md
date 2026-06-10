@@ -2,7 +2,6 @@
 id: target-shape-injection
 owner: scenarios
 kind: suite
-backend: manual
 entrypoint: /spec:plan
 stages: [plan, refine]
 isolation: fresh-project
@@ -29,7 +28,7 @@ Scenario ID: `target-shape-injection`
 
 ## Intent
 
-Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`acceptance/fixtures/targets/omnia/`](../fixtures/targets/omnia/README.md).
+Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`evals/fixtures/targets/omnia/`](../fixtures/targets/omnia/README.md).
 
 ## Setup
 
@@ -50,8 +49,8 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/acceptance.md`](../../docs/contributing/acceptance.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
+Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`acceptance/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
