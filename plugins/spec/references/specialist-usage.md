@@ -30,7 +30,7 @@ The dividing line matters because it keeps specs portable across targets:
 
 ## Deriving specs from source code
 
-When a source adapter's `extract` reconstructs behaviour from legacy code, the specialist builds each `specs/<unit>/spec.md` like this:
+When a source adapter's `extract` reconstructs behaviour from legacy code, the specialist builds each `specs/<domain>/spec.md` like this:
 
 1. **Purpose** from the role of the handler or function.
 2. **Requirements** from distinct business rules, assigning stable IDs in spec order (`REQ-001`, `REQ-002`, …).

@@ -48,15 +48,15 @@ contracts/                                  # Baseline API contracts
 │       ├── tasks.md                        # Implementation checklist
 │       ├── evidence/                       # Per-source extract output (managed by CLI)
 │       │   └── <source>.yaml
-│       ├── specs/                          # Behavioral specs (one per unit)
-│       │   └── <unit>/spec.md
+│       ├── specs/                          # Behavioral specs (one per domain)
+│       │   └── <domain>/spec.md
 │       └── contracts/                      # Per-slice contract delta (when API interactions exist)
 │           ├── schemas/
 │           ├── http/
 │           └── messages/
 │
 ├── specs/                                  # Merged baseline specs (committable; system of record)
-│   └── <unit>/spec.md                      # Accumulated behavioral requirements
+│   └── <domain>/spec.md                    # Accumulated behavioral requirements
 │
 ├── journal.jsonl                           # Append-only event log; also the outcome ledger
 │                                           #   (slice.archive.created: slice, touched-specs, summary, merge SHA)
@@ -87,7 +87,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 

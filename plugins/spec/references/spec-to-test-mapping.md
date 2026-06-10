@@ -38,7 +38,7 @@ produces three test functions named `test_<unit_snake>_add_new_item`, `test_<uni
 Every spec-mapped test carries a doc comment linking it back to the source requirement and scenario via the stable REQ-ID:
 
 ```rust
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Add new item
+/// Spec: specs/<domain>/spec.md > REQ-001 > Scenario: Add new item
 ```
 
 Tests without a `/// Spec:` traceability comment are treated as manually added and are not flagged by drift detection.

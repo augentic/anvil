@@ -15,7 +15,7 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | Path                          | Owner    | Purpose |
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Membership + location ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
-| `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned units + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by `specify workspace sync`; never hand-edited. |
+| `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned domains + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by `specify workspace sync`; never hand-edited. |
 | `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
 | `.specify/cache/`            | derived  | Memoization root (owned by the plugin resolver: adapter manifests under `manifests/sources/` and `manifests/targets/`, and the shared codex under `codex/`). |
 | `.specify/scratch/`          | derived  | Transient working state: per-operation agent scratch lanes under `<adapter>/{survey,<slice>}/` and the plan handoff lane under `plan/`. Lanes are recreated empty by their owning verb. |

@@ -1,20 +1,20 @@
 # Omnia build — test writer
 
-Loaded by [../build.md](../build.md) phase 3. Reads `specs/<unit>/spec.md` + `design.md` + the existing crate inventory and writes `$CRATE_PATH/tests/`.
+Loaded by [../build.md](../build.md) phase 3. Reads `specs/<domain>/spec.md` + `design.md` + the existing crate inventory and writes `$CRATE_PATH/tests/`.
 
 Tests are spec-driven, not code-driven — generate the side-effect assertion implied by `design.md` even when the current handler does not yet satisfy it; a failing test is the right signal back to the [crate writer](crate.md) step.
 
 ## Authority hierarchy
 
-`specs/<unit>/spec.md` scenarios drive happy-path, error-path, and validation coverage. `design.md` "Business logic" and "Provider trait dependencies" drive side-effect assertions (publishes, state writes, cache updates, transactions, rollback). The mapping is canonical and lives in [`spec-to-test-mapping.md`](../../references/spec-to-test-mapping.md).
+`specs/<domain>/spec.md` scenarios drive happy-path, error-path, and validation coverage. `design.md` "Business logic" and "Provider trait dependencies" drive side-effect assertions (publishes, state writes, cache updates, transactions, rollback). The mapping is canonical and lives in [`spec-to-test-mapping.md`](../../references/spec-to-test-mapping.md).
 
 Manual tests in the existing suite are **flagged as drift, never silently deleted**. The drift report lists missing tests (in spec, not in suite), extra tests (in suite, not in spec), and assertion-drift cases (test present but assertions stale).
 
 ## Test generation process
 
-1. **Load artifacts and references** — `specs/<unit>/spec.md`, `design.md`, [`providers/`](../../references/providers/) for the trait-specific MockProvider patterns, [`mock-provider.md`](../../references/mock-provider.md) for Static + Replay variants, and the slice's `tests/data/` replay data if any.
+1. **Load artifacts and references** — `specs/<domain>/spec.md`, `design.md`, [`providers/`](../../references/providers/) for the trait-specific MockProvider patterns, [`mock-provider.md`](../../references/mock-provider.md) for Static + Replay variants, and the slice's `tests/data/` replay data if any.
 2. **Inventory crate and tests** — enumerate handlers, provider trait bounds, request / response types, existing `tests/*.rs`, existing replay data.
-3. **Map specs to tests** — one deterministic test function per scenario, named `test_<crate>_<scenario_snake_case>`. Trace each test to the stable `REQ-XXX` ID in `specs/<unit>/spec.md` via a doc comment. Mapping rules: [`spec-to-test-mapping.md`](../../references/spec-to-test-mapping.md).
+3. **Map specs to tests** — one deterministic test function per scenario, named `test_<crate>_<scenario_snake_case>`. Trace each test to the stable `REQ-XXX` ID in `specs/<domain>/spec.md` via a doc comment. Mapping rules: [`spec-to-test-mapping.md`](../../references/spec-to-test-mapping.md).
 4. **Assert side effects** — enumerate every provider interaction in `design.md` and emit assertions: `assert_eq!(provider.publish_calls(), &[…])`, `assert_eq!(provider.state_writes(…), …)`, cache-aside hit/miss order, transaction commit vs rollback.
 5. **Generate `MockProvider`** — implement only the provider traits the handler under test consumes. Static / replay variants per [`mock-provider.md`](../../references/mock-provider.md) and the per-trait deep dives under [`providers/`](../../references/providers/).
 6. **Load JSON replay data** — `include_str!("data/<capture>.json")` from `tests/data/`. Preserve any existing data style.
@@ -43,7 +43,7 @@ Capture wire format authority stays at the source adapter — do not duplicate t
 
 ## Output and quality checklist
 
-- Every requirement block in `specs/<unit>/spec.md` has at least one matching test function.
+- Every requirement block in `specs/<domain>/spec.md` has at least one matching test function.
 - Every provider interaction in `design.md` has at least one assertion.
 - The MockProvider implements exactly the trait set the handlers consume (no extras).
 - Replay JSON files referenced by `include_str!` exist under `tests/data/`.

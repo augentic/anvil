@@ -5,12 +5,12 @@ Operational detail for `vectis-test-writer`. The SKILL.md keeps only the orienta
 ## Arguments
 
 ```text
-$UNIT_NAME      = $ARGUMENTS[0]
+$DOMAIN_NAME    = $ARGUMENTS[0]
 
 # Path derivation
 $SLICE_DIR      = .specify/slices/<active-change>
 $SPECS_DIR      = $SLICE_DIR/specs
-$SPEC_PATH      = $SPECS_DIR/$UNIT_NAME/spec.md
+$SPEC_PATH      = $SPECS_DIR/$DOMAIN_NAME/spec.md
 $DESIGN_PATH    = $SLICE_DIR/design.md
 $PROJECT_DIR    = <project directory>
 $APP_RS         = $PROJECT_DIR/shared/src/app.rs
@@ -88,7 +88,7 @@ For each requirement block and each scenario within it, generate one test functi
 7. **Traceability comments** on each test citing the stable requirement ID:
 
 ```rust
-/// Spec: specs/<unit>/spec.md > REQ-XXX > Scenario: <scenario title>
+/// Spec: specs/<domain>/spec.md > REQ-XXX > Scenario: <scenario title>
 #[test]
 fn test_<unit_snake>_<scenario_snake_case>() {
     // ...
@@ -122,7 +122,7 @@ mod tests {
 
     // --- Spec-mapped tests ---
 
-    /// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: <title>
+    /// Spec: specs/<domain>/spec.md > REQ-001 > Scenario: <title>
     #[test]
     fn test_<unit_snake>_<scenario_snake_case>() {
         let app = app();
@@ -234,7 +234,7 @@ See [`spec-to-test-mapping.md`](test-spec-mapping.md) for the full mapping rules
 
 ## Drift Detection
 
-When invoked against a crate with existing tests and baseline specs at `.specify/specs/<unit>/spec.md`:
+When invoked against a crate with existing tests and baseline specs at `.specify/specs/<domain>/spec.md`:
 
 1. **Regenerate** the expected test structure from the baseline spec
 2. **Compare** against existing tests in the `#[cfg(test)]` module

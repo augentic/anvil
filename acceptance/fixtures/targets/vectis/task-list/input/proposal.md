@@ -12,13 +12,13 @@ Manual (this fixture's `Sources:` lines are stand-ins for real plan-resolved bin
 - iOS shell (SwiftUI, single navigation stack) and Android shell (Jetpack Compose, single activity).
 - Shell-local theme + asset code on each platform (no shared design-system library).
 
-## Units
+## Domains
 
-### New Units
+### New Domains
 
 - **task-list** — Today-view task list with completion toggling, deletion (with confirmation), an empty state, and an add-task FAB.
 
-### Modified Units
+### Modified Domains
 
 None — this is a greenfield fixture.
 

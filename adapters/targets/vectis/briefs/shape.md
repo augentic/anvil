@@ -19,13 +19,13 @@ A Vectis slice produces a buildable cross-platform application:
 ### `proposal.md`
 
 - `## Source` is **Manual** for Vectis (the per-source provenance lives in `Sources:` lines on each requirement; `proposal.md` describes intent at a higher level).
-- `## Units` lists business features in kebab-case (`todo-app`, `weather-forecast`) — never implementation layers (`todo-core`, `todo-ios`). For Vectis, each unit is a business feature; each unit maps one-to-one to `specs/<unit>/spec.md`.
+- `## Domains` lists business features in kebab-case (`todo-app`, `weather-forecast`) — never implementation layers (`todo-core`, `todo-ios`). For Vectis, each domain is a business feature; each domain maps one-to-one to `specs/<domain>/spec.md`.
 - `## Platforms` is the build router. Read `project.yaml.platforms` directly and stamp the full set verbatim — do not cherry-pick or trim per slice. Valid tokens: `core` (always required and always present in the set), `ios`, `android`, `web`, `desktop`. `web` and `desktop` are accepted tokens but have no build sub-briefs, scaffold support, or on-disk shell interpretation yet — do not invent shell sections for them. Tokens, assets, and layout are **not** platforms — they are build inputs to the shells. Per-shell scope (`vectis:ios-*` vs `vectis:android-*` work) is driven entirely by this list. Every slice carries the same platform set; build determines per-platform work (create / update / no-op).
-- Modified units list existing baseline spec folders that change behaviourally; new requirement-IDs append, modified IDs keep their number, removed IDs carry a deletion note.
+- Modified domains list existing baseline spec folders that change behaviourally; new requirement-IDs append, modified IDs keep their number, removed IDs carry a deletion note.
 
 ### `spec.md` — behavioural requirements
 
-- One spec file per unit at `specs/<unit>/spec.md`. The file is a single document.
+- One spec file per domain at `specs/<domain>/spec.md`. The file is a single document.
 - Requirement-IDs share **one flat `REQ-[0-9]{3}` namespace** across the core body, the `## iOS Shell Requirements` section, and the `## Android Shell Requirements` section. Never prefix per-platform (no `REQ-IOS-001`).
 - The core body carries platform-neutral behaviour (what the app *does* regardless of shell). Platform sections capture shell-specific behaviour (navigation style, swipe gestures, haptics, Material 3 / HIG idioms, edge-to-edge handling).
 - Every requirement carries the standard `ID:` / `Sources:` / `Status:` block from the synthesis contract; Vectis adds no extra header fields.
@@ -71,7 +71,7 @@ Naming conventions to keep `design.md` and the eventual `composition.yaml` align
 ### `tasks.md` — execution sequencing
 
 - Tasks are organised by **build phase**, not by feature. All features in the slice share one task list, ordered: core first, shells second.
-- Each task references the unit's spec at `specs/<unit>/spec.md`. The spec contains both core requirements and the platform-specific requirements sections.
+- Each task references the domain's spec at `specs/<domain>/spec.md`. The spec contains both core requirements and the platform-specific requirements sections.
 - Tokens / assets / layout work is **input context** for the shells (the shell writers read `tokens.yaml` / `assets.yaml` / regenerated `composition.yaml` directly) — never a separate task tier.
 - Tasks must be **agent-completable** with code or local tooling. No manual mobile-app testing, no real-world API calls, no production credentials, no visual inspection, no physical-device-only checks, no app-store-review tasks. Express verification through fixture-backed tests, mocked effects, and local build commands available to the `build` brief.
 

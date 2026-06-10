@@ -120,7 +120,7 @@ Refine generates four documents in dependency order. Each one answers a differen
 | Artifact      | Question it answers                                                                | Location                            |
 | ------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
 | `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.specify/slices/<name>/proposal.md` |
-| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.specify/slices/<name>/specs/<unit>/spec.md` |
+| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.specify/slices/<name>/specs/<domain>/spec.md` |
 | `design.md`   | *How* will the behaviour be implemented?                                            | `.specify/slices/<name>/design.md`   |
 | `tasks.md`    | In what *sequence* should it be built?                                              | `.specify/slices/<name>/tasks.md`    |
 
@@ -154,7 +154,7 @@ You pick the target at scaffolding time (`/spec:init <target>`). You bind source
 
 When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
 
-Core synthesis reconciles `Evidence[]` into the slice's per-unit `specs/<unit>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
+Core synthesis reconciles `Evidence[]` into the slice's per-domain `specs/<domain>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 
 ```markdown
 ID: REQ-001

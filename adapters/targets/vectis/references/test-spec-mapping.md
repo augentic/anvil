@@ -4,10 +4,10 @@ Vectis-specific deltas on top of the shared [spec-to-test mapping discipline](sp
 
 ## Test location and attribute
 
-Each unit spec maps to tests inside the `#[cfg(test)] mod tests` block in `shared/src/app.rs` (Crux convention — tests live alongside the app, not in a separate `tests/` directory):
+Each domain spec maps to tests inside the `#[cfg(test)] mod tests` block in `shared/src/app.rs` (Crux convention — tests live alongside the app, not in a separate `tests/` directory):
 
 ```text
-specs/<unit>/spec.md  →  #[cfg(test)] mod tests { ... } in app.rs
+specs/<domain>/spec.md  →  #[cfg(test)] mod tests { ... } in app.rs
 ```
 
 All spec-mapped tests are synchronous `#[test]` — Crux's testing model does not require an async runtime:
@@ -64,7 +64,7 @@ Scenarios describing async operations map to multi-step tests that resolve effec
 Maps to:
 
 ```rust
-/// Spec: specs/<unit>/spec.md > REQ-001 > Scenario: Fetch items on load
+/// Spec: specs/<domain>/spec.md > REQ-001 > Scenario: Fetch items on load
 #[test]
 fn test_<unit_snake>_fetch_items_on_load() {
     let app = MyApp;
@@ -114,7 +114,7 @@ ID: REQ-002
 ```
 
 ```rust
-/// Spec: specs/<unit>/spec.md > REQ-002 > Scenario: Empty title rejected
+/// Spec: specs/<domain>/spec.md > REQ-002 > Scenario: Empty title rejected
 #[test]
 fn test_<unit_snake>_empty_title_rejected() {
     let app = MyApp;
@@ -145,7 +145,7 @@ ID: REQ-003
 ```
 
 ```rust
-/// Spec: specs/<unit>/spec.md > REQ-003 > Scenario: Retry from error page
+/// Spec: specs/<domain>/spec.md > REQ-003 > Scenario: Retry from error page
 #[test]
 fn test_<unit_snake>_retry_from_error_page() {
     let app = MyApp;

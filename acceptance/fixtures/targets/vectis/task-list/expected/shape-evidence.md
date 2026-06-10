@@ -4,7 +4,7 @@ Sections that MUST appear in `input/specs/task-list/spec.md` and `input/design.m
 
 ## `input/specs/task-list/spec.md`
 
-- One spec file per unit at `specs/<unit>/spec.md`. The fixture's single unit is `task-list`.
+- One spec file per domain at `specs/<domain>/spec.md`. The fixture's single domain is `task-list`.
 - Single flat `REQ-[0-9]{3}` namespace across the core body and platform sections. The fixture spans REQ-001..REQ-010 with no `REQ-IOS-*` or `REQ-ANDROID-*` prefixes.
 - Every requirement carries the standard `ID:` / `Sources:` / `Status:` block (synthesis-contract default; Vectis adds no extra header fields).
 - Named screen requirements drive `composition.yaml` screen slugs in `build`:

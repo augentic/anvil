@@ -4,7 +4,7 @@
 
 Restate the password-reset surface as an Omnia crate so the identity service can issue reset links for registered users, governed by the operator-supplied identity design notes and informed by the legacy monolith's existing behaviour.
 
-## Units
+## Domains
 
 - password-reset — reset-request handler that accepts an email payload, persists a reset token row, dispatches a reset email, and returns the same outward response regardless of whether the email is known
 

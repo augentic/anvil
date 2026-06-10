@@ -4,7 +4,7 @@
 
 Restate the legacy user-registration surface as an Omnia crate so the identity service can accept new user registrations with the same validation behaviour the legacy monolith exposes today, governed by the operator-supplied identity design notes.
 
-## Units
+## Domains
 
 - user-registration — registration handler that accepts an email + password payload, validates the email per RFC-5322, and persists the user
 

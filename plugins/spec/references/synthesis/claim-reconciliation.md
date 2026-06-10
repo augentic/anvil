@@ -8,7 +8,7 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 
 | Kind            | Carrying authority class    | Where it lands                                                                                  | Reconciliation key                                |
 | --------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `requirement`   | `documentation`             | spec files (`specs/<unit>/spec.md`) — one requirement block per `id` group.               | `id` (required by the schema).      |
+| `requirement`   | `documentation`             | spec files (`specs/<domain>/spec.md`) — one requirement block per `id` group.               | `id` (required by the schema).      |
 | `criterion`     | `documentation`             | spec files — folds into the requirement block whose `id` shares the same `<requirement>.*` prefix as a `#### Scenario:` H4 inline within that block; when no requirement prefix matches, attaches to the nearest requirement by source order. | `id` (required by the schema).      |
 | `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source>)`. | None (free-form; not reconciled).              |
 | `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Why` when the section names the slice's *why*. | None (free-form; not reconciled).              |

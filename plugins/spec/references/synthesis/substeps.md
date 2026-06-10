@@ -6,16 +6,16 @@ The synthesis response carries prose for four artifacts, authored in this fixed 
 
 Carries the slice's *why*. Author from the lead `synopsis` (in `discovery.md`) plus the contributing Evidence:
 
-- **Single-source intent** — `## Why` is a one- to three-paragraph restatement of the `intent` claim's `statement`. `## Units` lists the operator's requested deliverable as a single kebab-case slug with a short scope summary; non-goals are inferred from the absence of language ("not …", "without …").
-- **Single-source documentation** — `## Why` comes from `decision` and top-level `section` claims; `## Units` lists the distinct deliverable surfaces identified from `requirement` claim subjects (one kebab-case slug per surface); non-goals are any `decision` claim that explicitly rules a path out.
-- **Single-source code (port)** — `## Why` is "preserve observed legacy behaviour for `<lead>`"; `## Units` lists the handler/endpoint families surfaced by `excerpt` / `call` claims (one kebab-case slug per family); non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
+- **Single-source intent** — `## Why` is a one- to three-paragraph restatement of the `intent` claim's `statement`. `## Domains` lists the operator's requested deliverable as a single kebab-case slug with a short scope summary; non-goals are inferred from the absence of language ("not …", "without …").
+- **Single-source documentation** — `## Why` comes from `decision` and top-level `section` claims; `## Domains` lists the distinct deliverable surfaces identified from `requirement` claim subjects (one kebab-case slug per surface); non-goals are any `decision` claim that explicitly rules a path out.
+- **Single-source code (port)** — `## Why` is "preserve observed legacy behaviour for `<lead>`"; `## Domains` lists the handler/endpoint families surfaced by `excerpt` / `call` claims (one kebab-case slug per family); non-goals call out behaviours the legacy code does *not* exhibit when a `documentation` source contradicts.
 - **Combined evidence** — fold all contributing sources into one narrative. When sources disagree on why (rare), state the higher-authority position as the operative one and note the lower-authority position as commentary.
 
-Required H2 sections, in order: `## Why`, `## Units`, `## Non-goals`. Each `## Units` bullet is `- <unit-slug> — <target-specific meaning and short scope summary>` and maps one-to-one to `specs/<unit>/spec.md`. No provenance lines on `proposal.md` — provenance lives in spec files.
+Required H2 sections, in order: `## Why`, `## Domains`, `## Non-goals`. Each `## Domains` bullet is `- <domain-slug> — <target-specific meaning and short scope summary>` and maps one-to-one to `specs/<domain>/spec.md`. No provenance lines on `proposal.md` — provenance lives in spec files.
 
-## 2. `specs/<unit>/spec.md`
+## 2. `specs/<domain>/spec.md`
 
-Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Units` entry, keyed by `unit`; `specify slice synthesize` writes one file per unit at `specs/<unit>/spec.md`. The unit slug is kebab-case and maps directly from the `## Units` bullet. The target shape brief explains how to choose units for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Domains` entry, keyed by `domain`; `specify slice synthesize` writes one file per domain at `specs/<domain>/spec.md`. The domain slug is kebab-case and maps directly from the `## Domains` bullet. The target shape brief explains how to choose domains for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
 
 Author each requirement as prose only — heading and body. The kernel injects the `ID:` / `Sources:` / `Status:` lines and the headline tag from `model.yaml`; see [`requirement-block.md`](requirement-block.md) for the prose you write and the block the kernel renders.
 
@@ -26,7 +26,7 @@ Authoring loop (per requirement, in declaration order):
 3. Write the requirement prose (`title`, `statement`, `scenarios[]`, `notes`). Order requirements in the response by source order (top of the highest-authority Evidence document down; within one Evidence, keep claim order) — the kernel assigns `REQ-001`, `REQ-002`, … in that declaration order.
 4. For each requirement the kernel derives a `[unknown]` / `[conflict]` / `[divergence]` tag, `specify slice validate` emits the matching `slice.synthesis.{unknown|conflict|divergence}` journal event with the requirement id.
 
-Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the unit's behavioural surface; the overview carries no provenance lines.
+Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the domain's behavioural surface; the overview carries no provenance lines.
 
 Each requirement may include one or more scenarios (rendered as `#### Scenario:` H4 headings after the body and before the next requirement). Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](../spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
 

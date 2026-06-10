@@ -41,7 +41,7 @@ description: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Workspace shape
 

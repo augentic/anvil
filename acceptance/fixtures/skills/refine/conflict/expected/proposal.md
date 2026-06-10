@@ -4,7 +4,7 @@
 
 Settle the expiry window for password-reset links so the identity service can honour a single, operator-confirmed value.
 
-## Units
+## Domains
 
 - password-reset-expiry — password-reset token TTL configuration
 

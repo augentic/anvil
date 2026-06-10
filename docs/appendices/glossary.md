@@ -169,7 +169,7 @@ Input adapter role. Operations: `survey` + `extract`. First-party defaults: `int
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
 
 **Spec**
-A behavioral specification at `specs/<unit>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
+A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
 The single CLI binary produced by `augentic/specify-cli` that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).

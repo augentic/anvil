@@ -13,7 +13,7 @@ The Vectis target stays three-capability (`shape` / `build` / `merge`) — there
 The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
 
 - `inputs.artifacts.proposal` (`proposal.md`) — `## Platforms` scope (`core` / `ios` / `android`) and screen / interaction intent.
-- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements per unit: screen titles, scenarios, platform-specific behaviour, validation rules.
+- `inputs.artifacts.specs[]` (`specs/<domain>/spec.md`) — behavioural requirements per domain: screen titles, scenarios, platform-specific behaviour, validation rules.
 - `inputs.artifacts.design` (`design.md`) — domain model: ViewModel / `Event` / `Route` variants, per-page view structs, capability matrix.
 - `inputs.artifacts.tasks` (`tasks.md`) — phase-completion tracking.
 - `inputs.artifacts.additional[]` — the three design-system inputs declared by [`adapter.yaml`](../adapter.yaml), **all optional** (`required: false`), each with an explicit absent-fallback:
@@ -29,7 +29,7 @@ All phase sub-briefs assume these symbols are resolved by `/spec:build` before t
 | --- | --- |
 | `SLICE_ID` | The active slice name (`specify plan next` output, or `specify slice` argument). |
 | `SLICE_DIR` | `.specify/slices/<SLICE_ID>/`. |
-| `UNIT_NAME` | The single unit spec folder under `SLICE_DIR/specs/`. When the slice carries multiple units, iterate the per-unit phase sub-briefs in declaration order. |
+| `DOMAIN_NAME` | The single domain spec folder under `SLICE_DIR/specs/`. When the slice carries multiple domains, iterate the per-domain phase sub-briefs in declaration order. |
 | `PROJECT_DIR` | The target project root (single-repo mode) or the resolved workspace slot (workspace mode). |
 | `IOS_SHELL_DIR` | `${PROJECT_DIR}/iOS` (only when `ios` is in scope). |
 | `ANDROID_SHELL_DIR` | `${PROJECT_DIR}/Android` (only when `android` is in scope). |

@@ -15,7 +15,7 @@ Repair sub-agent (invoked by the verify-repair loop in [../test.md](../test.md))
 
 ## Critical path
 
-1. **Read inputs.** `${SLICE_DIR}/specs/${UNIT_NAME}/spec.md` (core body + platform sections), `${SLICE_DIR}/design.md` (Domain Model, Adapters, API Contracts, Implementation Constraints). Extract App name, Model, Events, ViewModel / Page / Route, capability set, and any HTTP / SSE / KV shapes.
+1. **Read inputs.** `${SLICE_DIR}/specs/${DOMAIN_NAME}/spec.md` (core body + platform sections), `${SLICE_DIR}/design.md` (Domain Model, Adapters, API Contracts, Implementation Constraints). Extract App name, Model, Events, ViewModel / Page / Route, capability set, and any HTTP / SSE / KV shapes.
 2. **Detect mode.** In create mode, render the scaffold via `specify tool run vectis -- scaffold core <APP_NAME> --caps <comma-separated-caps> [--version-file <path>]` and run an explicit `cargo check --workspace` sanity gate before any further edits.
 3. **Build an implementation inventory** of existing types and diff against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order: capabilities → views → domain → model → events → API → logic. The full mapping rules live in [`crux/artifact-to-code-mapping.md`](../../../references/crux/artifact-to-code-mapping.md) and [`crux/update-change-patterns.md`](../../../references/crux/update-change-patterns.md).
 4. **Apply structural edits** to `app.rs`: domain types → `Page` / `ViewModel` / `Route` → `Model` → `Event` / `Effect` → imports → `Cargo.toml` updates for new capabilities. Adopt screen names, ViewModel variants, per-page view structs, field names, and `Event` / `Route` variants verbatim from `design.md`.

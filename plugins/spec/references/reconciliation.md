@@ -5,7 +5,7 @@ Specify turns raw inputs — operator intent, written documentation, legacy code
 There are two distinct reconciliation moments, and they answer different questions:
 
 - **Plan time — what work exists?** `/spec:plan` surveys each bound source for *leads* and reconciles them into the *slices* that make up the change.
-- **Slice time — what must each unit do?** `/spec:refine` extracts *evidence* from each source and synthesizes it into the unit's `specs/<unit>/spec.md`, recording exactly which source contributed each requirement.
+- **Slice time — what must each domain do?** `/spec:refine` extracts *evidence* from each source and synthesizes it into the domain's `specs/<domain>/spec.md`, recording exactly which source contributed each requirement.
 
 ## Plan time: leads become slices
 
@@ -38,7 +38,7 @@ When `/spec:refine` runs for a slice, each bound source runs its `extract` opera
 
 The slice then runs **synthesize**, which reconciles every source's Evidence into a single set of requirements. Two artifacts come out of this step:
 
-- `specs/<unit>/spec.md` — the human-readable behavioral spec, one file per unit.
+- `specs/<domain>/spec.md` — the human-readable behavioral spec, one file per domain.
 - `model.yaml` — a structured, machine-readable record of the same requirements, carrying provenance inline.
 
 Each requirement in the spec carries three provenance lines:
