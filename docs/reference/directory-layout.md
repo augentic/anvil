@@ -25,17 +25,21 @@ contracts/                                  # Baseline API contracts
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── cache/                                 # Cached adapter manifests, briefs, and extraction results
+├── cache/                                 # Memoization root: manifests, codex, extraction results
 │   ├── manifests/sources/<name>/           # Source adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{survey,extract}.md
 │   ├── manifests/targets/<name>/           # Target adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{shape,build,merge}.md
-│   ├── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
-│   │   └── index.jsonl
-│   └── scratch/<adapter>/                  # Per-operation agent scratch lanes ($SCRATCH_DIR)
-│       └── {survey,<slice>}/
+│   ├── manifests/manifest-meta.yaml        # Manifest mirror provenance stamp
+│   ├── codex/                              # Distributed shared-rules codex (+ codex-meta.yaml)
+│   └── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
+│       └── index.jsonl
+│
+├── scratch/                                # Transient working state (per-run lanes; wiped freely)
+│   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
+│   └── plan/propose-response.json          # Plan reconciliation handoff lane
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
@@ -99,7 +103,11 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### `cache/`
 
-Three sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `<fingerprint>/` plus an append-only `index.jsonl` at the adapter root (on `cache: opt-out` only the index appears). `scratch/<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen). The whole `cache/` tree is regenerable and safe to delete.
+The memoization root — every subtree is keyed by content or version, and deleting it costs recomputation only. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with the mirror's provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache under `<fingerprint>/` plus an append-only `index.jsonl` at the adapter root; the index is cache mechanism, not audit — an adapter with an effective `cache: opt-out` writes nothing here, and the journal's cache events are the audit trail.
+
+### `scratch/`
+
+The transient working-state root — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Keeping scratch outside `cache/` makes the "a scratch write never pollutes a cache artifact" guarantee structural rather than conventional. Both roots are gitignored.
 
 ### `workspace/`
 

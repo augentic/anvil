@@ -27,7 +27,7 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | Cross-source propose-time merge | [`cross-source-merge`](cross-source-merge.md) | passed |
 | Multi-repo assignment from a workspace | `multi-repo-workspace` | [automated](#automated-coverage) |
 | Operator amends one-slice plan into two | `amend-into-two` | [automated](#automated-coverage) |
-| Single-project plan generation | [`plan-single-project`](plan-single-project.md) | pending |
+| Single-project plan generation | [`plan-single-project`](plan-single-project.md) | passed |
 | Contract routing plan generation | `contract-routing` | [automated](#automated-coverage) |
 | Cross-repo contract flow (full lifecycle) | [`cross-repo-contract-flow`](cross-repo-contract-flow.md) | pending |
 

@@ -7,12 +7,12 @@ specify plan propose --dry-run [--format json]
 specify plan propose --from <response.json> [--format json]
 ```
 
-- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only: writes nothing and emits no journal event.
+- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). It writes no plan state and emits no journal event; its only filesystem effect is recreating the plan scratch lane (`.specify/scratch/plan/`) empty, so `--from` can never consume a stale response envelope from a prior run.
 - `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates explicit slice names, binds projects, atomically replaces `plan.yaml.slices[]`, then emits `plan.reconcile.completed`. It never trusts a prior dry-run snapshot.
 
 Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
 
-The response file's canonical location is `.specify/cache/propose-response.json` — a gitignored, regenerable scratch path. Never write the envelope to the project root.
+The response file's canonical location is `.specify/scratch/plan/propose-response.json` — the gitignored plan scratch lane that `--dry-run` just reset. Never write the envelope to the project root.
 
 **Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise `plan-reconcile-plan-not-replaceable`.
 
