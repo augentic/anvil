@@ -1,6 +1,6 @@
 # RFC-45: Asset Materialization and Mandatory App Icon
 
-> Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: todo-app iOS `actool` failure and silent substitution of designer SVGs with platform symbols
+> Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols
 
 ## Abstract
 
@@ -15,7 +15,7 @@ SVG remains the canonical designer format. Mobile shells consume derived exports
 
 ## Motivation
 
-The todo-app exercise exposed three coupled failures:
+Vectis design-system flows exposed three coupled failures:
 
 | Symptom | Root cause |
 |---------|------------|
@@ -103,7 +103,7 @@ assets:
   app-icon:
     kind: vector          # or raster
     role: app-icon
-    alt: "Todo App"
+    alt: "Application"
     source: assets/app-icon.svg
 ```
 
