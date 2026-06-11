@@ -19,7 +19,7 @@
     {
       "name": "client",
       "source": "client",
-      "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts."
+      "description": "Experimental: skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts. One skill, no eval scenario; status under review."
     },
     {
       "name": "spec",

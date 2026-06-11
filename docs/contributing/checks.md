@@ -58,6 +58,8 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 `cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`; run it from the repo root.
 
+The git forms cache the built binary: the resolver records the resolved pin in the gitignored `.cli/ref` sidecar (immutable refs key on themselves; a branch keys on its current remote sha), and a run whose pin matches the sidecar reuses `.cli/bin/specify` without invoking Cargo at all. Changing the pin — or a tracked branch moving — invalidates the cache and reinstalls. The `path` overlay form is not cached; it stays a warm incremental `cargo run` against the sibling checkout.
+
 ### `Specify.toml` authoring config
 
 [`Specify.toml`](../../Specify.toml) at the repo root is the schema-validated blueprint for **which `specify-cli` source this framework repo builds** — distinct from runtime `.specify/project.yaml`, which governs how a consumer project uses Specify. `cli` is a Cargo-shaped inline-table source spec taking exactly one of three forms:
