@@ -1,4 +1,4 @@
-# RFC-45: Asset Materialization and Mandatory App Icon
+# RFC-46: Asset Materialization and Mandatory App Icon
 
 > Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols · **Scope includes Phase 0** (specify-cli): remove the optional `--reconcile-platforms` propose flag and make Vectis self-contained for shell-bootstrap detection
 
@@ -12,7 +12,7 @@ Vectis today treats `design-system/assets.yaml` as an inventory while shell writ
 4. A **bootstrap-only validation gate** that hard-fails when a Vectis-bound project is about to bootstrap a missing UI shell platform and no satisfiable `app-icon` exists — neither a straightforward canonical master (SVG or square raster ≥1024×1024) the materializer can convert, nor operator-pinned hand-built exports in the expected `exports/<platform>/` layout for each missing platform. Plans that reuse shells with an existing launcher icon proceed without re-checking design-system inventory.
 5. **Phase 0 (prerequisite):** close a pre-existing workflow footgun by making platform-bootstrap slice insertion automatic on `specify plan propose --from` and moving shell-presence detection into the **vectis** tool (`vectis verify --mode detect`). Non-Vectis targets (e.g. Omnia microservices) are unaffected.
 
-SVG remains the canonical designer format. Mobile shells (iOS, Android) consume derived exports. Web asset materialization is out of scope here and specified separately in [RFC-45a](future/rfc-45a-web-asset-materialization.md), deferred until a web shell scaffold exists.
+SVG remains the canonical designer format. Mobile shells (iOS, Android) consume derived exports. Web asset materialization is out of scope here and specified separately in [RFC-46a](future/rfc-46a-web-asset-materialization.md), deferred until a web shell scaffold exists.
 
 ## Motivation
 
@@ -41,7 +41,7 @@ Inference and build also conflated two different policies:
 - **Symbols are explicit inventory.** Platform glyph use requires `kind: symbol` on an `assets.yaml` entry (optionally `inferred: true` when promoted from screenshots). Composition still references the asset id.
 - **CLI owns determinism.** Materialization, catalog emission, shell-presence detection, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons. Crux shell layout heuristics (`shared/`, `iOS/`, `Android/`) live in the vectis tool — not in `specify-workflow`.
 - **Automatic bootstrap inference (Phase 0).** When `propose --from` runs for a project with declared `platforms`, the CLI always consults vectis detect and inserts bootstrap slices (`app-foundation`, `bootstrap-<platform>`) for absent shells. Operators do not pass a separate reconcile flag.
-- **Minimal schema growth.** One top-level pointer (`app-icon`), one new `role`, one optional `inferred` flag on symbol entries, and one carve-out (`source:` on `rasterEntry` only for `role: app-icon`). No per-composition-item render mode. (Web adds one optional `sources.web` later — see [RFC-45a](future/rfc-45a-web-asset-materialization.md).)
+- **Minimal schema growth.** One top-level pointer (`app-icon`), one new `role`, one optional `inferred` flag on symbol entries, and one carve-out (`source:` on `rasterEntry` only for `role: app-icon`). No per-composition-item render mode. (Web adds one optional `sources.web` later — see [RFC-46a](future/rfc-46a-web-asset-materialization.md).)
 
 ## Design
 
@@ -260,7 +260,7 @@ For a **Vectis-bound** project `P`, UI shell bootstrap is implied at `specify pl
 
 Detection is **filesystem-authoritative** — the same vectis detect pass Phase 0 runs on `propose --from`. `plan.yaml` slice names (`app-foundation`, `bootstrap-*`) are **not** a separate gate input; after Phase 0, propose always inserts those rows when vectis detect reports absences. Operators who hand-curate `plan.yaml` via `specify plan add` / `amend` and omit bootstrap rows are covered by the same detect pass: §6.2 and slice-build prepare gates key off on-disk shell absence, not on whether bootstrap slice names appear in the plan DAG. No additional structural finding (e.g. `plan-bootstrap-slices-missing`) is required — filesystem detect plus automatic propose on the default path is sufficient.
 
-`core`-only bootstrap (`app-foundation` with only `core` among `missing[]`) does **not** require `app-icon`. The trigger fires only when **`ios` or `android` is among `missing[]`**. Web bootstrap (`bootstrap-web`) is deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
+`core`-only bootstrap (`app-foundation` with only `core` among `missing[]`) does **not** require `app-icon`. The trigger fires only when **`ios` or `android` is among `missing[]`**. Web bootstrap (`bootstrap-web`) is deferred to [RFC-46a](future/rfc-46a-web-asset-materialization.md).
 
 **Non-Vectis targets** (Omnia, contracts, …) do not declare shell `platforms` and never satisfy this trigger regardless of on-disk layout. Generalising bootstrap detection to future shell targets is out of scope (Phase 0).
 
@@ -361,7 +361,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
 
-**Problem.** Today `specify plan propose --from` accepts an optional `--reconcile-platforms` flag. When omitted, the plan may list only feature slices while `project.yaml` still declares `ios`/`android` and no shell trees exist — a plan the repo cannot execute. RFC-45 §6 originally papered over this with dual bootstrap triggers (plan slice names *or* filesystem detect). Phase 0 removes the footgun so §6.1 needs only vectis detect.
+**Problem.** Today `specify plan propose --from` accepts an optional `--reconcile-platforms` flag. When omitted, the plan may list only feature slices while `project.yaml` still declares `ios`/`android` and no shell trees exist — a plan the repo cannot execute. RFC-46 §6 originally papered over this with dual bootstrap triggers (plan slice names *or* filesystem detect). Phase 0 removes the footgun so §6.1 needs only vectis detect.
 
 **Policy.**
 
@@ -371,7 +371,7 @@ Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
 | **Vectis owns shell detection** | Delete Crux-specific `detect_missing_platforms` from `specify-workflow`. Propose and plan validate consult `specify tool run vectis -- verify --mode detect <project-dir>` for Vectis-bound projects. Vectis compares declared `platforms` to on-disk Crux trees (`shared/src/app.rs`, `iOS/**/*.swift`, `Android/**/*.kt`). |
 | **Workflow keeps DAG insertion only** | `Plan::reconcile_platforms` remains in `specify-workflow`: prepend `app-foundation` / `bootstrap-<platform>`, wire `depends-on`. No target-specific presence rules in the kernel. |
 | **Non-Vectis unaffected** | Omnia, contracts, and similar targets without `platforms.required` carry no platform list; bootstrap post-pass is a no-op; §6 does not apply. |
-| **Future targets out of scope** | A later shell target with `platforms.required` must ship its own detect surface; RFC-45 does not generalise workflow heuristics. |
+| **Future targets out of scope** | A later shell target with `platforms.required` must ship its own detect surface; RFC-46 does not generalise workflow heuristics. |
 
 **Deliverables:** propose handler + clap flag removal; workflow `platforms.rs` heuristic deletion; plan skill prose; `DECISIONS.md` / `AGENTS.md` updates; acceptance tests updated to stop passing `--reconcile-platforms`.
 
@@ -404,7 +404,7 @@ Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
 - Auto-generating per-density raster ladders for non–`app-icon` assets from a single PNG master (regular `kind: raster` inventory requires complete per-density pins or fails).
 - Automatic symbol substitution at build time.
 - Figma / screenshot asset extraction (screenshots remain non-destructive).
-- Web asset materialization (`sources.web`, favicon / manifest icons, web render paths) and the web shell scaffold — deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
+- Web asset materialization (`sources.web`, favicon / manifest icons, web render paths) and the web shell scaffold — deferred to [RFC-46a](future/rfc-46a-web-asset-materialization.md).
 - Generic image CDN or remote asset hosting.
 
 ## Resolved decisions

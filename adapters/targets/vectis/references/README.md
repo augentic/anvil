@@ -66,7 +66,7 @@ The Vectis core / test / iOS / Android writer and reviewer orchestration lives i
 
 ### RFCs (in flight)
 
-- [RFC-45: Asset materialization and mandatory app icon](../../../../rfcs/rfc-45-asset-materialization.md) — canonical SVG → per-platform exports, `app-icon` gate on UI bootstrap plans, inference-only symbol fallback. Draft; refinement on branch `rfc-45`.
+- [RFC-46: Asset materialization and mandatory app icon](../../../../rfcs/rfc-46-asset-materialization.md) — canonical SVG → per-platform exports, `app-icon` gate on UI bootstrap plans, inference-only symbol fallback. Draft; refinement on branch `rfc-46`.
 
 ### Layout inferer contract (legacy)
 
