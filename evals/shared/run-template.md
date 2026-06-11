@@ -11,11 +11,11 @@
 
 ## Assertions
 
-Grade each assertion id from the scenario's **Assertions** section. Add an **Evidence** column only when the verdict is `fail`, `skipped`, or `needs-human`.
+Grade each assertion id against its entry in the [assertion taxonomy](assertions.md): run the **probe** (verdict from probe output) or judge the **judgment flag** (verdict requires an evidence pointer). Probe output is the evidence — cite it (or its absence) in the **Evidence** column for any verdict other than `pass`; on `pass` the probe command itself suffices.
 
 | Assertion | Verdict | Evidence |
 | --- | --- | --- |
-| `<assertion>` | `<pass \| fail \| skipped \| needs-human>` | |
+| `<assertion>` | `<pass \| fail \| skipped \| needs-human>` | `<probe output / evidence pointer — non-pass only>` |
 
 **Negative expectations:** `<held | violated — see Notes>` (manual-by-design posture unchanged on a normal pass; expand only when violated).
 

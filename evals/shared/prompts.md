@@ -52,7 +52,7 @@ Guardrails:
 ```text
 You are the eval RUN+CONFIRM operator for Specify scenario <id>.
 Drive the live agent workflow end to end, capture evidence at every stage,
-self-verify the structurally-checkable assertions, and fill the run-summary.
+grade the assertions through their probes, and fill the run-summary.
 Pause at the human-only seams; never fabricate a result.
 
 Inputs:
@@ -60,6 +60,8 @@ Inputs:
   sandbox, the PATH-resolved `specify` build).
 - evals/scenarios/<id>.md (Invocation, Assertions, Negative
   Expectations).
+- evals/shared/assertions.md (the assertion taxonomy: per-id probe or
+  judgment flag).
 - evals/shared/run-template.md (simplified pass/fail layout).
 - evals/shared/inspect.md (the read-only render verbs for reviewing state).
 
@@ -85,11 +87,12 @@ stage the scenario's `stages` declares:
    idempotent, PRs report MERGED, the plan archives. Record the archive path.
    Then /spec:finalize <name> (third); confirm the `no active plan` re-entry.
 
-Confirm (self-grade on durable STRUCTURE only — never a byte/golden compare):
-- For each assertion id, run the matching read-only check (`specify plan
-  validate`, inspect plan.yaml, inspect .specify/archive/plans/, `gh pr view`)
-  and record pass/fail/skipped/needs-human in the **Assertions** table; add an
-  Evidence column only for non-pass rows.
+Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
+- For each assertion id, look it up in evals/shared/assertions.md: run its
+  **probe** verbatim and record pass/fail/skipped from the probe output, or —
+  for a **judgment flag** — record the named evidence pointer and mark
+  needs-human unless the evidence is unambiguous. Fill the **Assertions**
+  table; cite probe output in the Evidence column for non-pass rows.
 - On a normal pass, record negative expectations as one line: held.
 - Point **Evidence** at the retained sandbox and `scripts/snapshot.sh "$SANDBOX"`
   (do not paste full snapshot output on pass).

@@ -368,15 +368,15 @@ The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. 
 
 The seven framework tools live in `wasi-tools/<name>/` (`scenarios`, `skill-body`, `agent-teams`, `links-registry`, `marketplace`, `prose`, `rules`). Each one and the `CORE-*` rules it serves:
 
-| Tool             | Serves                  |
-| ---------------- | ----------------------- |
-| `scenarios`      | CORE-028, 029, 031, 033 |
-| `skill-body`     | CORE-040, 046, 048      |
-| `agent-teams`    | CORE-012                |
-| `links-registry` | CORE-018, 020           |
-| `marketplace`    | CORE-022                |
-| `prose`          | CORE-024                |
-| `rules`          | CORE-009, 026, 053      |
+| Tool             | Serves                       |
+| ---------------- | ---------------------------- |
+| `scenarios`      | CORE-028, 029, 031, 033, 056 |
+| `skill-body`     | CORE-040, 046, 048           |
+| `agent-teams`    | CORE-012                     |
+| `links-registry` | CORE-018, 020                |
+| `marketplace`    | CORE-022                     |
+| `prose`          | CORE-024                     |
+| `rules`          | CORE-009, 026, 053           |
 
 To add or extend one:
 
