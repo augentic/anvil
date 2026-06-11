@@ -9,7 +9,7 @@ Vectis today treats `design-system/assets.yaml` as an inventory while shell writ
 1. A deterministic **`vectis materialize assets`** step that converts canonical sources into per-platform exports.
 2. A strict **render-by-`kind`** writer contract: `vector` / `raster` assets always render from materialized shell resources; `symbol` is the only explicit glyph path.
 3. A top-level **`app-icon`** field in `assets.yaml` pointing at a `role: app-icon` entry.
-4. A **plan-time validation gate** that fails when a plan implies bootstrapping a new UI shell platform and `app-icon` is absent or not materializable.
+4. A **bootstrap-only validation gate** that hard-fails when a plan implies bootstrapping a new UI shell platform and no satisfiable `app-icon` exists — neither a straightforward canonical image the materializer can convert, nor operator-pinned hand-built exports in the expected `exports/<platform>/` layout for each missing platform. Plans that reuse shells with an existing launcher icon proceed without re-checking design-system inventory.
 
 SVG remains the canonical designer format. Mobile shells (iOS, Android) consume derived exports. Web asset materialization is out of scope here and specified separately in [RFC-45a](future/rfc-45a-web-asset-materialization.md), deferred until a web shell scaffold exists.
 
@@ -33,7 +33,9 @@ Inference and build also conflated two different policies:
 ## Principles
 
 - **Canonical vs materialized.** `source:` (typically SVG under `design-system/assets/`) is designer-owned and web-canonical. `sources.<platform>` and `assets/exports/<platform>/` are tool-generated or operator-pinned derivatives. Shell trees never symlink back into `design-system/assets/` at runtime.
+- **Auto-convert or operator-pin.** Default path: `vectis materialize assets` performs straightforward format conversion from `source:` into `exports/<platform>/`. When a platform needs designer-specific treatment (e.g. iOS glass, Android adaptive layers hand-tuned in graphic tools), the operator commits hand-built artifacts under the conventional `exports/<platform>/` tree and pins paths in `sources.<platform>`. The materializer MUST NOT overwrite operator-pinned paths; it fills only missing slots from `source:` when no pin exists.
 - **Commit materialized exports.** `design-system/assets/exports/` is version-controlled in consumer repos alongside canonical `source:` files. CI and shell builds consume committed exports; they do not require `vectis materialize` (or image-processing deps) on every job. Operators re-run materialize after editing canonical assets and commit the regenerated tree.
+- **Bootstrap-only `app-icon` gate.** Mandatory `app-icon` validation runs only when §6.1 detects UI shell bootstrap for a platform. Incremental plans against shells that already carry a launcher icon (from a prior bootstrap or operator-authored shell resources) are not blocked by design-system `app-icon` inventory.
 - **Fail closed on missing materialization.** A composition-referenced `vector` / `raster` id without exports for a declared project platform is an error — never a silent symbol fallback at build time.
 - **Symbols are explicit inventory.** Platform glyph use requires `kind: symbol` on an `assets.yaml` entry (optionally `inferred: true` when promoted from screenshots). Composition still references the asset id.
 - **CLI owns determinism.** Materialization, catalog emission, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons.
@@ -67,6 +69,8 @@ specify tool run vectis -- materialize assets [path/to/assets.yaml] [--platform 
 
 **Outputs:** files under `design-system/assets/exports/<platform>/`, written to paths recorded in `sources.<platform>` (or defaulted by the materializer). These files are **committed** to the repo — not gitignored. Validation checks that each referenced `sources.<platform>` path exists (from the committed tree or after a local materialize run).
 
+**Operator pins:** when `sources.<platform>` is already set and the referenced path exists on disk, `materialize assets` skips that platform slot for the asset. When `sources.<platform>` is absent, the materializer writes to the conventional default under `exports/<platform>/` and MAY update `assets.yaml` with the resulting path (implementation choice — v1 MAY require the operator to record pins manually after first materialize). Operator-pinned exports take precedence over `source:` for that platform; editing `source:` alone does not regenerate a pinned platform until the operator clears the pin or deletes the pinned tree.
+
 **Invocation points:**
 
 | Phase | When |
@@ -82,7 +86,7 @@ specify tool run vectis -- materialize assets [path/to/assets.yaml] [--platform 
 |--------|-----------|------------|----------------|
 | `icon` | SVG | PDF in `<id>.imageset/` | Vector Drawable XML in `drawable/` |
 | `illustration` | SVG | PNG `@2x` / `@3x` in imageset | PNG per density bucket |
-| `app-icon` | SVG or raster | `AppIcon.appiconset/` (see §4) | adaptive + legacy mipmaps (see §4) |
+| `app-icon` | SVG or square raster (see §4) | `exports/ios/app-icon/AppIcon.appiconset/` (see §4) — auto-converted or operator-pinned | `exports/android/app-icon/` adaptive + legacy mipmaps (see §4) — auto-converted or operator-pinned |
 | `photo` | raster | copy density slots | copy density slots |
 | `decorative` | any | same as `icon` / `illustration` by `kind` | same |
 
@@ -98,7 +102,8 @@ Implementation lives in `wasi-tools/vectis` (pure Rust: `usvg` / `resvg` for SVG
 version: 1
 
 # References the kebab-case key under `assets:` for the launcher icon.
-# Required when plan validation detects UI platform bootstrap (§6).
+# Required when plan validation detects UI platform bootstrap (§6) and no
+# shell-resident launcher icon already satisfies the missing platform.
 app-icon: app-icon
 
 assets:
@@ -106,13 +111,19 @@ assets:
     kind: vector          # or raster
     role: app-icon
     alt: "Application"
-    source: assets/app-icon.svg
+    source: assets/app-icon.svg                    # auto-convert input; omit when every platform is operator-pinned
+    sources:
+      ios: assets/exports/ios/app-icon/AppIcon.appiconset      # operator-pinned hand-built tree
+      android: assets/exports/android/app-icon                 # operator-pinned hand-built tree
 ```
+
+For `role: app-icon` only, `sources.<platform>` MAY reference a **directory** (the export root) rather than a single file. Per-platform pins are independent: iOS may be hand-built while Android is auto-converted from `source:`, or vice versa.
 
 Schema (`assets.schema.json`):
 
 - Add optional property `app-icon: { "$ref": "#/$defs/assetId" }`.
 - Cross-check: referenced id MUST exist under `assets:` and MUST have `role: app-icon`.
+- For `role: app-icon`, relax `sources.ios` / `sources.android` to accept a directory path (export root) in addition to single-file paths used by other roles.
 
 `role` enum gains `app-icon`.
 
@@ -134,49 +145,66 @@ No other schema changes. Composition continues to reference asset ids only; `kin
 
 ### 4. App icon requirements per platform
 
-The `app-icon` asset is special: stores and launchers require fixed shapes outside normal UI imagesets.
+The `app-icon` asset is special: stores and launchers require fixed shapes outside normal UI imagesets. One logical id (`app-icon:` pointer) covers all platforms; per-platform delivery is via auto-conversion from `source:` **or** operator-pinned exports under `design-system/assets/exports/<platform>/app-icon/`.
 
-#### 4.1 Canonical input (designer)
+#### 4.1 Delivery paths (per platform)
+
+Each **missing UI platform** in a bootstrap trigger (§6.1) MUST be satisfiable by **at least one** of:
+
+| Path | When | Requirement |
+|------|------|-------------|
+| **A. Auto-convert** | Operator provides a straightforward canonical image | `source:` present (SVG or square raster ≥1024×1024); materializer derives platform exports into the conventional `exports/<platform>/app-icon/` tree |
+| **B. Operator-pin** | Operator needs platform-specific treatment (glass, adaptive tuning, etc.) | Hand-built artifacts committed under `exports/<platform>/app-icon/` in the platform-acceptable layout (§4.2 / §4.3); `sources.<platform>` points at the export root |
+
+If neither path is satisfiable for a missing platform, validation **hard-fails** (`plan-bootstrap-app-icon-missing` or `assets-app-icon-invalid`). There is no silent fallback, placeholder generation, or writer-side conversion at build time.
+
+Canonical `source:` constraints (path A):
 
 | Constraint | Rule |
 |------------|------|
 | Format | SVG (preferred) or square raster (≥1024×1024) |
 | Canvas | Square 1:1; no iOS/Android corner masking in source |
 | Transparency | Avoid for iOS marketing icon (Apple rejects alpha on App Store icon); Android adaptive foreground may use transparency |
-| Safe zone | For Android adaptive: keep logo inside central ~66% ("mask" safe area) |
+| Safe zone | For Android adaptive auto-convert: keep logo inside central ~66% ("mask" safe area) |
 | Color | Full-color brand mark; no platform chrome |
 
-#### 4.2 iOS (`AppIcon.appiconset`)
+#### 4.2 iOS (`exports/ios/app-icon/AppIcon.appiconset`)
 
-Materializer emits `iOS/<App>/Resources/Assets.xcassets/AppIcon.appiconset/` (scaffold creates empty slot; first materialize / bootstrap build fills it).
+**Export root (committed):** `design-system/assets/exports/ios/app-icon/AppIcon.appiconset/`
+
+**Auto-convert (path A):** materializer writes a single **1024×1024** opaque PNG plus `Contents.json` (`idiom: universal`, `platform: ios`) from `source:`.
+
+**Operator-pin (path B):** designer commits a complete `AppIcon.appiconset/` under the export root (e.g. glass or depth effects baked into the PNG). Validation checks actool-safe layout: valid `Contents.json`, at least one 1024×1024 PNG entry, no raw SVG in the appiconset.
+
+**Shell copy:** writer copies from the export root into `iOS/<App>/Resources/Assets.xcassets/AppIcon.appiconset/` (scaffold creates empty slot; bootstrap build fills it). Writer never deletes operator overrides outside generated filenames in the shell tree.
 
 | Requirement | Detail |
 |-------------|--------|
 | Xcode setting | `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` (XcodeGen default — scaffold MUST ship the appiconset, not rely on implicit name) |
 | Minimum for simulator / debug | Single **1024×1024** PNG, `idiom: universal`, `platform: ios` (iOS 11+ single-size model) |
-| Store / release | Same 1024 PNG or full slot grid if materializer expands later |
-| Source conversion | SVG → 1024 PNG (opaque background if source has transparency) |
-| Writer | Copies generated appiconset; never deletes operator overrides outside generated filenames |
+| Store / release | Same 1024 PNG or full slot grid when operator-pinned |
 
-#### 4.3 Android (`mipmap` + adaptive)
+#### 4.3 Android (`exports/android/app-icon/`)
 
-Materializer emits under `Android/app/src/main/res/`:
+**Export root (committed):** `design-system/assets/exports/android/app-icon/`
+
+**Auto-convert (path A):** materializer writes the adaptive + legacy mipmap tree under the export root from `source:`.
+
+**Operator-pin (path B):** designer commits a complete launcher tree under the export root:
 
 | Artifact | Purpose |
 |----------|---------|
 | `mipmap-anydpi-v26/ic_launcher.xml` | Adaptive icon definition |
 | `mipmap-anydpi-v26/ic_launcher_round.xml` | Round launcher variant |
-| `drawable/ic_launcher_foreground.xml` or density PNGs | Foreground layer from SVG |
-| `values/ic_launcher_background.xml` or `color` resource | Background (from `tint` token ref on asset entry, or neutral default) |
-| `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png` | Legacy pre-API-26 fallback (rasterized from canonical) |
+| `drawable/ic_launcher_foreground.xml` or density PNGs | Foreground layer |
+| `values/ic_launcher_background.xml` or `color` resource | Background (from `tint` token ref on asset entry when auto-converting; operator-chosen when pinned) |
+| `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png` | Legacy pre-API-26 fallback |
 
-`AndroidManifest.xml` continues `android:icon="@mipmap/ic_launcher"`.
+Validation checks required artifacts exist and referenced XML/PNG formats are well-formed. Writer copies the export tree into `Android/app/src/main/res/`; `AndroidManifest.xml` continues `android:icon="@mipmap/ic_launcher"`.
 
 #### 4.4 Bootstrap placeholder policy
 
-Plans that trigger UI bootstrap (§6) **require a real `app-icon` entry** — validation does not accept absent field.
-
-Operators MAY use a deliberately ugly placeholder SVG committed to the design-system repo; the field must still be present and materializable. Auto-generated brand-colored placeholders without designer input are **deferred** (optional future `app-icon: { generated: true }` — out of scope for v1).
+When §6.1 fires, validation requires a satisfiable `app-icon` per missing platform (§4.1) — not merely a YAML field. Operators MAY commit a deliberately ugly placeholder SVG for path A or ugly hand-built PNGs for path B; auto-generated brand-colored placeholders without designer input remain **deferred** (optional future `app-icon: { generated: true }` — out of scope for v1).
 
 ### 5. Inference-time symbol exception
 
@@ -203,35 +231,52 @@ A plan **implies bootstrapping a new UI platform** when **any** of the following
 
 #### 6.2 Validation rule
 
-When §6.1 triggers for project `P`:
+When §6.1 triggers for project `P`, evaluate **only the missing UI platforms** in the trigger set. For each such platform `π`:
 
-1. Resolve `design-system/assets.yaml` for `P` (project-local path).
-2. **Error** `plan-bootstrap-app-icon-missing` if:
-   - file absent, or
-   - top-level `app-icon` absent, or
-   - `app-icon` id not found under `assets:`, or
-   - referenced entry lacks `role: app-icon`, or
-   - canonical `source` file missing, or
-   - materialized exports absent for each **missing UI platform** in the trigger set (after running materialize in check-only mode, or verifying `exports/` paths).
+1. **Shell-resident escape hatch.** If the on-disk shell for `π` already carries a satisfiable launcher icon (see §6.3), validation for `π` **passes** — no design-system `app-icon` inventory is required. This covers incremental plans, re-bootstrap after a prior plan, and operator-authored shell icons that predate `assets.yaml`.
+2. **Design-system satisfaction.** Otherwise resolve `design-system/assets.yaml` for `P` and require the `app-icon` entry to satisfy §4.1 for `π` via path A (canonical `source:` materializable) **or** path B (operator-pinned exports at the conventional `exports/<π>/app-icon/` layout in the platform-acceptable format).
+
+**Error** `plan-bootstrap-app-icon-missing` (plan validate) or `assets-app-icon-invalid` (asset validate) when step 1 does not pass for `π` **and** step 2 fails because:
+
+- `assets.yaml` absent, or
+- top-level `app-icon` absent, or
+- `app-icon` id not found under `assets:`, or
+- referenced entry lacks `role: app-icon`, or
+- for `π`: neither path A nor path B is satisfiable — e.g. no `source:` and no valid operator-pinned export tree, or `source:` present but materialize check-only mode cannot derive exports and no pin exists, or pinned tree exists but fails format/layout checks (§4.2 / §4.3).
+
+When §6.1 does **not** trigger, `app-icon` inventory is not gated at plan validate or slice build prepare — existing shell launcher icons and prior bootstrap output are sufficient.
 
 Gate placement:
 
 | Gate | Enforced |
 |------|----------|
-| `specify plan validate` | Yes — blocks Gate 1 stamp |
+| `specify plan validate` | Yes — blocks Gate 1 stamp when §6.1 triggers and any missing platform fails §6.2 |
 | `specify plan transition <name> approved` | Indirect (validate should run first) |
-| `specify slice build --phase prepare` | Yes — hard fail for any shell build without materialized `app-icon` when platform is in scope |
+| `specify slice build --phase prepare` | Yes — same bootstrap-only rule when the build targets a platform that §6.1 would treat as missing and §6.2 has not yet been satisfied for that platform |
+| Incremental feature slices on existing shells | No `app-icon` gate |
 
-`vectis validate assets` gains the same `app-icon` structural checks but does not know plan context; plan validate owns the bootstrap conditional.
+`vectis validate assets` gains structural `app-icon` checks (format, export layout) but does not know plan bootstrap context; plan validate owns the conditional gate and shell-resident escape hatch.
 
-#### 6.3 Interaction with `app-foundation` slice
+#### 6.3 Shell-resident launcher icon detection
 
-Greenfield reconcile inserts `app-foundation` when all supported platforms are missing. That slice SHOULD depend on design-system existing with `tokens.yaml`, `assets.yaml` (including `app-icon`), and materialized exports before iOS/Android bootstrap build slices run. Plan DAG:
+When §6.1 reports platform `π` absent from the reconcile heuristic (`detect_missing_platforms`), the shell tree may still exist with a launcher icon from a prior bootstrap or operator work. Before requiring design-system inventory, validation probes the shell:
+
+| Platform | Satisfied when |
+|----------|----------------|
+| **iOS** | `iOS/*/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json` exists **and** at least one referenced PNG is present on disk |
+| **Android** | `Android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` exists **or** legacy `mipmap-*/ic_launcher.png` exists |
+
+Exact path heuristics align with `vectis verify --mode detect` shell layout assumptions. A skeleton appiconset with no PNG does **not** satisfy the escape hatch.
+
+#### 6.4 Interaction with `app-foundation` slice
+
+Greenfield reconcile inserts `app-foundation` when all supported platforms are missing. That slice SHOULD depend on design-system existing with `tokens.yaml`, `assets.yaml` (including a satisfiable `app-icon` per §4.1 for each missing platform), and committed `exports/` (auto-converted or operator-pinned) before iOS/Android bootstrap build slices run. Plan DAG:
 
 ```text
 design-system  →  app-foundation (scaffold shells)  →  feature slices
      ↑
-  must include app-icon before Gate 1 when bootstrap trigger fires
+  must satisfy app-icon (path A or B) before Gate 1 when bootstrap trigger fires
+     and no shell-resident launcher icon yet exists for the missing platform
 ```
 
 ### 7. Validation extensions (ongoing)
@@ -241,12 +286,14 @@ Extend existing `vectis validate assets` (composition-referenced assets):
 | Check | Severity |
 |-------|----------|
 | Composition-referenced `vector`/`raster` lacks `sources.<platform>` **and** no export file | error |
+| `role: app-icon` export tree fails layout/format checks (§4.2 / §4.3) | error |
 | `sources.ios` ends in `.svg` for `role: illustration` | warning (error after materialize mandate) |
-| `sources.ios` ends in `.svg` for `role: app-icon` | error |
+| `sources.ios` ends in `.svg` for `role: app-icon` export | error |
 | Platform set from `project.yaml.platforms` instead of hardcoded `["ios","android"]` | error when missing |
 | Shell tree missing catalog entry for referenced non-symbol asset | `vectis verify --mode verify` |
+| `app-icon` missing when bootstrap trigger fires and shell-resident escape hatch does not apply | error (`plan-bootstrap-app-icon-missing`) |
 
-Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-icon-invalid`, `assets-svg-illustration-on-ios`, `plan-bootstrap-app-icon-missing`.
+Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-icon-invalid`, `assets-app-icon-export-invalid`, `assets-svg-illustration-on-ios`, `plan-bootstrap-app-icon-missing`.
 
 ### 8. Scaffold changes
 
@@ -272,16 +319,17 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 ### Phase 1 — Policy and gates (no converter yet)
 
-- Schema: `app-icon`, `role: app-icon`, `inferred`.
-- `specify plan validate`: bootstrap trigger + `plan-bootstrap-app-icon-missing`.
+- Schema: `app-icon`, `role: app-icon`, `inferred`; `sources.<platform>` directory paths permitted for `role: app-icon`.
+- `specify plan validate`: bootstrap trigger + `plan-bootstrap-app-icon-missing` with shell-resident escape hatch (§6.3).
+- `vectis validate assets`: `app-icon` export layout checks (§4.2 / §4.3); bootstrap context remains plan-only.
 - Writer/review doc updates; review rule flagging symbol substitution.
 - iOS scaffold: `AppIcon.appiconset` skeleton.
 
 ### Phase 2 — Materialize v1
 
-- `vectis materialize assets`: icons (SVG→PDF / VD XML), illustrations (SVG→PNG), `app-icon` (iOS 1024 + Android adaptive).
-- Hook into `slice build --phase prepare`.
-- Extend `vectis validate assets` for export presence.
+- `vectis materialize assets`: icons (SVG→PDF / VD XML), illustrations (SVG→PNG), `app-icon` auto-convert (iOS 1024 + Android adaptive) into `exports/<platform>/app-icon/`; skip operator-pinned platforms.
+- Hook into `slice build --phase prepare` (bootstrap-only `app-icon` gate).
+- Extend `vectis validate assets` for export presence and path A / path B satisfaction.
 - Design-system docs and acceptance fixtures: commit `exports/` outputs; do not gitignore the tree.
 
 ### Phase 3 — Fidelity
@@ -291,7 +339,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 ## Non-goals
 
-- Hand-authoring per-density exports as the long-term workflow (materialize owns generation; operators commit the `exports/` tree for reproducibility).
+- Requiring hand-built exports for every asset (auto-convert from `source:` remains the default; operator-pin is opt-in per platform when design demands it).
 - Automatic symbol substitution at build time.
 - Figma / screenshot asset extraction (screenshots remain non-destructive).
 - Web asset materialization (`sources.web`, favicon / manifest icons, web render paths) and the web shell scaffold — deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
@@ -300,12 +348,14 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 ## Resolved decisions
 
 1. **`exports/` committed vs gitignored?** **Commit.** Consumer repos version-control `design-system/assets/exports/` so CI and shell builds are reproducible without running `vectis materialize` (and without image-processing deps) on every job. Framework acceptance fixtures pin small committed PNG/PDF outputs under the same policy.
+2. **Single global `app-icon` vs per-platform ids?** **One logical id**, per-platform delivery. The top-level `app-icon:` pointer references a single `role: app-icon` entry. Per-platform marks differ via independent `sources.ios` / `sources.android` pins under `exports/<platform>/app-icon/` (operator hand-built) or auto-conversion from shared `source:` — not separate asset ids or composition references. Bootstrap validation hard-fails when a missing platform has neither a materializable canonical image nor valid hand-built exports in the conventional export layout; it does not fire on incremental plans when the shell already carries a launcher icon (§6.2 / §6.3).
 
 ## Open questions
 
-1. **Single global `app-icon` vs per-platform ids?** v1: one `app-icon` field; materializer derives platform shapes. Per-platform overrides deferred unless designers require different marks.
-2. **Plan trigger B without bootstrap slices?** If operator declines `--reconcile-platforms` but platforms are still absent, validate still fails at Gate 1 — intentional force function.
-3. **Raster-only design systems?** `kind: raster` + `role: app-icon` with `sources.ios.1x/2x/3x` supported; materialize copies/resizes.
+1. **Plan trigger B without bootstrap slices?** If operator declines `--reconcile-platforms` but platforms are still absent, validate still fails at Gate 1 — intentional force function.
+2. **Raster-only design systems?** `kind: raster` + `role: app-icon` with `source:` as a ≥1024×1024 master; materialize copies/resizes into export trees. Operator-pin path unchanged.
+3. **Pin vs `source:` drift.** When an operator updates `source:` but leaves platform pins in place, should `materialize` emit a warning, or should validate flag `assets-app-icon-source-stale`? v1: silent skip (pins win); revisit if operators report confusion.
+4. **`assets.yaml` auto-write of `sources.<platform>` after first materialize.** v1 leaves recording pins to the operator; auto-write would reduce toil but couples materialize to manifest mutation.
 
 ## References
 

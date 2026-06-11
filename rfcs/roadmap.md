@@ -42,7 +42,7 @@ Three tracks run in parallel:
 
 **In flight (RFC refinement — not yet implementation):**
 
-- [RFC-45: Asset materialization and mandatory app icon](rfc-45-asset-materialization.md) — canonical SVG inputs, deterministic `vectis materialize assets`, render-by-`kind` shell writers, top-level `app-icon` in `assets.yaml`, and `plan-bootstrap-app-icon-missing` when a plan implies UI platform bootstrap. Scoped to iOS/Android so it ships as a single initiative; web asset materialization is split out to [RFC-45a](future/rfc-45a-web-asset-materialization.md) (deferred). Refinement branch: `rfc-45` in `augentic/specify` and `augentic/specify-cli`.
+- [RFC-45: Asset materialization and mandatory app icon](rfc-45-asset-materialization.md) — canonical SVG inputs with auto-convert or operator-pinned `exports/<platform>/` hand-built assets, deterministic `vectis materialize assets`, render-by-`kind` shell writers, one logical `app-icon` with per-platform delivery, and bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Scoped to iOS/Android so it ships as a single initiative; web asset materialization is split out to [RFC-45a](future/rfc-45a-web-asset-materialization.md) (deferred). Refinement branch: `rfc-45` in `augentic/specify` and `augentic/specify-cli`.
 
 **Deferred until trigger conditions or prerequisites:**
 
