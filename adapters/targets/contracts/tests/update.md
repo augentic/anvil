@@ -3,7 +3,6 @@ id: contracts-update-boundary
 owner: contracts
 kind: adapter-boundary
 adapter: contracts@v1
-backend: manual
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project

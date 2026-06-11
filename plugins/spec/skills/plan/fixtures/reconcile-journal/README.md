@@ -14,7 +14,7 @@ That yields three slices (`slice-count: 3`).
 ## What the line pins
 
 - **Shipped wire order** — the line serialises `timestamp` first, then `event`, then `payload` (workflow §Wire format), with kebab-case payload keys.
-- **Single event** — `plan propose --from` emits exactly one `plan.reconcile.completed` event per successful invocation; there is no separate `plan.reconcile.agent` line.
+- **Single event** — `plan propose --from` emits exactly one `plan.reconcile.completed` event per successful invocation; there is no separate agent-phase journal line.
 - **Completed payload** — `plan.reconcile.completed` carries `plan-name`, the matching `slice-count`, and the `slice-names` in the agent's response order.
 
 ## Files

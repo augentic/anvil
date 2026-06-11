@@ -1,8 +1,8 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 ---cargo
 [package]
-name = "specify-bootstrap"
-edition = "2021"
+name = "bootstrap"
+edition = "2024"
 
 [dependencies]
 toml = "0.8"
@@ -26,7 +26,7 @@ fn main() {
         Mode::ResolvedRef => print_resolved_ref(&source),
         Mode::Install => match source {
             CliSource::Path(path) => {
-                build_local(&path);
+                install_local(&path);
                 println!("{path}/target/release/specify");
             }
             CliSource::Git { url, git } => {
@@ -51,14 +51,14 @@ fn die(msg: &str) -> ! {
 
 // Hand the current process off to `cmd` and never return: exec-replace on unix,
 // else run to completion and exit with the child's status code.
-fn exec_replacing(mut cmd: Command) -> ! {
+fn execute(mut cmd: Command) -> ! {
     #[cfg(unix)]
     die(&format!("exec failed: {}", cmd.exec()));
     #[cfg(not(unix))]
     std::process::exit(cmd.status().map_or(1, |s| s.code().unwrap_or(1)));
 }
 
-fn run_to_completion(mut cmd: Command, fail_msg: &str) {
+fn run(mut cmd: Command, fail_msg: &str) {
     if !cmd.status().is_ok_and(|s| s.success()) {
         die(fail_msg);
     }
@@ -130,7 +130,7 @@ fn resolve_ref(cli: &toml::Table) -> CliSource {
         .or_else(|| str_field(cli, "branch").map(GitRef::Branch))
         .or_else(|| str_field(cli, "tag").map(GitRef::Tag))
         .or_else(|| str_field(cli, "version").map(|v| GitRef::Tag(format!("v{v}"))))
-        .unwrap_or_else(|| die("`cli` needs one of: path | git + rev/branch/tag | version"));
+        .unwrap_or(GitRef::Branch("main".to_owned()));
 
     // Keep the URL scheme in a named constant so this file carries no inline
     // HTTP(S) URL literal (UNI-014 flags literal web URLs in Rust source).
@@ -166,63 +166,51 @@ fn ls_remote(url: &str, refname: &str) -> Option<String> {
 }
 
 fn install(selector: &[String]) {
-    let mut cmd = Command::new("cargo");
-    cmd.args([
-        "install",
-        "--quiet",
-        "--locked",
-        "--root",
-        INSTALL_ROOT,
-        "--bin",
-        "specify",
-    ])
-    .args(selector)
-    .arg("specify");
-    run_to_completion(cmd, "cargo install failed");
+    let mut cargo_install = Command::new("cargo");
+    cargo_install
+        .args(["install", "--locked", "--root", INSTALL_ROOT])
+        .args(selector)
+        .arg("specify");
+    run(cargo_install, "cargo install failed");
+}
+
+fn run_installed(args: &[String]) {
+    let mut cmd = Command::new(BIN);
+    cmd.args(args);
+    execute(cmd);
 }
 
 // Local-path install: build into the sibling checkout's own target dir so the
 // build is incremental and shared with normal dev builds, then hand the caller
 // the resolved binary path to symlink. Unlike `install()` (`cargo install` into
 // an isolated `.cli` root), this avoids a from-scratch release rebuild per run.
-fn build_local(path: &str) {
-    let mut cmd = Command::new("cargo");
-    cmd.args([
+fn install_local(path: &str) {
+    let mut cargo_build = Command::new("cargo");
+    cargo_build.args([
         "build",
-        "--quiet",
         "--release",
         "--manifest-path",
         &format!("{path}/Cargo.toml"),
-        "--bin",
-        "specify",
     ]);
-    run_to_completion(cmd, "cargo build failed");
+    run(cargo_build, "cargo build failed");
 }
 
 // `--release` so the heavy `lint framework` work (wasmtime + schema validation)
 // runs under an optimized binary, and so this build shares the same incremental
-// release target as `build_local` (`make install-cli`) rather than maintaining a
+// release target as `install_local` (`make install-cli`) rather than maintaining a
 // separate, slower-at-runtime debug artifact set.
 fn run_local(path: &str, args: &[String]) {
-    let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--quiet",
-        "--release",
-        "--manifest-path",
-        &format!("{path}/Cargo.toml"),
-        "--bin",
-        "specify",
-        "--",
-    ])
-    .args(args);
-    exec_replacing(cmd);
-}
-
-fn run_installed(args: &[String]) {
-    let mut cmd = Command::new(BIN);
-    cmd.args(args);
-    exec_replacing(cmd);
+    let mut cargo_run = Command::new("cargo");
+    cargo_run
+        .args([
+            "run",
+            "--release",
+            "--manifest-path",
+            &format!("{path}/Cargo.toml"),
+            "--",
+        ])
+        .args(args);
+    execute(cargo_run);
 }
 
 fn parse_args() -> Mode {

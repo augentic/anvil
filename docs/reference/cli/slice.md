@@ -8,7 +8,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-slice-create) | Create a new slice directory with an initial `.metadata.yaml`. |
+| [`create`](#specify-slice-create) | Create a new slice directory with an initial `metadata.yaml`. |
 | [`synthesize`](#specify-slice-synthesize) | Turn the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml`: `--dry-run` emits the agent inputs envelope; `--from <response.json>` runs the projection kernel and persists. |
 | [`model`](#specify-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specify-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
@@ -34,10 +34,10 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 | Argument | Description |
 |----------|-------------|
 | `name` | Kebab-case slice name (validated) |
-| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `.metadata.yaml`), or `restart` (delete and recreate -- destructive) |
+| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `metadata.yaml`), or `restart` (delete and recreate -- destructive) |
 | `--format` | Output format: `json` for structured output |
 
-Creates `.specify/slices/<name>/` with an initial `.metadata.yaml`.
+Creates `.specify/slices/<name>/` with an initial `metadata.yaml`.
 
 ### specify slice synthesize
 
@@ -49,9 +49,9 @@ specify slice synthesize <name> --from <response.json> [--format json]
 ```
 
 - `--dry-run` assembles the **inputs** envelope — each bound source's inline `lead` + `claims` (read from `evidence/<source>.yaml`) plus the resolved target `shape` brief body. Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
-- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (assign `REQ` ids in declaration order, derive `status` and per-claim `winner` markers, render highest-authority-first `Sources:` lists, write inline provenance, stamp the `version` / `slice` / `project` header), renders the `ID:` / `Sources:` / `Status:` lines into each `specs/<unit>/spec.md`, runs the drift validators, then atomically persists `proposal.md` / `specs/<unit>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
+- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (assign `REQ` ids in declaration order, derive `status` and per-claim `winner` markers, render highest-authority-first `Sources:` lists, write inline provenance, stamp the `version` / `slice` / `project` header), renders the `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
 
-The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is `cache: opt-out` — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
+The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
 
 This is the CLI verb invoked by [`/spec:refine`](../slice-skills/refine.md) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
 
@@ -107,7 +107,7 @@ specify slice transition <name> <target>
 | `name` | Slice name |
 | `target` | Target state: `refining`, `refined`, `built`, `dropped`. Skills stamp `refined` and `built` after `/spec:refine` and `/spec:build`. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
 
-Enforces legal transitions. Records timestamps in `.metadata.yaml`.
+Enforces legal transitions. Records timestamps in `metadata.yaml`.
 
 ### specify slice touched-specs
 
@@ -200,11 +200,11 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
-**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
+**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`). When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it probes the `.specify/plan.lock` driver lock first and refuses an unlocked session with `plan-lock-not-held` (exit 2); plan-less standalone merges skip the probe.
 
 ### specify slice task
 
-Two subcommands cover the task surface (renamed from the old top-level `specify task progress` / `specify task mark`).
+Two subcommands cover the task surface (renamed from the old top-level `task progress` / `task mark` verbs).
 
 #### specify slice task progress
 

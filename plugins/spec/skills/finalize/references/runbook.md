@@ -28,23 +28,23 @@ These checks are deterministic and synchronous; nothing observable on disk chang
 
 **Halts.** None classified — pre-flight failures are hard exits with their own diagnostic, not recoverable halt classifications.
 
-### Step 2 — Drained check via `specify plan next`
+### Step 2 — Drained check via `specify plan status`
 
 **Invocation.**
 
 ```bash
-specify plan next --format json
+specify plan status --format json
 ```
 
-The plan is drained when the envelope reports `reason: drained` (with `active: null` and `next: null`). All other reasons (`in-progress`, `stuck`, or a queued `next: <name>`) mean at least one entry is still non-`done`. The skill never reads `plan.yaml` directly; drainage is computed by the CLI from the per-entry `status` set.
+The plan is drained when the envelope reports `action: drained`. Any other action (`refine|build|merge <slice>` or `stop <reason>`) means at least one entry is still non-`done`. The skill never reads `plan.yaml` directly; drainage is computed by the CLI from the per-entry `status` set.
 
-This step is read-only.
+This step is read-only by construction — `plan status` writes nothing and emits no journal event. (Do not substitute `specify plan next`: it is a lock-gated plan-state writer and refuses `plan-lock-not-held` outside a driver session.)
 
 **Halts.**
 
-- `non-terminal-entries` — `specify plan next` returns anything other than `reason: drained`. The diagnostic names the offending entry (`active` or `next` from the envelope). Operator runs `/spec:execute` to drive the loop forward, then re-enters.
+- `non-terminal-entries` — `specify plan status` returns anything other than `action: drained`. The diagnostic names the offending entry (`slice` from the envelope, or the stop reason). Operator runs `/spec:execute` to drive the loop forward, then re-enters.
 
-**Failure recovery.** Re-run `/spec:execute` until `specify plan next` reports `drained`. Re-running `/spec:finalize <name>` re-queries the plan; it is idempotent.
+**Failure recovery.** Re-run `/spec:execute` until `specify plan status` reports `drained`. Re-running `/spec:finalize <name>` re-queries the plan; it is idempotent.
 
 ### Step 3 — Push
 
@@ -141,7 +141,7 @@ The complete set of halt classifications this skill emits is:
 
 | Classification | Source | Re-entry rule |
 |---|---|---|
-| `non-terminal-entries` | step 2 (`specify plan next`) | run `/spec:execute` until the plan reports `drained`, then re-run finalize |
+| `non-terminal-entries` | step 2 (`specify plan status`) | run `/spec:execute` until the plan reports `drained`, then re-run finalize |
 | `failed` | step 3 (`specify workspace push`) | fix upstream (auth, network, missing remote), re-run finalize |
 | `pending-checks` | step 3 (`specify workspace push`) | wait for the upstream check, re-run finalize |
 | `failed-checks` | step 3 (`specify workspace push`) | fix the underlying failure, re-run finalize |
@@ -157,7 +157,7 @@ Every halt is surfaced with the underlying CLI's diagnostic, byte-for-byte. The 
 
 Each halt re-enters the same skill: fix the cause, re-run `/spec:finalize <name>`. The skill is idempotent because:
 
-1. **It re-runs `specify plan next` on every invocation.** Drainage is computed from on-disk state; nothing tracks "where finalize was last run" outside the plan itself.
+1. **It re-runs `specify plan status` on every invocation.** Drainage is computed from on-disk state; nothing tracks "where finalize was last run" outside the plan itself.
 2. **It re-runs `specify workspace push` on every invocation.** The verb reports `up-to-date` for clones it has already pushed; it does not double-push.
 3. **It re-queries `gh pr view` on every invocation.** PR state on the forge is the authoritative source.
 4. **It re-runs archive confirmation on every invocation.** If no active plan remains, the skill confirms the archive path or prior successful transcript before reporting the change as already closed.
@@ -171,7 +171,7 @@ Every shell-out is listed here so reviewers can grep for accidental drift:
 | Step | Verb |
 |---|---|
 | Pre-flight | none (skill-internal validation) |
-| Drained check | `specify plan next --format json` |
+| Drained check | `specify plan status --format json` |
 | Push | `specify workspace push` |
 | PR observation | `gh pr view "$PR_URL" --json state,url,number` |
 | Finalize | `specify plan archive` |

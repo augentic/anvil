@@ -104,4 +104,4 @@
 - [CLI architecture](contributing/cli-architecture.md)
 - [Consistency checks](contributing/checks.md)
 - [Skills test coverage](contributing/skills-test-coverage.md)
-- [Acceptance tests](contributing/acceptance.md)
+- [Evals](contributing/evals.md)

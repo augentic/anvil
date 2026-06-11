@@ -1,16 +1,16 @@
 # contracts.shape
 
-Idiom guidance core synthesis (`/spec:refine`) folds into the generated `specs/<unit>/spec.md` and `design.md` for slices that target the `contracts` adapter. The contracts target produces **contract artifacts** — machine-readable interface definitions under `contracts/` — not application code, so the synthesised specs and `design.md` shape themselves around the contract's behavioural surface and its persisted format, not around runtime providers or DI patterns.
+Idiom guidance core synthesis (`/spec:refine`) folds into the generated `specs/<domain>/spec.md` and `design.md` for slices that target the `contracts` adapter. The contracts target produces **contract artifacts** — machine-readable interface definitions under `contracts/` — not application code, so the synthesised specs and `design.md` shape themselves around the contract's behavioural surface and its persisted format, not around runtime providers or DI patterns.
 
-## Contract units
+## Contract domains
 
-Each `proposal.md ## Units` bullet names one contract surface — an HTTP API domain, an event family, or a schema vocabulary scope — and maps one-to-one to `specs/<unit>/spec.md`. For a single HTTP API the unit is typically the API domain slug (e.g. `billing-api`); for a mixed-format slice the unit is the overarching contract surface (e.g. `order-lifecycle` when it spans both HTTP endpoints and event channels). Target briefs may describe what a unit means for the contracts domain, but they do not rename `## Units` or move spec files out of the canonical `specs/` layout.
+Each `proposal.md ## Domains` bullet names one contract surface — an HTTP API domain, an event family, or a schema vocabulary scope — and maps one-to-one to `specs/<domain>/spec.md`. For a single HTTP API the domain is typically the API domain slug (e.g. `billing-api`); for a mixed-format slice the domain is the overarching contract surface (e.g. `order-lifecycle` when it spans both HTTP endpoints and event channels). Target briefs may describe what a domain means for the contracts target, but they do not rename `## Domains` or move spec files out of the canonical `specs/` layout.
 
 ## What core synthesises for a contracts slice
 
 For a contracts target, the canonical artifacts answer two questions:
 
-- `specs/<unit>/spec.md` — **what the contract promises**. Requirements capture endpoints, channels, payloads, error responses, status codes, message kinds, and acceptance rules that consumers can rely on. Each requirement carries the standard `ID:` / `Sources:` / `Status:` provenance lines; `Sources:` typically resolves to one or more `intent`, `documentation`, or code-source bindings depending on whether the slice authors a new contract or imports an existing one.
+- `specs/<domain>/spec.md` — **what the contract promises**. Requirements capture endpoints, channels, payloads, error responses, status codes, message kinds, and acceptance rules that consumers can rely on. Each requirement carries the standard `ID:` / `Sources:` / `Status:` provenance lines; `Sources:` typically resolves to one or more `intent`, `documentation`, or code-source bindings depending on whether the slice authors a new contract or imports an existing one.
 - `design.md` — **how the contract is expressed and constrained**. Records the contract format the slice will produce (OpenAPI 3.1, AsyncAPI 3.0, JSON Schema), the file layout under `contracts/`, any cross-contract dependencies (schemas reused across HTTP and evented surfaces), and the validation rules the merge gate enforces. No application-side DI patterns, runtime providers, or implementation crates belong here — those are Omnia / Vectis target concerns.
 
 ## Contract format selection
@@ -35,12 +35,12 @@ The merge gate runs `specify tool run contract -- "$PROJECT_ROOT/contracts" --fo
 
 ## Source-driven authoring vs import
 
-The contracts target supports both contract-first authoring (specs drive a new contract) and contract-given import (operator supplies an external OpenAPI / AsyncAPI / JSON Schema file and the build step normalises it). The `Sources:` provenance on each requirement in `specs/<unit>/spec.md` tells `/spec:build` which path applies — a `documentation` or `intent` source typically signals authoring; a code-source binding (`code-typescript`, future contract source adapters) typically signals import or reverse-engineering from observed behaviour.
+The contracts target supports both contract-first authoring (specs drive a new contract) and contract-given import (operator supplies an external OpenAPI / AsyncAPI / JSON Schema file and the build step normalises it). The `Sources:` provenance on each requirement in `specs/<domain>/spec.md` tells `/spec:build` which path applies — a `documentation` or `intent` source typically signals authoring; a code-source binding (`typescript`, future contract source adapters) typically signals import or reverse-engineering from observed behaviour.
 
 When a slice is import-driven, `design.md` should name the supplied file path and the format detected. The `build` brief's format sub-flows handle version detection and upgrades (Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → AsyncAPI 3.0, JSON Schema draft-04/06/07/2019-09 → 2020-12) per `references/import-upgrade-policy.md`.
 
 ## What synthesis MUST NOT do
 
 - Do not emit application-layer guidance (provider traits, error variants, crate layout, runtime sandbox notes). Those belong to Omnia / Vectis target shapes, not contracts.
-- Do not write contract YAML inline into `specs/<unit>/spec.md` or `design.md`. The contract files themselves are `/spec:build`'s output, landing under `contracts/`.
+- Do not write contract YAML inline into `specs/<domain>/spec.md` or `design.md`. The contract files themselves are `/spec:build`'s output, landing under `contracts/`.
 - Do not invent endpoints, channels, or schemas the Evidence does not justify. Mark gaps with `[unknown]` per the standard synthesis rules and let the operator fill them in before build.

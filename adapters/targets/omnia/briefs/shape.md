@@ -1,12 +1,12 @@
 # Omnia target — shape brief
 
-> This brief produces **prose guidance only**. Core synthesis (the `/spec:refine` pipeline) consumes the guidance below when authoring `proposal.md`, `specs/<unit>/spec.md`, and `design.md` for a slice whose `Slice.target == omnia`. The brief does **not** read sources or write artifacts — it carries idioms the synthesiser folds into the canonical artifacts. The same guidance applies whether the slice's evidence is pure intent, documentation, code, or any combination; per acceptance scenario #5h, both fixtures pick up identical `shape`.
+> This brief produces **prose guidance only**. Core synthesis (the `/spec:refine` pipeline) consumes the guidance below when authoring `proposal.md`, `specs/<domain>/spec.md`, and `design.md` for a slice whose `Slice.target == omnia`. The brief does **not** read sources or write artifacts — it carries idioms the synthesiser folds into the canonical artifacts. The same guidance applies whether the slice's evidence is pure intent, documentation, code, or any combination; per eval scenario #5h, both fixtures pick up identical `shape`.
 
-## Omnia units
+## Omnia domains
 
-For Omnia targets, each `## Units` entry in `proposal.md` maps to one spec file at `specs/<unit>/spec.md`. The unit slug normally equals the crate name for a single generated crate; for broader work (multi-crate service or migration), the unit is the service surface slug.
+For Omnia targets, each `## Domains` entry in `proposal.md` maps to one spec file at `specs/<domain>/spec.md`. The domain slug normally equals the crate name for a single generated crate; for broader work (multi-crate service or migration), the domain is the service surface slug.
 
-The workflow owns the `## Units` section and the `specs/<unit>/spec.md` layout. This brief defines what a unit *means* for Omnia but does not rename or relocate the core sections.
+The workflow owns the `## Domains` section and the `specs/<domain>/spec.md` layout. This brief defines what a domain *means* for Omnia but does not rename or relocate the core sections.
 
 ## How synthesis consumes this brief
 
@@ -14,7 +14,7 @@ When the synthesising agent assembles a slice for an Omnia target it MUST:
 
 1. Read this brief first, ahead of any source-supplied `Evidence`.
 2. Lift the deep references listed at the bottom into the synthesis context (they are normative, not optional).
-3. Author `proposal.md`, `specs/<unit>/spec.md`, `design.md`, and `tasks.md` so the artifacts match the §Required artifact shapes below, regardless of which sources contributed evidence.
+3. Author `proposal.md`, `specs/<domain>/spec.md`, `design.md`, and `tasks.md` so the artifacts match the §Required artifact shapes below, regardless of which sources contributed evidence.
 4. Carry tag-and-proceed posture on uncertainty: `[unknown]`, `[conflict]`, `[divergence]` are review signals (see [`../references/guardrails.md`](../references/guardrails.md) for the per-trait coverage matrix the spec lists each handler against). The brief never asks synthesis to halt.
 
 ## Idiom: provider-based dependency injection
@@ -64,7 +64,7 @@ The synthesised design MUST NOT prescribe `Utc::now()` inside `from_input()` —
 
 ## Required artifact shapes (Omnia target)
 
-### `specs/<unit>/spec.md`
+### `specs/<domain>/spec.md`
 
 Per-requirement provenance lines (`ID:`, `Sources:`, `Status:`) are core's responsibility (workflow §Requirement block contract). On top of that, an Omnia slice's spec files MUST cover:
 
@@ -90,7 +90,7 @@ Synthesis writes the following headings, in order:
 Sequence:
 
 1. Author / update crate per `design.md`.
-2. Author / update tests per `specs/<unit>/spec.md` (scenarios) + `design.md` (side-effect assertions).
+2. Author / update tests per `specs/<domain>/spec.md` (scenarios) + `design.md` (side-effect assertions).
 3. Author / update guest wiring (routes, topic arms, WebSocket exports, provider impls).
 4. Run code review.
 

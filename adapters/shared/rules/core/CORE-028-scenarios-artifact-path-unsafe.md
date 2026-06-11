@@ -16,7 +16,7 @@ rule_hints:
 
 Every `expected-artifacts` entry in a scenario's frontmatter must be a non-empty path, relative to the scenario workspace, with no leading `/` and no `..` segment. An empty, absolute, or escaping path cannot be resolved safely against an isolated scenario workspace.
 
-This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the acceptance scenario pack, target adapter tests, and plugin skill fixtures, then validates each one's `expected-artifacts`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the eval scenario pack, target adapter tests, and plugin skill fixtures, then validates each one's `expected-artifacts`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 

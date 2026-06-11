@@ -16,7 +16,7 @@ rule_hints:
 
 A scenario's `stages` frontmatter list declares the slice-loop window the scenario exercises. The list must be a contiguous slice of the fixed order `[plan, refine, build, merge, drop]`, anchored at any element — for example `[refine, build]` or `[plan, refine, build, merge, drop]`, but never `[plan, build]` (a gap) or `[draft]` (an unknown stage). A non-contiguous list does not describe a runnable lifecycle window.
 
-This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the acceptance scenario pack, target adapter tests, and plugin skill fixtures, then validates each one's stage contiguity. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree: the `scenarios` framework tool discovers every scenario file under the eval scenario pack, target adapter tests, and plugin skill fixtures, then validates each one's stage contiguity. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 

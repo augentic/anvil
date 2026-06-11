@@ -2,7 +2,7 @@
 
 Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make lint` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
 
-This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Phase 3.7 renamed it …" / "the v1.x verb was …" prose is deleted, not relocated; git history is the record, and the skill describes only what it does today. Migration prose only stays in a SKILL.md when the skill itself documents a real migration feature (e.g. the `code-typescript` source adapter consuming a legacy codebase).
+This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Phase 3.7 renamed it …" / "the v1.x verb was …" prose is deleted, not relocated; git history is the record, and the skill describes only what it does today. Migration prose only stays in a SKILL.md when the skill itself documents a real migration feature (e.g. the `typescript` source adapter consuming a legacy codebase).
 
 ## Description grammar
 
@@ -52,11 +52,11 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+Cross-cutting guardrails — the `metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
 
 The canonical "skills MUST NOT" list:
 
-- **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
+- **Never hand-edit `metadata.yaml`.** Every lifecycle transition flows through `specify slice transition` or `specify plan transition`.
 - **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify plan create`; the CLI owns directory shape.
 - **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge`, `specify slice transition <name> dropped`, and `specify plan archive`.
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
@@ -108,7 +108,7 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 
 ## Skill / CLI responsibility split
 
-The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specify` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `.metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
+The phase skills are agent-driven orchestrators; every deterministic operation runs through the `specify` CLI. The canonical statement of this split — the full operation list and the "never hand-edit `metadata.yaml`" rule — lives in [`AGENTS.md` §"Skill / CLI responsibility split"](../../AGENTS.md#skill--cli-responsibility-split) and the CLI surface skills depend on is enumerated in [cli-contract.md](cli-contract.md); this page does not restate either, to keep a single source of truth.
 
 The skill-authoring consequence is the rule unique to this page: when a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it — not to make the skill smarter.
 

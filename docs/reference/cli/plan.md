@@ -14,6 +14,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> approved`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
+| [`status`](#specify-plan-status) | Read-only projection of the plan's execution state into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`). |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
 
 ## Subcommands
@@ -37,7 +38,7 @@ health diagnostics below.
 specify plan validate
 ```
 
-Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
+Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, duplicate source keys within one entry (`duplicate-source-key` — a slice binds at most one lead per source), at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
 - `project-not-in-registry` (important) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
@@ -67,6 +68,28 @@ Returns the first `pending` entry whose `depends-on` entries are all `done`. Ret
 
 With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
 
+`plan next` is a plan-state writer (the sole writer of per-entry `in-progress`), so it probes the `.specify/plan.lock` driver lock and refuses an unlocked session with `plan-lock-not-held` (exit 2). Hold the lock per the execute skill's plan-lock reference; use `specify plan status` for a lock-free read.
+
+### specify plan status
+
+Project the plan's execution state into a deterministic `next-action`. Read-only — `plan next` stays the only writer of per-entry `in-progress`, and `status` emits no journal event.
+
+```bash
+specify plan status [--format json]
+```
+
+The projection reads three surfaces: `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (resolved into the materialised workspace slot when the entry is project-bound), and the journal tail. The `next-action` field resolves to one of:
+
+| `next-action` | Meaning |
+|---------------|---------|
+| `refine <slice>` / `build <slice>` / `merge <slice>` | Dispatch the named phase for the candidate entry (the active `in-progress` entry, else the entry `plan next` would claim). |
+| `stop <reason>` | Halt the loop; the `stop` sub-body carries the closed reason, optional journal `detail`, and a one-line operator hint. |
+| `drained` | No `pending` or `in-progress` entries remain — text mode renders the literal `drained — run /spec:finalize <name>` string. |
+
+Stop reasons are a closed set: `plan-not-approved` (Gate 1 not stamped), `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's claim window), `slice-dropped`, `merge-incomplete` (the merge landed but the entry's `done` stamp is missing), and `stuck` (pending entries blocked on unmet dependencies).
+
+With `--format json` the body carries `plan`, `lifecycle`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`/spec:build a`, `specify plan transition demo approved`, …), `null` when no single command does (`stuck`, `slice-dropped`). Text mode renders `resume:` as the final line.
+
 ### specify plan add
 
 Append a new entry to the plan.
@@ -90,6 +113,8 @@ specify plan amend <entry> --authority-override <entry> <kind>=<source>
 ```
 
 Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
+
+A slice binds at most one lead per source key (a duplicate would silently overwrite `evidence/<source>.yaml` at refine time). `--add-source` refuses a key the entry already binds with `duplicate-source-key` (exit 2); a duplicate introduced via the wholesale `--sources` replacement rolls back as `plan-amend-validation-failed`. Re-sizing — replacing the lead bound under an existing key via `--sources <key>=<other-lead>` — stays legal.
 
 ### specify plan remove
 
@@ -152,6 +177,8 @@ specify plan transition <name> <target> [--reason "<text>"]
 Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 At most one entry may be `in-progress` at a time.
+
+Per-entry transitions (`done` and `--undo`) probe the `.specify/plan.lock` driver lock and refuse an unlocked session with `plan-lock-not-held` (exit 2). The plan-level `approved` stamp is exempt — Gate 1 precedes any driver session.
 
 ### specify plan archive
 

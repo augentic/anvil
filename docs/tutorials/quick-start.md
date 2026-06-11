@@ -171,7 +171,7 @@ Under `.specify/slices/fix-typo/` you will find:
 | File | Purpose |
 | ---- | ------- |
 | `proposal.md` | Why the slice exists |
-| `specs/<unit>/spec.md` | Behavioral requirements (`ID:`, `Sources:`, `Status:`) |
+| `specs/<domain>/spec.md` | Behavioral requirements (`ID:`, `Sources:`, `Status:`) |
 | `design.md` | Technical approach |
 | `tasks.md` | Implementation sequence |
 | `evidence/intent.yaml` | What the intent source contributed |

@@ -17,13 +17,13 @@ Build MUST NOT edit the root `contracts/` baseline directly. Baseline updates ha
 The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
 
 - `inputs.artifacts.proposal` (`proposal.md`) — authorship mode (author vs import), source material, interface scope, producer/consumer roles.
-- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements: endpoints / channels / payloads / errors (one file per `proposal.md ## Units` entry). Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
+- `inputs.artifacts.specs[]` (`specs/<domain>/spec.md`) — behavioural requirements: endpoints / channels / payloads / errors (one file per `proposal.md ## Domains` entry). Provenance lines tell the brief whether the slice is author-driven (`Sources: [intent | <doc-key>]`) or import-driven (`Sources: [<code-or-contract-source>]`).
 - `inputs.artifacts.design` (`design.md`) — the format selection (OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema), file-layout intent, and any cross-contract dependency notes (see [`shape.md`](shape.md)).
 - `inputs.artifacts.tasks` (`tasks.md`) — progress tracking.
 - `inputs.artifacts.additional[]` — the optional `contracts/` subtree declared by [`adapter.yaml`](../adapter.yaml): partial deltas written by a prior pass, present only when the slice already carries them.
 - The root `contracts/` baseline — read-only context for `$ref` reuse and extension authoring; outside the request manifest, not a slice delta.
 
-Build consumes the synthesised Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the synthesised `specs/<unit>/spec.md` files have captured the required behaviour.
+Build consumes the synthesised Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the synthesised `specs/<domain>/spec.md` files have captured the required behaviour.
 
 ## Algorithm
 

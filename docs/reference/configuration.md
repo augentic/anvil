@@ -1,6 +1,6 @@
 # Configuration Files
 
-Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills — direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `.metadata.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
+Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills — direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `metadata.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
 
 ## Contents
 
@@ -8,7 +8,7 @@ Specify uses several YAML and Markdown files for configuration. All are managed 
 - [plan.yaml](#planyaml)
 - [registry.yaml](#registryyaml)
 - [change.md](#changemd)
-- [.metadata.yaml](#metadatayaml)
+- [metadata.yaml](#metadatayaml)
 
 ## project.yaml
 
@@ -23,7 +23,7 @@ Project-level configuration that persists across changes. Two shapes — the reg
 ```yaml
 name: my-project
 target: https://github.com/augentic/specify/targets/omnia
-sources: [intent, documentation, code-typescript]
+sources: [intent, documentation, typescript]
 specify-version: "2.0.0"
 workspace: false
 description: |
@@ -41,7 +41,7 @@ description: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned units and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Workspace shape
 
@@ -77,7 +77,7 @@ sources:
     adapter: documentation
     path: ./design-notes/identity
   legacy-monolith:
-    adapter: code-typescript
+    adapter: typescript
     path: ./vendor/legacy-monolith
 slices:
   - name: identity-user-registration
@@ -152,7 +152,7 @@ projects:
 **Created by:** `/spec:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
-Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation) and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
+Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation), an optional `## Cross-cutting leads` block (leads multi-homed across several slices, each listed with its member slices), and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
 
 ```markdown
 # Identity revamp
@@ -172,9 +172,9 @@ into Omnia. Priority: user registration, password reset.
   - `legacy-monolith`: 24 hours
 ```
 
-## .metadata.yaml
+## metadata.yaml
 
-**Location:** `.specify/slices/<name>/.metadata.yaml`
+**Location:** `.specify/slices/<name>/metadata.yaml`
 **Created by:** `specify slice create`
 **Modified by:** `specify slice transition`, `specify slice merge`
 

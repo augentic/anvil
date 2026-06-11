@@ -58,7 +58,7 @@ The first implementation scans only scopes present in the current project: `proj
 |---|---|
 | `0` | The CLI operation succeeded, or a WASI tool exited `0`. |
 | `1` | Project context is missing for a verb that requires `.specify/project.yaml`, or another generic CLI failure occurred. |
-| `2` | Validation, resolver, permission, runtime, or undeclared-tool error. JSON errors use `validation`, `tool-resolver`, `tool-permission-denied`, `tool-runtime`, or `tool-not-declared`. |
+| `2` | Validation, resolver, permission, runtime, or undeclared-tool error. JSON errors use `tool-resolver`, `tool-permission-denied`, `tool-runtime`, `tool-not-declared`, or — for manifest-structure failures — the failing rule id. |
 | `N` (`1`-`255`) | `specify tool run` returns the guest's non-zero exit status when the component exits normally. |
 
 Tool exit codes are clamped to `0..=255`. Runtime traps and resolver failures do not reuse guest status codes; they return a typed Specify error.
@@ -75,22 +75,13 @@ Structured responses use the standard CLI envelope:
 
 `fetch` returns fetched/cache rows with `fetched: true|false`. `gc` returns `removed`, `all`, and `warnings`. For inspection, read `.specify/project.yaml`, adapter `tools.yaml`, and the tool cache sidecar directly.
 
-Validation failures include rule results so callers can branch on rule ids such as `tool.lifecycle-state-write-denied`:
+Manifest-structure failures collapse into a payload-free error envelope whose `error` discriminant is the first failing rule id (so callers can still branch on ids such as `tool.lifecycle-state-write-denied`); per-rule detail is joined into `message`:
 
 ```json
 {
-  "envelope-version": 6,
-  "error": "validation",
-  "message": "validation failed with 1 error(s)",
-  "exit-code": 2,
-  "results": [
-    {
-      "status": "fail",
-      "rule-id": "tool.lifecycle-state-write-denied",
-      "rule": "tool write permissions do not target Specify lifecycle state",
-      "detail": "write path `$PROJECT_DIR/.specify` targets `.specify` lifecycle state"
-    }
-  ]
+  "error": "tool.lifecycle-state-write-denied",
+  "message": "tool.lifecycle-state-write-denied: tools.yaml manifest must satisfy structural rules: write path `$PROJECT_DIR/.specify` targets `.specify` lifecycle state",
+  "exit-code": 2
 }
 ```
 

@@ -1,6 +1,6 @@
 # Source Adapters
 
-> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `code-typescript`, `screenshots`, `captures`) live at [`adapters/sources/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/sources). The output-side counterparts are documented under [Target adapters](../targets/index.md).
+> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) live at [`adapters/sources/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/sources). The output-side counterparts are documented under [Target adapters](../targets/index.md).
 
 ## What is a source adapter?
 
@@ -13,13 +13,13 @@ Source adapters do not write `spec.md` — that is core synthesis's responsibili
 
 ## First-party source adapters
 
-You bind sources per change at plan time (`/spec:plan <name> source docs=./design-notes source legacy=./repo`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour`).
+You bind sources per change at plan time (`/spec:plan <name> source docs=./design-notes source legacy=./repo`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../../plugins/spec/references/synthesis/authority.md)).
 
 | Adapter | Reads | Evidence authority | Typical use |
 | ------- | ----- | ------------------ | ----------- |
 | `intent` | An operator-supplied free-form string | `intent` | The degenerate N=1 entry point; backs every plan, including pure greenfield work. |
 | `documentation` | A read-only directory of written docs | `documentation` | Design notes, specs, and operator-authored intent. |
-| `code-typescript` | A read-only TypeScript/JavaScript source tree | `behaviour` | Reconstructing behaviour from a legacy service. |
+| `typescript` | A read-only TypeScript/JavaScript source tree | `behaviour` | Reconstructing behaviour from a legacy service. |
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
@@ -31,7 +31,7 @@ Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`
 
 ```yaml
 # yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
-name: code-typescript
+name: typescript
 version: 1
 axis: source
 execution: agent
@@ -50,10 +50,10 @@ tools:
 | `name` | yes | Kebab-case source identifier. Must match the directory name under `adapters/sources/` and be unique across both axes. |
 | `version` | yes | Integer ≥ 1. Increments when the adapter ships breaking changes. |
 | `axis` | yes | Must be `source`. |
-| `execution` | yes | Closed mode (`agent` \| `tool`). `agent` forces `cache: opt-out` and runs the brief via an agent; all first-party sources declare `agent`. |
+| `execution` | yes | Must be `agent` — source extraction is agent-only. The brief is run by an agent via the two-phase `prepare` / `finalize` handoff. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |
 | `briefs` | yes | Map of operation → brief markdown path relative to the manifest. The keys are the operation set, closed to `survey` and `extract` by `source.schema.json`. |
-| `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/.cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
+| `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
 
 ## How a source adapter participates in the loop
 
@@ -66,7 +66,7 @@ Both operations run sandboxed under the WASI Preview 2 posture — directory pre
 
 ## Validation
 
-The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation under the declared `execution` mode.
+The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation through the two-phase agent handoff.
 
 ## See also
 

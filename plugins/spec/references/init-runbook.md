@@ -194,7 +194,7 @@ https://github.com/augentic/specify/adapters/targets/omnia
 
 For local development in this repository, a local target directory such as `./adapters/targets/omnia` is also valid. If multiple targets are plausible, use the **AskQuestion tool** to let the user select which one.
 
-Store the result as `$PROFILE`. Do not pre-populate `.specify/.cache/`; the CLI owns adapter fetch/copy during `specify init <adapter>`.
+Store the result as `$PROFILE`. Do not pre-populate `.specify/cache/`; the CLI owns adapter fetch/copy during `specify init <adapter>`.
 
 
 ### 4b. Elicit platforms *(regular only — skip in workspace mode)*
@@ -238,8 +238,8 @@ Never combine the two: `specify init "$PROFILE" --workspace` exits `2` with clap
 
 The CLI writes:
 
-- **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/.cache/manifests/targets/<adapter>/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
-- **Workspace** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the workspace disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
+- **Regular** — `.specify/{slices,specs,archive,cache}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached under `.specify/cache/manifests/targets/<adapter>/`, `.specify/{cache,scratch,workspace}/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
+- **Workspace** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/{cache,scratch,workspace}/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `cache/`) are NOT scaffolded — the workspace disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
 If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
 
@@ -254,7 +254,7 @@ For a **regular** init, tell the user:
 - "Specify initialized. Config written to `.specify/project.yaml`."
 - "Generated starter context at `AGENTS.md`; inspect the file directly for later review."
 - "Edit the `description` field to describe your project's tech stack, architecture, and testing approach."
-- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/manifests/targets/<adapter>/adapter.yaml`."
+- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/cache/manifests/targets/<adapter>/adapter.yaml`."
 
 For a **workspace** init, tell the user:
 
@@ -278,12 +278,12 @@ If **none** of these are found, show the **greenfield output** and stop.
 
 If at least one indicator is found, use the **AskQuestion tool**:
 
-> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This is driven by `/spec:plan` with the matching `code-*` source adapter (e.g. `code-typescript`)."
+> "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This is driven by `/spec:plan` with the matching language source adapter (e.g. `typescript`)."
 
 Options:
 
 - **Yes, generate baseline specs** — proceed to create the slice
-- **No, skip for now** — show the greenfield output and stop (user can run `/spec:plan` manually later with the matching `code-*` source)
+- **No, skip for now** — show the greenfield output and stop (user can run `/spec:plan` manually later with the matching language source)
 
 If the user chooses **yes**, create the slice via the CLI:
 
@@ -291,7 +291,7 @@ If the user chooses **yes**, create the slice via the CLI:
 specify slice create initial-baseline --format json
 ```
 
-The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
+The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
 
 ## Output
 
@@ -299,11 +299,11 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 ## Skill scope
 
-`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](./guardrails.md#single-writer-for-lifecycle-state).
+`/spec:init` keeps a narrow boundary; `plan.yaml` / `metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](./guardrails.md#single-writer-for-lifecycle-state).
 
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
-- **No pre-cache.** Never pre-populate `.specify/.cache/` with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
-- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound `code-*` source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
+- **No pre-cache.** Never pre-populate `.specify/cache/` with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound language source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
 - **No registry peer registration.** Workspace init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
 - **Adapter vs `--workspace` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.

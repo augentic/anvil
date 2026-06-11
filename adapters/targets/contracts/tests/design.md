@@ -3,7 +3,6 @@ id: contracts-design
 owner: contracts
 kind: adapter
 adapter: contracts@v1
-backend: manual
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project

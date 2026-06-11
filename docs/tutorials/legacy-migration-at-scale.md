@@ -5,14 +5,14 @@ Bring existing codebases into Specify through source adapters rather than rewrit
 ## Prerequisites
 
 - Completed [Quick start](quick-start.md)
-- A legacy codebase suitable for the `code-typescript` source adapter (TypeScript today; language siblings follow the same pattern)
+- A legacy codebase suitable for the `typescript` source adapter (TypeScript today; language siblings follow the same pattern)
 
 ## How legacy code enters Specify
 
 At plan time, bind a code source alongside or instead of documentation:
 
 ```text
-/spec:plan legacy-migration source legacy=code-typescript:./vendor/monolith
+/spec:plan legacy-migration source legacy=typescript:./vendor/monolith
 ```
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`.
@@ -35,9 +35,9 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — survey vs extract operations
 4. [Target adapters](../reference/targets/omnia.md) — Omnia build and merge briefs
 
-## Acceptance scenarios
+## Eval scenarios
 
-The acceptance scenario pack includes a code-multi-slice scenario under [`acceptance/scenarios/code-multi-slice.md`](../../acceptance/scenarios/code-multi-slice.md) for operators validating releases. Contributors running acceptance tests should see [Acceptance tests](../contributing/acceptance.md).
+The eval scenario pack includes a code-multi-slice scenario under [`evals/scenarios/code-multi-slice.md`](../../evals/scenarios/code-multi-slice.md) for operators validating releases. Contributors running evals should see [Evals](../contributing/evals.md).
 
 ## Next steps
 

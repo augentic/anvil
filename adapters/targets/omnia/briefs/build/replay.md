@@ -4,7 +4,7 @@ Loaded by [../build.md](../build.md) phase 7 when the slice's `plan.yaml.sources
 
 ## Shared contract
 
-Read [`../../../../shared/target-hooks/replay/hook-contract.md`](../../../../shared/target-hooks/replay/hook-contract.md) first — skip rules, generic preconditions, advisory posture, journal recording, merge summary, and the ban on hand-editing `.metadata.yaml`. Payload shapes: [`../../../../shared/target-hooks/replay/journal-payload.md`](../../../../shared/target-hooks/replay/journal-payload.md).
+Read [`../../../../shared/target-hooks/replay/hook-contract.md`](../../../../shared/target-hooks/replay/hook-contract.md) first — skip rules, generic preconditions, advisory posture, journal recording, merge summary, and the ban on hand-editing `metadata.yaml`. Payload shapes: [`../../../../shared/target-hooks/replay/journal-payload.md`](../../../../shared/target-hooks/replay/journal-payload.md).
 
 ## Omnia preconditions
 

@@ -1,20 +1,20 @@
 # Synthesis playbook
 
-The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it authors the **synthesis response** that `specify slice synthesize` projects into the canonical slice artifacts (`proposal.md`, `specs/<unit>/spec.md`, `design.md`, `tasks.md`) and the typed `model.yaml`. The skill body owns the CLI choreography (slice create, serial extract, the two-phase `specify slice synthesize` handoff, validate, transition); this playbook owns **what to write into the response**.
+The synthesis playbook is the agent-facing reconciliation contract `/spec:refine` follows when it authors the **synthesis response** that `specify slice synthesize` projects into the canonical slice artifacts (`proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`) and the typed `model.yaml`. The skill body owns the CLI choreography (slice create, serial extract, the two-phase `specify slice synthesize` handoff, validate, transition); this playbook owns **what to write into the response**.
 
 ## Agent / kernel split
 
 `specify slice synthesize <slice> --dry-run` assembles the **inputs** envelope (each bound source's inline `lead` + `claims`, plus the resolved target `shape` brief); the agent authors the **response**; `specify slice synthesize <slice> --from <response.json>` runs the CLI-owned projection kernel and persists everything. The line between the two is sharp:
 
-- **Agent (response).** Reconciles `Evidence[]` into the requirement set: which requirements exist and how claims merge or split. Per requirement it records the contributing `(source, id, kind)` claims, an `agreement` verdict (`agreed` / `disagreed`), the behavioural prose (`title`, `statement`, `scenarios[]`, `notes`), and the owning `unit`; plus the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and the spec bodies written **without** `ID:` / `Sources:` / `Status:` lines. The agent authors `TASK` ids and `satisfies[]` references (pointing at the declaration-order `REQ` ids the kernel will assign).
+- **Agent (response).** Reconciles `Evidence[]` into the requirement set: which requirements exist and how claims merge or split. Per requirement it records the contributing `(source, id, kind)` claims, an `agreement` verdict (`agreed` / `disagreed`), the behavioural prose (`title`, `statement`, `scenarios[]`, `notes`), and the owning `domain`; plus the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and the spec bodies written **without** `ID:` / `Sources:` / `Status:` lines. The agent authors `TASK` ids and `satisfies[]` references (pointing at the declaration-order `REQ` ids the kernel will assign).
 - **Kernel (CLI).** Stamps the `version` / `slice` / `project` header, resolves authority, assigns `REQ` ids in declaration order, derives `status` and per-claim `winner` markers, renders the highest-authority-first `Sources:` lists, writes the inline provenance into `model.yaml`, and renders the `ID:` / `Sources:` / `Status:` lines into `spec.md`. Any kernel-owned field the agent supplies is ignored and re-derived — the kernel **normalises, never rejects**.
 
 ## Sections of the response, in fixed order
 
 Author the response so its prose reads top-down in the same order the artifacts persist:
 
-1. **`proposal.md`** — why, units, non-goals. Carries the slice's *why*.
-2. **`specs/<unit>/spec.md` bodies** — behavioural requirement prose. One spec body per `## Units` entry. The kernel injects the provenance lines; you write the heading and body only.
+1. **`proposal.md`** — why, domains, non-goals. Carries the slice's *why*.
+2. **`specs/<domain>/spec.md` bodies** — behavioural requirement prose. One spec body per `## Domains` entry. The kernel injects the provenance lines; you write the heading and body only.
 3. **`design.md`** — domain model, APIs, integrations, configuration, technical logic, target-idiom folding (provider DI / Crux idioms / contract format choice), and the UI / layout subsection that spatial Evidence (`region` / `container` / `leaf` from the `screenshots` source adapter) folds into.
 4. **`tasks.md`** — implementation sequencing as numbered checkboxes (`- [ ] X.Y …`) grouped under `## N. <Group>` headings.
 

@@ -83,4 +83,4 @@ This means you can always drop down a layer:
 - If `/spec:plan` produces a plan you want to adjust, use **re-propose** or `specify plan add` / `specify plan remove` for grouping and deferral, and `specify plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then stamp `approved` when ready.
 - If `/spec:execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `/spec:execute` to pick up the next entry.
 - If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
-- If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/.metadata.yaml` directly — they are plain YAML files.
+- If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/metadata.yaml` directly — they are plain YAML files.

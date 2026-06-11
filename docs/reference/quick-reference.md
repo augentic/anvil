@@ -38,7 +38,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
 | `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
 | `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
-| `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<unit>/spec.md`                     |
+| `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<domain>/spec.md`                     |
 | `design.md`         | How will it be implemented?         | `.specify/slices/<name>/design.md`                                |
 | `tasks.md`          | In what sequence?                   | `.specify/slices/<name>/tasks.md`                                 |
 | `evidence/<key>.yaml` | What did this source say?         | `.specify/slices/<name>/evidence/<source>.yaml`               |
@@ -81,8 +81,9 @@ specify plan propose --from <response.json>                    # default slice w
 specify plan add <entry> --sources <key>=<lead> --project <name>
 specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-specify plan transition <plan-name> approved                 # Gate 1; operator-only
-specify plan next                                        # active in-progress, or pick next pending
+specify plan transition <plan-name> approved                 # Gate 1; operator-only (lock-exempt)
+specify plan status                                      # read-only next-action projection
+specify plan next                                        # active in-progress, or pick next pending (requires the plan lock)
 specify plan archive
 
 # Slice management
@@ -120,7 +121,7 @@ Target adapters live under `adapters/targets/<name>/`:
 | Vectis    | `https://github.com/augentic/specify/adapters/targets/vectis`      | Crux cross-platform   |
 | Contracts | `https://github.com/augentic/specify/adapters/targets/contracts`   | API contracts         |
 
-First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `code-typescript`, `screenshots`.
+First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `typescript`, `screenshots`.
 
 ## Directory structure
 
@@ -134,8 +135,8 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
     ├── discovery.md      # plan-time lead inventory
-    ├── plan.lock         # advisory file lock for /spec:execute and breakouts
-    ├── .cache/           # cached adapter manifests + briefs ({sources,targets}/)
+    ├── plan.lock         # advisory file lock for /spec:execute and breakouts (CLI-probed: unlocked drivers get plan-lock-not-held)
+    ├── cache/           # cached adapter manifests + briefs ({sources,targets}/)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline
     ├── workspace/        # workspace slots (workspace mode only)

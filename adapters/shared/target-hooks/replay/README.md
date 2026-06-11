@@ -25,7 +25,7 @@ Targets that skip the hook produce no `replay` field and emit no journal event; 
 ## How to consume
 
 1. Read [`hook-contract.md`](hook-contract.md) for skip rules, preconditions, advisory posture, recording, and merge summary behaviour.
-2. Read [`journal-payload.md`](journal-payload.md) for the closed journal and aspirational `.metadata.yaml` shapes.
+2. Read [`journal-payload.md`](journal-payload.md) for the closed journal and aspirational `metadata.yaml` shapes.
 3. Implement a target-specific runner in `adapters/targets/<name>/briefs/build/replay.md` (or an inline build step) that links here and adds the runner command, paths, and harness references for that target.
 
 ## See also
