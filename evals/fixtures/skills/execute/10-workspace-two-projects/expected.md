@@ -21,18 +21,18 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
      3. `.specify/workspace/project-a/` is missing → `specify workspace sync project-a` materialises the slot.
      4. `specify workspace prepare project-a --change platform-rollout` creates `specify/platform-rollout` from `origin/HEAD`.
      5. `chdir` into `.specify/workspace/project-a/`; emit `Routing: api-platform-v2-upgrade → project-a (.specify/workspace/project-a/)`.
+     6. Export `SPECIFY_PLAN_DIR=<workspace-root>` so slot-side plan readers resolve the workspace's `plan.yaml` (the slot has none).
    - Phase sequence: `/spec:refine` → `/spec:build` → `/spec:merge`.
-   - `specify slice merge run` commits `.specify/specs/` + `.specify/archive/` as `specify: merge api-platform-v2-upgrade`.
+   - `specify slice merge run` commits `.specify/specs/` + `.specify/archive/` as `specify: merge api-platform-v2-upgrade` and — through the exported plan root — stamps the entry `done` in the workspace's `plan.yaml` (merge stays the sole writer of `done`).
    - Residue check: `crates/api/` and `migrations/` are dirty; staged and committed as `specify: residue api-platform-v2-upgrade`.
-   - `chdir` back to workspace.
-   - `specify plan transition api-platform-v2-upgrade done` (driven by `/spec:merge`).
+   - `chdir` back to workspace; unset `SPECIFY_PLAN_DIR`.
 
 3. **Second iteration — `worker-platform-v2-upgrade`.**
    - `specify plan next` returns `project: project-b`.
-   - `.specify/workspace/project-b/` materialised; branch prepared; `chdir` into the slot.
-   - Phase sequence runs.
+   - `.specify/workspace/project-b/` materialised; branch prepared; `chdir` into the slot; plan root exported.
+   - Phase sequence runs; merge stamps `done` through the exported plan root.
    - Residue check: only `crates/worker/` is dirty; committed as `specify: residue worker-platform-v2-upgrade`.
-   - `chdir` back to workspace; `done` transition.
+   - `chdir` back to workspace; export unset.
 
 4. **Third iteration — drained.** `specify plan next` reports no `pending` / `in-progress` entries.
 

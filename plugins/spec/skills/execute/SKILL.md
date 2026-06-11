@@ -21,7 +21,7 @@ Every skill that touches plan state from outside the loop reuses the shell snipp
 
 ## Workspace routing
 
-When the active plan entry carries a `project` field, plan artifacts stay at the workspace and phase work runs in the materialised slot at `.specify/workspace/<project>/`. The routing rules — slot resolution, `specify workspace sync` + `specify workspace prepare`, `chdir` into the slot, residue commit, and CWD restore before the next `specify plan next` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
+When the active plan entry carries a `project` field, plan artifacts stay at the workspace and phase work runs in the materialised slot at `.specify/workspace/<project>/`. The routing rules — slot resolution, `specify workspace sync` + `specify workspace prepare`, `chdir` into the slot, the `SPECIFY_PLAN_DIR=<workspace-root>` export that lets slot-side plan readers resolve the workspace's `plan.yaml`, residue commit, and CWD restore before the next `specify plan next` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
 
 ## Phase invocation
 
