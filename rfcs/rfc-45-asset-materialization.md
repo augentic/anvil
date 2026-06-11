@@ -33,6 +33,7 @@ Inference and build also conflated two different policies:
 ## Principles
 
 - **Canonical vs materialized.** `source:` (typically SVG under `design-system/assets/`) is designer-owned and web-canonical. `sources.<platform>` and `assets/exports/<platform>/` are tool-generated or operator-pinned derivatives. Shell trees never symlink back into `design-system/assets/` at runtime.
+- **Commit materialized exports.** `design-system/assets/exports/` is version-controlled in consumer repos alongside canonical `source:` files. CI and shell builds consume committed exports; they do not require `vectis materialize` (or image-processing deps) on every job. Operators re-run materialize after editing canonical assets and commit the regenerated tree.
 - **Fail closed on missing materialization.** A composition-referenced `vector` / `raster` id without exports for a declared project platform is an error — never a silent symbol fallback at build time.
 - **Symbols are explicit inventory.** Platform glyph use requires `kind: symbol` on an `assets.yaml` entry (optionally `inferred: true` when promoted from screenshots). Composition still references the asset id.
 - **CLI owns determinism.** Materialization, catalog emission, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons.
@@ -64,15 +65,16 @@ specify tool run vectis -- materialize assets [path/to/assets.yaml] [--platform 
 
 **Inputs:** `assets.yaml`, canonical files, `project.yaml` `platforms` (default: all declared platforms with on-disk interpretation).
 
-**Outputs:** files under `design-system/assets/exports/<platform>/` and validation that each referenced `sources.<platform>` path exists after materialization.
+**Outputs:** files under `design-system/assets/exports/<platform>/`, written to paths recorded in `sources.<platform>` (or defaulted by the materializer). These files are **committed** to the repo — not gitignored. Validation checks that each referenced `sources.<platform>` path exists (from the committed tree or after a local materialize run).
 
 **Invocation points:**
 
 | Phase | When |
 |-------|------|
-| `specify slice build --phase prepare` | Auto-run when `assets.yaml` is a bound target input and any composition-referenced asset lacks fresh exports |
-| Operator / CI | Manual regen after editing canonical SVGs |
-| Design-system slice | Task: materialize before first shell slice builds |
+| `specify slice build --phase prepare` | Auto-run when `assets.yaml` is a bound target input and any composition-referenced asset lacks fresh exports on disk |
+| Operator | Regen after editing canonical SVGs; commit the updated `exports/` tree in the same change |
+| Design-system slice | Task: materialize and commit exports before first shell slice builds |
+| CI (default) | Relies on committed `exports/`; does not run materialize unless a job explicitly checks freshness |
 
 **Materialization strategy** (by `role` + `kind`):
 
@@ -305,6 +307,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 - `vectis materialize assets`: icons (SVG→PDF / VD XML), illustrations (SVG→PNG), `app-icon` (iOS 1024 + Android adaptive).
 - Hook into `slice build --phase prepare`.
 - Extend `vectis validate assets` for export presence.
+- Design-system docs and acceptance fixtures: commit `exports/` outputs; do not gitignore the tree.
 
 ### Phase 3 — Fidelity and web
 
@@ -314,18 +317,21 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 ## Non-goals
 
-- Hand-authoring per-density exports as the long-term workflow (materialize owns generation; committing `exports/` is allowed for reproducibility).
+- Hand-authoring per-density exports as the long-term workflow (materialize owns generation; operators commit the `exports/` tree for reproducibility).
 - Automatic symbol substitution at build time.
 - Figma / screenshot asset extraction (screenshots remain non-destructive).
 - Defining the web shell scaffold (only `sources.web` and materialize outputs reserved).
 - Generic image CDN or remote asset hosting.
 
+## Resolved decisions
+
+1. **`exports/` committed vs gitignored?** **Commit.** Consumer repos version-control `design-system/assets/exports/` so CI and shell builds are reproducible without running `vectis materialize` (and without image-processing deps) on every job. Framework acceptance fixtures pin small committed PNG/PDF outputs under the same policy.
+
 ## Open questions
 
-1. **`exports/` committed vs gitignored?** Recommendation: commit for consumer repos (reproducible CI without resvg in every job); framework acceptance fixtures pin small PNG/PDF outputs.
-2. **Single global `app-icon` vs per-platform ids?** v1: one `app-icon` field; materializer derives platform shapes. Per-platform overrides deferred unless designers require different marks.
-3. **Plan trigger B without bootstrap slices?** If operator declines `--reconcile-platforms` but platforms are still absent, validate still fails at Gate 1 — intentional force function.
-4. **Raster-only design systems?** `kind: raster` + `role: app-icon` with `sources.ios.1x/2x/3x` supported; materialize copies/resizes.
+1. **Single global `app-icon` vs per-platform ids?** v1: one `app-icon` field; materializer derives platform shapes. Per-platform overrides deferred unless designers require different marks.
+2. **Plan trigger B without bootstrap slices?** If operator declines `--reconcile-platforms` but platforms are still absent, validate still fails at Gate 1 — intentional force function.
+3. **Raster-only design systems?** `kind: raster` + `role: app-icon` with `sources.ios.1x/2x/3x` supported; materialize copies/resizes.
 
 ## References
 
