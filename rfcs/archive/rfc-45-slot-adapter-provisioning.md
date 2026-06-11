@@ -1,6 +1,6 @@
 # RFC-45: Slot Adapter Provisioning via Workspace Sync
 
-> Status: Accepted · Serves: the eval catalog's [`workspace-execute-two-projects`](../evals/scenarios/workspace-execute-two-projects.md) release blocker · Complements: [RFC-44](rfc-44-architecture-seams.md) R2 (CLI-owned control flow; the `--plan-dir` seam as worked precedent)
+> Status: Accepted · Implemented and archived 2026-06-12 — outcomes recorded in [`specify-cli` `DECISIONS.md` §"Slot adapter provisioning via workspace sync (RFC-45)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slot-adapter-provisioning-via-workspace-sync-rfc-45); the green run record is [`evals/runs/workspace-execute-two-projects.pass.md`](../../evals/runs/workspace-execute-two-projects.pass.md) · Serves: the eval catalog's [`workspace-execute-two-projects`](../../evals/scenarios/workspace-execute-two-projects.md) release blocker · Complements: [RFC-44](../rfc-44-architecture-seams.md) R2 (CLI-owned control flow; the `--plan-dir` seam as worked precedent)
 > Provenance: 2026-06-11, revised the same day. The first draft of this RFC ratified a resolve-time plan-root fallback written mid-run; review flipped the decision to sync-time provisioning. The interim fallback was implemented and then removed in specify-cli `acceptance` (added `0e55a633`, removed `204e3867`) — the loader contract was never amended. Revised again the same day at implementation: the two open questions resolved into the Decision (per-name GC, cross-axis skip-at-mirror-time, local-slot inclusion) and R1–R3 landed.
 
 ## Abstract
@@ -31,7 +31,7 @@ Three postures, resolved at implementation review (formerly the open questions):
 
 **R2 — prove it at both seams.** A sync-level suite asserting the mirror lands (workspace adapter visible in the slot cache after sync, refreshed on re-sync) plus the conflict pins from the Decision (a slot-vendored same-axis adapter is not shadowed, an opposite-axis vendored name is not mirrored, foreign cache entries survive, the self-slot is skipped), plus one end-to-end slot-extract integration test beside `prepare_resolves_via_plan_dir` in `tests/source/extract.rs`: adapter vendored only at the workspace, slot extract succeeds through ordinary cache resolution after sync. No new resolution semantics to pin — the string-discriminant fragility from F2 no longer exists.
 
-**R3 — docs, one additive line each.** Sync's responsibility list in `docs/standards/workflow.md` and the workspace DECISIONS entry gain the mirror; [workspace-routing.md](../plugins/spec/skills/execute/references/workspace-routing.md) notes that adapters arrive in the slot via sync. The loader prose ("resolution is project-local only", "`--plan-dir` … adapter resolution is untouched") stays true verbatim and needs no edits.
+**R3 — docs, one additive line each.** Sync's responsibility list in `docs/standards/workflow.md` and the workspace DECISIONS entry gain the mirror; [workspace-routing.md](../../plugins/spec/skills/execute/references/workspace-routing.md) notes that adapters arrive in the slot via sync. The loader prose ("resolution is project-local only", "`--plan-dir` … adapter resolution is untouched") stays true verbatim and needs no edits.
 
 **R4 — close the live loop.** Resume the parked `workspace-execute-two-projects` sandbox; with R1 landed, the resumed run needs no manual cache-stage — sync provisions the slot. The run record cites the slot-resolved adapter root as live evidence; on a green run, flip the catalog row and the RM-05 rollup.
 
@@ -61,8 +61,8 @@ The full action list this RFC inherits from the 2026-06-11 session, for one-pass
 
 ## References
 
-- [`workspace-execute-two-projects`](../evals/scenarios/workspace-execute-two-projects.md) — the release-blocker scenario whose resumption is R4's vehicle; the eval catalog and run-record contract live under [evals/](../evals/README.md).
-- [workspace-routing.md](../plugins/spec/skills/execute/references/workspace-routing.md) — the slot choreography that makes slots adapter-less by design and runs sync before each slice.
+- [`workspace-execute-two-projects`](../../evals/scenarios/workspace-execute-two-projects.md) — the release-blocker scenario whose resumption is R4's vehicle; the eval catalog and run-record contract live under [evals/](../../evals/README.md).
+- [workspace-routing.md](../../plugins/spec/skills/execute/references/workspace-routing.md) — the slot choreography that makes slots adapter-less by design and runs sync before each slice.
 - [specify-cli `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — §"Adapter loader axis routing" (the contract this RFC preserves) and §"Plan-root override: global `--plan-dir`" (the plan-file seam this RFC leaves untouched).
 - [`tests/source/extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source/extract.rs) — `prepare_resolves_via_plan_dir`, the surviving `--plan-dir` proof R2's slot-extract test sits beside.
-- [RFC-44](rfc-44-architecture-seams.md) — R2's migrate-control-flow-into-verbs direction; this RFC follows the same instinct at the provisioning seam.
+- [RFC-44](../rfc-44-architecture-seams.md) — R2's migrate-control-flow-into-verbs direction; this RFC follows the same instinct at the provisioning seam.
