@@ -64,6 +64,10 @@ The Vectis core / test / iOS / Android writer and reviewer orchestration lives i
 - [`review/crux-checks.md`](review/crux-checks.md), [`review/logic-checks.md`](review/logic-checks.md), [`review/general-checks.md`](review/general-checks.md), [`review/ios-checks.md`](review/ios-checks.md), [`review/swift-quality-checks.md`](review/swift-quality-checks.md), [`review/android-checks.md`](review/android-checks.md), [`review/kotlin-quality-checks.md`](review/kotlin-quality-checks.md), [`review/universal-checks.md`](review/universal-checks.md) — check libraries.
 - [`review/iteration-report.md`](review/iteration-report.md) — iteration-report template and finding-ID conventions.
 
+### RFCs (in flight)
+
+- [RFC-45: Asset materialization and mandatory app icon](../../../../rfcs/rfc-45-asset-materialization.md) — canonical SVG → per-platform exports, `app-icon` gate on UI bootstrap plans, inference-only symbol fallback. Draft; refinement on branch `rfc-45`.
+
 ### Layout inferer contract (legacy)
 
 - [`layout-inferer-contract.md`](layout-inferer-contract.md) — historic contract preserved for the [`adapters/sources/screenshots/`](../../../sources/screenshots/) adapter.

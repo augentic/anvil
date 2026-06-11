@@ -40,6 +40,10 @@ Three tracks run in parallel:
 2. **Reconciliation polish (RFC-38)** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
 3. **Observability and portability (RM-14 / RM-15 / RM-18)** — most valuable once RM-05 proves the loop on realistic flows.
 
+**In flight (RFC refinement — not yet implementation):**
+
+- [RFC-45: Asset materialization and mandatory app icon](rfc-45-asset-materialization.md) — canonical SVG inputs, deterministic `vectis materialize assets`, render-by-`kind` shell writers, top-level `app-icon` in `assets.yaml`, and `plan-bootstrap-app-icon-missing` when a plan implies UI platform bootstrap. Refinement branch: `rfc-45` in `augentic/specify` and `augentic/specify-cli`.
+
 **Deferred until trigger conditions or prerequisites:**
 
 - [RFC-33b](future/rfc-33b-standards-baseline.md) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
