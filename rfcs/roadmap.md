@@ -42,10 +42,11 @@ Three tracks run in parallel:
 
 **In flight (RFC refinement — not yet implementation):**
 
-- [RFC-45: Asset materialization and mandatory app icon](rfc-45-asset-materialization.md) — canonical SVG inputs, deterministic `vectis materialize assets`, render-by-`kind` shell writers, top-level `app-icon` in `assets.yaml`, and `plan-bootstrap-app-icon-missing` when a plan implies UI platform bootstrap. Refinement branch: `rfc-45` in `augentic/specify` and `augentic/specify-cli`.
+- [RFC-45: Asset materialization and mandatory app icon](rfc-45-asset-materialization.md) — canonical SVG inputs, deterministic `vectis materialize assets`, render-by-`kind` shell writers, top-level `app-icon` in `assets.yaml`, and `plan-bootstrap-app-icon-missing` when a plan implies UI platform bootstrap. Scoped to iOS/Android so it ships as a single initiative; web asset materialization is split out to [RFC-45a](future/rfc-45a-web-asset-materialization.md) (deferred). Refinement branch: `rfc-45` in `augentic/specify` and `augentic/specify-cli`.
 
 **Deferred until trigger conditions or prerequisites:**
 
+- [RFC-45a](future/rfc-45a-web-asset-materialization.md) — web asset materialization (`sources.web`, favicon / manifest icons, `bootstrap-web`); deferred until a web shell scaffold exists. Extends RFC-45 additively.
 - [RFC-33b](future/rfc-33b-standards-baseline.md) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
 - RM-12 / RM-13 — catalog import and read-oriented MCP; integration surfaces that enrich an already-trustworthy core loop.
 

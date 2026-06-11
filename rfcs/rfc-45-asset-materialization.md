@@ -11,7 +11,7 @@ Vectis today treats `design-system/assets.yaml` as an inventory while shell writ
 3. A top-level **`app-icon`** field in `assets.yaml` pointing at a `role: app-icon` entry.
 4. A **plan-time validation gate** that fails when a plan implies bootstrapping a new UI shell platform and `app-icon` is absent or not materializable.
 
-SVG remains the canonical designer format. Mobile shells consume derived exports; the future web shell reads canonical SVG directly.
+SVG remains the canonical designer format. Mobile shells (iOS, Android) consume derived exports. Web asset materialization is out of scope here and specified separately in [RFC-45a](future/rfc-45a-web-asset-materialization.md), deferred until a web shell scaffold exists.
 
 ## Motivation
 
@@ -37,7 +37,7 @@ Inference and build also conflated two different policies:
 - **Fail closed on missing materialization.** A composition-referenced `vector` / `raster` id without exports for a declared project platform is an error — never a silent symbol fallback at build time.
 - **Symbols are explicit inventory.** Platform glyph use requires `kind: symbol` on an `assets.yaml` entry (optionally `inferred: true` when promoted from screenshots). Composition still references the asset id.
 - **CLI owns determinism.** Materialization, catalog emission, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons.
-- **Minimal schema growth.** One top-level pointer (`app-icon`), one new `role`, one optional `sources.web`, one optional `inferred` flag on symbol entries. No per-composition-item render mode.
+- **Minimal schema growth.** One top-level pointer (`app-icon`), one new `role`, one optional `inferred` flag on symbol entries. No per-composition-item render mode. (Web adds one optional `sources.web` later — see [RFC-45a](future/rfc-45a-web-asset-materialization.md).)
 
 ## Design
 
@@ -45,11 +45,11 @@ Inference and build also conflated two different policies:
 
 For each `icon` / `image` / `icon-button` / `fab` reference in `composition.yaml`, resolve the id in `assets.yaml`:
 
-| `assets.<id>.kind` | iOS | Android | Web (when supported) |
-|--------------------|-----|---------|----------------------|
-| `vector` | `Image("<id>")` from `Assets.xcassets` | `painterResource(R.drawable.<id_snake>)` | asset URL / inline SVG from `sources.web` |
-| `raster` | imageset densities | `drawable-*` | raster URL |
-| `symbol` | `Image(systemName: symbols.ios)` | `Icon(… symbols.android)` | mapped web glyph |
+| `assets.<id>.kind` | iOS | Android |
+|--------------------|-----|---------|
+| `vector` | `Image("<id>")` from `Assets.xcassets` | `painterResource(R.drawable.<id_snake>)` |
+| `raster` | imageset densities | `drawable-*` |
+| `symbol` | `Image(systemName: symbols.ios)` | `Icon(… symbols.android)` |
 
 **Forbidden:** emitting `systemName` / `Icons.Default.*` for an id whose entry is `vector` or `raster`. Target review briefs and `specify lint project` SHOULD flag this drift.
 
@@ -78,13 +78,13 @@ specify tool run vectis -- materialize assets [path/to/assets.yaml] [--platform 
 
 **Materialization strategy** (by `role` + `kind`):
 
-| `role` | Canonical | iOS output | Android output | Web output |
-|--------|-----------|------------|----------------|------------|
-| `icon` | SVG | PDF in `<id>.imageset/` | Vector Drawable XML in `drawable/` | copy / link SVG |
-| `illustration` | SVG | PNG `@2x` / `@3x` in imageset | PNG per density bucket | SVG |
-| `app-icon` | SVG or raster | `AppIcon.appiconset/` (see §4) | adaptive + legacy mipmaps (see §4) | favicon + manifest icons (see §4) |
-| `photo` | raster | copy density slots | copy density slots | copy |
-| `decorative` | any | same as `icon` / `illustration` by `kind` | same | same |
+| `role` | Canonical | iOS output | Android output |
+|--------|-----------|------------|----------------|
+| `icon` | SVG | PDF in `<id>.imageset/` | Vector Drawable XML in `drawable/` |
+| `illustration` | SVG | PNG `@2x` / `@3x` in imageset | PNG per density bucket |
+| `app-icon` | SVG or raster | `AppIcon.appiconset/` (see §4) | adaptive + legacy mipmaps (see §4) |
+| `photo` | raster | copy density slots | copy density slots |
+| `decorative` | any | same as `icon` / `illustration` by `kind` | same |
 
 Implementation lives in `wasi-tools/vectis` (pure Rust: `usvg` / `resvg` for SVG→PDF/PNG; Android Vector Drawable conversion as a dedicated pass). Complex SVG features that fail a lightweight profile check MUST surface as materialization errors with the offending asset id.
 
@@ -116,18 +116,7 @@ Schema (`assets.schema.json`):
 
 `role` enum gains `app-icon`.
 
-#### 3.2 `sources.web`
-
-Optional on `vectorEntry` / `rasterEntry`:
-
-```yaml
-sources:
-  web: assets/app-icon.svg   # defaults to `source` when omitted
-```
-
-Web shell reads `sources.web` or `source` directly; no PDF/PNG conversion required for v1 web.
-
-#### 3.3 `inferred` on `symbolEntry` (optional)
+#### 3.2 `inferred` on `symbolEntry` (optional)
 
 ```yaml
   chevron-right:
@@ -183,20 +172,7 @@ Materializer emits under `Android/app/src/main/res/`:
 
 `AndroidManifest.xml` continues `android:icon="@mipmap/ic_launcher"`.
 
-#### 4.4 Web (future shell)
-
-When `web ∈ project.yaml.platforms` and web shell is implemented:
-
-| Artifact | Size / notes |
-|----------|----------------|
-| `favicon.svg` | Canonical passthrough when SVG |
-| `favicon.ico` | 16, 32, 48 fallback |
-| `apple-touch-icon.png` | 180×180 |
-| `manifest` icons | 192, 512 PNG |
-
-Materializer writes to `web/public/icons/` or equivalent; exact tree owned by web scaffold RFC.
-
-#### 4.5 Bootstrap placeholder policy
+#### 4.4 Bootstrap placeholder policy
 
 Plans that trigger UI bootstrap (§6) **require a real `app-icon` entry** — validation does not accept absent field.
 
@@ -222,9 +198,8 @@ A plan **implies bootstrapping a new UI platform** when **any** of the following
 |---------|-----------|
 | **A. Reconciled bootstrap slices** | `plan.yaml` contains an entry named `app-foundation`, `bootstrap-ios`, or `bootstrap-android` (or `{project}-` prefixed equivalents from multi-project reconcile) |
 | **B. Absent UI shells** | `project.yaml.platforms` includes `ios` and/or `android`, and `detect_missing_platforms` (same heuristic as `specify plan propose --reconcile-platforms` / `vectis verify --mode detect`) reports that platform absent |
-| **C. Explicit web bootstrap** | (Future) plan entry or proposal flag declares `bootstrap-web` when web shell lands |
 
-`core`-only bootstrap (`app-foundation` with only `core` missing) does **not** require `app-icon`. Trigger fires when **`ios` or `android` (or future `web`) is among missing platforms** for the project.
+`core`-only bootstrap (`app-foundation` with only `core` missing) does **not** require `app-icon`. Trigger fires when **`ios` or `android` is among missing platforms** for the project. Web bootstrap (`bootstrap-web`) is deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
 
 #### 6.2 Validation rule
 
@@ -297,7 +272,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 ### Phase 1 — Policy and gates (no converter yet)
 
-- Schema: `app-icon`, `role: app-icon`, `sources.web`, `inferred`.
+- Schema: `app-icon`, `role: app-icon`, `inferred`.
 - `specify plan validate`: bootstrap trigger + `plan-bootstrap-app-icon-missing`.
 - Writer/review doc updates; review rule flagging symbol substitution.
 - iOS scaffold: `AppIcon.appiconset` skeleton.
@@ -309,10 +284,9 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 - Extend `vectis validate assets` for export presence.
 - Design-system docs and acceptance fixtures: commit `exports/` outputs; do not gitignore the tree.
 
-### Phase 3 — Fidelity and web
+### Phase 3 — Fidelity
 
 - `vectis verify` catalog completeness check (optional `actool` dry-run).
-- Web shell consumes `sources.web`.
 - `exports.lock` / digest pinning if needed.
 
 ## Non-goals
@@ -320,7 +294,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 - Hand-authoring per-density exports as the long-term workflow (materialize owns generation; operators commit the `exports/` tree for reproducibility).
 - Automatic symbol substitution at build time.
 - Figma / screenshot asset extraction (screenshots remain non-destructive).
-- Defining the web shell scaffold (only `sources.web` and materialize outputs reserved).
+- Web asset materialization (`sources.web`, favicon / manifest icons, web render paths) and the web shell scaffold — deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
 - Generic image CDN or remote asset hosting.
 
 ## Resolved decisions
