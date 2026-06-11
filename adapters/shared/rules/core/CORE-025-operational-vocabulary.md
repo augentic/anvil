@@ -19,24 +19,13 @@ rule_hints:
   - kind: path-pattern
     value: "!**/archive/**"
   - kind: regex
-    value: "\\.specify/changes/"
-  - kind: regex
-    value: "\\bspecrun\\b"
-  - kind: regex
-    value: "\\bspecify validate\\b"
-  - kind: regex
-    value: "\\bspecify merge\\b"
-  - kind: regex
-    value: "\\bspecify change plan\\b"
-  - kind: regex
-    value: "\\bspecify change draft\\b"
-  - kind: regex
-    value: "\\b[Ii]nitiative\\b"
+    value: "\\.specify/changes/|\\bspecrun\\b|\\bspecify validate\\b|\\bspecify merge\\b|\\bspecify change plan\\b|\\bspecify change draft\\b|\\b[Ii]nitiative\\b"
+    description: One alternation over every retired vocabulary form; findings stay line-scoped because the evaluator reports each matching line, and the matched alternative is visible in the finding snippet.
 ---
 
 ## Rule
 
-Scan framework prose for retired Specify vocabulary. Path exclusions cover generated fixtures (`/fixtures/`) and the archive (`/archive/`). Each forbidden pattern is a separate `regex` hint so findings stay line-scoped.
+Scan framework prose for retired Specify vocabulary. Path exclusions cover generated fixtures (`/fixtures/`) and the archive (`/archive/`). The forbidden forms ride a single multi-pattern `regex` hint; the evaluator reports each matching line, so findings stay line-scoped and the offending alternative is visible in the snippet.
 
 ## Look For
 

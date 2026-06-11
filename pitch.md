@@ -67,3 +67,24 @@ Legacy migration. Your TypeScript → Rust WASM input is the killer demo, becaus
 ### 6. The complementary positioning
 
 Cursor made developers 10x faster. Specify makes that speed safe to ship.
+
+## The second act: right-sized intelligence
+
+The same philosophy that governs delivery extends to model choice. Alongside governed AI delivery, we are building on **small language models** as the environmentally and socially more responsible alternative to LLMs — and the two stories are one worldview told at two scales:
+
+> Govern the great force; take only what you need.
+
+- **Governed delivery** says: don't let the reaction run away — every requirement evidenced, every disagreement surfaced, every change human-approved.
+- **Right-sized models** say: don't burn a reactor to boil a cup — the smallest model that does the job is the *correct* model, for cost, for energy, for sovereignty, and for auditability (smaller models are easier to evaluate, host locally, and stand behind).
+
+This is not a side project; it sharpens the main pitch. The buyer who cares that AI-built software is *accountable* is the same buyer who cares that the AI itself is *proportionate* — same procurement conversation, same compliance instincts, same ESG reporting line. And completion thinking favours small models naturally: when the work is spec-driven and the scope is a slice, you don't need an everything-machine — you need exactly enough model, fully delivered.
+
+### Taglines for the SLM thread
+
+- "Much, in few." (*multum paucis*)
+- "The whisper, not the shout."
+- "Right-sized intelligence, fully delivered."
+- "The smallest model that does the job is the correct model."
+- Paired with the company line: "Completiv delivers. *Sottiv* right-sizes."
+
+Naming for this track is developed in [`names.md`](./names.md) under **"SLM Product Naming: Deliberate Smallness"** — current shortlist: **Sottiv** (sotto voce — power through restraint), **Tersiv** (*tersus* — polished down to exactly what's needed), **Susurro** (the whisper). The image deliberately flips from the platform track: not *mastering a terrifying force*, but *small because right-sized is the wiser choice*.
