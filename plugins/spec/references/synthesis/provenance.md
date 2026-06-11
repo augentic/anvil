@@ -4,7 +4,7 @@ The audit-only view per slice of every `REQ-*` id and the contributing `(source,
 
 ## How it's produced
 
-During `specify slice synthesize` the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specify slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and there is no `slice.provenance.written` event.
+During `specify slice synthesize` the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specify slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and no journal event records a provenance write.
 
 ## Block grammar
 
@@ -170,7 +170,7 @@ The closed set matches the resolution-order taxonomy in [`authority.md` §Resolu
 
 ## Audit posture
 
-The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specify slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `.metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
+The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specify slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
 The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `specify plan amend` (or adjust the source set) and re-run `/spec:refine`; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
 

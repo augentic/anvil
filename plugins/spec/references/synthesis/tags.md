@@ -1,6 +1,6 @@
 # Tag grammar
 
-The kernel renders three review-signal tags into `spec.md` from each requirement's `status` (derived in turn from the agent's `agreement` verdict and the resolved authority). Each tag appears inside the requirement-block headline, after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by re-running `/spec:refine` (with a different verdict or amended `authority-override`) after the slice transitions to `refined`.
+The kernel renders three review-signal tags into `spec.md` from each requirement's `status` (derived in turn from the agent's `agreement` verdict and the resolved authority — see [`authority.md`](authority.md)). Each tag appears inside the requirement-block headline, after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by re-running `/spec:refine` (with a different verdict or amended `authority-override`) after the slice transitions to `refined`.
 
 ## Closed tag set
 

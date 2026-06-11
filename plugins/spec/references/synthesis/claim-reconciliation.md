@@ -8,7 +8,7 @@ The closed `kind` enum (from `schemas/evidence.schema.json`) groups into four ba
 
 | Kind            | Carrying authority class    | Where it lands                                                                                  | Reconciliation key                                |
 | --------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `requirement`   | `documentation`             | spec files (`specs/<unit>/spec.md`) — one requirement block per `id` group.               | `id` (required by the schema).      |
+| `requirement`   | `documentation`             | spec files (`specs/<domain>/spec.md`) — one requirement block per `id` group.               | `id` (required by the schema).      |
 | `criterion`     | `documentation`             | spec files — folds into the requirement block whose `id` shares the same `<requirement>.*` prefix as a `#### Scenario:` H4 inline within that block; when no requirement prefix matches, attaches to the nearest requirement by source order. | `id` (required by the schema).      |
 | `decision`      | `documentation`             | `design.md` — under the H2 the decision informs (transport → APIs; error strategy → Technical logic; provider choice → Configuration). Quote verbatim with `(from <source>)`. | None (free-form; not reconciled).              |
 | `section`       | `documentation`             | `design.md` — folded as context under the most relevant H2; or `proposal.md` `## Why` when the section names the slice's *why*. | None (free-form; not reconciled).              |
@@ -46,7 +46,7 @@ When two contributing claims share `id` and their `statement:` / `criterion:` st
 
 - **Default precedence vs other behaviour-class claims.** `example`, `excerpt`, and `call` are siblings at the same authority class. Operators tie-break across them via per-slice `authority-override.<kind>` on `plan.yaml` (see [`authority.md` §Per-slice overrides](authority.md#per-slice-overrides-on-planyaml)). The synthesis playbook does not silently prefer one over another.
 - **Per-Evidence override.** A `captures` Evidence document MAY emit `authority-overrides: { example: documentation }` to lift its `example` claims above the document-level `behaviour` default — rare, but useful when the captured data encodes an explicit contract the operator wants treated as documentation-class.
-- **Per-kind body.** `example` claims carry `id`, `path` (the on-disk capture anchor), `replay-digest` (a `sha256:` fingerprint the cache keys against), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `adapters/sources/captures/briefs/extract.md` (the current captures reference); refer to that brief rather than mirroring the fields here.
+- **Per-kind body.** `example` claims carry `id`, `path` (the on-disk capture anchor), `replay-digest` (a `sha256:` content anchor over the capture bytes), `input` (the captured request shape), `output` (the captured response and side-effect shape), and an optional `statement:` line that paraphrases the example for prose use. The per-kind body shape is owned by `adapters/sources/captures/briefs/extract.md` (the current captures reference); refer to that brief rather than mirroring the fields here.
 
 ### Spatial claims fold into design
 
@@ -62,11 +62,10 @@ The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1
 
 ## Per-authority resolution (slice-time)
 
-When a reconciled `id` group the agent marked `disagreed` carries claims from multiple authorities, the kernel's [§Resolution order](authority.md#resolution-order) picks the winner and derives the `status`. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
+When a reconciled `id` group the agent marked `disagreed` carries claims from multiple authorities, the kernel's [§Resolution order](authority.md#resolution-order) picks the winner and derives the `status` — that reference is canonical for the precedence (`intent > documentation > behaviour`) and the override surfaces; nothing here re-orders it. What lands in the rendered block per outcome:
 
-- **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
+- **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
 - **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
-- **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `code-typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
 - **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
 
 ## Order and stability

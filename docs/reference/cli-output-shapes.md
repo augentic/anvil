@@ -128,37 +128,51 @@ Used for both entry transitions (`kind: "entry"`) and the plan-level review stam
 
 ### `specify plan status`
 
-Dashboard view over a plan. `counts` summarises per-status totals; `entries` carries the full topologically-sorted entry list with per-entry status and depends-on edges; `in-progress` and `next-eligible` are convenience pointers into `entries`.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the `stop-conditions.md` reason, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). The verb never writes: `plan next` stays the only `in-progress` writer.
 
 ```json
 {
+  "action": "refine",
+  "active": "a",
   "counts": {
-    "done": 1,
+    "done": 0,
     "in-progress": 1,
-    "pending": 7,
-    "total": 9
+    "pending": 0
   },
-  "drained": false,
-  "entries": [
-    {
-      "depends-on": [],
-      "description": null,
-      "lifecycle": null,
-      "name": "user-registration",
-      "sources": ["monolith"],
-      "status": "done"
-    }
-  ],
-  "in-progress": {
-    "lifecycle": null,
-    "name": "email-verification"
+  "current-step": "refine",
+  "last-completed": null,
+  "lifecycle": "approved",
+  "next-action": "refine a",
+  "plan": "demo",
+  "project": "default",
+  "resume": "/spec:refine a",
+  "slice": "a"
+}
+```
+
+A stopped plan carries the classification block:
+
+```json
+{
+  "action": "stop",
+  "active": "a",
+  "counts": {
+    "done": 0,
+    "in-progress": 1,
+    "pending": 0
   },
-  "lifecycle": "pending",
-  "next-eligible": null,
-  "order": "topological",
-  "plan": {
-    "name": "platform-v2",
-    "path": "<TEMPDIR>/plan.yaml"
+  "current-step": "build",
+  "last-completed": "refine",
+  "lifecycle": "approved",
+  "next-action": "stop build-failed",
+  "plan": "demo",
+  "project": "default",
+  "resume": "/spec:build a",
+  "slice": "a",
+  "stop": {
+    "detail": "exhausted repair budget",
+    "hint": "Fix the failure, then retry /spec:build for the slice. The plan entry stays in-progress.",
+    "reason": "build-failed"
   }
 }
 ```

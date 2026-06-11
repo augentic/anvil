@@ -4,7 +4,7 @@ Runtime checklist for source adapters and synthesis self-review. Full artifact r
 
 ## Behavioral specs
 
-- One spec file per unit
+- One spec file per domain
 - Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - Specs stay behavioral and avoid platform-binding detail
 - Traceability is present for each requirement via stable IDs

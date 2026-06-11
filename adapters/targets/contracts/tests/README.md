@@ -1,6 +1,6 @@
 # Contract Test Scenarios
 
-These documents are owner-local acceptance scenarios for `contracts@v1`
+These documents are owner-local eval scenarios for `contracts@v1`
 interface generation. They exercise the dedicated contract slice loop:
 
 1. `/spec:refine` creates `proposal.md`, `specs/**/*.md`, and `tasks.md`.
@@ -11,26 +11,26 @@ interface generation. They exercise the dedicated contract slice loop:
 Implementation adapters such as Omnia and Vectis consume baseline contracts
 as context. They do not generate new or changed interface shapes inline.
 
-## Relationship To Acceptance
+## Relationship To Evals
 
 These are owner-local scenario documents. They live next to the `contracts`
 adapter because the behavior under test is one adapter's slice loop in
 isolation. Static checks validate their YAML frontmatter and scenario IDs; the
 scenario bodies remain human-readable operator instructions.
 
-The current backend for every scenario in this directory is **manual**. A human
-or agent follows the prose, runs the prompts, and fills out a
+Every scenario in this directory is operator-driven. A human or agent follows
+the prose, runs the prompts, and fills out a
 [run summary](run-summary-template.md).
 
 ## Scenario Index
 
-| Scenario file                              | Scenario ID                  | Kind                  | Authorship mode          | Backend  |
-| ------------------------------------------ | ---------------------------- | --------------------- | ------------------------ | -------- |
-| [`describe.md`](describe.md)               | `contracts-describe`         | `adapter`          | Generate from prose      | `manual` |
-| [`design.md`](design.md)                   | `contracts-design`           | `adapter`          | Generate from prose      | `manual` |
-| [`update.md`](update.md)                   | `contracts-update-boundary`  | `adapter-boundary` | Generate from prose      | `manual` |
-| [`import.md`](import.md)                   | `contracts-import`           | `adapter`          | Import existing contracts | `manual` |
-| [`source.md`](source.md)                   | `contracts-source`           | `adapter`          | Extract from source code  | `manual` |
+| Scenario file                              | Scenario ID                  | Kind                  | Authorship mode          |
+| ------------------------------------------ | ---------------------------- | --------------------- | ------------------------ |
+| [`describe.md`](describe.md)               | `contracts-describe`         | `adapter`          | Generate from prose      |
+| [`design.md`](design.md)                   | `contracts-design`           | `adapter`          | Generate from prose      |
+| [`update.md`](update.md)                   | `contracts-update-boundary`  | `adapter-boundary` | Generate from prose      |
+| [`import.md`](import.md)                   | `contracts-import`           | `adapter`          | Import existing contracts |
+| [`source.md`](source.md)                   | `contracts-source`           | `adapter`          | Extract from source code  |
 
 Scenario IDs are kebab-case, prefixed with the adapter name, and globally
 unique within the opted-in scenario set in this repo. `update.md` is marked
@@ -45,7 +45,7 @@ sections every scenario file uses.
 Every scenario file in this directory uses the same compact shape:
 
 1. **YAML frontmatter** — machine-readable routing (id, owner, kind, adapter,
-   backend, entrypoint, stages, isolation, optional assertions and
+   entrypoint, stages, isolation, optional assertions and
    expected-artifacts hints).
 2. **Heading + `Scenario ID:` line** — the id restated as a visible field so
    it survives any environment that suppresses frontmatter rendering.
@@ -79,7 +79,6 @@ id: contracts-describe                # required, kebab-case, globally unique
 owner: contracts                      # required
 kind: adapter                      # required: adapter | adapter-boundary
 adapter: contracts@v1              # required for adapter and adapter-boundary
-backend: manual                       # required: manual | agent | recorded | fixture
 entrypoint: /spec:refine              # required: slash-command, /<plugin>:<skill>
 stages: [refine, build, merge]        # required: contiguous slice of plan | refine | build | merge | drop
 isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice

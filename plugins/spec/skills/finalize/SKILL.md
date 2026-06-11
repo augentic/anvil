@@ -6,12 +6,12 @@ argument-hint: <name>
 
 # Finalize skill
 
-> **Wrap the post-execute tail of a change.** `/spec:finalize` is composition only over `specify plan next`, `specify workspace push`, `gh pr view`, and `specify plan archive`. The skill writes nothing under `.specify/` directly — every state mutation is a CLI shell-out, and PR merges stay operator-owned.
+> **Wrap the post-execute tail of a change.** `/spec:finalize` is composition only over `specify plan status`, `specify workspace push`, `gh pr view`, and `specify plan archive`. The skill writes nothing under `.specify/` directly — every state mutation is a CLI shell-out, and PR merges stay operator-owned.
 
 ## Critical Path
 
 - Pre-flight: validate `<name>`, resolve the project or workspace, and verify the active `plan.yaml`.
-- Drainage: run `specify plan next --format json`; only `reason: drained` may continue.
+- Drainage: run `specify plan status --format json`; only `action: drained` may continue. (Read-only — never `plan next`, which is a lock-gated plan-state writer.)
 - Push: run `specify workspace push` and surface the per-project status table verbatim.
 - Observe PRs: poll each pushed PR with `gh pr view <url> --json state,url,number` until every PR is `MERGED`.
 - Archive: run `specify plan archive`, then print merged PRs, the archive path, and post-merge tidy-ups.

@@ -1,0 +1,17 @@
+slice:
+  name: identity-user-registration
+  target: omnia
+  project: identity-svc
+  sources:
+    - key: identity-design-notes
+      lead: user-registration
+    - key: legacy-monolith
+      lead: user-registration
+  status: in-progress
+plan-sources:
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity
+  legacy-monolith:
+    adapter: typescript
+    path: ./vendor/legacy-monolith

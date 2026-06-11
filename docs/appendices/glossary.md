@@ -17,7 +17,7 @@ A machine-readable interface definition at `contracts/`. Uses three formats: JSO
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour`. Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -65,7 +65,7 @@ The plan-time discovery artifact at `discovery.md` in the project root (workspac
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
 
 **Drop**
-The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specify slice transition <name> dropped --reason "..."`.
+The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specify slice drop <name> --reason "..."`.
 
 ## E
 
@@ -99,7 +99,7 @@ The operator-supplied free-form description that backs N=1 work and overrides hi
 A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in `propose`. See [From sources to slices](../explanation/reconciliation.md).
 
 **Lifecycle**
-Three stacked lifecycles in `plan.yaml`: the plan lifecycle (`pending → approved`, two stored states), the per-entry lifecycle (`pending → in-progress → done`, with `dropped` available as a slice transition target), and the slice lifecycle inside `.metadata.yaml` (`refining → refined → built → merged`).
+Three stacked lifecycles in `plan.yaml`: the plan lifecycle (`pending → approved`, two stored states), the per-entry lifecycle (`pending → in-progress → done`, with `dropped` available as a slice transition target), and the slice lifecycle inside `metadata.yaml` (`refining → refined → built → merged`).
 
 ## M
 
@@ -132,7 +132,7 @@ The two phases of `specify slice build <slice>`. `--phase prepare` (default) ass
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying a `scope` id, its matched `sources[]` (at most one lead per source), and a bound `project` (one row per `(scope, project)` binding). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -150,9 +150,6 @@ A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requ
 
 ## S
 
-**Scope (reconciliation)**
-The reconciled unit of work behind a slice: the set of leads the agent judges to be the same piece of work, at most one lead per source. Expressed as a shared `scope` id across one or more `specify plan propose` response `slices[]` rows that carry identical `sources[]`. One scope may fan out to multiple `plan.yaml.slices[]` rows across projects. The agent never fuses two leads from the same source — same-source re-sizing is an operator action at Gate 1. Distinct from proposal "in scope" wording. See [From sources to slices](../explanation/reconciliation.md).
-
 **Shape**
 The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.
 
@@ -163,13 +160,13 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `code-typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
 
 **Spec**
-A behavioral specification at `specs/<unit>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
+A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
 The single CLI binary produced by `augentic/specify-cli` that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).

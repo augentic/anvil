@@ -7,7 +7,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Core concepts
 
 - [Artifact Format](artifact-format.md) — full specification of the core artifacts (proposal, spec, design, tasks) and target-specific structured outputs, including delta formats, tags, and validation checklists.
-- [Lifecycle](lifecycle.md) — the three stacked lifecycles (plan, per-entry, slice), transitions, `.metadata.yaml` shape.
+- [Lifecycle](lifecycle.md) — the three stacked lifecycles (plan, per-entry, slice), transitions, `metadata.yaml` shape.
 - [Directory Layout](directory-layout.md) — annotated `.specify/` tree with explanations.
 
 ### Skills
@@ -26,12 +26,12 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Adapters
 
-- [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, code-typescript, screenshots, captures).
+- [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, typescript, screenshots, captures).
 - [Target Adapters](targets/index.md) — `shape` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 
-- [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `.metadata.yaml`.
+- [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `metadata.yaml`.
 
 ### Engineering standards
 

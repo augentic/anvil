@@ -1,12 +1,12 @@
 # Omnia build — crate writer
 
-Loaded by [../build.md](../build.md) phase 2. Reads `specs/<unit>/spec.md` + `design.md`, writes `$CRATE_PATH`. Sequenced after [shape.md](../shape.md) (idiom guidance already folded into spec + design by core synthesis).
+Loaded by [../build.md](../build.md) phase 2. Reads `specs/<domain>/spec.md` + `design.md`, writes `$CRATE_PATH`. Sequenced after [shape.md](../shape.md) (idiom guidance already folded into spec + design by core synthesis).
 
 ## Authority hierarchy
 
 The full Hard Rules + Authority Hierarchy live in [`../../references/hard-rules.md`](../../references/hard-rules.md). The summary below is a load-bearing extract; the full reference governs ties.
 
-1. **Specify artifacts are ground truth.** `specs/<unit>/spec.md` and `design.md` outrank inferred behaviour. If artifacts conflict with source, trust the artifacts.
+1. **Specify artifacts are ground truth.** `specs/<domain>/spec.md` and `design.md` outrank inferred behaviour. If artifacts conflict with source, trust the artifacts.
 2. **Apply update categories in fixed order**: structural → subtractive → modifying → additive. Type renames propagate first, dead code is removed before any new code is added, additive code depends on the already-updated type system.
 3. **Idempotency is non-negotiable.** If a section of an existing crate already matches the artifacts, do nothing.
 4. **No `unwrap()` / `expect()` in production code.** Tests may unwrap.
@@ -17,7 +17,7 @@ The full Hard Rules + Authority Hierarchy live in [`../../references/hard-rules.
 
 ## Critical path
 
-1. Read [shape.md](../shape.md) refresher and the slice's `specs/<unit>/spec.md` + `design.md` + `tasks.md`.
+1. Read [shape.md](../shape.md) refresher and the slice's `specs/<domain>/spec.md` + `design.md` + `tasks.md`.
 2. **Build the three cross-cutting matrices** per [`cross-cutting-matrices.md`](../../references/cross-cutting-matrices.md): Side-Effect, Outbound-Message, Transaction-Boundary. Every cell must land in code.
 3. **Mode dispatch.** Inherited from the parent brief: create mode (no `Cargo.toml`) vs update mode.
 4. Apply the per-mode process below; in update mode walk the four categories in fixed order.

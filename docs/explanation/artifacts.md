@@ -22,13 +22,13 @@ Every slice produces these four, regardless of which target adapter it uses:
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
 | `proposal.md` | *Why* does this slice exist? What is in scope? | `.specify/slices/<name>/proposal.md` |
-| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/slices/<name>/specs/<unit>/spec.md` |
+| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/slices/<name>/specs/<domain>/spec.md` |
 | `design.md` | *How* will the behavior be implemented? | `.specify/slices/<name>/design.md` |
 | `tasks.md` | In what *sequence* should it be built? | `.specify/slices/<name>/tasks.md` |
 
 The split is deliberate: `proposal.md` and `spec.md` stay platform-neutral (the *why* and *what*), while `design.md` and `tasks.md` carry the project-specific *how*. Keeping behaviour separate from implementation is what lets the same spec drive different targets and survive a re-implementation.
 
-A *unit* is one cohesive area of behaviour — typically a crate, module, or service. A slice that touches three units produces three `specs/<unit>/spec.md` files.
+A *domain* is one cohesive area of behaviour — typically a crate, module, or service. A slice that touches three domains produces three `specs/<domain>/spec.md` files.
 
 ## Contracts: the machine-readable shape
 

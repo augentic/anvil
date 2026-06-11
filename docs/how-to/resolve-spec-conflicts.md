@@ -27,7 +27,7 @@ Prose-only edits **outside** the kernel-rendered lines — clarifying the requir
 
 A `[divergence]` already has an automatic winner (the higher-authority source); the slice is `refined` and buildable as-is.
 
-1. Open `.specify/slices/<name>/specs/<unit>/spec.md` and read the inline commentary from the losing source.
+1. Open `.specify/slices/<name>/specs/<domain>/spec.md` and read the inline commentary from the losing source.
 2. If the authority winner is correct, accept it — optionally clarify the body prose (outside the kernel lines).
 3. If the *wrong* source won, pin the source you want via a per-slice authority override or amend the plan's sources, then re-run `/spec:refine` so the kernel re-resolves and re-renders the block:
 
@@ -35,7 +35,7 @@ A `[divergence]` already has an automatic winner (the higher-authority source); 
 specify plan amend <entry> --authority-override <entry> <kind>=<source>
 ```
 
-Authority order: `intent` > `documentation` > `behaviour`. The override surface key must already appear in the slice's `sources[]` — an orphan key is rejected by `specify slice validate` with `slice-authority-override-orphan-source`.
+Authority order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). The override surface key must already appear in the slice's `sources[]` — an orphan key is rejected by `specify slice validate` with `slice-authority-override-orphan-source`.
 
 ## Resolve a conflict
 

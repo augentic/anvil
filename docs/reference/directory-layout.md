@@ -25,34 +25,38 @@ contracts/                                  # Baseline API contracts
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── .cache/                                 # Cached adapter manifests, briefs, and extraction results
+├── cache/                                 # Memoization root: manifests, codex
 │   ├── manifests/sources/<name>/           # Source adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{survey,extract}.md
 │   ├── manifests/targets/<name>/           # Target adapter manifest cache
 │   │   ├── adapter.yaml
 │   │   └── briefs/{shape,build,merge}.md
-│   └── extractions/<adapter>/              # Survey/extract result cache (fingerprinted)
-│       └── index.jsonl
+│   ├── manifests/manifest-meta.yaml        # Manifest mirror provenance stamp
+│   └── codex/                              # Distributed shared-rules codex (+ codex-meta.yaml)
+│
+├── scratch/                                # Transient working state (per-run lanes; wiped freely)
+│   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
+│   └── plan/propose-response.json          # Plan reconciliation handoff lane
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
-│       ├── .metadata.yaml                  # Slice lifecycle (managed by CLI)
+│       ├── metadata.yaml                  # Slice lifecycle (managed by CLI)
 │       ├── proposal.md                     # Why this slice exists
 │       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
 │       ├── design.md                       # Technical design
 │       ├── tasks.md                        # Implementation checklist
 │       ├── evidence/                       # Per-source extract output (managed by CLI)
 │       │   └── <source>.yaml
-│       ├── specs/                          # Behavioral specs (one per unit)
-│       │   └── <unit>/spec.md
+│       ├── specs/                          # Behavioral specs (one per domain)
+│       │   └── <domain>/spec.md
 │       └── contracts/                      # Per-slice contract delta (when API interactions exist)
 │           ├── schemas/
 │           ├── http/
 │           └── messages/
 │
 ├── specs/                                  # Merged baseline specs (committable; system of record)
-│   └── <unit>/spec.md                      # Accumulated behavioral requirements
+│   └── <domain>/spec.md                    # Accumulated behavioral requirements
 │
 ├── journal.jsonl                           # Append-only event log; also the outcome ledger
 │                                           #   (slice.archive.created: slice, touched-specs, summary, merge SHA)
@@ -63,7 +67,7 @@ contracts/                                  # Baseline API contracts
 │
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
     ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specify archive prune`)
-    │   ├── .metadata.yaml
+    │   ├── metadata.yaml
     │   ├── proposal.md
     │   ├── design.md
     │   ├── tasks.md
@@ -83,7 +87,7 @@ contracts/                                  # Baseline API contracts
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-unit `specs/<unit>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `.metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -95,9 +99,13 @@ A slice directory may also contain a `contracts/` subdirectory holding the propo
 
 The baseline. When a slice is merged, its spec deltas are applied here. Baseline specs represent the current known state of the system.
 
-### `.cache/`
+### `cache/`
 
-Two sibling subtrees. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use. `extractions/<adapter>/` holds the fingerprinted `survey` / `extract` result cache (with an append-only `index.jsonl`). The whole `.cache/` tree is regenerable and safe to delete.
+The memoization root — every subtree is keyed by content or version, and deleting it costs recomputation only. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with the mirror's provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
+
+### `scratch/`
+
+The transient working-state root — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Keeping scratch outside `cache/` makes the "a scratch write never pollutes a cache artifact" guarantee structural rather than conventional. Both roots are gitignored.
 
 ### `workspace/`
 

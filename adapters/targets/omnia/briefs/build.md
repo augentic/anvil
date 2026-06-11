@@ -1,13 +1,13 @@
 # Omnia target — build brief
 
-> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to five phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `specs/<unit>/spec.md` + `design.md` before this brief runs.
+> `/spec:build` loads this brief when it walks an `in-progress` plan entry whose slice has `target: omnia`. The brief dispatches to five phase sub-briefs under [`build/`](build/). Read this orchestrator linearly; load each phase sub-brief at the marked step, follow it end-to-end, and return here for the next step. Synthesis idioms (provider DI, WASM guardrails, error variants, validation placement) live in [`shape.md`](shape.md) and must already be reflected in the slice's `specs/<domain>/spec.md` + `design.md` before this brief runs.
 
 ## Inputs and bindings
 
 The brief runs against the build request the CLI prepared at `.specify/slices/<slice>/build/request.yaml`; consume its `inputs` manifest rather than relying on convention. Every artifact path resolves against `inputs.root` (the slice tree).
 
-- `inputs.artifacts.proposal` (`proposal.md`) — unit inventory and slice scope.
-- `inputs.artifacts.specs[]` (`specs/<unit>/spec.md`) — behavioural requirements, one file per `proposal.md ## Units` entry.
+- `inputs.artifacts.proposal` (`proposal.md`) — domain inventory and slice scope.
+- `inputs.artifacts.specs[]` (`specs/<domain>/spec.md`) — behavioural requirements, one file per `proposal.md ## Domains` entry.
 - `inputs.artifacts.design` (`design.md`) — domain model, provider DI, error variants, and WASM idioms (see [`shape.md`](shape.md)).
 - `inputs.artifacts.tasks` (`tasks.md`) — implementation sequencing and progress tracking.
 - `inputs.artifacts.additional[]` — empty for omnia: [`adapter.yaml`](../adapter.yaml) declares no extra slice-tree inputs. Omnia reads the project working tree's `Cargo.toml` directly for workspace context; that is not a slice-tree input.
@@ -17,8 +17,8 @@ The brief binds these working names from the request and the resolved crate:
 ```text
 $SLICE_NAME    = active in-progress plan entry's slice name (from `specify plan next`)
 $SLICE_DIR     = .specify/slices/$SLICE_NAME
-$UNIT_NAME     = unit slug from proposal.md ## Units (typically equals crate name for single-crate slices)
-$SPEC_PATH     = $SLICE_DIR/specs/$UNIT_NAME/spec.md
+$DOMAIN_NAME   = domain slug from proposal.md ## Domains (typically equals crate name for single-crate slices)
+$SPEC_PATH     = $SLICE_DIR/specs/$DOMAIN_NAME/spec.md
 $DESIGN_PATH   = $SLICE_DIR/design.md
 $TASKS_PATH    = $SLICE_DIR/tasks.md
 $CRATE_NAME    = $SLICE_NAME with kebab → snake (or the slice's plan-level `crate:` override)
@@ -38,7 +38,7 @@ Check whether `$CRATE_PATH/Cargo.toml` exists:
 
 ## Phase order
 
-1. Read [`shape.md`](shape.md) refresher and the slice's `specs/<unit>/spec.md` + `design.md` + `tasks.md`.
+1. Read [`shape.md`](shape.md) refresher and the slice's `specs/<domain>/spec.md` + `design.md` + `tasks.md`.
 2. Load and follow [`build/crate.md`](build/crate.md) — generates or updates the crate.
 3. Load and follow [`build/test.md`](build/test.md) — generates or updates the tests.
 4. (Create mode only) Load and follow [`build/guest.md`](build/guest.md) — scaffolds the WASM guest wrapper.

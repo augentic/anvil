@@ -18,14 +18,14 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
 
 1. **Select the slice**
 
-   If a name is provided, use it. Otherwise inspect `.specify/slices/*/.metadata.yaml` directly to enumerate active slices:
+   If a name is provided, use it. Otherwise inspect `.specify/slices/*/metadata.yaml` directly to enumerate active slices:
 
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.
 
 2. **Check lifecycle status**
 
-   Read `.specify/slices/<name>/.metadata.yaml` and inspect `status`:
+   Read `.specify/slices/<name>/metadata.yaml` and inspect `status`:
 
    - `built`: warn that the slice is ready for `/spec:merge`.
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
@@ -56,7 +56,7 @@ When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1
    specify slice drop <name> --reason "<user-supplied rationale>" --format json
    ```
 
-   The CLI performs the lifecycle transition (enforcing the legal non-terminal → `dropped` edge), stamps `dropped-at`, records the optional reason in `.metadata.yaml.drop-reason`, and moves the directory under `.specify/archive/YYYY-MM-DD-<name>/`. The `archive-path` field in the JSON response names the final location.
+   The CLI performs the lifecycle transition (enforcing the legal non-terminal → `dropped` edge), stamps `dropped-at`, records the optional reason in `metadata.yaml.drop-reason`, and moves the directory under `.specify/archive/YYYY-MM-DD-<name>/`. The `archive-path` field in the JSON response names the final location.
 
 ## Output On Success
 
@@ -76,4 +76,4 @@ The baseline remains unchanged.
 - Do not merge or rewrite any files under `.specify/specs/`.
 - Warn if the slice is already `built`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
-- `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- `specify slice drop` is the sole writer for `metadata.yaml` and the archive directory on drop. See [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

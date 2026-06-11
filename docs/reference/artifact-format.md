@@ -15,20 +15,20 @@ This is the definitive reference for the structure and conventions of Specify ar
 
 ## Spec files (behavioral "what")
 
-One spec file per unit, at `specs/<unit>/spec.md` (a *unit* is one cohesive area of behaviour — a crate, module, or service).
+One spec file per domain, at `specs/<domain>/spec.md` (a *domain* is one cohesive area of behaviour — a crate, module, or service).
 
 Specs are behavioral. They describe what the system must do, not how it should be implemented in a particular framework.
 
-### Baseline / new unit format
+### Baseline / new domain format
 
 New specs and merged baselines use a flat requirement format:
 
 ````markdown
-# <Unit Name> Specification
+# <Domain Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this unit does>
+<1-2 sentence description of what this domain does>
 
 ### Requirement: <Behavior Name>
 
@@ -64,12 +64,12 @@ Key rules:
 - Error conditions are listed at the end as a cross-cutting summary.
 - Metrics are only included when they are explicit in the source material.
 
-### Delta spec format (modified unit)
+### Delta spec format (modified domain)
 
-When modifying an existing unit, specs use operation headers to describe what changed:
+When modifying an existing domain, specs use operation headers to describe what changed:
 
 ````markdown
-# <Unit Name> Specification
+# <Domain Name> Specification
 
 ## Purpose
 
@@ -173,7 +173,7 @@ Create a full design if any of the following apply:
 
 If none apply, create a minimal `design.md` noting that a full design is not warranted and referencing the proposal and specs.
 
-For multi-unit changes, structure the document with per-unit sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
+For multi-domain changes, structure the document with per-domain sections (`## Crate: <name>` or equivalent) each containing the relevant subsections.
 
 ### Business logic tags
 
@@ -212,9 +212,9 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 <One to three paragraphs explaining why the slice exists.>
 
-## Units
+## Domains
 
-- <unit-slug> — <target-specific meaning and short scope summary>
+- <domain-slug> — <target-specific meaning and short scope summary>
 
 ## Non-goals
 
@@ -222,7 +222,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 ```
 
 - **`## Why`** is the motivation section `specify slice validate` checks (`proposal.why-has-content`).
-- **`## Units`** is the only section the validator uses to locate spec files: every bullet maps one-to-one to `specs/<unit>/spec.md`. Unit slugs are kebab-case. Targets interpret what a unit means (Vectis feature, Omnia crate/service surface, contracts contract surface) in their shape briefs, but the section name and file layout are identical for every target.
+- **`## Domains`** is the only section the validator uses to locate spec files: every bullet maps one-to-one to `specs/<domain>/spec.md`. Domain slugs are kebab-case. Targets interpret what a domain means (Vectis feature, Omnia crate/service surface, contracts contract surface) in their shape briefs, but the section name and file layout are identical for every target.
 - **`## Non-goals`** is optional content when known; the heading is still required.
 
 No provenance lines on `proposal.md` — provenance lives in spec files after synthesis.
@@ -452,7 +452,7 @@ Contract deletion is rare and handled as a manual baseline edit. The slice-level
 
 ### Behavioral specs
 
-- One spec file per unit
+- One spec file per domain
 - Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - Specs stay behavioral and avoid platform-binding detail
 - Traceability is present for each requirement via stable IDs

@@ -24,7 +24,6 @@ Every source and target adapter ships a manifest at `adapters/sources/<name>/ada
 - `description` — single-sentence human-readable summary; required.
 - `briefs` — map from operation name to a relative brief path; absolute paths and URIs are rejected.
 - `tools` — optional WASI tool declarations with semver-pinned versions and optional permission grants.
-- `cache` — optional `opt-out` switch per workflow §D8.
 
 ## Look For
 

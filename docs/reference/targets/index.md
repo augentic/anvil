@@ -39,13 +39,13 @@ inputs:
 | `name`        | yes      | Kebab-case target identifier. Must match the directory name under `adapters/targets/`. |
 | `version`     | yes      | Integer ≥ 1. Increments when the adapter ships breaking pipeline or contract changes. |
 | `axis`        | yes      | Must be `target`. |
-| `execution`   | yes      | Closed mode (`agent` \| `tool`). `agent` forces `cache: opt-out` and runs the brief via an agent; first-party targets currently declare `agent`. |
+| `execution`   | yes      | Closed mode (`agent` \| `tool`). `agent` runs the brief via an agent; `tool` dispatches through a declared WASI tool. First-party targets currently declare `agent`. |
 | `description` | yes      | Single-sentence summary of the target's outcome domain. |
 | `operations`  | yes      | Closed list with exactly the three values `[shape, build, merge]`. |
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |
 | `inputs`      | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
 
-Optional `tools[]` declares WASI helpers that the host runner caches under the per-axis manifest cache at `.specify/.cache/manifests/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
+Optional `tools[]` declares WASI helpers that the host runner caches under the per-axis manifest cache at `.specify/cache/manifests/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 

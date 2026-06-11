@@ -120,7 +120,7 @@ Refine generates four documents in dependency order. Each one answers a differen
 | Artifact      | Question it answers                                                                | Location                            |
 | ------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
 | `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.specify/slices/<name>/proposal.md` |
-| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.specify/slices/<name>/specs/<unit>/spec.md` |
+| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.specify/slices/<name>/specs/<domain>/spec.md` |
 | `design.md`   | *How* will the behaviour be implemented?                                            | `.specify/slices/<name>/design.md`   |
 | `tasks.md`    | In what *sequence* should it be built?                                              | `.specify/slices/<name>/tasks.md`    |
 
@@ -142,7 +142,7 @@ A **change** is the operator-defined umbrella that coordinates one or more slice
 
 Specify splits adapters by direction.
 
-A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `code-typescript`, `captures`, `screenshots`.
+A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `typescript`, `captures`, `screenshots`.
 
 A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `shape` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 
@@ -152,9 +152,9 @@ You pick the target at scaffolding time (`/spec:init <target>`). You bind source
 
 ## Evidence, provenance, authority
 
-When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour`) and a list of `claims:` with structured kinds.
+When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)) and a list of `claims:` with structured kinds.
 
-Core synthesis reconciles `Evidence[]` into the slice's per-unit `specs/<unit>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
+Core synthesis reconciles `Evidence[]` into the slice's per-domain `specs/<domain>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 
 ```markdown
 ID: REQ-001

@@ -30,7 +30,7 @@ A plan is **drained** when no entry is `pending` or `in-progress`; `/spec:finali
 
 ## Slice lifecycle
 
-Each slice's `.metadata.yaml` tracks an independent lifecycle:
+Each slice's `metadata.yaml` tracks an independent lifecycle:
 
 | State      | Meaning                                                                 | Next states                  |
 | ---------- | ----------------------------------------------------------------------- | ---------------------------- |
@@ -53,18 +53,18 @@ Each slice's `.metadata.yaml` tracks an independent lifecycle:
 | `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specify slice transition <name> refined`        |
 | `/spec:build` completes tasks                     | slice: `refined → built`           | `specify slice transition <name> built`          |
 | `/spec:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `specify slice merge`                            |
-| `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice transition <name> dropped --reason "..."` |
+| `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice drop <name> --reason "..."`       |
 
-## `.metadata.yaml`
+## `metadata.yaml`
 
-Each slice directory contains a `.metadata.yaml` file managed exclusively by the CLI. It records:
+Each slice directory contains a `metadata.yaml` file managed exclusively by the CLI. It records:
 
 - **`status`** — the current slice lifecycle state.
 - **`created_at`** / **`updated_at`** — ISO 8601 timestamps.
 - **`target`** — the target adapter identifier used for this slice.
 - **`touched_specs`** — the list of spec files this slice affects.
 
-Never hand-edit `.metadata.yaml`. All writes flow through the CLI.
+Never hand-edit `metadata.yaml`. All writes flow through the CLI.
 
 ## Archiving
 
@@ -74,6 +74,6 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 .specify/archive/YYYY-MM-DD-<slice-name>/
 ```
 
-The full slice directory is preserved, including all artifacts and `.metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the append-only **outcome ledger** (`.specify/journal.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.specify/specs/` baseline plus that ledger, so archived folders can be reclaimed with `specify archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
+The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the append-only **outcome ledger** (`.specify/journal.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.specify/specs/` baseline plus that ledger, so archived folders can be reclaimed with `specify archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
 
 For plans, `specify plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

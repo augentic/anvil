@@ -32,7 +32,8 @@ Open these files at `.specify/` (workspace mode: workspace):
 Use CLI verbs — never hand-edit `plan.yaml`:
 
 ```bash
-# Add a source binding to an existing entry
+# Add a source binding to an existing entry (one lead per source key —
+# a key the entry already binds is refused as duplicate-source-key)
 specify plan amend <entry> --add-source <key>=<lead>
 
 # Remove a source binding
@@ -71,7 +72,7 @@ Only after this transition will `/spec:execute` start.
 
 ## Splitting one slice into two
 
-When Gate 1 review shows a slice should split, add a second row with `specify plan add`, narrow the original with `specify plan amend <original> --sources …`, and `specify plan remove <original>` when the original entry is empty. Scenario coverage lives in acceptance scenario #7.
+When Gate 1 review shows a slice should split, add a second row with `specify plan add`, narrow the original with `specify plan amend <original> --sources …`, and `specify plan remove <original>` when the original entry is empty. Scenario coverage lives in eval scenario #7.
 
 ## See also
 

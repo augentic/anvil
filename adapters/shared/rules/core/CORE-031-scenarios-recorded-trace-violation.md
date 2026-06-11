@@ -9,14 +9,14 @@ rule_hints:
     description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: scenarios
-    description: Run the `scenarios` framework checker, which validates every `acceptance/recorded/**/*.jsonl` trace's first line as a well-formed `recorded-trace-header`.
+    description: Run the `scenarios` framework checker, which validates every `evals/recorded/**/*.jsonl` trace's first line as a well-formed `recorded-trace-header`.
 ---
 
 ## Rule
 
-Each recorded-trace file under `acceptance/recorded/` must begin with a single-line JSON `recorded-trace-header` object whose `schemaVersion` is `1` and whose required fields (`kind`, `schemaVersion`, `sourceBackend`, `sourceRunId`, `sourceTimestamp`, `scenarioId`) are present and non-empty. A malformed header makes the trace unreplayable and breaks provenance.
+Each recorded-trace file under `evals/recorded/` must begin with a single-line JSON `recorded-trace-header` object whose `schemaVersion` is `1` and whose required fields (`kind`, `schemaVersion`, `sourceBackend`, `sourceRunId`, `sourceTimestamp`, `scenarioId`) are present and non-empty. A malformed header makes the trace unreplayable and breaks provenance.
 
-This check is whole-tree and opt-in: it fires nothing until an `acceptance/recorded/` tree exists. The `scenarios` framework tool reads `PROJECT_DIR`, walks `acceptance/recorded/`, and validates every `.jsonl` trace header. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint.
+This check is whole-tree and opt-in: it fires nothing until an `evals/recorded/` tree exists. The `scenarios` framework tool reads `PROJECT_DIR`, walks `evals/recorded/`, and validates every `.jsonl` trace header. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint.
 
 ## Look For
 

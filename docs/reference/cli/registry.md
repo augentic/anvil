@@ -47,7 +47,7 @@ Behaviour:
 - Runs `Registry::validate_shape` after the write.
 - Workspace repos (`project.yaml: workspace: true`) layer on the `workspace-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
-Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+Used by `/spec:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {add, amend} --project <name>`, since the plan verbs reject unknown projects.
 
 ### specify registry remove
 

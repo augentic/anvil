@@ -17,7 +17,7 @@ See [Prerequisites](../../orientation/prerequisites.md) for all install paths an
 - All commands return structured JSON on stdout and use exit codes for success/failure.
 - Commands that modify `.specify/` state are idempotent where possible.
 - The CLI enforces the legal set of lifecycle transitions and validates inputs.
-- Skills delegate to the CLI for all structural operations -- they never hand-edit `.metadata.yaml` or manipulate the directory structure directly.
+- Skills delegate to the CLI for all structural operations -- they never hand-edit `metadata.yaml` or manipulate the directory structure directly.
 
 ## Design principle
 

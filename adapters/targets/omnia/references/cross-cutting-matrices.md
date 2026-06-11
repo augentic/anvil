@@ -33,7 +33,7 @@ Every row with **Atomic=Yes** MUST generate transaction-scoped wrapping for its 
 
 Run after the matrices are populated and the code is generated (Create mode step 16; Update mode Step 7).
 
-For each `### Requirement:` block in `specs/<unit>/spec.md`:
+For each `### Requirement:` block in `specs/<domain>/spec.md`:
 
 - Verify a traceability comment referencing the requirement ID exists in the generated code.
 - For each `#### Scenario:` under that requirement, verify that the described behavior has a corresponding branch or code path in a handler.
