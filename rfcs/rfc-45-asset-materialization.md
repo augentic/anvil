@@ -1,6 +1,6 @@
 # RFC-45: Asset Materialization and Mandatory App Icon
 
-> Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols
+> Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols · **Scope includes Phase 0** (specify-cli): remove the optional `--reconcile-platforms` propose flag and make Vectis self-contained for shell-bootstrap detection
 
 ## Abstract
 
@@ -9,7 +9,8 @@ Vectis today treats `design-system/assets.yaml` as an inventory while shell writ
 1. A deterministic **`vectis materialize assets`** step that converts canonical sources into per-platform exports.
 2. A strict **render-by-`kind`** writer contract: `vector` / `raster` assets always render from materialized shell resources; `symbol` is the only explicit glyph path.
 3. A top-level **`app-icon`** field in `assets.yaml` pointing at a `role: app-icon` entry.
-4. A **bootstrap-only validation gate** that hard-fails when a plan implies bootstrapping a new UI shell platform and no satisfiable `app-icon` exists — neither a straightforward canonical image the materializer can convert, nor operator-pinned hand-built exports in the expected `exports/<platform>/` layout for each missing platform. Plans that reuse shells with an existing launcher icon proceed without re-checking design-system inventory.
+4. A **bootstrap-only validation gate** that hard-fails when a Vectis-bound project is about to bootstrap a missing UI shell platform and no satisfiable `app-icon` exists — neither a straightforward canonical image the materializer can convert, nor operator-pinned hand-built exports in the expected `exports/<platform>/` layout for each missing platform. Plans that reuse shells with an existing launcher icon proceed without re-checking design-system inventory.
+5. **Phase 0 (prerequisite):** close a pre-existing workflow footgun by making platform-bootstrap slice insertion automatic on `specify plan propose --from` and moving shell-presence detection into the **vectis** tool (`vectis verify --mode detect`). Non-Vectis targets (e.g. Omnia microservices) are unaffected.
 
 SVG remains the canonical designer format. Mobile shells (iOS, Android) consume derived exports. Web asset materialization is out of scope here and specified separately in [RFC-45a](future/rfc-45a-web-asset-materialization.md), deferred until a web shell scaffold exists.
 
@@ -38,7 +39,8 @@ Inference and build also conflated two different policies:
 - **Bootstrap-only `app-icon` gate.** Mandatory `app-icon` validation runs only when §6.1 detects UI shell bootstrap for a platform. Incremental plans against shells that already carry a launcher icon (from a prior bootstrap or operator-authored shell resources) are not blocked by design-system `app-icon` inventory.
 - **Fail closed on missing materialization.** A composition-referenced `vector` / `raster` id without exports for a declared project platform is an error — never a silent symbol fallback at build time.
 - **Symbols are explicit inventory.** Platform glyph use requires `kind: symbol` on an `assets.yaml` entry (optionally `inferred: true` when promoted from screenshots). Composition still references the asset id.
-- **CLI owns determinism.** Materialization, catalog emission, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons.
+- **CLI owns determinism.** Materialization, catalog emission, shell-presence detection, and bootstrap validation live in `vectis` / `specify plan validate`. Shell writers copy pre-validated outputs and emit view code; they do not convert formats or invent icons. Crux shell layout heuristics (`shared/`, `iOS/`, `Android/`) live in the vectis tool — not in `specify-workflow`.
+- **Automatic bootstrap inference (Phase 0).** When `propose --from` runs for a project with declared `platforms`, the CLI always consults vectis detect and inserts bootstrap slices (`app-foundation`, `bootstrap-<platform>`) for absent shells. Operators do not pass a separate reconcile flag.
 - **Minimal schema growth.** One top-level pointer (`app-icon`), one new `role`, one optional `inferred` flag on symbol entries. No per-composition-item render mode. (Web adds one optional `sources.web` later — see [RFC-45a](future/rfc-45a-web-asset-materialization.md).)
 
 ## Design
@@ -220,14 +222,16 @@ Inferers MUST NOT crop production assets from screenshots (unchanged). Symbol pr
 
 #### 6.1 Bootstrap trigger
 
-A plan **implies bootstrapping a new UI platform** when **any** of the following hold at `specify plan validate` time for a bound project:
+For a **Vectis-bound** project `P`, UI shell bootstrap is implied at `specify plan validate` (and matching slice-build gates) when:
 
-| Trigger | Detection |
-|---------|-----------|
-| **A. Reconciled bootstrap slices** | `plan.yaml` contains an entry named `app-foundation`, `bootstrap-ios`, or `bootstrap-android` (or `{project}-` prefixed equivalents from multi-project reconcile) |
-| **B. Absent UI shells** | `project.yaml.platforms` includes `ios` and/or `android`, and `detect_missing_platforms` (same heuristic as `specify plan propose --reconcile-platforms` / `vectis verify --mode detect`) reports that platform absent |
+- `project.yaml.platforms` includes `ios` and/or `android`, **and**
+- `vectis verify --mode detect` run against `P`'s project directory lists that platform in `missing[]`.
 
-`core`-only bootstrap (`app-foundation` with only `core` missing) does **not** require `app-icon`. Trigger fires when **`ios` or `android` is among missing platforms** for the project. Web bootstrap (`bootstrap-web`) is deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
+Detection is **filesystem-authoritative** — the same vectis detect pass Phase 0 runs on `propose --from`. `plan.yaml` slice names (`app-foundation`, `bootstrap-*`) are **not** a separate gate input; after Phase 0, propose always inserts those rows when vectis detect reports absences.
+
+`core`-only bootstrap (`app-foundation` with only `core` among `missing[]`) does **not** require `app-icon`. The trigger fires only when **`ios` or `android` is among `missing[]`**. Web bootstrap (`bootstrap-web`) is deferred to [RFC-45a](future/rfc-45a-web-asset-materialization.md).
+
+**Non-Vectis targets** (Omnia, contracts, …) do not declare shell `platforms` and never satisfy this trigger regardless of on-disk layout. Generalising bootstrap detection to future shell targets is out of scope (Phase 0).
 
 #### 6.2 Validation rule
 
@@ -259,7 +263,7 @@ Gate placement:
 
 #### 6.3 Shell-resident launcher icon detection
 
-When §6.1 reports platform `π` absent from the reconcile heuristic (`detect_missing_platforms`), the shell tree may still exist with a launcher icon from a prior bootstrap or operator work. Before requiring design-system inventory, validation probes the shell:
+When vectis detect reports platform `π` in `missing[]`, the shell tree may still carry a satisfiable launcher icon from a prior bootstrap or operator work that detect does not treat as a complete shell. Before requiring design-system inventory, validation probes the shell:
 
 | Platform | Satisfied when |
 |----------|----------------|
@@ -270,7 +274,7 @@ Exact path heuristics align with `vectis verify --mode detect` shell layout assu
 
 #### 6.4 Interaction with `app-foundation` slice
 
-Greenfield reconcile inserts `app-foundation` when all supported platforms are missing. That slice SHOULD depend on design-system existing with `tokens.yaml`, `assets.yaml` (including a satisfiable `app-icon` per §4.1 for each missing platform), and committed `exports/` (auto-converted or operator-pinned) before iOS/Android bootstrap build slices run. Plan DAG:
+Phase 0 propose inserts `app-foundation` when vectis detect reports all supported Crux platforms (`core`, `ios`, `android`) missing; incremental detect yields per-platform `bootstrap-<platform>` slices instead. That work SHOULD run only after design-system exists with `tokens.yaml`, `assets.yaml` (including a satisfiable `app-icon` per §4.1 for each missing UI platform), and committed `exports/` (auto-converted or operator-pinned). Plan DAG:
 
 ```text
 design-system  →  app-foundation (scaffold shells)  →  feature slices
@@ -314,14 +318,36 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 | `adapters/targets/vectis/briefs/build/android/write.md` | Same |
 | `adapters/sources/screenshots/briefs/extract.md` | Symbol inference policy |
 | `wasi-tools/vectis/DECISIONS.md` | §K materialization; §L app-icon |
+| `plugins/spec/skills/plan/SKILL.md` | Drop `--reconcile-platforms`; bootstrap inference is default-on |
+| `specify-cli` `DECISIONS.md` / `AGENTS.md` | Platform reconciliation always-on; vectis-owned detect |
 
 ## Implementation phases
+
+### Phase 0 — Platform bootstrap inference (prerequisite, specify-cli)
+
+Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
+
+**Problem.** Today `specify plan propose --from` accepts an optional `--reconcile-platforms` flag. When omitted, the plan may list only feature slices while `project.yaml` still declares `ios`/`android` and no shell trees exist — a plan the repo cannot execute. RFC-45 §6 originally papered over this with dual bootstrap triggers (plan slice names *or* filesystem detect). Phase 0 removes the footgun so §6.1 needs only vectis detect.
+
+**Policy.**
+
+| Change | Detail |
+|--------|--------|
+| **Remove `--reconcile-platforms`** | `propose --from` always runs the bootstrap post-pass for projects with non-empty `project.yaml.platforms`. |
+| **Vectis owns shell detection** | Delete Crux-specific `detect_missing_platforms` from `specify-workflow`. Propose and plan validate consult `specify tool run vectis -- verify --mode detect <project-dir>` for Vectis-bound projects. Vectis compares declared `platforms` to on-disk Crux trees (`shared/src/app.rs`, `iOS/**/*.swift`, `Android/**/*.kt`). |
+| **Workflow keeps DAG insertion only** | `Plan::reconcile_platforms` remains in `specify-workflow`: prepend `app-foundation` / `bootstrap-<platform>`, wire `depends-on`. No target-specific presence rules in the kernel. |
+| **Non-Vectis unaffected** | Omnia, contracts, and similar targets without `platforms.required` carry no platform list; bootstrap post-pass is a no-op; §6 does not apply. |
+| **Future targets out of scope** | A later shell target with `platforms.required` must ship its own detect surface; RFC-45 does not generalise workflow heuristics. |
+
+**Deliverables:** propose handler + clap flag removal; workflow `platforms.rs` heuristic deletion; plan skill prose; `DECISIONS.md` / `AGENTS.md` updates; acceptance tests updated to stop passing `--reconcile-platforms`.
+
+**Dependency:** Phase 1 MUST NOT ship until Phase 0 merges — otherwise `app-icon` gating reintroduces the declined-reconcile ambiguity this RFC closes.
 
 ### Phase 1 — Policy and gates (no converter yet)
 
 - Schema: `app-icon`, `role: app-icon`, `inferred`; `sources.<platform>` directory paths permitted for `role: app-icon`.
-- `specify plan validate`: bootstrap trigger + `plan-bootstrap-app-icon-missing` with shell-resident escape hatch (§6.3).
-- `vectis validate assets`: `app-icon` export layout checks (§4.2 / §4.3); bootstrap context remains plan-only.
+- `specify plan validate`: §6.1 vectis-detect bootstrap trigger + `plan-bootstrap-app-icon-missing` with shell-resident escape hatch (§6.3). Requires Phase 0.
+- `vectis validate assets`: `app-icon` export layout checks (§4.2 / §4.3); bootstrap context is vectis detect, not plan slice names.
 - Writer/review doc updates; review rule flagging symbol substitution.
 - iOS scaffold: `AppIcon.appiconset` skeleton.
 
@@ -339,6 +365,7 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 ## Non-goals
 
+- Generalising platform-bootstrap detection or slice insertion to non-Vectis targets (Omnia microservices, contracts, …). Phase 0 explicitly limits shell detect to the vectis tool; future shell targets are a separate adapter concern.
 - Requiring hand-built exports for every asset (auto-convert from `source:` remains the default; operator-pin is opt-in per platform when design demands it).
 - Automatic symbol substitution at build time.
 - Figma / screenshot asset extraction (screenshots remain non-destructive).
@@ -349,10 +376,11 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 
 1. **`exports/` committed vs gitignored?** **Commit.** Consumer repos version-control `design-system/assets/exports/` so CI and shell builds are reproducible without running `vectis materialize` (and without image-processing deps) on every job. Framework acceptance fixtures pin small committed PNG/PDF outputs under the same policy.
 2. **Single global `app-icon` vs per-platform ids?** **One logical id**, per-platform delivery. The top-level `app-icon:` pointer references a single `role: app-icon` entry. Per-platform marks differ via independent `sources.ios` / `sources.android` pins under `exports/<platform>/app-icon/` (operator hand-built) or auto-conversion from shared `source:` — not separate asset ids or composition references. Bootstrap validation hard-fails when a missing platform has neither a materializable canonical image nor valid hand-built exports in the conventional export layout; it does not fire on incremental plans when the shell already carries a launcher icon (§6.2 / §6.3).
+3. **Optional `--reconcile-platforms` vs bootstrap trigger?** **Resolved by Phase 0.** Remove the flag; bootstrap slice insertion is default-on for platform-declaring projects. The `app-icon` gate keys off vectis filesystem detect (§6.1) and the shell-resident escape hatch (§6.3) — not on whether bootstrap slice names appear in `plan.yaml` and not on a propose-time opt-out that today can write unexecutable plans.
 
 ## Open questions
 
-1. **Plan trigger B without bootstrap slices?** If operator declines `--reconcile-platforms` but platforms are still absent, validate still fails at Gate 1 — intentional force function.
+1. **Manual plan DAG without bootstrap rows.** Phase 0 covers the default `propose --from` path. Operators may still curate `plan.yaml` via `specify plan add` / `amend` and omit bootstrap slices while vectis detect still reports missing shells. Should `plan validate` emit a separate structural finding (e.g. `plan-bootstrap-slices-missing`) in addition to the §6 `app-icon` gate, or is filesystem detect + automatic propose sufficient?
 2. **Raster-only design systems?** `kind: raster` + `role: app-icon` with `source:` as a ≥1024×1024 master; materialize copies/resizes into export trees. Operator-pin path unchanged.
 3. **Pin vs `source:` drift.** When an operator updates `source:` but leaves platform pins in place, should `materialize` emit a warning, or should validate flag `assets-app-icon-source-stale`? v1: silent skip (pins win); revisit if operators report confusion.
 4. **`assets.yaml` auto-write of `sources.<platform>` after first materialize.** v1 leaves recording pins to the operator; auto-write would reduce toil but couples materialize to manifest mutation.
@@ -362,8 +390,8 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 - [`adapters/targets/vectis/references/ios/design-system-integration.md`](../adapters/targets/vectis/references/ios/design-system-integration.md) — current copy-on-generate contract
 - [`wasi-tools/vectis/embedded/assets.schema.json`](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/embedded/assets.schema.json) — assets artifact schema (`specify-cli`)
 - [`wasi-tools/vectis/src/validate/engine/assets.rs`](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/src/validate/engine/assets.rs) — cross-artifact validation (`specify-cli`)
-- [`wasi-tools/vectis/src/verify.rs`](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/src/verify.rs) — platform shell detect/verify (`specify-cli`)
-- [`crates/workflow/src/change/plan/core/propose/platforms.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/change/plan/core/propose/platforms.rs) — `reconcile_platforms` / bootstrap slice insertion (`specify-cli`)
+- [`wasi-tools/vectis/src/verify.rs`](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/src/verify.rs) — **authoritative** Crux shell detect/verify for Phase 0 and §6.1 (`specify-cli`)
+- [`crates/workflow/src/change/plan/core/propose/platforms.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/change/plan/core/propose/platforms.rs) — `Plan::reconcile_platforms` bootstrap DAG insertion only; presence heuristics removed in Phase 0 (`specify-cli`)
 - [`adapters/targets/vectis/briefs/build/ios/write.md`](../adapters/targets/vectis/briefs/build/ios/write.md) — verify loop (`make sim-build`)
 - Apple Human Interface Guidelines — App Icon (1024×1024, no alpha)
 - Android Adaptive Icons — foreground/background safe zone
