@@ -200,11 +200,11 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
-**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
+**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`). When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it probes the `.specify/plan.lock` driver lock first and refuses an unlocked session with `plan-lock-not-held` (exit 2); plan-less standalone merges skip the probe.
 
 ### specify slice task
 
-Two subcommands cover the task surface (renamed from the old top-level `specify task progress` / `specify task mark`).
+Two subcommands cover the task surface (renamed from the old top-level `task progress` / `task mark` verbs).
 
 #### specify slice task progress
 

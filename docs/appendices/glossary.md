@@ -17,7 +17,7 @@ A machine-readable interface definition at `contracts/`. Uses three formats: JSO
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour`. Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -65,7 +65,7 @@ The plan-time discovery artifact at `discovery.md` in the project root (workspac
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
 
 **Drop**
-The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specify slice transition <name> dropped --reason "..."`.
+The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `specify slice drop <name> --reason "..."`.
 
 ## E
 

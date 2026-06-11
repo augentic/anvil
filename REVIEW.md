@@ -221,7 +221,15 @@ Applied-finding calibration log — one line per executed finding: predicted vs 
 
 | Item | Predicted | Actual ΔLOC | Done-when flipped? | Regressions | Notes |
 | ---- | --------- | ----------- | ------------------ | ----------- | ----- |
-| | | | | | |
+| 0.3 fetchable pin | S | +8/−4 (Specify.toml) | yes — committed `cli` is `{ git, branch = "main" }`; `path` lives in gitignored `Specify.local.toml` | none — `--resolved-ref` still resolves the overlay locally | docs already described the target posture; only the file flipped |
+| A1/C1 wasi-tools CI | M | +30 ci.yaml | yes — clippy `-D warnings` + `cargo test --workspace` job added | fixed 6 latent clippy errors in `vectis/build.rs` + 1 in `tests/engine/assets.rs` the job would have caught | dist↔source parity left to host digest drift tests, not CI rebuild (avoids non-reproducible-wasm flakes) |
+| A2 exit-4 | M | +70 | yes — `load_with_current` injectable; `load_refuses_migration_owed_pin` unit test; pre-staged exit-4 integration mirror whose expectation flips at the 1.0 cut | none | integration arm asserts exit-2 (gate dormant) pre-1.0, exit-4 + `project-needs-migration` envelope post-1.0, no test edit needed |
+| C2 framework-wire | M (−650–750) | −830 in 7 mains, +~280 new crate ⇒ net ≈ −550 | yes — 7 `main.rs` keep only rule ids, dispatch, guidance | none — wasi-tools clippy+tests green, blobs rebuilt, host lint suite green | calibration prior held: shared crate adds its body back |
+| C3 contract dist | S | +20 | yes — `.sha256` sidecar + `dist_digest_pinned`; `contract-wasm` refreshes dist | none — rebuilt blob passes behaviour tests | dist blob refreshed from current source in the same change |
+| B1 doc sweep | S | ~12 lines across 5 files | yes — `src/main.rs`, `rust-version 1.95`, `specify-agents` in crate graph, schema-constant list (+4 ids), `emit` home, `model.rs` comment | none | `src/runtime/output.rs` row had self-resolved (module split since baseline); only the `emit` phrasing needed fixing |
+| D1 CI story | M | ~10 lines (AGENTS.md + checks.md) | yes — local (`make lint`, nightly resolver) vs CI (stable sibling checkout) documented as two intentional paths | none — `make lint` green | |
+| R6 doc-comments | S | 2 sites | yes — `plan/cli.rs` "plan lock *" dropped; `example.rs` "cache fingerprinting" → replay-verification anchor | none | stale `contract-wasm` task comment (target/ vs dist/) fixed in the same pass |
+| R6 blob digests | S | 0 | already landed pre-round — sidecars + `dist_digests_pinned` exist; `sha256: None` documented as deliberate (host compiles staged bytes; sidecar+test is the trust anchor) | none | no-op verified, not re-done |
 
 ---
 
@@ -234,11 +242,11 @@ make install-cli                # build pinned CLI + symlink into ~/.local/bin
 
 # specify-cli repo
 cargo make ci                   # full gate (fmt + lint + test + docs + vet + outdated + deny)
-cargo make check                # pre-commit subset  (RED on tip — see 0.1)
+cargo make check                # pre-commit subset
 cargo test --test rust_quality  # naming / archaeology / bare-allow gates
 cargo nextest run --test lint   # consumer + framework lint binaries
 REGENERATE_GOLDENS=1 cargo nextest run --test <binary>   # review diff before commit
 
-# wasi-tools (not covered by host CI — run manually until A1 lands)
+# wasi-tools (dedicated CI job since A1; same commands locally)
 cd wasi-tools && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
 ```

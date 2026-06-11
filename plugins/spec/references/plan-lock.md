@@ -2,7 +2,11 @@
 
 The plan lock is an OS-level exclusive advisory file lock taken on `.specify/plan.lock` (or `<workspace>/.specify/plan.lock` in workspace mode). The lock identity is the file lock itself; the file body carries the holder pid, hostname, and acquisition timestamp purely as diagnostic noise. Acquisition is non-blocking: a second `/spec:execute` (or a `/spec:refine` / `/spec:build` / `/spec:merge` breakout) that finds the lock held exits immediately with the structured error `plan-lock-busy` and the holder pid.
 
-There is no `specify plan lock {acquire,release,status}` CLI verb — the lock is the `flock`-based snippet below, never a CLI surface (the `cli-contract.md` verb tree records the same `.specify/plan.lock` snippet as the driver lock, "not a CLI verb"). Every skill that touches plan state from outside the loop — `/spec:execute` itself, plus the three breakout skills when invoked standalone — reuses the snippet below verbatim.
+There is no `plan lock {acquire,release,status}` CLI verb family — the lock is the `flock`-based snippet below, never a CLI surface (the `cli-contract.md` verb tree records the same `.specify/plan.lock` snippet as the driver lock, "not a CLI verb"). Every skill that touches plan state from outside the loop — `/spec:execute` itself, plus the three breakout skills when invoked standalone — reuses the snippet below verbatim.
+
+## The CLI probes the lock
+
+Acquisition is skill-side, but enforcement is runtime: the plan-state-writing verbs — `specify plan next`, per-entry `specify plan transition` (including `--undo`), and a plan-backed `specify slice merge run` — probe the lock before writing and refuse an unlocked driver with the structured error `plan-lock-not-held` (exit 2). Dual-driving refusal is therefore a CLI property, not a per-skill snippet discipline; a session that skipped the snippet cannot advance, close, or merge a plan entry. The probe covers both advisory-lock families (`flock(2)` and `fcntl` record locks, which do not interact on Linux), so both snippets below — and a future fcntl-family fallback — satisfy it. Exemptions: the plan-level Gate 1 stamp (`specify plan transition <plan-name> approved` precedes any driver session) and standalone merges in plan-less fixtures. The probe resolves the lock at the plan root (`--plan-dir` / `SPECIFY_PLAN_DIR`), so slot-side merge work probes the *workspace* lock. Proven by the named CLI test [`tests/workflow/plan_lock.rs`](https://github.com/augentic/specify-cli/blob/main/tests/workflow/plan_lock.rs).
 
 ## Primary path — `flock -n`
 

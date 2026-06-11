@@ -36,7 +36,7 @@ The implementing target's runner sub-brief supplies the `runner` string (e.g. `o
 
 ### Do not hand-edit `metadata.yaml`
 
-Agents must not write slice metadata by hand. The current phase contract has no `specify slice outcome set` surface — see [`phase-outcome-contract.md`](../../references/runtime/phase-outcome-contract.md).
+Agents must not write slice metadata by hand. The current phase contract has no `slice outcome set` CLI surface — see [`phase-outcome-contract.md`](../../references/runtime/phase-outcome-contract.md).
 
 A future CLI surface may persist a `replay:` block to `$SLICE_DIR/metadata.yaml` (the capture-backed replay workflow). Until that lands, the journal event is the supported v1 recorder. The aspirational block shape lives in [`journal-payload.md`](journal-payload.md).
 

@@ -20,14 +20,16 @@ Step 1 — Pre-flight
 
 Step 2 — Drained check
 
-  $ specify plan next --format json
+  $ specify plan status --format json
   {
-    "active":  null,
-    "next":    null,
-    "project": null,
-    "reason":  "drained",
-    "sources": null,
-    "target":  null
+    "plan":        "fix-typo-rollout",
+    "lifecycle":   "approved",
+    "counts":      { "pending": 0, "in-progress": 0, "done": 1 },
+    "active":      null,
+    "next-action": "drained",
+    "action":      "drained",
+    "slice":       null,
+    "project":     null
   }
 
   | # | Entry    | Project   | Status |
@@ -82,8 +84,8 @@ Exit 0
 
 ## Invariants pinned
 
-1. **Every step runs in order.** Pre-flight → drained (`specify plan next` returns `reason: drained`) → push (idempotent: `up-to-date`) → PR observation (`MERGED`) → finalize → wrap-up. No step is skipped.
-2. **Drainage is computed by the CLI.** The skill never reads `plan.yaml`; it routes through `specify plan next` and matches on `reason: drained`.
+1. **Every step runs in order.** Pre-flight → drained (`specify plan status` returns `action: drained`) → push (idempotent: `up-to-date`) → PR observation (`MERGED`) → finalize → wrap-up. No step is skipped.
+2. **Drainage is computed by the CLI.** The skill never reads `plan.yaml`; it routes through the read-only `specify plan status` and matches on `action: drained` (never `plan next`, which is a lock-gated writer).
 3. **`specify workspace push` is idempotent on re-entry.** This is the second invocation of the skill — the first opened the PR and halted at step 4 for operator merge. The second push reports `up-to-date`.
 4. **The skill never merges PRs.** PR #14 was merged externally by the operator between the two runs. The skill only observed the `MERGED` state on the second invocation.
 5. **`specify plan archive` is the canonical archive.** PR state is observed by `/spec:finalize` through `gh pr view`; the archive layout and naming are owned by the verb.

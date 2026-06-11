@@ -13,7 +13,7 @@ Source adapters do not write `spec.md` — that is core synthesis's responsibili
 
 ## First-party source adapters
 
-You bind sources per change at plan time (`/spec:plan <name> source docs=./design-notes source legacy=./repo`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour`).
+You bind sources per change at plan time (`/spec:plan <name> source docs=./design-notes source legacy=./repo`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../../plugins/spec/references/synthesis/authority.md)).
 
 | Adapter | Reads | Evidence authority | Typical use |
 | ------- | ----- | ------------------ | ----------- |

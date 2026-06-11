@@ -62,11 +62,10 @@ The `intent` adapter emits exactly one `intent` claim per Evidence (per the W2.1
 
 ## Per-authority resolution (slice-time)
 
-When a reconciled `id` group the agent marked `disagreed` carries claims from multiple authorities, the kernel's [§Resolution order](authority.md#resolution-order) picks the winner and derives the `status`. The per-authority logic in detail (after the override surfaces in `authority.md` are walked):
+When a reconciled `id` group the agent marked `disagreed` carries claims from multiple authorities, the kernel's [§Resolution order](authority.md#resolution-order) picks the winner and derives the `status` — that reference is canonical for the precedence (`intent > documentation > behaviour`) and the override surfaces; nothing here re-orders it. What lands in the rendered block per outcome:
 
-- **`intent > documentation > behaviour`**. An `intent` claim's value wins over any contradicting `documentation` or `behaviour` claim. A `documentation` claim wins over any contradicting `behaviour` claim, **unless** a per-slice `authority-override.<kind>` on the slice or a per-Evidence `authority-overrides.<kind>` on a contributing Evidence document promotes the loser first.
-- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
 - **Strict-greater authority → `Status: divergence`.** A `documentation` `requirement` of "30 minutes" and a `typescript` `excerpt` of "24 hours" resolves to `Status: divergence`, body carries the 30-minute value, `Note:` line preserves the 24-hour observation. A per-slice override pinning `legacy-monolith` as the criterion winner flips the body and the `Note:` line without changing the `Status: divergence` posture.
+- **Tied authority (same class on both sides) → `Status: conflict`.** Two `documentation` Evidence disagreeing on a `id`'s `statement` is a `[conflict]` unless a per-slice override breaks the tie. Two `behaviour` Evidence disagreeing on an `excerpt` paraphrase (or `example` capture) is a `[conflict]` unless a per-slice override picks the winning source.
 - **Agreement at the same authority → `Status: agreed`.** Two `documentation` Evidence agreeing on a `id`'s `statement` collapses to one block with both keys in `Sources:`. Agreement after override resolution (e.g. per-slice override picks one source but every contributor's value matches) also lands as `Status: agreed`.
 
 ## Order and stability

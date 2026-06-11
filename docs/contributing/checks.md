@@ -90,7 +90,12 @@ cargo test --manifest-path ../specify-cli/Cargo.toml -p specify-standards
 
 ### CI
 
-CI runs the same resolver (`make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`): with no `Specify.local.toml` overlay it builds the committed `cli` pin from source. The committed pin is always a fetchable form, so the build is deterministic — the job is never silently a different source one run and the next. To keep it cheap, CI caches the gitignored `.cli` install root together with `~/.cargo` (registry and git), keyed on the resolved `specify-cli` commit SHA plus the Rust toolchain version — so it builds the CLI once per pin bump and restores the cache otherwise (a docs-only PR pays nothing). CI needs Rust (nightly, for `-Zscript`) and network access to fetch the ref.
+Local and CI reach the same `specify lint framework` checks through two intentional paths:
+
+- **Local** — `make lint` → `cargo +nightly -Zscript scripts/specify.rs lint framework`. The single-file resolver reads the `cli` source spec from `Specify.local.toml` (overlay) or the committed `Specify.toml`, builds that source, and runs it. Needs nightly (for `-Zscript`); the committed pin is always fetchable, so a clean clone works with no sibling checkout.
+- **CI** — `.github/workflows/ci.yaml` does not run the resolver. It checks out the sibling `augentic/specify-cli` repo directly (branch-matching the pushed branch, falling back to `main`) on a **stable** toolchain with `Swatinem/rust-cache`, then runs `cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .` plus a spec-runtime symlink check. The branch-matching checkout is the cross-repo co-dev lever: a CLI branch with the same name as the framework branch is exercised together in one PR pair.
+
+Both paths execute the same embedded framework rules; only the CLI-source binding differs (committed pin locally, sibling checkout in CI).
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
@@ -107,7 +112,7 @@ FAIL: <rule-id>: <message>
 
 | Road                          | `CORE-*`                                                                                                                         | How enforced                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Road A — declarative hint     | most of `CORE-001..053`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`), interpreted over the workspace model |
+| Road A — declarative hint     | most of `CORE-001..060`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`), interpreted over the workspace model |
 | Road B — referenced WASI tool | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / agent-teams / links-registry / marketplace / prose families | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named tool and folds its findings                                                                                                                                                                                            |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
@@ -341,6 +346,14 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 **Common fix:** verify the tool name and schema name in the URL. Use `specify tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
 
+### 15. CLI contract drift
+
+[`CORE-057`](../../adapters/shared/rules/core/CORE-057-cli-contract-drift.md) checks every CLI citation in this repo's documentation against the contract of the **pinned binary that is running the lint** — the same payload `specify contract dump` emits. `specify …` command lines in `bash`/`sh` fences and inline code walk the verb tree (unknown verbs, undeclared `--flags`); cited journal event ids and fenced-JSON `"event"` / `"error"` values are membership-checked against the declared taxonomies. Because the contract is rebuilt from the binary on each run, bumping the `Specify.toml` pin re-checks every citation in the same change.
+
+[`CORE-060`](../../adapters/shared/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and CLI-repo `tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
+
+**Common fix:** align the citation with the live CLI surface (`specify contract dump --format json` or `specify <verb> --help`). For intentional non-verbs — negative claims like "there is no `workspace merge` subcommand" or retired-verb history — drop the `specify ` prefix inside the code span so the citation stops being an invocation. Documented-ahead surfaces (verbs designed but not yet shipped) ride the rule's `config: ignore` with a comment, and the entry is removed when the verb lands.
+
 ## Extending the checks
 
 Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in `augentic/specify-cli`. The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
@@ -349,7 +362,7 @@ Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](.
 
 The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, line caps, uniqueness, fenced-block scans, regex/path scoping, required-artifact presence, frontmatter-field grammar, and relational cross-reference joins). The kinds:
 
-`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`.
+`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`.
 
 `hint.value` names the mechanism selector each kind dispatches on:
 
@@ -357,8 +370,10 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
 - **`cross-reference`** — a relational join from an `adapter-dir` (fact-family set difference) or `expected-set` + `config: { entries: [{ key, value }] }` (value-equality) source against a `config: { target }` family (`adapter-manifest`, `adapter-tool`).
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
+- **`content-digest-eq`** — `agent-teams-match-canonical` + `config: { canonical-path }` (every followed `agent-teams.md` overlay's resolved content hashes equal to the canonical document) or `markdown-section` + `config: { path, section, canonical-path, canonical-section }` (the pinned section's body hashes equal to the canonical section's body, leading/trailing blank lines trimmed; a missing section on either side is a finding).
+- **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and CLI-repo `tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
 
-Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, `cli-contract` → CORE-057 / CORE-060, and the `content-digest-eq` `markdown-section` selector → CORE-058. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** test in `crates/standards/tests/lint_hint_<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -394,7 +409,7 @@ To add a `CORE-*` rule (either road):
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
-Checks are numbered 1–14 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
+Checks are numbered 1–15 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

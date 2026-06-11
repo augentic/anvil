@@ -34,10 +34,9 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | `/spec:execute` parks on a build failure | [`execute-build-failure`](execute-build-failure.md) | passed | release-blocker |
 | Workspace `/spec:execute` across two projects | [`workspace-execute-two-projects`](workspace-execute-two-projects.md) | pending | release-blocker |
 | Workspace breakout after build failure | [`workspace-breakout`](workspace-breakout.md) | pending | full |
-| Dual-driving refused | [`dual-driving-refused`](dual-driving-refused.md) | pending | full |
 | Stale-workspace recovery | [`stale-workspace-recovery`](stale-workspace-recovery.md) | pending | full |
 
-14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in [`augentic/specify-cli`](https://github.com/augentic/specify-cli), run under `cargo make test` on every commit, with no catalog entry here.
+13 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in [`augentic/specify-cli`](https://github.com/augentic/specify-cli), run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the CLI's plan-lock probe made it deterministic (`tests/workflow/plan_lock.rs`).
 
 ## Status legend
 

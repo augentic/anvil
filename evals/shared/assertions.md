@@ -2,7 +2,7 @@
 
 The executable grading contract for every assertion id used in scenario frontmatter (`assertions[]` in `evals/scenarios/<id>.md`). Each id maps to a definition plus **exactly one** grading mechanism:
 
-- **Probe** — a deterministic post-run check: a CLI read verb, an artifact predicate, or a `jq` query over `.specify/journal.jsonl`. Probes never drive the workflow and never transition anything; probe output is evidence, never a transition.
+- **Probe** — a deterministic post-run check: a CLI read verb (`specify plan status`, `specify journal show`, …), an artifact predicate, or a `jq` projection over a read verb's output. Probes never drive the workflow and never transition anything; probe output is evidence, never a transition.
 - **Judgment flag** — the irreducibly human residue (prose quality, decomposition sensibility, ergonomics). Graded by operator or agent **with an evidence pointer** — a verdict without one is not a grade.
 
 Driving stays agent-/operator-led per the scenario's Invocation; grading is what happens after. The `negative-expectations` (`automated-runner-added`, `fake-forge-added`, `transcript-replay-added`, `ci-target-added`, `golden-output-required`) constrain *driving*; running these probes after a sweep violates none of them. See [RFC-43 R2](../../rfcs/rfc-43-release-proving.md#r2--separate-driving-from-grading).
@@ -10,7 +10,7 @@ Driving stays agent-/operator-led per the scenario's Invocation; grading is what
 Conventions:
 
 - Run probes from the scenario sandbox root (`evals/.sandbox/<id>/`, or the workspace root for workspace scenarios) after the stage the assertion grades.
-- Journal probes use `jq` over the plain-JSONL `.specify/journal.jsonl` — the interim substrate until RFC-44 R3's `specify journal show --filter` lands. Wire shape per line: `{ timestamp, event, payload }` with kebab-case payload keys.
+- Journal probes read through `specify journal show [--filter <event-id-prefix>] [--limit N]` — text mode emits the journal's canonical JSONL lines, so payload projection pipes to `jq -c .payload`. Wire shape per line: `{ timestamp, event, payload }` with kebab-case payload keys. Probes never read `.specify/journal.jsonl` directly.
 - `<slice>`, `<key>`, `<plan>` placeholders come from the run's own plan; substitute before running.
 - Record probe output (or its absence) as the **Evidence** entry in the [run-template](run-template.md) assertion table for any non-`pass` verdict; on `pass` the probe command itself is sufficient evidence.
 
@@ -20,7 +20,7 @@ Ids are deliberately shared across scenario files; this document is their single
 
 ### `plan-exists`
 
-Used by every scenario except `dual-driving-refused` (13 of 14). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
+Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
 
 **Probe.**
 
@@ -48,7 +48,7 @@ Used by `documentation-one-slice`, `cross-repo-contract-flow`, `stepthrough-brea
 ```bash
 specify plan next --format json     # expect {"reason":"drained", ...}
 grep -c 'status: done' plan.yaml    # equals the slice count
-jq -c 'select(.event == "plan.entry.advanced")' .specify/journal.jsonl    # one advance per slice, none after the last merge
+specify journal show --filter plan.entry.advanced    # one advance per slice, none after the last merge
 ```
 
 ## `pure-intent`
@@ -61,7 +61,7 @@ The degenerate `intent` survey produces exactly one lead, and propose writes exa
 
 ```bash
 grep -c '^- lead: ' discovery.md    # expect 1
-jq -c 'select(.event == "plan.reconcile.completed") | .payload' .specify/journal.jsonl    # expect "slice-count":1
+specify journal show --filter plan.reconcile.completed | jq -c .payload    # expect "slice-count":1
 ```
 
 ### `gate-1-not-auto-stamped`
@@ -72,13 +72,13 @@ jq -c 'select(.event == "plan.reconcile.completed") | .payload' .specify/journal
 
 ```bash
 grep -q 'lifecycle: pending' plan.yaml && echo pending
-jq -c 'select(.event == "plan.transition.approved")' .specify/journal.jsonl    # expect no output yet
+specify journal show --filter plan.transition.approved    # expect no output yet
 ```
 
 After the operator stamp, the single approval event carries the actor (`--actor` on `specify plan transition`, default `operator`; an agent stamping on the operator's literal instruction passes `--actor agent`):
 
 ```bash
-jq -c 'select(.event == "plan.transition.approved") | .payload' .specify/journal.jsonl    # exactly one; records who stamped
+specify journal show --filter plan.transition.approved | jq -c .payload    # exactly one; records who stamped
 ```
 
 ### `sources-intent-only`
@@ -100,7 +100,7 @@ After Gate 1, `/spec:execute` drives the entry through `/spec:refine`; the slice
 
 ```bash
 specify slice validate <slice>; echo "exit=$?"    # expect exit=0
-jq -c 'select(.event == "slice.transition.refined")' .specify/journal.jsonl    # expect one event naming <slice>
+specify journal show --filter slice.transition.refined    # expect one event naming <slice>
 ```
 
 ## `documentation-one-slice`
@@ -112,7 +112,7 @@ The single bound docs path maps to exactly one proposed slice.
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "plan.reconcile.completed") | .payload' .specify/journal.jsonl    # expect "slice-count":1
+specify journal show --filter plan.reconcile.completed | jq -c .payload    # expect "slice-count":1
 grep -c '^  - name: ' plan.yaml    # expect 1
 ```
 
@@ -135,7 +135,7 @@ The multi-feature docs path maps to more than one proposed slice.
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "plan.reconcile.completed") | .payload' .specify/journal.jsonl    # expect "slice-count" > 1
+specify journal show --filter plan.reconcile.completed | jq -c .payload    # expect "slice-count" > 1
 ```
 
 ### `cross-cutting-lead-multi-homed`
@@ -168,7 +168,7 @@ The plan remains at `pending` after amendment and the closing hint still prints 
 
 ```bash
 grep -q 'lifecycle: pending' plan.yaml && echo pending
-jq -c 'select(.event == "plan.transition.approved")' .specify/journal.jsonl    # expect no output (scenario never stamps)
+specify journal show --filter plan.transition.approved    # expect no output (scenario never stamps)
 ```
 
 ## `code-multi-slice`
@@ -180,7 +180,7 @@ The bound legacy TypeScript repo maps to more than one slice.
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "plan.reconcile.completed") | .payload' .specify/journal.jsonl    # expect "slice-count" > 1
+specify journal show --filter plan.reconcile.completed | jq -c .payload    # expect "slice-count" > 1
 ```
 
 ### `sources-legacy-only`
@@ -236,7 +236,7 @@ Downstream `extract` runs once per contributing source — one Evidence document
 
 ```bash
 ls .specify/slices/<slice>/evidence/    # one <key>.yaml per contributing source
-jq -c 'select(.event == "slice.extract.completed") | .payload' .specify/journal.jsonl    # one event per (source, slice)
+specify journal show --filter slice.extract.completed | jq -c .payload    # one event per (source, slice)
 ```
 
 ## `plan-single-project`
@@ -267,7 +267,7 @@ The dependency graph makes the contract slice the first executable slice.
 **Probe.** On a fresh approved copy of the plan (or from the recorded first advance):
 
 ```bash
-jq -c 'select(.event == "plan.entry.advanced") | .payload' .specify/journal.jsonl | head -1    # first advance names the contract slice
+specify journal show --filter plan.entry.advanced | head -1 | jq -c .payload    # first advance names the contract slice
 ```
 
 ### `implementation-slices-routed`
@@ -300,7 +300,8 @@ grep -A4 'project: shop-mobile' plan.yaml | grep 'depends-on'     # names the co
 
 ```bash
 grep -q 'lifecycle: pending' plan.yaml && echo pending
-jq -c 'select(.event == "plan.entry.advanced" or .event == "workspace.push.completed")' .specify/journal.jsonl    # expect no output
+specify journal show --filter plan.entry.advanced    # expect no output
+specify journal show --filter workspace.push.completed    # expect no output
 ```
 
 ### `review-step-no-op`
@@ -323,7 +324,7 @@ Routed project work happens on `specify/<plan>` branches in the project slots.
 ```bash
 git -C .specify/workspace/shop-backend branch --show-current    # expect specify/<plan>
 git -C .specify/workspace/shop-mobile branch --show-current     # expect specify/<plan>
-jq -c 'select(.event == "workspace.push.completed") | .payload' .specify/journal.jsonl    # "branch":"specify/<plan>", both projects listed
+specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
 ### `finalize-halts-on-unmerged-prs`
@@ -335,7 +336,7 @@ The first `/spec:finalize` runs push, observes the fresh PRs unmerged, and halts
 ```bash
 test -f plan.yaml && echo still-active    # plan not archived by the first finalize
 gh pr list --state open    # the per-project PRs exist and are open
-jq -c 'select(.event == "workspace.push.completed")' .specify/journal.jsonl    # the push completed before the halt
+specify journal show --filter workspace.push.completed    # the push completed before the halt
 ```
 
 ### `finalize-archives-plan`
@@ -423,21 +424,22 @@ Re-invoking `/spec:execute` resumes from the in-progress entry with no extra fla
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "plan.entry.advanced") | .payload' .specify/journal.jsonl    # no duplicate advance for the in-progress slice across the cancel/resume window
+specify journal show --filter plan.entry.advanced | jq -c .payload    # no duplicate advance for the in-progress slice across the cancel/resume window
 ```
 
 ## `execute-build-failure`
 
 ### `build-failure-stop-hint`
 
-The loop parks on the build failure with a structured stop hint naming the failed task/slice, leaving the entry `in-progress`.
+The loop parks on the build failure with a structured stop hint naming the failed task/slice, leaving the entry `in-progress`. The stop classification is CLI-rendered: `specify plan status` projects the journal's `slice.build.failed` into `stop build-failed`.
 
 **Probe.** At the parked state:
 
 ```bash
-jq -c 'select(.event == "slice.build.failed") | .payload' .specify/journal.jsonl    # names the slice with a non-empty reason
+specify journal show --filter slice.build.failed | jq -c .payload    # names the slice with a non-empty reason
 grep -c 'status: in-progress' plan.yaml    # expect 1 — parked, not failed-out
-jq -c 'select(.event == "plan.entry.advanced")' .specify/journal.jsonl    # no new advance after the failure — parked and did not advance
+specify journal show --filter plan.entry.advanced    # no new advance after the failure — parked and did not advance
+specify plan status --format json    # expect "action":"stop" with "stop".reason == "build-failed"
 ```
 
 ### `build-resumes-from-failed-task`
@@ -447,7 +449,7 @@ After the operator's fix, the build resumes from the failed task rather than res
 **Probe.** Capture `tasks.md` task states at the park, then after resume:
 
 ```bash
-jq -c 'select(.event | startswith("slice.build.") or startswith("slice.synthesize."))' .specify/journal.jsonl    # failed -> started again, with no re-synthesis between
+specify journal show | jq -c 'select(.event | startswith("slice.build.") or startswith("slice.synthesize."))'    # failed -> started again, with no re-synthesis between
 diff <(parked tasks.md states) .specify/slices/<slice>/tasks.md    # previously-completed tasks stay completed
 ```
 
@@ -458,7 +460,8 @@ The resumed loop continues through merge to `all-done`.
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "slice.merge.succeeded" or .event == "slice.archive.created") | .payload' .specify/journal.jsonl    # both fire for the slice
+specify journal show --filter slice.merge.succeeded | jq -c .payload    # fires for the slice
+specify journal show --filter slice.archive.created | jq -c .payload    # fires for the slice
 specify plan next --format json    # expect {"reason":"drained", ...}
 ```
 
@@ -484,19 +487,20 @@ git -C .specify/workspace/shop-mobile log --oneline specify/<plan>     # mobile 
 
 ```bash
 test -d .specify/workspace/shop-backend && test -d .specify/workspace/shop-mobile && echo materialised
-jq -c 'select(.event == "workspace.sync.completed") | .payload' .specify/journal.jsonl    # "projects" lists both slots
+specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
 ### `plan-lock-at-workspace`
 
-The plan-lock is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan.
+The plan-lock is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan. The CLI enforces the lock at runtime: with no session holding it, the plan-state-writing verbs refuse `plan-lock-not-held` (exit 2).
 
 **Probe.**
 
 ```bash
 test -f plan.yaml && echo workspace-owns-plan
 ls .specify/workspace/*/plan.yaml 2>/dev/null    # expect no output
-jq -c 'select(.event == "plan.entry.advanced")' .specify/journal.jsonl    # advances recorded in the workspace journal, not a slot's
+specify journal show --filter plan.entry.advanced    # advances recorded in the workspace journal, not a slot's
+specify plan next --format json    # run after the driver released the lock: expect exit 2, "error":"plan-lock-not-held"
 ```
 
 ## `workspace-breakout`
@@ -509,7 +513,7 @@ jq -c 'select(.event == "plan.entry.advanced")' .specify/journal.jsonl    # adva
 
 ```bash
 git -C .specify/workspace/shop-backend status --short    # the breakout build's changes are in the routed slot
-jq -c 'select(.event | startswith("slice.build.")) | .payload' .specify/journal.jsonl    # the breakout's started/succeeded pair
+specify journal show --filter slice.build. | jq -c .payload    # the breakout's started/succeeded pair
 ```
 
 ### `active-slice-resolved-across-boundary`
@@ -519,7 +523,7 @@ The breakout verb resolves the active slice across the workspace/slot boundary �
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "slice.build.started") | .payload' .specify/journal.jsonl | tail -1    # names the parked slice
+specify journal show --filter slice.build.started --limit 1 | jq -c .payload    # names the parked slice
 grep -B2 'status: in-progress' plan.yaml    # the same slice is the active entry
 ```
 
@@ -528,35 +532,6 @@ grep -B2 'status: in-progress' plan.yaml    # the same slice is the active entry
 The correct `chdir` into the slot happens without the operator changing directories — an operator-experience claim; the durable routing residue is `breakout-routes-to-slot`'s probe.
 
 **Judgment flag.** Evidence pointer: the captured breakout stage output showing the operator stayed at the workspace root while the build reported work in the slot.
-
-## `dual-driving-refused`
-
-### `workspace-plan-active`
-
-A workspace-driven plan is active for the registered project before the refusal attempt.
-
-**Probe.** From the workspace root:
-
-```bash
-grep -q 'lifecycle: approved' plan.yaml && echo active
-grep 'project: shop-backend' plan.yaml    # at least one slice routes to the project
-```
-
-### `plan-from-project-refused`
-
-`/spec:plan` from the project's own root is refused, not silently allowed — no project-local plan is created.
-
-**Probe.** From the project root after the attempt:
-
-```bash
-test ! -f plan.yaml && echo refused-no-plan
-```
-
-### `one-driving-mode-per-project`
-
-The refusal cites the one-driving-mode-per-project invariant — a message-quality claim about the structured error the operator sees.
-
-**Judgment flag.** Evidence pointer: the captured refusal output naming the active workspace driving mode for the project.
 
 ## `stale-workspace-recovery`
 
@@ -580,7 +555,7 @@ Slice state survives the interruption — no lost or duplicated work.
 ```bash
 specify plan validate --format json; echo "exit=$?"    # expect exit=0
 specify slice validate <interrupted-slice>; echo "exit=$?"    # expect exit=0
-jq -c 'select(.event == "plan.entry.advanced") | .payload' .specify/journal.jsonl    # exactly one advance per slice — no duplicates from the interruption
+specify journal show --filter plan.entry.advanced | jq -c .payload    # exactly one advance per slice — no duplicates from the interruption
 ```
 
 ### `resume-continues-from-in-progress`
@@ -590,6 +565,6 @@ Resume continues from the in-progress entry, not a restart — the scheduler ret
 **Probe.**
 
 ```bash
-jq -c 'select(.event == "plan.entry.advanced") | .payload' .specify/journal.jsonl    # no new advance for the interrupted slice at resume
-jq -c 'select(.event == "slice.synthesize.started") | .payload' .specify/journal.jsonl    # no second synthesis for the interrupted slice
+specify journal show --filter plan.entry.advanced | jq -c .payload    # no new advance for the interrupted slice at resume
+specify journal show --filter slice.synthesize.started | jq -c .payload    # no second synthesis for the interrupted slice
 ```

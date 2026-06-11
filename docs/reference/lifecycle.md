@@ -53,7 +53,7 @@ Each slice's `metadata.yaml` tracks an independent lifecycle:
 | `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specify slice transition <name> refined`        |
 | `/spec:build` completes tasks                     | slice: `refined → built`           | `specify slice transition <name> built`          |
 | `/spec:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `specify slice merge`                            |
-| `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice transition <name> dropped --reason "..."` |
+| `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice drop <name> --reason "..."`       |
 
 ## `metadata.yaml`
 

@@ -84,7 +84,7 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <h2><span class="num">4</span> Plan lock</h2>
 
-Standalone breakouts acquire `.specify/plan.lock` the same way execute does. If you see `plan-lock-busy`, another process holds the lock. When the holder is dead, remove the stale lock file manually.
+Standalone breakouts acquire `.specify/plan.lock` the same way execute does. If you see `plan-lock-busy`, another process holds the lock. When the holder is dead, remove the stale lock file manually. The CLI also probes the lock itself: `specify plan next`, per-entry `specify plan transition`, and `specify slice merge run` refuse with `plan-lock-not-held` (exit 2) when no session holds it — so a breakout that skipped the lock cannot advance plan state.
 </section>
 
 

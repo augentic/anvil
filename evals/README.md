@@ -41,7 +41,6 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 | `[execute-build-failure](scenarios/execute-build-failure.md)`                   | `/spec:execute` parks on a build failure                                 |
 | `[workspace-execute-two-projects](scenarios/workspace-execute-two-projects.md)` | Workspace `/spec:execute` across two projects                            |
 | `[workspace-breakout](scenarios/workspace-breakout.md)`                         | Workspace breakout after build failure                                   |
-| `[dual-driving-refused](scenarios/dual-driving-refused.md)`                     | Dual-driving refused                                                     |
 | `[stale-workspace-recovery](scenarios/stale-workspace-recovery.md)`             | Stale-workspace recovery                                                 |
 
 

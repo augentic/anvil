@@ -13,23 +13,21 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 
 1. **Operator runs `/spec:execute`.**
    - Acquires `.specify/plan.lock` via the snippet in [`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md).
-   - `specify plan next` returns slice 2 (already `in-progress`).
-   - Slice lifecycle is `refined`; loop skips `/spec:refine` and dispatches `/spec:build`.
+   - `specify plan status` returns `next-action: build group-list-search-filter` (slice 2 is `in-progress`, lifecycle `refined`); `specify plan next` confirms the active entry; the loop dispatches `/spec:build`.
    - Operator interrupts mid-build with Ctrl-C. The shell holding `flock` exits; the lock auto-releases. The plan entry stays `in-progress`; the slice lifecycle stays `refined`.
 
 2. **Operator runs `/spec:build group-list-search-filter` standalone.**
-   - The breakout body re-acquires the plan lock via the same snippet.
+   - The breakout body's first action is to re-acquire the plan lock via the same snippet — `specify plan next` is CLI-gated and would refuse an unlocked session with `plan-lock-not-held`.
    - Resolves the active slice via `specify plan next`; confirms slice 2 is `in-progress`.
-   - Runs the build phase to completion against the slice; `/spec:build` transitions the slice lifecycle from `refined` to `built` on success.
+   - Runs the build phase to completion against the slice; `specify slice build --phase finalize` transitions the slice lifecycle from `refined` to `built` on success.
    - Releases the lock on shell exit.
 
 3. **Operator re-runs `/spec:execute`.**
    - Acquires the plan lock.
-   - `specify plan next` returns slice 2 (still `in-progress`).
-   - Slice lifecycle is `built`; loop skips both `/spec:refine` and `/spec:build` and dispatches `/spec:merge` directly.
-   - On merge success, `/spec:merge` runs `specify plan transition group-list-search-filter done`.
-   - Next iteration: `specify plan next` returns slice 3; loop runs `/spec:refine` → `/spec:build` → `/spec:merge` end-to-end.
-   - Next iteration: drained.
+   - `specify plan status` returns `next-action: merge group-list-search-filter` (slice 2 still `in-progress`, lifecycle `built`); the loop dispatches `/spec:merge` directly — no skill-side lifecycle re-derivation.
+   - On merge success, `specify slice merge run` stamps the entry `done`.
+   - Next iteration: `specify plan status` names slice 3 (`refine audit-list-search-filter`); `specify plan next` claims it; loop runs `/spec:refine` → `/spec:build` → `/spec:merge` end-to-end.
+   - Next iteration: `specify plan status` reports `drained`.
 
 ## Terminal state
 
@@ -39,6 +37,6 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 
 ## Stress test
 
-- Re-entry without `--continue` reads `plan.yaml` and slice `metadata.yaml` only; no resume token; no skill-side state file.
-- Breakout reuses the exact lock snippet `/spec:execute` uses — no second-tier "breakout lock" exists.
+- Re-entry without `--continue` is one `specify plan status` call — the CLI reads `plan.yaml`, slice `metadata.yaml`, and the journal tail; no resume token; no skill-side state file.
+- Breakout reuses the exact lock snippet `/spec:execute` uses — no second-tier "breakout lock" exists; the CLI's `plan-lock-not-held` refusal backstops a snippet-skipping session.
 - The skill body never advances slice 2's per-entry status; only `/spec:merge` writes `done`.

@@ -4,7 +4,7 @@ Pins the merge-conflict stop hint contract from [`plugins/spec/skills/merge/SKIL
 
 ## Scenario
 
-`/spec:merge identity-user-registration` runs against a slice already at `status: built`. The omnia pre-merge gate passes (cargo, clippy, tests, wasm32 build all green). When the body invokes `specify slice merge identity-user-registration --format json`, the CLI's deterministic delta-merge step detects that a sibling slice merged between this slice's `defined-at` and now: `.specify/specs/omnia/spec.md` was modified at a baseline timestamp newer than the slice's `defined-at`, and one requirement block (`REQ-007 Reset link expiry`) overlaps with the slice's delta.
+`/spec:merge identity-user-registration` runs against a slice already at `status: built`. The omnia pre-merge gate passes (cargo, clippy, tests, wasm32 build all green). When the body invokes `specify slice merge run identity-user-registration --format json`, the CLI's deterministic delta-merge step detects that a sibling slice merged between this slice's `defined-at` and now: `.specify/specs/omnia/spec.md` was modified at a baseline timestamp newer than the slice's `defined-at`, and one requirement block (`REQ-007 Reset link expiry`) overlaps with the slice's delta.
 
 The skill body MUST:
 

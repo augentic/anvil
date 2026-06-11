@@ -20,14 +20,16 @@ Step 1 — Pre-flight
 
 Step 2 — Drained check
 
-  $ specify plan next --format json
+  $ specify plan status --format json
   {
-    "active":  null,
-    "next":    null,
-    "project": null,
-    "reason":  "drained",
-    "sources": null,
-    "target":  null
+    "plan":        "dark-mode",
+    "lifecycle":   "approved",
+    "counts":      { "pending": 0, "in-progress": 0, "done": 2 },
+    "active":      null,
+    "next-action": "drained",
+    "action":      "drained",
+    "slice":       null,
+    "project":     null
   }
 
   | # | Entry              | Project    | Status |

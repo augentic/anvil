@@ -56,13 +56,7 @@ Status: agreed
 
 ## How disagreements are resolved
 
-Two sources can disagree about the same requirement. Specify resolves this with **authority**, a closed ranking declared per source: `intent` > `documentation` > `behaviour`. (Operator intent outranks written docs, which outrank behaviour reverse-engineered from code.)
-
-Synthesis walks three steps in order:
-
-1. **Per-slice override.** If the operator set an authority override for this claim kind at Gate 1, the named source wins.
-2. **Default ordering.** Otherwise the higher authority class wins. The losing claim survives as inline commentary, the requirement is tagged `[divergence]`, and `Status:` becomes `divergence`.
-3. **Still tied.** If both claims sit at the same authority class and disagree, neither wins: the requirement is tagged `[conflict]` and `Status:` becomes `conflict`.
+Two sources can disagree about the same requirement. Specify resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records at Gate 1. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in [Authority hierarchy](./synthesis/authority.md#resolution-order).
 
 Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing the kernel-rendered `spec.md` provenance lines.
 
