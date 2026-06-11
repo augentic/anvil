@@ -12,9 +12,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S00` ← set to the step about to run |
-| **Last completed** | — |
-| **Last updated** | — |
+| **Active step** | `R46-S01` |
+| **Last completed** | `R46-S00` |
+| **Last updated** | 2026-06-11 |
 | **Blocked on** | — |
 
 **Step status legend:** `⬜ pending` · `🔄 in progress` · `✅ done` · `⏸ blocked` · `↩ superseded`
@@ -25,7 +25,7 @@ When a step finishes: mark it ✅, set **Last completed**, advance **Active step
 
 | Step | Title | Status | PR / notes |
 |------|-------|--------|------------|
-| [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ⬜ | |
+| [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ✅ | Baseline at [`rfcs/rfc-46-baseline/`](./rfc-46-baseline/); all assurance green on `rfc-46` @ specify-cli `1711ebc`, specify `9d3886e` |
 | [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ⬜ | specify-cli |
 | [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ⬜ | specify-cli |
 | [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli |
