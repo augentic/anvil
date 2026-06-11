@@ -32,7 +32,7 @@ The catalog drains in groups. The N=1 hard halt (`pure-intent`) is a **hard halt
 | Target `shape` injection | [`target-shape-injection`](target-shape-injection.md) | passed | full |
 | Step-through breakout mid-execute | [`stepthrough-breakout`](stepthrough-breakout.md) | pending | full |
 | `/spec:execute` parks on a build failure | [`execute-build-failure`](execute-build-failure.md) | passed | release-blocker |
-| Workspace `/spec:execute` across two projects | [`workspace-execute-two-projects`](workspace-execute-two-projects.md) | pending | release-blocker |
+| Workspace `/spec:execute` across two projects | [`workspace-execute-two-projects`](workspace-execute-two-projects.md) | passed | release-blocker |
 | Workspace breakout after build failure | [`workspace-breakout`](workspace-breakout.md) | pending | full |
 | Stale-workspace recovery | [`stale-workspace-recovery`](stale-workspace-recovery.md) | pending | full |
 

@@ -38,5 +38,5 @@ Probe transcript highlights: at the park, `slice.build.failed` carried `{"slice-
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-build-failure`
-- **Retained at:** `evals/.sandbox/execute-build-failure/`
+- **Retained at:** `evals/.sandbox/execute-build-failure/` — since pruned (2026-06-12); re-create from the scenario setup to reproduce
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/specs/rate-limit/spec.md` (merged baseline), `.specify/archive/2026-06-11-rate-limit/` (archived slice incl. `build/report.yaml` history and `.build-log`), `crates/rate_limit/` (crate, tests, `ops/quota.txt`, `REVIEW.md`), `src/lib.rs` (guest), `.specify/journal.jsonl`
