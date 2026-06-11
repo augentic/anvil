@@ -101,6 +101,23 @@ Apply the conservative emission policy:
 
 When in doubt, leave `component:` unset and emit the note. Promoting a note to a directive is cheap; demoting an emitted directive is operator work.
 
+### Feed candidate skeletons forward into inference (candidate cache)
+
+Whenever you emit a `notes.candidate_component: <slug>` hint, also write a candidate-cache sidecar so build-time component inference (`specify catalog infer`) has cross-slice memory before the composition baseline accumulates the screens. Write one YAML file per hinted group at `${PROJECT_DIR}/.specify/.cache/component-candidates/<slice>/<screen>/<group-path>.yaml`, keyed **strictly by provenance** — the slice slug, the screen slug, and the dotted group path within the screen. Never key the file by the derived slug (two distinct skeletons sharing a name would silently clobber each other) and never by a fingerprint: this is a vision brief, so it cannot compute the inference tool's canonical structural hash, and it must not try — provenance keys are collision-free by construction and the tool recomputes the canonical fingerprint at read time from the skeleton you store.
+
+The sidecar body carries the **normalized `group` skeleton** as a composition-`group`-shaped fragment — the exact shape the inference tool's normalizer consumes — plus the derived slug stored as an inner `candidate_component:` label hint (a suggestion the build skill may adopt or override at naming time; it is never an identity) and the enclosing `region:`. Because stage 4 emits Evidence `container: group` claims (and child `container` / `leaf` claims) rather than composition nodes, perform the Evidence→composition shape translation at write time: assemble the group's `items:` array in claim order, mapping each child leaf to its `{ <kind>: { … } }` item and each nested container `group` to a nested `group:`, so the cached fragment is already in composition shape. Wiring values (`bind`, `event`, `*-when` conditions, asset / token references, free text) are illustrative and stripped before fingerprinting, so copy them through verbatim or omit them — they never affect identity.
+
+```yaml
+candidate_component: task-row   # derived slug — a non-authoritative label hint
+region: body                    # enclosing region for the inferred group
+group:                          # composition-`group`-shaped fragment
+  items:
+    - icon: {}
+    - text: {}
+```
+
+Re-runs are byte-stable: the same source images produce the same provenance path and the same normalized fragment, so the cache file is overwritten in place with identical content.
+
 ## 7. Emit gaps
 
 Record uncertainty on the affected claim under a `notes:` map when:

@@ -4,7 +4,7 @@
 
 1. **`composition.yaml` regeneration.** Synthesis does not write `composition.yaml`. This brief regenerates it from `spec.md` + `design.md` (which already carry every upstream spatial / structural claim synthesis folded in from source adapters) at the start of each build, alongside the code it accompanies. `merge` lands the regenerated file together with the implementation code.
 2. **Inline phase sub-briefs.** Each build phase body lives in a phase sub-brief under [`build/`](build/).
-3. **Operator-curated inputs are read, never authored.** `tokens.yaml`, `assets.yaml`, and `components.yaml` are operator-curated and consumed as build inputs; the brief never invents or restates their contents. The component catalog (`.specify/design-system/components.yaml`) is the third design-system input, joining `tokens.yaml` and `assets.yaml`. When present, the build reads confirmed entries and factors shared component code per in-scope shell tree; when absent, no component factoring occurs.
+3. **Design-system inputs.** `tokens.yaml` and `assets.yaml` are operator-curated and consumed as read-only build inputs; the brief never invents or restates their contents. The component catalog (`.specify/design-system/components.yaml`) is the third design-system input, joining `tokens.yaml` and `assets.yaml`, but it is **agent-inferred and operator-reviewable**, not operator-curated: `specify catalog infer --phase bind` writes it during Step 0.5 (binding the names the build skill or operator parts supply), and the brief reads the confirmed entries back during composition regeneration to factor shared component code per in-scope shell tree. Operators review and may `reject` or rename entries. When absent, no component factoring occurs.
 
 The Vectis target stays three-capability (`shape` / `build` / `merge`) — there is **no** fourth `refine` slot. Composition regeneration is part of `build`.
 
@@ -19,7 +19,7 @@ The brief runs against the build request the CLI prepared at `.specify/slices/<s
 - `inputs.artifacts.additional[]` — the three design-system inputs declared by [`adapter.yaml`](../adapter.yaml), **all optional** (`required: false`), each with an explicit absent-fallback:
   - `tokens.yaml` — design tokens; absent → HIG (iOS) / Material 3 (Android) theme fallback in the shell writers.
   - `assets.yaml` — asset inventory; the composition validator's `tokens` / `assets` modes run only when the respective file is present.
-  - `components.yaml` — the opt-in component catalog (surfaced as `CATALOG_PATH`); absent → no component factoring.
+  - `components.yaml` — the agent-inferred component catalog (surfaced as `CATALOG_PATH`); written by `specify catalog infer` at Step 0.5 and read back during composition regeneration; absent → no component factoring.
 
 ## Standard arguments
 
@@ -55,6 +55,24 @@ Process platforms in dependency order:
 If the platform set contains `core` only, skip the iOS and Android phase sub-briefs wholesale; this is a backend-only build.
 
 ## Phase order
+
+**Step 0.5 — component inference (runs before the numbered phases, ahead of composition regeneration).** Component *identity* is deterministic and owned by the CLI (a structural fingerprint over each `group`'s normalized skeleton); component *identification and naming* are model judgement and owned by this brief. The CLI carries **no** component vocabulary — it reports identity + evidence and records the names it is handed; this brief decides what each clustered structure *is* and what to call it. Run inference before regenerating composition so the regeneration at [`build/composition.md`](build/composition.md) step 6 reads an up-to-date catalog. **Timing.** The report clusters against the **merged** baseline plus the candidate cache and `parts.yaml` — not the current slice's composition, which has not merged yet. With one screen per slice and the default `--min-occurrences 2`, a baseline-only path surfaces a repeated structure at the **third** slice's build (once two prior screens have merged); the screenshots candidate cache (RFC §B4) can supply the second occurrence **during** the second slice's build when stage-6 sidecars exist. B7 retroactive factoring runs on whichever build first binds the component.
+
+1. **Report.** Run `specify catalog infer --phase report --format json` to obtain the deterministic, **name-free** cluster report against the current merged baseline (`${PROJECT_DIR}/.specify/specs/composition.yaml`). The verb folds the screenshots candidate cache and, when present, the operator-authored `parts.yaml` (`${PROJECT_DIR}/.specify/design-system/parts.yaml`) into the same clustering pass automatically — no extra flags. A `parts.yaml` part is a third authoritative input that carries two authorities the verb honours silently: **naming** (its operator slug wins, so the matching cluster arrives with `bound-slug` already populated — leave it untouched in step 2) and **promotion** (a part matching at least one baseline group is surfaced as a cluster even below the occurrence threshold). Parts that match no baseline group surface in the verb's non-blocking `part-unmatched` report (informational, in both the `report` output and the `--phase bind --dry-run` diff); it never gates the build and is only authoritative over the complete baseline at change completion. An absent baseline yields an empty report (nothing to name). Each reported cluster carries a `fingerprint` (the opaque identity), an `occurrences` count, the `screens` provenance list, the representative normalized `skeleton`, an `evidence` block (`region`, `item-kinds`, `event-targets`, and an optional `candidate-names` list of stage-6 suggestions), and a `bound-slug` (the name already bound to that fingerprint, or `null`).
+2. **Identify and name by judgement.** For each reported cluster whose `bound-slug` is `null`, decide *what the component is* and *what to call it*: read its `evidence` and representative `skeleton`, and choose a kebab-case slug. There is **no fixed component vocabulary** — a repeated footer of navigation icons might be a `tab-bar`, a `rail`, or a novel navigation form this app invents; name it on its merits rather than forcing it into a known label. The `evidence.candidate-names` suggestions (when present) are non-authoritative stage-6 hints you MAY adopt or override — never an identity. A cluster whose `bound-slug` is **already populated** is already named — from a prior run's catalog binding, or from an operator `parts.yaml` pin whose name wins — so leave it untouched.
+3. **Bind.** Write your `{ fingerprint → slug }` decisions to a small bindings file (e.g. `${SLICE_DIR}/build/component-bindings.yaml`) and run `specify catalog infer --phase bind --bindings <file>` to record them. The bindings file is a `bindings:` map keyed by each cluster's `fingerprint`, valued by the bare slug (or `{ slug, description }`):
+
+```yaml
+version: 1
+bindings:
+  <fingerprint-a>: tab-bar
+  <fingerprint-b>:
+    slug: detail-card
+    description: "Repeated detail card across list rows."
+```
+
+   The CLI applies its deterministic guards — one skeleton per slug, never overwrite a `confirmed` / `rejected` entry, and stable fingerprint-derived suffixing (`slug-<fp-prefix>`) on a name collision — and is the **only** writer of `components.yaml`. Preview the catalog diff first with `--dry-run`. Skip this step when the report names no unbound clusters.
+4. **Proceed.** Continue with the numbered phases below; composition regeneration (Phase 1) reads the updated catalog at [`build/composition.md`](build/composition.md) step 6 and attaches `component: <slug>` directives to every group whose skeleton matches a `confirmed` entry.
 
 1. Load [`build/composition.md`](build/composition.md) — regenerate `composition.yaml` from `spec.md` + `design.md` and run the deterministic validator gate.
 2. Load [`build/core/write.md`](build/core/write.md) — generate / update the Crux shared core.
@@ -119,6 +137,8 @@ slice: <slice-name>     # matches the build request's `slice`
 target: vectis@v1       # this adapter at its manifest version
 status: success         # or: failure
 findings: []            # structured diagnostics; default []
+ui-surface:             # optional; this slice's UI-surface signal (see below)
+  screens: 3
 outputs:                # per-platform build outputs; default []
   - platform: core
     path: shared/
@@ -127,6 +147,8 @@ outputs:                # per-platform build outputs; default []
   - platform: android
     path: Android/
 ```
+
+The optional `ui-surface: { screens: <N> }` field carries this slice's UI-surface signal: `<N>` is the count of screen-bearing requirements this slice introduces or modifies, taken from the brief's own `spec.md` screen-identification judgement (the same walk `build/composition.md` Step 1 performs) — **never** from `## Platforms`, which is an app-level constant stamped verbatim to every slice and never narrows per slice. `screens: 0` means "no UI surface" (the composition skip case). The CLI's `--phase finalize` compares this authored signal against the produced `composition.yaml` and emits non-blocking coherence warnings (`composition-unexpected-for-non-ui-slice` when `screens: 0` yet a non-empty composition was produced; `composition-empty-for-ui-slice` when `screens > 0` yet the composition is empty or absent). Omitting the field disables those warnings; set it on every slice so the self-consistency check is live.
 
 The `outputs[]` array declares the per-platform build outputs produced by this build. Each entry carries a `platform` token and a `path` relative to `PROJECT_DIR`. The CLI's `--phase finalize` verifies every declared path exists and is non-empty on disk; a missing output triggers `target-build-output-missing` (exit 2). Populate `outputs[]` with an entry for each supported platform in `project.yaml.platforms` that the build produced or maintained work for. Omit entries for platforms with no on-disk interpretation (`web`, `desktop`).
 
