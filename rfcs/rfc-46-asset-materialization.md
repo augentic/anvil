@@ -354,6 +354,23 @@ Diagnostic ids (illustrative): `assets-materialization-missing`, `assets-app-ico
 | `wasi-tools/vectis/DECISIONS.md` | §K materialization; §L app-icon |
 | `plugins/spec/skills/plan/SKILL.md` | Drop `--reconcile-platforms`; bootstrap inference is default-on |
 | `specify-cli` `DECISIONS.md` / `AGENTS.md` | Platform reconciliation always-on; vectis-owned detect |
+| `plugins/spec/references/cli/plan-propose.md` | Document default-on bootstrap reconciliation on `propose --from` (no flag); vectis detect as the presence probe |
+| `adapters/targets/vectis/references/layout-inferer-contract.md` | Symbol promotion policy (§5): `kind: symbol` + optional `inferred: true`; branded shapes → `notes.todo` only |
+| `evals/runs/plan-single-project.pass.md`, `evals/runs/code-multi-slice.pass.md` | Drop `--reconcile-platforms` from recorded CLI invocations once Phase 0 lands |
+| `specify-cli` `tests/workflow/propose.rs` | Stop passing `--reconcile-platforms`; assert bootstrap insertion without the flag |
+
+### 10. Ecosystem remediations (doc / test alignment)
+
+A 2026-06 survey against `main` (post–RFC-46 renumbering) found the design in this RFC still valid, but several on-disk artifacts lagged the resolved §6.1 bootstrap model or Phase 0 policy. **RFC numbering** (asset materialization vs slot adapter provisioning) is resolved — asset materialization is **RFC-46**; slot adapter provisioning remains **RFC-45**. The remediations below are explicit implementation-plan tasks so doc, test, and stub drift is closed in the same PRs as the code they describe — not left as follow-up debt.
+
+| # | Drift (as surveyed) | Remediation | Phase |
+|---|---------------------|-------------|-------|
+| **1** | `wasi-tools/vectis/DECISIONS.md` draft stub ties `plan-bootstrap-app-icon-missing` to plan slice names (`app-foundation`, `bootstrap-ios`/`android`) **and** workflow `detect_missing_platforms`. | Replace the draft bullet with §6.1 language: bootstrap context is **`vectis verify --mode detect` `missing[]` only** (plus the §6.3 shell-resident escape hatch). Plan DAG row names are **not** gate inputs. When Phase 1 codifies §K/§L, delete the “draft, not implemented” blockhead and point at the shipped checks. | **1** (stub fix may land earlier as a one-line doc PR) |
+| **2** | `plugins/spec/skills/plan/SKILL.md` still mandates `propose --from … --reconcile-platforms` and claims vectis detect runs on propose — but `propose.rs` today gates reconciliation on the flag and calls workflow `detect_missing_platforms`, not `specify tool run vectis -- verify --mode detect`. `plan-propose.md` omits bootstrap reconciliation entirely. | **Phase 0 code:** remove the flag; always reconcile when `project.yaml.platforms` is non-empty; route presence detection through the vectis tool for Vectis-bound projects. **Phase 0 docs:** update the plan skill submit step and `plan-propose.md` to describe default-on reconciliation and vectis detect — no flag, no workflow heuristics. Add a `CORE-*` or `cli-contract` framework check if prose reintroduces `--reconcile-platforms` after removal. | **0** |
+| **3** | `specify-cli` `DECISIONS.md` §"Target platform capability…" and `AGENTS.md` (`Plan::reconcile_platforms` bullet) still document optional `--reconcile-platforms` and workflow `detect_missing_platforms` as the presence probe. | Amend both to match Phase 0: reconciliation is default-on; vectis owns shell-presence detection; `Plan::reconcile_platforms` retains DAG insertion only. Cross-link §6.1 here and RFC-46 Phase 0. Search both repos for stale `detect_missing_platforms` / `--reconcile-platforms` citations after the code lands. | **0** |
+| **4** | Eval run records (`evals/runs/plan-single-project.pass.md`, `evals/runs/code-multi-slice.pass.md`) and `tests/workflow/propose.rs` still record or invoke `--reconcile-platforms`. | Update run-record prose and propose acceptance tests in the same PR as Phase 0 code. Re-run affected eval scenarios (or refresh pass summaries) so the catalog does not preserve a removed flag. | **0** |
+
+**Not in scope for this table:** Vectis writer references, `assets.schema.json`, materialize/prepare hooks, and scaffold templates — those are covered by §§1–9 and Phases 1–3 above, not by pre-implementation alignment alone.
 
 ## Implementation phases
 
@@ -373,7 +390,7 @@ Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
 | **Non-Vectis unaffected** | Omnia, contracts, and similar targets without `platforms.required` carry no platform list; bootstrap post-pass is a no-op; §6 does not apply. |
 | **Future targets out of scope** | A later shell target with `platforms.required` must ship its own detect surface; RFC-46 does not generalise workflow heuristics. |
 
-**Deliverables:** propose handler + clap flag removal; workflow `platforms.rs` heuristic deletion; plan skill prose; `DECISIONS.md` / `AGENTS.md` updates; acceptance tests updated to stop passing `--reconcile-platforms`.
+**Deliverables:** propose handler + clap flag removal; workflow `platforms.rs` heuristic deletion; propose/plan-validate paths wired to `specify tool run vectis -- verify --mode detect` for Vectis-bound projects; §10 remediations **#2–#4** (plan skill, `plan-propose.md`, `DECISIONS.md` / `AGENTS.md`, eval run records, `tests/workflow/propose.rs`); optional `cli-contract` guard against reintroduced `--reconcile-platforms` prose.
 
 **Dependency:** Phase 1 MUST NOT ship until Phase 0 merges — otherwise `app-icon` gating reintroduces the declined-reconcile ambiguity this RFC closes.
 
@@ -382,7 +399,8 @@ Close a pre-existing workflow footgun before Phase 1 `app-icon` gates land.
 - Schema: `app-icon`, `role: app-icon`, `inferred`; `sources.<platform>` directory paths permitted for `role: app-icon`; optional `source:` on `rasterEntry` restricted to `role: app-icon`.
 - `specify plan validate`: §6.1 vectis-detect bootstrap trigger + `plan-bootstrap-app-icon-missing` with shell-resident escape hatch (§6.3). Requires Phase 0.
 - `vectis validate assets`: `app-icon` export layout checks (§4.2 / §4.3); bootstrap context is vectis detect, not plan slice names.
-- Writer/review doc updates; review rule flagging symbol substitution.
+- §10 remediation **#1**: replace `wasi-tools/vectis/DECISIONS.md` draft stub with §6.1-accurate codified §K (materialization) / §L (`app-icon` gate) text.
+- Writer/review doc updates; review rule flagging symbol substitution; `layout-inferer-contract.md` symbol-inference policy (§5).
 - iOS scaffold: `AppIcon.appiconset` skeleton.
 
 ### Phase 2 — Materialize v1
