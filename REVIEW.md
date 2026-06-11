@@ -230,6 +230,8 @@ Applied-finding calibration log — one line per executed finding: predicted vs 
 | D1 CI story | M | ~10 lines (AGENTS.md + checks.md) | yes — local (`make lint`, nightly resolver) vs CI (stable sibling checkout) documented as two intentional paths | none — `make lint` green | |
 | R6 doc-comments | S | 2 sites | yes — `plan/cli.rs` "plan lock *" dropped; `example.rs` "cache fingerprinting" → replay-verification anchor | none | stale `contract-wasm` task comment (target/ vs dist/) fixed in the same pass |
 | R6 blob digests | S | 0 | already landed pre-round — sidecars + `dist_digests_pinned` exist; `sha256: None` documented as deliberate (host compiles staged bytes; sidecar+test is the trust anchor) | none | no-op verified, not re-done |
+| R7 adapter-versioning forward half | S | +12 (DECISIONS.md) | yes — "Per-adapter versioning — forward position only" entry beside the shorthand decision: resolution key, cache identity, compatibility floor, migration surface, namespacing; explicit no-pre-1.0 commitment | none | position recorded, no mechanism shipped (RFC open Q3 as decided) |
+| R7 corpora context-budget | M | +~90 evaluator+schema+tests (cli), +10 rule, +10 README indexes | yes — `presence` gains a `directory-index` selector (one-depth root globs, recursive file count, `min-files` gate); CORE-059 authored; indexes added for omnia examples, vectis android/crux/examples/ios/review, contracts {openapi,asyncapi,json-schema} | none — `cargo make check` + `make lint` green | rule fired on real drift before fixes: caught `typescript/references/examples` beyond the omnia/vectis set named in the RFC |
 
 ---
 

@@ -3,9 +3,9 @@
 # specify-cli dependency — committed pin MUST be fetchable (CORE-055): a clean
 # clone's `make lint` builds this source with no sibling checkout required.
 # For local CLI co-development, override with a gitignored Specify.local.toml:
-  cli = { path = "../specify-cli" }
+#   cli = { path = "../specify-cli" }
+cli = { git = "https://github.com/augentic/specify-cli", branch = "main" }
 
 # Other fetchable forms:
 # cli = { version = "0.2.0" }
-# cli = { git = "https://github.com/augentic/specify-cli", branch = "main" }
 # cli = { git = "https://github.com/augentic/specify-cli", tag = "v0.2.0" }
