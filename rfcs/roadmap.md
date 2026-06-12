@@ -42,7 +42,7 @@ Three tracks run in parallel:
 
 **Deferred until trigger conditions or prerequisites:**
 
-- [RFC-33b](future/rfc-33b-standards-baseline.md) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
+- [Standards baseline (was RFC-33b)](#ideas-parked-future-rfcs) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
 - RM-12 / RM-13 — catalog import and read-oriented MCP; integration surfaces that enrich an already-trustworthy core loop.
 
 ---
@@ -161,6 +161,19 @@ specify execute resume <run-id>
 **Goal:** Build hosted dashboards on top of local structured workflow events without making local workflows depend on hosted infrastructure.
 
 ---
+
+## Ideas (parked future RFCs)
+
+The former `rfcs/future/` drafts are consolidated here as parked ideas. Each is one paragraph of intent; the full drafts live in git history (removed 2026-06-12). An idea graduates back to an RFC only when it gains an owner and a trigger condition.
+
+- **Type-safe skill expression (was RFC-4).** Extend framework tooling validation to skill authoring — frontmatter schema enforcement, reference resolution, variable consistency, cross-skill directive validation — and, as the skill count grows, graduate to structured YAML manifests or a Rust DSL separating the typed skeleton from the prose body. Much of the validation half has since landed as `CORE-*` framework checks.
+- **Specialized SLM code generation (was RFC-18).** Train a specialized Small Language Model to generate Omnia Rust crates from Specify artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` brief cheaper, faster, and more reproducible — without replacing the workflow.
+- **CLI observability (was RFC-19).** First-class `tracing`-based structured diagnostics for command execution, lifecycle transitions, plan orchestration, workspace operations, and tool runs, without changing the existing stdout contract. Partially superseded by the journal (RM-14 lineage).
+- **Source catalogue and tier-1 cache (was RFC-21).** A durable platform-level catalogue of legacy source repositories (`sources.yaml`), a shared tier-1 clone cache, and a `--source @<key>` selector so a platform repo declares dozens of legacy sources once and reuses them across changes.
+- **Migration ledger and slice mapping (was RFC-22).** Cumulative cross-change state answering "is this source migrated yet?" and "what's the source-to-target pattern of this slice?" for migrations spanning many changes.
+- **Omnia plan composition (was RFC-24).** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
+- **Standards baseline (was RFC-33b).** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Specify-native codebases.
+- **Acceptance shape assertions and orchestration traces (was RFC-39).** A deterministic middle tier for eval scenarios — shape assertions over synthesized artifacts and orchestration traces over journal events — between manual runs and byte-replay fixtures. The `backend` frontmatter carrier it assumed has since been removed, so activation needs a new carrier.
 
 ## Non-Goals
 

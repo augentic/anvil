@@ -66,15 +66,15 @@ Framework tokens compose with the existing consumer-side tokens (`code`, `tests`
 
 ## Hint-kind preference
 
-Every v1 hint kind is executable: `path-pattern`, `schema`, `regex`, `tool`, `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `content-digest-eq`, `fenced-block`, `presence`, `field-grammar`, `cross-reference`, and `cli-contract`. Prefer native declarative kinds for new rules; reach for `kind: tool` (a referenced WASI tool) only when a check is branchy, whole-tree, cross-fact, or registry-backed. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`.
+Every v1 hint kind is executable: `path-pattern`, `schema`, `regex`, `tool`, `unique`, `reference-resolves`, `set-coverage`, `cardinality`, `constant-eq`, `set-eq`, `fenced-block`, `presence`, `field-grammar`, `cross-reference`, and `cli-contract`. Prefer native declarative kinds for new rules; reach for `kind: tool` (a referenced WASI tool) only when a check is branchy, whole-tree, cross-fact, or registry-backed. No kind carries `"x-hint-status": "reserved"` in the canonical `rule.schema.json`.
 
-The three relational / presence kinds dispatch on a `value:` mechanism selector with policy in `config:`: `presence` (`frontmatter`, `file`, `markdown-section`, `directory-index`) for a missing required artifact, `field-grammar` (`field-tokens`, `field-first-word`) for a frontmatter field grammar, and `cross-reference` (`adapter-dir` / `expected-set` source against an `adapter-manifest` / `adapter-tool` target) for a relational set-difference / value-equality join. The `schema` and `unique` kinds additionally accept a whole-tree `value: scenario` selector over the scenario fact family, and `content-digest-eq` dispatches on `agent-teams-match-canonical` / `markdown-section` (a restated section digest-pinned to its canonical home). These serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, `schema` scenario → CORE-032, `unique` scenario → CORE-030, and `content-digest-eq` `markdown-section` → CORE-058. The `cli-contract` kind (`invocations` / `event-ids` / `error-codes` / `test-citations` selectors over the binary-injected CLI contract) serves CORE-057 and CORE-060.
+The three relational / presence kinds dispatch on a `value:` mechanism selector with policy in `config:`: `presence` (`frontmatter`, `file`, `markdown-section`, `directory-index`) for a missing required artifact, `field-grammar` (`field-tokens`, `field-first-word`) for a frontmatter field grammar, and `cross-reference` (`adapter-dir` / `expected-set` source against an `adapter-manifest` / `adapter-tool` target) for a relational set-difference / value-equality join. The `schema` and `unique` kinds additionally accept a whole-tree `value: scenario` selector over the scenario fact family. These serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, `schema` scenario → CORE-032, and `unique` scenario → CORE-030. The `cli-contract` kind (`invocations` / `event-ids` / `error-codes` / `test-citations` selectors over the binary-injected CLI contract) serves CORE-057 and CORE-060.
 
-**Lint posture.** `specify lint framework` is a generic dispatcher running entirely through declarative hints (Road A) and name-resolved WASI tools (Road B) — there is no imperative `Check` rule producer and no imperative-predicate bridge. Whole-tree and branchy checks (CORE-009 namespace ownership, CORE-026 duplicate id, and the `scenarios` / `skill-body` / `agent-teams` / `links-registry` / `marketplace` / `prose` families) run through their `kind: tool` family tool; all policy rides the rule's `config:`. Benchmark locally with `/usr/bin/time make lint`.
+**Lint posture.** `specify lint framework` is a generic dispatcher running entirely through declarative hints (Road A) and name-resolved framework checkers (Road B) — there is no imperative `Check` rule producer and no imperative-predicate bridge. Whole-tree and branchy checks (CORE-009 namespace ownership, CORE-026 duplicate id, and the `scenarios` / `skill-body` / `links-registry` / `marketplace` / `prose` families) run through their `kind: tool` family checker; all policy rides the rule's `config:`. Benchmark locally with `/usr/bin/time make lint`.
 
 ### Hint config cookbook (native rules)
 
-`config:`-driven evaluators carry rule policy out of the engine. Examples: `regex` accepts optional `config` (capture-group threshold, negative-match, suffix guard), `path-pattern` `value`s accept `!` exclusion globs, and the fact-consuming kinds (`cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `content-digest-eq`, `unique`, `fenced-block`) read their cap / set / map / constant from `config:`. The canonical `config:` shape for each kind is pinned by the `$def`s in `schemas/rules/rule.schema.json` (embedded in the `specify` binary); see existing `CORE-*` rule files for worked examples.
+`config:`-driven evaluators carry rule policy out of the engine. Examples: `regex` accepts optional `config` (capture-group threshold, negative-match, suffix guard), `path-pattern` `value`s accept `!` exclusion globs, and the fact-consuming kinds (`cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `unique`, `fenced-block`) read their cap / set / map / constant from `config:`. The canonical `config:` shape for each kind is pinned by the `$def`s in `schemas/rules/rule.schema.json` (embedded in the `specify` binary); see existing `CORE-*` rule files for worked examples.
 
 ## Authoring conventions
 
@@ -92,9 +92,9 @@ Two concerns are split across several cooperating `CORE-*` rules. They are inten
 
 | Rule | Title | Role |
 | --- | --- | --- |
-| CORE-008 | Agent Teams Match Canonical | The resolved overlay's SHA-256 digest must equal the canonical document (catches drift / staleness). |
-| CORE-011 | Agent Teams Missing Canonical | The canonical document itself must exist, otherwise no overlay can be validated (presence guard). |
-| CORE-012 | Agent Teams Non Canonical Overlay | A target adapter's overlay must resolve to the canonical content (path/identity guard). |
+| CORE-011 | Agent Teams Missing Canonical | The canonical document itself must exist, otherwise no overlay can resolve (presence guard). |
+
+Overlays MUST be symlinks — regular-file `agent-teams.md` overlays are forbidden, so there is no copied content to drift. CI's symlink check verifies every overlay resolves to the canonical document; the retired CORE-008 (digest pin) and CORE-012 (`agent-teams` Road B tool) duplicated that guarantee and were removed.
 
 **Link and reference resolution** — keeps cross-document references from rotting, each scoped to a different surface:
 
@@ -105,7 +105,7 @@ Two concerns are split across several cooperating `CORE-*` rules. They are inten
 | CORE-019 | Links Broken Reference | `SKILL.md` references to bundled `references/` / `examples/` paths exist. |
 | CORE-020 | Links Unresolved Directive | Skill directive paths resolve. |
 
-When editing one member of a family, check whether the sibling rules need a matching update — for example, moving the review-team-protocol document touches all three agent-teams rules at once.
+When editing one member of a family, check whether the sibling rules need a matching update — for example, moving the review-team-protocol document touches CORE-011 and the CI symlink check at once.
 
 ## References
 

@@ -53,7 +53,7 @@ specify slice synthesize <name> --from <response.json> [--format json]
 
 The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
 
-This is the CLI verb invoked by [`/spec:refine`](../slice-skills/refine.md) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
+This is the CLI verb invoked by [`/spec:refine`](../slice-skills/index.md#specrefine) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
 
 ### specify slice model
 
@@ -92,7 +92,7 @@ specify slice build <name> [--phase prepare|finalize] [--format json]
 - `--phase prepare` resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, prints the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`), and returns without blocking. The agent then runs the target `build` brief against the prepared request and writes `.specify/slices/<name>/build/report.yaml`.
 - `--phase finalize` emits `slice.build.started`, validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts prepare with `target-build-input-missing`.
 
-This is the CLI verb invoked by [`/spec:build`](../slice-skills/build.md) — the skill no longer hand-transitions to `built`; `finalize` owns that gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
+This is the CLI verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — the skill no longer hand-transitions to `built`; `finalize` owns that gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
 
 ### specify slice transition
 
@@ -231,9 +231,9 @@ Used by `/spec:build` as it completes each task.
 ## See also
 
 - [/spec:refine](../slice-skills/index.md) -- per-slice refine breakout
-- [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
-- [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
-- [/spec:drop](../slice-skills/drop.md) -- skill that drops slices
+- [/spec:build](../slice-skills/index.md#specbuild) -- skill that drives build, calls `slice task progress`/`mark`
+- [/spec:merge](../slice-skills/index.md#specmerge) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
+- [/spec:drop](../slice-skills/index.md#specdrop) -- skill that drops slices
 - [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

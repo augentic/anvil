@@ -49,16 +49,9 @@ Domain-specific code generation lives in target adapters (`omnia`, `vectis`, `co
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 
-## Vocabulary cheat sheet
+## Vocabulary
 
-Two lifecycle nouns appear constantly in this codebase. [AGENTS.md §Workflow nouns](AGENTS.md#workflow-nouns) is their canonical home; the subsection below is digest-pinned byte-identical to it by CORE-058, so divergence is a lint finding.
-
-### Workflow nouns
-
-- **slice** — the single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/spec:plan`, `/spec:execute`, `/spec:finalize` and the `specify plan *` CLI verbs. `change` is on-disk vocabulary, not a slash-command namespace.
-
-Use *slice loop* for the per-slice lifecycle; reserve *change* for the on-disk umbrella that owns `change.md` and `plan.yaml`.
+Two lifecycle nouns — **slice** and **change** — appear constantly in this codebase. [AGENTS.md §Workflow nouns](AGENTS.md#workflow-nouns) is their canonical home; read it there rather than relying on restatements.
 
 ## Installing the CLI
 
