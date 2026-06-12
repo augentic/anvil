@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S02a` |
-| **Last completed** | — (see [Architectural correction](#architectural-correction-r46-s01s02)) |
+| **Active step** | `R46-S02b` |
+| **Last completed** | `R46-S02a` |
 | **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
@@ -66,7 +66,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ✅ | Baseline at [`rfcs/rfc-46-baseline/`](./rfc-46-baseline/); all assurance green on `rfc-46` @ specify-cli `1711ebc`, specify `9d3886e` |
 | [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ↩ | Superseded — WASM dispatch from workflow; see [correction](#architectural-correction-r46-s01s02) |
 | [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ↩ | Partial — flag removed and propose wired, but via wrong WASM path; see [correction](#architectural-correction-r46-s01s02) |
-| [R46-S02a](#r46-s02a-shell-detect-shared-library) | Shell-detect shared library | ⬜ | `specify-vectis-shell-detect`; vectis `verify` calls library |
+| [R46-S02a](#r46-s02a-shell-detect-shared-library) | Shell-detect shared library | ✅ | `specify-vectis-shell-detect`; vectis `verify` calls library |
 | [R46-S02b](#r46-s02b-host-in-process-detect) | Host in-process detect | ⬜ | Revert workflow WASM; fix propose/detect tests; no plan-time `vectis-wasm` in CI |
 | [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli; after R46-S02b |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ⬜ | both repos |
