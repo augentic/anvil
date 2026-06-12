@@ -12,9 +12,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S01` |
-| **Last completed** | `R46-S00` |
-| **Last updated** | 2026-06-11 |
+| **Active step** | `R46-S02` |
+| **Last completed** | `R46-S01` |
+| **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
 **Step status legend:** `⬜ pending` · `🔄 in progress` · `✅ done` · `⏸ blocked` · `↩ superseded`
@@ -26,7 +26,7 @@ When a step finishes: mark it ✅, set **Last completed**, advance **Active step
 | Step | Title | Status | PR / notes |
 |------|-------|--------|------------|
 | [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ✅ | Baseline at [`rfcs/rfc-46-baseline/`](./rfc-46-baseline/); all assurance green on `rfc-46` @ specify-cli `1711ebc`, specify `9d3886e` |
-| [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ⬜ | specify-cli |
+| [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ✅ | `vectis_missing_platforms` in `specify-workflow` `platform/detect.rs`; tests require `cargo make vectis-wasm` |
 | [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ⬜ | specify-cli |
 | [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ⬜ | both repos |
@@ -63,7 +63,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 
 | Date | Step | Discovery | Plan change |
 |------|------|-----------|-------------|
-| — | — | — | — |
+| 2026-06-12 | R46-S01 | WASI dispatch must **omit** the project path argument and rely on host-injected `PROJECT_DIR`; passing a host absolute path breaks preopen reads inside the guest. | Added note under R46-S01 implementation notes; R46-S02 should wire the helper (not `specify tool run … <path>`) from `propose.rs`. |
 
 ---
 
@@ -112,10 +112,11 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - `run_captured` already powers `specify catalog infer`; copy that error-mapping posture.
 - Wasm must be built for tests: `cargo make contract-wasm` is for contract; vectis uses `cargo make framework-wasm` / vectis dist — follow `AGENTS.md` wasi-tools CI recipes. Document the prerequisite in the PR if CI already builds it.
 - Parse failures → `tool-runtime` or a new `vectis-detect-parse` validation error; do not silently fall back to workflow heuristics.
+- **WASI path argument:** dispatch `vectis verify --mode detect` with **no** trailing project path — the host sets `PROJECT_DIR` on the guest environment and preopens `$PROJECT_DIR`. A host absolute path argument is not readable inside the sandbox (discovered R46-S01).
 
 **Assurance:**
 - `cargo test` for the new module passes.
-- Manual smoke: `specify tool run vectis -- verify --mode detect .` on a fixture project returns expected `missing`.
+- Manual smoke: from a Vectis fixture project root, `specify tool run vectis -- verify --mode detect` (no path arg — uses `PROJECT_DIR`) returns expected `missing`.
 
 **Handoff:** Helper is callable from `propose.rs` and later from plan validate (R46-S09).
 
