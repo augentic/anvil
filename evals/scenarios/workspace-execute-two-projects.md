@@ -33,7 +33,7 @@ Prove workspace-driven execution across projects: a plan with slices targeting t
 
 ## Setup
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `shop-backend` and `shop-mobile`.
+Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `backend` and `mobile`.
 
 ## Invocation
 
@@ -44,7 +44,7 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 
 - `plan-exists`: `plan.yaml` exists and is approved before execute.
 - `per-slice-project-routing`: each slice runs against its routed project slot.
-- `slots-materialised`: `.specify/workspace/shop-backend/` and `.specify/workspace/shop-mobile/` are materialised.
+- `slots-materialised`: `.specify/workspace/backend/` and `.specify/workspace/mobile/` are materialised.
 - `plan-lock-at-workspace`: the plan-lock is held at the workspace while phase work runs in slots.
 - `execute-loop-all-done`: the loop reaches `all-done`.
 

@@ -272,13 +272,13 @@ specify journal show --filter plan.entry.advanced | head -1 | jq -c .payload    
 
 ### `implementation-slices-routed`
 
-Exactly two implementation slices route to `shop-backend` and `shop-mobile`.
+Exactly two implementation slices route to `backend` and `mobile`.
 
 **Probe.**
 
 ```bash
-grep -c 'project: shop-backend' plan.yaml    # expect 1
-grep -c 'project: shop-mobile' plan.yaml     # expect 1
+grep -c 'project: backend' plan.yaml    # expect 1
+grep -c 'project: mobile' plan.yaml     # expect 1
 ```
 
 ### `dependencies-contract-before-implementations`
@@ -288,8 +288,8 @@ Each implementation slice's `depends-on` includes the contract slice.
 **Probe.**
 
 ```bash
-grep -A4 'project: shop-backend' plan.yaml | grep 'depends-on'    # names the contract slice
-grep -A4 'project: shop-mobile' plan.yaml | grep 'depends-on'     # names the contract slice
+grep -A4 'project: backend' plan.yaml | grep 'depends-on'    # names the contract slice
+grep -A4 'project: mobile' plan.yaml | grep 'depends-on'     # names the contract slice
 ```
 
 ### `draft-stops-at-handoff`
@@ -322,8 +322,8 @@ Routed project work happens on `specify/<plan>` branches in the project slots.
 **Probe.**
 
 ```bash
-git -C .specify/workspace/shop-backend branch --show-current    # expect specify/<plan>
-git -C .specify/workspace/shop-mobile branch --show-current     # expect specify/<plan>
+git -C .specify/workspace/backend branch --show-current    # expect specify/<plan>
+git -C .specify/workspace/mobile branch --show-current     # expect specify/<plan>
 specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
@@ -475,18 +475,18 @@ Each slice runs against its routed project slot — the work lands in the slot t
 
 ```bash
 grep 'project:' plan.yaml    # each slice names its routed project
-git -C .specify/workspace/shop-backend log --oneline specify/<plan>    # backend slice commits in the backend slot
-git -C .specify/workspace/shop-mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
+git -C .specify/workspace/backend log --oneline specify/<plan>    # backend slice commits in the backend slot
+git -C .specify/workspace/mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
 ```
 
 ### `slots-materialised`
 
-`.specify/workspace/shop-backend/` and `.specify/workspace/shop-mobile/` are materialised by workspace sync.
+`.specify/workspace/backend/` and `.specify/workspace/mobile/` are materialised by workspace sync.
 
 **Probe.**
 
 ```bash
-test -d .specify/workspace/shop-backend && test -d .specify/workspace/shop-mobile && echo materialised
+test -d .specify/workspace/backend && test -d .specify/workspace/mobile && echo materialised
 specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
@@ -512,7 +512,7 @@ specify plan next --format json    # run after the driver released the lock: exp
 **Probe.**
 
 ```bash
-git -C .specify/workspace/shop-backend status --short    # the breakout build's changes are in the routed slot
+git -C .specify/workspace/backend status --short    # the breakout build's changes are in the routed slot
 specify journal show --filter slice.build. | jq -c .payload    # the breakout's started/succeeded pair
 ```
 

@@ -32,7 +32,7 @@ Prove breakout-verb routing across the workspace/slot boundary: `/spec:execute` 
 
 ## Setup
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan that parks on a slice (e.g. `auth-rotate`) in `shop-backend`.
+Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan that parks on a slice (e.g. `auth-rotate`) in `backend`.
 
 ## Invocation
 

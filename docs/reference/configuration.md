@@ -46,7 +46,7 @@ A project's routing identity (the `surface[]` of owned domains and a `recent[]` 
 ### Workspace shape
 
 ```yaml
-name: shop-platform
+name: platform
 workspace: true
 specify-version: "2.0.0"
 ```

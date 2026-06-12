@@ -59,7 +59,7 @@ feature brief
 
 ## Setup
 
-Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup** (workspace `shop-platform` plus registered `shop-backend` / `shop-mobile`) and the **OAuth login brief** at `docs/oauth-login.md`.
+Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup** (workspace `platform` plus registered `backend` / `mobile`) and the **OAuth login brief** at `docs/oauth-login.md`.
 
 ## Invocation
 
@@ -77,7 +77,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
 - `plan-validates`: `specify plan validate` exits cleanly after draft and during review.
 - `contract-slice-first`: the dependency graph makes the contract slice the first executable slice.
-- `implementation-slices-routed`: exactly two implementation slices route to `shop-backend` and `shop-mobile`.
+- `implementation-slices-routed`: exactly two implementation slices route to `backend` and `mobile`.
 - `dependencies-contract-before-implementations`: each implementation slice depends on the contract slice.
 - `draft-stops-at-handoff`: `/spec:plan` exits at the hand-off without executing, pushing, or finalizing.
 - `review-step-no-op`: inspecting `plan.yaml` between draft and execute reports the plan as authored.

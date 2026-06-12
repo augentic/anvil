@@ -31,33 +31,33 @@ For scenarios that coordinate work across multiple project repos from a registry
 Create three disposable directories under the pinned sandbox:
 
 ```text
-evals/.sandbox/<scenario>/shop-platform/   # registry-only workspace
-evals/.sandbox/<scenario>/shop-backend/    # omnia@v1 project
-evals/.sandbox/<scenario>/shop-mobile/     # vectis@v1 project
+evals/.sandbox/<scenario>/platform/   # registry-only workspace
+evals/.sandbox/<scenario>/backend/    # omnia@v1 project
+evals/.sandbox/<scenario>/mobile/     # vectis@v1 project
 ```
 
 Initialize them:
 
 ```bash
 SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/evals/.sandbox}/<scenario>"
-rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{shop-platform,shop-backend,shop-mobile} && cd "$SANDBOX"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{platform,backend,mobile} && cd "$SANDBOX"
 
-cd shop-platform
+cd platform
 specify init --workspace
 
-cd ../shop-backend
+cd ../backend
 specify init omnia@v1
 
-cd ../shop-mobile
+cd ../mobile
 specify init vectis@v1
 ```
 
 Return to the workspace and register the implementation projects with descriptions that make routing unambiguous:
 
 ```bash
-cd ../shop-platform
-specify registry add shop-backend --url ../shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
-specify registry add shop-mobile --url ../shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+cd ../platform
+specify registry add backend --url ../backend --adapter omnia --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
+specify registry add mobile --url ../mobile --adapter vectis --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
 specify registry validate
 ```
 
@@ -70,13 +70,13 @@ The cross-repo and contract-routing scenarios use this brief. Create it in the w
 ```markdown
 # OAuth Login
 
-The shop platform needs OAuth login so mobile customers can sign in with an
+The platform needs OAuth login so mobile customers can sign in with an
 external identity provider.
 
 ## Participants
 
-- shop-backend: owns token exchange and session creation
-- shop-mobile: owns the sign-in screen and callback handling
+- backend: owns token exchange and session creation
+- mobile: owns the sign-in screen and callback handling
 - identity-provider: external OAuth provider
 
 ## Contract
