@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S03` |
-| **Last completed** | `R46-S02b` |
+| **Active step** | `R46-S04` |
+| **Last completed** | `R46-S03` |
 | **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
@@ -68,7 +68,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ↩ | Partial — flag removed and propose wired, but via wrong WASM path; see [correction](#architectural-correction-r46-s01s02) |
 | [R46-S02a](#r46-s02a-shell-detect-shared-library) | Shell-detect shared library | ✅ | `specify-vectis-shell-detect`; vectis `verify` calls library |
 | [R46-S02b](#r46-s02b-host-in-process-detect) | Host in-process detect | ✅ | `vectis_missing_platforms` → `specify-vectis-shell-detect`; propose tests WASM-free |
-| [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli; after R46-S02b |
+| [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ✅ | Deleted workflow `detect_missing_platforms`; shell probe is `specify-vectis-shell-detect` only |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ⬜ | both repos |
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ⬜ | |
 | [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ⬜ | specify-cli |
@@ -324,7 +324,7 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - [Specify-cli step assurance](#specify-cli-step-assurance).
 - `rg detect_missing_platforms` in `specify-cli` source (not docs) → empty.
 
-**Handoff:** Workflow kernel is platform-agnostic; all shell presence is vectis-owned.
+**Handoff:** Workflow kernel is platform-agnostic; all shell presence is vectis-owned. Doc citations (`DECISIONS.md`, `AGENTS.md`, `wasi-tools/vectis/DECISIONS.md`) remain until R46-S04.
 
 ---
 
