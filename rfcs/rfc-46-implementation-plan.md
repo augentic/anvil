@@ -2,7 +2,8 @@
 
 > **Authority:** [rfc-46-asset-materialization.md](./rfc-46-asset-materialization.md) (read in full before every step).  
 > **Repos:** `augentic/specify` (plugins, adapters, evals, framework checks) and `augentic/specify-cli` (CLI, workflow, `wasi-tools/vectis`). Co-develop with a gitignored `Specify.local.toml` overlay (`cli = { path = "../specify-cli" }`) and `make lint` / `cargo make check` respectively.  
-> **Ordering contract:** Start step *N* only after step *N−1* is ✅. Each step is sized for one agent conversation.
+> **Ordering contract:** Start step *N* only after step *N−1* is ✅. Each step is sized for one agent conversation.  
+> **Test boundary:** RFC-46 work must obey [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) — no new cross-boundary tests in any step.
 
 ---
 
@@ -12,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S03` |
-| **Last completed** | `R46-S02` |
+| **Active step** | `R46-S02a` |
+| **Last completed** | — (see [Architectural correction](#architectural-correction-r46-s01s02)) |
 | **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
@@ -21,14 +22,53 @@
 
 When a step finishes: mark it ✅, set **Last completed**, advance **Active step**, append any discoveries to [Discovery log](#discovery-log), and fold material changes back into the step list (do not leave silent drift).
 
+### Architectural correction (R46-S01/S02)
+
+Steps **R46-S01** and **R46-S02** landed on `specify-cli` `rfc-46` with the wrong integration model: `vectis_missing_platforms` in `specify-workflow` dispatches the vectis **WASM** component via `WasiRunner`. That couples plan-time `propose` to `cargo make vectis-wasm`, breaks reusable CI (bootstrap tests `assert!` the artifact; `rust-cache` does not share `target/vectis-wasi-tools/` across jobs), and duplicates logic that is already pure Rust filesystem code in `wasi-tools/vectis/src/verify.rs`.
+
+**Correct model** (see [RFC-46 §Phase 0 detect architecture](./rfc-46-asset-materialization.md#detect-architecture-normative)): extract `specify-vectis-shell-detect`; host callers link in-process; `vectis verify --mode detect` is a thin JSON wrapper. **Do not** spawn WASM from `propose` or `specify-workflow`.
+
+**What to keep from the superseded steps:** `--reconcile-platforms` removal and default-on `propose --from` reconciliation (R46-S02 behaviour intent). **What to revert/replace:** WASM dispatch in `crates/workflow/src/platform/detect.rs`; propose/detect integration tests that require `tools.yaml` + `target/vectis-wasi-tools/release/vectis.wasm`; any CI workflow fork added only for propose WASM.
+
+**Recovery sequence:** [R46-S02a](#r46-s02a-shell-detect-shared-library) → [R46-S02b](#r46-s02b-host-in-process-detect) → [R46-S03](#r46-s03-remove-workflow-shell-heuristics) → continue Phase 0.
+
+### Hard rule: no host runtime ↔ WASM tests (RFC-46 scope)
+
+For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do not add or extend tests** that cross the host `specify` binary ↔ WASM component boundary — including mechanisms that already exist elsewhere in the repo.
+
+**Forbidden for new RFC-46 test coverage** (non-exhaustive):
+
+- `specify tool run …` / `tool::run_captured` from `tests/*.rs` or host crate integration tests.
+- Declaring `tools.yaml` + `SPECIFY_TOOLS_CACHE` in a host test to load `vectis.wasm`, `contract-*.wasm`, or any other guest component.
+- `assert!` / hard-require on `target/vectis-wasi-tools/release/vectis.wasm` or any WASM path that is not committed in git.
+- Host tests that drive `specify lint framework` / embedded framework checker WASM for RFC-46 behaviour (framework lint already does this for unrelated checks — **do not add more**).
+- Host tests that invoke `specify lint project` `kind: tool` hints that dispatch a real adapter WASM for RFC-46 behaviour.
+- CI changes whose sole purpose is building WASM so RFC-46 host tests can run.
+
+**Required pattern:**
+
+| What | Where tests live | How |
+|------|------------------|-----|
+| Vectis subcommand behaviour (`verify`, `validate`, `materialize`, `scaffold`, …) | `wasi-tools/vectis/` | `cargo test -p specify-vectis` (and `wasi-tools/` CI job) — direct lib/CLI tests inside the carve-out |
+| Logic the host must call (`shell-detect`, launcher probe, bootstrap context, materialize scope, …) | Host shared crate (`specify-vectis-shell-detect`, future siblings) | `cargo test -p <crate>` with tempdir fixtures — **no** Wasmtime |
+| Workflow / CLI verbs (`propose`, `plan validate`, `slice build prepare` assembly) | `tests/workflow/*.rs`, `crates/workflow/…/tests.rs` | Exercise host paths only; stub or filesystem-fixture side effects; **never** dispatch vectis WASM to assert RFC-46 outcomes |
+
+**Production code** may still call WASM where the RFC requires it (e.g. `slice build prepare` invoking `materialize` via `run_captured` in a later step). **Tests added in RFC-46 must not** — validate guest behaviour in `wasi-tools/vectis` tests; validate host orchestration with mocks, pure helpers, or on-disk fixtures without loading a component.
+
+**Pre-existing host WASM tests** (`tests/tool/run.rs`, `tests/tool/contract.rs`, `tests/lint/framework.rs`, skip-when-absent `catalog_infer`, etc.) are **unchanged by this RFC** and will be unwound in a **separate** effort — do not copy their patterns into new RFC-46 steps.
+
+**Step PR checklist (every `specify-cli` step):** confirm no new files under `tests/` or host `#[test]` that invoke `specify tool run` or `WasiRunner` for RFC-46 coverage; `rg 'tool run|run_captured|vectis_wasm|SPECIFY_TOOLS_CACHE' tests/` touched paths should show no new RFC-46 assertions.
+
 ### Execution tracker
 
 | Step | Title | Status | PR / notes |
 |------|-------|--------|------------|
 | [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ✅ | Baseline at [`rfcs/rfc-46-baseline/`](./rfc-46-baseline/); all assurance green on `rfc-46` @ specify-cli `1711ebc`, specify `9d3886e` |
-| [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ✅ | `vectis_missing_platforms` in `specify-workflow` `platform/detect.rs`; tests require `cargo make vectis-wasm` |
-| [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ✅ | `--reconcile-platforms` removed; `propose --from` always calls `vectis_missing_platforms` when topology platforms non-empty |
-| [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli |
+| [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ↩ | Superseded — WASM dispatch from workflow; see [correction](#architectural-correction-r46-s01s02) |
+| [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ↩ | Partial — flag removed and propose wired, but via wrong WASM path; see [correction](#architectural-correction-r46-s01s02) |
+| [R46-S02a](#r46-s02a-shell-detect-shared-library) | Shell-detect shared library | ⬜ | `specify-vectis-shell-detect`; vectis `verify` calls library |
+| [R46-S02b](#r46-s02b-host-in-process-detect) | Host in-process detect | ⬜ | Revert workflow WASM; fix propose/detect tests; no plan-time `vectis-wasm` in CI |
+| [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli; after R46-S02b |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ⬜ | both repos |
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ⬜ | |
 | [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ⬜ | specify-cli |
@@ -67,10 +107,15 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-12 | R46-S01 | CI failed on `rust_quality`, `rustdoc`, `fmt`, and `clippy` (clock injection, test fn length, doc private links, formatting, `significant_drop_tightening`). | Added [Specify-cli step assurance](#specify-cli-step-assurance); every `specify-cli` step references it. |
 | 2026-06-12 | R46-S02 | Propose bootstrap integration tests must declare a `vectis`-named adapter with `tools.yaml` (the in-repo `vectis-stub` fixture name skips detect); `cargo make vectis-wasm` prerequisite unchanged. | Note under R46-S02 assurance; no new steps. |
 | 2026-06-12 | R46-S02 | Reusable CI `cargo nextest` does not run `cargo make vectis-wasm`; bootstrap propose tests panicked on missing `target/vectis-wasi-tools/release/vectis.wasm`. | Added `vectis-wasm` prep job to `specify-cli` `.github/workflows/ci.yaml` (`needs` before reusable `ci`); extended [Specify-cli step assurance](#specify-cli-step-assurance) with vectis-dispatch integration-test rules. |
+| 2026-06-12 | R46-S02 | Prep job + `needs` is insufficient: `rust-cache` does not share `target/vectis-wasi-tools/` across reusable-workflow job boundaries (prep built WASM; Test job still panicked). | Attempted CI workflow fork; **reverted** (`revert CI workflow fork`). Do not reintroduce CI changes solely for propose WASM — fix architecture instead. |
+| 2026-06-12 | R46-S02 | Plan-time detect does not need WASM — heuristics are pure Rust and identical in `verify.rs` and legacy `platforms.rs`. Spawning vectis from `propose` is an anti-pattern (CI, layering, test isolation). | Superseded R46-S01/S02; added [R46-S02a](#r46-s02a-shell-detect-shared-library) + [R46-S02b](#r46-s02b-host-in-process-detect); updated RFC §Phase 0 [detect architecture](./rfc-46-asset-materialization.md#detect-architecture-normative). |
+| 2026-06-12 | R46-S02 | Broader repo already has host↔WASM tests (framework lint, `tool run` fixtures, contract dist, optional vectis smoke) — unwinding deferred outside RFC-46. | Added [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope); RFC-46 steps must not add cross-boundary tests even via those mechanisms. |
 
 ### Specify-cli step assurance
 
 Every step with **Repo:** `specify-cli` must pass the checks below **in addition to** any step-specific tests, before marking the step ✅. Run from the `specify-cli` repo root. Phase assurance gates (R46-S05, S14, S26, S30) still require full `cargo make ci` as the merge bar; these are the per-step minimum that mirrors CI on push.
+
+**Every step must also satisfy** [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope).
 
 **Required (CI `Format`, `Clippy`, `Test`, and `Docs` jobs):**
 
@@ -88,12 +133,17 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-**When the step adds or changes host integration tests that dispatch the real `vectis` tool** (e.g. `tests/workflow/propose.rs` bootstrap reconciliation, `tests/catalog_infer.rs` report phase, `crates/workflow/src/platform/detect/tests.rs`):
+**Host test posture for RFC-46 (see hard rule above):**
 
-1. **Local:** run `cargo make vectis-wasm` before `cargo nextest run` (or use `cargo make test`, which depends on `vectis-wasm`). The artifact must exist at `target/vectis-wasi-tools/release/vectis.wasm`.
-2. **CI:** the reusable `Test` job runs bare `cargo nextest` — it does **not** invoke `cargo make test`. Host integration tests that `assert!` the artifact is present will fail on push unless the `vectis-wasm` prep job in `.github/workflows/ci.yaml` runs first (`needs: vectis-wasm` on the reusable `ci` job). Do not assume the parallel `wasi-tools` job populates that path — it builds into `wasi-tools/target/`, not `target/vectis-wasi-tools/release/`.
-3. **Fixture posture:** tests that hard-require dispatch must declare a `vectis`-named adapter with `tools.yaml` pointing at the built WASM (the in-repo `vectis-stub` fixture name skips detect). Prefer the `catalog_infer.rs` skip-when-absent pattern only for optional smoke tests — bootstrap / contract tests that guard RFC behaviour should rely on the prep job, not silent skip.
-4. **Pre-push smoke:** after adding such tests, run `cargo nextest run --test <binary> <filter>` on a clean `target/vectis-wasi-tools/` (or confirm the new tests are in the filter exercised by CI).
+| Layer | Example commands | WASM? |
+|-------|------------------|-------|
+| Shared host libs | `cargo test -p specify-vectis-shell-detect` | No |
+| Vectis carve-out | `cd wasi-tools && cargo test -p specify-vectis` | Yes — **inside carve-out only** |
+| Host workflow / CLI | `cargo nextest run --test propose reconcile`, `cargo test -p specify-workflow`, `tests/workflow/validate.rs` | **No** — no `tool run`, no `tools.yaml`, no `vectis-wasm` |
+
+**Pre-push for host workflow changes:** `cargo nextest run --test propose reconcile` (or the relevant filter) **without** `cargo make vectis-wasm`.
+
+**Do not** add new host integration tests that dispatch vectis/contract/framework WASM for RFC-46 — including skip-when-absent smoke (that pattern is reserved for pre-existing tests pending repo-wide unwind).
 
 **Discipline enforced by `rust_quality` (fix before push, not in CI triage):**
 
@@ -127,6 +177,8 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 ---
 
 ### R46-S01 — Vectis detect host helper
+
+> **↩ Superseded** by [R46-S02a](#r46-s02a-shell-detect-shared-library) + [R46-S02b](#r46-s02b-host-in-process-detect). Do not implement WASM dispatch from workflow. Kept for history.
 
 **Goal:** One reusable host-side function that returns declared-but-absent platforms for a Vectis-bound project directory.
 
@@ -164,6 +216,8 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 
 ### R46-S02 — Propose default-on reconciliation
 
+> **↩ Superseded** for detect wiring — flag removal may already be on branch; replace WASM path per [R46-S02b](#r46-s02b-host-in-process-detect).
+
 **Goal:** `specify plan propose --from` always reconciles platforms when `project.yaml.platforms` is non-empty; remove `--reconcile-platforms`.
 
 **Repo:** `specify-cli`
@@ -192,18 +246,77 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 
 ---
 
-### R46-S03 — Remove workflow shell heuristics
+### R46-S02a — Shell-detect shared library
 
-**Goal:** Delete duplicated Crux detection from `specify-workflow`; vectis is the sole presence probe.
+**Goal:** Single source of truth for Crux shell presence heuristics, shared by host CLI and vectis WASI.
 
 **Repo:** `specify-cli`
 
-**Prerequisites:** R46-S02 ✅
+**Prerequisites:** None (first step of recovery sequence).
+
+**Work:**
+1. Add host workspace crate `crates/vectis-shell-detect` (`specify-vectis-shell-detect`) with **stdlib only** (no `specify-workflow` / `specify-tool` deps).
+2. API (string-based; callers map to `Platform`):
+   ```rust
+   pub const SUPPORTED_SHELL_PLATFORMS: &[&str];
+   pub fn shell_present(project_dir: &Path, platform: &str) -> bool;
+   pub fn missing_shell_platforms(project_dir: &Path, declared: &[&str]) -> Vec<String>;
+   ```
+   Heuristics (RFC normative): `core` → `shared/src/app.rs`; `ios` → `iOS/**/*.swift`; `android` → `Android/**/*.kt`; `web`/`desktop`/unknown → present.
+3. Register crate in root `Cargo.toml` `members` + `[workspace.dependencies]`.
+4. Refactor `wasi-tools/vectis/src/verify.rs` to call the library (`check_platform` → `shell_present`; delete inlined duplicates). Add path dependency in `wasi-tools/vectis/Cargo.toml`.
+5. Unit tests in `crates/vectis-shell-detect` (tempdir fixtures — copy cases from `wasi-tools/vectis/src/verify/tests.rs`). Existing vectis verify tests must stay green.
+
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance) Tier A.
+- `cargo test -p specify-vectis-shell-detect`
+- From `wasi-tools/`: `cargo test -p specify-vectis verify`
+
+**Handoff:** Library exists; vectis WASM CLI still works; host can link without Wasmtime.
+
+---
+
+### R46-S02b — Host in-process detect
+
+**Goal:** Replace workflow WASM dispatch with in-process library calls; restore CI-friendly propose tests.
+
+**Repo:** `specify-cli`
+
+**Prerequisites:** R46-S02a ✅
+
+**Work:**
+1. Rewrite `crates/workflow/src/platform/detect.rs`:
+   - `vectis_missing_platforms(project_dir, declared) -> Result<Vec<Platform>>` calls `missing_shell_platforms` from `specify-vectis-shell-detect` when Vectis-bound; no `specify-tool`, no `WasiRunner`, no `now: Timestamp` parameter.
+   - Keep `is_vectis_bound` gate (non-Vectis → empty `missing`).
+2. Add `specify-vectis-shell-detect` to `crates/workflow/Cargo.toml`; remove `specify-tool` from workflow **only if** no other workflow module needs it (init/config still use tool manifest types — likely keep `specify-tool` dep, drop host dispatch only).
+3. `src/runtime/commands/plan/propose.rs` — call updated `vectis_missing_platforms` (drop `Timestamp::now()` pass-through if API loses `now`).
+4. **Tests — Tier B (no WASM):**
+   - `crates/workflow/src/platform/detect/tests.rs` — tempdir + vectis adapter stub; **no** `tools.yaml`, no `SPECIFY_TOOLS_CACHE`, no `vectis_wasm()` assert.
+   - `tests/workflow/propose.rs` `platform_project` — patch `vectis-stub` → `vectis` name only; remove WASM/`tools.yaml`/cache wiring; drop `SPECIFY_TOOLS_CACHE` from `propose_reconcile_ok` if unused.
+5. Delete error paths only needed for WASM parse (`vectis-detect-parse`, `tool-not-declared` at propose detect) unless still used elsewhere.
+6. **Do not** change `.github/workflows/ci.yaml` for vectis-wasm — reusable CI must pass host propose tests as-is ([hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope)).
+
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance) Tier B.
+- `cargo nextest run --test propose reconcile` **without** `cargo make vectis-wasm`.
+- `cargo test -p specify-workflow platform::detect`
+
+**Handoff:** Propose default-on reconciliation preserved; detect is in-process; CI green on reusable workflow.
+
+---
+
+### R46-S03 — Remove workflow shell heuristics
+
+**Goal:** Delete duplicated Crux detection from `specify-workflow`; vectis-owned library is the sole presence probe.
+
+**Repo:** `specify-cli`
+
+**Prerequisites:** R46-S02b ✅
 
 **Work:**
 1. Remove `detect_missing_platforms`, `platform_present`, `walk_dir_recursive` from `crates/workflow/src/change/plan/core/propose/platforms.rs`. Keep `ProjectMissingPlatforms`, `Plan::reconcile_platforms`, and bootstrap entry helpers.
 2. Remove `pub use platforms::{..., detect_missing_platforms}` from `propose.rs` / `change.rs` exports.
-3. Migrate or delete unit tests in `crates/workflow/src/change/plan/core/propose/tests.rs` that targeted `detect_missing_platforms` — coverage should live in R46-S01 tests + propose integration tests.
+3. Migrate or delete unit tests in `crates/workflow/src/change/plan/core/propose/tests.rs` that targeted `detect_missing_platforms` — coverage lives in `specify-vectis-shell-detect` + R46-S02b tests + propose integration tests.
 4. `rg detect_missing_platforms` across both repos → zero hits (except RFC/plan docs until R46-S04).
 
 **Assurance:**
@@ -223,13 +336,13 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 **Prerequisites:** R46-S03 ✅
 
 **Work — `specify`:**
-1. `plugins/spec/skills/plan/SKILL.md` — submit step: `specify plan propose --from …` with **no** `--reconcile-platforms`; describe default-on bootstrap via vectis detect.
-2. `plugins/spec/references/cli/plan-propose.md` — add bootstrap reconciliation paragraph; document that vectis detect drives insertion.
+1. `plugins/spec/skills/plan/SKILL.md` — submit step: `specify plan propose --from …` with **no** `--reconcile-platforms`; describe default-on bootstrap via vectis shell-detect (in-process; not `tool run vectis` from propose).
+2. `plugins/spec/references/cli/plan-propose.md` — add bootstrap reconciliation paragraph; document that vectis-owned shell-detect drives insertion.
 3. `evals/runs/plan-single-project.pass.md`, `evals/runs/code-multi-slice.pass.md` — drop flag from recorded invocations.
 4. Optional but recommended: add `CORE-*` `cli-contract` rule or extend an existing rule config to forbid `--reconcile-platforms` in skills/docs (see `adapters/shared/rules/core/` patterns).
 
 **Work — `specify-cli`:**
-1. `DECISIONS.md` §Target platform capability — reconciliation default-on; vectis owns detect.
+1. `DECISIONS.md` §Target platform capability — reconciliation default-on; vectis-owned `specify-vectis-shell-detect` library; no plan-time WASM dispatch.
 2. `AGENTS.md` — update `Plan::reconcile_platforms` bullet; remove `detect_missing_platforms` reference.
 
 **Assurance:**
@@ -250,11 +363,14 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 
 **Checklist (all required):**
 - [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied for Phase 0 steps.
 - [ ] `cargo make ci` (`specify-cli`) green.
 - [ ] `make lint` (`specify`) green.
 - [ ] `specify plan propose --help` shows no `--reconcile-platforms`.
 - [ ] Eval scenario spot-check: `plan-single-project` fixture path still valid (re-run or refresh pass summary if your process requires it).
 - [ ] Cross-repo grep: `detect_missing_platforms` absent from `specify-cli` Rust sources.
+- [ ] `cargo nextest run --test propose reconcile` passes on reusable CI **without** `cargo make vectis-wasm`.
+- [ ] `rg WasiRunner` in `crates/workflow/src/platform/` → empty.
 - [ ] Update RFC-46 §10 table row **#2–#4** status in discovery log or a short comment in tracker **PR / notes**.
 
 **Handoff:** Unblocks Phase 1. Do not start R46-S06 until this step is ✅.
@@ -308,15 +424,14 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 **Prerequisites:** R46-S06 ✅ (soft — can parallel if careful; prefer sequential)
 
 **Work:**
-1. New module `wasi-tools/vectis/src/launcher.rs` (or under `verify/`):
-   - `shell_resident_app_icon(project_root: &Path, platform: Platform) -> bool`
+1. Implement `shell_resident_app_icon(project_root, platform)` in a **host-callable shared crate** (extend `specify-vectis-shell-detect` or add a sibling — same pattern as shell-detect). `wasi-tools/vectis` may re-export or call it for validate paths; host `plan validate` links in-process.
 2. **iOS:** `iOS/*/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json` exists **and** at least one referenced PNG exists (parse `Contents.json` images array).
 3. **Android:** `Android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` **or** any `mipmap-*/ic_launcher.png`.
-4. Unit tests with minimal temp trees: skeleton appiconset without PNG → **false**; valid 1024 PNG → **true**.
+4. Unit tests in the **shared host crate** with minimal temp trees: skeleton appiconset without PNG → **false**; valid 1024 PNG → **true**. Optional vectis-carve-out smoke only if it calls the same lib without duplicating logic — **no** new `tests/*.rs` `tool run` coverage.
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test -p specify-vectis launcher` (or module tests) green.
+- `cargo test -p specify-vectis-shell-detect` (or the crate owning launcher) green; `wasi-tools` tests if vectis wires the lib.
 
 **Handoff:** Used by plan validate (R46-S09) and prepare hook (R46-S23).
 
@@ -328,7 +443,7 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 
 **Repo:** `specify-cli`
 
-**Prerequisites:** R46-S01 ✅, R46-S07 ✅
+**Prerequisites:** R46-S02b ✅, R46-S07 ✅
 
 **Work:**
 1. Host-side or vectis-side helper (prefer **host workflow** so plan validate does not need WASM for logic-only composition):
@@ -340,7 +455,7 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
    ```
 2. `triggers` = Vectis-bound project ∧ `missing[]` contains `ios` or `android`.
 3. `core`-only missing does **not** trigger (`app-foundation` alone).
-4. Reuse R46-S01 detect output; do **not** read `plan.yaml` slice names.
+4. Reuse `vectis_missing_platforms` / shell-detect library output; do **not** read `plan.yaml` slice names.
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
@@ -395,13 +510,13 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
    - `sources.ios` `.svg` for `illustration` → warning (`assets-svg-illustration-on-ios`).
    - Composition-referenced `vector`/`raster` missing `sources.<platform>` **and** no export file → `assets-materialization-missing` (file presence only in Phase 1).
    - Read platforms from `project.yaml` not hardcoded list.
-2. Map findings to `diagnostic.schema.json` shape when invoked from host lint paths (follow existing vectis validate JSON).
+2. Map findings to `diagnostic.schema.json` shape (vectis validate JSON envelope).
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test -p specify-vectis`; golden fixtures for invalid appiconset / valid pinned tree.
+- `cd wasi-tools && cargo test -p specify-vectis` with golden fixtures for invalid appiconset / valid pinned tree — **no** new host `tests/tool run` or `lint project` `kind: tool` tests for RFC-46.
 
-**Handoff:** `specify tool run vectis -- validate assets` enforces inventory shape before materialize exists.
+**Handoff:** Operator `specify tool run vectis -- validate assets` enforces inventory shape before materialize exists; coverage stays in the carve-out.
 
 ---
 
@@ -476,12 +591,12 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 
 **Checklist:**
 - [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope): no new host↔WASM tests added in Phase 1 steps.
 - [ ] `cargo make ci` (`specify-cli`).
 - [ ] `make lint` (`specify`).
-- [ ] Negative: Vectis greenfield project, `specify plan validate` → `plan-bootstrap-app-icon-missing`.
+- [ ] Negative: Vectis greenfield project, `specify plan validate` → `plan-bootstrap-app-icon-missing` (host `tests/workflow/validate.rs` — no `tool run`).
 - [ ] Positive: valid `design-system/assets.yaml` with `app-icon` + pinned exports (path B) → plan validate passes.
-- [ ] `specify tool run vectis -- validate assets` on fixtures → expected diagnostics.
-- [ ] Scaffold smoke: `specify tool run vectis -- scaffold ios` includes AppIcon skeleton.
+- [ ] `cd wasi-tools && cargo test -p specify-vectis` — `validate assets` + scaffold cases cover guest diagnostics and `AppIcon.appiconset` skeleton (not host `tool run`).
 
 **Handoff:** Unblocks Phase 2 materialize.
 
@@ -675,7 +790,8 @@ RFC §Implementation phases · Phase 2.
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
-- Integration test: slice with unpinned SVG icon → prepare creates `exports/` and updates YAML; second prepare no-op.
+- **Host:** test prepare assembly / error mapping with stubbed materialize outcome or pre-seeded `exports/` on disk — **do not** integration-test `run_captured vectis materialize` from `tests/`.
+- **Carve-out:** `cargo test -p specify-vectis materialize` proves guest materialize + YAML auto-write; slice with unpinned SVG → exports created; second run no-op.
 
 ---
 
@@ -710,11 +826,12 @@ RFC §Implementation phases · Phase 2.
 1. Pick representative fixture(s) under `evals/fixtures/targets/vectis/` — add `assets.yaml` with `app-icon`, run materialize, **commit** `exports/` tree and auto-written pins.
 2. Ensure `.gitignore` does **not** exclude `exports/`.
 3. Update fixture README / build brief expectations.
-4. Add `specify-cli` golden test copying fixture layout if appropriate.
+4. Golden layout checks in `wasi-tools/vectis` or fixture docs — **not** a host `tool run materialize` test.
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance) (when adding or changing `specify-cli` Rust in this step).
-- CI builds without invoking materialize on every job (exports already present).
+- CI builds without invoking materialize on every job (exports already committed in fixtures).
+- No new host test dispatches vectis WASM to regenerate exports in CI.
 
 ---
 
@@ -724,10 +841,12 @@ RFC §Implementation phases · Phase 2.
 
 **Checklist:**
 - [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied for Phase 2 steps.
 - [ ] `cargo make ci` (`specify-cli`); `cargo clippy -p specify-vectis` in `wasi-tools/`.
 - [ ] `make lint` (`specify`).
-- [ ] End-to-end: greenfield Vectis project → design-system slice `slice build --phase prepare` → exports on disk + YAML pins.
-- [ ] `app-foundation` / `bootstrap-*` path: prepare materializes `app-icon` when bootstrap context active.
+- [ ] **Carve-out:** `cargo test -p specify-vectis materialize` — unpinned asset → exports on disk + YAML pins; idempotent second run.
+- [ ] **Host:** `slice build --phase prepare` tests assert request assembly / error codes with stubbed or pre-seeded exports — **not** live `run_captured materialize` from `tests/`.
+- [ ] Bootstrap context + `app-icon` scope covered in host unit tests (`materialize_scope`, `BootstrapContext`) and carve-out materialize tests.
 - [ ] Re-run `specify plan validate` on bootstrappable fixture → pass.
 - [ ] iOS `make sim-build` or Android assemble on a fixture project with materialized assets (manual or existing eval) — document result in tracker.
 
@@ -771,7 +890,7 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
-- `verify --mode verify` fails when shell lacks imageset; passes when writer copied exports.
+- `cd wasi-tools && cargo test -p specify-vectis verify` — `verify --mode verify` fails when shell lacks imageset; passes when exports present on disk (**carve-out only**).
 
 ---
 
@@ -798,7 +917,8 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 - [ ] Full `cargo make ci` + `make lint`.
 - [ ] All steps R46-S00–R46-S29 ✅ in tracker.
 - [ ] Run one eval scenario end-to-end (`code-multi-slice` or `plan-single-project`) with refreshed pass record if CLI surface changed.
-- [ ] Operator smoke script (optional): edit canonical SVG → `materialize assets` → commit exports → build shells.
+- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied across all RFC-46 steps.
+- [ ] Operator manual smoke (optional, **not** automated host tests): edit canonical SVG → `materialize assets` → commit exports → build shells.
 - [ ] Discovery log reviewed; open items filed as new RFCs (e.g. `exports.lock`, RFC-46a web).
 
 ---
@@ -807,7 +927,9 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 
 | Area | Location |
 |------|----------|
-| Vectis detect (authoritative) | `specify-cli/wasi-tools/vectis/src/verify.rs` |
+| Shell-detect library (authoritative heuristics) | `specify-cli/crates/vectis-shell-detect/` |
+| Vectis detect JSON wrapper | `specify-cli/wasi-tools/vectis/src/verify.rs` |
+| Host detect gate | `specify-cli/crates/workflow/src/platform/detect.rs` |
 | Propose handler | `specify-cli/src/runtime/commands/plan/propose.rs` |
 | Bootstrap DAG insertion | `specify-cli/crates/workflow/src/change/plan/core/propose/platforms.rs` |
 | Plan validate doctor | `specify-cli/crates/workflow/src/change/plan/doctor.rs` |
@@ -829,3 +951,4 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 - `exports.lock` digest sidecar (RFC §2 idempotence — v1 uses file presence)
 - Auto-generated brand placeholders (`app-icon: { generated: true }`)
 - `plan-bootstrap-slices-missing` structural finding (RFC §6.1 explicitly rejects)
+- Repo-wide unwind of **pre-existing** host↔WASM tests (`tests/tool/run.rs`, `tests/tool/contract.rs`, `tests/lint/framework.rs`, skip-when-absent vectis smoke in `catalog_infer`, etc.) — separate effort; RFC-46 must not extend those patterns
