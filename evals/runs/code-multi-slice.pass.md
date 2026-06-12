@@ -24,7 +24,7 @@
 - Used local `specify init <framework>/adapters/targets/omnia` (`omnia@v1` remote fetch failed: `Remote branch v1 not found in upstream origin` — same as the `documentation-multi-slice` run).
 - Symlinked `adapters/sources/typescript` into the project (source adapters are not vendored by `specify init`).
 - Authored the legacy TypeScript service in-sandbox at `vendor/legacy-monolith/` (Express + BullMQ + node-cron, 18 files, ~1244 production LOC). The checked-in `acceptance/fixtures/sources/typescript` fixture is single-lead by design (below the survey brief's 1000-LOC Decision-2 threshold), so it cannot exercise multi-slice decomposition. Binding command: `specify plan create legacy-port --source legacy=typescript:./vendor/legacy-monolith`.
-- Drove the plan lifecycle via CLI equivalents of `/spec:plan` (`plan create`, `source survey --phase prepare/finalize` with agent-executed survey brief, `plan propose --dry-run` / `--from --reconcile-platforms`) rather than the slash command in Cursor chat.
+- Drove the plan lifecycle via CLI equivalents of `/spec:plan` (`plan create`, `source survey --phase prepare/finalize` with agent-executed survey brief, `plan propose --dry-run` / `--from`) rather than the slash command in Cursor chat.
 
 ## Notes
 

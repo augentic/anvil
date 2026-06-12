@@ -22,7 +22,7 @@
 
 - Used local `specify init <framework>/adapters/targets/omnia` (`omnia@v1` remote fetch failed: `Remote branch v1 not found in upstream origin` — same failure as prior runs).
 - Symlinked `adapters/sources/documentation` into the project (source adapters are not vendored by `specify init`, per `shared/setup.md`).
-- Drove the `/spec:plan` lifecycle via the CLI verbs the skill orchestrates (`plan create --source docs=documentation:./docs/inventory-adjustments.md`, two-phase `source survey docs`, `plan propose --dry-run` / `--from .specify/cache/propose-response.json --reconcile-platforms`, `plan validate`) rather than the slash command in Cursor chat.
+- Drove the `/spec:plan` lifecycle via the CLI verbs the skill orchestrates (`plan create --source docs=documentation:./docs/inventory-adjustments.md`, two-phase `source survey docs`, `plan propose --dry-run` / `--from .specify/cache/propose-response.json`, `plan validate`) rather than the slash command in Cursor chat.
 
 ## Notes
 
