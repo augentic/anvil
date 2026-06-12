@@ -111,13 +111,13 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, `specify slice build --phase prepare` |
 | Workspace | `workspace.sync.completed`, `workspace.push.completed` | `specify workspace sync` / `push` |
-| Bootstrap and standards | `cli.upgraded`, `plugins.refreshed`, `migration.applied`, `migration.skipped`, `lint-completed` | `specify upgrade`, `specify plugins refresh`, `specify migrate`, `specify lint` |
+| Bootstrap and standards | `cli.upgraded`, `plugins.refreshed`, `lint-completed` | `specify upgrade`, `specify plugins refresh`, `specify lint` |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.
 
 ## Exit codes
 
-The CLI uses a five-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
+The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|
@@ -125,9 +125,8 @@ The CLI uses a five-slot exit-code table. The authoritative definition (variants
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, undeclared/over-permissioned tool, argument errors. |
 | `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` — the project's `specify_version` is **newer** than this binary; surface the upgrade hint (`specify upgrade`). |
-| `4` | `EXIT_MIGRATION_REQUIRED` | `Error::ProjectNeedsMigration` — the project's pinned `specify_version` MAJOR is **older** than this binary; run `specify migrate`. The asymmetric twin of code `3`. |
 
-Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the five slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
+Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 
 ## Cross-references
 

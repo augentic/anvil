@@ -42,7 +42,7 @@ Rust harness intentionally does not pin.
 > **Scenario fixtures (`evals/**/*.json`).** The cleanup-plan brief
 > mentions JSON scenario fixtures, but no such files exist in the repository at audit time. The repository's eval packs are the
 > markdown scenarios listed above; their YAML frontmatter (validated by the
-> `scenarios` WASI tool at `specify-cli/wasi-tools/scenarios/`, resolved through
+> in-process `scenarios` checker in the CLI binary, resolved through
 > the generic Road B `kind: tool` framework lint) is the closest analogue to a
 > fixture. The matrix below uses the markdown scenarios
 > as the unit of coverage. See [Plan amendments](#plan-amendments) for

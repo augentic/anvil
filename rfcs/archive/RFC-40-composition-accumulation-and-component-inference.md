@@ -2,6 +2,8 @@
 
 ## Status
 
+Implemented and archived 2026-06-12 — outcomes recorded in [`specify-cli` `DECISIONS.md` §"Composition accumulation and component inference (RFC-40)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#composition-accumulation-and-component-inference-rfc-40). The review history below is preserved verbatim.
+
 Ready for review. A first-scan consistency review surfaced one material issue and four secondary accuracy fixes — see [Review findings](#review-findings). R1 (the one blocking issue) is now **resolved** and folded into the design (§A4, Problem 1 point 3); R2 is **resolved** and folded into §A3 + the A3 touchpoints row; R3 is **resolved** and folded into §B2 (step 3 + "Implementation placement") and §B4; R4 is **resolved** and folded into §B4 (the cache stores the normalized skeleton keyed by provenance, and `specify catalog infer` computes the canonical fingerprint at read time) with matching cache-key wording in §B2 and Open question 4; R5 is **resolved** and folded into Phase 2 step 5 and the B6 cross-repo-touchpoints row (the doc-inversion sweep now enumerates every brief location, the two bullets to delete, and the third — `No CLI verbs for catalog edits` — to reframe for `specify catalog infer`). All review findings are now resolved.
 
 Beyond the original two-part design, this revision adds **Part C** (operator-defined component parts): a new operator-authored `parts.yaml` input that lets operators pre-define authoritative, schema-compliant component specifications which **seed** agent inference — carrying naming and promotion authority, and treated like `tokens.yaml` / `assets.yaml` as a best-effort matching input that helps decide what ends up in the composition — so the "operator defines, inference augments" scenario is first-class rather than unsupported. A part is never mandatory: inference does its best to match each defined part against what it sees, factors the ones it can, and simply **reports** the ones it could not (C5). Incorporated per the operator-pre-definition requirement.
@@ -19,7 +21,7 @@ The composition merge engine (`crates/workflow/src/merge/composition.rs`) suppor
 - `**screens:` (full baseline)** — treated as a wholesale replacement of the existing baseline.
 - `**delta: { added, modified, removed }` (incremental)** — screen-level operations applied to the existing baseline.
 
-The [composition build brief](../adapters/targets/vectis/briefs/build/composition.md) instructs the agent to "Walk every `### Requirement:` block in `spec.md`" and regenerate `composition.yaml` from the slice's own `spec.md` + `design.md`. Since each slice carries only its own artifacts, the agent produces a standalone `screens:` document containing only the screens that slice introduces. At merge time, the CLI treats that as "this is the new baseline" and replaces whatever existed before.
+The [composition build brief](../../adapters/targets/vectis/briefs/build/composition.md) instructs the agent to "Walk every `### Requirement:` block in `spec.md`" and regenerate `composition.yaml` from the slice's own `spec.md` + `design.md`. Since each slice carries only its own artifacts, the agent produces a standalone `screens:` document containing only the screens that slice introduces. At merge time, the CLI treats that as "this is the new baseline" and replaces whatever existed before.
 
 In a 14-slice plan:
 
@@ -70,7 +72,7 @@ Problem 2 swings the catalog from operator-authored to agent-authored — but it
 
 #### A1. Build brief reads baseline before regeneration
 
-The [composition build brief](../adapters/targets/vectis/briefs/build/composition.md) gains a new input at priority 0 (above the existing priority 1–5 list):
+The [composition build brief](../../adapters/targets/vectis/briefs/build/composition.md) gains a new input at priority 0 (above the existing priority 1–5 list):
 
 > 1. `${PROJECT_DIR}/.specify/specs/composition.yaml` — the merged baseline composition. When present, the regeneration step produces an **accumulating composition**: it retains all existing baseline screens unchanged and adds, modifies, or removes only the screens this slice's `spec.md` positively references.
 
@@ -209,7 +211,7 @@ The cross-repo touchpoints below assume the host-side verb shape; if the tool-su
 
 #### B3. Build brief invokes inference before composition regeneration
 
-The [build brief phase order](../adapters/targets/vectis/briefs/build.md) gains a step 0.5 between the current "load composition.md" and the regeneration:
+The [build brief phase order](../../adapters/targets/vectis/briefs/build.md) gains a step 0.5 between the current "load composition.md" and the regeneration:
 
 1. Run `specify catalog infer --phase report` against the current **merged** baseline (plus the candidate cache and `parts.yaml`) to obtain the deterministic cluster report. The current slice's composition is not yet merged at this point; with one screen per slice and default `--min-occurrences 2`, baseline-only detection surfaces at the third slice's build unless the candidate cache supplies the second occurrence during the second slice's build (§B4).
 2. For each reported cluster **not already bound** to a name, **identify and name it by judgement** — read the cluster's region, item kinds, and `event` targets and decide what the component is and what to call it. Honour any operator `parts.yaml` name (it wins). This is the model-judgement step the CLI deliberately does not perform; the skill carries no fixed component vocabulary either, so a novel navigation form is named on its merits rather than forced into a known label.
@@ -492,10 +494,10 @@ The merge brief carries no operator-curated catalog language (`merge.md` line 38
 
 ## References
 
-- [Composition build brief](../adapters/targets/vectis/briefs/build/composition.md) — the current regeneration algorithm.
-- [Merge brief](../adapters/targets/vectis/briefs/merge.md) — Vectis-specific merge gates.
-- [Component catalog explanation](../plugins/spec/references/components.md) — current operator-curated model (canonical runtime file; `docs/explanation/components.md` is an mdBook stub redirecting here).
-- [Screenshots pipeline stage 6](../adapters/sources/screenshots/briefs/extract/pipeline.md) — current conservative detection.
+- [Composition build brief](../../adapters/targets/vectis/briefs/build/composition.md) — the current regeneration algorithm.
+- [Merge brief](../../adapters/targets/vectis/briefs/merge.md) — Vectis-specific merge gates.
+- [Component catalog explanation](../../plugins/spec/references/components.md) — current operator-curated model (canonical runtime file; `docs/explanation/components.md` is an mdBook stub redirecting here).
+- [Screenshots pipeline stage 6](../../adapters/sources/screenshots/briefs/extract/pipeline.md) — current conservative detection.
 - `[crates/workflow/src/merge/composition.rs](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/merge/composition.rs)` — merge engine supporting `screens:` and `delta:` shapes.
-- [Layout inferer contract](../adapters/targets/vectis/references/layout-inferer-contract.md) — structural identity rules for component detection.
+- [Layout inferer contract](../../adapters/targets/vectis/references/layout-inferer-contract.md) — structural identity rules for component detection.
 

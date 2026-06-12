@@ -67,5 +67,7 @@ make install-cli
 | `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                                 |
 | `.sandbox/` (gitignored)            | Stable per-scenario run roots — browsable, inspectable, recreated per run.     |
 
+`.sandbox/` accumulates full per-scenario project trees (including Cargo target dirs) and is never pruned automatically — it can grow to multiple gigabytes across sweeps. Each scenario recreates its own root on the next run, so it is always safe to reclaim the space between runs with `rm -rf evals/.sandbox`.
+
 
 Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](../adapters/targets/contracts/tests/README.md)`.

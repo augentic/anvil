@@ -5,7 +5,7 @@ The executable grading contract for every assertion id used in scenario frontmat
 - **Probe** — a deterministic post-run check: a CLI read verb (`specify plan status`, `specify journal show`, …), an artifact predicate, or a `jq` projection over a read verb's output. Probes never drive the workflow and never transition anything; probe output is evidence, never a transition.
 - **Judgment flag** — the irreducibly human residue (prose quality, decomposition sensibility, ergonomics). Graded by operator or agent **with an evidence pointer** — a verdict without one is not a grade.
 
-Driving stays agent-/operator-led per the scenario's Invocation; grading is what happens after. The `negative-expectations` (`automated-runner-added`, `fake-forge-added`, `transcript-replay-added`, `ci-target-added`, `golden-output-required`) constrain *driving*; running these probes after a sweep violates none of them. See [RFC-43 R2](../../rfcs/rfc-43-release-proving.md#r2--separate-driving-from-grading).
+Driving stays agent-/operator-led per the scenario's Invocation; grading is what happens after — the two are deliberately separate concerns, so deterministic post-run probes never count as "automating the run". The `negative-expectations` (`automated-runner-added`, `fake-forge-added`, `transcript-replay-added`, `ci-target-added`, `golden-output-required`) constrain *driving*; running these probes after a sweep violates none of them.
 
 Conventions:
 
@@ -14,7 +14,7 @@ Conventions:
 - `<slice>`, `<key>`, `<plan>` placeholders come from the run's own plan; substitute before running.
 - Record probe output (or its absence) as the **Evidence** entry in the [run-template](run-template.md) assertion table for any non-`pass` verdict; on `pass` the probe command itself is sufficient evidence.
 
-Ids are deliberately shared across scenario files; this document is their single definition. If machine enforcement is ever needed, this file becomes a structured carrier plus a lint check that every scenario id resolves here — never a per-scenario `probe` field (see RFC-43 "Probe home").
+Ids are deliberately shared across scenario files; this document is their single definition. If machine enforcement is ever needed, this file becomes a structured carrier plus a lint check that every scenario id resolves here — never a per-scenario `probe` field (the probe definitions live here, in one place, so scenario frontmatter stays declarative).
 
 ## Shared assertions
 

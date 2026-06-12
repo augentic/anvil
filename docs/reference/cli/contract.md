@@ -2,7 +2,7 @@
 
 The contracts adapter declares a `contract` WASI tool that walks a baseline `contracts/` directory, projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files.
 
-The legacy in-binary `specify contract` family has been retired. The canonical user-visible merge gate is the declared WASI tool:
+The canonical user-visible merge gate is the declared WASI tool:
 
 ```bash
 specify tool run contract -- <BASELINE_DIR> [--format text|json]

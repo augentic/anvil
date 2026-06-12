@@ -12,15 +12,15 @@ Specify isn't competing with AI coding tools — it's the delivery system that s
 
 *"Completiv is named for the completive aspect — the grammatical form that marks work carried through to its promised end — because generation is now free, and completion is the business."*
 
-From *complēre*, to fill full: complete and fulfil are the same word, which is why the name means delivery rather than mere stopping. It answers the category in its own technical register — "generative" is a linguistics term too, and generative grammar is the machinery of unbounded production: infinite well-formed output, none of it owed to anyone. The completive is the opposing form, the one that marks work brought to its promised state. Generative produces; completive fulfils. The timing does the arguing: AI made generating code free, so the scarce act left in software is completion — traced to source, checked against spec, approved by a human, shipped — the act the company is named for. Where finitive carried a faint "finite = limited" echo, completive carries none; its only resonance is fulfilment. Risk: the word is obscure and lands a beat slower than "definitive" — but that obscurity is exactly why the name was still ownable in 2026 when every other certainty-word was taken, and the tagline does the explaining the word doesn't.
+From *complēre*, to fill full: complete and fulfil are the same word, which is why the name means delivery rather than mere stopping. It answers the category in its own technical register — "generative" is a linguistics term too, and generative grammar is the machinery of unbounded production: infinite well-formed output, none of it owed to anyone. 
+
+The completive is the opposing form, the one that marks work brought to its promised state. Generative produces; completive fulfils. The timing does the arguing: AI made generating code free, so the scarce act left in software is completion — traced to source, checked against spec, approved by a human, shipped — the act the company is named for. Where finitive carried a faint "finite = limited" echo, completive carries none; its only resonance is fulfilment. 
+
+Risk: the word is obscure and lands a beat slower than "definitive" — but that obscurity is exactly why the name was still ownable in 2026 when every other certainty-word was taken, and the tagline does the explaining the word doesn't.
 
 ## Finitor
 
 The Roman term for **the horizon** — the circle that bounds the visible world, the line where open sky meets solid ground. A company that takes open-ended generation and brings it down to delivered earth, named for the line where they meet. That's the best brand story discovered in this whole exercise, and it was hiding in the cleared candidate.
-
-## ~~Finitiv~~
-
-From finire, to finish — the missing sibling of "definitive".
 
 It's built in direct opposition to the category's own word: "Everyone else is generative. We're finitive." Generative produces; finitive finishes. One word, and the entire industry's self-description becomes your foil. Risk: a faint "finite = limited" echo — mitigated by the "definitive" resonance.
 
@@ -87,4 +87,4 @@ This is not a side project; it sharpens the main pitch. The buyer who cares that
 - "The smallest model that does the job is the correct model."
 - Paired with the company line: "Completiv delivers. *Sottiv* right-sizes."
 
-Naming for this track is developed in [`names.md`](./names.md) under **"SLM Product Naming: Deliberate Smallness"** — current shortlist: **Sottiv** (sotto voce — power through restraint), **Tersiv** (*tersus* — polished down to exactly what's needed), **Susurro** (the whisper). The image deliberately flips from the platform track: not *mastering a terrifying force*, but *small because right-sized is the wiser choice*.
+Naming for this track is developed in `[names.md](./names.md)` under **"SLM Product Naming: Deliberate Smallness"** — current shortlist: **Sottiv** (sotto voce — power through restraint), **Tersiv** (*tersus* — polished down to exactly what's needed), **Susurro** (the whisper). The image deliberately flips from the platform track: not *mastering a terrifying force*, but *small because right-sized is the wiser choice*.

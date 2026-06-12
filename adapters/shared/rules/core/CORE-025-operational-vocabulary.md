@@ -5,19 +5,10 @@ severity: important
 trigger: Retired Specify vocabulary appears outside the allowlisted fixtures and archive carve-outs.
 rule_hints:
   - kind: path-pattern
-    value: "docs/**/*.md"
+    value: "{docs/**/*.md,plugins/**/*.md,.cursor/**/*.md,**/AGENTS.md,**/README.md}"
+    description: One brace alternation over every prose surface the rule scans.
   - kind: path-pattern
-    value: "plugins/**/*.md"
-  - kind: path-pattern
-    value: ".cursor/**/*.md"
-  - kind: path-pattern
-    value: "**/AGENTS.md"
-  - kind: path-pattern
-    value: "**/README.md"
-  - kind: path-pattern
-    value: "!**/fixtures/**"
-  - kind: path-pattern
-    value: "!**/archive/**"
+    value: "!**/{fixtures,archive}/**"
   - kind: regex
     value: "\\.specify/changes/|\\bspecrun\\b|\\bspecify validate\\b|\\bspecify merge\\b|\\bspecify change plan\\b|\\bspecify change draft\\b|\\b[Ii]nitiative\\b"
     description: One alternation over every retired vocabulary form; findings stay line-scoped because the evaluator reports each matching line, and the matched alternative is visible in the finding snippet.

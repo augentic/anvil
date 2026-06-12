@@ -8,15 +8,15 @@ This is a pre-1.0 codebase. There are no backward-compatibility constraints on s
 
 Each `SKILL.md` `description` field must:
 
-- Lead with an **imperative verb** drawn from the curated allow-list in `specify_standards::framework::check::skill_frontmatter` (`IMPERATIVE_VERBS`). Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
+- Lead with an **imperative verb** drawn from the curated allow-list in [`CORE-036`](../../adapters/shared/rules/core/CORE-036-skill-description-grammar.md)'s `field-grammar` hint `config:`. Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
 - Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary. The clause describes a trigger condition (when an operator should reach for this skill over its siblings), not a restatement of what the skill does. "Use when an operator wants to X" is an anti-pattern; "Use when starting Y from scratch, not when resuming Z" is the shape.
 - Stay **≤ 512 chars** total.
 
-`SkillDescriptionGrammarCheck` and the skill schema enforce the three rules respectively. See `specify_standards::framework::check` modules for the implementation.
+[`CORE-036`](../../adapters/shared/rules/core/CORE-036-skill-description-grammar.md) enforces the first two rules; the embedded skill schema's `description.maxLength` (via [`CORE-044`](../../adapters/shared/rules/core/CORE-044-skill-schema-violation.md)) enforces the cap.
 
 ## Argument-hint grammar
 
-Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by `SkillArgumentHintGrammarCheck` in `specify_standards::framework::check::skill_frontmatter`):
+Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by [`CORE-035`](../../adapters/shared/rules/core/CORE-035-skill-argument-hint-grammar.md)'s `field-grammar` hint):
 
 - `<name>` — required positional, kebab-case noun (e.g. `<slice-dir>`, `<change-name>`).
 - `[name]` — optional positional (e.g. `[crate-name]`, `[mode]`).
@@ -31,9 +31,9 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 - **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
 - **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
-The body cap is enforced by the declarative [`CORE-005`](../../adapters/shared/rules/core/CORE-005-skill-body-line-count.md) rule (via the `cardinality` reserved-kind interpreter); the per-section cap is enforced by `SkillSectionLineCount` (see `specify_standards::framework::check::skill_body`).
+The body cap is enforced by the declarative [`CORE-005`](../../adapters/shared/rules/core/CORE-005-skill-body-line-count.md) rule (via the `cardinality` interpreter); the per-section cap by [`CORE-045`](../../adapters/shared/rules/core/CORE-045-skill-section-line-count.md).
 
-All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
+All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema, rules, and docs by [`CORE-024`](../../adapters/shared/rules/core/CORE-024-prose-numeric-cap-exceeded.md)'s `prose` checker.
 
 ## References discipline
 
@@ -45,14 +45,14 @@ Push prose to `references/<topic>.md` under the plugin (runtime canonical) befor
 
 The frontmatter and body caps above are the floor. These additional rules tighten the SKILL.md as a navigable artifact:
 
-1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
+1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by [`CORE-038`](../../adapters/shared/rules/core/CORE-038-frontmatter-restatement.md).
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
-3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Delete the historical reference and cite current references from the skill body. Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
+3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Delete the historical reference and cite current references from the skill body. Mechanically enforced by [`CORE-016`](../../adapters/shared/rules/core/CORE-016-specify-history-citation.md).
 4. **If present, `## Phase outcome contract` is a single-line link, not a paragraph.** Phase skills are *not* required to carry this section — none do today, and no predicate enforces its presence; the canonical contract lives in [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). When a skill does include the section, replace any opening prose with the single-line `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract.
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+Cross-cutting guardrails — the `metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Convention enforced at review time — no framework rule checks it today.
 
 The canonical "skills MUST NOT" list:
 
@@ -73,10 +73,10 @@ Briefs split into two roles:
 
 The discipline:
 
-1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by `BriefCheck` in `specify_standards::framework::check::brief`.
-2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by `BriefCheck` in `specify_standards::framework::check::brief`.
-3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by `BriefCheck`.
-4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as `checkMarkdownLinks` failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
+1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by [`CORE-014`](../../adapters/shared/rules/core/CORE-014-brief-frontmatter-forbidden.md).
+2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by [`CORE-013`](../../adapters/shared/rules/core/CORE-013-brief-exceeds-size-limit.md).
+3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by [`CORE-013`](../../adapters/shared/rules/core/CORE-013-brief-exceeds-size-limit.md).
+4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../adapters/shared/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
 5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
 
 The pattern that emerges:
@@ -97,7 +97,7 @@ A 5th phase lands as one new `build/<phase>.md` file plus three lines added to t
 
 ## Envelope examples and wire contract
 
-CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. `checkNoEnvelopeExamples` flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the predicate is intentionally narrow.
+CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. [`CORE-037`](../../adapters/shared/rules/core/CORE-037-envelope-json-in-body.md) flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the check is intentionally narrow.
 
 The wire contract itself — exit codes, kebab-case `error` discriminants, the `envelope-version` floor — is owned by the CLI repo. See [cli-contract.md](cli-contract.md) for the surface skills depend on and the link to the authoritative exit-code table.
 
