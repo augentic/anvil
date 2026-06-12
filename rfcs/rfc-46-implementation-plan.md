@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S06` |
-| **Last completed** | `R46-S05` |
+| **Active step** | `R46-S07` |
+| **Last completed** | `R46-S06` |
 | **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
@@ -71,7 +71,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ✅ | Deleted workflow `detect_missing_platforms`; shell probe is `specify-vectis-shell-detect` only |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ✅ | plan skill, plan-propose ref, eval runs, DECISIONS.md, AGENTS.md |
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ✅ | `cargo make ci` + `make lint` green; §10 rows **#2–#4** remediated |
-| [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ⬜ | specify-cli |
+| [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ✅ | specify-cli — schema + cross-checks in `validate/engine/assets.rs` |
 | [R46-S07](#r46-s07-shell-resident-launcher-probe) | Shell-resident launcher probe | ⬜ | specify-cli |
 | [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ⬜ | specify-cli |
 | [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ⬜ | specify-cli |
@@ -113,6 +113,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-12 | R46-S02b | Propose reconcile integration tests live in `tests/plan.rs` (`mod propose` → `tests/workflow/propose.rs`); there is no `--test propose` binary. | Corrected assurance commands to `cargo nextest run --test plan reconcile`. |
 | 2026-06-12 | R46-S04 | `CORE-057` `cli-contract` `invocations` already flags retired `--reconcile-platforms` once docs are updated; no separate regex rule added. | Optional CORE rule in R46-S04 skipped; `wasi-tools/vectis/DECISIONS.md` `detect_missing_platforms` citation deferred to R46-S12 per plan. |
 | 2026-06-12 | R46-S05 | Phase 0 assurance gate green on `rfc-46` @ both repos; `plan-single-project` scenario/fixture paths unchanged (Omnia target — pass record already omits `--reconcile-platforms`). | Marked §10 rows **#2–#4** remediated in RFC-46; unblocks Phase 1. |
+| 2026-06-12 | R46-S06 | No mirrored `assets.schema.json` under `schemas/` or `specify` — vectis `embedded/assets.schema.json` is the sole source; `crates/schema` has no assets constant. Raster dimension/alpha decode checks deferred to R46-S10 per plan. | No new steps; R46-S07 unchanged. |
 
 ### Specify-cli step assurance
 
