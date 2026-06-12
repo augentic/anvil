@@ -64,6 +64,36 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | Date | Step | Discovery | Plan change |
 |------|------|-----------|-------------|
 | 2026-06-12 | R46-S01 | WASI dispatch must **omit** the project path argument and rely on host-injected `PROJECT_DIR`; passing a host absolute path breaks preopen reads inside the guest. | Added note under R46-S01 implementation notes; R46-S02 should wire the helper (not `specify tool run … <path>`) from `propose.rs`. |
+| 2026-06-12 | R46-S01 | CI failed on `rust_quality`, `rustdoc`, `fmt`, and `clippy` (clock injection, test fn length, doc private links, formatting, `significant_drop_tightening`). | Added [Specify-cli step assurance](#specify-cli-step-assurance); every `specify-cli` step references it. |
+
+### Specify-cli step assurance
+
+Every step with **Repo:** `specify-cli` must pass the checks below **in addition to** any step-specific tests, before marking the step ✅. Run from the `specify-cli` repo root. Phase assurance gates (R46-S05, S14, S26, S30) still require full `cargo make ci` as the merge bar; these are the per-step minimum that mirrors CI on push.
+
+**Required (CI `Format`, `Clippy`, `Test`, and `Docs` jobs):**
+
+```bash
+cargo +nightly fmt --all -- --check
+RUSTFLAGS=-Dwarnings cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+RUSTFLAGS=-Dwarnings cargo test --test rust_quality
+RUSTDOCFLAGS=-Dwarnings cargo doc --workspace --no-deps
+```
+
+**When the step changes `wasi-tools/`** (vectis or other carve-out crates), also from `wasi-tools/`:
+
+```bash
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Build guest WASM locally when tests dispatch the real tool (`cargo make vectis-wasm` for vectis; CI builds it in the `wasi-tools` job).
+
+**Discipline enforced by `rust_quality` (fix before push, not in CI triage):**
+
+- **`specify-workflow` clock reads:** library code must not call `Timestamp::now()` — accept `now: Timestamp` from runtime handlers (`docs/standards/architecture.md` §Time injection).
+- **Test fn names:** ≤ 40 characters (`docs/standards/testing.md`); narrative belongs in the test body.
+- **Lint suppressions:** `#[expect(..., reason = "...")]` only — no bare `#[allow]`.
+- **Rustdoc:** public docs must not link to private items (use prose, e.g. `` `vectis` ``, not `` [`VECTIS_ADAPTER`] ``).
 
 ---
 
@@ -102,8 +132,10 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
    pub fn vectis_missing_platforms(
        project_dir: &Path,
        declared: &[Platform],
+       now: Timestamp,
    ) -> Result<Vec<Platform>, Error>
    ```
+   Runtime dispatchers pass `Timestamp::now()`; tests pin a fixed stamp (see `docs/standards/architecture.md` §Time injection).
 3. Implementation: call `tool::run_captured` (see `src/runtime/commands/tool/run.rs`) with `vectis` and args `["verify", "--mode", "detect", "<project-dir>"]`. Parse stdout JSON; map `missing[]` strings → `Platform` via `FromStr`; ignore `web`/`desktop` (vectis already treats them as present).
 4. **Vectis-bound gate:** only invoke when the project's target adapter is `vectis` (resolve via `TargetAdapter::resolve` + `project.yaml` / plan topology — mirror `propose.rs` `detect_missing_for_topology`). Non-Vectis → return empty `missing` (RFC: Omnia unaffected).
 5. Unit tests with a tempdir fixture: greenfield tree → `missing` contains `core`, `ios`, `android`; tree with `shared/src/app.rs` + `iOS/*.swift` → `ios` absent from `missing`, etc. Reuse layout from `wasi-tools/vectis/src/verify/tests.rs`.
@@ -115,7 +147,8 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - **WASI path argument:** dispatch `vectis verify --mode detect` with **no** trailing project path — the host sets `PROJECT_DIR` on the guest environment and preopens `$PROJECT_DIR`. A host absolute path argument is not readable inside the sandbox (discovered R46-S01).
 
 **Assurance:**
-- `cargo test` for the new module passes.
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `cargo test -p specify-workflow platform::detect` passes (requires `cargo make vectis-wasm` if the guest artifact is absent locally).
 - Manual smoke: from a Vectis fixture project root, `specify tool run vectis -- verify --mode detect` (no path arg — uses `PROJECT_DIR`) returns expected `missing`.
 
 **Handoff:** Helper is callable from `propose.rs` and later from plan validate (R46-S09).
@@ -143,6 +176,7 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - If vectis tool is undeclared for a Vectis project, fail loudly at propose time (do not revert to workflow heuristics).
 
 **Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
 - `cargo test propose` (workflow propose tests) green.
 - Greenfield fixture: `propose --from` inserts `app-foundation`.
 - Partial shell fixture: inserts `bootstrap-ios` / `bootstrap-android` only.
@@ -166,7 +200,7 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 4. `rg detect_missing_platforms` across both repos → zero hits (except RFC/plan docs until R46-S04).
 
 **Assurance:**
-- `cargo make check` in `specify-cli`.
+- [Specify-cli step assurance](#specify-cli-step-assurance).
 - `rg detect_missing_platforms` in `specify-cli` source (not docs) → empty.
 
 **Handoff:** Workflow kernel is platform-agnostic; all shell presence is vectis-owned.
@@ -208,6 +242,7 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 **Prerequisites:** R46-S04 ✅
 
 **Checklist (all required):**
+- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
 - [ ] `cargo make ci` (`specify-cli`) green.
 - [ ] `make lint` (`specify`) green.
 - [ ] `specify plan propose --help` shows no `--reconcile-platforms`.
@@ -249,6 +284,7 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 - `schemas/` in CLI repo: sync if there is a mirrored `assets.schema.json` (check `crates/schema/tests/schemas.rs`).
 
 **Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
 - `cargo test -p specify-vectis` green.
 - Fixture YAML: valid `app-icon` vector + raster examples from RFC §3.1 parse; invalid `source` on `role: icon` raster fails.
 
@@ -271,7 +307,9 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 3. **Android:** `Android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` **or** any `mipmap-*/ic_launcher.png`.
 4. Unit tests with minimal temp trees: skeleton appiconset without PNG → **false**; valid 1024 PNG → **true**.
 
-**Assurance:** `cargo test -p specify-vectis launcher` (or module tests) green.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `cargo test -p specify-vectis launcher` (or module tests) green.
 
 **Handoff:** Used by plan validate (R46-S09) and prepare hook (R46-S23).
 
@@ -297,7 +335,9 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 3. `core`-only missing does **not** trigger (`app-foundation` alone).
 4. Reuse R46-S01 detect output; do **not** read `plan.yaml` slice names.
 
-**Assurance:** Table-driven tests: greenfield → trigger + `{ios, android}` (and `core` in missing but filtered out of `missing_ui`); existing shells with launcher → escape handled in R46-S09.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Table-driven tests: greenfield → trigger + `{ios, android}` (and `core` in missing but filtered out of `missing_ui`); existing shells with launcher → escape handled in R46-S09.
 
 **Handoff:** Single source for §6.1 across plan validate and prepare.
 
@@ -325,6 +365,7 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 - Incremental plan (shells present, detect empty) → no gate.
 
 **Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
 - `cargo test validate` subset green.
 - `specify plan validate --format json` includes finding with `rule-id: plan-bootstrap-app-icon-missing` on negative fixture.
 
@@ -349,7 +390,9 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
    - Read platforms from `project.yaml` not hardcoded list.
 2. Map findings to `diagnostic.schema.json` shape when invoked from host lint paths (follow existing vectis validate JSON).
 
-**Assurance:** `cargo test -p specify-vectis`; golden fixtures for invalid appiconset / valid pinned tree.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `cargo test -p specify-vectis`; golden fixtures for invalid appiconset / valid pinned tree.
 
 **Handoff:** `specify tool run vectis -- validate assets` enforces inventory shape before materialize exists.
 
@@ -369,7 +412,9 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 3. Update scaffold manifest / `wasi-tools/vectis/src/scaffold/` if paths are generated programmatically.
 4. Vectis init / design-system template in `specify` (if separate from CLI templates): document `app-icon` field; **no** default placeholder asset file (RFC §8).
 
-**Assurance:** `cargo test -p specify-vectis scaffold`; scaffolded iOS tree contains `AppIcon.appiconset`; Android contains `mipmap-anydpi-v26` stubs.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `cargo test -p specify-vectis scaffold`; scaffolded iOS tree contains `AppIcon.appiconset`; Android contains `mipmap-anydpi-v26` stubs.
 
 **Handoff:** Bootstrap slices scaffold empty slots materialize fills later.
 
@@ -423,6 +468,7 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 **Prerequisites:** R46-S06 through R46-S13 ✅
 
 **Checklist:**
+- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
 - [ ] `cargo make ci` (`specify-cli`).
 - [ ] `make lint` (`specify`).
 - [ ] Negative: Vectis greenfield project, `specify plan validate` → `plan-bootstrap-app-icon-missing`.
@@ -453,7 +499,9 @@ RFC §Implementation phases · Phase 2.
 4. Register in `Args` / `VectisCommand` enum; update `wasi-tools/vectis` CLI tests.
 5. Add deps to `wasi-tools/vectis/Cargo.toml`: `usvg`, `resvg`, `image` (and `tiny-skia` if required by resvg) — keep carve-out dep policy.
 
-**Assurance:** `cargo test -p specify-vectis cli`; dry-run on missing file → structured error.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `cargo test -p specify-vectis cli`; dry-run on missing file → structured error.
 
 ---
 
@@ -473,7 +521,9 @@ RFC §Implementation phases · Phase 2.
 2. Snake_case helper for Android drawable ids (match existing writer conventions in design-system-integration docs).
 3. Unit tests for path computation (no I/O).
 
-**Assurance:** Golden path strings for sample ids.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Golden path strings for sample ids.
 
 ---
 
@@ -491,7 +541,9 @@ RFC §Implementation phases · Phase 2.
 3. Android: SVG → VD XML pass (dedicated converter module).
 4. Respect `--platform` filter and `--dry-run` (log actions only).
 
-**Assurance:** Unit/integration tests with tiny SVG fixtures; output files exist and are non-empty.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Unit/integration tests with tiny SVG fixtures; output files exist and are non-empty.
 
 ---
 
@@ -507,7 +559,9 @@ RFC §Implementation phases · Phase 2.
 1. `resvg` render at 2x/3x (iOS) and mdpi–xxxhdpi (Android) scales — document scale table in `DECISIONS.md`.
 2. Copy-only path for `role: photo` raster masters (per-density `sources` already pinned).
 
-**Assurance:** PNG dimensions match expected scale; deterministic output for fixed input (hash optional in test).
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- PNG dimensions match expected scale; deterministic output for fixed input (hash optional in test).
 
 ---
 
@@ -524,7 +578,9 @@ RFC §Implementation phases · Phase 2.
 2. Write `Contents.json` (`idiom: universal`, `platform: ios`) + single 1024 PNG.
 3. Path B: if `sources.ios` pin points at existing export root → skip (silent).
 
-**Assurance:** actool-friendly layout tests (minimum: valid JSON + PNG present); invalid 512×512 master → `assets-app-icon-source-invalid`.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- actool-friendly layout tests (minimum: valid JSON + PNG present); invalid 512×512 master → `assets-app-icon-source-invalid`.
 
 ---
 
@@ -540,7 +596,9 @@ RFC §Implementation phases · Phase 2.
 1. Generate `mipmap-anydpi-v26/ic_launcher.xml`, round variant, foreground drawable/PNG, background color (from `tint` token ref when auto-converting), legacy `mipmap-*/ic_launcher.png`.
 2. Safe-zone guidance is operator-facing; enforce central 66% only if feasible without design input — otherwise document as warning not error (note in discovery log if softened).
 
-**Assurance:** Required XML/PNG artifacts exist; `aapt2`-friendly well-formed XML (best-effort parse in tests).
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Required XML/PNG artifacts exist; `aapt2`-friendly well-formed XML (best-effort parse in tests).
 
 ---
 
@@ -559,6 +617,7 @@ RFC §Implementation phases · Phase 2.
 4. `--dry-run` must not write YAML or exports.
 
 **Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
 - Pin present → `source:` edit does not overwrite.
 - No pin → materialize writes exports **and** updates `sources.ios` / `sources.android` in YAML.
 - Idempotent second run → no-op.
@@ -580,7 +639,9 @@ RFC §Implementation phases · Phase 2.
    - Filter to `vector`/`raster` + bootstrap `role: app-icon` when §6.1 ∧ ¬§6.2 for platform.
 2. Heavy unit tests with fixture slice trees.
 
-**Assurance:** Table tests for design-system bulk pass vs feature slice incremental pass.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Table tests for design-system bulk pass vs feature slice incremental pass.
 
 ---
 
@@ -605,7 +666,9 @@ RFC §Implementation phases · Phase 2.
 - Prepare runs **before** composition regeneration — composition.yaml may be stale; R46-S22 already accounts for this.
 - Skills must **not** call materialize directly (RFC §2.1).
 
-**Assurance:** Integration test: slice with unpinned SVG icon → prepare creates `exports/` and updates YAML; second prepare no-op.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Integration test: slice with unpinned SVG icon → prepare creates `exports/` and updates YAML; second prepare no-op.
 
 ---
 
@@ -622,7 +685,9 @@ RFC §Implementation phases · Phase 2.
 2. Distinguish `assets-materialization-missing` vs `assets-app-icon-invalid`.
 3. `vectis validate all` fan-out includes new checks.
 
-**Assurance:** Fixture without exports fails; after materialize passes.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- Fixture without exports fails; after materialize passes.
 
 ---
 
@@ -640,7 +705,9 @@ RFC §Implementation phases · Phase 2.
 3. Update fixture README / build brief expectations.
 4. Add `specify-cli` golden test copying fixture layout if appropriate.
 
-**Assurance:** CI builds without invoking materialize on every job (exports already present).
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance) (when adding or changing `specify-cli` Rust in this step).
+- CI builds without invoking materialize on every job (exports already present).
 
 ---
 
@@ -649,6 +716,7 @@ RFC §Implementation phases · Phase 2.
 **Prerequisites:** R46-S15 through R46-S25 ✅
 
 **Checklist:**
+- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
 - [ ] `cargo make ci` (`specify-cli`); `cargo clippy -p specify-vectis` in `wasi-tools/`.
 - [ ] `make lint` (`specify`).
 - [ ] End-to-end: greenfield Vectis project → design-system slice `slice build --phase prepare` → exports on disk + YAML pins.
@@ -694,7 +762,9 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
    - Cross-check composition-referenced `vector`/`raster` ids against `Assets.xcassets` / `res drawable` presence in shell tree.
 2. Optional `actool` dry-run behind env flag or deferred if too heavy — document choice in discovery log.
 
-**Assurance:** `verify --mode verify` fails when shell lacks imageset; passes when writer copied exports.
+**Assurance:**
+- [Specify-cli step assurance](#specify-cli-step-assurance).
+- `verify --mode verify` fails when shell lacks imageset; passes when writer copied exports.
 
 ---
 
@@ -717,6 +787,7 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 ### R46-S30 — Final assurance gate
 
 **Checklist:**
+- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
 - [ ] Full `cargo make ci` + `make lint`.
 - [ ] All steps R46-S00–R46-S29 ✅ in tracker.
 - [ ] Run one eval scenario end-to-end (`code-multi-slice` or `plan-single-project`) with refreshed pass record if CLI surface changed.
