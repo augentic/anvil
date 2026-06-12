@@ -64,6 +64,12 @@ jobs:
           done
           exit $status
 
+      # Release build: a debug lint binary is many times slower and not
+      # representative (DIAGNOSTICS.md performance posture); build once,
+      # then run the binary directly.
+      - name: Build lint binary
+        run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
+
       - name: Verify framework
         run: |
-          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
+          specify-cli/target/release/specify lint framework --framework-root .

@@ -5,36 +5,24 @@ severity: important
 trigger: Skills or target briefs invoke retired host helper commands that have `specify tool run` equivalents.
 rule_hints:
   - kind: path-pattern
-    value: "plugins/**/skills/**/SKILL.md"
-  - kind: path-pattern
-    value: "adapters/targets/**/briefs/**/*.md"
+    value: "{plugins/**/skills/**/SKILL.md,adapters/targets/**/briefs/**/*.md}"
   - kind: regex
-    value: "\\bspecify-contract-validate\\b"
+    value: "\\bspecify-contract-validate\\b|\\bspecify-vectis\\s+(validate|init|add-shell)\\b|\\bspecify\\s+vectis\\s+(validate|init|add-shell)\\b"
+    description: One alternation over every unconditionally retired invocation form (hyphenated and spaced vectis variants plus the retired contract-validate helper).
   - kind: regex
     value: "\\bspecify-contract\\b"
     config:
       suffix-must-not-start-with: "-validate"
-  - kind: regex
-    value: "\\bspecify-vectis\\s+validate\\b"
-  - kind: regex
-    value: "\\bspecify\\s+vectis\\s+validate\\b"
-  - kind: regex
-    value: "\\bspecify-vectis\\s+init\\b"
-  - kind: regex
-    value: "\\bspecify\\s+vectis\\s+init\\b"
-  - kind: regex
-    value: "\\bspecify-vectis\\s+add-shell\\b"
-  - kind: regex
-    value: "\\bspecify\\s+vectis\\s+add-shell\\b"
+    description: Kept separate from the alternation because the suffix guard applies to this token only.
 ---
 
 ## Rule
 
-Retired helper invocations (`specify-contract`, `specify-vectis …`, and spaced variants) must be replaced with declared-tool `specify tool run` forms. `specify-contract-validate` is allowed; bare `specify-contract` without the `-validate` suffix is not.
+Retired helper invocations (`specify-contract`, `specify-contract-validate`, `specify-vectis …`, and spaced variants) must be replaced with declared-tool `specify tool run` forms. The bare `specify-contract` hint carries a `-validate` suffix guard only so the longer `specify-contract-validate` token is reported once (by the alternation hint), not twice.
 
 ## Look For
 
-- `specify-contract` not followed by `-validate` in skills or target briefs.
+- `specify-contract` or `specify-contract-validate` in skills or target briefs.
 - `specify-vectis validate`, `specify vectis init`, `add-shell`, and sibling retired tokens.
 
 ## Fix

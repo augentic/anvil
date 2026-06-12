@@ -104,12 +104,10 @@ specify tool run <name> [args...]                        # run a declared WASI t
 specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
 specify plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
 specify plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
-specify migrate [--from <X.Y.Z>] [--to <X.Y.Z>] [--dry-run|--yes]  # run registered migrators
 specify init --upgrade                                   # bump specify_version + re-scaffold preservation-safe files only
-specify init --check-migration --format json             # read-only major-version probe (needs-migration bool + plan)
 ```
 
-`specify migrate --to` pins `specify_version` **verbatim** to the requested target (not necessarily the running binary). A pin on a major older than the binary is exit `4` (migrate up); a pin newer than the binary is exit `3` (upgrade the binary first). For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
+A pin newer than the binary is exit `3` (upgrade the binary first); an older pin loads normally — pre-1.0 majors are re-init, not migration. For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
 
 ## Adapters
 

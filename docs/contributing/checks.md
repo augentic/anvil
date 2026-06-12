@@ -78,11 +78,11 @@ The committed `cli` is **always** a fetchable form (`version` or `git` + ref) so
 cli = { path = "../specify-cli" }
 ```
 
-**Bumping the pin.** When a maintainer cuts a new `specify-cli` release that carries framework checks this repo depends on, bump `cli` to `{ version = "X.Y.Z" }` in the same framework PR that relies on the new behaviour. While a CLI change is still unreleased, point the committed `cli` at its branch (`{ git = "…", branch = "…" }`) so CI exercises the framework against the unreleased CLI — still parity, because a branch ref is fetchable.
+**Bumping the pin.** The committed `cli` pins an **immutable ref** (a `rev`, or a release `version`/`tag`), so `make lint` is reproducible and the `.cli/` build cache stops invalidating whenever the CLI's `main` moves. When a CLI change lands that this repo's checks depend on, bump the `rev` (or adopt the new release `version`) in the same framework PR that relies on the new behaviour. A mutable `branch` ref remains a legal form for short-lived cross-repo experiments, but should not stay committed — it re-resolves via `git ls-remote` on every run and rebuilds on every CLI push.
 
 CORE-055 validates `Specify.toml` on every `make lint` run against the embedded `framework.schema.json`.
 
-**Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved WASI tool (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds — measured **~8s** wall (`real 8.7` for `make lint`, `real 7.8` for the bare release binary, 2026-06-07); benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative (the obsolete `~247s` figure was a pre-migration debug-era measurement).
+**Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved in-process checker (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds — measured **~8s** wall (`real 8.7` for `make lint`, `real 7.8` for the bare release binary, 2026-06-07); benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative (the obsolete `~247s` figure was a pre-migration debug-era measurement).
 
 The Makefile exposes `lint` for framework checks; there is no `make ci` target in this repo. The `specify-standards` framework predicate regression suite is owned by `specify-cli` and runs there via `cargo make test`; this repo does not re-run it. Tooling contributors with a `specify-cli` checkout can run the predicate suite directly:
 
@@ -127,7 +127,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B tool source lives under `wasi-tools/<name>/`.
+Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in the CLI binary under `src/runtime/commands/lint/framework_tools/`.
 
 ### JSON output
 
@@ -366,6 +366,8 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 
 `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`.
 
+`path-pattern` globs support `{a,b}` brace alternation (`*` never crosses `/`, `**` does), so prefer one alternation hint over a fan-out of near-identical patterns; `regex` values likewise prefer a single `|` alternation per concern.
+
 `hint.value` names the mechanism selector each kind dispatches on:
 
 - **`presence`** — `frontmatter` (a candidate file lacking frontmatter), `file` + `config: { path }` (a missing required path), `markdown-section` + `config: { title, level, when: { metric, min } }` (a candidate over a metric threshold lacking the section), or `directory-index` + `config: { roots, index, min-files }` (a corpus directory matching a one-depth root glob with enough files beneath it but no index file inside it).
@@ -376,7 +378,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 
 Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010 / CORE-049, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, and `cli-contract` → CORE-057 / CORE-060. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
-**Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** test in `crates/standards/tests/lint_hint_<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
+**Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** unit test beside the evaluator in `crates/standards/src/lint/eval/<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
 ### Road B — referenced tool
 
@@ -401,7 +403,7 @@ To add or extend one:
 
 > **Policy never lives in the engine.** The `lint_no_embedded_policy` Layer-3 guard test ([`crates/standards/tests/lint_no_embedded_policy.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/lint_no_embedded_policy.rs)) fails if any eval arm reintroduces a rule-specific literal (operation-set array, owner→prefix map, value-bearing discriminator, canonical-doc path, or an un-allow-listed numeric cap). Put the value in the rule's `config:`.
 
-> **No imperative escape hatch.** There is no `kind: authoring-predicate` bridge: a `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved WASI tool (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each tool's in-crate tests.
+> **No imperative escape hatch.** There is no `kind: authoring-predicate` bridge: a `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved in-process checker (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each checker's in-crate tests.
 
 To add a `CORE-*` rule (either road):
 

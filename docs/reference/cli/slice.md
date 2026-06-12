@@ -92,7 +92,7 @@ specify slice build <name> [--phase prepare|finalize] [--format json]
 - `--phase prepare` resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, prints the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`), and returns without blocking. The agent then runs the target `build` brief against the prepared request and writes `.specify/slices/<name>/build/report.yaml`.
 - `--phase finalize` emits `slice.build.started`, validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts prepare with `target-build-input-missing`.
 
-This is the CLI verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — the skill no longer hand-transitions to `built`; `finalize` owns that gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
+This is the CLI verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — `finalize` owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
 
 ### specify slice transition
 
@@ -204,7 +204,7 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 ### specify slice task
 
-Two subcommands cover the task surface (renamed from the old top-level `task progress` / `task mark` verbs).
+Two subcommands cover the task surface.
 
 #### specify slice task progress
 

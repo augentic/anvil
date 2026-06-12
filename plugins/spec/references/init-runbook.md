@@ -94,47 +94,21 @@ specify plugins doctor --format json
 
 `doctor` never exits non-zero on drift — drift is a finding. Parse the JSON body: the cache is **drifted** when `summary.drifted > 0` or `summary.missing > 0`.
 
-- If `summary.drifted` and `summary.missing` are both `0`, continue to step 1d.
+- If `summary.drifted` and `summary.missing` are both `0`, continue to step 2.
 - If drifted, tell the user:
 
   > "Your Cursor plugin cache has drifted from the marketplace (`<drifted>` drifted, `<missing>` missing). I can clear it with `specify plugins refresh --yes`, but Cursor must restart to repopulate the cache."
 
   Use the **AskQuestion tool** to confirm.
 
-  - If they decline, continue to step 1d on the current cache.
+  - If they decline, continue to step 2 on the current cache.
   - If they confirm, run:
 
     ```bash
     specify plugins refresh --yes
     ```
 
-    The CLI prints `Plugin cache cleared. Restart Cursor to repopulate from the marketplace.` Relay that line, then **stop**: tell the operator to restart Cursor and re-run `/spec:init`. Do not continue to step 1d — the refreshed cache only repopulates on restart.
-
-### 1d. Probe artifact major
-
-Run:
-
-```bash
-specify init --check-migration --format json
-```
-
-Parse the JSON body. Migration is required only when `needs-migration` is `true`. The CLI binary is pre-1.0 today, so the major-bump path cannot fire and `needs-migration` is virtually always `false` — treat that as the normal healthy result and continue to step 2.
-
-- If `needs-migration` is `false`, continue to step 2.
-- If `needs-migration` is `true`, the project's artifacts are pinned to an older major (`from`) than the binary targets (`to`). Tell the user:
-
-  > "This project's artifacts are on Specify `<from>`; the CLI targets `<to>`. I can migrate them now with `specify migrate --yes` before continuing."
-
-  Use the **AskQuestion tool** to confirm.
-
-  - If they decline, stop and tell them migration is required before any other Specify command can run.
-  - If they confirm, run:
-
-    ```bash
-    specify migrate --yes
-    ```
-
-    Render the **migrated** template (see [`init-output-templates.md`](init-output-templates.md)) from the migration report, then continue to step 2.
+    The CLI prints `Plugin cache cleared. Restart Cursor to repopulate from the marketplace.` Relay that line, then **stop**: tell the operator to restart Cursor and re-run `/spec:init`. Do not continue to step 2 — the refreshed cache only repopulates on restart.
 
 ### 2. Check if already initialized
 
@@ -167,8 +141,6 @@ Check whether `.specify/project.yaml` exists.
 
   - `true` — the version was bumped. Report the new `specify-version` and `adapter-name` (or `"workspace"`); note that `AGENTS.md` was preserved when `context-skip-reason` is `"existing-agents-md"`. Stop — the project is already scaffolded.
   - `false` — already current; the run was an idempotent no-op. Tell the operator nothing changed and stop.
-
-  If `specify init --upgrade` exits `4` (`project-needs-migration`), run step 1d's migration handoff first, then retry the upgrade.
 
 ### 3. Decide the topology — regular project or workspace
 
