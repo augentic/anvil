@@ -12,8 +12,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S02` |
-| **Last completed** | `R46-S01` |
+| **Active step** | `R46-S03` |
+| **Last completed** | `R46-S02` |
 | **Last updated** | 2026-06-12 |
 | **Blocked on** | — |
 
@@ -27,7 +27,7 @@ When a step finishes: mark it ✅, set **Last completed**, advance **Active step
 |------|-------|--------|------------|
 | [R46-S00](#r46-s00-baseline-snapshot) | Baseline snapshot | ✅ | Baseline at [`rfcs/rfc-46-baseline/`](./rfc-46-baseline/); all assurance green on `rfc-46` @ specify-cli `1711ebc`, specify `9d3886e` |
 | [R46-S01](#r46-s01-vectis-detect-host-helper) | Vectis detect host helper | ✅ | `vectis_missing_platforms` in `specify-workflow` `platform/detect.rs`; tests require `cargo make vectis-wasm` |
-| [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ⬜ | specify-cli |
+| [R46-S02](#r46-s02-propose-default-on-reconciliation) | Propose default-on reconciliation | ✅ | `--reconcile-platforms` removed; `propose --from` always calls `vectis_missing_platforms` when topology platforms non-empty |
 | [R46-S03](#r46-s03-remove-workflow-shell-heuristics) | Remove workflow shell heuristics | ⬜ | specify-cli |
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ⬜ | both repos |
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ⬜ | |
@@ -65,6 +65,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 |------|------|-----------|-------------|
 | 2026-06-12 | R46-S01 | WASI dispatch must **omit** the project path argument and rely on host-injected `PROJECT_DIR`; passing a host absolute path breaks preopen reads inside the guest. | Added note under R46-S01 implementation notes; R46-S02 should wire the helper (not `specify tool run … <path>`) from `propose.rs`. |
 | 2026-06-12 | R46-S01 | CI failed on `rust_quality`, `rustdoc`, `fmt`, and `clippy` (clock injection, test fn length, doc private links, formatting, `significant_drop_tightening`). | Added [Specify-cli step assurance](#specify-cli-step-assurance); every `specify-cli` step references it. |
+| 2026-06-12 | R46-S02 | Propose bootstrap integration tests must declare a `vectis`-named adapter with `tools.yaml` (the in-repo `vectis-stub` fixture name skips detect); `cargo make vectis-wasm` prerequisite unchanged. | Note under R46-S02 assurance; no new steps. |
 
 ### Specify-cli step assurance
 
@@ -177,7 +178,7 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test propose` (workflow propose tests) green.
+- `cargo test propose` (workflow propose tests) green; bootstrap fixtures patch `vectis-stub` → `vectis` and declare the WASI tool (`cargo make vectis-wasm` when the guest artifact is absent).
 - Greenfield fixture: `propose --from` inserts `app-foundation`.
 - Partial shell fixture: inserts `bootstrap-ios` / `bootstrap-android` only.
 
