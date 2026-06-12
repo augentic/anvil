@@ -66,6 +66,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-12 | R46-S01 | WASI dispatch must **omit** the project path argument and rely on host-injected `PROJECT_DIR`; passing a host absolute path breaks preopen reads inside the guest. | Added note under R46-S01 implementation notes; R46-S02 should wire the helper (not `specify tool run … <path>`) from `propose.rs`. |
 | 2026-06-12 | R46-S01 | CI failed on `rust_quality`, `rustdoc`, `fmt`, and `clippy` (clock injection, test fn length, doc private links, formatting, `significant_drop_tightening`). | Added [Specify-cli step assurance](#specify-cli-step-assurance); every `specify-cli` step references it. |
 | 2026-06-12 | R46-S02 | Propose bootstrap integration tests must declare a `vectis`-named adapter with `tools.yaml` (the in-repo `vectis-stub` fixture name skips detect); `cargo make vectis-wasm` prerequisite unchanged. | Note under R46-S02 assurance; no new steps. |
+| 2026-06-12 | R46-S02 | Reusable CI `cargo nextest` does not run `cargo make vectis-wasm`; bootstrap propose tests panicked on missing `target/vectis-wasi-tools/release/vectis.wasm`. | Added `vectis-wasm` prep job to `specify-cli` `.github/workflows/ci.yaml` (`needs` before reusable `ci`); extended [Specify-cli step assurance](#specify-cli-step-assurance) with vectis-dispatch integration-test rules. |
 
 ### Specify-cli step assurance
 
@@ -87,7 +88,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-Build guest WASM locally when tests dispatch the real tool (`cargo make vectis-wasm` for vectis; CI builds it in the `wasi-tools` job).
+**When the step adds or changes host integration tests that dispatch the real `vectis` tool** (e.g. `tests/workflow/propose.rs` bootstrap reconciliation, `tests/catalog_infer.rs` report phase, `crates/workflow/src/platform/detect/tests.rs`):
+
+1. **Local:** run `cargo make vectis-wasm` before `cargo nextest run` (or use `cargo make test`, which depends on `vectis-wasm`). The artifact must exist at `target/vectis-wasi-tools/release/vectis.wasm`.
+2. **CI:** the reusable `Test` job runs bare `cargo nextest` — it does **not** invoke `cargo make test`. Host integration tests that `assert!` the artifact is present will fail on push unless the `vectis-wasm` prep job in `.github/workflows/ci.yaml` runs first (`needs: vectis-wasm` on the reusable `ci` job). Do not assume the parallel `wasi-tools` job populates that path — it builds into `wasi-tools/target/`, not `target/vectis-wasi-tools/release/`.
+3. **Fixture posture:** tests that hard-require dispatch must declare a `vectis`-named adapter with `tools.yaml` pointing at the built WASM (the in-repo `vectis-stub` fixture name skips detect). Prefer the `catalog_infer.rs` skip-when-absent pattern only for optional smoke tests — bootstrap / contract tests that guard RFC behaviour should rely on the prep job, not silent skip.
+4. **Pre-push smoke:** after adding such tests, run `cargo nextest run --test <binary> <filter>` on a clean `target/vectis-wasi-tools/` (or confirm the new tests are in the filter exercised by CI).
 
 **Discipline enforced by `rust_quality` (fix before push, not in CI triage):**
 
@@ -148,8 +154,8 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - **WASI path argument:** dispatch `vectis verify --mode detect` with **no** trailing project path — the host sets `PROJECT_DIR` on the guest environment and preopens `$PROJECT_DIR`. A host absolute path argument is not readable inside the sandbox (discovered R46-S01).
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test -p specify-workflow platform::detect` passes (requires `cargo make vectis-wasm` if the guest artifact is absent locally).
+- [Specify-cli step assurance](#specify-cli-step-assurance) (including vectis-dispatch integration-test rules).
+- `cargo test -p specify-workflow platform::detect` passes.
 - Manual smoke: from a Vectis fixture project root, `specify tool run vectis -- verify --mode detect` (no path arg — uses `PROJECT_DIR`) returns expected `missing`.
 
 **Handoff:** Helper is callable from `propose.rs` and later from plan validate (R46-S09).
@@ -177,8 +183,8 @@ RFC §Implementation phases · Phase 0. **Phase 1 must not merge until R46-S05 i
 - If vectis tool is undeclared for a Vectis project, fail loudly at propose time (do not revert to workflow heuristics).
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test propose` (workflow propose tests) green; bootstrap fixtures patch `vectis-stub` → `vectis` and declare the WASI tool (`cargo make vectis-wasm` when the guest artifact is absent).
+- [Specify-cli step assurance](#specify-cli-step-assurance) (including vectis-dispatch integration-test rules).
+- `cargo test propose` (workflow propose tests) green; bootstrap fixtures patch `vectis-stub` → `vectis` and declare the WASI tool.
 - Greenfield fixture: `propose --from` inserts `app-foundation`.
 - Partial shell fixture: inserts `bootstrap-ios` / `bootstrap-android` only.
 
