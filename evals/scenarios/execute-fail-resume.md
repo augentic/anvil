@@ -1,5 +1,5 @@
 ---
-id: execute-build-failure
+id: execute-fail-resume
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -22,7 +22,7 @@ expected-artifacts:
 
 # /spec:execute parks on a build failure, operator fixes, resumes
 
-Scenario ID: `execute-build-failure`
+Scenario ID: `execute-fail-resume`
 
 ## Intent
 

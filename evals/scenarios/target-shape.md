@@ -1,5 +1,5 @@
 ---
-id: target-shape-injection
+id: target-shape
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -24,7 +24,7 @@ expected-artifacts:
 
 # Target shape injection
 
-Scenario ID: `target-shape-injection`
+Scenario ID: `target-shape`
 
 ## Intent
 

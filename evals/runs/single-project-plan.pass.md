@@ -1,11 +1,11 @@
-# Run: `plan-single-project` — **pass**
+# Run: `single-project-plan` — **pass**
 
 ## Context
 
-- **Scenario:** `plan-single-project`
+- **Scenario:** `single-project-plan`
 - **Operator:** Cursor agent (Fable)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from local `../specify-cli` via `make install-cli`)
-- **Sandbox:** `acceptance/.sandbox/plan-single-project/`
+- **Sandbox:** `acceptance/.sandbox/single-project-plan/`
 
 ## Assertions
 
@@ -35,6 +35,6 @@
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/plan-single-project`
-- **Retained at:** `acceptance/.sandbox/plan-single-project/`
+- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/single-project-plan`
+- **Retained at:** `acceptance/.sandbox/single-project-plan/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/inventory-adjustments.md`, `.specify/journal.jsonl`, `.specify/cache/propose-response.json`

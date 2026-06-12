@@ -1,5 +1,5 @@
 ---
-id: cross-source-merge
+id: lead-reconciliation
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -25,7 +25,7 @@ expected-artifacts:
 
 # Cross-source propose-time merge
 
-Scenario ID: `cross-source-merge`
+Scenario ID: `lead-reconciliation`
 
 ## Intent
 

@@ -1,5 +1,5 @@
 ---
-id: cross-repo-contract-flow
+id: contract-lifecycle
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -36,7 +36,7 @@ negative-expectations:
 
 # Cross-Repo Contract Flow
 
-Scenario ID: `cross-repo-contract-flow`
+Scenario ID: `contract-lifecycle`
 
 The full cross-repo happy path: a short feature brief becomes one contract slice and two routed implementation slices, the operator reviews the draft plan, the change executes, and `/spec:finalize` drives push, PR observation, and archive after the project branches are merged externally.
 

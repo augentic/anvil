@@ -1,11 +1,11 @@
-# Run: `pure-intent` — **pass**
+# Run: `intent-only` — **pass**
 
 ## Context
 
-- **Scenario:** `pure-intent`
+- **Scenario:** `intent-only`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/pure-intent/`
+- **Sandbox:** `evals/.sandbox/intent-only/`
 
 ## Assertions
 
@@ -37,6 +37,6 @@ Probe transcript highlights: `plan.yaml` read `lifecycle: pending` when `/spec:p
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/pure-intent`
-- **Retained at:** `evals/.sandbox/pure-intent/`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/intent-only`
+- **Retained at:** `evals/.sandbox/intent-only/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/slices/fix-typo/` (`proposal.md`, `specs/user/spec.md`, `design.md`, `tasks.md`, `model.yaml`, `evidence/intent.yaml`), `.specify/journal.jsonl`

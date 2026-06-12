@@ -20,7 +20,7 @@ Ids are deliberately shared across scenario files; this document is their single
 
 ### `plan-exists`
 
-Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
+Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
 
 **Probe.**
 
@@ -31,7 +31,7 @@ grep '^lifecycle:' plan.yaml    # `pending` at Gate 1; `approved` before execute
 
 ### `plan-validates`
 
-Used by `pure-intent`, `documentation-one-slice`, `documentation-multi-slice`, `code-multi-slice`, `cross-source-merge`, `plan-single-project`, `cross-repo-contract-flow`. `specify plan validate` exits cleanly (no blocking findings) at the point the scenario names — after the draft, and again after any amendment step.
+Used by `intent-only`, `documentation-one-slice`, `documentation-multi-slice`, `typescript-multi-slice`, `lead-reconciliation`, `single-project-plan`, `contract-lifecycle`. `specify plan validate` exits cleanly (no blocking findings) at the point the scenario names — after the draft, and again after any amendment step.
 
 **Probe.**
 
@@ -41,7 +41,7 @@ specify plan validate --format json; echo "exit=$?"    # expect exit=0
 
 ### `execute-loop-all-done`
 
-Used by `documentation-one-slice`, `cross-repo-contract-flow`, `stepthrough-breakout`, `workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`. `/spec:execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
+Used by `documentation-one-slice`, `contract-lifecycle`, `execute-pause-resume`, `workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`. `/spec:execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
 
 **Probe.**
 
@@ -51,7 +51,7 @@ grep -c 'status: done' plan.yaml    # equals the slice count
 specify journal show --filter plan.entry.advanced    # one advance per slice, none after the last merge
 ```
 
-## `pure-intent`
+## `intent-only`
 
 ### `intent-single-lead`
 
@@ -171,7 +171,7 @@ grep -q 'lifecycle: pending' plan.yaml && echo pending
 specify journal show --filter plan.transition.approved    # expect no output (scenario never stamps)
 ```
 
-## `code-multi-slice`
+## `typescript-multi-slice`
 
 ### `multiple-slices-from-code`
 
@@ -199,7 +199,7 @@ Distinct legacy behaviors are not collapsed into one slice. Whether two surveyed
 
 **Judgment flag.** Evidence pointer: the `## Lead inventory` blocks in `discovery.md` set against the proposed `plan.yaml` slices — name the legacy surfaces (routes/handlers) and show each landed in a sensible slice rather than one catch-all.
 
-## `cross-source-merge`
+## `lead-reconciliation`
 
 ### `merged-slice-combines-sources`
 
@@ -239,7 +239,7 @@ ls .specify/slices/<slice>/evidence/    # one <key>.yaml per contributing source
 specify journal show --filter slice.extract.completed | jq -c .payload    # one event per (source, slice)
 ```
 
-## `plan-single-project`
+## `single-project-plan`
 
 ### `slices-match-expected-shape`
 
@@ -258,7 +258,7 @@ test ! -f registry.yaml && echo no-registry
 grep 'project:' plan.yaml | sort -u    # absent, or only the sole project synthesised from project.yaml
 ```
 
-## `cross-repo-contract-flow`
+## `contract-lifecycle`
 
 ### `contract-slice-first`
 
@@ -383,7 +383,7 @@ test ! -f plan.yaml && echo no-active-plan    # precondition holds
 # the captured third invocation exits 0 with the no-active-plan report
 ```
 
-## `target-shape-injection`
+## `target-shape`
 
 ### `spec-reflects-shape-idioms`
 
@@ -403,7 +403,7 @@ The intent-driven and documentation-driven fixtures honour the same `shape`-deri
 
 **Judgment flag.** Evidence pointer: the two fixtures' shape-derived sections side by side, noting structural agreement and any divergence.
 
-## `stepthrough-breakout`
+## `execute-pause-resume`
 
 ### `breakout-state-consistent`
 
@@ -427,7 +427,7 @@ Re-invoking `/spec:execute` resumes from the in-progress entry with no extra fla
 specify journal show --filter plan.entry.advanced | jq -c .payload    # no duplicate advance for the in-progress slice across the cancel/resume window
 ```
 
-## `execute-build-failure`
+## `execute-fail-resume`
 
 ### `build-failure-stop-hint`
 
@@ -465,7 +465,7 @@ specify journal show --filter slice.archive.created | jq -c .payload    # fires 
 specify plan next --format json    # expect {"reason":"drained", ...}
 ```
 
-## `workspace-execute-two-projects`
+## `workspace-two-projects`
 
 ### `per-slice-project-routing`
 
@@ -503,7 +503,7 @@ specify journal show --filter plan.entry.advanced    # advances recorded in the 
 specify plan next --format json    # run after the driver released the lock: expect exit 2, "error":"plan-lock-not-held"
 ```
 
-## `workspace-breakout`
+## `workspace-fail-resume`
 
 ### `breakout-routes-to-slot`
 
@@ -533,7 +533,7 @@ The correct `chdir` into the slot happens without the operator changing director
 
 **Judgment flag.** Evidence pointer: the captured breakout stage output showing the operator stayed at the workspace root while the build reported work in the slot.
 
-## `stale-workspace-recovery`
+## `workspace-stale-recovery`
 
 ### `dirty-slot-detected-at-sync`
 

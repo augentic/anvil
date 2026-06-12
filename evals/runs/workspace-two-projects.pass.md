@@ -1,11 +1,11 @@
-# Run: `workspace-execute-two-projects` — **pass**
+# Run: `workspace-two-projects` — **pass**
 
 ## Context
 
-- **Scenario:** `workspace-execute-two-projects`
+- **Scenario:** `workspace-two-projects`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from sibling `specify-cli` via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/workspace-execute-two-projects/` (workspace root `platform/`, peers `backend/`, `mobile/`)
+- **Sandbox:** `evals/.sandbox/workspace-two-projects/` (workspace root `platform/`, peers `backend/`, `mobile/`)
 
 ## Assertions
 
@@ -37,6 +37,6 @@ Probe transcript highlights: `plan.yaml` at the workspace root with `lifecycle: 
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-execute-two-projects`
-- **Retained at:** `evals/.sandbox/workspace-execute-two-projects/`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-two-projects`
+- **Retained at:** `evals/.sandbox/workspace-two-projects/`
 - **Key paths:** `platform/{plan.yaml,change.md,discovery.md,registry.yaml,.specify/journal.jsonl}`, `platform/.specify/workspace/` (symlink slots), per-project `.specify/archive/` (archived slices incl. `build/report.yaml`)

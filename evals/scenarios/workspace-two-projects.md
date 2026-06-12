@@ -1,5 +1,5 @@
 ---
-id: workspace-execute-two-projects
+id: workspace-two-projects
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -25,7 +25,7 @@ expected-artifacts:
 
 # Workspace /spec:execute across two projects
 
-Scenario ID: `workspace-execute-two-projects`
+Scenario ID: `workspace-two-projects`
 
 ## Intent
 

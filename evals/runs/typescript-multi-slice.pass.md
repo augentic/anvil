@@ -1,11 +1,11 @@
-# Run: `code-multi-slice` — **pass**
+# Run: `typescript-multi-slice` — **pass**
 
 ## Context
 
-- **Scenario:** `code-multi-slice`
+- **Scenario:** `typescript-multi-slice`
 - **Operator:** Cursor agent (Fable 5)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `acceptance/.sandbox/code-multi-slice/`
+- **Sandbox:** `acceptance/.sandbox/typescript-multi-slice/`
 
 ## Assertions
 
@@ -36,6 +36,6 @@
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/code-multi-slice`
-- **Retained at:** `acceptance/.sandbox/code-multi-slice/`
+- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/typescript-multi-slice`
+- **Retained at:** `acceptance/.sandbox/typescript-multi-slice/`
 - **Key paths:** `plan.yaml`, `discovery.md`, `change.md`, `vendor/legacy-monolith/`, `.specify/journal.jsonl`, `.specify/cache/extractions/typescript/scratch/survey/{staged.json,leads.md}`

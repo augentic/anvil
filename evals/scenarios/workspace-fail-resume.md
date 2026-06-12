@@ -1,5 +1,5 @@
 ---
-id: workspace-breakout
+id: workspace-fail-resume
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -24,7 +24,7 @@ expected-artifacts:
 
 # Workspace breakout after build failure in a slot
 
-Scenario ID: `workspace-breakout`
+Scenario ID: `workspace-fail-resume`
 
 ## Intent
 

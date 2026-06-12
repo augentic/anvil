@@ -1,11 +1,11 @@
 # RFC-45: Slot Adapter Provisioning via Workspace Sync
 
-> Status: Accepted · Implemented and archived 2026-06-12 — outcomes recorded in [`specify-cli` `DECISIONS.md` §"Slot adapter provisioning via workspace sync (RFC-45)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slot-adapter-provisioning-via-workspace-sync-rfc-45); the green run record is [`evals/runs/workspace-execute-two-projects.pass.md`](../../evals/runs/workspace-execute-two-projects.pass.md) · Serves: the eval catalog's [`workspace-execute-two-projects`](../../evals/scenarios/workspace-execute-two-projects.md) release blocker · Complements: [RFC-44](./rfc-44-architecture-seams.md) R2 (CLI-owned control flow; the `--plan-dir` seam as worked precedent)
+> Status: Accepted · Implemented and archived 2026-06-12 — outcomes recorded in [`specify-cli` `DECISIONS.md` §"Slot adapter provisioning via workspace sync (RFC-45)"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#slot-adapter-provisioning-via-workspace-sync-rfc-45); the green run record is [`evals/runs/workspace-two-projects.pass.md`](../../evals/runs/workspace-two-projects.pass.md) · Serves: the eval catalog's [`workspace-two-projects`](../../evals/scenarios/workspace-two-projects.md) release blocker · Complements: [RFC-44](./rfc-44-architecture-seams.md) R2 (CLI-owned control flow; the `--plan-dir` seam as worked precedent)
 > Provenance: 2026-06-11, revised the same day. The first draft of this RFC ratified a resolve-time plan-root fallback written mid-run; review flipped the decision to sync-time provisioning. The interim fallback was implemented and then removed in specify-cli `acceptance` (added `0e55a633`, removed `204e3867`) — the loader contract was never amended. Revised again the same day at implementation: the two open questions resolved into the Decision (per-name GC, cross-axis skip-at-mirror-time, local-slot inclusion) and R1–R3 landed.
 
 ## Abstract
 
-Workspace routing runs phase work inside materialised slots that, by design, carry no plan and no adapters — the workspace owns `plan.yaml.sources` and vendors the adapters those bindings name. The live `workspace-execute-two-projects` run hit this on **both axes**: `source extract` failed with `adapter-not-found` in the slot, and the vectis target tool was invisible until its `tools.yaml` was hand-staged into the slot's manifest cache. This RFC keeps the adapter loader exactly as recorded — resolution is project-local only — and makes `specify workspace sync` provision each slot's manifest cache with the workspace's adapter set (both axes, including tool sidecars). The hand-staging trick that unblocked the live run becomes the mechanism, owned by the verb that already owns slot freshness.
+Workspace routing runs phase work inside materialised slots that, by design, carry no plan and no adapters — the workspace owns `plan.yaml.sources` and vendors the adapters those bindings name. The live `workspace-two-projects` run hit this on **both axes**: `source extract` failed with `adapter-not-found` in the slot, and the vectis target tool was invisible until its `tools.yaml` was hand-staged into the slot's manifest cache. This RFC keeps the adapter loader exactly as recorded — resolution is project-local only — and makes `specify workspace sync` provision each slot's manifest cache with the workspace's adapter set (both axes, including tool sidecars). The hand-staging trick that unblocked the live run becomes the mechanism, owned by the verb that already owns slot freshness.
 
 ## Motivation — findings
 
@@ -33,7 +33,7 @@ Three postures, resolved at implementation review (formerly the open questions):
 
 **R3 — docs, one additive line each.** Sync's responsibility list in `docs/standards/workflow.md` and the workspace DECISIONS entry gain the mirror; [workspace-routing.md](../../plugins/spec/skills/execute/references/workspace-routing.md) notes that adapters arrive in the slot via sync. The loader prose ("resolution is project-local only", "`--plan-dir` … adapter resolution is untouched") stays true verbatim and needs no edits.
 
-**R4 — close the live loop.** Resume the parked `workspace-execute-two-projects` sandbox; with R1 landed, the resumed run needs no manual cache-stage — sync provisions the slot. The run record cites the slot-resolved adapter root as live evidence; on a green run, flip the catalog row and the RM-05 rollup.
+**R4 — close the live loop.** Resume the parked `workspace-two-projects` sandbox; with R1 landed, the resumed run needs no manual cache-stage — sync provisions the slot. The run record cites the slot-resolved adapter root as live evidence; on a green run, flip the catalog row and the RM-05 rollup.
 
 ## Wrap-up actions
 
@@ -47,10 +47,10 @@ The full action list this RFC inherits from the 2026-06-11 session, for one-pass
 | 4 | Land this RFC (rename from `rfc-45-plan-root-adapter-fallback.md`; the first draft's decision is superseded) | specify | this change |
 | 5 | R1 sync mirror + R2 tests + R3 doc lines | specify-cli (+ specify docs) | this change |
 | 6 | Verify the `main`-side vectis work covers the four live-run fixes (scaffold `.gitignore` merge; `verify` reading `.specify/project.yaml`; composition skip for core-only projects; tool clippy nits) — re-apply atop `main`'s vectis where not | specify-cli | next |
-| 7 | Resume the parked run per R4; file `evals/runs/workspace-execute-two-projects.<result>.md`; flip catalog + RM-05 on green | specify | next |
+| 7 | Resume the parked run per R4; file `evals/runs/workspace-two-projects.<result>.md`; flip catalog + RM-05 on green | specify | next |
 | 8 | Reconcile `acceptance` with `main` (diverged at `ffaa0aa3`; the vectis back-out makes that subtree conflict-free) before release | both | next |
 | 9 | `plan-lock.md`: document zsh's `zsystem flock` as the stock-macOS fallback ahead of the Python `fcntl` snippet | specify | next |
-| 10 | Run-record hygiene: `execute-build-failure.pass.md` "Retained at" pointer is stale (sandbox pruned); note pruning or restore the snapshot | specify | minor |
+| 10 | Run-record hygiene: `execute-fail-resume.pass.md` "Retained at" pointer is stale (sandbox pruned); note pruning or restore the snapshot | specify | minor |
 
 ## Non-Goals
 
@@ -61,7 +61,7 @@ The full action list this RFC inherits from the 2026-06-11 session, for one-pass
 
 ## References
 
-- [`workspace-execute-two-projects`](../../evals/scenarios/workspace-execute-two-projects.md) — the release-blocker scenario whose resumption is R4's vehicle; the eval catalog and run-record contract live under [evals/](../../evals/README.md).
+- [`workspace-two-projects`](../../evals/scenarios/workspace-two-projects.md) — the release-blocker scenario whose resumption is R4's vehicle; the eval catalog and run-record contract live under [evals/](../../evals/README.md).
 - [workspace-routing.md](../../plugins/spec/skills/execute/references/workspace-routing.md) — the slot choreography that makes slots adapter-less by design and runs sync before each slice.
 - [specify-cli `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — §"Adapter loader axis routing" (the contract this RFC preserves) and §"Plan-root override: global `--plan-dir`" (the plan-file seam this RFC leaves untouched).
 - [`tests/source/extract.rs`](https://github.com/augentic/specify-cli/blob/main/tests/source/extract.rs) — `prepare_resolves_via_plan_dir`, the surviving `--plan-dir` proof R2's slot-extract test sits beside.

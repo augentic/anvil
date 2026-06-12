@@ -1,5 +1,5 @@
 ---
-id: pure-intent
+id: intent-only
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -25,7 +25,7 @@ negative-expectations:
 
 # Pure intent, one slice
 
-Scenario ID: `pure-intent`
+Scenario ID: `intent-only`
 
 > **Release blocker.** Single-release collapse means N=1 `/spec:plan` ergonomics surface to every operator at once. If this fails, halt the whole sweep, triage, and resume from here once green.
 

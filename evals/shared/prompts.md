@@ -8,9 +8,9 @@ The three human seams the prompts always hand back to the operator:
 
 1. **Real forge merges** between the two `/spec:finalize` invocations — never faked.
 2. **Ergonomics / judgment assertions** the agent cannot deterministically verify — marked `needs-human` for operator confirmation.
-3. **`deferred` and `pure-intent` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `pure-intent` is the release blocker.
+3. **`deferred` and `intent-only` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `intent-only` is the release blocker.
 
-Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `pure-intent`).
+Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `intent-only`).
 
 ## Prompt A — setup
 
@@ -101,7 +101,7 @@ Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
   in the catalog.
 
 Halt and judgment rules:
-- pure-intent is the release blocker: on any fail, record the failure, STOP, and
+- intent-only is the release blocker: on any fail, record the failure, STOP, and
   run no other scenario.
 - For an ergonomics/judgment assertion you cannot deterministically verify, mark
   it `needs-human` and surface it for operator confirmation instead of guessing.

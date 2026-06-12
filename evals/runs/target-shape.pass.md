@@ -1,13 +1,13 @@
-# Run: `target-shape-injection` — **pass**
+# Run: `target-shape` — **pass**
 
 ## Context
 
-- **Scenario:** `target-shape-injection`
+- **Scenario:** `target-shape`
 - **Operator:** Cursor agent (Composer)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:**
-  - `acceptance/.sandbox/target-shape-injection-intent/`
-  - `acceptance/.sandbox/target-shape-injection-doc/`
+  - `acceptance/.sandbox/target-shape-intent/`
+  - `acceptance/.sandbox/target-shape-doc/`
 
 ## Assertions
 
@@ -33,6 +33,6 @@
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/target-shape-injection-intent` (and doc twin)
-- **Retained at:** `acceptance/.sandbox/target-shape-injection-{intent,doc}/`
+- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/target-shape-intent` (and doc twin)
+- **Retained at:** `acceptance/.sandbox/target-shape-{intent,doc}/`
 - **Key paths:** `.specify/slices/greeting/` (`design.md`, `specs/greeting/spec.md`, `evidence/{intent,brief}.yaml`)

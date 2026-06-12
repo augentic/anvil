@@ -1,5 +1,5 @@
 ---
-id: code-multi-slice
+id: typescript-multi-slice
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -24,7 +24,7 @@ negative-expectations:
 
 # Code, multi-slice
 
-Scenario ID: `code-multi-slice`
+Scenario ID: `typescript-multi-slice`
 
 ## Intent
 

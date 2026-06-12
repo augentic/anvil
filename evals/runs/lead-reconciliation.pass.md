@@ -1,11 +1,11 @@
-# Run: `cross-source-merge` — **pass**
+# Run: `lead-reconciliation` — **pass**
 
 ## Context
 
-- **Scenario:** `cross-source-merge`
+- **Scenario:** `lead-reconciliation`
 - **Operator:** Cursor agent (Fable)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from local `../specify-cli` via `make install-cli`)
-- **Sandbox:** `acceptance/.sandbox/cross-source-merge/`
+- **Sandbox:** `acceptance/.sandbox/lead-reconciliation/`
 
 ## Assertions
 
@@ -39,6 +39,6 @@
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/cross-source-merge`
-- **Retained at:** `acceptance/.sandbox/cross-source-merge/`
+- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/lead-reconciliation`
+- **Retained at:** `acceptance/.sandbox/lead-reconciliation/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/journal.jsonl`, `.specify/slices/account-lockout/{model.yaml,evidence/,specs/account-lockout/spec.md}`

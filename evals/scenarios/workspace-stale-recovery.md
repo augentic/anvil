@@ -1,5 +1,5 @@
 ---
-id: stale-workspace-recovery
+id: workspace-stale-recovery
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -24,7 +24,7 @@ expected-artifacts:
 
 # Stale-workspace recovery
 
-Scenario ID: `stale-workspace-recovery`
+Scenario ID: `workspace-stale-recovery`
 
 ## Intent
 

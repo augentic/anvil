@@ -1,11 +1,11 @@
-# Run: `execute-build-failure` — **pass**
+# Run: `execute-fail-resume` — **pass**
 
 ## Context
 
-- **Scenario:** `execute-build-failure`
+- **Scenario:** `execute-fail-resume`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook; operator seams driven at the operator's standing direction)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/execute-build-failure/`
+- **Sandbox:** `evals/.sandbox/execute-fail-resume/`
 
 ## Assertions
 
@@ -22,7 +22,7 @@ Probe transcript highlights: at the park, `slice.build.failed` carried `{"slice-
 
 ## Deviations
 
-- `specify init omnia@v1` substituted with the documented offline fallback `specify init ../../../adapters/targets/omnia` (local adapter path), as in the `pure-intent` run; `intent` source adapter symlinked into the sandbox.
+- `specify init omnia@v1` substituted with the documented offline fallback `specify init ../../../adapters/targets/omnia` (local adapter path), as in the `intent-only` run; `intent` source adapter symlinked into the sandbox.
 - Gate 1 stamped with `--actor agent` (agent stamping at the operator's standing direction; the journal payload records who stamped).
 - The engineered first-attempt failure rides the scenario's "task that needs an operator-supplied fix": spec REQ-003 pins the enforced quota to an operations-supplied fixture (`crates/rate_limit/ops/quota.txt`, tasks.md task 1.2), so the verify-repair loop honestly exhausts its 3-iteration budget — fmt/clippy and a test-writer type-annotation repair land in iterations 1–2; the missing operator fixture is the sole residue (the build may not invent the approved value per the artifact authority hierarchy). The operator fix supplied the fixture; resume went green.
 - Guest scaffolding kept lean for the sandbox: no `.github/` workflows, `Makefile.toml`, `deny.toml`, `supply-chain/`, or `examples/<guest>.rs` native runtime (and hence no native-only `wasmtime` dev-deps). Workspace root, config templates, wasm32-gated `src/lib.rs` guest, and `examples/.env.example` were generated per the brief.
@@ -37,6 +37,6 @@ Probe transcript highlights: at the park, `slice.build.failed` carried `{"slice-
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-build-failure`
-- **Retained at:** `evals/.sandbox/execute-build-failure/` — since pruned (2026-06-12); re-create from the scenario setup to reproduce
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-fail-resume`
+- **Retained at:** `evals/.sandbox/execute-fail-resume/` — since pruned (2026-06-12); re-create from the scenario setup to reproduce
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/specs/rate-limit/spec.md` (merged baseline), `.specify/archive/2026-06-11-rate-limit/` (archived slice incl. `build/report.yaml` history and `.build-log`), `crates/rate_limit/` (crate, tests, `ops/quota.txt`, `REVIEW.md`), `src/lib.rs` (guest), `.specify/journal.jsonl`

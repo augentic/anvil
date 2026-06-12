@@ -1,5 +1,5 @@
 ---
-id: stepthrough-breakout
+id: execute-pause-resume
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -22,7 +22,7 @@ expected-artifacts:
 
 # Step-through breakout mid-execute
 
-Scenario ID: `stepthrough-breakout`
+Scenario ID: `execute-pause-resume`
 
 ## Intent
 
