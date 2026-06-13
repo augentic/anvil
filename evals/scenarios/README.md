@@ -23,18 +23,18 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | TypeScript, multi-slice | [`typescript-multi-slice`](typescript-multi-slice.md) | passed | full |
 | Cross-source propose-time merge | [`lead-reconciliation`](lead-reconciliation.md) | passed | full |
 | Single-project plan generation | [`single-project-plan`](single-project-plan.md) | passed | full |
-| Cross-repo contract flow (full lifecycle) | [`contract-lifecycle`](contract-lifecycle.md) | parked | full |
+| Cross-repo contract flow (full lifecycle) | [`contract-lifecycle`](contract-lifecycle.md) | pending | full |
 
 ### Failure and breakout paths
 
 | Scenario | File | Status | Gate |
 | --- | --- | --- | --- |
 | Target `shape` injection | [`target-shape`](target-shape.md) | passed | full |
-| Step-through breakout mid-execute | [`execute-pause-resume`](execute-pause-resume.md) | parked | full |
+| Step-through breakout mid-execute | [`execute-pause-resume`](execute-pause-resume.md) | passed | full |
 | `/spec:execute` parks on a build failure | [`execute-fail-resume`](execute-fail-resume.md) | passed | release-blocker |
 | Workspace `/spec:execute` across two projects | [`workspace-two-projects`](workspace-two-projects.md) | passed | release-blocker |
-| Workspace breakout after build failure | [`workspace-fail-resume`](workspace-fail-resume.md) | parked | full |
-| Stale-workspace recovery | [`workspace-stale-recovery`](workspace-stale-recovery.md) | parked | full |
+| Workspace breakout after build failure | [`workspace-fail-resume`](workspace-fail-resume.md) | passed | full |
+| Stale-workspace recovery | [`workspace-stale-recovery`](workspace-stale-recovery.md) | passed | full |
 
 13 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in [`augentic/specify-cli`](https://github.com/augentic/specify-cli), run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the CLI's plan-lock probe made it deterministic (`tests/workflow/plan_lock.rs`).
 

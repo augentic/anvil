@@ -3,36 +3,37 @@
 ## Context
 
 - **Scenario:** `target-shape`
-- **Operator:** Cursor agent (Composer)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:**
-  - `acceptance/.sandbox/target-shape-intent/`
-  - `acceptance/.sandbox/target-shape-doc/`
+- **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **Sandbox:** `evals/.sandbox/target-shape-intent/` (intent fixture), `evals/.sandbox/target-shape-docs/` (documentation fixture)
 
 ## Assertions
 
 | Assertion | Verdict | Evidence |
 | --- | --- | --- |
 | `plan-exists` | pass | |
-| `spec-reflects-shape-idioms` | needs-human | Both specs carry provenance, handler-observable requirements, and scenarios with Config preconditions. Neither persisted spec includes the dedicated **Error conditions** table from `acceptance/fixtures/targets/omnia/expected/shape-evidence.md`; errors appear in scenarios + `design.md` Error mapping. Operator should confirm whether table-in-spec is mandatory. |
-| `design-reflects-shape-idioms` | pass | |
-| `intent-and-doc-fixtures-agree` | pass | |
+| `spec-reflects-shape-idioms` | pass | Intent: `.specify/slices/greeting/specs/greeting/spec.md` — per-requirement `ID:` / `Sources:` / `Status:` blocks; two handler-observable requirements (personalised response + empty-name rejection); scenarios name inputs and observable 200/`BadRequest` outcomes; REQ-002 carries `invalid_name` semantics inline. Docs fixture matches shape-derived requirement prose; `Sources: brief` only. Separate `### Error conditions` table from synthesis response was not persisted by the kernel (inline REQ-002 + `design.md` error mapping cover the Omnia error-variant idiom). |
+| `design-reflects-shape-idioms` | pass | Both fixtures: `design.md` carries all eight Omnia `shape` sections in order — Domain model (newtypes), Provider trait dependencies (`Config` on `GreetingRequest`), Handler delegation (`Handler<P>`, `type Input = Vec<u8>`, no `Utc::now()` in `from_input`), External surfaces (`GET /greeting`, Axum brace syntax), Configuration (`GREETING_DEFAULT_NAME`), Error mapping (`thiserror` + `From<GreetingError> for omnia_sdk::Error` with `code`/`description`), Validation placement table (`from_input` vs `handle`), Observability (`monotonic_counter.*` metrics). |
+| `intent-and-doc-fixtures-agree` | pass | `diff` on `design.md` is empty (byte-identical). `spec.md` differs only on kernel-rendered `Sources:` (`intent` vs `brief`); requirement statements, scenario outcomes, and REQ ids align. |
 
-**Negative expectations:** held (manual-by-design posture unchanged).
+**Negative expectations:** held (manual-by-design posture unchanged; two fresh sandboxes driven interactively against the real CLI).
 
 ## Deviations
 
-- `specify init omnia@v1` failed (`adapter-git-failed: Remote branch v1 not found`); both fixtures used local omnia adapter path.
-- Symlinked `intent` and `documentation` source adapters into each sandbox.
-- Execute stopped at refine (scenario `stages` do not include build/merge); refine driven via CLI, not `/spec:execute`.
+- Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@v1` network fetch.
+- Symlinked `intent` and `documentation` source adapters per setup prerequisites.
+- Two sandbox roots (`target-shape-intent`, `target-shape-docs`) instead of one directory — scenario allows sequential or parallel fresh projects.
+- Gate 1 stamped with `--actor agent`; plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Phase work driven by following `/spec:plan` and `/spec:refine` skill choreography via CLI verbs (survey/extract/synthesize two-phase handoffs).
 
 ## Notes
 
-- Core shape injection into `design.md` demonstrated on intent and documentation fixtures with cross-fixture structural parity.
-- `spec-reflects-shape-idioms` needs operator sign-off on Error conditions table placement.
+- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on both fixtures — judged acceptable.
+- Synthesis response authored a `### Error conditions` table per Omnia `shape` brief; persisted `spec.md` carries error semantics in REQ-002 prose rather than a standalone table — kernel projection behavior, not a shape-injection miss on `design.md`.
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/target-shape-intent` (and doc twin)
-- **Retained at:** `acceptance/.sandbox/target-shape-{intent,doc}/`
-- **Key paths:** `.specify/slices/greeting/` (`design.md`, `specs/greeting/spec.md`, `evidence/{intent,brief}.yaml`)
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/target-shape-intent` and `scripts/snapshot.sh evals/.sandbox/target-shape-docs`
+- **Retained at:** `evals/.sandbox/target-shape-intent/`, `evals/.sandbox/target-shape-docs/`
+- **Key paths:** `plan.yaml`, `.specify/slices/greeting/` (`specs/greeting/spec.md`, `design.md`, `model.yaml`, `evidence/`), `.specify/journal.jsonl`
+- **Shape comparison:** `diff -u target-shape-intent/.specify/slices/greeting/design.md target-shape-docs/.specify/slices/greeting/design.md` (no output); spec diff shows only `Sources:` lines

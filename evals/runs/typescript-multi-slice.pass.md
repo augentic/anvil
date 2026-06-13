@@ -3,39 +3,52 @@
 ## Context
 
 - **Scenario:** `typescript-multi-slice`
-- **Operator:** Cursor agent (Fable 5)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `acceptance/.sandbox/typescript-multi-slice/`
+- **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **Sandbox:** `evals/.sandbox/typescript-multi-slice/`
 
 ## Assertions
 
-| Assertion | Verdict |
-| --- | --- |
-| `plan-exists` | pass |
-| `plan-validates` | pass |
-| `multiple-slices-from-code` | pass |
-| `sources-legacy-only` | pass |
-| `no-under-slicing` | pass |
+| Assertion | Verdict | Evidence |
+| --- | --- | --- |
+| `plan-exists` | pass | |
+| `plan-validates` | pass | |
+| `multiple-slices-from-code` | pass | |
+| `sources-legacy-only` | pass | |
+| `no-under-slicing` | pass | |
 
-**Negative expectations:** held (manual-by-design posture unchanged).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `specify plan validate --format json` exits 0 with zero findings; `plan.reconcile.completed` payload reads `"slice-count":5`; `grep 'source: ' plan.yaml | sort -u` yields only `legacy`; zero `plan.transition.approved` events (Gate 1 not stamped).
+
+**Judgment (`no-under-slicing`):** Five surveyed Express surfaces in `discovery.md` — `POST /users`, `GET /users/:id`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password` — each landed in its own slice (`user-registration`, `user-lookup`, `auth-login`, `auth-refresh`, `password-reset`) rather than a single catch-all migration slice.
+
+**Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- Used local `specify init <framework>/adapters/targets/omnia` (`omnia@v1` remote fetch failed: `Remote branch v1 not found in upstream origin` — same as the `documentation-multi-slice` run).
-- Symlinked `adapters/sources/typescript` into the project (source adapters are not vendored by `specify init`).
-- Authored the legacy TypeScript service in-sandbox at `vendor/legacy-monolith/` (Express + BullMQ + node-cron, 18 files, ~1244 production LOC). The checked-in `acceptance/fixtures/sources/typescript` fixture is single-lead by design (below the survey brief's 1000-LOC Decision-2 threshold), so it cannot exercise multi-slice decomposition. Binding command: `specify plan create legacy-port --source legacy=typescript:./vendor/legacy-monolith`.
-- Drove the plan lifecycle via CLI equivalents of `/spec:plan` (`plan create`, `source survey --phase prepare/finalize` with agent-executed survey brief, `plan propose --dry-run` / `--from --reconcile-platforms`) rather than the slash command in Cursor chat.
+- Offline init via `specify init $FRAMEWORK/adapters/targets/omnia` (local adapter path) instead of `omnia@v1` network fetch.
+- Symlinked `adapters/sources/typescript` from the framework checkout per setup prerequisites.
+- Copied `evals/fixtures/sources/typescript/source` to `./legacy-monolith`, then extended it with four additional Express routes and a shared policy-engine module so union production LOC exceeds the survey brief's 1000-line threshold and per-surface leads are emitted (the bare fixture is a single-route service under the threshold).
+- Binding command: `specify plan create legacy-port --source legacy=typescript:./legacy-monolith` (source key `legacy`, path `./legacy-monolith`).
+- Phase work driven by following the `/spec:plan` skill body via CLI verbs (`source survey`, `plan propose --dry-run` / `--from`) rather than invoking the Cursor slash command directly.
+- Stopped at Gate 1 without stamping `approved`, per scenario invocation.
 
 ## Notes
 
-- Survey enumerated 13 surfaces (10 Express `http-route`, 1 BullMQ `message-pub`, 1 `message-sub`, 1 node-cron `scheduled-job`); union LOC 1244 ≥ 1000 → surface leads, clustered per the ≥ 50%-touches rule into 5 leads: `user-accounts`, `product-catalog`, `order-management`, `order-notifications`, `nightly-sales-report` (staged walk retained at `.specify/cache/extractions/typescript/scratch/survey/staged.json`).
-- Propose mapped the 5 leads 1:1 into 5 slices with `depends-on` ordering (`order-management` → accounts + catalog; notifications and the nightly report downstream of orders). No enumerate/repair loop was needed — distinct behaviors were not collapsed.
-- Every slice's provenance is the sole `legacy` source key; `specify plan validate --format json` exited 0 with zero findings; plan stayed `lifecycle: pending`; Gate-1 command: `specify plan transition legacy-port approved` (not stamped — scenario stops at Gate 1).
-- Journal taxonomy as expected: `source.execution.agent` → `source.survey.cache-miss` (`adapter-opt-out`) → `plan.reconcile.completed` (slice-count 5).
-- Doc/CLI drift observed (not an assertion failure): the plan skill states "The CLI writes `change.md` and `plan.yaml` atomically", but `specify plan create` 0.2.0 scaffolds only `plan.yaml` (its help says as much); the agent authored `change.md` for the Gate-1 review prose.
+- `auth-refresh` carries `depends-on: [auth-login]` because refresh semantics require login-issued sessions; the other four slices remain independent.
+- The fixture README still documents the degenerate single-lead shape for extract fixtures; the eval run intentionally extends the copied tree for multi-surface survey behavior.
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/typescript-multi-slice`
-- **Retained at:** `acceptance/.sandbox/typescript-multi-slice/`
-- **Key paths:** `plan.yaml`, `discovery.md`, `change.md`, `vendor/legacy-monolith/`, `.specify/journal.jsonl`, `.specify/cache/extractions/typescript/scratch/survey/{staged.json,leads.md}`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/typescript-multi-slice`
+- **Retained at:** `evals/.sandbox/typescript-multi-slice/`
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `legacy-monolith/src/server.ts`, `.specify/journal.jsonl`
+
+## Plan structure
+
+| Slice | Project | Sources | Status |
+| --- | --- | --- | --- |
+| user-registration | project | legacy / user-registration | pending |
+| user-lookup | project | legacy / user-lookup | pending |
+| auth-login | project | legacy / auth-login | pending |
+| auth-refresh | project | legacy / auth-refresh | pending |
+| password-reset | project | legacy / password-reset | pending |

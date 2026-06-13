@@ -4,8 +4,8 @@
 
 - **Scenario:** `workspace-two-projects`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from sibling `specify-cli` via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/workspace-two-projects/` (workspace root `platform/`, peers `backend/`, `mobile/`)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **Sandbox:** `evals/.sandbox/workspace-two-projects/` (`platform/`, `backend/`, `mobile/`)
 
 ## Assertions
 
@@ -17,26 +17,29 @@
 | `plan-lock-at-workspace` | pass | |
 | `execute-loop-all-done` | pass | |
 
-Probe transcript highlights: `plan.yaml` at the workspace root with `lifecycle: approved` before execute (Gate 1 stamped `--actor agent`). Four slices, each `status: done` (4/4), `specify plan status` reporting `drained` with `resume: /spec:finalize oauth-login`, and exactly four `plan.entry.advanced` events in the workspace journal — none in any slot. Both slots materialised at `.specify/workspace/{backend,mobile}`; `workspace.sync.completed` payloads list both projects. Per-slice routing: `bootstrap-core` + `mobile-oauth-signin` merge/residue commits land in the mobile slot, `oauth-contract` + `backend-oauth-exchange` in the backend slot. No slot grew a `plan.yaml`; after the driver released the lock, `specify plan next` refused with `plan-lock-not-held` (exit 2).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` before execute; `specify plan status --format json` reports `"action":"drained"` with `"counts":{"done":4}`; `grep -c 'status: done' plan.yaml` returns 4; `grep 'project:' plan.yaml` names `backend` for `oauth-contract`/`oauth-backend` and `mobile` for `app-foundation`/`oauth-mobile`; `git -C .specify/workspace/backend log --oneline specify/oauth-login` shows residue commits for `oauth-contract` and `oauth-backend`; `git -C .specify/workspace/mobile log --oneline specify/oauth-login` shows residue commits for `app-foundation` and `oauth-mobile`; `test -d .specify/workspace/{backend,mobile}` succeeds; first `workspace.sync.completed` payload lists `"projects":["backend","mobile"]`; `plan.yaml` lives at workspace root with no slot `plan.yaml`; unlocked `specify plan next` returns `"error":"plan-lock-not-held"` (exit 2).
 
-**Negative expectations:** held (manual-by-design posture unchanged; live interactive drive against the real CLI and real git workspaces).
+**Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- `omnia@v1` / `vectis@v1` GitHub shorthand failed (`Remote branch v1 not found`); setup used local adapter paths from the framework checkout instead.
-- `mobile` initialised with `--platforms core` only (host lacks iOS/Android toolchains); platform reconciliation inserted `bootstrap-core` instead of shell scaffolds.
-- `backend-oauth-exchange` merge archived the slice but left the plan entry `in-progress`; recovered with `specify plan transition backend-oauth-exchange done` after merge had already succeeded.
-- `wasm32-wasip2` release build hit `omnia-sdk`/toolchain conflicts; native `cargo test` passed for backend crates.
-- `mobile-oauth-signin` core-only build skipped `composition.yaml`; finalize emitted non-blocking `composition-empty-for-ui-slice` warning.
-- Plan lock held via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Used offline init with local adapter paths (`specify init <framework>/adapters/targets/{omnia,vectis}`) per documented offline fallback; `omnia@v1` / `vectis@v1` shorthand was not used.
+- Symlinked the `documentation` source adapter into the workspace (`adapters/sources/documentation`) per setup prerequisite.
+- Initialized git repos in `backend/` and `mobile/` with `file://` bare remotes (`backend-origin.git`, `mobile-origin.git`) so `specify workspace prepare` could resolve `origin/HEAD` — required after sandbox init, not spelled out in `shared/setup.md`.
+- Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
+- Execute driven by agent following `/spec:execute` routing (workspace sync/prepare, `SPECIFY_PLAN_DIR`, refine → build → merge per slice) with a local `_drive.zsh` helper for omnia/vectis build stubs; finalize not run (execute-only per scenario stages).
+- Stale `platform/.specify/plan.lock` from an interrupted driver removed before the completing pass (`rm -f .specify/plan.lock`).
+- Backend workspace `Cargo.toml` lists both `crates/oauth_contract` and `crates/oauth_backend` as members; omnia eval test harness uses `HeaderMap<String>::with_capacity(0)` to satisfy `omnia-sdk 0.33` `Context` typing.
+- First `oauth-contract` residue commit accidentally tracked `target/`; follow-up commit removed it from git and added `/target/` to `.gitignore`.
 
 ## Notes
 
-- Scenario exercises workspace `/spec:execute` only — no `/spec:finalize` invocation in this run.
-- RFC-45 slot adapter provisioning exercised via `workspace sync` mirror into slot manifest caches.
+- `specify plan next --format json` after drain (lock released) returns `plan-lock-not-held` (exit 2) rather than a drained payload — `specify plan status` is the authoritative drained signal post-execute; consistent with `plan-lock-at-workspace`.
+- Journal `plan.entry.advanced` shows two events (`app-foundation`, `oauth-mobile`) because `oauth-contract` and `oauth-backend` were already `in-progress` from an earlier partial drive before the completing pass; all four entries reached `done` and the scheduler reports drained.
+- `cargo test` in `backend/` passes for `oauth_backend` integration test (`handler_works`).
 
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-two-projects`
 - **Retained at:** `evals/.sandbox/workspace-two-projects/`
-- **Key paths:** `platform/{plan.yaml,change.md,discovery.md,registry.yaml,.specify/journal.jsonl}`, `platform/.specify/workspace/` (symlink slots), per-project `.specify/archive/` (archived slices incl. `build/report.yaml`)
+- **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/registry.yaml`, `platform/.specify/workspace/{backend,mobile}`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/composition.yaml`

@@ -3,42 +3,50 @@
 ## Context
 
 - **Scenario:** `lead-reconciliation`
-- **Operator:** Cursor agent (Fable)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from local `../specify-cli` via `make install-cli`)
-- **Sandbox:** `acceptance/.sandbox/lead-reconciliation/`
+- **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **Sandbox:** `evals/.sandbox/lead-reconciliation/`
 
 ## Assertions
 
-| Assertion | Verdict |
-| --- | --- |
-| `plan-exists` | pass |
-| `plan-validates` | pass |
-| `merged-slice-combines-sources` | pass |
-| `tentative-merge-surfaced` | pass |
-| `amend-overrides-merge` | pass |
-| `extract-runs-per-contributing-source` | pass |
+| Assertion | Verdict | Evidence |
+| --- | --- | --- |
+| `plan-exists` | pass | |
+| `plan-validates` | pass | |
+| `merged-slice-combines-sources` | pass | |
+| `tentative-merge-surfaced` | pass | |
+| `amend-overrides-merge` | pass | |
+| `extract-runs-per-contributing-source` | pass | |
 
-**Negative expectations:** held (manual-by-design posture unchanged).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: pending` at Gate 1 (later stamped `approved` for refine); `specify plan validate --format json` exits 0 before and after amend; `plan.reconcile.completed` payload reads `"slice-count":1` with slice `account-lockout` carrying `sources: [product-notes/password-reset, legacy-monolith/account-pwd-reset]`; `change.md` lists the cross-name pairing under `## Tentative merges`; two `slice.extract.completed` journal events name `(account-lockout, product-notes)` and `(account-lockout, legacy-monolith)`; evidence dir holds `product-notes.yaml` and `legacy-monolith.yaml`; `slice.transition.refined` fired for `account-lockout`.
+
+**Judgment (`tentative-merge-surfaced`):** `change.md` documents the `password-reset` ↔ `account-pwd-reset` pairing under `## Tentative merges` because the leads share intent but differ in slug and synopsis (30-minute docs expiry vs 24-hour legacy TTL constant).
+
+**Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- Used local `specify init <framework>/adapters/targets/omnia` (`omnia@v1` remote fetch failed: `Remote branch v1 not found in upstream origin` — same failure as prior runs).
-- Symlinked `adapters/sources/{documentation,typescript}` (not vendored by `specify init`).
-- Drove the plan and refine lifecycles via the CLI equivalents of `/spec:plan` / `/spec:refine` (`plan create`, `source survey`, `plan propose --from`, `slice create`, `source extract`, `slice synthesize`, `slice validate`, `slice transition`) rather than the slash commands in Cursor chat.
-- `legacy-auth` extract was finalized twice: the first Evidence omitted optional claim `id`s, which the synthesis model claims require to cite `(source, id, kind)`; re-ran prepare/finalize with ids added. Both finalizes appear in the journal.
+- Offline init via `specify init $FRAMEWORK/adapters/targets/omnia` (local adapter path) instead of `omnia@v1` network fetch.
+- Symlinked `adapters/sources/documentation` and `adapters/sources/typescript` from the framework checkout per setup prerequisites.
+- Docs binding uses only `password-reset.md` under `./docs` (copied from `evals/fixtures/sources/documentation/input/password-reset.md`); source key `product-notes`.
+- TypeScript binding copies `evals/fixtures/sources/typescript/source` to `./legacy-monolith` and adds `POST /auth/reset-password` handler at `src/auth/reset-password.ts` describing the same lockout/reset behaviour; survey lead `account-pwd-reset`.
+- Phase work driven by following the `/spec:plan` and `/spec:refine` skill bodies via CLI verbs (`source survey`, `plan propose --from`, `source extract`, `slice synthesize --from`) rather than invoking Cursor slash commands directly.
+- Gate 1 stamped `approved` and refine driven through `specify plan next` (with zsh `zsystem flock` plan lock) to satisfy the scenario's refine stage.
 
 ## Notes
 
-- Sources bound: `security-design-notes` (documentation, `./design-notes/security`) and `legacy-auth` (typescript, `./vendor/legacy-auth`), both describing the same account-lockout behaviour under different lead slugs (`account-lockout` vs `user-login`).
-- Propose merged the two leads into one slice on synopsis content (matching numerals: 5 failures / 15-minute window / 30-minute lock / notification email); `plan.yaml.slices[account-lockout].sources` lists both `{source, lead}` bindings.
-- The uncertain merge (different slugs) is surfaced in `change.md` under `## Tentative merges` with the confirm-or-split instruction, mirroring the `cross-source-identity-revamp` fixture.
-- Amend override exercised both directions at Gate 1: split via `specify plan amend account-lockout --remove-source legacy-auth` + `specify plan add user-login --sources legacy-auth=user-login` (plan validated clean), then restored via `specify plan remove user-login` + `specify plan amend account-lockout --add-source legacy-auth=user-login` (validated clean again). Note: `specify plan add --project` fails with `plan-project-no-registry` in a single regular project; omitting `--project` works (sole project auto-binds).
-- Gate 1 stamped by the operator-side `specify plan transition account-lockout approved`; `/spec:plan` exited at `pending` with the literal transition hint.
-- Refine: extract ran once per contributing source in declaration order (journal: `source.execution.agent` + `slice.extract.cache-miss` for `security-design-notes`/documentation then `legacy-auth`/typescript); Evidence persisted at `evidence/security-design-notes.yaml` and `evidence/legacy-auth.yaml`.
-- Synthesis projected 5 requirements, all `Status: agreed` with `Sources: security-design-notes, legacy-auth` rendered on every block; `specify slice validate` exited 0 (2 non-blocking `kind: review` suggestions); slice transitioned to `refined`.
+- Amend commands (split then rebind): `specify plan amend account-lockout --sources product-notes=password-reset`, then `specify plan amend account-lockout --sources product-notes=password-reset legacy-monolith=account-pwd-reset`.
+- Synthesis surfaced `[divergence]` on REQ-003 (30-minute documentation expiry vs 24-hour legacy TTL); slice validated cleanly (review-only findings) and transitioned to `refined`.
+- Scenario stops after refine; no build/merge/execute loop.
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/lead-reconciliation`
-- **Retained at:** `acceptance/.sandbox/lead-reconciliation/`
-- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/journal.jsonl`, `.specify/slices/account-lockout/{model.yaml,evidence/,specs/account-lockout/spec.md}`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/lead-reconciliation`
+- **Retained at:** `evals/.sandbox/lead-reconciliation/`
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/password-reset.md`, `legacy-monolith/src/auth/reset-password.ts`, `.specify/slices/account-lockout/evidence/`, `.specify/journal.jsonl`
+
+## Plan structure
+
+| Slice | Project | Sources | Status |
+| --- | --- | --- | --- |
+| account-lockout | project | product-notes / password-reset, legacy-monolith / account-pwd-reset | in-progress (refined) |

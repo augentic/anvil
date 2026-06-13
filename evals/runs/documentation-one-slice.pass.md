@@ -3,36 +3,37 @@
 ## Context
 
 - **Scenario:** `documentation-one-slice`
-- **Operator:** Cursor agent (Composer)
-- **CLI:** `/Users/andrewweston/github.com/augentic/specify-cli/target/release/specify` — `specify 0.2.0`
-- **Sandbox:** `acceptance/.sandbox/documentation-one-slice/`
+- **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **Sandbox:** `evals/.sandbox/documentation-one-slice/`
 
 ## Assertions
 
-| Assertion | Verdict |
-| --- | --- |
-| `plan-exists` | pass |
-| `plan-validates` | pass |
-| `single-slice-from-doc` | pass |
-| `sources-documentation-only` | pass |
-| `execute-loop-all-done` | pass |
+| Assertion | Verdict | Evidence |
+| --- | --- | --- |
+| `plan-exists` | pass | |
+| `plan-validates` | pass | |
+| `single-slice-from-doc` | pass | |
+| `sources-documentation-only` | pass | |
+| `execute-loop-all-done` | pass | |
 
-**Negative expectations:** held (manual-by-design posture unchanged).
+Probe transcript highlights: `plan.reconcile.completed` payload reads `"slice-count":1`; baseline `Sources: brief` on the merged spec; `specify plan status --format json` reports `"action":"drained"` with one `status: done` entry; `specify slice merge run` created baseline at `.specify/specs/health-check/spec.md`.
+
+**Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- Used local `specify init <framework>/adapters/targets/omnia` (not `omnia@v1`).
-- Symlinked `adapters/sources/documentation` (not vendored by `specify init`).
-- Build: schema-valid `status: success` envelope only — full Omnia `build/crate.md` codegen and `cargo check` / `wasm32-wasip2` pre-merge gates not run.
-- CLI installed via direct `cargo build --release` (`make install-cli` hung in agent shell).
+- Offline init via local omnia adapter path instead of `omnia@v1` network fetch.
+- Symlinked `adapters/sources/documentation` per setup prerequisites.
+- Build used `omnia-sdk = "0.33"` on crates.io (fixture template pins `"0"` which does not resolve); generated `crates/health_check` passes `cargo fmt`, `cargo clippy -- -D warnings`, and `cargo test`.
+- Phase work driven by following `/spec:plan`, `/spec:refine`, `/spec:build`, and `/spec:merge` skill bodies via CLI verbs with zsh `zsystem flock` plan lock.
 
 ## Notes
 
-- Plan/refine/merge structural path is green; generated-output-correctness (separate release gate in `docs/contributing/acceptance.md`) was not exercised.
-- Slice validation surfaced 2 suggestion-level review findings (`proposal.uses-imperative-language`, `specs.uses-normative-language`); operator may confirm prose quality.
+- `specify plan next` after lock release returns `plan-lock-not-held` (exit 2); drained state verified via `specify plan status` per the workspace-fail-resume probe guidance.
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/documentation-one-slice`
-- **Retained at:** `acceptance/.sandbox/documentation-one-slice/`
-- **Key paths:** `plan.yaml`, `.specify/specs/user-profile/spec.md`, `.specify/archive/2026-06-10-user-profile-endpoint/`, `.specify/journal.jsonl`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/documentation-one-slice`
+- **Retained at:** `evals/.sandbox/documentation-one-slice/`
+- **Key paths:** `plan.yaml`, `crates/health_check/`, `.specify/specs/health-check/spec.md`, `.specify/archive/`, `.specify/journal.jsonl`
