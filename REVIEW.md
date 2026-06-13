@@ -9,7 +9,7 @@
 
 ## 0. Where to focus — the short version
 
-The codebase is **well-engineered but over-built for its current maturity**. The workflow contract, the CLI verb surface, and the exercised path (intent + documentation + typescript-survey + omnia) are tight. The cost has accreted in three places: a **generic lint engine** sized for a third-party rule ecosystem that doesn't exist, a **WASI sandbox runtime** serving two first-party validators, and a **markdown corpus** (Vectis/Omnia/TypeScript references, triple-layered docs) describing adapters at full maturity that the evals don't yet prove.
+The codebase is **well-engineered but over-built for its current maturity**. The workflow contract, the CLI verb surface, and the exercised path (intent + documentation + typescript-survey + omnia) are tight. The primary cost has accreted in the **generic lint engine** — sized for a third-party rule ecosystem that doesn't exist.
 
 Two ways to read the focus list depending on appetite:
 
@@ -18,20 +18,17 @@ Two ways to read the focus list depending on appetite:
 |---|--------|--------|--------|
 | Q1 | **Archeology cleanup** — fix the broken RFC-43 link, delete `rfcs/archive/`, trim RFC/phase labels in `DECISIONS.md`, remove `names*.md`/`pitch.md` scratch | ★★★ clarity | S–M |
 | Q2 | **Delete dead abstractions** — `DiagnosticProducer` (0 impls), `ShaResolver` trait, `tool::hash` re-export shim | ★★ | S |
-| Q3 | **Collapse `Platform::Web`/`Desktop`** placeholders until web/desktop work starts | ★★ | S |
-| Q4 | **Trim test triple-stacks** — lint/project per-kind mirrors, slice-validate goldens, schema-accept clones | ★★ CI time | S–M |
-| Q5 | **Drop empty-tree rules** — `CORE-031` (no `evals/recorded/`), audit sibling scenario rules | ★ | S |
+| Q3 | **Trim test triple-stacks** — lint/project per-kind mirrors, slice-validate goldens, schema-accept clones | ★★ CI time | S–M |
+| Q4 | **Drop empty-tree rules** — `CORE-031` (no `evals/recorded/`), audit sibling scenario rules | ★ | S |
 
 ### Strategic bets (weeks, higher risk, decide deliberately)
 | # | Action | Impact | Effort |
 |---|--------|--------|--------|
 | S1 | **Right-size the lint engine** — closed rule set no longer needs a 14-kind generic dispatcher (~20k LOC / ~58 rules ≈ 350 LOC/rule). Merge single-use kinds, flatten Road B, slim the project scan | ★★★ | L |
 | S2 | **Relocate `framework_tools/` (~3–5.5k LOC) from the binary into `specify-standards`** and flatten the `ToolRunner` indirection for in-process checkers | ★★★ | M |
-| S3 | **Reconsider the WASI tool subsystem** — `wasmtime`+`tokio`+`wasm-pkg-client`+cranelift exist to run *two* first-party validators; Road B already set the precedent for going in-process | ★★★ build/dep | L |
-| S4 | **Trim the plugin-repo markdown corpus to "what's green"** — Vectis/Omnia/TypeScript reference corpora + doc triple-layering (~40–50% of markdown is trimmable) | ★★★ | M–L |
-| S5 | **Merge micro-crates** — `digest`→`schema`, `validate`→`model`, `agents`→`workflow` | ★★ | M |
+| S3 | **Merge micro-crates** — `digest`→`schema`, `validate`→`model`, `agents`→`workflow` | ★★ | M |
 
-> The single highest-leverage *theme* is **"stop paying for extensibility you don't have yet."** The lint engine, the WASI runtime, and the adapter reference corpora are all framework-for-third-parties built ahead of any third party. Each can be collapsed to a concrete, closed implementation now and re-generalised later if a real second consumer appears.
+> The single highest-leverage *theme* is **"stop paying for extensibility you don't have yet."** The lint engine is a framework-for-third-parties built ahead of any third party. It can be collapsed to a concrete, closed implementation now and re-generalised later if a real second consumer appears.
 
 ---
 
@@ -46,7 +43,7 @@ The split is **mostly defensible** — `wasmtime` isolation (`tool` vs `tool-man
 | `digest` | 78 | **Ceremonial.** Two SHA-256 hex helpers + a streaming `Hasher`. Its stated rationale ("keep Wasmtime out of standards") is a red herring — `sha2` pulls nothing heavy. | **Merge into `specify-schema`** (`schema::digest`) or `specify-error`; delete the `tool/src/hash.rs` re-export shim. |
 | `agents` | 2,292 | **Marginal.** Init-only `AGENTS.md` fence logic; only consumer is the binary; carries a module-level `#![allow(...)]` blanket from a verbatim move. No dependency-isolation win (already depends on `model`). | **Merge into `specify-workflow::agents`** (or keep as `src/runtime/commands/agents/` with `#[cfg(test)]`). |
 | `validate` | 1,875 | **Small enough to nest.** Lifecycle-free artifact rule registry. | **Merge into `specify-model::validate`** — preserves the "no lifecycle authority" invariant (still no `workflow` dep) while dropping a sibling crate. |
-| `tool` / `tool-manifest` | 3,684 / 1,177 | **Keep split** — `workflow` loads tool declarations without linking Wasmtime. Real boundary. | Keep (but see §2.1 for the deeper question). |
+| `tool` / `tool-manifest` | 3,684 / 1,177 | **Keep split** — `workflow` loads tool declarations without linking Wasmtime. Real boundary. | Keep. |
 | `diagnostics` / `standards` | 2,285 / 14,956 | **Keep split** — standards must not depend on workflow; diagnostics is the neutral finding currency. | Keep. |
 | `schema` / `error` / `model` / `workflow` | 706 / 818 / 3,713 / 31,159 | **Keep** — correct leaves and the domain root. | Keep; address internal module size (§1.2). |
 
@@ -64,7 +61,7 @@ The split is **mostly defensible** — `wasmtime` isolation (`tool` vs `tool-man
 | 577 | `crates/workflow/src/change/plan/core/model.rs` | Plan types | Acceptable |
 | 524 | `crates/workflow/src/plugins.rs` | Marketplace parse + cache scan + git-sha + deletion | Low priority |
 
-The `framework_tools/` subtree under `src/runtime/commands/lint/` is the biggest misplacement — see §2.2 / S2.
+The `framework_tools/` subtree under `src/runtime/commands/lint/` is the biggest misplacement — see §2.1 / S2.
 
 ### 1.3 Non-idiomatic Rust & dead abstractions
 
@@ -82,7 +79,7 @@ The `framework_tools/` subtree under `src/runtime/commands/lint/` is the biggest
 
 | Dep(s) | Pulled in for | Concern |
 |--------|---------------|---------|
-| `wasmtime` 45 + cranelift (12 dev-profile opt-level overrides in `Cargo.toml:205-228`) | `specify-tool` only — running 2 first-party WASI validators | Largest build-time/dep cost in the workspace; see S3 |
+| `wasmtime` 45 + cranelift (12 dev-profile opt-level overrides in `Cargo.toml:205-228`) | `specify-tool` only — running 2 first-party WASI validators | Largest build-time/dep cost in the workspace |
 | `tokio` + `wasm-pkg-client` + `futures-util` | **A single file**: `crates/tool/src/package.rs` (OCI package fetch behind `specify tool fetch`) | An entire async stack for a fetch path with no current first-party consumer (contract is checked-in, vectis is built locally) |
 | `nursery` clippy group (`Cargo.toml:92`) | Lint strictness | `nursery` lints are unstable — a routine toolchain bump can spontaneously break CI. Consider pinning to `pedantic`+selected `restriction` and dropping `nursery`. |
 
@@ -90,16 +87,7 @@ The `framework_tools/` subtree under `src/runtime/commands/lint/` is the biggest
 
 ## Part 2 — YAGNI / over-engineering
 
-### 2.1 The WASI tool subsystem — the biggest single bet (S3)
-
-The `specify-tool` crate (3.7k LOC) + `wasmtime` + `tokio` + `wasm-pkg-client` + the cache/resolver/OCI-fetch machinery exist to **sandbox third-party adapter code**. Today there are exactly **two** first-party WASI tools (`contract`, `vectis`), one checked into `dist/` and one built locally, and the six framework checkers that *used* to be WASI tools were already pulled **in-process** (the "Road B" move). 
-
-- **Tactical view** (low risk): keep wasmtime; the `tool`/`tool-manifest` split is correct; just delete the unused OCI-fetch path (`package.rs` + `tokio`/`wasm-pkg-client`/`futures-util`) until an adapter actually publishes a tool to a registry.
-- **Strategic view** (high impact): in-process the two remaining validators exactly as Road B did, and **delete `wasmtime` + cranelift + the entire tool runtime**. This is the single largest dependency and build-time reduction available. The cost is losing the *ability* to run untrusted third-party tools — a capability with zero current users. Defer it until a real third-party adapter exists.
-
-**Recommendation:** Do the tactical cut now (delete OCI fetch). Put the strategic cut on the roadmap explicitly tied to "first external adapter ships a tool."
-
-### 2.2 The framework lint engine (S1) — over-engineered for a closed rule set
+### 2.1 The framework lint engine (S1) — over-engineered for a closed rule set
 
 The lint stack is **~20,106 LOC enforcing ~58 hint-bearing rules (~350 LOC/rule)**. It was a sensible *migration chassis* (imperative `Check` → declarative burn-down), but with the migration complete and the rule catalog **closed and repo-owned**, the generality no longer pays.
 
@@ -117,39 +105,12 @@ The lint stack is **~20,106 LOC enforcing ~58 hint-bearing rules (~350 LOC/rule)
 4. Replace the project-profile `WorkspaceModel` with a lighter `ProjectScan` (files + frontmatter + links + ignore directives) (~1–1.5k LOC).
 5. Optionally relocate CORE numeric policy into Rust constants keyed by rule id; keep rule markdown as human docs.
 
-### 2.3 Placeholder / aspirational code (CLI)
+### 2.2 Placeholder / aspirational code (CLI)
 
 | Sev | Item | Location | Action |
 |-----|------|----------|--------|
-| Med | `Platform::Web` / `Platform::Desktop` | `crates/workflow/src/platform.rs:12-14` | No scaffold/build; treated as "present" in `propose/platforms.rs`, skipped in detection, emit `platform-not-yet-supported` in vectis. **Remove variants** (or keep on-wire as a validated string) until the work starts. |
 | Low | `ShaResolver::ls_remote` | `crates/workflow/src/plugins.rs:208-211` | "Inert today: no shipping source is a URL." Delete until URL plugin sources ship. |
 | Low | `binary`-channel self-replace | `crates/workflow/src/upgrade.rs` | Already deferred in `DECISIONS.md`; fine as-is. |
-
-### 2.4 Plugin-repo over-build (S4)
-
-The skills are lean (35–79 lines, all under caps); the over-build is in **target reference corpora** and **machinery for unproven adapters**.
-
-| Adapter | Markdown scale | Eval coverage | Verdict |
-|---------|----------------|---------------|---------|
-| `intent`, `documentation`, `omnia` | — | exercised by passing scenarios | **Production** — keep |
-| `omnia` references/examples | ~17k lines, 26 example files | eval pins are thin | **Cut examples to the 3–5 paths cited by `briefs/build/*.md`**; move the rest to a cookbook/out of repo |
-| `vectis` | ~13k lines, 11 build sub-briefs, web/desktop placeholders | **zero executable scenarios**; fixtures admit "no harness" | **Freeze.** Defer web/desktop + component-catalog/composition machinery until one trivial `vectis-one-slice` refine→build scenario is green |
-| `typescript` | ~3.8k lines (refs dominate) | **plan-only** (stops at Gate 1) | **Trim** refs to what `survey.md`/`extract.md` link; delete uncited corpora |
-| `contracts` | ~6k lines, 3 formats × author/import/verify | `contract-lifecycle` **pending** | **Defer** AsyncAPI + JSON-Schema importer corpora; ship OpenAPI author+verify first |
-| `screenshots` | 410 lines, 6-stage vision pipeline | fixture only, no scenario | **Shrink** to survey+extract stubs |
-| `captures` | 412 lines | fixtures + replay hook, no scenario | Partially built; keep minimal |
-| `client` plugin | experimental | **zero eval** | **Park / remove from `marketplace.json`** until a scenario exists |
-
-The **component-catalog + composition accumulation** machinery (`components.md`, `specify catalog infer`, `parts.yaml`, the 503-line archived RFC-40) is Vectis-only and screenshot-dependent — both unproven. **Defer the whole chain** until a screenshots→vectis path is green.
-
-### 2.5 Documentation layering / markdown bloat
-
-~73 markdown files under `docs/` (~5,400 lines), plus `AGENTS.md` + `.cursor/rules/project.mdc` restating the same spine. Concrete redundancy:
-
-- **Triple-layer pattern** (runtime reference + mdBook stub + agent entry) for the same concept: reconciliation, components, specialist-usage, guardrails each exist as a `plugins/spec/references/*` doc **and** a 5-line `docs/explanation/*` stub. **Drop the stubs**; point mdBook at the reference docs.
-- **Synthesis playbook** (`plugins/spec/references/synthesis/`, ~2k lines) over-specifies — `provenance.md` (251) + `authority.md` (197) + `requirement-block.md` (124) overlap heavily. **Merge into one reconciliation doc.**
-- `init-runbook.md` (287) is 7× the init skill body (40). **Trim** to bootstrap + workspace fork.
-- `docs/contributing/adapter-anatomy.md` is a 3-line redirect; `docs/reference/change-skills/*` thinly mirror skill frontmatter. **Delete.**
 
 ---
 
@@ -226,26 +187,26 @@ Posture is sound (integration-first, ~410 integration + ~1,100 unit `#[test]`, n
             IMPACT →
         low            medium             high
   E  ┌──────────────────────────────────────────────────┐
-  F  │              │ Q3 platform     │ Q1 archeology    │
-  F h│              │ Q5 empty rules  │ S2 framework_tools│
+  F  │              │ Q4 empty rules  │ Q1 archeology    │
+  F h│              │                 │ S2 framework_tools│
   O i│              │                 │   relocate        │
   R g│              │ Q2 dead traits  │                   │
   T  ├──────────────────────────────────────────────────┤
-  ↑ m│              │ Q4 test trims   │ S1 lint engine    │
-    e│              │ S5 micro-crates │ S4 md corpus trim │
+  ↑ m│              │ Q3 test trims   │ S1 lint engine    │
+    e│              │ S3 micro-crates │                   │
     d│              │                 │                   │
   ─  ├──────────────────────────────────────────────────┤
-    l│              │ §1.2 god-module │ S3 drop WASI/     │
-    o│              │   splits        │   wasmtime        │
+    l│              │ §1.2 god-module │                   │
+    o│              │   splits        │                   │
     w│              │                 │                   │
      └──────────────────────────────────────────────────┘
 ```
 
-**Suggested sequence:** Q1→Q2→Q3→Q5 (clear the decks) → Q4 + S2 (test + layering) → S1 + S5 (engine + crates) → S4 (markdown) → S3 (the wasmtime decision, deliberately, last).
+**Suggested sequence:** Q1→Q2→Q4 (clear the decks) → Q3 + S2 (test + layering) → S1 + S3 (engine + crates).
 
 ## Appendix B — Headline metrics
 - **CLI Rust:** ~82k LOC across 12 crates (`workflow` 31k, `standards` 15k, binary 14k) + ~18k test LOC.
 - **Lint stack:** ~20k LOC / ~58 executable rules (~350 LOC/rule); 37 rules carry no hint.
-- **Plugin repo markdown:** Omnia ~17k, Vectis ~13k, contracts ~6k, typescript ~3.8k lines; ~40–50% trimmable to the exercised path.
+- **Plugin repo markdown:** Omnia ~17k, Vectis ~13k, contracts ~6k, typescript ~3.8k lines.
 - **Verified dead/broken:** `DiagnosticProducer` (0 impls), `rfc-43-release-proving.md` link (missing target), `evals/recorded/` (empty, breaks `CORE-031`).
 - **Evals:** 13 scenarios (1 pending), 12 passing runs; coverage real for intent/documentation/typescript-survey/omnia, absent for vectis/screenshots/contracts/captures.

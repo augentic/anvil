@@ -114,7 +114,7 @@ FAIL: <rule-id>: <message>
 
 | Road                          | `CORE-*`                                                                                                                         | How enforced                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Road A — declarative hint     | most of `CORE-001..060`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`), interpreted over the workspace model |
+| Road A — declarative hint     | most of `CORE-001..060`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`), interpreted over the workspace model |
 | Road B — referenced tool      | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / links-registry / marketplace / prose families               | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named in-process checker and folds its findings                                                                                                                                                                              |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
@@ -127,7 +127,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in the CLI binary under `src/runtime/commands/lint/framework_tools/`.
+Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in `augentic/specify-cli` under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
 
 ### JSON output
 
@@ -364,7 +364,7 @@ Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](.
 
 The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, line caps, uniqueness, fenced-block scans, regex/path scoping, required-artifact presence, frontmatter-field grammar, and relational cross-reference joins). The kinds:
 
-`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `set-eq`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`.
+`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`.
 
 `path-pattern` globs support `{a,b}` brace alternation (`*` never crosses `/`, `**` does), so prefer one alternation hint over a fan-out of near-identical patterns; `regex` values likewise prefer a single `|` alternation per concern.
 
@@ -373,6 +373,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`presence`** — `frontmatter` (a candidate file lacking frontmatter), `file` + `config: { path }` (a missing required path), `markdown-section` + `config: { title, level, when: { metric, min } }` (a candidate over a metric threshold lacking the section), or `directory-index` + `config: { roots, index, min-files }` (a corpus directory matching a one-depth root glob with enough files beneath it but no index file inside it).
 - **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
 - **`cross-reference`** — a relational join from an `adapter-dir` (fact-family set difference) or `expected-set` + `config: { entries: [{ key, value }] }` (value-equality) source against a `config: { target }` family (`adapter-manifest`, `adapter-tool`).
+- **`set-coverage`** — the `adapter-briefs` source reads `config: { mode }` (`subset` default — CORE-004, one-sided missing-only; or `exact` — CORE-007, two-sided, additionally flagging unexpected keys) alongside `config: { expected-operations }`.
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
 - **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and CLI-repo `tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
 
@@ -382,28 +383,28 @@ Each evaluator is generic: it reads its policy (cap, allowed set, owner map, exp
 
 ### Road B — referenced tool
 
-The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named checker from the in-process framework inventory (`src/runtime/commands/lint/framework_tools.rs` in the `specify-cli` binary), runs it once per lint, and folds its `DiagnosticReport`; the checker stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
+The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named checker from the in-process framework inventory (`crates/standards/src/lint/framework_tools.rs` in `specify-standards`), runs it once per lint, and folds its typed findings directly; the checker stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
 
-The six framework checkers are native modules under `src/runtime/commands/lint/framework_tools/` in the CLI repo. Each one and the `CORE-*` rules it serves:
+The six framework checkers are native modules under `crates/standards/src/lint/framework_tools/` in `specify-standards`. Each one and the `CORE-*` rules it serves:
 
-| Checker          | Serves                       |
-| ---------------- | ---------------------------- |
-| `scenarios`      | CORE-028, 029, 031, 033, 056 |
-| `skill-body`     | CORE-040, 046, 048           |
-| `links-registry` | CORE-018, 020                |
-| `marketplace`    | CORE-022                     |
-| `prose`          | CORE-024                     |
-| `rules`          | CORE-009, 026, 053           |
+| Checker          | Serves                  |
+| ---------------- | ----------------------- |
+| `scenarios`      | CORE-028, 029, 033, 056 |
+| `skill-body`     | CORE-040, 046, 048      |
+| `links-registry` | CORE-018, 020           |
+| `marketplace`    | CORE-022                |
+| `prose`          | CORE-024                |
+| `rules`          | CORE-009, 026, 053      |
 
 To add or extend one:
 
-1. Add the pure check fn to the family checker module under `src/runtime/commands/lint/framework_tools/<name>.rs`, stamping findings with the owning `CORE-NNN` / `severity`. Read any policy from the rule's `config:` (forwarded by the engine as a second positional argument) — never bake it into the checker.
+1. Add the pure check fn to the family checker module under `crates/standards/src/lint/framework_tools/<name>.rs`, stamping findings with the owning `CORE-NNN` / `severity`. Read any policy from the rule's `config:` (forwarded by the engine as a second positional argument) — never bake it into the checker.
 2. Cover the new check with module-local unit tests beside the checker.
 3. Author/point the `CORE-*` rule file at the checker, run `make lint` (specify) + `cargo make check` (specify-cli).
 
 > **Policy never lives in the engine.** The `lint_no_embedded_policy` Layer-3 guard test ([`crates/standards/tests/lint_no_embedded_policy.rs`](https://github.com/augentic/specify-cli/blob/main/crates/standards/tests/lint_no_embedded_policy.rs)) fails if any eval arm reintroduces a rule-specific literal (operation-set array, owner→prefix map, value-bearing discriminator, canonical-doc path, or an un-allow-listed numeric cap). Put the value in the rule's `config:`.
 
-> **No imperative escape hatch.** There is no `kind: authoring-predicate` bridge: a `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved in-process checker (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each checker's in-crate tests.
+> **No imperative escape hatch.** A `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved in-process checker (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each checker's in-crate tests.
 
 To add a `CORE-*` rule (either road):
 

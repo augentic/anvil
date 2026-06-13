@@ -56,7 +56,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 This scenario is the **N=1 planning-and-synthesis gate**, not a codegen gate. Its `stages` stop at `refine` deliberately: every in-scope assertion is deterministic structure (plan shape, Gate-1 ergonomics, `Sources:` provenance, lifecycle `refined`), so the N=1 hard halt never depends on a non-deterministic surface.
 
-`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`/spec:execute` reaching `all-done`) graduates separately via the `shape` / trace tier ([roadmap ideas, "was RFC-39"](../../rfcs/roadmap.md#ideas-parked-future-rfcs)).
+`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`/spec:execute` reaching `all-done`) graduates separately via the `shape` / trace tier ([roadmap ideas, "Acceptance shape assertions and orchestration traces"](../../rfcs/roadmap.md#ideas-parked)).
 
 ## Negative expectations
 
