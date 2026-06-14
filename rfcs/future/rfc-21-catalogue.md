@@ -1,6 +1,18 @@
 # RFC-21: Source Catalogue and Tier-1 Cache
 
-> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-14, RFC-20, and RFC-25 (see [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) for the current source-adapter flow)
+> Status: Deferred (design body stale — needs re-baselining) · Depends: the current source-adapter flow in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md), the lead/evidence model in [From sources to slices](../../plugins/spec/references/reconciliation.md), and the `--source <key>=<adapter>:<binding>` grammar (`crates/workflow/src/change/SourceBinding`) · Roadmap: the ["Source catalogue and tier-1 cache"](../roadmap.md#ideas-parked) parked idea.
+
+> **Status note (de-staled).** This RFC predates the source-adapter rename and the lead/evidence reconciliation model. Its *intent* — a durable `sources.yaml` catalogue, a shared source-clone cache, and a `--source @<key>` selector — is still wanted (it backs a live roadmap parked idea), but the design body below uses retired vocabulary and references a doc that no longer exists. Translate before implementing:
+>
+> | Body term (stale) | Current model |
+> | --- | --- |
+> | source adapter `enumerate` (old name) | source adapter **`survey`** (`specify source survey`) — plan-time op that emits *leads* |
+> | "candidate" / `surveys.json` / `analyze/<source>` scratch | **leads** under `## Lead inventory` in `discovery.md`; per-source **evidence** at `.specify/slices/<slice>/evidence/<source>.yaml`; structured `model.yaml` |
+> | "assignment" / "assignment brief" | the **`propose`** sub-step of `/spec:plan`, which binds slices to projects |
+> | `docs/explanation/workspace-tiers.md`, "tier-1 / tier-2" | doc removed; the read-only-source-input vs read-write-target separation now lives in **workspace slots** (`specify workspace sync`) and the source/target split in [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) |
+> | predecessor "RFC-20 / RFC-25 / RFC-29" | folded into `docs/standards/workflow.md` + `DECISIONS.md`; no standalone RFCs exist |
+>
+> The `--source <key>=<adapter>:<path>` and `--source <key>=<adapter>:value:<literal>` binding forms this RFC builds on **did ship** (they are the current grammar), so the additive `--source @<key>` selector and the `specify source {add,remove,show,list,validate,sync}` verb family remain coherent additions. RFC-22 (ledger) and RFC-24 (Omnia composition) stack on this RFC and inherit the same caveats.
 
 ## Abstract
 
@@ -10,22 +22,22 @@ This RFC adds:
 
 1. **`sources.yaml`** — a platform-repo catalogue of legacy sources, mirroring the role `registry.yaml` plays for target projects.
 2. **`specify source {add, remove, show, list, validate, sync}`** — a new CLI verb family alongside the existing `specify source resolve` adapter-manifest command.
-3. **`.specify/cache/sources/<key>/`** — a durable, shared tier-1 cache for source repository materialisation. Source adapter `enumerate` reads through this cache when `/spec:plan` resolves `--source @<key>`.
+3. **`.specify/cache/sources/<key>/`** — a durable, shared tier-1 cache for source repository materialisation. Source adapter `survey` reads through this cache when `/spec:plan` resolves `--source @<key>`.
 4. **`--source @<key>`** — a new selector form on `/spec:plan` (and any caller that accepts plan source bindings) that resolves the key against `sources.yaml`.
-5. **`--enumerate-concurrency <N>`** — a brief-level fan-out knob on `/spec:plan` for parallel source adapter `enumerate` invocations across many sources.
+5. **`--survey-concurrency <N>`** — a brief-level fan-out knob on `/spec:plan` for parallel source adapter `survey` invocations across many sources.
 
-These additions are **strictly additive**: the existing RFC-25 `--source <key>=<adapter>:<path>` and `--source <key>=<adapter>:value:<literal>` forms, the source adapter `enumerate` / `extract` split, the workspace-tier separation, and every existing schema continue to work unchanged. The cumulative migration ledger and the `mapping` field on `plan.yaml.slices[]` entries are deferred to RFC-22.
+These additions are **strictly additive**: the existing RFC-25 `--source <key>=<adapter>:<path>` and `--source <key>=<adapter>:value:<literal>` forms, the source adapter `survey` / `extract` split, the source/target separation, and every existing schema continue to work unchanged. The cumulative migration ledger and the `mapping` field on `plan.yaml.slices[]` entries are deferred to RFC-22.
 
 ## Motivation
 
 The framework already supports the *mechanics* of multi-source migration: `plan.yaml` carries named source bindings; each slice's `sources[]` list points at candidates from those bindings; `/spec:refine` runs source adapter `extract` per bound source; assignment routes each entry to one project. What it does not provide - and what becomes prohibitive at 80+ source repositories - is the **declaration and caching layer** beneath those mechanics:
 
 - **Sources are declared every change.** Operators repeat `--source <k>=<adapter>:<url>` for every plan invocation. Forty repos times two re-plans is eighty CLI flags. There is no artifact saying "these are the legacy sources we are migrating", separate from any one change.
-- **Tier-1 clones are ad hoc and ephemeral.** Each remote path-bound source may need fresh materialisation before enumeration. Re-planning the same source means re-fetching or re-cloning. Source adapter `enumerate` compounds the cost when run across many sources, because each plan iteration starts from scratch.
-- **Discovery fan-out is sequential.** `/spec:plan` invokes source adapter `enumerate` once per source binding in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
-- **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the workspace-tier boundary in [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) blurs.
+- **Tier-1 clones are ad hoc and ephemeral.** Each remote path-bound source may need fresh materialisation before survey. Re-planning the same source means re-fetching or re-cloning. Source adapter `survey` compounds the cost when run across many sources, because each plan iteration starts from scratch.
+- **Discovery fan-out is sequential.** `/spec:plan` invokes source adapter `survey` once per source binding in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
+- **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the source-input vs target-workspace boundary (see [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md)) blurs.
 
-This RFC is the smallest set of additions that fix all four issues without violating Specify's existing posture (`registry.yaml` is target-only, archives are immutable, and source adapter `enumerate` is per source binding).
+This RFC is the smallest set of additions that fix all four issues without violating Specify's existing posture (`registry.yaml` is target-only, archives are immutable, and source adapter `survey` is per source binding).
 
 ## Design
 
@@ -33,7 +45,7 @@ This RFC is the smallest set of additions that fix all four issues without viola
 
 1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / workspace alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
 2. **The CLI is the single writer.** `specify source {add, remove, sync}` are the only writers to `sources.yaml`. No skill hand-edits the file; this mirrors the writer rules for `registry.yaml` and `plan.yaml`.
-3. **The tier-1 boundary is preserved.** `.specify/cache/sources/<key>/` is read-only with respect to source adapter `enumerate`, source adapter `extract`, and every planner-time skill. Nothing in this RFC writes into a source clone after sync materialises it.
+3. **The tier-1 boundary is preserved.** `.specify/cache/sources/<key>/` is read-only with respect to source adapter `survey`, source adapter `extract`, and every planner-time skill. Nothing in this RFC writes into a source clone after sync materialises it.
 4. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.
 5. **Composition over invention.** One extended verb family (`specify source`) and one new flag form (`--source @<key>`); everything else reuses existing primitives.
 6. **No cross-change durable state.** This RFC stops at "sources are declared and cached." Cross-change memory (the migration ledger) and slice-level mapping metadata are RFC-22 concerns.
@@ -103,14 +115,14 @@ The CLI exit-code surface mirrors `specify registry`: `0` success, `1` generic, 
 
 ### Tier-1 caching at `.specify/cache/sources/<key>/`
 
-Today, remote source materialisation is plan-local in practice: each plan run has to make the source repository readable before source adapter `enumerate` can inspect it. This RFC moves the *clone* to a **durable, shared cache** at `.specify/cache/sources/<key>/` and passes the cache path into the normal plan source binding.
+Today, remote source materialisation is plan-local in practice: each plan run has to make the source repository readable before source adapter `survey` can inspect it. This RFC moves the *clone* to a **durable, shared cache** at `.specify/cache/sources/<key>/` and passes the cache path into the normal plan source binding.
 
 Lifecycle:
 
 | Verb | Effect |
 |---|---|
 | `specify source sync` | Idempotent. For each entry: clone into `.specify/cache/sources/<key>/` if missing; `git fetch` if present and remote; no-op for symlink/local URLs. |
-| Source adapter `enumerate` | Reads from `.specify/cache/sources/<key>/` when `/spec:plan` resolves `--source @<key>`. Writes nothing into the cache. |
+| Source adapter `survey` | Reads from `.specify/cache/sources/<key>/` when `/spec:plan` resolves `--source @<key>`. Writes nothing into the cache. |
 | `/spec:plan` (when invoked with `--source @<key>`) | Resolves the key to a normal RFC-25 plan source binding, calling `specify source sync <key>` first if the cache slot is missing. |
 | `specify plan archive` | Archives the plan artifacts. It does **not** touch `.specify/cache/sources/<key>/`. The cache outlives the change. |
 | `specify source remove <key>` | Removes the cache entry alongside the catalogue entry. Refuses if any active plan entry still references the key. |
@@ -128,7 +140,7 @@ sources:
 
 The `.snapshot.yaml` records what was on disk at archive time so audit value is preserved without copying gigabytes per change. Operators who want a full byte-snapshot of the source tree can run `git clone --shared` against the cache before archive; this is a deliberate operator opt-in, not the default.
 
-This is a strict refinement of [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md): tier-1 now has a durable cache, but the **role separation** (tier-1 = read-only source input; tier-2 = read-write target workspace) is unchanged.
+This refines the source-input/target-workspace separation (see [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md)): the source-clone cache is a durable read-only input, distinct from the read-write target **workspace slots** materialised by `specify workspace sync`. The **role separation** (source clone = read-only input; workspace slot = read-write target) is unchanged. *(The original "tier-1 / tier-2" framing and its `workspace-tiers.md` doc have been retired — see the status note.)*
 
 ### `--source @<key>` selector
 
@@ -146,13 +158,13 @@ This is what makes Scenario 2 tractable: declare 80 repos once via `specify sour
 
 The RFC-25 `change.md` plan brief gains a sibling input form too: an entry with `source: <key>` (instead of `path: ...`) resolves through the catalogue. The closed-enum source kind suffix remains the same.
 
-### Scaling the enumerate fan-out (`--enumerate-concurrency`)
+### Scaling the survey fan-out (`--survey-concurrency`)
 
-With `sources.yaml` and the shared tier-1 cache in place, `/spec:plan` gains a *parallel* fan-out: source adapter `enumerate` invocations per source are independent and feed the shared `discovery.md` candidate inventory. The plan skill may dispatch up to `--enumerate-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
+With `sources.yaml` and the shared source-clone cache in place, `/spec:plan` gains a *parallel* fan-out: source adapter `survey` invocations per source are independent and feed the shared `discovery.md` lead inventory. The plan skill may dispatch up to `--survey-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
 
-The byte-stable output contract is unchanged: `/spec:plan` sorts source blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each `enumerate` result is merged only after all invocations have completed.
+The byte-stable output contract is unchanged: `/spec:plan` sorts source blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each `survey` result is merged only after all invocations have completed.
 
-This is a plan-skill scheduling change, not a new source adapter operation. The `--enumerate-concurrency` knob lives on `/spec:plan` and is recorded in the change's planning context only for reproducibility.
+This is a plan-skill scheduling change, not a new source adapter operation. The `--survey-concurrency` knob lives on `/spec:plan` and is recorded in the change's planning context only for reproducibility.
 
 ### CLI surface summary
 
@@ -160,7 +172,7 @@ Net adds:
 
 - `specify source` — `add`, `remove`, `show`, `list`, `validate`, `sync` (new verbs beside `resolve`).
 - `--source @<key>` selector form on `/spec:plan`.
-- `--enumerate-concurrency <N>` flag on `/spec:plan`.
+- `--survey-concurrency <N>` flag on `/spec:plan`.
 
 Net schema changes:
 
@@ -174,7 +186,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 | Scenario | Pre-RFC-21 (assuming RFC-20 landed) | Post-RFC-21 |
 |---|---|---|
 | 1. Single-repo migration | Works; survey + synthesise via RFC-20. | Unchanged. `sources.yaml` optional with one entry; `--source @<key>` works the same as the inline form. |
-| 2. Multi-repo migration (80+ repos) | Survey works, but every change re-clones every source; declarations repeat per change. | Sources declared once in `sources.yaml`; tier-1 cache shared across changes; `enumerate` fans out concurrently. (Cross-change ledger and `mapping` field deferred to RFC-22.) |
+| 2. Multi-repo migration (80+ repos) | Survey works, but every change re-clones every source; declarations repeat per change. | Sources declared once in `sources.yaml`; source-clone cache shared across changes; `survey` fans out concurrently. (Cross-change ledger and `mapping` field deferred to RFC-22.) |
 | 3. Greenfield multi-repo | Domain-model-driven topology via RFC-20. | Unchanged; `sources.yaml` typically absent. |
 | 4. Brownfield multi-repo | Routing via baseline + domain-model hints. | Unchanged; if legacy sources are involved, `sources.yaml` records them. |
 
@@ -184,17 +196,17 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 2. **Domain types.** Add `Sources`, `SourceEntry` types in `specify-workflow` (`crates/workflow/src/adapters/sources/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` helpers, `validate_shape()`. `specify-error` gains `sources-*` discriminants.
 3. **`specify source` verb family.** Add `src/commands/source/{add,remove,show,list,validate,sync}.rs` beside the existing source adapter `resolve` command. Each verb gets a JSON envelope mirroring `specify registry`. Land integration tests under `tests/source_catalogue.rs`.
 4. **Tier-1 cache lifecycle.** Implement `.specify/cache/sources/<key>/` materialisation in `specify source sync`. Update `.gitignore` defaults (already covered by [`Registry::ensure_specify_gitignore_entries`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/gitignore.rs); extend to add `.specify/cache/`).
-5. **Plan source binding resolution.** When `/spec:plan` resolves `--source @<key>`, materialise the cache slot if needed and lower it to the normal RFC-25 source binding shape before source adapter `enumerate` runs.
+5. **Plan source binding resolution.** When `/spec:plan` resolves `--source @<key>`, materialise the cache slot if needed and lower it to the normal RFC-25 source binding shape before source adapter `survey` runs.
 6. **Archive snapshot.** Update `specify plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `specify-cli/schemas/archive-snapshot/schema.json`.
 7. **`--source @<key>` selector parsing.** Update `/spec:plan` invocation grammar and the CLI flag handler. Hard-fail on unknown keys.
 8. **`change.md` source form.** Additive plan-brief input update for `source: <key>`. Update brief readers.
-9. **`--enumerate-concurrency` knob.** Plan-skill change: update the enumeration step to fan out via a small concurrency primitive. Default `4`. Document trade-offs (network bandwidth, CPU) in `references/runbook.md`.
-10. **Tutorials and references.** New tutorial `docs/tutorials/multi-repo-legacy-migration.md`. Update `docs/explanation/workspace-tiers.md` to describe the shared tier-1 cache and the symlink view.
-11. **Acceptance.** Extend the cross-repo Deno acceptance suite with: an N=10 multi-source plan using `--source @<key>` (asserting catalogue lookup, cache materialisation, and enumerate concurrency); a `specify source remove` refusal when the key is in use.
+9. **`--survey-concurrency` knob.** Plan-skill change: update the survey step to fan out via a small concurrency primitive. Default `4`. Document trade-offs (network bandwidth, CPU) in `references/runbook.md`.
+10. **Tutorials and references.** New tutorial `docs/tutorials/multi-repo-legacy-migration.md`. Update [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) (and the workspace-slot docs) to describe the shared source-clone cache and how a slot reads through it.
+11. **Acceptance.** Extend the cross-repo Deno acceptance suite with: an N=10 multi-source plan using `--source @<key>` (asserting catalogue lookup, cache materialisation, and survey concurrency); a `specify source remove` refusal when the key is in use.
 
 ## Migration
 
-This RFC is **strictly additive**. Pre-existing plans, registries, changes, and source adapter `enumerate` invocations continue to work without change.
+This RFC is **strictly additive**. Pre-existing plans, registries, changes, and source adapter `survey` invocations continue to work without change.
 
 For operators:
 
@@ -204,7 +216,7 @@ For operators:
 
 For adapter authors:
 
-- No required changes. Source adapter `enumerate` and `extract` contracts are unchanged.
+- No required changes. Source adapter `survey` and `extract` contracts are unchanged.
 - Survey briefs that want to read `sources.yaml` may do so; it is now a stable file under the platform-repo root. Existing survey briefs that ignore it continue to work.
 
 For skill authors:
@@ -215,9 +227,9 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## Alternatives Considered
 
-**Extend `registry.yaml` with a `sources:` block instead of a separate file.** Rejected. Sources and targets have different lifecycles, validation rules, materialisation strategies (read-only cache vs read-write working tree), and audiences (planner-time vs executor-time). Mixing them violates the registry's existing role and the workspace-tier separation.
+**Extend `registry.yaml` with a `sources:` block instead of a separate file.** Rejected. Sources and targets have different lifecycles, validation rules, materialisation strategies (read-only cache vs read-write working tree), and audiences (planner-time vs executor-time). Mixing them violates the registry's existing role and the source/target axis separation.
 
-**Promote `specify source sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises tier-2 target workspaces under `.specify/workspace/`; `source sync` materialises tier-1 source inputs into `.specify/cache/sources/`. Conflating them re-introduces the workspace-tier confusion that [`workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) was written to dispel.
+**Promote `specify source sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises target **workspace slots** under `workspace/<project>/`; `source sync` materialises read-only source inputs into `.specify/cache/sources/`. Conflating them re-introduces the source-vs-target confusion the adapter-axis split deliberately keeps apart.
 
 **Snapshot the entire tier-1 clone into archives instead of recording a snapshot reference.** Rejected. With 80+ repos and frequent re-plans, copying gigabytes per archive is impractical. The recorded `.snapshot.yaml` (commit SHA, source URL, materialisation date) preserves the audit trail at constant cost; operators who genuinely need byte-snapshots can opt in by hand.
 
@@ -227,7 +239,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify slice merge` and `specify plan finalize`) that make `status` honest.
 
-**Run enumerate concurrency through a CLI verb (`specify source enumerate`).** Rejected. `enumerate` is a source adapter operation orchestrated by `/spec:plan`; concurrency is a plan-skill scheduling decision, not a new CLI contract. The `--enumerate-concurrency` flag on `/spec:plan` is the natural place because the skill already orchestrates the fan-out.
+**Run survey concurrency through a CLI verb (`specify source survey` fan-out).** Rejected. `survey` is a source adapter operation orchestrated by `/spec:plan`; concurrency is a plan-skill scheduling decision, not a new CLI contract. The `--survey-concurrency` flag on `/spec:plan` is the natural place because the skill already orchestrates the fan-out.
 
 ## Non-Goals
 
@@ -247,7 +259,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 2. How should the tier-1 cache handle stale clones? Current preference: `specify source sync` is `git fetch` for remotes (no merge, no rebase); operators get a warning if `HEAD` differs from the `head_sha` recorded in any open plan's `.snapshot.yaml`.
 3. Should `--source @<key>` accept the kind suffix only, or fall back to `sources.yaml:sources[].language` to infer kind? Current preference: explicit suffix only; `language` is advisory.
 4. Should `specify source` validation check URL reachability? Current preference: no - keep validation offline; reachability surfaces during `specify source sync`.
-5. What is the `--enumerate-concurrency` default and cap? Current preference: default `4`, hard cap `min(8, num_cpus)`. Revisit once the scaling acceptance suite has data.
+5. What is the `--survey-concurrency` default and cap? Current preference: default `4`, hard cap `min(8, num_cpus)`. Revisit once the scaling acceptance suite has data.
 6. Should `specify source remove --force` exist for catalogue cleanup against archived plans? Current preference: no in v1; `remove` only refuses on *active* plans.
 7. Should the cache namespace `<key>` mangle URL identity (e.g., a checksum) so two catalogue entries with the same URL but different keys share storage? Current preference: no; keep `<key>` literal so removal is unambiguous.
 
@@ -255,6 +267,6 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 - RFC-3a / RFC-3b / RFC-9 / RFC-14 / RFC-20 / RFC-25 — predecessors this RFC updates toward the RFC-29 source-adapter flow.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
-- [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
+- [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the source-clone cache refines (replaces the retired `workspace-tiers.md`).
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`crates/workflow/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture `Sources` mirrors.
