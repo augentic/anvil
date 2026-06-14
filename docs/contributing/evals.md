@@ -82,7 +82,7 @@ Within a group, scenarios are independent and may run in any order; a failure ou
 - On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template. The sandbox at `evals/.sandbox/<scenario>/` ([`setup.md`](../../evals/shared/setup.md)) is stable and gitignored, so it survives for inspection; paste trimmed failure output into the run-summary's **Failure detail** section and point **Evidence** at `scripts/snapshot.sh "$SANDBOX"`. File a follow-up issue in `augentic/specify` linked back to the run-summary.
 - The gate is **tiered by the catalog's Gate column**. The **release gate is green** when `cargo make test` is green in `specify-cli` (it runs there on every commit) and every `release-blocker` row (`intent-only`, `execute-fail-resume`, `workspace-two-projects`) is `passed` — the `intent-only` hard halt is unchanged. The **full catalog** drains per minor release or monthly, whichever comes first; a non-blocking `failed` row is triaged via its linked follow-up issue but does not hold a release on its own. A `parked` row (no owner) sits outside the drain expectation until someone claims it and flips it back to `pending`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
 
-When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../evals/scenarios/README.md) and flip RM-05 from *Partial* to *Done* in [`rfcs/roadmap.md`](../../rfcs/roadmap.md).
+When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../evals/scenarios/README.md).
 
 ## What the scenarios prove
 
