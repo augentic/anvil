@@ -17,7 +17,7 @@
 | `plan-lock-at-workspace` | pass | |
 | `execute-loop-all-done` | pass | |
 
-Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` before execute; `specify plan status --format json` reports `"action":"drained"` with `"counts":{"done":4}`; `grep -c 'status: done' plan.yaml` returns 4; `grep 'project:' plan.yaml` names `backend` for `oauth-contract`/`oauth-backend` and `mobile` for `app-foundation`/`oauth-mobile`; `git -C .specify/workspace/backend log --oneline specify/oauth-login` shows residue commits for `oauth-contract` and `oauth-backend`; `git -C .specify/workspace/mobile log --oneline specify/oauth-login` shows residue commits for `app-foundation` and `oauth-mobile`; `test -d .specify/workspace/{backend,mobile}` succeeds; first `workspace.sync.completed` payload lists `"projects":["backend","mobile"]`; `plan.yaml` lives at workspace root with no slot `plan.yaml`; unlocked `specify plan next` returns `"error":"plan-lock-not-held"` (exit 2).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` before execute; `specify plan status --format json` reports `"action":"drained"` with `"counts":{"done":4}`; `grep -c 'status: done' plan.yaml` returns 4; `grep 'project:' plan.yaml` names `backend` for `oauth-contract`/`oauth-backend` and `mobile` for `app-foundation`/`oauth-mobile`; `git -C workspace/backend log --oneline specify/oauth-login` shows residue commits for `oauth-contract` and `oauth-backend`; `git -C workspace/mobile log --oneline specify/oauth-login` shows residue commits for `app-foundation` and `oauth-mobile`; `test -d workspace/{backend,mobile}` succeeds; first `workspace.sync.completed` payload lists `"projects":["backend","mobile"]`; `plan.yaml` lives at workspace root with no slot `plan.yaml`; unlocked `specify plan next` returns `"error":"plan-lock-not-held"` (exit 2).
 
 **Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
@@ -42,4 +42,4 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-two-projects`
 - **Retained at:** `evals/.sandbox/workspace-two-projects/`
-- **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/registry.yaml`, `platform/.specify/workspace/{backend,mobile}`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/composition.yaml`
+- **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/registry.yaml`, `platform/workspace/{backend,mobile}`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/composition.yaml`

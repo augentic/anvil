@@ -4,7 +4,7 @@ Coordinate a Specify change across multiple repositories from a workspace. This 
 
 ## What you will build
 
-A workspace-scoped plan where `change.md`, `plan.yaml`, and `discovery.md` live at the workspace, while slice work runs in materialised project slots under `.specify/workspace/<project>/`.
+A workspace-scoped plan where `change.md`, `plan.yaml`, and `discovery.md` live at the workspace, while slice work runs in materialised project slots under top-level `workspace/<project>/`.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ specify workspace sync
 specify workspace prepare <project> --change <name>
 ```
 
-`/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `.specify/workspace/<project>/`.
+`/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `workspace/<project>/`.
 
 ## Step 4 — Execute with workspace routing
 

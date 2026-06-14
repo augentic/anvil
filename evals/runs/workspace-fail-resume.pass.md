@@ -17,7 +17,7 @@
 | `chdir-without-operator-intervention` | pass | |
 | `execute-loop-all-done` | pass | |
 
-Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` before execute; `/spec:execute` parked on `auth-rotate` with `specify plan status` reporting `action: stop`, `stop.reason: build-failed`, one `status: in-progress` entry; breakout emitted `Routing: auth-rotate → backend (.specify/workspace/backend/)` while CWD stayed at the workspace root; backend slot journal records `slice.build.failed` then breakout `slice.build.succeeded` for `auth-rotate`; resumed loop merged `auth-rotate`, completed `oauth-mobile`, and `specify plan status` reports `action: drained` with two `status: done` entries; `specify plan next` after lock release returns `reason: drained` (exit 0 via `plan status`).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` before execute; `/spec:execute` parked on `auth-rotate` with `specify plan status` reporting `action: stop`, `stop.reason: build-failed`, one `status: in-progress` entry; breakout emitted `Routing: auth-rotate → backend (workspace/backend/)` while CWD stayed at the workspace root; backend slot journal records `slice.build.failed` then breakout `slice.build.succeeded` for `auth-rotate`; resumed loop merged `auth-rotate`, completed `oauth-mobile`, and `specify plan status` reports `action: drained` with two `status: done` entries; `specify plan next` after lock release returns `reason: drained` (exit 0 via `plan status`).
 
 **Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
@@ -40,4 +40,4 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-fail-resume/platform`
 - **Retained at:** `evals/.sandbox/workspace-fail-resume/`
-- **Key paths:** `platform/plan.yaml`, `platform/registry.yaml`, `platform/.specify/workspace/{backend,mobile}/`, `backend/.specify/journal.jsonl` (`slice.build.failed` / `slice.build.succeeded` for `auth-rotate`), `platform/.specify/journal.jsonl` (`plan.entry.advanced`, `plan.transition.approved`)
+- **Key paths:** `platform/plan.yaml`, `platform/registry.yaml`, `platform/workspace/{backend,mobile}/`, `backend/.specify/journal.jsonl` (`slice.build.failed` / `slice.build.succeeded` for `auth-rotate`), `platform/.specify/journal.jsonl` (`plan.entry.advanced`, `plan.transition.approved`)

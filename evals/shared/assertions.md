@@ -322,8 +322,8 @@ Routed project work happens on `specify/<plan>` branches in the project slots.
 **Probe.**
 
 ```bash
-git -C .specify/workspace/backend branch --show-current    # expect specify/<plan>
-git -C .specify/workspace/mobile branch --show-current     # expect specify/<plan>
+git -C workspace/backend branch --show-current    # expect specify/<plan>
+git -C workspace/mobile branch --show-current     # expect specify/<plan>
 specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
@@ -475,18 +475,18 @@ Each slice runs against its routed project slot — the work lands in the slot t
 
 ```bash
 grep 'project:' plan.yaml    # each slice names its routed project
-git -C .specify/workspace/backend log --oneline specify/<plan>    # backend slice commits in the backend slot
-git -C .specify/workspace/mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
+git -C workspace/backend log --oneline specify/<plan>    # backend slice commits in the backend slot
+git -C workspace/mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
 ```
 
 ### `slots-materialised`
 
-`.specify/workspace/backend/` and `.specify/workspace/mobile/` are materialised by workspace sync.
+`workspace/backend/` and `workspace/mobile/` are materialised by workspace sync.
 
 **Probe.**
 
 ```bash
-test -d .specify/workspace/backend && test -d .specify/workspace/mobile && echo materialised
+test -d workspace/backend && test -d workspace/mobile && echo materialised
 specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
@@ -498,7 +498,7 @@ The plan-lock is held at the workspace while phase work runs in the slots — th
 
 ```bash
 test -f plan.yaml && echo workspace-owns-plan
-ls .specify/workspace/*/plan.yaml 2>/dev/null    # expect no output
+ls workspace/*/plan.yaml 2>/dev/null    # expect no output
 specify journal show --filter plan.entry.advanced    # advances recorded in the workspace journal, not a slot's
 specify plan next --format json    # run after the driver released the lock: expect exit 2, "error":"plan-lock-not-held"
 ```
@@ -512,7 +512,7 @@ specify plan next --format json    # run after the driver released the lock: exp
 **Probe.**
 
 ```bash
-git -C .specify/workspace/backend status --short    # the breakout build's changes are in the routed slot
+git -C workspace/backend status --short    # the breakout build's changes are in the routed slot
 specify journal show --filter slice.build. | jq -c .payload    # the breakout's started/succeeded pair
 ```
 
@@ -542,7 +542,7 @@ The correct `chdir` into the slot happens without the operator changing director
 **Probe.** Grade the captured resync step:
 
 ```bash
-git -C .specify/workspace/<project> status --short    # the slot really was dirty at resync time
+git -C workspace/<project> status --short    # the slot really was dirty at resync time
 # the captured `specify workspace sync` output surfaces the dirty-slot diagnostic for that slot
 ```
 

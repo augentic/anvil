@@ -24,7 +24,7 @@ assertions:
 expected-artifacts:
   - plan.yaml
   - registry.yaml
-  - .specify/workspace
+  - workspace
   - .specify/archive/plans
 negative-expectations:
   - automated-runner-added

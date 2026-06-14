@@ -7,7 +7,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 - `plan.yaml.lifecycle == approved`; `workspace: true`.
 - `auth-rotate` is already `in-progress` from a prior `/spec:execute` pass; slice lifecycle is `refined` (refine landed before the build-failure park).
 - `audit-shipper-rotate` is still `pending`.
-- `.specify/workspace/backend/` exists (materialised + branch prepared during the prior pass); `.specify/workspace/mobile/` is empty.
+- `workspace/backend/` exists (materialised + branch prepared during the prior pass); `workspace/mobile/` is empty.
 - A prior `/spec:execute` pass produced `stop: build-failed` for slice 1 task `task-7` and exited; the lock is released.
 
 ## Trace
@@ -15,7 +15,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 1. **Operator runs `/spec:build` from the workspace.**
    - The breakout body's first action is to acquire `.specify/plan.lock` via the same snippet `/spec:execute` uses ([`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md)). Lock acquired at the workspace (not in any slot); without it, `specify plan next` would refuse with `plan-lock-not-held`.
    - `specify plan next` returns slice 1 (`auth-rotate`, `in-progress`, `project: backend`).
-   - Workspace routing rule kicks in identically to the loop: save CWD = workspace; resolve `backend` through `registry.yaml`; slot already materialised; `chdir` into `.specify/workspace/backend/`; export `SPECIFY_PLAN_DIR=<workspace-root>`. Emit `Routing: auth-rotate → backend (.specify/workspace/backend/)`.
+   - Workspace routing rule kicks in identically to the loop: save CWD = workspace; resolve `backend` through `registry.yaml`; slot already materialised; `chdir` into `workspace/backend/`; export `SPECIFY_PLAN_DIR=<workspace-root>`. Emit `Routing: auth-rotate → backend (workspace/backend/)`.
    - `/spec:build` resumes from task 7 (the failing one); operator's patch landed before the breakout; build passes; `specify slice build --phase finalize` journals `slice.build.succeeded` and transitions the slice to `built`.
    - `chdir` back to workspace.
    - Plan entry stays `in-progress` (build does not write `done`; only `/spec:merge` does).

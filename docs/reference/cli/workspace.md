@@ -36,7 +36,7 @@ The hidden `workspace prepare` helper owns this pre-mutation step for the execut
 
 ### specify workspace sync
 
-Clone or refresh selected projects declared in `registry.yaml` into `.specify/workspace/<project>/`.
+Clone or refresh selected projects declared in `registry.yaml` into top-level `workspace/<project>/`.
 
 ```bash
 specify workspace sync [<project>...]

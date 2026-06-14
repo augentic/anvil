@@ -53,7 +53,7 @@ tools:
 | `execution` | yes | Must be `agent` — source extraction is agent-only. The brief is run by an agent via the two-phase `prepare` / `finalize` handoff. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |
 | `briefs` | yes | Map of operation → brief markdown path relative to the manifest. The keys are the operation set, closed to `survey` and `extract` by `source.schema.json`. |
-| `tools` | no | WASI helpers the host caches under the per-axis manifest cache at `.specify/cache/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
+| `tools` | no | WASI helpers the host caches in the out-of-tree per-project cache at `<project-cache>/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
 
 ## How a source adapter participates in the loop
 

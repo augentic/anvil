@@ -20,7 +20,7 @@ negative-expectations:
 expected-artifacts:
   - plan.yaml
   - registry.yaml
-  - .specify/workspace
+  - workspace
 ---
 
 # Workspace /spec:execute across two projects
@@ -38,13 +38,13 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 ## Invocation
 
 1. **Execute** — `/spec:execute loop` from the workspace.
-2. **Inspect** — `inspect plan.yaml`; `inspect .specify/workspace/<project>` with `git status`. Confirm each slice ran in its routed slot.
+2. **Inspect** — `inspect plan.yaml`; `inspect workspace/<project>` with `git status`. Confirm each slice ran in its routed slot.
 
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists and is approved before execute.
 - `per-slice-project-routing`: each slice runs against its routed project slot.
-- `slots-materialised`: `.specify/workspace/backend/` and `.specify/workspace/mobile/` are materialised.
+- `slots-materialised`: `workspace/backend/` and `workspace/mobile/` are materialised.
 - `plan-lock-at-workspace`: the plan-lock is held at the workspace while phase work runs in slots.
 - `execute-loop-all-done`: the loop reaches `all-done`.
 

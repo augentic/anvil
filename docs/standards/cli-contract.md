@@ -41,7 +41,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Registry and workspace
 
 - `specify registry {validate, add, remove}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- `specify workspace {sync, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. the retired `workspace merge` subcommand has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specify plan archive`.
+- `specify workspace {sync, push}` — `sync` materialises top-level `workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. the retired `workspace merge` subcommand has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specify plan archive`.
 
 ### Source / target adapters and declared tools
 

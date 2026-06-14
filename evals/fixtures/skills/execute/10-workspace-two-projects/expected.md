@@ -6,7 +6,7 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
 
 - `plan.yaml.lifecycle == approved`; `workspace: true`.
 - Two slices, both `pending`: `api-platform-v2-upgrade` → `backend`; `worker-platform-v2-upgrade` → `mobile`.
-- `.specify/workspace/` is empty at run start (no slots materialised yet).
+- top-level `workspace/` is empty at run start (no slots materialised yet).
 - `registry.yaml` declares both projects.
 
 ## Trace
@@ -18,9 +18,9 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
    - Workspace routing per [`../../../../../plugins/spec/skills/execute/references/workspace-routing.md`](../../../../../plugins/spec/skills/execute/references/workspace-routing.md):
      1. Save CWD = workspace.
      2. Resolve `backend` through `registry.yaml`.
-     3. `.specify/workspace/backend/` is missing → `specify workspace sync backend` materialises the slot.
+     3. `workspace/backend/` is missing → `specify workspace sync backend` materialises the slot.
      4. `specify workspace prepare backend --change platform-rollout` creates `specify/platform-rollout` from `origin/HEAD`.
-     5. `chdir` into `.specify/workspace/backend/`; emit `Routing: api-platform-v2-upgrade → backend (.specify/workspace/backend/)`.
+     5. `chdir` into `workspace/backend/`; emit `Routing: api-platform-v2-upgrade → backend (workspace/backend/)`.
      6. Export `SPECIFY_PLAN_DIR=<workspace-root>` so slot-side plan readers resolve the workspace's `plan.yaml` (the slot has none).
    - Phase sequence: `/spec:refine` → `/spec:build` → `/spec:merge`.
    - `specify slice merge run` commits `.specify/specs/` + `.specify/archive/` as `specify: merge api-platform-v2-upgrade` and — through the exported plan root — stamps the entry `done` in the workspace's `plan.yaml` (merge stays the sole writer of `done`).
@@ -29,7 +29,7 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
 
 3. **Second iteration — `worker-platform-v2-upgrade`.**
    - `specify plan status` → `specify plan next` returns `project: mobile`.
-   - `.specify/workspace/mobile/` materialised; branch prepared; `chdir` into the slot; plan root exported.
+   - `workspace/mobile/` materialised; branch prepared; `chdir` into the slot; plan root exported.
    - Phase sequence runs; merge stamps `done` through the exported plan root.
    - Residue check: only `crates/worker/` is dirty; committed as `specify: residue worker-platform-v2-upgrade`.
    - `chdir` back to workspace; export unset.
@@ -40,7 +40,7 @@ Pins the workspace-mode routing contract: plan artifacts (including `.specify/pl
 
 - Both per-entry `status: done`.
 - Closing hint: `drained — run /spec:finalize platform-rollout`.
-- Two slot directories materialised under `.specify/workspace/`, each on `specify/platform-rollout` with merge + residue commits.
+- Two slot directories materialised under top-level `workspace/`, each on `specify/platform-rollout` with merge + residue commits.
 
 ## Stress test
 

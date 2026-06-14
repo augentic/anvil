@@ -30,7 +30,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 ## Notes
 
-- `specify workspace sync` itself prints only `workspace sync complete`; dirty-slot detection for the resync step is confirmed via `git -C .specify/workspace/backend status --short` at interrupt time and `specify workspace prepare` dirty classification immediately after sync (matching the assertion taxonomy's probe pairing).
+- `specify workspace sync` itself prints only `workspace sync complete`; dirty-slot detection for the resync step is confirmed via `git -C workspace/backend status --short` at interrupt time and `specify workspace prepare` dirty classification immediately after sync (matching the assertion taxonomy's probe pairing).
 - `specify workspace prepare` initially refused with `dirty-unrelated-tracked` when the interrupt left a tracked `.specify/journal.jsonl` edit plus a root-level dirty file; triage restored the journal and removed the unrelated file before resume, leaving resume-safe untracked slice-tree dirtiness — consistent with the scenario's stale-recovery posture.
 - Renderer nit: `specify journal show --filter slice.synthesize.started` emitted no lines for this run (synthesis journal events may use a different filter id); resume continuity was graded from `plan.entry.advanced` (no duplicate advance for `oauth-backend`).
 
@@ -38,4 +38,4 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-stale-recovery`
 - **Retained at:** `evals/.sandbox/workspace-stale-recovery/`
-- **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/.specify/workspace/{backend,mobile}/`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/`
+- **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/workspace/{backend,mobile}/`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/`

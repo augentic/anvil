@@ -19,7 +19,7 @@ negative-expectations:
   - golden-output-required
 expected-artifacts:
   - plan.yaml
-  - .specify/workspace
+  - workspace
 ---
 
 # Workspace breakout after build failure in a slot

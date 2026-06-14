@@ -1,6 +1,6 @@
 # Workspace routing
 
-Plan artifacts (`plan.yaml`, `change.md`, `discovery.md`, `.specify/plan.lock`) live at the workspace. Each project's slot lives at `.specify/workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. `/spec:execute` (and breakouts) share one uniform routing rule: lock at the workspace, resolve the active slice's `project`, `chdir` into the slot for phase work, return for the next plan write.
+Plan artifacts (`plan.yaml`, `change.md`, `discovery.md`, `.specify/plan.lock`) live at the workspace. Each project's slot lives at `workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. `/spec:execute` (and breakouts) share one uniform routing rule: lock at the workspace, resolve the active slice's `project`, `chdir` into the slot for phase work, return for the next plan write.
 
 This is the file companion to the `## Workspace routing` H2 in [`../SKILL.md`](../SKILL.md). The single-repo path skips every step here: when the active plan entry has no `project` field, phase work runs in the project root and no `workspace sync` or `chdir` happens.
 

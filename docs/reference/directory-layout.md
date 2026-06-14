@@ -1,6 +1,8 @@
 # Directory Layout
 
-Specify draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, the change-level `change.md` / `plan.yaml` / `discovery.md`, and `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Specify owns only its fenced generated block. Every active slice, the baseline specs, and the archive live under `.specify/`.
+Specify draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, the change-level `change.md` / `plan.yaml` / `discovery.md`, and `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Specify owns only its fenced generated block.
+
+`.specify/` is **Specify's directory: committed configuration plus the system-of-record** — project config, every active slice, the baseline specs, the archive, and the journal. Its lone gitignored in-tree tenant is `.specify/scratch/`. Everything regenerable and machine-owned lives *outside* the working tree: the adapter/codex **cache** in a per-project OS cache directory, and materialised **workspace slots** at the top-level `workspace/`.
 
 ## Tree overview
 
@@ -19,23 +21,17 @@ contracts/                                  # Baseline API contracts
 └── messages/                               # AsyncAPI 3.0 bindings (when messaging is used)
     └── <domain>-events.yaml
 
+workspace/                                  # Workspace slots (workspace mode only; gitignored)
+└── <project-name>/                         # Git worktree (remote peer) or symlink (local peer)
+    └── ...                                 # writable during execution
+
 .specify/
 ├── project.yaml                            # Project configuration (target, sources, workspace, specify-version)
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
 │
-├── cache/                                 # Memoization root: manifests, codex
-│   ├── manifests/sources/<name>/           # Source adapter manifest cache
-│   │   ├── adapter.yaml
-│   │   └── briefs/{survey,extract}.md
-│   ├── manifests/targets/<name>/           # Target adapter manifest cache
-│   │   ├── adapter.yaml
-│   │   └── briefs/{shape,build,merge}.md
-│   ├── manifests/manifest-meta.yaml        # Manifest mirror provenance stamp
-│   └── codex/                              # Distributed shared-rules codex (+ codex-meta.yaml)
-│
-├── scratch/                                # Transient working state (per-run lanes; wiped freely)
+├── scratch/                                # Transient working state (per-run lanes; wiped freely; gitignored)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
 │   └── plan/propose-response.json          # Plan reconciliation handoff lane
 │
@@ -61,10 +57,6 @@ contracts/                                  # Baseline API contracts
 ├── journal.jsonl                           # Append-only event log; also the outcome ledger
 │                                           #   (slice.archive.created: slice, touched-specs, summary, merge SHA)
 │
-├── workspace/                              # Workspace slots (workspace mode only; gitignored)
-│   └── <project-name>/
-│       └── ...                             # Project clone or symlink, writable during execution
-│
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
     ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `specify archive prune`)
     │   ├── metadata.yaml
@@ -79,6 +71,22 @@ contracts/                                  # Baseline API contracts
             ├── change.md
             ├── discovery.md
             └── ...
+```
+
+The regenerable **cache** lives outside the working tree, in a per-project directory inside your OS cache (keyed by a digest of the project path):
+
+```text
+$XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
+├── manifests/sources/<name>/                     # Source adapter manifest mirror
+│   ├── adapter.yaml
+│   └── briefs/{survey,extract}.md
+├── manifests/targets/<name>/                     # Target adapter manifest mirror
+│   ├── adapter.yaml
+│   └── briefs/{shape,build,merge}.md
+├── manifests/manifest-meta.yaml                  # Manifest mirror provenance stamp
+└── codex/                                        # Distributed shared-rules codex (+ codex-meta.yaml)
+
+$XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per remote peer URL
 ```
 
 ## Key directories
@@ -99,17 +107,17 @@ A slice directory may also contain a `contracts/` subdirectory holding the propo
 
 The baseline. When a slice is merged, its spec deltas are applied here. Baseline specs represent the current known state of the system.
 
-### `cache/`
+### Cache (out-of-tree)
 
-The memoization root — every subtree is keyed by content or version, and deleting it costs recomputation only. `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with the mirror's provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 
-The transient working-state root — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Keeping scratch outside `cache/` makes the "a scratch write never pollutes a cache artifact" guarantee structural rather than conventional. Both roots are gitignored.
+The transient working-state root and the lone gitignored tenant *inside* `.specify/` — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Because the cache is out-of-tree, "a scratch write never pollutes a cache artifact" is structural rather than conventional.
 
-### `workspace/`
+### `workspace/` (top-level)
 
-Workspace slots for multi-repo changes. Created or refreshed by `specify workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
+Workspace slots for multi-repo changes, materialised at the project root (not under `.specify/`) and gitignored. Created or refreshed by `specify workspace sync`: remote URLs become `git worktree`s of a persistent out-of-tree bare mirror (so a peer's object store is shared across changes and fresh checkouts), and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
 
 Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `/spec:finalize` later observes the merge state with `gh pr view` before running `specify plan archive`.
 
@@ -121,4 +129,4 @@ A **prunable convenience cache** of merged slices, dropped slices, and archived 
 
 Operator-facing platform artifacts (`registry.yaml`, the change-level `change.md` / `plan.yaml` / `discovery.md`, `contracts/`), generated context (`AGENTS.md`), and source code generated by `/spec:build` (e.g. `crates/<name>/` for Omnia, `shared/src/` for Vectis) all live at the repo root, alongside the project's normal directory structure. Specify owns `.specify/` and the fenced generated block in `AGENTS.md`; everything else is yours.
 
-In **workspace mode** (`project.yaml: workspace: true`), the registry sits at the workspace and per-project slots live under `.specify/workspace/<project>/`. Each slot carries its own `.specify/slices/<name>/` tree; the workspace's own `.specify/slices/` is unused. Plan artifacts (`change.md`, `plan.yaml`, `discovery.md`) live at the workspace root.
+In **workspace mode** (`project.yaml: workspace: true`), the registry sits at the workspace and per-project slots live at the top-level `workspace/<project>/`. Each slot carries its own `.specify/slices/<name>/` tree; the workspace's own `.specify/slices/` is unused. Plan artifacts (`change.md`, `plan.yaml`, `discovery.md`) live at the workspace root.
