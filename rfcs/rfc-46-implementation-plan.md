@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S13` |
-| **Last completed** | `R46-S12` |
+| **Active step** | `R46-S14` |
+| **Last completed** | `R46-S13` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -78,7 +78,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S10](#r46-s10-vectis-validate-app-icon-checks) | Vectis validate `app-icon` checks | ✅ | specify-cli — export layout §4.2/§4.3, materialization-missing, project.yaml platforms |
 | [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ✅ | specify-cli + `adapters/targets/vectis/examples/assets.yaml` |
 | [R46-S12](#r46-s12-phase-1-documentation-and-inference-policy) | Phase 1 docs & inference policy | ✅ | specify + `wasi-tools/vectis/DECISIONS.md` |
-| [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ⬜ | specify |
+| [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ✅ | specify — `VECTIS-006`; review-scoped v1 (IOS-020 / AND-028) |
 | [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ⬜ | |
 | [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ⬜ | specify-cli |
 | [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ⬜ | specify-cli |
@@ -118,6 +118,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S10 | Split `assets.rs` into `assets/{mod,app_icon,exports,platforms}.rs`; `load_shell_platforms` filters `ios`/`android` only (not `core` from shell-detect). Missing `project.yaml` falls back silently to `["ios","android"]` so lone `assets.yaml` validate keeps working. Raster PNG dimension/alpha decode uses inline IHDR parsing (no `image` dep). | No new steps. |
 | 2026-06-15 | R46-S11 | No separate Vectis init design-system template exists — added `adapters/targets/vectis/examples/assets.yaml` (commented `app-icon` field, no placeholder asset file). Android scaffold stubs omit legacy `mipmap-*/ic_launcher.png` (materialize fills in R46-S20; `shell_resident_app_icon` satisfied by `mipmap-anydpi-v26` stubs). | No new steps. |
 | 2026-06-15 | R46-S12 | `CORE-016` flags `RFC-46` in adapter briefs — use descriptive prose ("symbol inference policy", "inference-time symbol exception") instead of numbered RFC citations in operator-facing docs. | No new steps. |
+| 2026-06-15 | R46-S13 | No `briefs/build/review.md` — per-platform review briefs (`build/ios/review.md`, `build/android/review.md`) are the wiring surface. Cross-artifact render-by-`kind` needs composition + `assets.yaml` + shell join — v1 is review-scoped (`VECTIS-006`, IOS-020 / AND-028); mechanical `rule_hints` deferred post-materialize. | No new steps; note under R46-S13. |
 
 ### Specify-cli step assurance
 
@@ -582,8 +583,8 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 
 **Work:**
 1. Add `adapters/targets/vectis/rules/` entry (e.g. `VECTIS-006-asset-render-by-kind.md`) — forbid `Image(systemName:)` / `Icons.Default.*` for composition-referenced ids that resolve to `vector` or `raster` in `assets.yaml`.
-2. Wire into `adapters/targets/vectis/briefs/build/review.md` checklist.
-3. If the rule needs mechanical enforcement, add a `specify lint project` predicate or document as review-only for v1 (RFC says SHOULD flag — review-only is acceptable initially; note choice in discovery log).
+2. Wire into per-platform review briefs (`build/ios/review.md`, `build/android/review.md`) and team-protocol § Integration checklists (there is no parent `build/review.md`).
+3. **v1 choice (recorded in discovery log):** review-scoped only — Integration specialists run IOS-020 / AND-028 with codex `VECTIS-006`; mechanical `rule_hints` deferred until materialize export paths are stable in consumer projects.
 
 **Assurance:** `make lint`; rule resolves from vectis review brief.
 
