@@ -1,29 +1,28 @@
-# RFC-46: Reconciliation Polish — Typed Lead-Side Fields and Deterministic Consumers
+# RFC-46: Reconciliation Polish — Typed Lead-Side Fields and Deterministic Checks
 
 > Status: Proposed · Depends: [From sources to slices](../../plugins/spec/references/reconciliation.md), the plan-time propose envelope (`schemas/discovery/proposal.schema.json`, `crates/workflow/src/change/plan/core/propose/`), the discovery lead schema (`schemas/discovery/lead.schema.json`) · Roadmap: the "Reconciliation polish" current-priority track; answers Open Question #1 ("which reconciliation-polish surface lands first?").
 
 ## Abstract
 
-Plan-time reconciliation — the propose sub-step of `/spec:plan` that groups surveyed leads into slices — carries exactly one cross-source signal today: a freeform `synopsis` string per `(source, lead)`. The agent reads every `synopsis` and emits `slices[]` directly. This is correct as far as the *judgment* goes ("are these two leads the same work?"), but it leaves the substrate around that judgment thin: there is nothing typed for a deterministic layer to join on, no reproducible candidate-set the agent reasons over, and no mechanical check that the agent's grouping honoured the coverage and conflict invariants the [reconciliation reference](../../plugins/spec/references/reconciliation.md) already names as *rules*.
+Plan-time reconciliation — the propose sub-step of `/spec:plan` — groups surveyed leads into slices. **Every grouping judgment belongs to the agent and stays there**: the agent reads each lead, decides which describe the same work, and emits `slices[]` directly. The CLI computes no groupings. What it owns is the **typed schema** those judgments are recorded in and the **mechanical checks** that verify the result — nothing that decides how leads combine.
 
-This RFC adds **typed lead-side fields** and the **deterministic consumers** built on them, *without moving the matching decision off the agent*:
+The RFC adds the following, *without moving any matching or grouping decision off the agent*:
 
-1. **`topics[]`** — a typed, agent-populated field on each discovery lead. It is the substrate the rest of the track is blocked on.
-2. **Advisory `clusters[]`** — deterministic groupings over `topics[]`, computed by the CLI during request assembly and surfaced to the propose agent as a hint it may override.
-3. **Binding `affinity`** — a typed pre-grouping signal on a lead derived from its source binding, narrowing the agent's candidate space.
-4. **Decision-conflict warnings** — a deterministic pass that surfaces, per lead, which accepted Decision Records share a topic, so the agent (and Gate 1) can check for contradiction.
+1. **`topics[]`** — a typed, agent-populated field on each discovery lead, giving the agent richer per-lead context and giving the checks below a typed surface to verify against. It is the substrate the rest of the track builds on.
+2. **Source-authored `affinity`** — an optional pre-grouping signal a source declares over its own leads. A typed hint the agent reads; it never forces a match and the CLI computes nothing from it.
+3. **Coverage check** — a deterministic set-difference over what the agent emitted: every surveyed lead must be referenced by at least one slice. Verification of the agent's output, not a grouping.
+4. **Decision-contradiction warning** — a deterministic surfacing of which accepted Decision Records share a topic with a lead, so the agent (and Gate 1) can judge contradiction. A warning, not a decision.
 5. **`advisory-context`** — wiring baseline context into slice-time synthesis (`/spec:refine`), separate from the plan-time items above.
 6. **Greenfield identity seed** — a registry-level seed so a fresh project routes before any baseline exists.
 
-The determinism lives in the **consumers** (clustering, coverage, conflict warnings), not in producing the fields: survey is agent-driven, so the agent populates `topics[]`. The win is moving the agent's output from un-checkable prose into typed facts the CLI can join, check, and reproduce. This RFC adds no lifecycle authority: every hint is advisory and the agent still emits `slices[]`; the deterministic checks are validation findings, not silent rewrites.
+The determinism lives only in **checking and surfacing what the agent emitted**, never in producing or grouping leads. The headline win is **verification**: the coverage invariant the [reconciliation reference](../../plugins/spec/references/reconciliation.md) names as a *rule* runs as a mechanical set-operation over a typed surface, and the decision-record cross-check surfaces candidate contradictions the agent then judges. This RFC carries no lifecycle authority: every typed field is a hint the agent may ignore, and the checks are validation findings, not silent rewrites.
 
 ## Motivation
 
-The reconciliation reference already states three invariants that "keep this predictable" — one-lead-per-source-per-slice, at-least-once coverage, and surfaced-not-hidden uncertain matches — and the roadmap principle *Core owns reconciliation* commits that "if a rule decides how sources combine… it belongs in the CLI or a CLI-owned schema — not only in a skill body." Today those invariants live partly in prose and partly in the propose kernel, while the *input* the agent groups on is an untyped `synopsis`. Three concrete gaps follow:
+The roadmap principle *Core owns reconciliation* commits that "if a rule decides how sources combine… it belongs in the CLI **or a CLI-owned schema** — not only in a skill body." The emphasis matters: the principle is discharged by owning the *schema* the agent's judgments are recorded in and the *checks* over the result — not by the CLI computing groupings. Typed lead-side fields put the reconciliation invariants the [reconciliation reference](../../plugins/spec/references/reconciliation.md) names — one-lead-per-source-per-slice, at-least-once coverage, and surfaced-not-hidden uncertain matches — on a surface the CLI can enforce without making any matching decision. Two things follow:
 
-- **The candidate set is not reproducible.** With only `synopsis` blobs, the agent re-derives "which leads might match" from scratch each run. The grouping is therefore non-reproducible at the *candidate* level, which undercuts the reference's opening promise of a clear trail back to where every requirement came from.
-- **Matching is O(N·M) prose comparison and degrades with scale.** A change with many sources and many leads forces the agent to weigh every `synopsis` against every other. The roadmap notes the loop is "proven on realistic multi-repo flows" — which is exactly where unbounded pairwise prose reasoning starts to cost quality.
-- **Coverage and conflict are asserted, not enforced on a typed surface.** "Every lead referenced at least once" and "matched leads that materially disagree → `divergence: likely`" are set operations and predicates. Built on a typed `topics[]` substrate they become deterministic findings; built on prose they remain an LLM re-reading itself.
+- **Coverage becomes an enforced guarantee.** This is the capability that most justifies the RFC. "Every surveyed lead referenced by at least one slice" is a set-difference over what the agent emitted; the CLI verifies it *after* the agent emits `slices[]`. It needs no topics at all — it runs over the slice/lead sets directly — so the guarantee holds regardless of how the agent labelled anything.
+- **Typed facts make the result auditable.** `topics[]` and `affinity` are agent-/source-authored facts the CLI can validate, diff, surface at Gate 1, and join against accepted decisions for a contradiction *warning*. The contrast with a freeform `synopsis` is that a typed field can be checked and joined; it is not an attempt to have the CLI re-derive what the agent already judged.
 
 ### Trigger conditions
 
@@ -31,12 +30,12 @@ This RFC is **proposed for activation now** — it is the roadmap's stated highe
 
 ## Principles
 
-- **The agent owns the judgment; the CLI owns the substrate.** The agent decides whether two leads are the same work. The CLI owns candidate-set construction, the coverage/conflict guarantees, and the audit trail. No field in this RFC makes the *matching decision* for the agent.
-- **Typed, not deterministic-at-source.** Survey is agent-driven, so `topics[]` is agent-populated. "Deterministic" describes the *consumers* of the typed fields, not their production.
-- **Advisory by default; binding only where named.** `clusters[]` and decision-conflict surfacing are advisory hints the agent may override. Only `affinity` is a binding pre-grouping, and even it does not force a match — it narrows the candidate space.
+- **The agent owns every grouping judgment; the CLI computes none.** The agent decides whether two leads are the same work and expresses that decision in `slices[]`. The CLI never groups, clusters, or pre-judges leads. No field in this RFC produces a grouping for the agent.
+- **The CLI's only determinism is checking and surfacing.** It owns the typed schema, a coverage check over the agent's emitted slices, and a decision-contradiction *warning*. These verify or surface; they never construct a candidate set or decide a match.
+- **Typed facts are authored, not derived.** `topics[]` is agent-populated during survey; `affinity` is source-authored. The CLI validates and joins them but does not generate them, and a missing field never blocks reconciliation.
 - **No lifecycle authority.** Every check this RFC adds is a `specify slice validate` / propose-time finding. It never transitions a slice, stamps a plan, or rewrites a `slices[]` row.
-- **The CLI is authoritative.** The schema, the clustering pass, and the coverage/conflict checks live in `augentic/specify-cli`. The survey and propose skill briefs in `augentic/specify` consume them; they do not reimplement them.
-- **Additive and back-compatible.** Every new field is optional. A lead with no `topics[]` reconciles exactly as today (synopsis-only); the hints raise the floor without breaking the degenerate N=1 path.
+- **The CLI owns the schema and the checks; skills own the judgment.** The typed schema and the coverage/contradiction checks live in `augentic/specify-cli`. The survey and propose skill briefs in `augentic/specify` author the fields and make the grouping calls; neither side reimplements the other.
+- **Additive and optional.** Every new field is optional. A lead with no `topics[]` reconciles on its synopsis alone; the typed fields raise the floor without breaking the degenerate N=1 path.
 
 ## Design
 
@@ -44,14 +43,14 @@ This RFC is **proposed for activation now** — it is the roadmap's stated highe
 
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
-| **D1 `topics[]` lead field** | Add an optional `topics[]` (array of kebab-case slugs) to the discovery lead. The survey agent populates it; absent means "unclassified" and falls back to synopsis-only matching. | Widen `schemas/discovery/lead.schema.json` and the embedded `LEAD_JSON_SCHEMA` additively; mirror onto `LeadCatalogEntry` (`crates/workflow/src/change/plan/core/propose/wire.rs`) so it rides the `kind: request` envelope. Update the `specify_model::discovery::Lead` parser. |
-| **D2 Advisory `clusters[]` in the request** | Add an optional advisory `clusters[]` to `ProposalRequest`: deterministic groupings of `(source, lead)` rows that share one or more topics, each cluster naming its topic basis. Kernel-ignored on the response — purely an agent hint. | `build_request` / `build_catalog` compute clusters by topic set-intersection; widen `schemas/discovery/proposal.schema.json` request branch. No change to `ProposalResponse`. |
-| **D3 Binding `affinity`** | Add an optional `affinity` signal to a catalog row indicating a binding-level pre-grouping (e.g. leads a single source declares as related). Narrows the agent's candidate space; never forces a match. | Optional field on `LeadCatalogEntry` (and its discovery-lead origin); populated by the source adapter's `survey` brief, schema-validated by the CLI. |
-| **D4 Decision-conflict warnings** | A deterministic pass that, per lead, surfaces which of a bound project's accepted Decision Records share a topic with the lead — a *candidate contradiction* hint. The contradiction judgment stays with the agent and Gate 1. | Join `ProjectRef.decisions[]` (already projected into the request) against lead `topics[]`; emit as advisory request annotations and/or a `specify slice validate` finding. |
-| **D5 Coverage as a typed check** | Promote at-least-once coverage and the "materially-disagreeing matched leads → `divergence: likely`" rule to deterministic checks over the typed substrate, surfaced as propose-time / `specify slice validate` findings rather than relying on prose self-grading. | Extend the propose kernel's response validation and/or `crates/workflow/src/change/plan/core/validate.rs`; reuse the existing orphan/coverage plumbing. |
+| **D1 `topics[]` lead field** | Add an optional `topics[]` (array of kebab-case slugs) to the discovery lead. The survey agent populates it as per-lead context; absent means "unclassified". The CLI computes no grouping from it — it is context for the agent and a join key for the decision-contradiction warning. | Widen `schemas/discovery/lead.schema.json` and the embedded `LEAD_JSON_SCHEMA` additively; mirror onto `LeadCatalogEntry` (`crates/workflow/src/change/plan/core/propose/wire.rs`) so it rides the `kind: request` envelope. Update the `specify_model::discovery::Lead` parser. |
+| **D2 Source-authored `affinity`** | Add an optional `affinity` signal to a catalog row indicating a source-declared relationship between its own leads (e.g. leads one source declares as related). A typed hint the agent reads; it never forces a match and the CLI derives nothing from it. | Optional field on `LeadCatalogEntry` (and its discovery-lead origin); populated by the source adapter's `survey` brief, schema-validated by the CLI. |
+| **D3 Coverage check** | A deterministic set-difference: every surveyed lead must be referenced by at least one slice the agent emitted. Verification of the agent's output — needs no topics. | Extend the propose kernel's response validation and/or `crates/workflow/src/change/plan/core/validate.rs`; reuse the orphan/coverage plumbing. Surfaced as propose-time / `specify slice validate` findings. |
+| **D4 Decision-contradiction warning** | A deterministic surfacing of which of a bound project's accepted Decision Records share a topic with a lead — a *candidate contradiction* the agent and Gate 1 then judge. Never a grouping or a match; a warning only. | Join `ProjectRef.decisions[]` (projected into the request) against lead `topics[]`. **Prerequisite:** the join needs a shared key — add an optional `topics[]` to `decision.schema.json` (mirroring D1's lead field). A lead carries no `REQ` id at plan time, so the `related[] → REQ-NNN` link on a decision cannot bridge. Emit as advisory request annotations and/or a `specify slice validate` finding. |
+| **D5 Divergence stays agent-flagged** | The "matched leads that materially disagree → `divergence: likely`" rule is *not* mechanical — "materially disagree" is judgment, so the agent flags it. The CLI's role is a structural-consistency check: a slice flagged `divergence` must record the disagreeing values. | Extend the propose-response / `model.yaml` validation to assert the flag-and-record consistency; no CLI computation of disagreement. |
 | **D6 `advisory-context` at synthesis** | Surface baseline spec context (owned domains, related requirement titles) to the slice-time synthesize agent in `/spec:refine`, mirroring how `ProjectRef.surface[]` already informs plan-time binding. Advisory only. | Extend the slice synthesize request the CLI assembles for `/spec:refine`; no change to `spec.md` / `model.yaml` shape. |
 | **D7 Greenfield identity seed** | Allow `registry.yaml` to carry an optional greenfield routing seed so a fresh project with no baseline projection still routes leads at plan time. | Optional seed field consumed by `resolve_topology` / `build_request` when `surface[]` is empty; documented under the *One authored home per fact* principle. |
-| **D8 Repo split** | Schema, clustering pass, coverage/conflict checks, and the request annotations live in `augentic/specify-cli`. The survey brief (populating `topics[]` / `affinity`) and the propose brief (consuming `clusters[]` / warnings) live in `augentic/specify`. | New/extended schemas in `crates/schema/`; consumers in `crates/workflow/`; brief edits under `adapters/sources/*/briefs/survey.md` and `plugins/spec/skills/plan/` + `plugins/spec/references/reconciliation.md`. |
+| **D8 Repo split** | The typed schema and the coverage/contradiction/consistency checks live in `augentic/specify-cli`. The survey brief (authoring `topics[]` / `affinity`) and the propose brief (making the grouping calls, reading the warnings) live in `augentic/specify`. | New/extended schemas in `crates/schema/` (`lead.schema.json` for D1; `decision.schema.json` for D4's join key); check logic in `crates/workflow/`; brief edits under `adapters/sources/*/briefs/survey.md` and `plugins/spec/skills/plan/` + `plugins/spec/references/reconciliation.md`. |
 
 ### `topics[]` on a discovery lead (D1)
 
@@ -66,92 +65,60 @@ This RFC is **proposed for activation now** — it is the roadmap's stated highe
   topics: [identity, account-creation, validation]
 ```
 
-### Advisory `clusters[]` in the `kind: request` envelope (D2)
-
-```json
-{
-  "version": 1,
-  "kind": "request",
-  "projects": [ /* … ProjectRef … */ ],
-  "leads": [
-    { "source": "legacy-monolith", "lead": "user-registration", "synopsis": "…", "topics": ["identity", "account-creation"] },
-    { "source": "design-notes",    "lead": "user-registration", "synopsis": "…", "topics": ["identity", "account-creation"] }
-  ],
-  "clusters": [
-    {
-      "topics": ["identity", "account-creation"],
-      "members": [
-        { "source": "legacy-monolith", "lead": "user-registration" },
-        { "source": "design-notes",    "lead": "user-registration" }
-      ]
-    }
-  ]
-}
-```
-
-The agent reads `clusters[]` as "these rows are likely the same work — confirm or split." It still emits `slices[]` in the existing `ProposalResponse` shape; the kernel ignores `clusters[]` on the way back (it is request-only).
+The agent reads each lead — `synopsis`, `topics[]`, and any `affinity` — and emits `slices[]` in the existing `ProposalResponse` shape. The CLI carries the typed fields into the `kind: request` envelope and runs its checks over the response; it never adds a grouping of its own.
 
 ### CLI surface
 
-No new top-level verbs. The hints flow through the existing propose envelope and validation:
+No new top-level verbs. The typed fields and checks flow through the existing propose envelope and validation:
 
 ```bash
-specify plan propose --dry-run --format json   # request now carries topics[]/affinity/clusters[]/decision warnings
-specify plan propose --from <response.json>     # response validation now enforces D5 coverage/divergence on the typed substrate
-specify slice validate <slice>                   # decision-conflict + coverage findings surface here too
+specify plan propose --dry-run --format json   # request carries topics[]/affinity + decision-contradiction warnings
+specify plan propose --from <response.json>     # response validation runs the D3 coverage + D5 consistency checks
+specify slice validate <slice>                   # coverage + decision-contradiction findings surface here
 ```
-
-### Relationship to the existing surfaces
-
-| Concern | Today (`synopsis` only) | This RFC |
-| --- | --- | --- |
-| Cross-source candidate set | re-derived by the agent each run | deterministic `clusters[]` over `topics[]` (D2) |
-| Same-source pre-grouping | none | binding `affinity` (D3) |
-| Contradicts an accepted decision | agent reads `decisions[]` ad hoc | deterministic topic-join warning (D4) |
-| Coverage / divergence | prose invariant + partial kernel checks | typed checks / findings (D5) |
-| Baseline context at synthesis | plan-time `surface[]` only | `advisory-context` at refine (D6) |
-| Greenfield routing | `description` alone | optional registry seed (D7) |
 
 ## Phasing — the answer to Open Question #1
 
 The roadmap's Open Question #1 asks which reconciliation-polish surface lands first. This RFC's answer:
 
-1. **Phase 1 — `topics[]` (D1).** Ship the typed field first. It is inert on its own but is the substrate every deterministic consumer joins on; nothing else in the track can be built without it. Risk is low (additive optional field, schema + parser).
-2. **Phase 2 — advisory `clusters[]` (D2) + coverage/divergence checks (D5).** The first consumers: deterministic grouping the agent reads, and the typed coverage/conflict guarantees. This is where the track starts paying for itself.
-3. **Phase 3 — binding `affinity` (D3) + decision-conflict warnings (D4).** Further candidate-space narrowing and the decision-record cross-check, both layered on the now-stable substrate.
+1. **Phase 1 — the coverage check (D3).** The highest-value, judgment-free piece, and it needs no new field: coverage runs as a set-difference over the leads `survey` already emits and the `slices[]` the agent already returns. Shipping it first delivers the typed *guarantee* with the smallest surface.
+2. **Phase 2 — `topics[]` (D1).** The typed per-lead context field, plus the structural divergence-consistency check (D5) over the agent's flag. Inert as input, but the substrate D4 joins on.
+3. **Phase 3 — source-authored `affinity` (D2) + decision-contradiction warning (D4).** The source-declared relationship hint and the topic-join warning, both layered on the Phase 2 substrate. D4 additionally requires the `decision.schema.json` topic key called out in its row.
 4. **Phase 4 — `advisory-context` (D6) + greenfield seed (D7).** Slice-time synthesis context and greenfield routing — independent of the plan-time chain above and sequenceable last.
 
-Phases 1–3 are strictly ordered (each consumes the prior). Phase 4 may proceed in parallel once Phase 1 lands.
+Only D4 has a hard ordering (it consumes D1's `topics[]` and the decision topic key); D3 (coverage) stands alone, and D2 reads only the agent's authored fields. Phase 4 may proceed in parallel throughout.
 
 ## Alternatives considered
 
-- **Make the matching decision deterministic (topic-equality merges leads).** Rejected. Semantic equivalence of two leads genuinely needs judgment; a deterministic topic/string match would be brittle and silently wrong. The hints are explicitly the inputs and guardrails around the decision, not the decision.
-- **Richer free-text `synopsis` instead of typed fields.** Rejected. Prose cannot be joined, clustered, or checked deterministically, which leaves the candidate set non-reproducible and the coverage/conflict invariants un-enforceable — the exact gaps this RFC closes.
-- **Compute `topics[]` deterministically in the CLI (keyword extraction).** Rejected for v1. Survey is agent-driven and the agent already reads each source in depth; a separate deterministic extractor would duplicate that read with worse recall. The CLI's determinism is best spent on the *consumers*, not on re-deriving topics.
-- **Make `clusters[]` binding (kernel auto-merges clustered leads).** Rejected. That would move the matching decision off the agent, violating the lead principle. `clusters[]` stays advisory and request-only.
-- **Put the clustering/checks in the propose skill body.** Rejected by *Core owns reconciliation* — any rule deciding how sources combine belongs in the CLI or a CLI-owned schema.
+- **CLI-computed advisory `clusters[]` (a `GROUP BY topic` the agent reads as a hint).** Rejected — this was an earlier shape of the RFC and is the option that prompted the rewrite. It is circular: the agent authors the topics, and the propose agent already reads every lead across every source in one pass, so a CLI grouping by those same topics hands the agent back a weaker version of what it just produced. It is also garbage-in-garbage-out — topic-equality over free slugs over-clusters generic topics and misses synonyms — which is the exact brittleness the next bullet rejects, merely relabelled "advisory." The agent's grouping judgment already lives in `slices[]`; a separate CLI-computed cluster adds no information and muddies the agent-judges / CLI-checks split.
+- **Make the matching decision deterministic (topic-equality merges leads).** Rejected. Semantic equivalence of two leads genuinely needs judgment; a deterministic topic/string match would be brittle and silently wrong.
+- **Agent-authored `clusters[]` as a distinct artifact.** Rejected as redundant. An agent grouping leads *is* proposing slices; expressing the same judgment twice (once as clusters, once as `slices[]`) adds a second surface to keep consistent with no new signal.
+- **Richer free-text `synopsis` instead of typed fields.** Rejected. Prose cannot be joined or checked, which leaves the coverage invariant un-enforceable and the decision-contradiction join impossible — exactly what the typed fields exist to provide.
+- **Compute `topics[]` deterministically in the CLI (keyword extraction).** Rejected. Survey is agent-driven and the agent already reads each source in depth; a separate extractor would duplicate that read with worse recall. The CLI's determinism is spent on *checking* the agent's output, not on re-deriving its inputs.
+- **Put the checks in the propose skill body.** Rejected by *Core owns reconciliation* — a coverage or consistency check belongs in the CLI or a CLI-owned schema, not only in a skill body.
 
 ## Non-Goals
 
-- Making the lead-matching judgment deterministic, or auto-merging leads from clusters/affinity.
-- Any lifecycle authority — no slice transition, plan stamp, or `slices[]` rewrite from these hints.
+- Any CLI-computed grouping of leads — no clustering, candidate-set construction, or auto-merge. Grouping is the agent's, expressed in `slices[]`.
+- Making the lead-matching or divergence judgment deterministic; `affinity` never forces a match.
+- Any lifecycle authority — no slice transition, plan stamp, or `slices[]` rewrite from these fields or checks.
 - Deterministic *production* of `topics[]` (the agent populates them during survey).
 - Grading synthesized prose quality; `advisory-context` only supplies context, it does not judge output.
-- A new top-level CLI verb — the hints ride the existing propose envelope and validation surfaces.
+- A new top-level CLI verb — the typed fields and checks ride the existing propose envelope and validation surfaces.
 - Backstage/catalog import of topics (RM-12 territory); `topics[]` here is survey-authored.
 
 ## Open Questions
 
-1. **Topic vocabulary.** Should `topics[]` be free kebab slugs, or a per-change controlled vocabulary the survey agent must draw from (better clustering, more authoring friction)? Current preference: free slugs in Phase 1, revisit a vocabulary if cluster precision is poor.
-2. **Cluster overlap.** May a `(source, lead)` row appear in more than one cluster (multi-topic leads), or should clusters partition? Current preference: allow overlap — multi-homed leads are already a first-class case.
-3. **`affinity` provenance.** Is binding `affinity` declared by the source adapter's survey brief, or derived by the CLI from co-occurrence in one source's lead set? Current preference: adapter-declared, CLI-validated.
-4. **Decision-conflict strength.** Should a topic-sharing accepted decision produce a propose-time warning only, or also a `specify slice validate` finding at slice time? Current preference: both, advisory at each.
+1. **Topic vocabulary.** Should `topics[]` be free kebab slugs, or a per-change controlled vocabulary the survey agent must draw from? Topics here feed agent context and the decision-contradiction join, not a CLI grouping, so the precision bar is lower. Current preference: free slugs.
+2. **`affinity` provenance.** Is source `affinity` declared by the adapter's survey brief, or derived by the CLI from co-occurrence in one source's lead set? Per the *CLI computes none* principle, current preference is adapter-declared, CLI-validated — the CLI does not derive it.
+3. **Decision-contradiction strength.** Should a topic-sharing accepted decision produce a propose-time warning only, or also a `specify slice validate` finding at slice time? Current preference: both, advisory at each.
+4. **Divergence-consistency scope.** Should the D5 structural check live at propose time, at `specify slice validate`, or both? Current preference: wherever the divergence flag is recorded, check it there.
 5. **Greenfield seed shape.** What is the minimal seed in `registry.yaml` that routes leads before any baseline exists, without re-introducing adapter/description duplication the *One authored home per fact* principle forbids?
 
 ## References
 
 - [From sources to slices](../../plugins/spec/references/reconciliation.md) — the two reconciliation moments, the lead/slice invariants, and the provenance trail this RFC builds on.
-- [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md) — the disagreement-resolution order the `divergence` check (D5) interacts with.
-- `schemas/discovery/lead.schema.json` and `schemas/discovery/proposal.schema.json` (in `augentic/specify-cli`) — the schemas D1/D2/D3 widen.
-- `crates/workflow/src/change/plan/core/propose/` (`wire.rs`, `catalog.rs`, `kernel.rs`) — the propose envelope and projection kernel the consumers extend.
+- [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md) — the disagreement-resolution order the agent-flagged `divergence` (D5) interacts with.
+- `schemas/discovery/lead.schema.json` (in `augentic/specify-cli`) — the schema D1 widens; `decision.schema.json` gains the D4 join key.
+- `crates/workflow/src/change/plan/core/propose/` (`wire.rs`, `catalog.rs`, `kernel.rs`) — the propose envelope and the validation the checks extend.
 - [Roadmap](../roadmap.md) — the "Reconciliation polish" current-priority track and Open Question #1 this RFC answers.
