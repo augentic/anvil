@@ -42,7 +42,7 @@ jobs:
       # -------------------------------------------------------------
       - id: specify-cli
         run: |
-          branch="${GITHUB_REF_NAME}}"
+          branch="${{ github.ref_name }}"
           line=$(git ls-remote --heads https://github.com/augentic/specify-cli.git "refs/heads/$branch")
           if [ -n "$line" ]; then
             echo "ref=$branch" >> "$GITHUB_OUTPUT"
