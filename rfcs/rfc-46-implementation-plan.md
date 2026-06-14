@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S11` |
-| **Last completed** | `R46-S10` |
+| **Active step** | `R46-S12` |
+| **Last completed** | `R46-S11` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -76,7 +76,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ✅ | specify-cli — `BootstrapContext` in `platform/bootstrap.rs` |
 | [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ✅ | specify-cli — `plan-bootstrap-app-icon-missing` in plan doctor |
 | [R46-S10](#r46-s10-vectis-validate-app-icon-checks) | Vectis validate `app-icon` checks | ✅ | specify-cli — export layout §4.2/§4.3, materialization-missing, project.yaml platforms |
-| [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ⬜ | specify-cli |
+| [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ✅ | specify-cli + `adapters/targets/vectis/examples/assets.yaml` |
 | [R46-S12](#r46-s12-phase-1-documentation-and-inference-policy) | Phase 1 docs & inference policy | ⬜ | specify |
 | [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ⬜ | specify |
 | [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ⬜ | |
@@ -116,6 +116,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-12 | R46-S06 | No mirrored `assets.schema.json` under `schemas/` or `specify` — vectis `embedded/assets.schema.json` is the sole source; `crates/schema` has no assets constant. Raster dimension/alpha decode checks deferred to R46-S10 per plan. | No new steps; R46-S07 unchanged. |
 | 2026-06-15 | R46-S09 | Plan gate checks path A (source file presence + kind/ext) and path B (pin resolves to file/dir) only; export layout §4.2/§4.3 and raster dimension decode stay in R46-S10 vectis validate. `project_dir` was already forwarded to `plan_doctor`. | No new steps; R46-S10 unchanged. |
 | 2026-06-15 | R46-S10 | Split `assets.rs` into `assets/{mod,app_icon,exports,platforms}.rs`; `load_shell_platforms` filters `ios`/`android` only (not `core` from shell-detect). Missing `project.yaml` falls back silently to `["ios","android"]` so lone `assets.yaml` validate keeps working. Raster PNG dimension/alpha decode uses inline IHDR parsing (no `image` dep). | No new steps. |
+| 2026-06-15 | R46-S11 | No separate Vectis init design-system template exists — added `adapters/targets/vectis/examples/assets.yaml` (commented `app-icon` field, no placeholder asset file). Android scaffold stubs omit legacy `mipmap-*/ic_launcher.png` (materialize fills in R46-S20; `shell_resident_app_icon` satisfied by `mipmap-anydpi-v26` stubs). | No new steps. |
 
 ### Specify-cli step assurance
 
