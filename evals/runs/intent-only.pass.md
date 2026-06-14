@@ -4,8 +4,8 @@
 
 - **Scenario:** `intent-only`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/intent-only/`
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
+- **Sandbox:** `evals/.sandbox/intent-only/` (recreated fresh 2026-06-14)
 
 ## Assertions
 
@@ -18,25 +18,26 @@
 | `sources-intent-only` | pass | |
 | `refine-reaches-refined` | pass | |
 
-Probe transcript highlights: `plan.yaml` existed with `lifecycle: pending` before Gate 1; `discovery.md` carries exactly one `- lead:` block; `plan.reconcile.completed` payload reads `"slice-count":1`; exactly one `plan.transition.approved` event (`"actor":"agent"`); every `Sources:` line and the `specify slice provenance` projection name `intent` only; `specify slice validate fix-typo` exits 0 and `slice.transition.refined` names `fix-typo`.
+Probe transcript highlights: fresh sandbox recreated; `plan.yaml` existed with `lifecycle: pending` before Gate 1; `discovery.md` carries exactly one `- lead:` block; `plan.reconcile.completed` payload reads `"slice-count":1`; exactly one `plan.transition.approved` event (`"actor":"agent"`); every `Sources:` line names `intent` only; `specify slice validate fix-typo` exits 0 and `slice.transition.refined` names `fix-typo`; `model.yaml` carries `requirements[0].scenarios[]` with one WHEN/THEN scenario.
 
 **Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- `specify init omnia@v1` failed (`adapter-git-failed: Remote branch v1 not found in upstream origin`); used the documented offline fallback `specify init <framework>/adapters/targets/omnia` (local adapter path).
-- Symlinked the `intent` source adapter into the sandbox (`adapters/sources/intent`) per the setup prerequisite — `specify init` caches only the target adapter.
-- Gate 1 stamped with the literal transition command plus `--actor agent` (agent stamping at the operator's standing direction; the journal payload records who stamped).
-- Phase work driven by the agent following the `/spec:plan`, `/spec:execute`, and `/spec:refine` skill bodies directly (plan lock held via Python `fcntl` fallback; stop after `refined` per the scenario's Scope).
+- `specify init omnia@v1` substituted with the documented offline fallback `specify init <framework>/adapters/targets/omnia` (local adapter path).
+- Symlinked the `intent` source adapter into the sandbox (`adapters/sources/intent`) per setup prerequisites.
+- Gate 1 stamped with `specify plan transition fix-typo approved --actor agent`.
+- Plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Pre-wrote `discovery.md` before survey finalize created a duplicate lead block; corrected to a single `intent:fix-typo` block before `propose --dry-run`.
+- Synthesis response initially omitted `tasks[].id`; re-ran `specify slice synthesize --from` after adding `TASK-001` / `TASK-002` ids.
 
 ## Notes
 
-- `specify slice validate` returned three non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing, thin lead synopsis) — all inherent to the degenerate one-line intent; judged acceptable.
-- Renderer nit, no assertion impact: the kernel renders single-source provenance as `Sources: intent` (unbracketed) while `requirement-block.md`'s canonical template shows `Sources: [intent]`; the provenance parser accepts both.
-- macOS stock shell lacks `flock(1)`; plan lock acquired via Python `fcntl` fallback per `evals/shared/setup.md` guidance.
+- `specify slice validate` returned three non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing, thin lead synopsis) — inherent to the degenerate one-line intent; judged acceptable.
+- Kernel renders single-source provenance as `Sources: intent` (unbracketed); provenance parser accepts both forms.
 
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/intent-only`
 - **Retained at:** `evals/.sandbox/intent-only/`
-- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `.specify/slices/fix-typo/` (`proposal.md`, `specs/user/spec.md`, `design.md`, `tasks.md`, `model.yaml`, `evidence/intent.yaml`), `.specify/journal.jsonl`
+- **Key paths:** `plan.yaml`, `discovery.md`, `.specify/slices/fix-typo/`, `.specify/journal.jsonl`

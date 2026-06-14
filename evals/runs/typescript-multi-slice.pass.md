@@ -4,7 +4,7 @@
 
 - **Scenario:** `typescript-multi-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:** `evals/.sandbox/typescript-multi-slice/`
 
 ## Assertions
@@ -27,9 +27,9 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 
 - Offline init via `specify init $FRAMEWORK/adapters/targets/omnia` (local adapter path) instead of `omnia@v1` network fetch.
 - Symlinked `adapters/sources/typescript` from the framework checkout per setup prerequisites.
-- Copied `evals/fixtures/sources/typescript/source` to `./legacy-monolith`, then extended it with four additional Express routes and a shared policy-engine module so union production LOC exceeds the survey brief's 1000-line threshold and per-surface leads are emitted (the bare fixture is a single-route service under the threshold).
+- Copied `evals/fixtures/sources/typescript/source` to `./legacy-monolith`, then extended it with four additional Express routes and a shared `policy-engine` module so union production LOC exceeds the survey brief's 1000-line threshold and per-surface leads are emitted (the bare fixture is a single-route service under the threshold).
 - Binding command: `specify plan create legacy-port --source legacy=typescript:./legacy-monolith` (source key `legacy`, path `./legacy-monolith`).
-- Phase work driven by following the `/spec:plan` skill body via CLI verbs (`source survey`, `plan propose --dry-run` / `--from`) rather than invoking the Cursor slash command directly.
+- Phase work driven by following the `/spec:plan` skill body via CLI verbs (`source survey`, `plan propose --from`) rather than invoking the Cursor slash command directly.
 - Stopped at Gate 1 without stamping `approved`, per scenario invocation.
 
 ## Notes

@@ -5,7 +5,7 @@
 - **Scenario:** `execute-fail-resume`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/execute-fail-resume/`
+- **Sandbox:** `evals/.sandbox/execute-fail-resume/` (recreated fresh 2026-06-14)
 
 ## Assertions
 
@@ -16,7 +16,7 @@
 | `build-resumes-from-failed-task` | pass | |
 | `loop-continues-to-merge` | pass | |
 
-Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four slices (`auth-rate-limit`, `password-hash-rotate`, `session-cookie-harden`, `reset-flow-retire`). At park on `session-cookie-harden`, `specify journal show --filter slice.build.failed` emitted `{"slice-name":"session-cookie-harden","reason":"target-build-failed"}`; `grep -c 'status: in-progress' plan.yaml` returned `1`; `specify plan status --format json` carried `"action":"stop"` with `"stop".reason == "build-failed"` and `"resume":"/spec:build session-cookie-harden"`. The structured text stop matched [`stop-conditions.md`](../../plugins/spec/references/stop-conditions.md) (`stop: build-failed`, slice `session-cookie-harden`, hint to retry `/spec:build`). After patching `crates/session_cookie_harden/src/lib.rs` to set `secure: true`, the journal tail for the slice reads `slice.build.failed → slice.build.started → slice.build.succeeded` with no `slice.synthesize.*` between; parked `tasks.md` kept checkboxes `1.1`–`3.1` complete and only `3.2` flipped at success. Resumed `/spec:execute` merged `session-cookie-harden` and `reset-flow-retire`; `slice.merge.succeeded` and `slice.archive.created` fired; closing `specify plan status` reported `"action":"drained"` / `drained — run /spec:finalize rate-limit`.
+Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four slices (`auth-rate-limit`, `password-hash-rotate`, `session-cookie-harden`, `reset-flow-retire`). At park on `session-cookie-harden`, `specify journal show --filter slice.build.failed` emitted `{"slice-name":"session-cookie-harden","reason":"target-build-failed"}`; `grep -c 'status: in-progress' plan.yaml` returned `1`; `specify plan status --format json` carried `"action":"stop"` with `"stop".reason == "build-failed"` and `"resume":"/spec:build session-cookie-harden"`. After patching `crates/session_cookie_harden/src/lib.rs` to set `secure: true`, journal tail reads `slice.build.failed → slice.build.started → slice.build.succeeded` with no `slice.synthesize.*` between; parked `tasks.md` kept `1.1`–`3.1` complete and only `3.2` flipped at success. Resumed `/spec:execute` merged `session-cookie-harden` and `reset-flow-retire`; `slice.merge.succeeded` fired for both; closing `specify plan status` reported `"action":"drained"` / `drained — run /spec:finalize rate-limit`.
 
 **Negative expectations:** held (manual-by-design posture unchanged; live interactive drive against the real CLI).
 
@@ -24,18 +24,17 @@ Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four
 
 - `specify init omnia@v1` substituted with the documented offline fallback `specify init <framework>/adapters/targets/omnia`; `intent` source adapter symlinked into the sandbox per setup prerequisites.
 - Gate 1 stamped with `specify plan transition rate-limit approved --actor agent`.
-- Four-slice `rate-limit` plan (rate limiting + password hash + session cookies + reset retire) rather than the fixture's three-slice `identity-revamp` names; the engineered failure follows fixture #9 (`session-cookie-harden`, missing `Secure` flag, regression test `session_cookie_secure_flag_set`).
-- Minimal serde-only library crates and a lightweight merge path (`cargo fmt` + `cargo test` + `specify slice merge run`) — no omnia guest / `wasm32-wasip2` pre-merge gate in this sandbox (eval focuses on execute park/resume mechanics).
-- macOS stock shell lacks `flock(1)`; plan lock acquired via the Python `fcntl` fallback from [`plan-lock.md`](../../plugins/spec/references/plan-lock.md).
-- First build-finalize attempts used an invalid failure-report finding shape (`target-build-report-schema`); corrected to schema-valid `status: failure` with `findings: []`, yielding journal reason `target-build-failed`.
+- Four-slice `rate-limit` plan decomposed from compound intent at propose time; engineered failure follows fixture #9 (`session-cookie-harden`, missing `Secure` flag, regression test `session_cookie_secure_flag_set`).
+- Minimal serde-only library crates and lightweight merge path (`cargo fmt` + `cargo test` + `specify slice merge run`) — no omnia guest / `wasm32-wasip2` pre-merge gate in this sandbox (eval focuses on execute park/resume mechanics).
+- macOS plan lock acquired via Python `fcntl` fallback from [`plan-lock.md`](../../plugins/spec/references/plan-lock.md).
 
 ## Notes
 
-- `.build-log` at `.specify/archive/2026-06-13-session-cookie-harden/.build-log` captures the failing `cargo test` output naming `session_cookie_secure_flag_set`.
-- `plan.entry.advanced` events cover each slice claim (`auth-rate-limit` → `password-hash-rotate` → `session-cookie-harden` → `reset-flow-retire`); no duplicate advance after the build-failed park.
+- `.build-log` at `.specify/slices/session-cookie-harden/.build-log` captures failing `cargo test` output naming `session_cookie_secure_flag_set`.
+- `plan.entry.advanced` events cover each slice claim; no duplicate advance after the build-failed park.
 
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-fail-resume`
 - **Retained at:** `evals/.sandbox/execute-fail-resume/`
-- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/2026-06-13-session-cookie-harden/`, `.specify/journal.jsonl`, `drive_eval.py` (local orchestration helper)
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `drive_eval.py`

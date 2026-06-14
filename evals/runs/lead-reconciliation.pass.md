@@ -31,12 +31,12 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending` at Ga
 - Docs binding uses only `password-reset.md` under `./docs` (copied from `evals/fixtures/sources/documentation/input/password-reset.md`); source key `product-notes`.
 - TypeScript binding copies `evals/fixtures/sources/typescript/source` to `./legacy-monolith` and adds `POST /auth/reset-password` handler at `src/auth/reset-password.ts` describing the same lockout/reset behaviour; survey lead `account-pwd-reset`.
 - Phase work driven by following the `/spec:plan` and `/spec:refine` skill bodies via CLI verbs (`source survey`, `plan propose --from`, `source extract`, `slice synthesize --from`) rather than invoking Cursor slash commands directly.
-- Gate 1 stamped `approved` and refine driven through `specify plan next` (with zsh `zsystem flock` plan lock) to satisfy the scenario's refine stage.
+- Gate 1 stamped `approved` with `--actor agent`; plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
 
 ## Notes
 
 - Amend commands (split then rebind): `specify plan amend account-lockout --sources product-notes=password-reset`, then `specify plan amend account-lockout --sources product-notes=password-reset legacy-monolith=account-pwd-reset`.
-- Synthesis surfaced `[divergence]` on REQ-003 (30-minute documentation expiry vs 24-hour legacy TTL); slice validated cleanly (review-only findings) and transitioned to `refined`.
+- Synthesis surfaced `[divergence]` on REQ-002 (30-minute documentation expiry vs 24-hour legacy TTL); slice validated cleanly (review-only findings) and transitioned to `refined`.
 - Scenario stops after refine; no build/merge/execute loop.
 
 ## Evidence

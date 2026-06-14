@@ -4,7 +4,7 @@
 
 - **Scenario:** `documentation-multi-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:** `evals/.sandbox/documentation-multi-slice/`
 
 ## Assertions
@@ -18,13 +18,13 @@
 | `propose-edit-reject-loop` | pass | |
 | `gate-1-amendment` | pass | |
 
-Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `specify plan validate` exits 0 before and after amendment; `plan.reconcile.completed` payload reads `"slice-count":3`; `grep -c 'source: conventions' plan.yaml` returns 3; `change.md` lists `conventions:api-conventions` under `## Cross-cutting leads`; `specify plan amend product-detail --description "…"` reflected in `plan.yaml`; no `plan.transition.approved` journal events.
+Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `specify plan validate` exits 0 before and after amendment; `plan.reconcile.completed` payload reads `"slice-count":3`; `grep -c 'source: conventions' plan.yaml` returns 3; `change.md` lists `conventions:api-conventions` under `## Cross-cutting leads`; `specify plan amend product-detail --description "…"` reflected in `plan.yaml` (`description: Slug-based product detail; defer image CDN integration to a follow-on slice.`); no `plan.transition.approved` journal events.
 
 **Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- Used offline init `specify init <framework>/adapters/targets/omnia` per operator environment instructions (equivalent to the documented offline fallback in `shared/setup.md`).
+- Used offline init `specify init $FRAMEWORK/adapters/targets/omnia` per operator environment instructions (equivalent to the documented offline fallback in `shared/setup.md`).
 - Symlinked the `documentation` source adapter into the sandbox (`adapters/sources/documentation`) per the setup prerequisite — `specify init` caches only the target adapter.
 - Phase work driven by the agent following the `/spec:plan` skill body directly (survey handoff, propose envelope, `change.md` authoring); stopped at Gate 1 without stamping `approved`.
 

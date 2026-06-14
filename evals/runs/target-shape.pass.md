@@ -4,7 +4,7 @@
 
 - **Scenario:** `target-shape`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
 - **Sandbox:** `evals/.sandbox/target-shape-intent/` (intent fixture), `evals/.sandbox/target-shape-docs/` (documentation fixture)
 
 ## Assertions
@@ -12,7 +12,7 @@
 | Assertion | Verdict | Evidence |
 | --- | --- | --- |
 | `plan-exists` | pass | |
-| `spec-reflects-shape-idioms` | pass | Intent: `.specify/slices/greeting/specs/greeting/spec.md` — per-requirement `ID:` / `Sources:` / `Status:` blocks; two handler-observable requirements (personalised response + empty-name rejection); scenarios name inputs and observable 200/`BadRequest` outcomes; REQ-002 carries `invalid_name` semantics inline. Docs fixture matches shape-derived requirement prose; `Sources: brief` only. Separate `### Error conditions` table from synthesis response was not persisted by the kernel (inline REQ-002 + `design.md` error mapping cover the Omnia error-variant idiom). |
+| `spec-reflects-shape-idioms` | pass | Intent: `.specify/slices/greeting/specs/greeting/spec.md` — per-requirement `ID:` / `Sources:` / `Status:` blocks; two handler-observable requirements (personalised response + empty-name rejection); `model.requirements[].scenarios[]` populated for validation; scenarios name inputs and observable 200/`BadRequest` outcomes. Docs fixture matches shape-derived requirement prose; `Sources: brief` only. |
 | `design-reflects-shape-idioms` | pass | Both fixtures: `design.md` carries all eight Omnia `shape` sections in order — Domain model (newtypes), Provider trait dependencies (`Config` on `GreetingRequest`), Handler delegation (`Handler<P>`, `type Input = Vec<u8>`, no `Utc::now()` in `from_input`), External surfaces (`GET /greeting`, Axum brace syntax), Configuration (`GREETING_DEFAULT_NAME`), Error mapping (`thiserror` + `From<GreetingError> for omnia_sdk::Error` with `code`/`description`), Validation placement table (`from_input` vs `handle`), Observability (`monotonic_counter.*` metrics). |
 | `intent-and-doc-fixtures-agree` | pass | `diff` on `design.md` is empty (byte-identical). `spec.md` differs only on kernel-rendered `Sources:` (`intent` vs `brief`); requirement statements, scenario outcomes, and REQ ids align. |
 
@@ -29,7 +29,7 @@
 ## Notes
 
 - `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on both fixtures — judged acceptable.
-- Synthesis response authored a `### Error conditions` table per Omnia `shape` brief; persisted `spec.md` carries error semantics in REQ-002 prose rather than a standalone table — kernel projection behavior, not a shape-injection miss on `design.md`.
+- Docs source key `brief` binds `documentation:docs/greeting.md`; intent source uses `intent:value:…` degenerate N=1 binding.
 
 ## Evidence
 

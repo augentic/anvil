@@ -23,7 +23,7 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | TypeScript, multi-slice | [`typescript-multi-slice`](typescript-multi-slice.md) | passed | full |
 | Cross-source propose-time merge | [`lead-reconciliation`](lead-reconciliation.md) | passed | full |
 | Single-project plan generation | [`single-project-plan`](single-project-plan.md) | passed | full |
-| Cross-repo contract flow (full lifecycle) | [`contract-lifecycle`](contract-lifecycle.md) | pending | full |
+| Cross-repo contract flow (full lifecycle) | [`contract-lifecycle`](contract-lifecycle.md) | passed | full |
 
 ### Failure and breakout paths
 
