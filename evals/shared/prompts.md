@@ -8,9 +8,9 @@ The three human seams the prompts always hand back to the operator:
 
 1. **Real forge merges** between the two `/spec:finalize` invocations — never faked.
 2. **Ergonomics / judgment assertions** the agent cannot deterministically verify — marked `needs-human` for operator confirmation.
-3. **`deferred` and `pure-intent` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `pure-intent` is the release blocker.
+3. **`deferred` and `intent-only` sign-off** — a `deferred` entry needs a linked follow-up issue and release-owner sign-off; `intent-only` is the release blocker.
 
-Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `pure-intent`).
+Drive each scenario with Prompt A first, then Prompt B. Replace `<id>` with the scenario directory id (e.g. `intent-only`).
 
 ## Prompt A — setup
 
@@ -79,13 +79,13 @@ stage the scenario's `stages` declares:
 4. If the scenario executes: /spec:execute loop. Answer only genuine
    clarification prompts; never convert prompts into a script. Confirm the loop
    exits `all-done`, not stuck/failed/interrupted.
-5. If the scenario finalizes: /spec:finalize <name> (first). Confirm push
-   succeeded and it halts with `pr-not-merged`; record every PR number + URL.
-6. HUMAN SEAM — stop and hand back: ask the operator to merge the PRs through
-   their real forge, then resume. Do not merge PRs yourself; do not fake a forge.
-7. If the scenario finalizes: /spec:finalize <name> (second). Confirm push is
-   idempotent, PRs report MERGED, the plan archives. Record the archive path.
-   Then /spec:finalize <name> (third); confirm the `no active plan` re-entry.
+5. If the scenario finalizes: /spec:finalize <name>. Confirm the branches
+   pushed (per-project status `pushed`) and the plan archived in the same run;
+   record the pushed branches and the archive path. Specify does not create,
+   observe, or merge pull requests — opening PRs is an operator step done by
+   hand outside Specify.
+6. If the scenario finalizes: re-run /spec:finalize <name>; confirm the
+   `no active plan` re-entry exits 0.
 
 Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
 - For each assertion id, look it up in evals/shared/assertions.md: run its
@@ -101,7 +101,7 @@ Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
   in the catalog.
 
 Halt and judgment rules:
-- pure-intent is the release blocker: on any fail, record the failure, STOP, and
+- intent-only is the release blocker: on any fail, record the failure, STOP, and
   run no other scenario.
 - For an ergonomics/judgment assertion you cannot deterministically verify, mark
   it `needs-human` and surface it for operator confirmation instead of guessing.

@@ -1,5 +1,5 @@
 ---
-id: plan-single-project
+id: single-project-plan
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -23,7 +23,7 @@ negative-expectations:
 
 # Single-project plan generation
 
-Scenario ID: `plan-single-project`
+Scenario ID: `single-project-plan`
 
 ## Intent
 

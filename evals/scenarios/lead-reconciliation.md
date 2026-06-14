@@ -1,5 +1,5 @@
 ---
-id: cross-source-merge
+id: lead-reconciliation
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -25,11 +25,11 @@ expected-artifacts:
 
 # Cross-source propose-time merge
 
-Scenario ID: `cross-source-merge`
+Scenario ID: `lead-reconciliation`
 
 ## Intent
 
-Prove the `/spec:plan` propose step merges leads automatically when two adapters surface the same candidate: `specify plan propose --from` writes a slice with combined `sources:` without operator ceremony, uncertain merges surface under `## Tentative merges` in `change.md`, the operator can override a wrong merge via `specify plan amend` at Gate 1, and downstream `extract` runs against every contributing source.
+Prove the `/spec:plan` propose step reconciles leads automatically when two adapters surface the same candidate: `specify plan propose --from` writes a slice with combined `sources:` without operator ceremony, uncertain merges surface under `## Tentative merges` in `change.md`, the operator can override a wrong merge via `specify plan amend` at Gate 1, and downstream `extract` runs against every contributing source.
 
 ## Setup
 

@@ -60,7 +60,7 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/spec:plan`     | Survey each bound source, propose `slices[]` rows in `plan.yaml`, validate; exit at `pending`    |
 | `/spec:execute`  | Drive the plan through the Layer 1 loop; refuses unless plan is `approved`                          |
-| `/spec:finalize` | Push branches, observe PR state, archive once every PR is `MERGED`                                  |
+| `/spec:finalize` | Push branches, then archive the plan (PRs opened and merged by the operator outside Specify)        |
 
 The plan is the change's table of contents. `/spec:plan` produces it by surveying each source, reconciling leads across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
 

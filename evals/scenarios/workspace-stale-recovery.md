@@ -1,5 +1,5 @@
 ---
-id: stale-workspace-recovery
+id: workspace-stale-recovery
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -19,12 +19,12 @@ negative-expectations:
   - golden-output-required
 expected-artifacts:
   - plan.yaml
-  - .specify/workspace
+  - workspace
 ---
 
 # Stale-workspace recovery
 
-Scenario ID: `stale-workspace-recovery`
+Scenario ID: `workspace-stale-recovery`
 
 ## Intent
 

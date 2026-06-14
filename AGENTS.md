@@ -36,7 +36,7 @@ The word **workspace** overloads three related concepts. Use them verbatim:
 | Term               | Meaning                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | **Workspace**      | Registry-only platform repo: `workspace: true` in `project.yaml`, `registry.yaml`, plan artifacts at the repo root |
-| **Workspace slot** | Materialised peer at `.specify/workspace/<project>/`                                                               |
+| **Workspace slot** | Materialised peer at top-level `workspace/<project>/`                                                              |
 | **Workspace sync** | `specify workspace sync` — materialise slots and regenerate `topology.lock`                                        |
 
 `/spec:init workspace` and `specify init --workspace` scaffold a workspace; the CLI chains an initial workspace sync before returning.
@@ -77,7 +77,7 @@ The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:exe
 - `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
 - `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
-- `/spec:finalize` — push branches, observe PR state, run `specify plan archive` once every PR is `MERGED`.
+- `/spec:finalize` — push branches, then run `specify plan archive`. Opening and merging pull requests is operator-owned and happens outside Specify.
 
 N=1 is degenerate, not special: `intent.survey` produces one lead, the operator stamps `approved`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 
@@ -112,7 +112,7 @@ Full evals guidance, including the scenario packs under [`evals/`](evals/README.
 
 ## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are [`CORE-*` rules](adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher. Each rule is either a **declarative hint** (Road A — `kind:` ∈ `schema | reference-resolves | cardinality | set-coverage | set-eq | constant-eq | unique | fenced-block | regex | path-pattern | presence | field-grammar | cross-reference | cli-contract`, interpreted over the workspace model) or a **name-resolved in-process checker** (Road B — `kind: tool`, e.g. the `rules` / `scenarios` / `skill-body` / `links-registry` / `marketplace` / `prose` family checkers in the CLI binary). All policy (caps, allow-lists, owner maps, expected sets) lives in the rule's `config:`, never in the engine. The `kind: authoring-predicate` bridge has been fully removed — no imperative bridge remains. Enforced strictly by `make lint` — every check fails on the first violation, with no per-file grandfathering. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md).
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are [`CORE-*` rules](adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher. Each rule is either a **declarative hint** (Road A — `kind:` ∈ `schema | reference-resolves | cardinality | set-coverage | constant-eq | unique | fenced-block | regex | path-pattern | presence | field-grammar | cross-reference | cli-contract`, interpreted over the workspace model) or a **name-resolved in-process checker** (Road B — `kind: tool`, e.g. the `rules` / `scenarios` / `skill-body` / `links-registry` / `marketplace` / `prose` family checkers in the CLI binary). All policy (caps, allow-lists, owner maps, expected sets) lives in the rule's `config:`, never in the engine. The `kind: authoring-predicate` bridge has been fully removed — no imperative bridge remains. Enforced strictly by `make lint` — every check fails on the first violation, with no per-file grandfathering. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md).
 
 ## Gotchas
 

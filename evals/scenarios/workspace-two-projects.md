@@ -1,5 +1,5 @@
 ---
-id: workspace-execute-two-projects
+id: workspace-two-projects
 owner: scenarios
 kind: suite
 entrypoint: /spec:plan
@@ -20,12 +20,12 @@ negative-expectations:
 expected-artifacts:
   - plan.yaml
   - registry.yaml
-  - .specify/workspace
+  - workspace
 ---
 
 # Workspace /spec:execute across two projects
 
-Scenario ID: `workspace-execute-two-projects`
+Scenario ID: `workspace-two-projects`
 
 ## Intent
 
@@ -33,18 +33,18 @@ Prove workspace-driven execution across projects: a plan with slices targeting t
 
 ## Setup
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `shop-backend` and `shop-mobile`.
+Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `backend` and `mobile`.
 
 ## Invocation
 
 1. **Execute** — `/spec:execute loop` from the workspace.
-2. **Inspect** — `inspect plan.yaml`; `inspect .specify/workspace/<project>` with `git status`. Confirm each slice ran in its routed slot.
+2. **Inspect** — `inspect plan.yaml`; `inspect workspace/<project>` with `git status`. Confirm each slice ran in its routed slot.
 
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists and is approved before execute.
 - `per-slice-project-routing`: each slice runs against its routed project slot.
-- `slots-materialised`: `.specify/workspace/shop-backend/` and `.specify/workspace/shop-mobile/` are materialised.
+- `slots-materialised`: `workspace/backend/` and `workspace/mobile/` are materialised.
 - `plan-lock-at-workspace`: the plan-lock is held at the workspace while phase work runs in slots.
 - `execute-loop-all-done`: the loop reaches `all-done`.
 

@@ -4,7 +4,7 @@ The registry is a first-party Specify component — it owns project membership a
 
 ## What is the registry?
 
-The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
+The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under top-level `workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
 
 The registry does **not** author a project's target adapter or description for plan-time topology — `adapter` and `description` are authored in each project's `.specify/project.yaml`, and the project's *derived* routing identity (`surface[]` / `recent[]`) is projected from that project's own baseline into the committed `.specify/topology.lock` by `specify workspace sync`. The registry's `adapter` field survives only as an optional *greenfield scaffold seed* used when `workspace sync` clones a brand-new, empty project.
 
@@ -16,11 +16,11 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Membership + location ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
 | `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned domains + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by `specify workspace sync`; never hand-edited. |
-| `.specify/workspace/<peer>/`  | derived  | Materialised view of each registry entry — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
-| `.specify/cache/`            | derived  | Memoization root (owned by the plugin resolver: adapter manifests under `manifests/sources/` and `manifests/targets/`, and the shared codex under `codex/`). |
+| `workspace/<peer>/`  | derived  | Materialised view of each registry entry at the project root — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
+| `<project-cache>/` (out-of-tree) | derived  | Memoization root in the out-of-tree per-project cache (owned by the plugin resolver: adapter manifests under `manifests/sources/` and `manifests/targets/`, and the shared codex under `codex/`). |
 | `.specify/scratch/`          | derived  | Transient working state: per-operation agent scratch lanes under `<adapter>/{survey,<slice>}/` and the plan handoff lane under `plan/`. Lanes are recreated empty by their owning verb. |
 
-`.specify/workspace/`, `.specify/cache/`, and `.specify/scratch/` are framework-managed and regenerable and must never be checked in. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
+`.specify/scratch/` and top-level `workspace/` are framework-managed and regenerable and must never be checked in; the per-project manifest/codex cache now lives out-of-tree. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
 
 ## Topology shape
 
@@ -60,7 +60,7 @@ None of these go through the per-slice loop. The registry is substrate: it is wh
 
 ## Workspace materialisation
 
-`.specify/workspace/` is **derived registry state**, not a separate component-owned topology. The workspace owns `registry.yaml`; each child path under `.specify/workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
+Top-level `workspace/` is **derived registry state**, not a separate component-owned topology. The workspace owns `registry.yaml`; each child path under `workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
 
 The registry crate owns the materialiser and workspace verbs:
 
@@ -74,7 +74,7 @@ Selection is resolved once, before side effects. A human-invoked `workspace sync
 
 Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. There is no `workspace merge` verb — landing is an explicit operator action outside Specify.
 
-After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` verifies each required per-project PR with `gh pr view`, then invokes `specify plan archive` to archive the plan; it never merges PRs.
+After `workspace push` publishes the change branch, opening the pull request and landing it is an explicit operator action outside Specify. Use the forge UI, `gh pr create` / `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` runs `specify workspace push` then `specify plan archive`; it never creates, observes, or merges PRs.
 
 ## Dependency direction
 
@@ -96,7 +96,7 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 - Contract relationships beyond the per-project role declarations — owned by the `contracts` target adapter.
 - Validation findings — owned by adapter skills and helper binaries.
 - Synthesis output — owned by core (`/spec:refine`).
-- PR metadata beyond the local project operation being requested — owned by the forge (GitHub via `gh`); the registry only round-trips per-project status from `gh pr view`.
+- PR metadata — owned entirely by the forge and the operator; Specify pushes the branch and does not track pull-request state.
 
 ## See also
 

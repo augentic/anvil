@@ -198,7 +198,7 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Journal events.** `slice merge run` brackets the merge with `slice.merge.started` then `slice.merge.succeeded` / `slice.merge.failed`, which fire on the merge **validator outcome** — there is no v1 merge envelope or merge report. The durable record stays the append-only `slice.archive.created` outcome ledger written by the archive step.
 
-**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
+**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under top-level `workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
 **Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`). When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it probes the `.specify/plan.lock` driver lock first and refuses an unlocked session with `plan-lock-not-held` (exit 2); plan-less standalone merges skip the probe.
 

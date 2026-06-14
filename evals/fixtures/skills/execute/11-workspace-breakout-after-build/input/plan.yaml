@@ -8,10 +8,10 @@ sources:
     value: "Rotate auth secrets across the identity service and the audit log shipper."
 slices:
   - name: auth-rotate
-    project: project-a
+    project: backend
     sources: [intent]
     status: in-progress
   - name: audit-shipper-rotate
-    project: project-b
+    project: mobile
     sources: [intent]
     status: pending

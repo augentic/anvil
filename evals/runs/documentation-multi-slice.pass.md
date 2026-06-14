@@ -3,36 +3,38 @@
 ## Context
 
 - **Scenario:** `documentation-multi-slice`
-- **Operator:** Cursor agent (Composer)
+- **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `acceptance/.sandbox/documentation-multi-slice/`
+- **Sandbox:** `evals/.sandbox/documentation-multi-slice/`
 
 ## Assertions
 
-| Assertion | Verdict |
-| --- | --- |
-| `plan-exists` | pass |
-| `plan-validates` | pass |
-| `multiple-slices-proposed` | pass |
-| `propose-edit-reject-loop` | pass |
-| `gate-1-amendment` | pass |
+| Assertion | Verdict | Evidence |
+| --- | --- | --- |
+| `plan-exists` | pass | |
+| `plan-validates` | pass | |
+| `multiple-slices-proposed` | pass | |
+| `cross-cutting-lead-multi-homed` | pass | |
+| `propose-edit-reject-loop` | pass | |
+| `gate-1-amendment` | pass | |
 
-**Negative expectations:** held (manual-by-design posture unchanged).
+Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `specify plan validate` exits 0 before and after amendment; `plan.reconcile.completed` payload reads `"slice-count":3`; `grep -c 'source: conventions' plan.yaml` returns 3; `change.md` lists `conventions:api-conventions` under `## Cross-cutting leads`; `specify plan amend product-detail --description "…"` reflected in `plan.yaml` (`description: Slug-based product detail; defer image CDN integration to a follow-on slice.`); no `plan.transition.approved` journal events.
+
+**Negative expectations:** held (manual-by-design posture unchanged; the run was driven interactively against the real CLI).
 
 ## Deviations
 
-- Used local `specify init <framework>/adapters/targets/omnia` (`omnia@v1` remote fetch failed: `Remote branch v1 not found in upstream origin`).
-- Symlinked `adapters/sources/documentation` (not vendored by `specify init`).
-- Drove plan lifecycle via CLI equivalents of `/spec:plan` (`plan create`, `source survey`, `plan propose --from`) rather than the slash command in Cursor chat.
+- Used offline init `specify init $FRAMEWORK/adapters/targets/omnia` per operator environment instructions (equivalent to the documented offline fallback in `shared/setup.md`).
+- Symlinked the `documentation` source adapter into the sandbox (`adapters/sources/documentation`) per the setup prerequisite — `specify init` caches only the target adapter.
+- Phase work driven by the agent following the `/spec:plan` skill body directly (survey handoff, propose envelope, `change.md` authoring); stopped at Gate 1 without stamping `approved`.
 
 ## Notes
 
-- Propose yielded 3 slices (`product-search`, `product-detail`, `inventory-sync`) from a monolithic brief with three H1 sections.
-- Gate-1 amend: edited `product-detail` description; rejected `inventory-sync` via `--divergence rejected` + description. Plan stayed `lifecycle: pending`; Gate-1 command: `specify plan transition catalog-revamp approved`.
-- `specify plan validate` exited 0 before and after amendment.
+- Amend command: `specify plan amend product-detail --description "Slug-based product detail; defer image CDN integration to a follow-on slice."`
+- Closing hint (not executed): `specify plan transition catalog-revamp approved`
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh acceptance/.sandbox/documentation-multi-slice`
-- **Retained at:** `acceptance/.sandbox/documentation-multi-slice/`
-- **Key paths:** `plan.yaml`, `discovery.md`, `docs/catalog-revamp.md`, `.specify/journal.jsonl`
+- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/documentation-multi-slice`
+- **Retained at:** `evals/.sandbox/documentation-multi-slice/`
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/catalog-revamp.md`, `docs/conventions.md`, `.specify/journal.jsonl`

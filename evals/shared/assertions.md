@@ -20,7 +20,7 @@ Ids are deliberately shared across scenario files; this document is their single
 
 ### `plan-exists`
 
-Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
+Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
 
 **Probe.**
 
@@ -31,7 +31,7 @@ grep '^lifecycle:' plan.yaml    # `pending` at Gate 1; `approved` before execute
 
 ### `plan-validates`
 
-Used by `pure-intent`, `documentation-one-slice`, `documentation-multi-slice`, `code-multi-slice`, `cross-source-merge`, `plan-single-project`, `cross-repo-contract-flow`. `specify plan validate` exits cleanly (no blocking findings) at the point the scenario names — after the draft, and again after any amendment step.
+Used by `intent-only`, `documentation-one-slice`, `documentation-multi-slice`, `typescript-multi-slice`, `lead-reconciliation`, `single-project-plan`, `contract-lifecycle`. `specify plan validate` exits cleanly (no blocking findings) at the point the scenario names — after the draft, and again after any amendment step.
 
 **Probe.**
 
@@ -41,7 +41,7 @@ specify plan validate --format json; echo "exit=$?"    # expect exit=0
 
 ### `execute-loop-all-done`
 
-Used by `documentation-one-slice`, `cross-repo-contract-flow`, `stepthrough-breakout`, `workspace-execute-two-projects`, `workspace-breakout`, `stale-workspace-recovery`. `/spec:execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
+Used by `documentation-one-slice`, `contract-lifecycle`, `execute-pause-resume`, `workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`. `/spec:execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
 
 **Probe.**
 
@@ -51,7 +51,7 @@ grep -c 'status: done' plan.yaml    # equals the slice count
 specify journal show --filter plan.entry.advanced    # one advance per slice, none after the last merge
 ```
 
-## `pure-intent`
+## `intent-only`
 
 ### `intent-single-lead`
 
@@ -171,7 +171,7 @@ grep -q 'lifecycle: pending' plan.yaml && echo pending
 specify journal show --filter plan.transition.approved    # expect no output (scenario never stamps)
 ```
 
-## `code-multi-slice`
+## `typescript-multi-slice`
 
 ### `multiple-slices-from-code`
 
@@ -199,7 +199,7 @@ Distinct legacy behaviors are not collapsed into one slice. Whether two surveyed
 
 **Judgment flag.** Evidence pointer: the `## Lead inventory` blocks in `discovery.md` set against the proposed `plan.yaml` slices — name the legacy surfaces (routes/handlers) and show each landed in a sensible slice rather than one catch-all.
 
-## `cross-source-merge`
+## `lead-reconciliation`
 
 ### `merged-slice-combines-sources`
 
@@ -239,7 +239,7 @@ ls .specify/slices/<slice>/evidence/    # one <key>.yaml per contributing source
 specify journal show --filter slice.extract.completed | jq -c .payload    # one event per (source, slice)
 ```
 
-## `plan-single-project`
+## `single-project-plan`
 
 ### `slices-match-expected-shape`
 
@@ -258,7 +258,7 @@ test ! -f registry.yaml && echo no-registry
 grep 'project:' plan.yaml | sort -u    # absent, or only the sole project synthesised from project.yaml
 ```
 
-## `cross-repo-contract-flow`
+## `contract-lifecycle`
 
 ### `contract-slice-first`
 
@@ -272,13 +272,13 @@ specify journal show --filter plan.entry.advanced | head -1 | jq -c .payload    
 
 ### `implementation-slices-routed`
 
-Exactly two implementation slices route to `shop-backend` and `shop-mobile`.
+Exactly two implementation slices route to `backend` and `mobile`.
 
 **Probe.**
 
 ```bash
-grep -c 'project: shop-backend' plan.yaml    # expect 1
-grep -c 'project: shop-mobile' plan.yaml     # expect 1
+grep -c 'project: backend' plan.yaml    # expect 1
+grep -c 'project: mobile' plan.yaml     # expect 1
 ```
 
 ### `dependencies-contract-before-implementations`
@@ -288,8 +288,8 @@ Each implementation slice's `depends-on` includes the contract slice.
 **Probe.**
 
 ```bash
-grep -A4 'project: shop-backend' plan.yaml | grep 'depends-on'    # names the contract slice
-grep -A4 'project: shop-mobile' plan.yaml | grep 'depends-on'     # names the contract slice
+grep -A4 'project: backend' plan.yaml | grep 'depends-on'    # names the contract slice
+grep -A4 'project: mobile' plan.yaml | grep 'depends-on'     # names the contract slice
 ```
 
 ### `draft-stops-at-handoff`
@@ -322,26 +322,27 @@ Routed project work happens on `specify/<plan>` branches in the project slots.
 **Probe.**
 
 ```bash
-git -C .specify/workspace/shop-backend branch --show-current    # expect specify/<plan>
-git -C .specify/workspace/shop-mobile branch --show-current     # expect specify/<plan>
+git -C workspace/backend branch --show-current    # expect specify/<plan>
+git -C workspace/mobile branch --show-current     # expect specify/<plan>
 specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
-### `finalize-halts-on-unmerged-prs`
+### `finalize-pushes-branches`
 
-The first `/spec:finalize` runs push, observes the fresh PRs unmerged, and halts with `pr-not-merged` naming each PR and URL — it never merges anything itself.
+`/spec:finalize` pushes the prepared `specify/<plan>` branch to each routed project's `origin`; the per-project push table reports `pushed` (or `up-to-date` on a repeat run) for every project the plan routed a slice to. It never creates, observes, or merges pull requests.
 
 **Probe.**
 
 ```bash
-test -f plan.yaml && echo still-active    # plan not archived by the first finalize
-gh pr list --state open    # the per-project PRs exist and are open
-specify journal show --filter workspace.push.completed    # the push completed before the halt
+for proj in backend mobile contracts; do    # every routed project; trim to the set the plan routed to
+  git -C "$proj" ls-remote --heads origin "refs/heads/specify/<plan>"    # branch present on the bare remote
+done
+specify journal show --filter workspace.push.completed | jq -c .payload    # every routed project listed
 ```
 
 ### `finalize-archives-plan`
 
-After the external merges, the second `/spec:finalize` archives the plan via `specify plan archive`.
+The same `/spec:finalize` run archives the plan via `specify plan archive` once the push succeeds — push and archive happen in one invocation.
 
 **Probe.**
 
@@ -366,15 +367,15 @@ The archived directory contains the archived `change.md` next to the archived `p
 ls .specify/archive/plans/<plan>-*/    # expect change.md and plan.yaml together
 ```
 
-### `merged-pr-list-recorded`
+### `pushed-branch-list-recorded`
 
-The wrap-up lists exactly two merged PRs (one per routed project) with numbers and URLs — reporting ergonomics over the forge state (`gh pr view` cross-checks the underlying facts).
+The wrap-up lists one pushed branch per routed project and reminds the operator to open the pull requests by hand outside Specify — reporting ergonomics over the push table.
 
-**Judgment flag.** Evidence pointer: the captured second-`/spec:finalize` wrap-up against `gh pr view <n>` for each listed PR (state `MERGED`, one per routed project).
+**Judgment flag.** Evidence pointer: the captured `/spec:finalize` wrap-up showing the pushed-branch list (one per routed project) and the manual-PR reminder.
 
 ### `rerun-finalize-plan-not-found`
 
-A third `/spec:finalize` reports no active plan remains and exits 0 — clean re-entry, not an error.
+A second `/spec:finalize` reports no active plan remains and exits 0 — clean re-entry, not an error.
 
 **Probe.**
 
@@ -383,7 +384,7 @@ test ! -f plan.yaml && echo no-active-plan    # precondition holds
 # the captured third invocation exits 0 with the no-active-plan report
 ```
 
-## `target-shape-injection`
+## `target-shape`
 
 ### `spec-reflects-shape-idioms`
 
@@ -403,7 +404,7 @@ The intent-driven and documentation-driven fixtures honour the same `shape`-deri
 
 **Judgment flag.** Evidence pointer: the two fixtures' shape-derived sections side by side, noting structural agreement and any divergence.
 
-## `stepthrough-breakout`
+## `execute-pause-resume`
 
 ### `breakout-state-consistent`
 
@@ -427,7 +428,7 @@ Re-invoking `/spec:execute` resumes from the in-progress entry with no extra fla
 specify journal show --filter plan.entry.advanced | jq -c .payload    # no duplicate advance for the in-progress slice across the cancel/resume window
 ```
 
-## `execute-build-failure`
+## `execute-fail-resume`
 
 ### `build-failure-stop-hint`
 
@@ -465,7 +466,7 @@ specify journal show --filter slice.archive.created | jq -c .payload    # fires 
 specify plan next --format json    # expect {"reason":"drained", ...}
 ```
 
-## `workspace-execute-two-projects`
+## `workspace-two-projects`
 
 ### `per-slice-project-routing`
 
@@ -475,18 +476,18 @@ Each slice runs against its routed project slot — the work lands in the slot t
 
 ```bash
 grep 'project:' plan.yaml    # each slice names its routed project
-git -C .specify/workspace/shop-backend log --oneline specify/<plan>    # backend slice commits in the backend slot
-git -C .specify/workspace/shop-mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
+git -C workspace/backend log --oneline specify/<plan>    # backend slice commits in the backend slot
+git -C workspace/mobile log --oneline specify/<plan>     # mobile slice commits in the mobile slot
 ```
 
 ### `slots-materialised`
 
-`.specify/workspace/shop-backend/` and `.specify/workspace/shop-mobile/` are materialised by workspace sync.
+`workspace/backend/` and `workspace/mobile/` are materialised by workspace sync.
 
 **Probe.**
 
 ```bash
-test -d .specify/workspace/shop-backend && test -d .specify/workspace/shop-mobile && echo materialised
+test -d workspace/backend && test -d workspace/mobile && echo materialised
 specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
@@ -498,12 +499,12 @@ The plan-lock is held at the workspace while phase work runs in the slots — th
 
 ```bash
 test -f plan.yaml && echo workspace-owns-plan
-ls .specify/workspace/*/plan.yaml 2>/dev/null    # expect no output
+ls workspace/*/plan.yaml 2>/dev/null    # expect no output
 specify journal show --filter plan.entry.advanced    # advances recorded in the workspace journal, not a slot's
 specify plan next --format json    # run after the driver released the lock: expect exit 2, "error":"plan-lock-not-held"
 ```
 
-## `workspace-breakout`
+## `workspace-fail-resume`
 
 ### `breakout-routes-to-slot`
 
@@ -512,7 +513,7 @@ specify plan next --format json    # run after the driver released the lock: exp
 **Probe.**
 
 ```bash
-git -C .specify/workspace/shop-backend status --short    # the breakout build's changes are in the routed slot
+git -C workspace/backend status --short    # the breakout build's changes are in the routed slot
 specify journal show --filter slice.build. | jq -c .payload    # the breakout's started/succeeded pair
 ```
 
@@ -533,7 +534,7 @@ The correct `chdir` into the slot happens without the operator changing director
 
 **Judgment flag.** Evidence pointer: the captured breakout stage output showing the operator stayed at the workspace root while the build reported work in the slot.
 
-## `stale-workspace-recovery`
+## `workspace-stale-recovery`
 
 ### `dirty-slot-detected-at-sync`
 
@@ -542,7 +543,7 @@ The correct `chdir` into the slot happens without the operator changing director
 **Probe.** Grade the captured resync step:
 
 ```bash
-git -C .specify/workspace/<project> status --short    # the slot really was dirty at resync time
+git -C workspace/<project> status --short    # the slot really was dirty at resync time
 # the captured `specify workspace sync` output surfaces the dirty-slot diagnostic for that slot
 ```
 

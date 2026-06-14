@@ -65,4 +65,4 @@ Authority hierarchy does not apply at propose — without `Evidence`, reconcilia
 | Reference | Purpose |
 |---|---|
 | [`../../references/discovery.md`](../../references/discovery.md) | Three-section form for `discovery.md`; minimal lead block; N=1 `intent` minimal form |
-| [`fixtures/`](fixtures/) | Scenario goldens: pure-intent N=1, documentation multi-slice, cross-source propose merge, `plan.reconcile.*` and `plan.amend.divergence` journal events |
+| [`fixtures/`](fixtures/) | Scenario goldens: intent-only N=1, documentation multi-slice, cross-source propose merge, `plan.reconcile.*` and `plan.amend.divergence` journal events |

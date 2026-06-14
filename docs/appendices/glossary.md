@@ -81,7 +81,7 @@ The slice-time operation declared by a source adapter. Reads one `Lead` plus the
 ## F
 
 **Finalize**
-The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr view` (read-only), and runs `specify plan archive` once every PR is `MERGED`. Never merges PRs itself.
+The closure skill (`/spec:finalize`) that pushes the prepared branches with `specify workspace push`, then runs `specify plan archive`. It does not create, observe, or merge pull requests — opening and merging PRs is operator-owned and happens outside Specify.
 
 ## G
 
@@ -196,7 +196,7 @@ An Augentic product: a target that applies spec-first generation to cross-platfo
 The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations and declared tools under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
 
 **Workspace**
-The directory under `.specify/workspace/` holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specify workspace sync` from `registry.yaml`. Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
+The top-level `workspace/` directory holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specify workspace sync` from `registry.yaml`. Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
 
 **Workspace mode**
-The project topology declared by `project.yaml: workspace: true`. The repository holds `registry.yaml`, plan artifacts at the repository root, and project slots under `.specify/workspace/<project>/`. Contrast with single-repo mode (`workspace: false`).
+The project topology declared by `project.yaml: workspace: true`. The repository holds `registry.yaml`, plan artifacts at the repository root, and project slots under top-level `workspace/<project>/`. Contrast with single-repo mode (`workspace: false`).

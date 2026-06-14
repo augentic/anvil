@@ -9,7 +9,7 @@
 # read-only `specify` verbs, and asserts nothing. It is not a scenario runner.
 #
 # Usage: bash ./scripts/snapshot.sh <sandbox-dir>
-#   e.g. bash ./scripts/snapshot.sh evals/.sandbox/pure-intent
+#   e.g. bash ./scripts/snapshot.sh evals/.sandbox/intent-only
 
 set -euo pipefail
 

@@ -46,12 +46,12 @@ A project's routing identity (the `surface[]` of owned domains and a `recent[]` 
 ### Workspace shape
 
 ```yaml
-name: shop-platform
+name: platform
 workspace: true
 specify-version: "2.0.0"
 ```
 
-A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under `.specify/workspace/` but is never itself a code project.
+A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and workspace slots under top-level `workspace/` but is never itself a code project.
 
 | Field             | Required | Description |
 | ----------------- | -------- | ----------- |

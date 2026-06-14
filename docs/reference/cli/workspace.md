@@ -30,13 +30,13 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `/spec:finalize` (which runs `specify plan archive` after PR observation). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `/spec:finalize` (which runs `specify plan archive` after the push). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
 ### specify workspace sync
 
-Clone or refresh selected projects declared in `registry.yaml` into `.specify/workspace/<project>/`.
+Clone or refresh selected projects declared in `registry.yaml` into top-level `workspace/<project>/`.
 
 ```bash
 specify workspace sync [<project>...]
@@ -62,7 +62,7 @@ Publish selected workspace clones that are already on the exact change branch.
 specify workspace push [<project>...] [--dry-run]
 ```
 
-The change name is read from `plan.yaml`; the expected branch is exactly `specify/<change-name>`. `workspace push` is transport-only PR publication/update. It never creates the local change branch, never checks out a branch, never commits files, never pushes a default branch, and never merges a PR.
+The change name is read from `plan.yaml`; the expected branch is exactly `specify/<change-name>`. `workspace push` is transport-only: it publishes the existing change branch to `origin`. It never creates the local change branch, never checks out a branch, never commits files, never pushes a default branch, never creates a remote repository, and never creates or merges a pull request — PRs are operator-owned and live outside Specify.
 
 **Per-project algorithm:**
 
@@ -73,13 +73,12 @@ The change name is read from `plan.yaml`; the expected branch is exactly `specif
 5. **Default-branch guard.** The expected change branch must not be the remote default branch.
 6. **Remote branch inspection.** Compare local `HEAD` with `origin/specify/<change-name>` when present.
 7. **Push.** Push `refs/heads/specify/<change-name>` to `origin` with `--force-with-lease`.
-8. **PR.** Create a PR, or update the existing PR base, targeting the remote default branch resolved from `origin/HEAD`.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--dry-run` | Classify each selected project's push status without `git push`, `gh repo create`, or `gh pr create`. |
+| `--dry-run` | Classify each selected project's push status without running `git push`. |
 | `--format json` | Machine-readable JSON output. |
 
 **Output (human-readable):**
@@ -87,12 +86,12 @@ The change name is read from `plan.yaml`; the expected branch is exactly `specif
 ```text
 specify: workspace push - <change-name>
 
-  traffic              pushed         specify/platform-v2 PR #42
-  command-centre       up-to-date     specify/platform-v2 PR #7
+  traffic              pushed         specify/platform-v2
+  command-centre       up-to-date     specify/platform-v2
   mobile               no-branch
   local-lib            local-only
 
-0 created, 1 pushed, 1 up-to-date, 1 local-only, 1 no-branch. 0 failed.
+1 pushed, 1 up-to-date, 1 local-only, 1 no-branch. 0 failed.
 ```
 
 **Output (JSON, `--format json`):**
@@ -100,38 +99,31 @@ specify: workspace push - <change-name>
 ```json
 {
   "projects": [
-    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2", "pr": 42 },
-    { "name": "command-centre", "status": "up-to-date", "branch": "specify/platform-v2", "pr": 7 },
+    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2" },
+    { "name": "command-centre", "status": "up-to-date", "branch": "specify/platform-v2" },
     { "name": "mobile", "status": "no-branch" },
     { "name": "local-lib", "status": "local-only" }
   ]
 }
 ```
 
-Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readable action statuses are prefixed with `would-` for transport actions (for example, `would-pushed` and `would-created`).
+Under `--dry-run`, JSON adds `"dry-run": true` at the top level and the `pushed` action status is prefixed with `would-` (`would-pushed`).
 
 **Status vocabulary:**
 
 | Status | Meaning |
 |--------|---------|
-| `created` | Greenfield GitHub remote was created, then the change branch was pushed and a PR was created. |
-| `pushed` | Existing remote branch was updated and a PR was created or updated. |
-| `up-to-date` | Remote `specify/<change-name>` already matches local `HEAD`; the PR is created or updated if needed. |
-| `local-only` | No `origin` remote is configured for this slot. No push or PR is attempted. |
+| `pushed` | The change branch was pushed to `origin`. |
+| `up-to-date` | Remote `specify/<change-name>` already matches local `HEAD`; nothing to push. |
+| `local-only` | No `origin` remote is configured for this slot. No push is attempted. |
 | `no-branch` | The slot is not currently on exact `specify/<change-name>`, or the expected branch resolves to the remote default branch. |
-| `failed` | The slot is dirty, Git or `gh` failed, the remote default could not be resolved for PR creation, or another transport error occurred. |
+| `failed` | The slot is dirty, the remote repository is missing, Git failed, or another transport error occurred. |
 
-**Prerequisites:** `gh` (GitHub CLI) is required for GitHub repository creation and PR creation/update. Plain Git remotes can still be pushed when PR creation is not needed.
+**Prerequisites:** a Git `origin` remote on each slot to be pushed. `push` shells out to Git only — no forge client (`gh`) is involved.
 
 ## PR landing
 
-Automated workspace merge has been removed. There is no active `workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
-
-```bash
-/spec:finalize <name>
-```
-
-`/spec:finalize` verifies the operator-merged PR state with `gh pr view` and archives the coordinator state via `specify plan archive`; it does not merge PRs.
+`specify workspace push` publishes the change branch and stops. Opening the pull request and merging it is an operator action outside Specify — use the forge UI, `gh pr create` / `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` runs `specify workspace push` and then `specify plan archive`; it does not create, observe, or merge pull requests.
 
 ## See also
 

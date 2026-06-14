@@ -212,7 +212,7 @@ When every plan entry is `done`, close the change:
 /spec:finalize fix-typo
 ```
 
-Finalize pushes branches (when configured), observes PR state, and archives the plan. On a local-only run without remotes, archive still runs once the plan is drained.
+Finalize pushes branches (when an `origin` is configured) and archives the plan. On a local-only run without remotes, archive still runs once the plan is drained. Opening and merging pull requests is operator-owned and happens outside Specify.
 </div>
 
 
