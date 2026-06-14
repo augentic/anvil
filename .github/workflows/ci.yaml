@@ -32,7 +32,15 @@ jobs:
             echo "ref=main" >> "$GITHUB_OUTPUT"
           fi
 
+      # Restore a prebuilt binary keyed on the exact resolved CLI commit.
+      - id: specify-bin
+        uses: actions/cache@v4
+        with:
+          path: specify-cli/target/release/specify
+          key: specify-bin-${{ steps.specify-cli.outputs.ref }}
+
       - uses: actions/checkout@v6
+        if: steps.specify-bin.outputs.cache-hit != 'true'
         with:
           repository: augentic/specify-cli
           path: specify-cli
@@ -40,8 +48,10 @@ jobs:
           fetch-depth: 1
 
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.specify-bin.outputs.cache-hit != 'true'
 
       - uses: Swatinem/rust-cache@v2
+        if: steps.specify-bin.outputs.cache-hit != 'true'
         with:
           workspaces: specify-cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -64,10 +74,8 @@ jobs:
           done
           exit $status
 
-      # Release build: a debug lint binary is many times slower and not
-      # representative (DIAGNOSTICS.md performance posture); build once,
-      # then run the binary directly.
       - name: Build lint binary
+        if: steps.specify-bin.outputs.cache-hit != 'true'
         run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
 
       - name: Verify framework
