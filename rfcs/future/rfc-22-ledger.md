@@ -1,6 +1,19 @@
 # RFC-22: Migration Ledger and Slice Mapping
 
-> Status: Draft - Depends: RFC-3a, RFC-3b, RFC-9, RFC-20, RFC-25, [RFC-21](rfc-21-catalogue.md)
+> Status: Deferred (design body stale — needs re-baselining) · Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue), the current source-adapter flow in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md), and the journal outcome-ledger (`slice.archive.created`, `crates/workflow/src/journal/event.rs`) · Roadmap: the ["Migration ledger and slice mapping"](../roadmap.md#ideas-parked) parked idea.
+
+> **Status note (de-staled).** This RFC predates the lead/evidence model, the source-adapter rename, and the shipped journal outcome-ledger. Its *intent* — cross-change "is this source migrated?" memory, a `status` field on `sources[]`, and a `mapping` field on plan slices — is still wanted, but the design body uses retired vocabulary and partly duplicates a now-shipped surface. Translate and re-baseline before implementing:
+>
+> | Body term (stale) | Current model |
+> | --- | --- |
+> | source adapter `enumerate` | source adapter **`survey`** (emits *leads* into `discovery.md`) |
+> | "assignment" / "assignment brief" | the **`propose`** sub-step of `/spec:plan` (binds slices to projects) |
+> | "survey brief" reads / `survey.md` / `surveys.json` | the `survey` op + `discovery.md` leads; per-source **evidence** + `model.yaml` |
+> | `workspace.md` baseline-spec affinity | the baseline **surface** projection in `.specify/topology.lock` (read into the propose request as `ProjectRef.surface[]`) |
+> | `specify plan finalize` (old name, as a CLI writer) | **`specify plan archive`** (the `/spec:finalize` skill drives it); the per-merge ledger event is fired by **`specify slice merge`** / archive |
+> | predecessor "RFC-20 / RFC-25" | folded into `docs/standards/workflow.md` + `DECISIONS.md`; no standalone RFCs exist |
+>
+> **Partial precedent now exists.** The motivation "no machine-readable cross-change memory" is *partly* addressed: the `slice.archive.created` journal event is now the durable outcome-ledger entry, carrying `touched_specs`, `outcome_summary`, `merge_sha`, and promoted `decisions` per merge. A rewrite should treat `migration-log.yaml` as a **materialised projection over those journal events** (and archive contents), not a parallel from-scratch ledger — and re-scope to only what the journal does not already answer (per-`source` migration status and the `mapping` taxonomy).
 
 ## Abstract
 
@@ -8,7 +21,7 @@ Add the cumulative cross-change state required to plan, route, and audit migrati
 
 This RFC adds:
 
-1. **`.specify/migration-log.yaml`** — a cumulative ledger recording, per source key, which target projects each extracted capability landed in, when, and via which change. Written only by `specify slice merge` and `specify plan finalize`; read by survey, assignment, propose, and the new `specify migration-log show` verb.
+1. **`.specify/migration-log.yaml`** — a cumulative ledger recording, per source key, which target projects each extracted capability landed in, when, and via which change. Written only by `specify slice merge` and `specify plan archive`; read by survey, assignment, propose, and the new `specify migration-log show` verb.
 2. **A `status` field on `sources.yaml:sources[]`** (closed enum: `pending` / `in-progress` / `migrated` / `abandoned`) - driven by the same ledger writers. Operators can override via an explicit `specify source status` verb, but normal lifecycle transitions are framework-driven.
 3. **An optional `mapping` field on each `plan.yaml.slices[]` entry** (`one-to-one` / `many-to-one` / `one-to-many` / `greenfield`) — produced by `/spec:plan`, consumed by audit, validated by `specify plan validate`. Audit-only; the slice loop does not branch on it.
 
@@ -29,7 +42,7 @@ This RFC adds the smallest set of cross-change durable artifacts that fix all th
 ### Principles
 
 1. **The ledger is a materialised view.** `.specify/migration-log.yaml` is an append-mostly cache over archive contents. Re-deriving it from archives must always be possible. The archive remains the source of truth.
-2. **The CLI is the single writer.** Only `specify slice merge` and `specify plan finalize` write to the ledger. `specify source status` is the *only* operator-facing override for the `status` field; otherwise it tracks the ledger.
+2. **The CLI is the single writer.** Only `specify slice merge` and `specify plan archive` write to the ledger. `specify source status` is the *only* operator-facing override for the `status` field; otherwise it tracks the ledger.
 3. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.
 4. **`mapping` is audit-only.** The slice loop, propose, assignment, and execute do **not** branch on the field. It captures intent for review and regression-detection, not control flow.
 5. **Additive throughout.** Every existing `plan.yaml`, `sources.yaml`, and archive layout continues to validate without change.
@@ -69,14 +82,14 @@ Schema rules (`additionalProperties: false`):
 | `entries[].slice` | yes | Kebab-case slice name within that change. |
 | `entries[].merged_at` | yes | ISO 8601 date, UTC, day precision (no time component). The deterministic part of slice merge time; chosen over a full timestamp to keep the file diff-friendly and preserve the framework's idempotency posture. |
 
-Idempotency: entries are stored sorted by `(source, merged_at, slice)`. Re-running `specify plan finalize` on an already-finalized change is a no-op (entries are deduplicated by `(change, slice, source, target_project)`).
+Idempotency: entries are stored sorted by `(source, merged_at, slice)`. Re-running `specify plan archive` on an already-finalized change is a no-op (entries are deduplicated by `(change, slice, source, target_project)`).
 
 ### Ledger writers
 
 The **only** writers to `migration-log.yaml`:
 
 - **`specify slice merge`** — when a slice with `sources: [...]` and `project: <name>` is merged and the owning plan entry becomes `done`, appends one entry per `(source, target_project)` pair derived from the slice's `sources[]` list. The `capabilities` list is computed from the slice's `spec.md` requirement headings or target-specific spec grouping. For greenfield slices (`sources: []`), nothing is written.
-- **`specify plan finalize`** — defensive idempotency. Walks every `done` slice in the change, ensures the matching ledger entries exist, and writes any missing ones. Also updates `sources.yaml:sources[].status` (see below).
+- **`specify plan archive`** — defensive idempotency. Walks every `done` slice in the change, ensures the matching ledger entries exist, and writes any missing ones. Also updates `sources.yaml:sources[].status` (see below).
 
 The ledger never gets a writer in any phase skill body (`/spec:refine`, `/spec:build`, `/spec:merge`). The deterministic CLI merge/finalize verbs are the natural single-writer sites for cross-change durable state.
 
@@ -204,7 +217,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 | Scenario | Pre-RFC-22 (RFCs 20 + 21 landed) | Post-RFC-22 |
 |---|---|---|
 | 1. Single-repo migration | Survey + synthesise via RFC-20; catalogue + cache via RFC-21. | Same, plus the source's status flips through `pending` -> `in-progress` -> `migrated` automatically. Single-source `mapping` rarely useful. |
-| 2. Multi-repo migration (80+ repos) | Sources declared; cache shared; `enumerate` fans out. No cross-change memory; consolidations/splits not labelled. | Ledger records every merged migration; assignment routes against ledger; survey labels consolidation/split candidates; `mapping` field carries intent into audit. |
+| 2. Multi-repo migration (80+ repos) | Sources declared; cache shared; `survey` fans out. No cross-change memory; consolidations/splits not labelled. | Ledger records every merged migration; assignment routes against ledger; survey labels consolidation/split candidates; `mapping` field carries intent into audit. |
 | 3. Greenfield multi-repo | Domain-model-driven topology via RFC-20. | `mapping: greenfield` available for audit. Ledger empty (no sources). |
 | 4. Brownfield multi-repo | Routing via baseline + domain-model hints. | Ledger augments routing: previously migrated keys default to their prior target with high confidence. |
 
@@ -212,8 +225,8 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 
 1. **Schemas.** Land `migration-log/schema.json`, the additive `status` field on `schemas/sources.schema.json`, and the additive `mapping` field on `plan/plan.schema.json`. Update each schema's README. Add JSON Schema fixtures.
 2. **Domain types.** Add `MigrationLog`, `MigrationEntry`, `MigrationOverride` types in `specify-workflow` (`crates/workflow/src/migration_log/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` / `append()` helpers, byte-stable sort.
-3. **Ledger writers.** Hook `specify slice merge` and `specify plan finalize` to derive ledger entries. Atomic file-write through the existing `AtomicYaml` trait. Land integration tests under `tests/migration_log.rs`.
-4. **`status` on `sources[]`.** Wire `specify plan finalize` to update statuses. Add `specify source status` verb (`src/commands/source/status.rs`) with the operator-override override-block writer.
+3. **Ledger writers.** Hook `specify slice merge` and `specify plan archive` to derive ledger entries. Atomic file-write through the existing `AtomicYaml` trait. Land integration tests under `tests/migration_log.rs`.
+4. **`status` on `sources[]`.** Wire `specify plan archive` to update statuses. Add `specify source status` verb (`src/commands/source/status.rs`) with the operator-override override-block writer.
 5. **`specify migration-log show`.** Read-only verb; small handler with `--source`, `--target-project`, `--change` filters and JSON envelope.
 6. **`mapping` field plumbing.** Extend `Plan::validate` with the four advisory cross-checks. Extend `specify plan amend` to accept `--mapping` and `--clear-mapping`. Update propose brief to pre-fill `mapping` from survey recommendations.
 7. **Routing-hint precedence.** Update `assignment.md` (the brief from RFC-20) to insert the ledger lookup as hint #2. Surface `previously migrated to <project> via <change>` in the assignment-table rationale.
@@ -227,7 +240,7 @@ This RFC is **strictly additive**. Pre-existing plans, registries, sources, arch
 
 For operators:
 
-- The ledger first populates on the next `specify slice merge` or `specify plan finalize` after upgrade. It does not retroactively backfill. Operators who want backfill can run `specify migration-log import --from-archive` once, post-upgrade.
+- The ledger first populates on the next `specify slice merge` or `specify plan archive` after upgrade. It does not retroactively backfill. Operators who want backfill can run `specify migration-log import --from-archive` once, post-upgrade.
 - The `status` field on `sources[]` is optional and defaults to `pending` on existing entries when first read by a writer. The framework auto-promotes `pending` -> `in-progress` -> `migrated` based on plan / ledger state; manual overrides go through `specify source status`.
 - The `mapping` field on plan slices is optional. Existing plans validate without it; new plans authored after upgrade may set it manually or accept the propose brief's pre-fill from survey recommendations.
 
@@ -258,7 +271,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 **Make `status` writes synchronous with `specify plan next`.** Considered and rejected. Status writes happen when a plan entry becomes `in-progress` (cheap) and at finalize time for `migrated` (because that's when "every slice referencing the key is done" is settled). Splitting the write across two verbs avoids a costly cross-plan check on every transition.
 
-**Block `specify plan finalize` on any source referenced by the change still being `in-progress`.** Considered and rejected. The check is well-defined but punitive - partial progress is a legitimate state for multi-change migrations. Warning, not block; operators can opt to gate via CI if they want stricter posture.
+**Block `specify plan archive` on any source referenced by the change still being `in-progress`.** Considered and rejected. The check is well-defined but punitive - partial progress is a legitimate state for multi-change migrations. Warning, not block; operators can opt to gate via CI if they want stricter posture.
 
 ## Non-Goals
 
@@ -274,7 +287,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 ## Open Questions
 
 1. Should the ledger record `started_at` (when the plan entry first transitioned to `in-progress`) in addition to `merged_at`? Current preference: no - keep the schema minimal; archives carry per-transition timestamps via `journal.jsonl` for forensic detail.
-2. Should `specify plan finalize` block on `sources.yaml:sources[].status: in-progress` for any source key referenced by the change's slices, to enforce status hygiene? Current preference: warning, not block.
+2. Should `specify plan archive` block on `sources.yaml:sources[].status: in-progress` for any source key referenced by the change's slices, to enforce status hygiene? Current preference: warning, not block.
 3. Should the `mapping: one-to-many` validate-warning be cross-change (i.e., the *other* slice with a different project may live in a separate change)? Current preference: scoped to the current plan; cross-change is the ledger's job, not validate's.
 4. Should `specify migration-log import --from-archive` ship in this RFC or as a follow-up? Current preference: in this RFC, gated behind explicit `--merge` to prevent accidental ledger surgery.
 5. Should the operator-override entry shape live under `entries[]` (with empty fields) or a separate `overrides[]` collection? Current preference: under `entries[]` for single-source-of-truth; the discriminator is the `override` block.
@@ -284,10 +297,11 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 ## References
 
-- RFC-3a / RFC-3b / RFC-9 / RFC-20 / RFC-25 — predecessors this RFC annotates toward the RFC-29 source-adapter flow.
+- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — the current source-adapter flow and merge/archive writers this RFC's ledger annotates. *(The "RFC-20 / RFC-25 / RFC-29" predecessors referenced inline were never standalone RFCs in this tree — see the status note.)*
+- [`crates/workflow/src/journal/event.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/journal/event.rs) — the `slice.archive.created` outcome-ledger event a rewrite should project the migration ledger over.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
-- [`docs/explanation/workspace-tiers.md`](../../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the ledger preserves.
+- [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the ledger annotates (replaces the retired `workspace-tiers.md`).
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.
 - [`crates/workflow/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.

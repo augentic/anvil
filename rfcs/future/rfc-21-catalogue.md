@@ -237,7 +237,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
 
-**Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify slice merge` and `specify plan finalize`) that make `status` honest.
+**Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify slice merge` and `specify plan archive`) that make `status` honest.
 
 **Run survey concurrency through a CLI verb (`specify source survey` fan-out).** Rejected. `survey` is a source adapter operation orchestrated by `/spec:plan`; concurrency is a plan-skill scheduling decision, not a new CLI contract. The `--survey-concurrency` flag on `/spec:plan` is the natural place because the skill already orchestrates the fan-out.
 
@@ -265,7 +265,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## References
 
-- RFC-3a / RFC-3b / RFC-9 / RFC-14 / RFC-20 / RFC-25 — predecessors this RFC updates toward the RFC-29 source-adapter flow.
+- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — the current source-adapter flow (`survey` / `extract`) and the `--source` binding grammar this RFC extends. *(The "RFC-20 / RFC-25 / RFC-29" predecessors referenced inline were never standalone RFCs in this tree; they were folded into these specs — see the status note.)*
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the source-clone cache refines (replaces the retired `workspace-tiers.md`).
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.

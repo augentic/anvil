@@ -1,6 +1,18 @@
 # RFC-24: Omnia Plan Composition
 
-> Status: Draft - Depends: RFC-20 and RFC-25, [RFC-21](rfc-21-catalogue.md), [RFC-22](rfc-22-ledger.md)
+> Status: Deferred (design body stale — needs re-baselining) · Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue) and [RFC-22](rfc-22-ledger.md) (ledger) — both themselves stale; the current plan schema (`schemas/plan/plan.schema.json`); the Omnia target adapter briefs (`adapters/targets/omnia/briefs/`) · Roadmap: the ["Omnia plan composition"](../roadmap.md#ideas-parked) parked idea.
+
+> **Status note (de-staled).** This RFC predates the lead/evidence reconciliation model and stacks on RFC-21/RFC-22, which are themselves stale. Its *intent* — let `plan.yaml` express the Omnia service → crate → handler shape via an optional `crate` field, an audit-only `surfaces` digest, target-gated `plan validate` findings, and a `specify plan compose` view — is still wanted, but the design body sources the surface digest from artifacts that no longer exist. Translate before implementing:
+>
+> | Body term (stale) | Current model |
+> | --- | --- |
+> | source adapter "enumeration" | source adapter **`survey`** (emits *leads* into `discovery.md`) |
+> | "candidate" / "source candidate sidecars" | **leads** (`discovery.md`) + per-source **evidence** (`.specify/slices/<slice>/evidence/<source>.yaml`) |
+> | `surveys.json` / `survey.md` / `<plan-dir>/analyze/<source>/` scratch | `discovery.md` leads at plan time; structured `model.yaml` + `spec.md` at slice time |
+> | "retired RFC-20 `surfaces.json` shape" | no `surfaces.json` ships; the surface digest must be derived from slice `model.yaml` / `spec.md`, or authored directly on the plan entry |
+> | predecessor "RFC-20 / RFC-25" | folded into `docs/standards/workflow.md` + `DECISIONS.md`; no standalone RFCs exist |
+>
+> The load-bearing design — two additive optional plan-entry fields (`crate`, `surfaces`), five Omnia-gated validate findings, and the read-only `specify plan compose` join — remains coherent against the current plan schema. Only the *provenance* of the `surfaces` digest needs re-baselining: derive it from `model.yaml` / `spec.md` rather than a `surveys.json` sidecar. Verify the referenced Omnia skill names (`omnia-crate-writer`, `omnia-guest-writer`) and brief paths against the live `adapters/targets/omnia/` tree, which may have drifted.
 
 ## Abstract
 
@@ -11,7 +23,7 @@ Today the mapping is implicit: an Omnia "service" is whatever `project` an Omnia
 This RFC adds:
 
 1. **An optional `crate` field on `plan.yaml.slices[]` entries** - explicit override of the slice -> crate name mapping, defaulting to `slice_name` with kebab-to-snake conversion.
-2. **An optional `surfaces` field on `plan.yaml.slices[]` entries** - audit-only handler digest (kind counts plus, optionally, normalised identifiers) lifted from source adapter enumeration by `/spec:plan`.
+2. **An optional `surfaces` field on `plan.yaml.slices[]` entries** - audit-only handler digest (kind counts plus, optionally, normalised identifiers) lifted from source `survey` leads (plan time) / slice `model.yaml` (refine time) by `/spec:plan`.
 3. **Target adapter discriminated `specify plan validate` findings for Omnia-typed projects** - handler-identifier uniqueness within a service, publisher uniqueness per topic, and a closed-enum check that every declared surface kind is one Omnia can host.
 4. **`specify plan compose --project <name>`** - a derived read verb that joins `plan.yaml`, per-slice source evidence, and `registry.yaml` to render the service -> crate -> handler tree on demand.
 
@@ -35,7 +47,7 @@ None of these are blockers; all three are friction. This RFC removes the frictio
 
 1. **Service identity is the project, full stop.** An Omnia service is a `project` in `registry.yaml` whose configured target adapter resolves to `omnia` (any version). This RFC adds no new field for "service".
 2. **Crate identity is the slice, by default.** The slice -> crate 1:1 mapping is already the contract the Omnia build brief enforces; this RFC formalises it as the schema default and adds a single optional override.
-3. **Handlers stay where they are.** `surveys.json` and `spec.md` remain the sources of truth for handler/surface detail. `plan.yaml` carries an *audit-only digest*, mirroring RFC-22's `mapping` posture: it is summary metadata for operator review, not a re-encoding of the survey.
+3. **Handlers stay where they are.** Slice `model.yaml` and `spec.md` remain the sources of truth for handler/surface detail (with `discovery.md` leads as the plan-time signal). `plan.yaml` carries an *audit-only digest*, mirroring RFC-22's `mapping` posture: it is summary metadata for operator review, not a re-encoding of the evidence.
 4. **The validator is target adapter discriminated.** None of the new findings fire for projects whose resolved target adapter is not Omnia. Vectis, contracts, and greenfield-without-target projects validate exactly as today.
 5. **The CLI is the single writer.** New fields are written only by `specify plan create`, `specify plan add`, and `specify plan amend`. No skill hand-edits them.
 6. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, closed surface-kind enum mirroring the retired RFC-20 `surfaces.json` shape.
@@ -98,7 +110,7 @@ Schema (closed-enum, mirrors the retired RFC-20 `surfaces.json` shape):
 ```json
 "surfaces": {
   "type": "array",
-  "description": "Handler digest for Omnia-typed slices. Audit-only; produced by source adapter enumeration via `/spec:plan`, validated by `specify plan validate`. The slice loop and execute do not branch on this field. Identifiers are the canonicalised form from source evidence, not the verbatim source identifier.",
+  "description": "Handler digest for Omnia-typed slices. Audit-only; derived from source `survey` leads / slice `model.yaml` via `/spec:plan`, validated by `specify plan validate`. The slice loop and execute do not branch on this field. Identifiers are the canonicalised form from source evidence, not the verbatim source identifier.",
   "items": {
     "type": "object",
     "additionalProperties": false,
@@ -280,8 +292,8 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 
 ## References
 
-- RFC-20 — surfaces, adapter leaves, and the routing-hint precedence this RFC's `plan compose` predecessor joins against.
-- [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache that backs source candidate sidecars between plan and execute.
+- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [From sources to slices](../../plugins/spec/references/reconciliation.md) — the current survey/lead and extract/evidence flow the surface digest must source from. *(The "RFC-20 / RFC-25" predecessors referenced inline were never standalone RFCs in this tree — see the status note.)*
+- [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the source-clone cache (itself stale; see its status note).
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) — the build brief whose `$CRATE_NAME` contract this RFC formalises into a schema field, and which owns the Omnia service workspace into which handlers land.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `crate` and `surfaces`.
