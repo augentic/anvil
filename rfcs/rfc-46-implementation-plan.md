@@ -13,9 +13,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S07` |
-| **Last completed** | `R46-S06` |
-| **Last updated** | 2026-06-12 |
+| **Active step** | `R46-S08` |
+| **Last completed** | `R46-S07` |
+| **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
 **Step status legend:** `⬜ pending` · `🔄 in progress` · `✅ done` · `⏸ blocked` · `↩ superseded`
@@ -72,7 +72,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S04](#r46-s04-phase-0-documentation-alignment) | Phase 0 documentation alignment | ✅ | plan skill, plan-propose ref, eval runs, DECISIONS.md, AGENTS.md |
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ✅ | `cargo make ci` + `make lint` green; §10 rows **#2–#4** remediated |
 | [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ✅ | specify-cli — schema + cross-checks in `validate/engine/assets.rs` |
-| [R46-S07](#r46-s07-shell-resident-launcher-probe) | Shell-resident launcher probe | ⬜ | specify-cli |
+| [R46-S07](#r46-s07-shell-resident-launcher-probe) | Shell-resident launcher probe | ✅ | specify-cli — `shell_resident_app_icon` in `specify-vectis-shell-detect` |
 | [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ⬜ | specify-cli |
 | [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ⬜ | specify-cli |
 | [R46-S10](#r46-s10-vectis-validate-app-icon-checks) | Vectis validate `app-icon` checks | ⬜ | specify-cli |
@@ -931,7 +931,7 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 
 | Area | Location |
 |------|----------|
-| Shell-detect library (authoritative heuristics) | `specify-cli/crates/vectis-shell-detect/` |
+| Shell-detect library (authoritative heuristics) | `specify-cli/crates/vectis-shell-detect/` (`shell_present`, `shell_resident_app_icon`) |
 | Vectis detect JSON wrapper | `specify-cli/wasi-tools/vectis/src/verify.rs` |
 | Host detect gate | `specify-cli/crates/workflow/src/platform/detect.rs` |
 | Propose handler | `specify-cli/src/runtime/commands/plan/propose.rs` |
