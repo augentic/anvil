@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S08` |
-| **Last completed** | `R46-S07` |
+| **Active step** | `R46-S09` |
+| **Last completed** | `R46-S08` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -73,7 +73,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S05](#r46-s05-phase-0-assurance-gate) | Phase 0 assurance gate | ✅ | `cargo make ci` + `make lint` green; §10 rows **#2–#4** remediated |
 | [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ✅ | specify-cli — schema + cross-checks in `validate/engine/assets.rs` |
 | [R46-S07](#r46-s07-shell-resident-launcher-probe) | Shell-resident launcher probe | ✅ | specify-cli — `shell_resident_app_icon` in `specify-vectis-shell-detect` |
-| [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ⬜ | specify-cli |
+| [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ✅ | specify-cli — `BootstrapContext` in `platform/bootstrap.rs` |
 | [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ⬜ | specify-cli |
 | [R46-S10](#r46-s10-vectis-validate-app-icon-checks) | Vectis validate `app-icon` checks | ⬜ | specify-cli |
 | [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ⬜ | specify-cli |
