@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S14` |
-| **Last completed** | `R46-S13` |
+| **Active step** | `R46-S15` |
+| **Last completed** | `R46-S14` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -79,7 +79,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ✅ | specify-cli + `adapters/targets/vectis/examples/assets.yaml` |
 | [R46-S12](#r46-s12-phase-1-documentation-and-inference-policy) | Phase 1 docs & inference policy | ✅ | specify + `wasi-tools/vectis/DECISIONS.md` |
 | [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ✅ | specify — `VECTIS-006`; review-scoped v1 (IOS-020 / AND-028) |
-| [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ⬜ | |
+| [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ✅ | path B plan-validate test added; `cargo make ci` + `make lint` green |
 | [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ⬜ | specify-cli |
 | [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ⬜ | specify-cli |
 | [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ⬜ | specify-cli |
@@ -119,6 +119,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S11 | No separate Vectis init design-system template exists — added `adapters/targets/vectis/examples/assets.yaml` (commented `app-icon` field, no placeholder asset file). Android scaffold stubs omit legacy `mipmap-*/ic_launcher.png` (materialize fills in R46-S20; `shell_resident_app_icon` satisfied by `mipmap-anydpi-v26` stubs). | No new steps. |
 | 2026-06-15 | R46-S12 | `CORE-016` flags `RFC-46` in adapter briefs — use descriptive prose ("symbol inference policy", "inference-time symbol exception") instead of numbered RFC citations in operator-facing docs. | No new steps. |
 | 2026-06-15 | R46-S13 | No `briefs/build/review.md` — per-platform review briefs (`build/ios/review.md`, `build/android/review.md`) are the wiring surface. Cross-artifact render-by-`kind` needs composition + `assets.yaml` + shell join — v1 is review-scoped (`VECTIS-006`, IOS-020 / AND-028); mechanical `rule_hints` deferred post-materialize. | No new steps; note under R46-S13. |
+| 2026-06-15 | R46-S14 | Phase 1 assurance gate green; checklist lacked path B plan-validate integration test (path A + unit `platform_satisfied` only). | Added `app_icon_pinned_exports_passes` in `tests/workflow/validate.rs`. |
 
 ### Specify-cli step assurance
 
@@ -599,13 +600,13 @@ RFC §Implementation phases · Phase 1. Validation and schema land **before** ma
 **Prerequisites:** R46-S06 through R46-S13 ✅
 
 **Checklist:**
-- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
-- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope): no new host↔WASM tests added in Phase 1 steps.
-- [ ] `cargo make ci` (`specify-cli`).
-- [ ] `make lint` (`specify`).
-- [ ] Negative: Vectis greenfield project, `specify plan validate` → `plan-bootstrap-app-icon-missing` (host `tests/workflow/validate.rs` — no `tool run`).
-- [ ] Positive: valid `design-system/assets.yaml` with `app-icon` + pinned exports (path B) → plan validate passes.
-- [ ] `cd wasi-tools && cargo test -p specify-vectis` — `validate assets` + scaffold cases cover guest diagnostics and `AppIcon.appiconset` skeleton (not host `tool run`).
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [x] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope): no new host↔WASM tests added in Phase 1 steps.
+- [x] `cargo make ci` (`specify-cli`).
+- [x] `make lint` (`specify`).
+- [x] Negative: Vectis greenfield project, `specify plan validate` → `plan-bootstrap-app-icon-missing` (host `tests/workflow/validate.rs` — no `tool run`).
+- [x] Positive: valid `design-system/assets.yaml` with `app-icon` + pinned exports (path B) → plan validate passes.
+- [x] `cd wasi-tools && cargo test -p specify-vectis` — `validate assets` + scaffold cases cover guest diagnostics and `AppIcon.appiconset` skeleton (not host `tool run`).
 
 **Handoff:** Unblocks Phase 2 materialize.
 
