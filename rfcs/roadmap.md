@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are in place (durable behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)). The **enforcement** pillar is in place (durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — [Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate), [standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema), [lint finding lifecycle](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit), and [declarative `CORE-*` rules](../docs/explanation/standards-layer.md)) — `lint`, `validate`, and framework checks share the `Diagnostic` / `DiagnosticReport` substrate (`specify-diagnostics`) while keeping distinct gate authority. The **reconciliation** pillar is in place — see [From sources to slices](../docs/explanation/reconciliation.md); durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). With that loop now proven end-to-end on realistic multi-repo flows, the next phase should sharpen the remaining reconciliation seams, then make it observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are all in place. The **enforcement** and **reconciliation** pillars have landed too — `lint`, `validate`, and framework checks now share one `Diagnostic` substrate (`specify-diagnostics`) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md), [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md), and [From sources to slices](../docs/explanation/reconciliation.md). With that loop now proven end-to-end on realistic multi-repo flows, the next phase should sharpen the remaining reconciliation seams, then make it observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -25,8 +25,8 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/spec:execute` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo **authoring standards** (`specify lint framework`) and consumer-project **engineering standards** (`specify lint project`). Both share rule ids and the neutral `Diagnostic` finding shape via the shared diagnostic substrate ([`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)); the consumer scanner substrate ([`DECISIONS.md` §Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)) and declarative `CORE-*` convergence on the framework side ([standards layer](../docs/explanation/standards-layer.md)) build on it. Surfaces converge on the data type, fingerprint, validator, renderer, and blocking predicate — never on gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
-- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. See [From sources to slices](../docs/explanation/reconciliation.md) and [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
+- **Keep enforcement surfaces distinct.** Framework-repo **authoring standards** (`specify lint framework`) and consumer-project **engineering standards** (`specify lint project`) share rule ids and the neutral `Diagnostic` shape, but never gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move the *matching judgment* off the agent: the agent owns "are these two leads the same work?"; the CLI owns the candidate-set construction, the coverage and conflict guarantees, and the audit trail around that judgment. The lead-side hints are typed facts a deterministic layer consumes, not a deterministic replacement for the agent. See [From sources to slices](../docs/explanation/reconciliation.md) and [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
 
 ## Sequenced Roadmap
 
@@ -34,10 +34,10 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 ### Current priorities
 
-Two tracks run in parallel:
+Two tracks were framed as parallel, but they are lopsided in practice: the observability track is nearly landed, while the reconciliation track has not started. They need different things — one needs implementation cycles, the other needs a design decision — so treat them as distinct, not co-equal.
 
-1. **Reconciliation polish** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
-2. **Observability and portability (RM-14 / RM-15 / RM-18)** — now that the loop is proven on realistic multi-repo flows, make it measurable and portable across teams, forges, agents, and catalogs.
+1. **Reconciliation polish** — additive typed fields on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed. The determinism is in the *consumers* (clustering, coverage, conflict warnings), not in producing the fields — survey is agent-driven, so the agent populates `topics[]`; the win is moving the agent's output from un-checkable `synopsis` prose into typed facts a deterministic layer can join, check, and reproduce, **without moving the matching decision off the agent**. **Status: not started** — none of these surfaces exist yet (the lead schema is still `lead` / `source` / `synopsis`, with no `topics[]`), and Open Question #1 — which surface lands first — is still open. This track is blocked on a sequencing decision, not on effort, and it is the project's core differentiator: per *Core owns reconciliation*, the candidate-set, coverage, and conflict guarantees built on these fields decide artifact quality, which is what the whole loop exists to produce. **Needs the most attention next.** Resolve Open Question #1 and ship `topics[]` first — it is the substrate the rest of the track is blocked on, because advisory `clusters[]`, coverage, and decision-conflict warnings are all set operations *over* `topics[]`.
+2. **Observability and portability (RM-14 / RM-15 / RM-18)** — now that the loop is proven on realistic multi-repo flows, make it measurable and portable across teams, forges, agents, and catalogs. **Status: mostly landed for the near-term items.** RM-15 is essentially complete; RM-14's event *substrate* ships (closed taxonomy, `journal show` / `journal emit`, bounded backward-tail reader) and only the operator-facing measurement/export surface remains. This is a known build, not a design risk — a good candidate to execute in parallel with the reconciliation decision.
 
 **Deferred until trigger conditions or prerequisites:**
 
@@ -51,13 +51,15 @@ Two tracks run in parallel:
 #### RM-14: Local structured workflow events
 
 **Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
-**Precedent:** the `lint-completed` journal event (standards side); the `slice.build.*`, `slice.synthesize.*`, and `plan.reconcile.completed` events (workflow side).
-**Events include:** command/version, project/adapter, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
-**Target surface:**
+**Landed (substrate):** the journal already ships a closed ~31-id event taxonomy (`EventKind`), append-only JSONL at `.specify/journal.jsonl`, a bounded backward-tail reader, and the `specify journal show` (`--filter` / `--limit`) and `specify journal emit` verbs. Emitted kinds include `lint-completed`, `slice.build.*`, `slice.synthesize.*`, `slice.merge.*`, `plan.entry.advanced`, `plan.reconcile.completed`, and the workspace/bootstrap events.
+**Remaining:** the operator-facing *measurement* surface — a follow/tail view and an `export` to a JSONL file or configurable telemetry sink with run identity. `journal show` covers a one-shot filtered read but not a follow stream or a sink.
+**Events should also surface:** command/version, project/adapter, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
+**Naming decision needed:** the substrate already ships under `specify journal`. Decide whether the consumer surface extends `journal` (`specify journal export`) or introduces a parallel `events` noun (`specify events tail|export`) — do not ship two commands over one log.
+**Target surface (subject to the naming decision):**
 
 ```bash
-specrun events tail
-specrun events export
+specify journal show --follow   # or: specify events tail
+specify journal export          # or: specify events export
 ```
 
 **Output:** local JSONL or configurable telemetry sink with run identity.
@@ -67,7 +69,7 @@ specrun events export
 **Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
-**First consumer landed:** `specify plan status` carries `current-step` / `last-completed` / `resume` alongside `next-action` — current step, last completed step, and the literal resume command, projected from `plan.yaml`, slice metadata, and the journal. Pending human action and owner remain open.
+**Status: essentially complete.** `specify plan status` already carries `current-step` / `last-completed` / `resume` alongside `next-action`, projected from `plan.yaml`, slice metadata, and the journal (`StatusBody` in `crates/workflow/src/change/plan/core/status.rs`). Only **pending human action** and **owner** remain open; both depend on the human-intervention and owner signals RM-14's event surface is meant to carry.
 
 ---
 
@@ -78,11 +80,11 @@ specrun events export
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
 **Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate and consumer scanner (`IFACE-*` contract findings — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) and [§Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)).
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
-**Consumes:** the neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings (producer project, consumer project, operation id, schema pointer, channel, message, classification, `change-kind`) via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union defines the `evidence.kind: structured` branch but deliberately leaves the inner `data` shape to the consumer roadmap item so contracts-specific decisions land alongside the gate that needs them.
+**Consumes:** the neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-*` contract findings via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union reserves the `evidence.kind: structured` branch but leaves the inner `data` shape to this item, so contracts-specific decisions land with the gate that needs them.
 **Target surface:**
 
 ```bash
-specrun plan impact --change <name>
+specify plan impact --change <name>
 ```
 
 #### RM-12: Catalog import: Backstage adapter
@@ -91,9 +93,9 @@ specrun plan impact --change <name>
 **Target surface:**
 
 ```bash
-specrun registry import backstage
-specrun registry import <source>
-specrun registry diff <source>
+specify registry import backstage
+specify registry import <source>
+specify registry diff <source>
 ```
 
 **Mapping:** Backstage `System` to platform/product boundary; `Component` to registry project; `API` to interface inventory; ownership/domain/dependencies to routing and review signals.
@@ -102,7 +104,7 @@ specrun registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specrun plan next` and `specrun slice validate`.
+**Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize
@@ -112,9 +114,9 @@ specrun registry diff <source>
 **Target surface:**
 
 ```bash
-specrun forge doctor
-specrun workspace push --forge github
-specrun plan finalize --forge github
+specify forge doctor
+specify workspace push --forge github
+specify plan finalize --forge github
 ```
 
 ---
@@ -183,7 +185,6 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
-- Which eval fixtures best represent the product proof path now that scenario #1 is the release blocker?
 - What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work across multiple operators or agents?
 - What compatibility guarantees should adapter authors provide across adapter and declared-tool versions?

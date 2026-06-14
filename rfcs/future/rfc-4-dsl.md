@@ -1,67 +1,47 @@
 # RFC-4: Type-Safe Skill Expression
 
-> Status: Draft · Depends: RFC-1 and RFC-5
+> Status: Option 1 shipped · Options 2–3 parked · Surface: [`specify lint framework`](https://github.com/augentic/specify-cli)
 
 ## Abstract
 
-Extend the framework tooling validation surface to cover skill authoring: frontmatter schema enforcement, reference resolution, variable consistency, and cross-skill directive validation. As the skill count grows, graduate to structured YAML manifests or a Rust DSL that separates the typed skeleton from the prose body.
+Skill authoring has two layers with different validation needs: **structural metadata** (what a skill depends on, which tools it uses, what arguments it takes, which phases it runs, which artifacts it references) that can be checked mechanically, and **behavioral instructions** (how the agent should think and act) that are inherently natural language and should stay that way. The original goal of this RFC — deterministic checks for the structural layer without disturbing the prose layer — has shipped. What stays open is whether, as the skill count grows, to graduate the structural layer from validated markdown into structured manifests or a typed DSL.
 
-## Motivation
+## What shipped (Option 1)
 
-### The Two-Layer Problem
+The framework lint engine validates the structural layer through `specify lint framework`, the authoring-standards surface over the `augentic/specify` repo. Skill checks are `CORE-*` rules resolved by a single generic dispatcher in two roads:
 
-Skills have two distinct layers with fundamentally different validation needs:
+- **Road A — declarative hints** interpreted over a `WorkspaceModel` (frontmatter `schema`, `reference-resolves`, `cardinality`, `field-grammar`, `presence`, …). All policy lives in the rule's `config:`, never in the engine.
+- **Road B — name-resolved in-process checkers** for cross-file rules: `skill-body`, `links-registry`, `marketplace`, `scenarios`, `prose`, and `rules`, under [`src/runtime/commands/lint/framework_tools/`](https://github.com/augentic/specify-cli).
 
-1. **Structural metadata** — what a skill depends on, what tools it uses, what arguments it takes, what phases it runs, what artifacts it references. This layer is a graph of typed relationships that can be validated mechanically.
+The original Option 1 checklist is covered:
 
-2. **Behavioral instructions** — how the agent should think and act. This layer is inherently natural language and should stay that way.
+- **Frontmatter schema** — `schemas/authoring/skill.schema.json` pins `name` / `description` / `argument-hint` / `allowed-tools`; `CORE-*` rules enforce the 200/45/512 caps, the description and argument-hint grammar, and that the skill name matches its directory.
+- **Reference resolution** — the `links-registry` checker resolves every `references/` link and registry link.
+- **Marketplace consistency** — the `marketplace` checker cross-checks every plugin against the marketplace manifest and `schemas/authoring/marketplace.schema.json`.
+- **Skill-body discipline** — the `skill-body` checker enforces body structure and directive grammar.
+- **Scenario / prose / rules** — companion checkers validate the eval catalog (`schemas/authoring/scenario.schema.json`), prose house style, and the rules tree itself (`schemas/rules/rule.schema.json`).
 
-Today both layers live in untyped markdown. YAML frontmatter has no schema enforcement, and the prose body uses conventions (variable names, reference links, section headings) with no structural validation. Breaking a reference or misspelling a tool name produces no feedback until runtime.
+`check.ts` (the original Deno validation script) and the once-proposed `specdev`-named binary and `check::` Rust modules never shipped under those names — the generic dispatcher replaced them. `specify lint framework` is enforced by `make lint` locally and by the framework CI job.
 
-### Relationship to RFC-1, RFC-5, and `check.ts`
+## What remains open
 
-RFC-1 addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This RFC extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
-
-Importantly, `check.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this RFC is not designing these checks but porting them into the Rust `specdev lint` workspace — `check` modules (carrying every predicate) behind the framework lint surface CI invokes. Once that workspace is in place, the incremental work for this RFC is small: the schema-first pass turns most of Option 1 into editor squigglies before any binary runs, and the residual cross-file rules (variable consistency, cross-skill directive resolution, marketplace consistency) live in `check` modules.
-
-## Detailed Design
-
-Three approaches, ranked by investment:
-
-### Option 1: Framework-tooling skill validation (low friction)
-
-Add skill-aware checks to `tooling check`:
-
-- **Frontmatter schema** — validate `name`, `description`, `argument-hint`, `allowed-tools` against a JSON Schema; verify skill name matches directory name
-- **Reference resolution** — every `references/` link in a SKILL.md must resolve to an existing file
-- **Variable consistency** — variables defined in the `## Arguments` block must be used in the body, and vice versa
-- **Skill directive validation** — `<!-- skill: plugin:name -->` directives in task templates must reference real skills
-- **Plugin consistency** — every plugin directory must appear in `marketplace.json` and have at least one skill
-
-This catches typos, broken links, and structural drift without changing the authoring format.
+The structural layer still lives in markdown frontmatter, *validated* rather than *typed*. Two graduations stay parked behind a skill-count growth trigger.
 
 ### Option 2: YAML skill manifests (moderate friction)
 
-Extract the structural metadata from SKILL.md into a companion `manifest.yaml` per skill, validated by JSON Schema. The manifest declares arguments, references, tool allow-lists, authority levels, and cross-skill directives as structured data. The SKILL.md prose stays hand-authored. Framework tooling cross-checks that the manifest and the SKILL.md frontmatter agree.
-
-This separates the two layers explicitly. Authoring friction is low — YAML is familiar and IDE-supported. Validation power is comparable to a full DSL for the structural layer.
+Extract the structural metadata into a companion `manifest.yaml` per skill, validated by JSON Schema. The manifest declares arguments, references, tool allow-lists, authority levels, and cross-skill directives as structured data; the SKILL.md prose stays hand-authored. Framework lint cross-checks that the manifest and the SKILL.md frontmatter agree. This separates the two layers explicitly with low authoring friction.
 
 ### Option 3: Rust DSL that compiles to SKILL.md (high investment)
 
-Model the structural skeleton in Rust — typed structs for skills, enums for tools and authority levels, `include_str!` for prose blocks. A build script validates reference paths, variable DAGs, phase dependencies, and cross-skill directives at compile time. `cargo build` fails if a reference is broken or a tool name is misspelled.
-
-The Rust compiler gives you broken-reference detection, exhaustive enum matching for tool names, and typed cross-skill references. The trade-off is maintaining a Rust build alongside the markdown and migrating all existing skills into the DSL. This pays off as the skill count grows and composability becomes important — skills become data that can be derived, composed, and tested programmatically.
+Model the structural skeleton in Rust — typed structs for skills, enums for tools and authority levels, `include_str!` for prose blocks — with a build step that fails on broken references, misspelled tool names, or phase-dependency cycles. This pays off only when skills must compose programmatically (e.g. generating variant skills from a base definition) or the skill count makes manual consistency impractical.
 
 ## Recommendation
 
-Option 1 is already mostly implemented in `check.ts` and is satisfied by `specdev lint`'s schema-first pass plus the `check::skill_frontmatter` / `check::skill_body` / `check::links` / `check::plugins` modules. Once that workspace lands, this RFC's Option 1 is done — no additional design or implementation beyond what the framework lint migration delivers.
-
-Option 2 is the right next step if skill count grows beyond ~20 and structural drift becomes a recurring problem. Option 3 is justified only when skills need to compose programmatically (e.g., generating variant skills from a base definition) or when the skill count makes manual consistency impractical.
-
-Revisit options 2 and 3 when the ported validation catches real bugs and the failure modes point toward stronger typing.
+Option 1 is done; extend the structural-validation surface by adding `CORE-*` rules, not by re-opening this design. Revisit Option 2 if the skill count grows past ~20 and structural drift becomes recurring, and Option 3 only when skills need to compose programmatically. Until then this stays parked.
 
 ## References
 
-- RFC-1 — prerequisite; defines `specify validate` and the workflow primitives skill validation builds on
-- `specdev lint` — provides the `check` modules and framework lint surface that host Option 1
-- `check.ts` — existing Deno implementation of Option 1 checks, retired as RFC-5 lands
+- [`specify lint framework`](https://github.com/augentic/specify-cli) — the authoring-standards surface hosting the shipped Option 1 checks.
+- [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
+- [docs/contributing/checks.md](../../docs/contributing/checks.md) — the Road A / Road B extension model for `CORE-*` rules.
+- [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md) — the authored house style the checks enforce.
