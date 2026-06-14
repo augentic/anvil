@@ -57,7 +57,7 @@ feature brief
 
 ## Setup
 
-Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup** (workspace `platform` plus registered `backend` / `mobile`, each with a local bare-repo `origin`) and the **OAuth login brief** at `docs/oauth-login.md`.
+Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup** (workspace `platform` plus registered `backend`, `mobile`, and `contracts`, each with a local bare-repo `origin`) and the **OAuth login brief** at `docs/oauth-login.md`.
 
 ## Invocation
 
@@ -66,7 +66,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 3. **Stamp Gate 1** — run the literal `specify plan transition oauth-login approved`.
 4. **Execute** — `/spec:execute loop`; answer only genuine clarification prompts. The loop exits because the plan is complete (`all-done`).
 5. **Finalize** — `/spec:finalize oauth-login`. The skill pushes the prepared `specify/oauth-login` branches to each project's bare-repo `origin` (per-project status `pushed`), then runs `specify plan archive` (archiving `plan.yaml` + `change.md` under `.specify/archive/plans/oauth-login-<date>/`), and prints the pushed-branch list, a reminder to open PRs by hand, and the archived path.
-6. **Open PRs externally (out of scope for the assertions)** — the operator opens and merges the backend and mobile pull requests by hand outside Specify; the scenario does not drive or assert this.
+6. **Open PRs externally (out of scope for the assertions)** — the operator opens and merges the backend, mobile, and contracts pull requests by hand outside Specify; the scenario does not drive or assert this.
 7. **Finalize (re-run)** — `/spec:finalize oauth-login` reports no active plan remains and exits 0.
 
 ## Assertions
@@ -84,7 +84,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 - `finalize-archives-plan`: the same `/spec:finalize` run archives the plan via `specify plan archive` after the push succeeds.
 - `archived-plan-path-recorded`: the wrap-up names the archived plan path under `.specify/archive/plans/`.
 - `archived-change-md-present`: the archived directory contains the archived `change.md`.
-- `pushed-branch-list-recorded`: the wrap-up lists exactly two pushed branches (one per routed project) and reminds the operator to open PRs by hand.
+- `pushed-branch-list-recorded`: the wrap-up lists one pushed branch per routed project (`backend`, `mobile`, `contracts`) and reminds the operator to open PRs by hand.
 - `rerun-finalize-plan-not-found`: a second `/spec:finalize` reports no active plan and exits 0.
 
 ## Negative expectations

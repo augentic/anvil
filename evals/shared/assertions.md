@@ -329,14 +329,15 @@ specify journal show --filter workspace.push.completed | jq -c .payload    # "br
 
 ### `finalize-pushes-branches`
 
-`/spec:finalize` pushes the prepared `specify/<plan>` branch to each routed project's `origin`; the per-project push table reports `pushed` (or `up-to-date` on a repeat run). It never creates, observes, or merges pull requests.
+`/spec:finalize` pushes the prepared `specify/<plan>` branch to each routed project's `origin`; the per-project push table reports `pushed` (or `up-to-date` on a repeat run) for every project the plan routed a slice to. It never creates, observes, or merges pull requests.
 
 **Probe.**
 
 ```bash
-git -C backend ls-remote --heads "file://$SANDBOX/backend.git" "refs/heads/specify/<plan>"    # branch present on the bare remote
-git -C mobile  ls-remote --heads "file://$SANDBOX/mobile.git"  "refs/heads/specify/<plan>"     # branch present on the bare remote
-specify journal show --filter workspace.push.completed | jq -c .payload    # both projects listed
+for proj in backend mobile contracts; do    # every routed project; trim to the set the plan routed to
+  git -C "$proj" ls-remote --heads origin "refs/heads/specify/<plan>"    # branch present on the bare remote
+done
+specify journal show --filter workspace.push.completed | jq -c .payload    # every routed project listed
 ```
 
 ### `finalize-archives-plan`
@@ -368,7 +369,7 @@ ls .specify/archive/plans/<plan>-*/    # expect change.md and plan.yaml together
 
 ### `pushed-branch-list-recorded`
 
-The wrap-up lists exactly two pushed branches (one per routed project) and reminds the operator to open the pull requests by hand outside Specify — reporting ergonomics over the push table.
+The wrap-up lists one pushed branch per routed project and reminds the operator to open the pull requests by hand outside Specify — reporting ergonomics over the push table.
 
 **Judgment flag.** Evidence pointer: the captured `/spec:finalize` wrap-up showing the pushed-branch list (one per routed project) and the manual-PR reminder.
 

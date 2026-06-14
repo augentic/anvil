@@ -28,19 +28,20 @@ Then create the scenario's brief (see its **Setup** section) and run its **Invoc
 
 For scenarios that coordinate work across multiple project repos from a registry-only workspace:
 
-Create three disposable directories under the pinned sandbox:
+Create the disposable project directories under the pinned sandbox. Every project the plan routes a slice to must be a registered project with its own remote — the contract-routing scenario routes a contract slice to a dedicated `contracts` project, so it is set up alongside `backend` and `mobile`:
 
 ```text
-evals/.sandbox/<scenario>/platform/   # registry-only workspace
-evals/.sandbox/<scenario>/backend/    # omnia@v1 project
-evals/.sandbox/<scenario>/mobile/     # vectis@v1 project
+evals/.sandbox/<scenario>/platform/    # registry-only workspace
+evals/.sandbox/<scenario>/backend/     # omnia@v1 project
+evals/.sandbox/<scenario>/mobile/      # vectis@v1 project
+evals/.sandbox/<scenario>/contracts/   # contracts@v1 project (contract-routing scenarios)
 ```
 
 Initialize them:
 
 ```bash
 SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/evals/.sandbox}/<scenario>"
-rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{platform,backend,mobile} && cd "$SANDBOX"
+rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{platform,backend,mobile,contracts} && cd "$SANDBOX"
 
 cd platform
 specify init --workspace
@@ -50,27 +51,32 @@ specify init omnia@v1
 
 cd ../mobile
 specify init vectis@v1
+
+cd ../contracts
+specify init contracts@v1
 ```
 
-Give each implementation project a local bare-repo `origin` so `/spec:finalize` has somewhere to push (no network, no forge):
+Give each routed project a local bare-repo `origin` so `specify workspace prepare` can resolve `origin/HEAD` and `/spec:finalize` has somewhere to push — no network, no forge. (Drop `contracts` from the list for scenarios that do not route a contract slice.)
 
 ```bash
 cd "$SANDBOX"
-for proj in backend mobile; do
+for proj in backend mobile contracts; do
   git -C "$proj" init -b main -q
-  git -C "$proj" add -A && git -C "$proj" commit -q --no-gpg-sign -m "init $proj"
-  git init --bare -q "$proj.git"
-  git -C "$proj" remote add origin "file://$SANDBOX/$proj.git"
+  git -C "$proj" add -A
+  git -C "$proj" diff --cached --quiet || git -C "$proj" commit -q --no-gpg-sign -m "init $proj"
+  git init --bare -q "$proj-origin.git"
+  git -C "$proj" remote add origin "file://$SANDBOX/$proj-origin.git"
   git -C "$proj" push -q -u origin main
 done
 ```
 
-Return to the workspace and register the implementation projects with descriptions that make routing unambiguous:
+Return to the workspace and register the projects with descriptions that make routing unambiguous:
 
 ```bash
 cd platform
 specify registry add backend --url ../backend --adapter omnia --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
 specify registry add mobile --url ../mobile --adapter vectis --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+specify registry add contracts --url ../contracts --adapter contracts --description "Shared OAuth login API contracts for cross-repo consumption."
 specify registry validate
 ```
 
