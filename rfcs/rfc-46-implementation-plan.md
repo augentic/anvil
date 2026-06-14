@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S15` |
-| **Last completed** | `R46-S14` |
+| **Active step** | `R46-S16` |
+| **Last completed** | `R46-S15` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -80,7 +80,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S12](#r46-s12-phase-1-documentation-and-inference-policy) | Phase 1 docs & inference policy | ✅ | specify + `wasi-tools/vectis/DECISIONS.md` |
 | [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ✅ | specify — `VECTIS-006`; review-scoped v1 (IOS-020 / AND-028) |
 | [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ✅ | path B plan-validate test added; `cargo make ci` + `make lint` green |
-| [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ⬜ | specify-cli |
+| [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ✅ | specify-cli — `materialize assets` CLI + report envelope; `resvg`/`usvg`/`image` deps declared |
 | [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ⬜ | specify-cli |
 | [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ⬜ | specify-cli |
 | [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ⬜ | specify-cli |
@@ -120,6 +120,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S12 | `CORE-016` flags `RFC-46` in adapter briefs — use descriptive prose ("symbol inference policy", "inference-time symbol exception") instead of numbered RFC citations in operator-facing docs. | No new steps. |
 | 2026-06-15 | R46-S13 | No `briefs/build/review.md` — per-platform review briefs (`build/ios/review.md`, `build/android/review.md`) are the wiring surface. Cross-artifact render-by-`kind` needs composition + `assets.yaml` + shell join — v1 is review-scoped (`VECTIS-006`, IOS-020 / AND-028); mechanical `rule_hints` deferred post-materialize. | No new steps; note under R46-S13. |
 | 2026-06-15 | R46-S14 | Phase 1 assurance gate green; checklist lacked path B plan-validate integration test (path A + unit `platform_satisfied` only). | Added `app_icon_pinned_exports_passes` in `tests/workflow/validate.rs`. |
+| 2026-06-15 | R46-S15 | `resvg`/`usvg`/`tiny-skia`/`image` compile for `wasm32-wasip2` with `default-features = false`; deps unused until R46-S17 (no `touch_deps` shim). Report envelope adds `command`, `path`, `dry_run`, `platforms` alongside the three arrays. | No new steps. |
 
 ### Specify-cli step assurance
 
@@ -632,8 +633,8 @@ RFC §Implementation phases · Phase 2.
 5. Add deps to `wasi-tools/vectis/Cargo.toml`: `usvg`, `resvg`, `image` (and `tiny-skia` if required by resvg) — keep carve-out dep policy.
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- `cargo test -p specify-vectis cli`; dry-run on missing file → structured error.
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance).
+- [x] `cargo test --test cli` (`materialize_assets_*`); dry-run on missing file → structured error.
 
 ---
 
