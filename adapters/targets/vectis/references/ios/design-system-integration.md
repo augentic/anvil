@@ -179,6 +179,25 @@ scaffolded app looks correct on both appearances without any token authoring.
 
 ## Asset integration
 
+### Render-by-`kind`
+
+Shell writers resolve each composition `icon` / `image` / `icon-button` / `fab`
+reference through `assets.yaml` and emit view code strictly by entry `kind`:
+
+| `assets.<id>.kind` | iOS emission |
+|---|---|
+| `vector` | `Image("<id>")` from a shell-local imageset copied from the materialized export |
+| `raster` | `Image("<id>")` from a shell-local imageset with per-density PNGs copied from the materialized export |
+| `symbol` | `Image(systemName: symbols.ios)` — no catalog copy |
+
+**Forbidden at build time:** emitting `Image(systemName:)` (or any SF Symbol
+substitute) for an id whose entry is `vector` or `raster`. Missing platform
+exports are validation errors (`assets-materialization-missing`) — never a
+writer shortcut. Platform glyph use requires an explicit `kind: symbol` entry
+(optionally `inferred: true` when promoted from screenshot inference; see
+[Layout Inferer Contract](../layout-inferer-contract.md) and
+`adapters/sources/screenshots/briefs/extract.md`).
+
 ### Reading `assets.yaml`
 
 The iOS writer's primary asset input is `assets.yaml`. Resolution order:
@@ -197,20 +216,32 @@ resolves to an `assets.yaml` entry lives in
 present). Missing files are errors; missing optional densities are warnings.
 The writer consumes the already-validated input set.
 
-### Copy-on-generate
+### Materialize-before-copy
 
-Build hand-off is copy-on-generate: the iOS writer **copies** referenced
-asset files into the shell target's asset catalog at
-`iOS/<App>/Resources/Assets.xcassets/`. The generated shell project must build
-from its own platform directory after generation; it MUST NOT symlink, alias,
-or path-reference `design-system/assets/` from `project.yml`, nor consume
-files from `<change>/assets/` at runtime. Per-platform copy targets:
+Canonical masters live under `design-system/assets/` (`source:` on each entry).
+Per-platform binaries live under `design-system/assets/exports/ios/` and are
+recorded in `sources.ios` (operator-pinned or auto-written by
+`vectis materialize assets`). Materialization runs automatically at
+`specify slice build --phase prepare` for in-scope assets with missing exports;
+operators may also run `specify tool run vectis -- materialize assets` manually
+after editing canonical masters. Committed `exports/` trees are version-controlled
+— CI and shell builds consume them without re-running materialize on every job.
 
-| Asset `kind` | Source key(s) read | Target catalog entry |
+Build hand-off is **materialize-then-copy**: the iOS writer **copies** files
+from each entry's resolved `sources.ios` export path(s) into the shell target's
+asset catalog at `iOS/<App>/Resources/Assets.xcassets/`. The canonical
+`source:` file is provenance only — never copied into the shell. The generated
+shell project must build from its own platform directory after generation; it
+MUST NOT symlink, alias, or path-reference `design-system/assets/` from
+`project.yml`, nor consume files from `<change>/assets/` at runtime.
+Per-platform copy targets:
+
+| Asset `kind` | Export key(s) read (`sources.ios`) | Target catalog entry |
 |---|---|---|
-| `raster` | `sources.ios.{1x,2x,3x}` | `<asset-id>.imageset/` containing the per-density PNG / JPEG files plus a `Contents.json` that maps the density slots. |
-| `vector` | `sources.ios` (PDF preferred; SVG only when the deployment floor is iOS 13+) | `<asset-id>.imageset/` (PDF) or `<asset-id>.imageset/` containing the SVG (per `template-rendering-intent` defaults to `original`). The canonical `source:` is provenance only — never copied. |
+| `raster` | `{1x,2x,3x}` density files under the pinned imageset path | `<asset-id>.imageset/` containing the per-density PNG / JPEG files plus a `Contents.json` that maps the density slots. |
+| `vector` | PDF (preferred) or SVG under the pinned imageset path | `<asset-id>.imageset/` (PDF) or SVG imageset per `template-rendering-intent` (defaults to `original`). |
 | `symbol` | `symbols.ios` | No catalog copy — emit `Image(systemName: "<sf-symbol>")` at the call site. |
+| `app-icon` (`role: app-icon`) | `exports/ios/app-icon/AppIcon.appiconset/` (path A auto-convert or path B operator pin) | Copy into `AppIcon.appiconset/`; scaffold ships an empty skeleton materialize fills. |
 
 Reference the copied asset by its kebab-case asset id at the call site:
 
@@ -228,15 +259,15 @@ PDF is rendered with template intent.
 
 ### Missing platform exports
 
-When a `vector` asset is referenced from `composition.yaml` but
-`sources.ios` is missing, the validator reports an error and shell
-generation halts for the affected screen — missing vector exports are
-validation errors, not deferred TODOs. The iOS writer does
-**not** silently fall back to a placeholder, generate from the canonical
-`source:` SVG, or skip the screen. The legitimate operator responses are to
-add an iOS export to `assets.yaml`, re-declare the asset as `kind: raster`
-with per-density `sources.ios`, re-declare it as `kind: symbol` with a
-platform glyph mapping, or remove the reference from `composition.yaml`.
+When a `vector` or `raster` asset is referenced from `composition.yaml` but
+`sources.ios` is missing or the pinned export path is absent on disk, the
+validator reports `assets-materialization-missing` and shell generation halts
+for the affected screen. The iOS writer does **not** silently fall back to an
+SF Symbol, generate from the canonical `source:` at build time, or skip the
+screen. The legitimate operator responses are to run materialize (or commit
+operator-pinned exports under `exports/ios/`), re-declare the asset as
+`kind: symbol` with an explicit platform glyph mapping, or remove the reference
+from `composition.yaml`.
 
 ### Stale catalog cleanup
 

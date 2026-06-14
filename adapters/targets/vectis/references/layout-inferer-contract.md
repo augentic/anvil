@@ -50,6 +50,23 @@ Arguments deliberately excluded from the common surface:
 - Inferers MUST append to `provenance.sources[]` rather than replacing it. The composition schema's provenance vocabulary is `figma`, `legacy`, `manual`, `screenshots`, and `code` (Appendix F.1). `screenshots` and `code` are the new entries reserved for the image and future code paths; `legacy` remains valid for broad source-code migration runs.
 - Multi-source output is a single `layout.yaml`. Per-screen provenance is represented through comments adjacent to screen entries in v1, not a schema change. A future schema bump MAY promote per-screen provenance into structured metadata.
 
+## Symbol promotion policy
+
+When an inferer encounters an `icon` / `icon-button` item with no matching
+`assets.<id>` entry, apply the inference-time symbol exception:
+
+1. **Known asset** — reference the existing id.
+2. **Generic platform glyph** — MAY add a `kind: symbol` entry with
+   `inferred: true` and `symbols.ios` / `symbols.android` mappings, **or** pair
+   the layout reference with `# TODO: promote <slug> as kind: symbol` for
+   operator approval before merge.
+3. **Branded / custom shape** — emit `# TODO: add <id> to assets.yaml` only;
+   never auto-symbol.
+
+Symbol promotion is inventory authoring. Layout inferers MUST NOT treat symbol
+entries as permission for shell writers to substitute platform glyphs for
+`vector` / `raster` composition references at build time.
+
 ## Idempotence rules
 
 - Re-runs are **additive and conservative**. An inferer MAY add new screens, add missing regions, fill empty hints, or refine content it previously emitted when the same source still supports the refinement.
