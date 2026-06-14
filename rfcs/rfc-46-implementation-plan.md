@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S09` |
-| **Last completed** | `R46-S08` |
+| **Active step** | `R46-S10` |
+| **Last completed** | `R46-S09` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -74,7 +74,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S06](#r46-s06-assets-schema-extensions) | `assets.yaml` schema extensions | ✅ | specify-cli — schema + cross-checks in `validate/engine/assets.rs` |
 | [R46-S07](#r46-s07-shell-resident-launcher-probe) | Shell-resident launcher probe | ✅ | specify-cli — `shell_resident_app_icon` in `specify-vectis-shell-detect` |
 | [R46-S08](#r46-s08-bootstrap-context-helper) | Bootstrap context helper | ✅ | specify-cli — `BootstrapContext` in `platform/bootstrap.rs` |
-| [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ⬜ | specify-cli |
+| [R46-S09](#r46-s09-plan-validate-app-icon-gate) | Plan validate `app-icon` gate | ✅ | specify-cli — `plan-bootstrap-app-icon-missing` in plan doctor |
 | [R46-S10](#r46-s10-vectis-validate-app-icon-checks) | Vectis validate `app-icon` checks | ⬜ | specify-cli |
 | [R46-S11](#r46-s11-scaffold-app-icon-skeletons) | Scaffold app-icon skeletons | ⬜ | specify-cli |
 | [R46-S12](#r46-s12-phase-1-documentation-and-inference-policy) | Phase 1 docs & inference policy | ⬜ | specify |
@@ -114,6 +114,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-12 | R46-S04 | `CORE-057` `cli-contract` `invocations` already flags retired `--reconcile-platforms` once docs are updated; no separate regex rule added. | Optional CORE rule in R46-S04 skipped; `wasi-tools/vectis/DECISIONS.md` `detect_missing_platforms` citation deferred to R46-S12 per plan. |
 | 2026-06-12 | R46-S05 | Phase 0 assurance gate green on `rfc-46` @ both repos; `plan-single-project` scenario/fixture paths unchanged (Omnia target — pass record already omits `--reconcile-platforms`). | Marked §10 rows **#2–#4** remediated in RFC-46; unblocks Phase 1. |
 | 2026-06-12 | R46-S06 | No mirrored `assets.schema.json` under `schemas/` or `specify` — vectis `embedded/assets.schema.json` is the sole source; `crates/schema` has no assets constant. Raster dimension/alpha decode checks deferred to R46-S10 per plan. | No new steps; R46-S07 unchanged. |
+| 2026-06-15 | R46-S09 | Plan gate checks path A (source file presence + kind/ext) and path B (pin resolves to file/dir) only; export layout §4.2/§4.3 and raster dimension decode stay in R46-S10 vectis validate. `project_dir` was already forwarded to `plan_doctor`. | No new steps; R46-S10 unchanged. |
 
 ### Specify-cli step assurance
 
