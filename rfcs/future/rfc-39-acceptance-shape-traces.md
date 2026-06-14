@@ -1,6 +1,6 @@
 # RFC-39: Acceptance Shape Assertions and Orchestration Traces
 
-> Status: Deferred · Depends: acceptance run-record typing + status reconciler (Phases 0–1 of the acceptance remediation effort), [RM-05](../roadmap.md#rm-05-multi-repo-eval-suite) · Supersedes: [`docs/contributing/evals.md` §"Synthesis byte-replay (deferred)"](../../docs/contributing/evals.md#synthesis-byte-replay-deferred)
+> Status: Deferred · Depends: acceptance run-record typing + status reconciler (Phases 0–1 of the acceptance remediation effort), the [eval scenario catalog](../../evals/scenarios/README.md) · Supersedes: [`docs/contributing/evals.md` §"Synthesis byte-replay (deferred)"](../../docs/contributing/evals.md#synthesis-byte-replay-deferred)
 
 > **Status note.** The `backend` frontmatter field has since been removed from the scenario schema entirely (and the pack renamed `acceptance/` → `evals/`), so the `backend: shape` tier as written — a new enum value between `manual` and `fixture` — no longer holds. If this RFC activates, the shape/trace mechanisms need a new carrier (e.g. a dedicated frontmatter field or a sibling pack), not a `backend` value. Body kept as a historical record.
 
@@ -193,4 +193,4 @@ Verify each `automated` (`backend: fixture`) scenario's named test actually exis
 - [`evals/scenarios/pure-intent.md`](../../evals/scenarios/pure-intent.md) (manual) and the `combined-evidence` fixture row in [`evals/scenarios/README.md § Automated coverage`](../../evals/scenarios/README.md#automated-coverage) — `manual` and `fixture` exemplars.
 - [`evals/fixtures/skills/build/success/expected-trace.md`](../../evals/fixtures/skills/build/success/expected-trace.md) — prose precedent for the executable orchestration trace (D3).
 - [`evals/shared/run-template.md`](../../evals/shared/run-template.md) — where shape/trace verdicts are filed.
-- [Specify Roadmap — RM-05](../roadmap.md#rm-05-multi-repo-eval-suite) — the acceptance-proof track this RFC serves.
+- [Eval scenario catalog](../../evals/scenarios/README.md) — the acceptance-proof track this RFC serves.

@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are in place (durable behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)). The **enforcement** pillar is in place (durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — [Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate), [standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema), [lint finding lifecycle](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit), and [declarative `CORE-*` rules](../docs/explanation/standards-layer.md)) — `lint`, `validate`, and framework checks share the `Diagnostic` / `DiagnosticReport` substrate (`specify-diagnostics`) while keeping distinct gate authority. The **reconciliation** pillar is in place — see [From sources to slices](../docs/explanation/reconciliation.md); durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). The next phase should **prove** that loop end-to-end on realistic multi-repo flows (RM-05), sharpen the remaining reconciliation seams, and then make it observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are in place (durable behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)). The **enforcement** pillar is in place (durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — [Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate), [standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema), [lint finding lifecycle](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#lint-finding-status-disposition-and-exit), and [declarative `CORE-*` rules](../docs/explanation/standards-layer.md)) — `lint`, `validate`, and framework checks share the `Diagnostic` / `DiagnosticReport` substrate (`specify-diagnostics`) while keeping distinct gate authority. The **reconciliation** pillar is in place — see [From sources to slices](../docs/explanation/reconciliation.md); durable spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) and [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md). With that loop now proven end-to-end on realistic multi-repo flows, the next phase should sharpen the remaining reconciliation seams, then make it observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -34,11 +34,10 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 ### Current priorities
 
-Three tracks run in parallel:
+Two tracks run in parallel:
 
-1. **Eval proof (RM-05)** — the release gate. The 2.0.0 cross-repo queue is the blocker; scenario #1 (pure intent, N=1) must pass before the rest of the queue drains. The deterministic CLI proof for fan-in/fan-out runs under `cargo make test` in `specify-cli` ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)); the remaining debt is the operator-driven eval sweep and generated-output-correctness gates per target.
-2. **Reconciliation polish** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
-3. **Observability and portability (RM-14 / RM-15 / RM-18)** — most valuable once RM-05 proves the loop on realistic flows.
+1. **Reconciliation polish** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
+2. **Observability and portability (RM-14 / RM-15 / RM-18)** — now that the loop is proven on realistic multi-repo flows, make it measurable and portable across teams, forges, agents, and catalogs.
 
 **Deferred until trigger conditions or prerequisites:**
 
@@ -49,13 +48,26 @@ Three tracks run in parallel:
 
 ### Near Term
 
-#### RM-05: Multi-repo eval suite
+#### RM-14: Local structured workflow events
 
-**Goal:** Prove the `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` loop end-to-end on realistic multi-repo flows — not only isolated command behaviour.
-**Status:** Partial — the unified [`evals/scenarios/`](../evals/scenarios/README.md) pack defines 13 operator-driven scenarios including execute build failure (`execute-fail-resume`), step-through breakout (`execute-pause-resume`), workspace breakout (`workspace-fail-resume`), and stale-workspace recovery (`workspace-stale-recovery`); fully deterministic behaviors (extract failure, invalid evidence, source sandbox denial, dual-driving refusal via the plan-lock probe, …) are named tests in `specify-cli`, not catalog entries. The per-scenario pass/fail status is the catalog's to own: see the group tables in [`evals/scenarios/README.md`](../evals/scenarios/README.md), each `passed` row backed by a committed record under [`evals/runs/`](../evals/runs/README.md). All three `release-blocker` rows are `passed`; RM-05 flips to *Done* once the catalog is wholly `passed` (or `deferred` with sign-off).
-**Immediate task:** Drain the remaining `full`-tier catalog rows still `pending` in the catalog. `intent-only` hard halt unchanged on any re-run.
-**Remaining fixture gap:** None outstanding in the catalog; the stale-workspace recovery scenario is now authored as `workspace-stale-recovery`.
-**Proof surfaces:** The fan-in/fan-out contract and its deterministic CLI proof are shipped ([`tests/plan/end_to_end.rs`](https://github.com/augentic/specify-cli/blob/main/tests/plan/end_to_end.rs)). RM-05 owns the remaining debt: the operator-driven eval sweep and per-target generated-output correctness (see [docs/contributing/evals.md](../docs/contributing/evals.md)).
+**Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
+**Precedent:** the `lint-completed` journal event (standards side); the `slice.build.*`, `slice.synthesize.*`, and `plan.reconcile.completed` events (workflow side).
+**Events include:** command/version, project/adapter, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
+**Target surface:**
+
+```bash
+specrun events tail
+specrun events export
+```
+
+**Output:** local JSONL or configurable telemetry sink with run identity.
+
+#### RM-15: Structured change-lifecycle status for re-entry
+
+**Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
+**Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
+**Consumes:** *Local structured workflow events*.
+**First consumer landed:** `specify plan status` carries `current-step` / `last-completed` / `resume` alongside `next-action` — current step, last completed step, and the literal resume command, projected from `plan.yaml`, slice metadata, and the journal. Pending human action and owner remain open.
 
 ---
 
@@ -92,27 +104,6 @@ specrun registry diff <source>
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specrun plan next` and `specrun slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
-
-#### RM-14: Local structured workflow events
-
-**Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
-**Precedent:** the `lint-completed` journal event (standards side); the `slice.build.*`, `slice.synthesize.*`, and `plan.reconcile.completed` events (workflow side).
-**Events include:** command/version, project/adapter, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
-**Target surface:**
-
-```bash
-specrun events tail
-specrun events export
-```
-
-**Output:** local JSONL or configurable telemetry sink with run identity.
-
-#### RM-15: Structured change-lifecycle status for re-entry
-
-**Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
-**Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
-**Consumes:** *Local structured workflow events*.
-**First consumer landed:** `specify plan status` carries `current-step` / `last-completed` / `resume` alongside `next-action` — current step, last completed step, and the literal resume command, projected from `plan.yaml`, slice metadata, and the journal. Pending human action and owner remain open.
 
 #### RM-17: Forge abstraction behind workspace push and change finalize
 
