@@ -20,9 +20,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      # -------------------------------------------------------------
       # Symlink integrity check — fail early if broken
-      # -------------------------------------------------------------
       - name: Verify symlinks
         run: |
           status=0
@@ -37,9 +35,7 @@ jobs:
           done
           exit $status
 
-      # -------------------------------------------------------------
       # Resolve specify-cli version
-      # -------------------------------------------------------------
       - id: specify-cli
         run: |
           branch="${{ github.ref_name }}"
@@ -53,40 +49,35 @@ jobs:
             echo "sha=$sha" >> "$GITHUB_OUTPUT"
           fi
 
-      # -------------------------------------------------------------
       # Restore or build a specify binary
-      # -------------------------------------------------------------
       - id: specify-bin
         uses: actions/cache@v4
         with:
           path: specify-cli/target/release/specify
           key: specify-bin-${{ steps.specify-cli.outputs.sha }}
 
-      - uses: actions/checkout@v6
-        if: steps.specify-bin.outputs.cache-hit != 'true'
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
         with:
           repository: augentic/specify-cli
           path: specify-cli
           ref: ${{ steps.specify-cli.outputs.ref }}
           fetch-depth: 1
 
-      - uses: dtolnay/rust-toolchain@stable
-        if: steps.specify-bin.outputs.cache-hit != 'true'
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
-        if: steps.specify-bin.outputs.cache-hit != 'true'
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: specify-cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Build lint binary
-        if: steps.specify-bin.outputs.cache-hit != 'true'
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
         run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
 
-      # -------------------------------------------------------------
-      # Run framework checks
-      # -------------------------------------------------------------
+      # Run checks
       - name: Verify framework
         run: specify-cli/target/release/specify lint framework --framework-root .
 
