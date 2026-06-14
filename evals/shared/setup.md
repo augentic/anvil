@@ -9,8 +9,8 @@ Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (
 - A `specify` binary on your PATH that is the build under test. The sweep needs a binary **built from the `specify-cli` source** — the same source `make lint` builds from the `cli` pin. `make install-cli` builds the resolved `cli` source and symlinks `.cli/bin/specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), so the bare `specify` commands below resolve to this build with no further setup — it warns if that directory is not on your PATH. An agent driving the sweep self-heals this: if `specify --version` does not resolve to the build under test, prepend the symlink dir to PATH for its own shells (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute `../specify-cli/target/release/specify` path. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
 - The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable. The first-party shorthand (`specify init omnia@v1`) fetches the published adapter from GitHub, so `init` needs network access. To run fully offline, pass a local adapter path instead — `specify init ./adapters/targets/omnia` (or a `file://` URI) against a checkout of this framework repo. There is no `SPECIFY_ROOT`-style environment fallback; resolution after `init` reads the project-local manifest cache that `init` populates.
 - Source adapters a scenario binds (`documentation`, `typescript`, …) are **not** vendored by `specify init` — it caches only the target adapter. Before the first `specify source survey`, vendor or symlink the adapter into the project at `adapters/sources/<name>/` (e.g. `mkdir -p adapters/sources && ln -s <framework-checkout>/adapters/sources/typescript adapters/sources/typescript`), then confirm with `specify source resolve <name>`.
-- Git is available for local branches and remotes. For scenarios that exercise PR/MR creation, the routed projects should be Git repositories with an `origin` remote configured before `/spec:finalize`.
-- Do not add fake `gh` or fake forge behavior. `/spec:finalize` observes PR state via `gh pr list` and never merges PRs itself; merges happen through the operator's normal forge workflow.
+- Git is available for local branches and remotes. Scenarios that run `/spec:finalize` push the prepared `specify/<change>` branch to each routed project's `origin`, so every routed project needs a reachable `origin` remote before finalize. A **local bare repository** (`git init --bare`) reached via a `file://` URL satisfies this with no network or forge — see the cross-repo setup below.
+- No forge client (`gh`) is required. `/spec:finalize` pushes branches and then archives the plan; it never creates, observes, or merges pull requests. Opening the PR and merging it is an operator action done entirely outside Specify.
 
 ## Single-project setup
 
@@ -52,16 +52,29 @@ cd ../mobile
 specify init vectis@v1
 ```
 
+Give each implementation project a local bare-repo `origin` so `/spec:finalize` has somewhere to push (no network, no forge):
+
+```bash
+cd "$SANDBOX"
+for proj in backend mobile; do
+  git -C "$proj" init -b main -q
+  git -C "$proj" add -A && git -C "$proj" commit -q --no-gpg-sign -m "init $proj"
+  git init --bare -q "$proj.git"
+  git -C "$proj" remote add origin "file://$SANDBOX/$proj.git"
+  git -C "$proj" push -q -u origin main
+done
+```
+
 Return to the workspace and register the implementation projects with descriptions that make routing unambiguous:
 
 ```bash
-cd ../platform
+cd platform
 specify registry add backend --url ../backend --adapter omnia --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
 specify registry add mobile --url ../mobile --adapter vectis --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
 specify registry validate
 ```
 
-Then create the brief (below) and run the scenario's **Invocation**.
+Then create the brief (below) and run the scenario's **Invocation**. After `/spec:finalize` pushes the `specify/<change>` branches to the bare repos, opening and merging the pull requests is an operator step done by hand outside Specify (for a local bare repo, that is a plain `git merge --no-ff` into the bare repo's default branch if you want to model the merge).
 
 ## OAuth login brief
 

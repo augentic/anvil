@@ -79,13 +79,13 @@ stage the scenario's `stages` declares:
 4. If the scenario executes: /spec:execute loop. Answer only genuine
    clarification prompts; never convert prompts into a script. Confirm the loop
    exits `all-done`, not stuck/failed/interrupted.
-5. If the scenario finalizes: /spec:finalize <name> (first). Confirm push
-   succeeded and it halts with `pr-not-merged`; record every PR number + URL.
-6. HUMAN SEAM — stop and hand back: ask the operator to merge the PRs through
-   their real forge, then resume. Do not merge PRs yourself; do not fake a forge.
-7. If the scenario finalizes: /spec:finalize <name> (second). Confirm push is
-   idempotent, PRs report MERGED, the plan archives. Record the archive path.
-   Then /spec:finalize <name> (third); confirm the `no active plan` re-entry.
+5. If the scenario finalizes: /spec:finalize <name>. Confirm the branches
+   pushed (per-project status `pushed`) and the plan archived in the same run;
+   record the pushed branches and the archive path. Specify does not create,
+   observe, or merge pull requests — opening PRs is an operator step done by
+   hand outside Specify.
+6. If the scenario finalizes: re-run /spec:finalize <name>; confirm the
+   `no active plan` re-entry exits 0.
 
 Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
 - For each assertion id, look it up in evals/shared/assertions.md: run its

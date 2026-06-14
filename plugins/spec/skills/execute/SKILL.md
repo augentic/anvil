@@ -40,5 +40,5 @@ Inside the lock, after routing, invoke the phase skill named by `plan status` ag
 - **Never write per-entry `done` directly.** `/spec:merge` is the sole writer of per-entry `done`; this skill only invokes the phase skills.
 - **Never skip the lock.** Every shell that runs `specify plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); the CLI refuses unlocked drivers with `plan-lock-not-held`.
 - **Never re-classify stops.** `specify plan status` owns stop classification (`refine-failed`, `build-failed`, `merge-conflict`, `slice-dropped`, `merge-incomplete`, `stuck`); render its block and hint verbatim.
-- **No `gh pr merge`, no branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
+- **No branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
 - Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

@@ -2,7 +2,7 @@
 
 Operator-driven eval scenarios and reference corpora for the Specify plugin repo. The scenarios covered here are agent-based. All deterministic tests live in `specify-cli`.
 
-Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — `Specify.toml` points to a valid `specify-cli` install location, network access for the adapter fetch, and `gh` for the finalize scenarios.
+Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — `Specify.toml` points to a valid `specify-cli` install location and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
 
 ## Run all scenarios
 
@@ -35,7 +35,7 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 | `[typescript-multi-slice](scenarios/typescript-multi-slice.md)`       | TypeScript code source, multiple slices                                  |
 | `[lead-reconciliation](scenarios/lead-reconciliation.md)`             | Cross-source propose-time merge                                          |
 | `[single-project-plan](scenarios/single-project-plan.md)`             | Single-project plan generation                                           |
-| `[contract-lifecycle](scenarios/contract-lifecycle.md)`               | Cross-repo contract flow (full lifecycle, live forge)                    |
+| `[contract-lifecycle](scenarios/contract-lifecycle.md)`               | Cross-repo contract flow (full lifecycle, local bare-repo remotes)       |
 | `[target-shape](scenarios/target-shape.md)`                           | Target `shape` injection                                                 |
 | `[execute-pause-resume](scenarios/execute-pause-resume.md)`           | Step-through breakout mid-execute                                        |
 | `[execute-fail-resume](scenarios/execute-fail-resume.md)`             | `/spec:execute` parks on a build failure                                 |

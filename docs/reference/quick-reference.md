@@ -24,7 +24,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
 | `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
-| `/spec:finalize`         | Push branches, observe PR state, archive once every PR is `MERGED`                             |
+| `/spec:finalize`         | Push branches, then archive the plan (PRs are opened and merged by the operator outside Specify) |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
 | `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |

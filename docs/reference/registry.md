@@ -74,7 +74,7 @@ Selection is resolved once, before side effects. A human-invoked `workspace sync
 
 Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. There is no `workspace merge` verb — landing is an explicit operator action outside Specify.
 
-After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` verifies each required per-project PR with `gh pr view`, then invokes `specify plan archive` to archive the plan; it never merges PRs.
+After `workspace push` publishes the change branch, opening the pull request and landing it is an explicit operator action outside Specify. Use the forge UI, `gh pr create` / `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` runs `specify workspace push` then `specify plan archive`; it never creates, observes, or merges PRs.
 
 ## Dependency direction
 
@@ -96,7 +96,7 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 - Contract relationships beyond the per-project role declarations — owned by the `contracts` target adapter.
 - Validation findings — owned by adapter skills and helper binaries.
 - Synthesis output — owned by core (`/spec:refine`).
-- PR metadata beyond the local project operation being requested — owned by the forge (GitHub via `gh`); the registry only round-trips per-project status from `gh pr view`.
+- PR metadata — owned entirely by the forge and the operator; Specify pushes the branch and does not track pull-request state.
 
 ## See also
 

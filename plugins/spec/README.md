@@ -1,6 +1,6 @@
 # Specify Workflow
 
-Specify routes every operator action through `/spec:*`. `/spec:init` scaffolds a project. `/spec:plan` authors `change.md` + `plan.yaml`. After the operator stamps Gate 1 (`specify plan transition <name> approved`), `/spec:execute` drives the per-slice loop. The per-slice breakouts — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — share the loop's skill bodies and are reached either through `execute` or by an operator inspecting a slice by hand. `/spec:finalize` pushes branches, observes PR state, and archives the plan once every PR is `MERGED`.
+Specify routes every operator action through `/spec:*`. `/spec:init` scaffolds a project. `/spec:plan` authors `change.md` + `plan.yaml`. After the operator stamps Gate 1 (`specify plan transition <name> approved`), `/spec:execute` drives the per-slice loop. The per-slice breakouts — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — share the loop's skill bodies and are reached either through `execute` or by an operator inspecting a slice by hand. `/spec:finalize` pushes branches and archives the plan; opening and merging pull requests is operator-owned and happens outside Specify.
 
 ## Skills
 
@@ -13,7 +13,7 @@ Specify routes every operator action through `/spec:*`. `/spec:init` scaffolds a
 | [build](skills/build/SKILL.md) | `/spec:build` | Validate artifacts and implement the slice's tasks |
 | [merge](skills/merge/SKILL.md) | `/spec:merge` | Fold the slice's deltas into the baseline and archive it |
 | [drop](skills/drop/SKILL.md) | `/spec:drop` | Discard a slice without merging |
-| [finalize](skills/finalize/SKILL.md) | `/spec:finalize` | Push branches, observe PR state, archive the plan |
+| [finalize](skills/finalize/SKILL.md) | `/spec:finalize` | Push branches, then archive the plan (PRs operator-owned, outside Specify) |
 
 ## References
 

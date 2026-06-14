@@ -119,7 +119,7 @@ The transient working-state root and the lone gitignored tenant *inside* `.speci
 
 Workspace slots for multi-repo changes, materialised at the project root (not under `.specify/`) and gitignored. Created or refreshed by `specify workspace sync`: remote URLs become `git worktree`s of a persistent out-of-tree bare mirror (so a peer's object store is shared across changes and fresh checkouts), and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
 
-Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `/spec:finalize` later observes the merge state with `gh pr view` before running `specify plan archive`.
+Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch to `origin`. Opening and merging pull requests is operator-owned through the forge, entirely outside Specify; `/spec:finalize` runs `specify workspace push` and then `specify plan archive`.
 
 ### `archive/`
 

@@ -77,7 +77,7 @@ The default rhythm is `/spec:plan` → operator stamps `approved` → `/spec:exe
 - `/spec:build` — breakout: validate artifacts, implement the slice's tasks.
 - `/spec:merge` — breakout: fold the slice's deltas into the baseline and archive it; the only writer of per-entry `done`.
 - `/spec:drop` — abandon a slice without merging.
-- `/spec:finalize` — push branches, observe PR state, run `specify plan archive` once every PR is `MERGED`.
+- `/spec:finalize` — push branches, then run `specify plan archive`. Opening and merging pull requests is operator-owned and happens outside Specify.
 
 N=1 is degenerate, not special: `intent.survey` produces one lead, the operator stamps `approved`, and `/spec:execute` drives the same single-slice rhythm as a 12-slice change.
 

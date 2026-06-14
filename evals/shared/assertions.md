@@ -327,21 +327,21 @@ git -C workspace/mobile branch --show-current     # expect specify/<plan>
 specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
-### `finalize-halts-on-unmerged-prs`
+### `finalize-pushes-branches`
 
-The first `/spec:finalize` runs push, observes the fresh PRs unmerged, and halts with `pr-not-merged` naming each PR and URL — it never merges anything itself.
+`/spec:finalize` pushes the prepared `specify/<plan>` branch to each routed project's `origin`; the per-project push table reports `pushed` (or `up-to-date` on a repeat run). It never creates, observes, or merges pull requests.
 
 **Probe.**
 
 ```bash
-test -f plan.yaml && echo still-active    # plan not archived by the first finalize
-gh pr list --state open    # the per-project PRs exist and are open
-specify journal show --filter workspace.push.completed    # the push completed before the halt
+git -C backend ls-remote --heads "file://$SANDBOX/backend.git" "refs/heads/specify/<plan>"    # branch present on the bare remote
+git -C mobile  ls-remote --heads "file://$SANDBOX/mobile.git"  "refs/heads/specify/<plan>"     # branch present on the bare remote
+specify journal show --filter workspace.push.completed | jq -c .payload    # both projects listed
 ```
 
 ### `finalize-archives-plan`
 
-After the external merges, the second `/spec:finalize` archives the plan via `specify plan archive`.
+The same `/spec:finalize` run archives the plan via `specify plan archive` once the push succeeds — push and archive happen in one invocation.
 
 **Probe.**
 
@@ -366,15 +366,15 @@ The archived directory contains the archived `change.md` next to the archived `p
 ls .specify/archive/plans/<plan>-*/    # expect change.md and plan.yaml together
 ```
 
-### `merged-pr-list-recorded`
+### `pushed-branch-list-recorded`
 
-The wrap-up lists exactly two merged PRs (one per routed project) with numbers and URLs — reporting ergonomics over the forge state (`gh pr view` cross-checks the underlying facts).
+The wrap-up lists exactly two pushed branches (one per routed project) and reminds the operator to open the pull requests by hand outside Specify — reporting ergonomics over the push table.
 
-**Judgment flag.** Evidence pointer: the captured second-`/spec:finalize` wrap-up against `gh pr view <n>` for each listed PR (state `MERGED`, one per routed project).
+**Judgment flag.** Evidence pointer: the captured `/spec:finalize` wrap-up showing the pushed-branch list (one per routed project) and the manual-PR reminder.
 
 ### `rerun-finalize-plan-not-found`
 
-A third `/spec:finalize` reports no active plan remains and exits 0 — clean re-entry, not an error.
+A second `/spec:finalize` reports no active plan remains and exits 0 — clean re-entry, not an error.
 
 **Probe.**
 

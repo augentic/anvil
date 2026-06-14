@@ -81,7 +81,7 @@ The slice-time operation declared by a source adapter. Reads one `Lead` plus the
 ## F
 
 **Finalize**
-The closure skill (`/spec:finalize`) that pushes branches, observes PR state with `gh pr view` (read-only), and runs `specify plan archive` once every PR is `MERGED`. Never merges PRs itself.
+The closure skill (`/spec:finalize`) that pushes the prepared branches with `specify workspace push`, then runs `specify plan archive`. It does not create, observe, or merge pull requests — opening and merging PRs is operator-owned and happens outside Specify.
 
 ## G
 

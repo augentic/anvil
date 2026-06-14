@@ -60,7 +60,7 @@ After execute drains:
 /spec:finalize <name>
 ```
 
-Finalize runs `specify workspace push` to publish `specify/<change-name>` branches as pull requests, observes each PR until `MERGED`, then archives the plan. PR merges remain operator-owned.
+Finalize runs `specify workspace push` to publish the `specify/<change-name>` branches to each `origin`, then archives the plan. Opening and merging the pull requests is operator-owned and happens outside Specify.
 
 ## What you learned
 
