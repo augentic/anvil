@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S16` |
-| **Last completed** | `R46-S15` |
+| **Active step** | `R46-S17` |
+| **Last completed** | `R46-S16` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -81,7 +81,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S13](#r46-s13-review-rule-render-by-kind) | Review rule: render-by-`kind` | ✅ | specify — `VECTIS-006`; review-scoped v1 (IOS-020 / AND-028) |
 | [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ✅ | path B plan-validate test added; `cargo make ci` + `make lint` green |
 | [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ✅ | specify-cli — `materialize assets` CLI + report envelope; `resvg`/`usvg`/`image` deps declared |
-| [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ⬜ | specify-cli |
+| [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ✅ | specify-cli — `materialize/paths.rs`; shared `kebab_to_snake` |
 | [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ⬜ | specify-cli |
 | [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ⬜ | specify-cli |
 | [R46-S19](#r46-s19-materialize-app-icon-ios) | Materialize app-icon (iOS) | ⬜ | specify-cli |
@@ -121,6 +121,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S13 | No `briefs/build/review.md` — per-platform review briefs (`build/ios/review.md`, `build/android/review.md`) are the wiring surface. Cross-artifact render-by-`kind` needs composition + `assets.yaml` + shell join — v1 is review-scoped (`VECTIS-006`, IOS-020 / AND-028); mechanical `rule_hints` deferred post-materialize. | No new steps; note under R46-S13. |
 | 2026-06-15 | R46-S14 | Phase 1 assurance gate green; checklist lacked path B plan-validate integration test (path A + unit `platform_satisfied` only). | Added `app_icon_pinned_exports_passes` in `tests/workflow/validate.rs`. |
 | 2026-06-15 | R46-S15 | `resvg`/`usvg`/`tiny-skia`/`image` compile for `wasm32-wasip2` with `default-features = false`; deps unused until R46-S17 (no `touch_deps` shim). Report envelope adds `command`, `path`, `dry_run`, `platforms` alongside the three arrays. | No new steps. |
+| 2026-06-15 | R46-S16 | Illustration auto-write pins use the highest-density artifact (`@3x` iOS, `xxxhdpi` Android) because `vectorEntry` `sources.<platform>` is a single `filePath`; all density files still land in `artifacts[]` for writers. `kebab_to_snake` deduped — validate `exports.rs` imports `materialize::paths`. | No new steps; R46-S21 auto-write uses `ExportLayout::pin`. |
 
 ### Specify-cli step assurance
 
@@ -657,6 +658,8 @@ RFC §Implementation phases · Phase 2.
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
 - Golden path strings for sample ids.
+
+**Status:** ✅ `export_layout` + `kebab_to_snake` in `wasi-tools/vectis/src/materialize/paths.rs`; `materialize.rs` → `materialize/mod.rs`.
 
 ---
 
