@@ -21,23 +21,46 @@ jobs:
           fetch-depth: 1
 
       # -------------------------------------------------------------
-      # The specify-cli version to use — sibling branch or main
+      # Symlink integrity check — fail early if broken
+      # -------------------------------------------------------------
+      - name: Verify symlinks
+        run: |
+          status=0
+          for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
+            if [ ! -L "$d" ]; then
+              echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
+              status=1
+            elif [ ! -e "$d" ]; then
+              echo "error: $d is a broken symlink" >&2
+              status=1
+            fi
+          done
+          exit $status
+
+      # -------------------------------------------------------------
+      # Resolve specify-cli version
       # -------------------------------------------------------------
       - id: specify-cli
         run: |
-          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
+          branch="${GITHUB_REF_NAME}}"
+          line=$(git ls-remote --heads https://github.com/augentic/specify-cli.git "refs/heads/$branch")
+          if [ -n "$line" ]; then
             echo "ref=$branch" >> "$GITHUB_OUTPUT"
+            echo "sha=$(echo "$line" | cut -f1)" >> "$GITHUB_OUTPUT"
           else
+            sha=$(git ls-remote https://github.com/augentic/specify-cli.git main | cut -f1)
             echo "ref=main" >> "$GITHUB_OUTPUT"
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
           fi
 
-      # Restore a prebuilt binary keyed on the exact resolved CLI commit.
+      # -------------------------------------------------------------
+      # Restore or build a specify binary
+      # -------------------------------------------------------------
       - id: specify-bin
         uses: actions/cache@v4
         with:
           path: specify-cli/target/release/specify
-          key: specify-bin-${{ steps.specify-cli.outputs.ref }}
+          key: specify-bin-${{ steps.specify-cli.outputs.sha }}
 
       - uses: actions/checkout@v6
         if: steps.specify-bin.outputs.cache-hit != 'true'
@@ -57,27 +80,13 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      # -------------------------------------------------------------
-      # CI Checks
-      # -------------------------------------------------------------
-      - name: Verify symlinks
-        run: |
-          status=0
-          for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
-            if [ ! -L "$d" ]; then
-              echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
-              status=1
-            elif [ ! -e "$d" ]; then
-              echo "error: $d is a broken symlink" >&2
-              status=1
-            fi
-          done
-          exit $status
-
       - name: Build lint binary
         if: steps.specify-bin.outputs.cache-hit != 'true'
         run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
 
+      # -------------------------------------------------------------
+      # Run framework checks
+      # -------------------------------------------------------------
       - name: Verify framework
-        run: |
-          specify-cli/target/release/specify lint framework --framework-root .
+        run: specify-cli/target/release/specify lint framework --framework-root .
+
