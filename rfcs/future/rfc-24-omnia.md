@@ -1,18 +1,8 @@
 # RFC-24: Omnia Plan Composition
 
-> Status: Deferred (design body stale — needs re-baselining) · Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue) and [RFC-22](rfc-22-ledger.md) (ledger) — both themselves stale; the current plan schema (`schemas/plan/plan.schema.json`); the Omnia target adapter briefs (`adapters/targets/omnia/briefs/`) · Roadmap: the ["Omnia plan composition"](../roadmap.md#ideas-parked) parked idea.
-
-> **Status note (de-staled).** This RFC predates the lead/evidence reconciliation model and stacks on RFC-21/RFC-22, which are themselves stale. Its *intent* — let `plan.yaml` express the Omnia service → crate → handler shape via an optional `crate` field, an audit-only `surfaces` digest, target-gated `plan validate` findings, and a `specify plan compose` view — is still wanted, but the design body sources the surface digest from artifacts that no longer exist. Translate before implementing:
+> **Status: Deferred.** Reconcile with the current lead/evidence reconciliation model before implementing: the `surfaces` digest is derived from slice `model.yaml` / `spec.md` (with `discovery.md` leads as the plan-time signal) or authored directly on the plan entry — there is no `surfaces.json` sidecar. Verify the referenced Omnia skill names (`omnia-crate-writer`, `omnia-guest-writer`) and brief paths against the live `adapters/targets/omnia/` tree. The load-bearing design — two additive optional plan-entry fields (`crate`, `surfaces`), five Omnia-gated validate findings, and the read-only `specify plan compose` join — holds against the current plan schema. Backs the roadmap's ["Omnia plan composition"](../roadmap.md#ideas-parked) parked idea.
 >
-> | Body term (stale) | Current model |
-> | --- | --- |
-> | source adapter "enumeration" | source adapter **`survey`** (emits *leads* into `discovery.md`) |
-> | "candidate" / "source candidate sidecars" | **leads** (`discovery.md`) + per-source **evidence** (`.specify/slices/<slice>/evidence/<source>.yaml`) |
-> | `surveys.json` / `survey.md` / `<plan-dir>/analyze/<source>/` scratch | `discovery.md` leads at plan time; structured `model.yaml` + `spec.md` at slice time |
-> | "retired RFC-20 `surfaces.json` shape" | no `surfaces.json` ships; the surface digest must be derived from slice `model.yaml` / `spec.md`, or authored directly on the plan entry |
-> | predecessor "RFC-20 / RFC-25" | folded into `docs/standards/workflow.md` + `DECISIONS.md`; no standalone RFCs exist |
->
-> The load-bearing design — two additive optional plan-entry fields (`crate`, `surfaces`), five Omnia-gated validate findings, and the read-only `specify plan compose` join — remains coherent against the current plan schema. Only the *provenance* of the `surfaces` digest needs re-baselining: derive it from `model.yaml` / `spec.md` rather than a `surveys.json` sidecar. Verify the referenced Omnia skill names (`omnia-crate-writer`, `omnia-guest-writer`) and brief paths against the live `adapters/targets/omnia/` tree, which may have drifted.
+> Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue), [RFC-22](rfc-22-ledger.md) (ledger), the current plan schema (`schemas/plan/plan.schema.json`), and the Omnia target adapter briefs (`adapters/targets/omnia/briefs/`).
 
 ## Abstract
 
@@ -31,11 +21,11 @@ All four pieces are strictly additive. Existing plans validate without change, t
 
 ## Motivation
 
-RFC-20's survey work produces a source-derived inventory rich enough to drive planning: each candidate can carry `target_project`, `surfaces[]`, `touches[]`, `depends_on`, and `evidence`. RFC-21 makes those candidates cheap to recompute across changes. RFC-22 records the cross-change audit trail. None of them give the *operator-reviewable plan* a way to express the composition shape of an Omnia target.
+The survey step produces a source-derived inventory rich enough to drive planning: each lead can carry `target_project`, `surfaces[]`, `touches[]`, `depends_on`, and `evidence`. RFC-21 makes those leads cheap to recompute across changes. RFC-22 records the cross-change audit trail. None of them give the *operator-reviewable plan* a way to express the composition shape of an Omnia target.
 
 For an Omnia-only migration this matters in three concrete ways:
 
-- **Service composition is invisible.** `plan.yaml` says which slices land in `identity-svc`, but not what `identity-svc` ends up looking like — how many crates it grows, what HTTP routes / topics / WebSocket channels it now owns. Operators reverse-engineer this by reading `survey.md`, the project's existing `.specify/specs/`, and any prior changes' archives.
+- **Service composition is invisible.** `plan.yaml` says which slices land in `identity-svc`, but not what `identity-svc` ends up looking like — how many crates it grows, what HTTP routes / topics / WebSocket channels it now owns. Operators reverse-engineer this by reading `discovery.md`, the project's existing `.specify/specs/`, and any prior changes' archives.
 - **Crate identity is convention-only.** `omnia-crate-writer` hard-wires `$CRATE_PATH = crates/$CRATE_NAME` and `$CRATE_NAME = $ARGUMENTS[0]` — i.e. the slice name. Any escape hatch (a slice whose canonical crate name differs from the slice name, or a slice whose name is operator-friendly but illegal as a Rust crate ident) requires hand-editing after the writer runs.
 - **Cross-slice handler conflicts surface late.** Two slices in the same Omnia project can both declare `POST /users`, both publish to `user.created`, or both own the `/ws/notifications` channel. The conflict is discoverable only at guest-wiring time, deep in `/spec:build` — long after the operator could have re-scoped slices cheaply during plan review.
 
@@ -50,7 +40,7 @@ None of these are blockers; all three are friction. This RFC removes the frictio
 3. **Handlers stay where they are.** Slice `model.yaml` and `spec.md` remain the sources of truth for handler/surface detail (with `discovery.md` leads as the plan-time signal). `plan.yaml` carries an *audit-only digest*, mirroring RFC-22's `mapping` posture: it is summary metadata for operator review, not a re-encoding of the evidence.
 4. **The validator is target adapter discriminated.** None of the new findings fire for projects whose resolved target adapter is not Omnia. Vectis, contracts, and greenfield-without-target projects validate exactly as today.
 5. **The CLI is the single writer.** New fields are written only by `specify plan create`, `specify plan add`, and `specify plan amend`. No skill hand-edits them.
-6. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, closed surface-kind enum mirroring the retired RFC-20 `surfaces.json` shape.
+6. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, closed surface-kind enum.
 7. **No execution-time branching.** The slice loop, `/spec:execute`, `/spec:refine`, `/spec:build`, and `/spec:merge` ignore the new fields. They are review and audit signal only.
 
 ### `crate` field on `plan.yaml.slices[]`
@@ -105,7 +95,7 @@ slices:
     status: pending
 ```
 
-Schema (closed-enum, mirrors the retired RFC-20 `surfaces.json` shape):
+Schema (closed-enum):
 
 ```json
 "surfaces": {
@@ -138,11 +128,11 @@ Schema (closed-enum, mirrors the retired RFC-20 `surfaces.json` shape):
 
 Rules:
 
-- **Optional.** Every existing plan validates as today. Hand-driven plans (no survey run) may omit the field entirely; `specify plan compose` then falls back to the count-only summary derived from `surveys.json`.
-- **Closed kind enum, narrower than RFC-20.** `cli-command`, `ui-route`, and `external-call-out` are deliberately excluded - Omnia services do not host CLI entry points or UI routes, and `external-call-out` is an outbound dependency rather than a hosted surface. A source candidate containing those kinds either splits its surfaces (keeping only Omnia-hosted ones in `plan.yaml.surfaces`) or fails the target adapter gated validate finding `plan-omnia-surface-kind-unsupported`.
-- **Identifier shape.** Stored as the canonicalised form per the retired RFC-20 identifier-normalization rules so cross-slice comparison is deterministic. The original identifier is preserved verbatim in `surveys.json`; `plan.yaml` carries only the matching key.
-- **Sorted.** `surfaces[]` is sorted by `(kind, identifier)` for byte-stable diffs, same posture as `surfaces.json` and `migration-log.yaml`.
-- **Plan populates it.** When `/spec:plan` accepts a source candidate whose target project resolves to Omnia, it pre-fills `surfaces[]` from the candidate's `surfaces:` list, intersected with the Omnia kind enum. Operators may amend via `specify plan amend <slice> --add-surface <kind>:<identifier>` / `--remove-surface <kind>:<identifier>`. Passing `--clear-surfaces` removes the field entirely.
+- **Optional.** Every existing plan validates as today. Hand-driven plans (no survey run) may omit the field entirely; `specify plan compose` then falls back to the count-only summary derived from the slice's `model.yaml` / `spec.md`.
+- **Closed kind enum.** `cli-command`, `ui-route`, and `external-call-out` are deliberately excluded - Omnia services do not host CLI entry points or UI routes, and `external-call-out` is an outbound dependency rather than a hosted surface. A lead containing those kinds either splits its surfaces (keeping only Omnia-hosted ones in `plan.yaml.surfaces`) or fails the target adapter gated validate finding `plan-omnia-surface-kind-unsupported`.
+- **Identifier shape.** Stored as the canonicalised form per the surface identifier-normalization rules so cross-slice comparison is deterministic. The original identifier is preserved verbatim in the slice's `model.yaml`; `plan.yaml` carries only the matching key.
+- **Sorted.** `surfaces[]` is sorted by `(kind, identifier)` for byte-stable diffs, same posture as `migration-log.yaml`.
+- **Plan populates it.** When `/spec:plan` accepts a lead whose target project resolves to Omnia, it pre-fills `surfaces[]` from the lead's `surfaces:` list, intersected with the Omnia kind enum. Operators may amend via `specify plan amend <slice> --add-surface <kind>:<identifier>` / `--remove-surface <kind>:<identifier>`. Passing `--clear-surfaces` removes the field entirely.
 
 ### Adapter-gated `specify plan validate` findings
 
@@ -162,7 +152,7 @@ All findings live within `EXIT_VALIDATION_FAILED=2` per [the CLI exit-code contr
 
 ### `specify plan compose` — derived composition view
 
-A new read-only verb that joins `plan.yaml`, the per-slice `surveys.json` for any in-progress slice, `registry.yaml`, and (when present) `migration-log.yaml`.
+A new read-only verb that joins `plan.yaml`, the per-slice `model.yaml` for any in-progress slice, `registry.yaml`, and (when present) `migration-log.yaml`.
 
 ```bash
 specify plan compose                           # tree for every Omnia-typed project in the plan
@@ -214,7 +204,7 @@ JSON envelope:
 Rules:
 
 - **Read-only.** Like other read-only inspection surfaces, it never writes to `plan.yaml`.
-- **Fallback when `surfaces` is absent.** If a slice has no `surfaces[]` field but a current `surveys.json` exists for the change, the verb falls back to deriving the digest from that file. If neither is available the crate row prints `(surfaces unknown)`; this is not an error.
+- **Fallback when `surfaces` is absent.** If a slice has no `surfaces[]` field but a current `model.yaml` exists for the slice, the verb falls back to deriving the digest from that file. If neither is available the crate row prints `(surfaces unknown)`; this is not an error.
 - **Cross-RFC composition.** When [RFC-22's ledger](rfc-22-ledger.md#-specifymigration-logyaml--the-cumulative-ledger) is present, finalised crates from prior changes are listed below the in-flight ones under a `# Previously migrated` heading. This makes `compose` the single answer to "what does this Omnia service look like, today, and after this change lands?".
 
 ### Adapter resolution
@@ -235,9 +225,9 @@ This keeps the RFC scoped to its stated case ("targeting Omnia solely") without 
 4. **Validator findings.** Extend `Plan::validate` with the five target adapter gated findings. New discriminants in `specify-error`: `plan-omnia-crate-name-collision`, `plan-omnia-crate-name-illegal`, `plan-omnia-surface-kind-unsupported`, `plan-omnia-handler-conflict`, `plan-omnia-publisher-conflict`.
 5. **`specify plan amend` extensions.** Accept `--crate <name>`, `--clear-crate`, `--add-surface <kind>:<identifier>`, `--remove-surface <kind>:<identifier>`, `--clear-surfaces`. Atomic write through the existing `AtomicYaml` trait. Same single-writer rule as every other plan field.
 6. **Omnia build integration.** Update the Omnia build brief to read `crate` from the slice's plan entry when running inside `/spec:execute` instead of assuming `$ARGUMENTS[0]`. The brief stays driver-agnostic: if invoked outside a plan loop the positional `$CRATE_NAME` still works.
-7. **`specify plan compose`.** New read verb under `src/commands/plan/compose.rs`. Walks `plan.yaml` slices, resolves the target adapter per slice, fills `surfaces[]` from the plan field or falls back to source candidate sidecars when present. JSON envelope sibling of `plan-validate-output`.
-8. **Plan brief integration.** Update `/spec:plan` to pre-fill `crate` (defaulting to kebab-to-snake of the accepted slice name) and `surfaces` (intersected with the Omnia enum) when the candidate's `target_project` resolves to an Omnia project. Adapter authors who own non-Omnia briefs do nothing.
-9. **Enumeration integration.** No source adapter schema changes - `surfaces.json` or the candidate's equivalent handler digest is already the source. The candidate's `surfaces:` block is what `/spec:plan` copies in.
+7. **`specify plan compose`.** New read verb under `src/commands/plan/compose.rs`. Walks `plan.yaml` slices, resolves the target adapter per slice, fills `surfaces[]` from the plan field or falls back to the slice's `model.yaml` when present. JSON envelope sibling of `plan-validate-output`.
+8. **Plan brief integration.** Update `/spec:plan` to pre-fill `crate` (defaulting to kebab-to-snake of the accepted slice name) and `surfaces` (intersected with the Omnia enum) when the lead's `target_project` resolves to an Omnia project. Adapter authors who own non-Omnia briefs do nothing.
+9. **Survey integration.** No source adapter schema changes - the lead's surface inventory is already the source. The lead's `surfaces:` block is what `/spec:plan` copies in.
 10. **Acceptance fixtures.** Extend the cross-repo acceptance suite with: an Omnia-only plan with two slices in the same project that collide on `POST /users` (error); two slices that both publish `user.created` (warning); a slice whose default-derived crate name is illegal (`123-invalid` -> finding); a mixed-target plan (one Omnia slice + one Vectis slice) asserting no findings fire for the Vectis slice; a `specify plan compose --format json` snapshot.
 11. **Tutorials.** Add `docs/tutorials/omnia-migration-composition.md` walking through `/spec:plan` -> `plan compose` for an Omnia-only multi-source migration. Update `docs/tutorials/legacy-migration-at-scale.md` to reference the new fields.
 
@@ -245,13 +235,13 @@ This keeps the RFC scoped to its stated case ("targeting Omnia solely") without 
 
 This RFC is **strictly additive**. Pre-existing plans, surveys, registries, archives, and changes continue to work without change.
 
-**For operators.** Existing `plan.yaml` files validate without modification. After upgrade, `/spec:plan` against an Omnia target pre-fills the new fields; re-running plan amendments on an in-flight change leaves operator-set fields alone. `specify plan compose` works against any plan, falling back to `surveys.json` when `surfaces[]` is absent.
+**For operators.** Existing `plan.yaml` files validate without modification. After upgrade, `/spec:plan` against an Omnia target pre-fills the new fields; re-running plan amendments on an in-flight change leaves operator-set fields alone. `specify plan compose` works against any plan, falling back to the slice's `model.yaml` when `surfaces[]` is absent.
 
 **For target adapter authors.** Only the Omnia target adapter's plan/build guidance changes - to populate and consume `crate` and `surfaces`. Vectis, contracts, and any third-party target adapter are unaffected. The new validator findings are guarded by the Omnia target adapter check, so non-Omnia projects see no behavioural change.
 
 **For skill authors consuming planning artifacts.** The plan-validate JSON envelope gains five new finding codes within the existing `EXIT_VALIDATION_FAILED=2` exit. `specify plan compose --format json` is a new readable surface with a stable JSON envelope; treat it like a read-only inspection surface. The Omnia build brief consumes the new `crate` field via direct plan inspection rather than relying on argument convention.
 
-There is **no breaking change** to: existing `plan.yaml` files (both new fields are optional), existing `registry.yaml` files (untouched), existing source candidate sidecars (`surfaces.json` schema unchanged when present), existing exit codes (new discriminants within `EXIT_VALIDATION_FAILED=2`), or any non-Omnia target adapter brief.
+There is **no breaking change** to: existing `plan.yaml` files (both new fields are optional), existing `registry.yaml` files (untouched), existing exit codes (new discriminants within `EXIT_VALIDATION_FAILED=2`), or any non-Omnia target adapter brief.
 
 ## Alternatives Considered
 
@@ -259,7 +249,7 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 
 **Carry `surfaces` as count-only (`{ http: 1, message-pub: 1, message-sub: 1 }`).** Considered. Counts give the at-a-glance size signal but drop the cross-slice uniqueness check, which is the main operational reason to lift handlers into the plan at all. Identifiers cost slightly more diff churn and pay for themselves the first time `plan validate` catches two slices binding `POST /users`.
 
-**Skip `surfaces` entirely; rely on `specify plan compose` to derive everything from `surveys.json`.** Rejected. `surveys.json` is plan-time scratch state living under `<plan-dir>/analyze/<source>/`, ephemeral relative to `plan.yaml` itself and absent from the archive once `specify plan archive` runs. Lifting the digest into `plan.yaml` makes it durable, diff-reviewable, and amendable through the same single-writer flow as every other plan field.
+**Skip `surfaces` entirely; rely on `specify plan compose` to derive everything from the slice's `model.yaml`.** Rejected. Slice `model.yaml` is slice-time evidence: it does not exist until a slice is refined and is not co-located with `plan.yaml`, so deriving the digest on demand makes plan review depend on slice-time state. Lifting the digest into `plan.yaml` makes it durable, diff-reviewable, and amendable through the same single-writer flow as every other plan field.
 
 **Allow multiple crates per slice (`crates: [a, b]`).** Rejected. The slice loop's existing invariant is one slice -> one phase artifact set; the Omnia build brief assumes one crate per slice. Multi-crate slices would force `/spec:build` to interleave generation across crates, complicating both the writer and the build review loop with no clear win. Operators who need two crates author two slices.
 
@@ -275,25 +265,25 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 - Multi-crate-per-slice generation. The one-slice-one-crate contract is intentional and preserved.
 - Per-handler dependencies (a `depends-on` at handler granularity). Slice-level `depends-on` remains the only ordering surface.
 - Vectis or contracts composition. Those target adapters have different deployable shapes; if either grows comparable plan-time concerns, a companion RFC mirroring this one is the right move.
-- Replacing `survey.md` as the source of truth for handler enumeration. `plan.yaml.surfaces` is a digest, not a replacement.
+- Replacing slice `model.yaml` / `spec.md` as the source of truth for handler detail. `plan.yaml.surfaces` is a digest, not a replacement.
 - Cross-change handler-conflict detection. Within a plan, the validator catches collisions; across changes, the conflict is RFC-22's ledger territory and falls out of `specify plan compose` rendering.
 - A `specify plan compose --diff` mode comparing the planned composition to the project's current `.specify/specs/` baseline. Useful but unscoped; defer until operator demand is concrete.
-- LLM-assisted crate naming or surface grouping. Both fields are mechanical: defaults derive deterministically, `/spec:plan` copies from source candidates verbatim, operators amend explicitly.
+- LLM-assisted crate naming or surface grouping. Both fields are mechanical: defaults derive deterministically, `/spec:plan` copies from leads verbatim, operators amend explicitly.
 
 ## Open Questions
 
 1. Should `crate` and `surfaces` move under a single optional `omnia` sub-document anyway, on the theory that the per-target-adapter namespace becomes self-explanatory once two or three adapters populate it? Current preference: no - keep them top-level optional, let the validator's target adapter gate carry the discrimination, and revisit if a third target adapter materially benefits from a similar lift.
 2. Should the `plan-omnia-publisher-conflict` finding be an error rather than a warning, on the theory that a single topic legitimately owned by two crates inside one service is always an architectural smell? Current preference: warning, because plan-time often reflects in-flight refactors where a topic temporarily has two publishers; operators can promote the warning to an error in their CI gate if they want stricter posture.
-3. Should `specify plan compose` also render `cross_source` and `cross_module` flags from survey, or is that overkill for an Omnia-shaped tree? Current preference: skip them — `compose` is a service-composition view, not a survey replay; operators wanting that detail open `survey.md`.
+3. Should `specify plan compose` also render `cross_source` and `cross_module` flags from survey, or is that overkill for an Omnia-shaped tree? Current preference: skip them — `compose` is a service-composition view, not a survey replay; operators wanting that detail open `discovery.md`.
 4. Should the surface-kind enum include `health-check` or `metrics-endpoint` as separately-tracked Omnia kinds? Current preference: no — both are framework-level concerns belonging to the guest wrapper, not slice-owned handlers; a slice should not "own" `/healthz` in `plan.yaml`.
 5. Should the `crate` field permit `crates/`-relative subpaths (e.g. `internal/auth`) for projects organised into nested crate trees? Current preference: no — flat `crates/<name>/` is the contract `omnia-crate-writer` and `omnia-guest-writer` agree on; nested workspaces are a separate, larger change.
-6. Should `/spec:plan` populate `surfaces[]` only when the source candidate's confidence is high (in some future world where source enumeration grows a `confidence` field per RFC-20 §Out Of Scope), or always? Current preference: always when present - the field is audit-only, and a `surfaces[]` written from a low-confidence candidate is no worse than an empty one.
+6. Should `/spec:plan` populate `surfaces[]` only when the lead's confidence is high (in some future world where the survey lead grows a `confidence` field), or always? Current preference: always when present - the field is audit-only, and a `surfaces[]` written from a low-confidence lead is no worse than an empty one.
 7. Should the Omnia build brief reject when the slice's resolved target adapter is *not* Omnia (e.g. the operator pointed the writer at a Vectis slice by mistake)? Current preference: yes - fail-closed with a clear discriminant, since the writer's output is wasm32-target-specific and cannot meaningfully apply to a non-Omnia project.
 
 ## References
 
-- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [From sources to slices](../../plugins/spec/references/reconciliation.md) — the current survey/lead and extract/evidence flow the surface digest must source from. *(The "RFC-20 / RFC-25" predecessors referenced inline were never standalone RFCs in this tree — see the status note.)*
-- [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the source-clone cache (itself stale; see its status note).
+- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [From sources to slices](../../plugins/spec/references/reconciliation.md) — the survey/lead and extract/evidence flow the surface digest sources from.
+- [RFC-21: Source Catalogue and Source-Clone Cache](rfc-21-catalogue.md) — `sources.yaml` and the source-clone cache.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) — the build brief whose `$CRATE_NAME` contract this RFC formalises into a schema field, and which owns the Omnia service workspace into which handlers land.
 - [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `crate` and `surfaces`.
