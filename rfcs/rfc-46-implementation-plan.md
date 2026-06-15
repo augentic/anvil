@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S22` |
-| **Last completed** | `R46-S21` |
+| **Active step** | `R46-S23` |
+| **Last completed** | `R46-S22` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -87,7 +87,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S19](#r46-s19-materialize-app-icon-ios) | Materialize app-icon (iOS) | ✅ | specify-cli — `decode_to_launcher_canvas` + `AppIcon.appiconset` |
 | [R46-S20](#r46-s20-materialize-app-icon-android) | Materialize app-icon (Android) | ✅ | specify-cli — adaptive + legacy mipmap tree; tint→`colors.<tint>.light` background |
 | [R46-S21](#r46-s21-pin-semantics-and-yaml-auto-write) | Pin semantics & YAML auto-write | ✅ | specify-cli — `yaml_pins.rs`; pin skip + atomic auto-write |
-| [R46-S22](#r46-s22-in-scope-asset-resolution) | In-scope asset resolution | ⬜ | specify-cli |
+| [R46-S22](#r46-s22-in-scope-asset-resolution) | In-scope asset resolution | ✅ | specify-cli — `materialize_scope.rs`; bulk vs incremental table tests |
 | [R46-S23](#r46-s23-slice-build-prepare-hook) | Slice build prepare hook | ⬜ | specify-cli |
 | [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ⬜ | specify-cli |
 | [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ⬜ | both repos |
@@ -127,6 +127,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S19 | App-icon SVG decode uses full `usvg::Tree::from_data` (not `parse_icon_svg` profile) — launcher masters are not subject to UI icon gradient/text restrictions; raster >1024 downscales to 1024. iOS `ExportLayout::artifacts` lists `Contents.json` + `AppIcon.png` (pin remains export root dir). | No new steps; R46-S20 reuses `decode_to_launcher_canvas`. |
 | 2026-06-15 | R46-S20 | Safe zone enforced by scaling master into central 66% of adaptive/legacy canvases (no separate warning). Background from `tint` → `tokens.yaml` `colors.<name>.light`, default `#FFFFFF`. Android `ExportLayout::artifacts` lists 13 paths (2 adaptive XML + background + 5 foreground PNGs + 5 legacy mipmaps). Adaptive XML reuses scaffold templates via `include_str!`. | No new steps. |
 | 2026-06-15 | R46-S21 | Pin skip was already wired via `active_platform_pin` (R46-S17); S21 adds `yaml_pins.rs` with `collect_auto_pins` / `apply_auto_pins` / atomic temp+rename write. Auto-write uses `ExportLayout::pin` (not per-artifact paths). Vectis carve-out cannot link `specify-model::atomic` — local std-only writer mirrors the same pattern. | No new steps. |
+| 2026-06-15 | R46-S22 | Bootstrap `app-icon` scope reuses §6.2 satisfaction (path A master on disk or path B pin) — not export presence; typical `design-system` bulk pass (rule c) materializes launcher exports before `app-foundation`. `platform_satisfied` stays in `bootstrap_app_icon`; `materialize_scope` inlines equivalent check to avoid private-module coupling. | No new steps; R46-S23 wires prepare hook. |
 
 ### Specify-cli step assurance
 
@@ -785,6 +786,8 @@ RFC §Implementation phases · Phase 2.
 **Assurance:**
 - [Specify-cli step assurance](#specify-cli-step-assurance).
 - Table tests for design-system bulk pass vs feature slice incremental pass.
+
+**Status:** ✅ `crates/workflow/src/slice/build/materialize_scope.rs` — `resolve_effective_assets`, `resolve_materialize_scope`, six unit tests (bulk / composition / artifact / bootstrap).
 
 ---
 
