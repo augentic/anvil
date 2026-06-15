@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S26` |
-| **Last completed** | `R46-S25` |
+| **Active step** | `R46-S27` |
+| **Last completed** | `R46-S26` |
 | **Last updated** | 2026-06-16 |
 | **Blocked on** | — |
 
@@ -101,7 +101,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S23](#r46-s23-slice-build-prepare-hook) | Slice build prepare hook | ✅ | specify-cli — prepare auto-materialize + bootstrap app-icon re-check |
 | [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ✅ | specify-cli — `export_layout`-aligned presence; materialize→validate tests |
 | [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ✅ | both repos — task-list `design-system/` + wasi-tools golden layout tests |
-| [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ⬜ | |
+| [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ✅ | both repos — `cargo make check` + `make lint`; carve-out materialize + host scope/bootstrap tests green |
 | [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ⬜ | specify |
 | [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ⬜ | specify-cli |
 | [R46-S29](#r46-s29-rfc-closure-and-stale-reference-sweep) | RFC closure & reference sweep | ⬜ | both repos |
@@ -143,6 +143,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S24 | `conventional_export_exists` now delegates auto-materializable vector roles to `materialize::paths::export_layout` (S16 path conventions); raster keeps density/imageset heuristics. `role: app-icon` stays on `assets-app-icon-*` ids (skipped in composition coverage). | No new steps; R46-S25 unchanged. |
 | 2026-06-16 | R46-S25 | `specify-cli` CI does not check out `augentic/specify`; golden layout tests use a mirrored copy under `wasi-tools/vectis/tests/fixtures/acceptance/task-list/` (synced from `evals/fixtures/targets/vectis/task-list/design-system/`). | Documented sync command in both READMEs; no new steps. |
 | 2026-06-16 | R46-S25 | Host `cargo make check` did not run `wasi-tools/` clippy; R46-S24 (`needless_raw_string_hashes`) and R46-S25 (`uninlined_format_args`) failed only in the dedicated CI job. | `cargo make wasi-tools-check` added to `Makefile.toml` as a `check`/`ci` dependency; plan gate documents CI parity trap. |
+| 2026-06-16 | R46-S26 | No eval fixture ships a full `iOS/` / `Android/` shell tree — `task-list` pins committed `design-system/assets/exports/` only. Export fitness for shell consumption is covered by carve-out golden layout (`materialize_acceptance_fixture`), `materialize_then_validate_passes`, and plan-validate path B; `make sim-build` / `assembleDebug` remain the build-brief verify loop on downstream consumer projects (out of RFC-46 automated scope). | Checklist item documented as N/A for eval harness; no new steps. |
 
 ### Specify-cli step assurance
 
@@ -891,14 +892,14 @@ RFC §Implementation phases · Phase 2.
 **Prerequisites:** R46-S15 through R46-S25 ✅
 
 **Checklist:**
-- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
-- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied for Phase 2 steps.
-- [ ] `cargo make check` (`specify-cli`) — includes `wasi-tools-check`; `make lint` (`specify`).
-- [ ] **Carve-out:** `cargo test -p specify-vectis materialize` — unpinned asset → exports on disk + YAML pins; idempotent second run.
-- [ ] **Host:** `slice build --phase prepare` tests assert request assembly / error codes with stubbed or pre-seeded exports — **not** live `run_captured materialize` from `tests/`.
-- [ ] Bootstrap context + `app-icon` scope covered in host unit tests (`materialize_scope`, `BootstrapContext`) and carve-out materialize tests.
-- [ ] Re-run `specify plan validate` on bootstrappable fixture → pass.
-- [ ] iOS `make sim-build` or Android assemble on a fixture project with materialized assets (manual or existing eval) — document result in tracker.
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [x] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied for Phase 2 steps — no new `run_captured` / `tool run` / `SPECIFY_TOOLS_CACHE` assertions in `tests/workflow/` or host RFC-46 unit tests.
+- [x] `cargo make check` (`specify-cli`) — includes `wasi-tools-check`; `make lint` (`specify`).
+- [x] **Carve-out:** `cargo test -p specify-vectis materialize` — unpinned asset → exports on disk + YAML pins; idempotent second run (55 tests: unit + `cli` + `engine`).
+- [x] **Host:** `slice build --phase prepare` tests (`tests/slice/build.rs`) assert request assembly / error codes — **no** live `run_captured materialize` from `tests/`.
+- [x] Bootstrap context + `app-icon` scope covered in host unit tests (`materialize_scope` ×9, `BootstrapContext` ×7, `bootstrap_app_icon` ×6) and carve-out materialize tests.
+- [x] Re-run `specify plan validate` on bootstrappable fixture → pass (`cargo nextest run --test plan validate -- app_icon` — 4 RFC-46 cases + 15 other validate tests).
+- [x] iOS `make sim-build` or Android assemble — **N/A** for eval harness: `task-list` fixture pins `design-system/assets/exports/` only (no shell trees). Export layout validated by carve-out acceptance fixture + `validate assets`; shell verify loop deferred to downstream build briefs.
 
 **Handoff:** Unblocks Phase 3 fidelity work.
 
