@@ -25,7 +25,7 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
      hint: Fix the failure, then retry /spec:build for the slice. The plan entry stays in-progress.
      ```
 
-   - The shell holding `flock` exits; lock released.
+   - The `specify plan lock` process holding the lock exits; lock released.
    - Plan entry stays `in-progress`; slice lifecycle stays `refined` (no per-entry advance; build did not converge).
 
 2. **Operator patches the cookie path.** Adds `.secure(true)` to the cookie builder, re-runs the failing test locally, confirms green.

@@ -12,9 +12,9 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 ## Trace
 
 1. **Operator runs `/spec:execute`.**
-   - Acquires `.specify/plan.lock` via the snippet in [`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md).
+   - Acquires `.specify/plan.lock` by driving the loop under `specify plan lock -- <cmd>` per [`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md).
    - `specify plan status` returns `next-action: build group-list-search-filter` (slice 2 is `in-progress`, lifecycle `refined`); `specify plan next` confirms the active entry; the loop dispatches `/spec:build`.
-   - Operator interrupts mid-build with Ctrl-C. The shell holding `flock` exits; the lock auto-releases. The plan entry stays `in-progress`; the slice lifecycle stays `refined`.
+   - Operator interrupts mid-build with Ctrl-C. The `specify plan lock` process holding the lock exits; the lock auto-releases. The plan entry stays `in-progress`; the slice lifecycle stays `refined`.
 
 2. **Operator runs `/spec:build group-list-search-filter` standalone.**
    - The breakout body's first action is to re-acquire the plan lock via the same snippet — `specify plan next` is CLI-gated and would refuse an unlocked session with `plan-lock-not-held`.

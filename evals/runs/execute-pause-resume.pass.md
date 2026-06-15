@@ -25,7 +25,7 @@ Probe transcript highlights: two-slice `dashboard` plan (`metrics-summary`, `use
 - Offline init via local omnia adapter path; `intent` source adapter symlinked per setup prerequisites.
 - Gate 1 stamped with `--actor agent`.
 - Pause simulated by stopping `/spec:execute` after `build --phase prepare` on second slice while entry remained `in-progress` at `refined`; breakout completed build+finalize for `user-activity-feed`.
-- macOS plan lock via Python `fcntl` fallback (same posture as other eval runs).
+- Plan lock held for the session via `specify plan lock -- <cmd>` (same posture as other eval runs).
 - Minimal serde-only library crates (`metrics_summary`, `user_activity_feed`) with `cargo test` — no wasm32 guest pre-merge gate in this sandbox.
 
 ## Notes

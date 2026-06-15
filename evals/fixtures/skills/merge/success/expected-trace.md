@@ -2,8 +2,8 @@
 
 Visible side effects of `/spec:merge password-hash-rotate` on the success path:
 
-1. `SPECIFY_PLAN_LOCK_HELD` is unset → the body acquires `.specify/plan.lock` (single-repo) via `flock(LOCK_EX | LOCK_NB)` on fd 9 before any plan verb.
-2. `specify plan next --format json` returns the entry `name: password-hash-rotate, target: omnia, status: in-progress` (the CLI's lock probe passes — fd 9 holds the lock).
+1. `SPECIFY_PLAN_LOCK_HELD` is unset → the body drives the phase under `specify plan lock -- <cmd>` (single-repo), which takes `.specify/plan.lock` before any plan verb and exports `SPECIFY_PLAN_LOCK_HELD=1` to the child.
+2. `specify plan next --format json` returns the entry `name: password-hash-rotate, target: omnia, status: in-progress` (the CLI's lock probe passes — the wrapper holds the lock).
 3. `.specify/slices/password-hash-rotate/metadata.yaml` reads `status: built` → proceed.
 4. `specify target resolve omnia --format json` returns the resolved manifest path; the body reads `adapters/targets/omnia/briefs/merge.md` from there.
 5. The brief's pre-merge gate runs and passes: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo check --workspace`, `cargo test`, `cargo build --target wasm32-wasip2 --release --workspace` all green.
@@ -14,7 +14,7 @@ Visible side effects of `/spec:merge password-hash-rotate` on the success path:
    - moves `.specify/slices/password-hash-rotate/` into `.specify/archive/2026-05-21-password-hash-rotate/`,
    - writes `plan.yaml.slices[0].status = done` (the only place per-entry `done` is produced).
 8. The body renders the post-merge summary (archive path + merged spec list).
-9. The body returns; fd 9 closes; the plan lock releases.
+9. The body returns; the `specify plan lock` child exits and the plan lock releases.
 
 ## Post-conditions
 

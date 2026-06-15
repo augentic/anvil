@@ -40,7 +40,7 @@ Probe transcript highlights: fresh sandbox with offline local adapter paths (`om
 ## Notes
 
 - PR open/merge step intentionally out of scope per scenario; bare-repo remotes satisfy finalize push assertions.
-- macOS stock shell uses Python `fcntl` plan-lock fallback in `workspace_driver.py`.
+- Plan lock held for the session via `specify plan lock -- <cmd>`.
 - Finalize wrap-up prose captured below for judgment assertions; mechanical probes confirm archive path and push table.
 
 ## Evidence

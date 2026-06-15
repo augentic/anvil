@@ -23,7 +23,7 @@
 - Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@v1` network fetch.
 - Symlinked `intent` and `documentation` source adapters per setup prerequisites.
 - Two sandbox roots (`target-shape-intent`, `target-shape-docs`) instead of one directory — scenario allows sequential or parallel fresh projects.
-- Gate 1 stamped with `--actor agent`; plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Gate 1 stamped with `--actor agent`; plan lock held for the session via `specify plan lock -- <cmd>`.
 - Phase work driven by following `/spec:plan` and `/spec:refine` skill choreography via CLI verbs (survey/extract/synthesize two-phase handoffs).
 
 ## Notes

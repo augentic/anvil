@@ -26,7 +26,7 @@ $LOG_PATH               = brief-captured stdout/stderr on failure (target-specif
 
 ## Critical Path
 
-1. **Acquire the plan lock when invoked standalone.** When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop holds it — do not re-acquire. Otherwise acquire `.specify/plan.lock` (workspace in workspace mode) *before* any plan verb; see [plan-lock.md](../../references/plan-lock.md) — `specify plan next` is CLI-gated and refuses an unlocked driver with `plan-lock-not-held`.
+1. **Hold the plan lock.** Drive this phase under `specify plan lock -- <cmd>` (the workspace lock in workspace mode, via `--plan-dir`) *before* any plan verb; see [plan-lock.md](../../references/plan-lock.md). When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop already holds it and the CLI skips re-acquisition automatically. `specify plan next` is CLI-gated and refuses an unlocked driver with `plan-lock-not-held`.
 2. **Resolve the active slice.** Run `specify plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$PROJECT` (workspace mode) from the same response.
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, route per [`../execute/references/workspace-routing.md`](../execute/references/workspace-routing.md) (sync, `chdir` into the slot, `SPECIFY_PLAN_DIR` export; restore on exit). Single-repo mode is a no-op.
 4. **Refuse on slice lifecycle.** Read `$SLICE_DIR/metadata.yaml`. Proceed only when `status: refined`. Pre-`refined` (e.g. `refining`) → halt with hint pointing at `/spec:refine`. Post-`refined` (`built`, `merged`, `dropped`) → halt with "no rebuild needed" / "already merged".

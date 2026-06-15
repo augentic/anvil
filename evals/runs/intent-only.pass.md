@@ -27,7 +27,7 @@ Probe transcript highlights: fresh sandbox recreated; `plan.yaml` existed with `
 - `specify init omnia@v1` substituted with the documented offline fallback `specify init <framework>/adapters/targets/omnia` (local adapter path).
 - Symlinked the `intent` source adapter into the sandbox (`adapters/sources/intent`) per setup prerequisites.
 - Gate 1 stamped with `specify plan transition fix-typo approved --actor agent`.
-- Plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Plan lock held for the session via `specify plan lock -- <cmd>`.
 - Pre-wrote `discovery.md` before survey finalize created a duplicate lead block; corrected to a single `intent:fix-typo` block before `propose --dry-run`.
 - Synthesis response initially omitted `tasks[].id`; re-ran `specify slice synthesize --from` after adding `TASK-001` / `TASK-002` ids.
 

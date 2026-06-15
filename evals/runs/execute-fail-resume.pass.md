@@ -26,7 +26,7 @@ Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four
 - Gate 1 stamped with `specify plan transition rate-limit approved --actor agent`.
 - Four-slice `rate-limit` plan decomposed from compound intent at propose time; engineered failure follows fixture #9 (`session-cookie-harden`, missing `Secure` flag, regression test `session_cookie_secure_flag_set`).
 - Minimal serde-only library crates and lightweight merge path (`cargo fmt` + `cargo test` + `specify slice merge run`) — no omnia guest / `wasm32-wasip2` pre-merge gate in this sandbox (eval focuses on execute park/resume mechanics).
-- macOS plan lock acquired via Python `fcntl` fallback from [`plan-lock.md`](../../plugins/spec/references/plan-lock.md).
+- Plan lock held for the session via `specify plan lock -- <cmd>` per [`plan-lock.md`](../../plugins/spec/references/plan-lock.md).
 
 ## Notes
 

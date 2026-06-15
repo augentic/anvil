@@ -26,7 +26,7 @@ Probe transcript highlights: fresh sandbox recreated; `plan.reconcile.completed`
 - Offline init via local omnia adapter path instead of `omnia@v1` network fetch.
 - Symlinked `adapters/sources/documentation` per setup prerequisites.
 - Build used `omnia-sdk = "0.33"` on crates.io (fixture template pins `"0"` which does not resolve); guest `wasip3` pinned to `0.6` to match `omnia-wasi-http` (workspace `0.7` caused type mismatch on wasm32 build).
-- Phase work driven by following `/spec:plan`, `/spec:refine`, `/spec:build`, and `/spec:merge` skill bodies via CLI verbs with Python `fcntl` plan lock (stock macOS lacks `flock(1)`).
+- Phase work driven by following `/spec:plan`, `/spec:refine`, `/spec:build`, and `/spec:merge` skill bodies via CLI verbs with the plan lock held via `specify plan lock -- <cmd>`.
 - Gate 1 stamped with `specify plan transition feature-doc approved --actor agent`.
 - `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing); judged acceptable.
 
