@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S24` |
-| **Last completed** | `R46-S23` |
+| **Active step** | `R46-S25` |
+| **Last completed** | `R46-S24` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -99,7 +99,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S21](#r46-s21-pin-semantics-and-yaml-auto-write) | Pin semantics & YAML auto-write | ✅ | specify-cli — `yaml_pins.rs`; pin skip + atomic auto-write |
 | [R46-S22](#r46-s22-in-scope-asset-resolution) | In-scope asset resolution | ✅ | specify-cli — `materialize_scope.rs`; bulk vs incremental table tests |
 | [R46-S23](#r46-s23-slice-build-prepare-hook) | Slice build prepare hook | ✅ | specify-cli — prepare auto-materialize + bootstrap app-icon re-check |
-| [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ⬜ | specify-cli |
+| [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ✅ | specify-cli — `export_layout`-aligned presence; materialize→validate tests |
 | [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ⬜ | both repos |
 | [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ⬜ | |
 | [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ⬜ | specify |
@@ -140,6 +140,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S22 | Bootstrap `app-icon` scope reuses §6.2 satisfaction (path A master on disk or path B pin) — not export presence; typical `design-system` bulk pass (rule c) materializes launcher exports before `app-foundation`. `platform_satisfied` stays in `bootstrap_app_icon`; `materialize_scope` inlines equivalent check to avoid private-module coupling. | No new steps; R46-S23 wires prepare hook. |
 | 2026-06-15 | R46-S22 | Step marked ✅ after filtered tests only; `rust_quality` `no_long_test_fn_names` failed on five `materialize_scope` test fns (>40 chars). | Added [step completion gate](#step-completion-gate-mandatory--do-not-mark--until-all-pass); per-step minimum is now `cargo make check`, not filtered subsets. Tests regrouped under `mod bulk/feature/bootstrap/effective_path`. |
 | 2026-06-15 | R46-S23 | Prepare hook triggers full `materialize assets` when any in-scope asset lacks exports (not per-id guest filter); guest skips pinned slots idempotently. Bootstrap gate reuses `bootstrap_app_icon_findings` → `plan-bootstrap-app-icon-missing`. Host tests cover `scope_needs_materialize` only — no new `run_captured` integration tests. | No new steps; R46-S24 unchanged. |
+| 2026-06-15 | R46-S24 | `conventional_export_exists` now delegates auto-materializable vector roles to `materialize::paths::export_layout` (S16 path conventions); raster keeps density/imageset heuristics. `role: app-icon` stays on `assets-app-icon-*` ids (skipped in composition coverage). | No new steps; R46-S25 unchanged. |
 
 ### Specify-cli step assurance
 
