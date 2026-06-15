@@ -26,7 +26,7 @@ When a step finishes: mark it ✅, set **Last completed**, advance **Active step
 
 | Repo touched | Required before ✅ |
 |--------------|-------------------|
-| `specify-cli` | [`cargo make check`](#specify-cli-step-assurance) green (fmt, clippy, **full** `cargo nextest` workspace suite including `rust_quality`, test-docs) |
+| `specify-cli` | [`cargo make check`](#specify-cli-step-assurance) green — includes host workspace **and** `wasi-tools/` carve-out (fmt, clippy, full `cargo nextest`, test-docs, `wasi-tools-check`) |
 | `specify` | `make lint` green when framework/docs changed |
 | Both | Run both rows when the step touches both repos |
 
@@ -142,6 +142,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S23 | Prepare hook triggers full `materialize assets` when any in-scope asset lacks exports (not per-id guest filter); guest skips pinned slots idempotently. Bootstrap gate reuses `bootstrap_app_icon_findings` → `plan-bootstrap-app-icon-missing`. Host tests cover `scope_needs_materialize` only — no new `run_captured` integration tests. | No new steps; R46-S24 unchanged. |
 | 2026-06-15 | R46-S24 | `conventional_export_exists` now delegates auto-materializable vector roles to `materialize::paths::export_layout` (S16 path conventions); raster keeps density/imageset heuristics. `role: app-icon` stays on `assets-app-icon-*` ids (skipped in composition coverage). | No new steps; R46-S25 unchanged. |
 | 2026-06-16 | R46-S25 | `specify-cli` CI does not check out `augentic/specify`; golden layout tests use a mirrored copy under `wasi-tools/vectis/tests/fixtures/acceptance/task-list/` (synced from `evals/fixtures/targets/vectis/task-list/design-system/`). | Documented sync command in both READMEs; no new steps. |
+| 2026-06-16 | R46-S25 | Host `cargo make check` did not run `wasi-tools/` clippy; R46-S24 (`needless_raw_string_hashes`) and R46-S25 (`uninlined_format_args`) failed only in the dedicated CI job. | `cargo make wasi-tools-check` added to `Makefile.toml` as a `check`/`ci` dependency; plan gate documents CI parity trap. |
 
 ### Specify-cli step assurance
 
@@ -153,7 +154,9 @@ Every step with **Repo:** `specify-cli` must pass the checks below **in addition
 cargo make check
 ```
 
-`cargo make check` runs fmt, clippy, the **full** workspace `cargo nextest` suite (all integration + unit tests, including `rust_quality`), and test-docs. Do **not** mark a step ✅ after only a filtered subset (e.g. `cargo test -p specify-workflow materialize_scope`) — filtered runs are useful mid-step but are not the completion gate.
+`cargo make check` runs fmt, clippy, the **full** host-workspace `cargo nextest` suite (all integration + unit tests, including `rust_quality`), test-docs, **and** `wasi-tools-check` (the carve-out workspace's `cargo clippy` + `cargo test` — mirrors the dedicated `wasi-tools` CI job). Do **not** mark a step ✅ after only a filtered subset (e.g. `cargo test -p specify-workflow materialize_scope` or `cd wasi-tools && cargo test -p specify-vectis acceptance_fixture` alone) — filtered runs are useful mid-step but are not the completion gate.
+
+**CI parity trap (R46-S24 / R46-S25):** host `cargo clippy` does **not** compile `wasi-tools/vectis/tests/**`. Any step that edits `wasi-tools/` must pass `cargo make check` end-to-end, not host-only `cargo make check` constituents without `wasi-tools-check`.
 
 **Constituent checks** (what `cargo make check` enforces — run individually only when iterating):
 
@@ -162,15 +165,15 @@ cargo +nightly fmt --all -- --check
 RUSTFLAGS=-Dwarnings cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 RUSTFLAGS=-Dwarnings cargo nextest run --workspace --all-targets --all-features
 RUSTDOCFLAGS=-Dwarnings cargo test --test test-docs
+cd wasi-tools && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
 ```
 
 **Every step must also satisfy** [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope).
 
-**When the step changes `wasi-tools/`** (vectis or other carve-out crates), also from `wasi-tools/`:
+**When the step changes `wasi-tools/` only** (no host crate edits), `cargo make wasi-tools-check` is the fastest pre-push smoke — but the step completion gate still requires full `cargo make check` before ✅.
 
 ```bash
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo make wasi-tools-check
 ```
 
 **Host test posture for RFC-46 (see hard rule above):**
@@ -890,8 +893,7 @@ RFC §Implementation phases · Phase 2.
 **Checklist:**
 - [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
 - [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied for Phase 2 steps.
-- [ ] `cargo make ci` (`specify-cli`); `cargo clippy -p specify-vectis` in `wasi-tools/`.
-- [ ] `make lint` (`specify`).
+- [ ] `cargo make check` (`specify-cli`) — includes `wasi-tools-check`; `make lint` (`specify`).
 - [ ] **Carve-out:** `cargo test -p specify-vectis materialize` — unpinned asset → exports on disk + YAML pins; idempotent second run.
 - [ ] **Host:** `slice build --phase prepare` tests assert request assembly / error codes with stubbed or pre-seeded exports — **not** live `run_captured materialize` from `tests/`.
 - [ ] Bootstrap context + `app-icon` scope covered in host unit tests (`materialize_scope`, `BootstrapContext`) and carve-out materialize tests.
