@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S17` |
-| **Last completed** | `R46-S16` |
+| **Active step** | `R46-S18` |
+| **Last completed** | `R46-S17` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -82,7 +82,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S14](#r46-s14-phase-1-assurance-gate) | Phase 1 assurance gate | ✅ | path B plan-validate test added; `cargo make ci` + `make lint` green |
 | [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ✅ | specify-cli — `materialize assets` CLI + report envelope; `resvg`/`usvg`/`image` deps declared |
 | [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ✅ | specify-cli — `materialize/paths.rs`; shared `kebab_to_snake` |
-| [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ⬜ | specify-cli |
+| [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ✅ | specify-cli — SVG profile + iOS PDF imageset + Android VD XML |
 | [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ⬜ | specify-cli |
 | [R46-S19](#r46-s19-materialize-app-icon-ios) | Materialize app-icon (iOS) | ⬜ | specify-cli |
 | [R46-S20](#r46-s20-materialize-app-icon-android) | Materialize app-icon (Android) | ⬜ | specify-cli |
@@ -122,6 +122,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S14 | Phase 1 assurance gate green; checklist lacked path B plan-validate integration test (path A + unit `platform_satisfied` only). | Added `app_icon_pinned_exports_passes` in `tests/workflow/validate.rs`. |
 | 2026-06-15 | R46-S15 | `resvg`/`usvg`/`tiny-skia`/`image` compile for `wasm32-wasip2` with `default-features = false`; deps unused until R46-S17 (no `touch_deps` shim). Report envelope adds `command`, `path`, `dry_run`, `platforms` alongside the three arrays. | No new steps. |
 | 2026-06-15 | R46-S16 | Illustration auto-write pins use the highest-density artifact (`@3x` iOS, `xxxhdpi` Android) because `vectorEntry` `sources.<platform>` is a single `filePath`; all density files still land in `artifacts[]` for writers. `kebab_to_snake` deduped — validate `exports.rs` imports `materialize::paths`. | No new steps; R46-S21 auto-write uses `ExportLayout::pin`. |
+| 2026-06-15 | R46-S17 | `usvg` may resolve simple gradient fills to solid `Paint::Color` at parse time — profile gate uses `has_defs_nodes` plus per-path solid-paint checks and rejects filters/images/text. iOS PDF is a minimal vector writer (path ops from `tiny-skia-path` segments, quad→cubic); pin skip landed early (read-only, no YAML write — full semantics remain R46-S21). | No new steps. |
 
 ### Specify-cli step assurance
 
@@ -678,8 +679,8 @@ RFC §Implementation phases · Phase 2.
 4. Respect `--platform` filter and `--dry-run` (log actions only).
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- Unit/integration tests with tiny SVG fixtures; output files exist and are non-empty.
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance).
+- [x] Unit/integration tests with tiny SVG fixtures; output files exist and are non-empty.
 
 ---
 
