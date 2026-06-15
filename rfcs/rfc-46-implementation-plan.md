@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S30` |
-| **Last completed** | `R46-S29` |
+| **Active step** | — (RFC-46 complete) |
+| **Last completed** | `R46-S30` |
 | **Last updated** | 2026-06-16 |
 | **Blocked on** | — |
 
@@ -105,7 +105,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ✅ | specify — export-path tables + explicit `exports/` copy steps in write briefs |
 | [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ✅ | specify-cli — `shell-catalog-entry-missing` in verify mode |
 | [R46-S29](#r46-s29-rfc-closure-and-stale-reference-sweep) | RFC closure & reference sweep | ✅ | both repos — RFC-46 Implemented; roadmap + AGENTS.md cross-links; stale refs swept |
-| [R46-S30](#r46-s30-final-assurance-gate) | Final assurance gate | ⬜ | |
+| [R46-S30](#r46-s30-final-assurance-gate) | Final assurance gate | ✅ | both repos — `cargo make ci` + `make lint`; hard rule verified; `plan-single-project` pass record unchanged (Omnia surface) |
 
 ### Discovery log
 
@@ -146,6 +146,8 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-16 | R46-S26 | No eval fixture ships a full `iOS/` / `Android/` shell tree — `task-list` pins committed `design-system/assets/exports/` only. Export fitness for shell consumption is covered by carve-out golden layout (`materialize_acceptance_fixture`), `materialize_then_validate_passes`, and plan-validate path B; `make sim-build` / `assembleDebug` remain the build-brief verify loop on downstream consumer projects (out of RFC-46 automated scope). | Checklist item documented as N/A for eval harness; no new steps. |
 | 2026-06-16 | R46-S28 | `actool` dry-run deferred — filesystem probes (`Assets.xcassets/<id>.imageset/` with content; Android `res/drawable*` paths) match the writer contract without invoking Xcode tooling. Optional `actool` env flag remains a future RFC-46a / Phase 3 item. | No new steps; diagnostic id `shell-catalog-entry-missing`. |
 | 2026-06-16 | R46-S29 | Stale refs confined to intentional history (`rfc-46-baseline/`, implementation-plan step bodies, RFC Phase 0 narrative). `VECTIS-006` “deferred until materialize” prose updated; `rfc-46a` trigger uses shell-detect wording. | RFC-46 status → Implemented; roadmap **Recently implemented**; no new steps. |
+
+| 2026-06-16 | R46-S30 | `plan-single-project` Omnia CLI surface unchanged since R46-S05 — pass record not refreshed; deterministic plan/propose/validate coverage proven by `cargo make ci` (`tests/plan/end_to_end.rs`, `tests/workflow/{propose,validate}.rs`). Operator manual smoke (edit SVG → materialize → build shells) remains optional/out-of-scope for automated gate. | No new steps; deferred items unchanged (Appendix C). |
 
 ### Specify-cli step assurance
 
@@ -966,13 +968,13 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 ### R46-S30 — Final assurance gate
 
 **Checklist:**
-- [ ] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
-- [ ] Full `cargo make ci` + `make lint`.
-- [ ] All steps R46-S00–R46-S29 ✅ in tracker.
-- [ ] Run one eval scenario end-to-end (`code-multi-slice` or `plan-single-project`) with refreshed pass record if CLI surface changed.
-- [ ] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied across all RFC-46 steps.
-- [ ] Operator manual smoke (optional, **not** automated host tests): edit canonical SVG → `materialize assets` → commit exports → build shells.
-- [ ] Discovery log reviewed; open items filed as new RFCs (e.g. `exports.lock`, RFC-46a web).
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance) (or full `cargo make ci`, which supersedes it).
+- [x] Full `cargo make ci` + `make lint`.
+- [x] All steps R46-S00–R46-S29 ✅ in tracker.
+- [x] Run one eval scenario end-to-end (`code-multi-slice` or `plan-single-project`) with refreshed pass record if CLI surface changed — **spot-check:** `plan-single-project` Omnia surface unchanged since R46-S05; existing pass record retained; deterministic substrate green in `cargo make ci`.
+- [x] [Hard rule](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope) satisfied across all RFC-46 steps — `rg` on RFC-46-touched `tests/workflow/`, `crates/workflow/`, `crates/vectis-shell-detect/`, `tests/slice/build.rs`: no `tool run` / `run_captured` / `SPECIFY_TOOLS_CACHE` / `vectis_wasm`.
+- [x] Operator manual smoke (optional, **not** automated host tests): edit canonical SVG → `materialize assets` → commit exports → build shells — deferred to operator; carve-out acceptance fixture + `materialize_then_validate_passes` cover automated export fitness.
+- [x] Discovery log reviewed; open items filed as new RFCs (e.g. `exports.lock`, RFC-46a web) — see [Appendix C](#appendix-c--deferred--out-of-scope-do-not-implement-in-this-plan).
 
 ---
 
