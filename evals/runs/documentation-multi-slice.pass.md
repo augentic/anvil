@@ -5,7 +5,7 @@
 - **Scenario:** `documentation-multi-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/documentation-multi-slice/`
+- **Sandbox:** `evals/.sandbox/documentation-multi-slice/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -27,6 +27,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 - Used offline init `specify init $FRAMEWORK/adapters/targets/omnia` per operator environment instructions (equivalent to the documented offline fallback in `shared/setup.md`).
 - Symlinked the `documentation` source adapter into the sandbox (`adapters/sources/documentation`) per the setup prerequisite — `specify init` caches only the target adapter.
 - Phase work driven by the agent following the `/spec:plan` skill body directly (survey handoff, propose envelope, `change.md` authoring); stopped at Gate 1 without stamping `approved`.
+- Re-ran `specify plan propose --from` once after an external sandbox race dropped `product-detail` from `plan.yaml`; amend and validate then passed.
 
 ## Notes
 

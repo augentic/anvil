@@ -4,8 +4,8 @@
 
 - **Scenario:** `documentation-one-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/documentation-one-slice/` (recreated fresh 2026-06-14)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
+- **Sandbox:** `evals/.sandbox/documentation-one-slice/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -25,15 +25,15 @@ Probe transcript highlights: fresh sandbox recreated; `plan.reconcile.completed`
 
 - Offline init via local omnia adapter path instead of `omnia@v1` network fetch.
 - Symlinked `adapters/sources/documentation` per setup prerequisites.
-- Build used `omnia-sdk = "0.33"` on crates.io (fixture template pins `"0"` which does not resolve); guest `wasip3` pinned to `0.6` to match `omnia-wasi-http` (workspace `0.7` caused type mismatch on wasm32 build).
+- Build used `omnia-sdk = "0.33"` on crates.io; workspace `wasip3` pinned to `0.6` to match `omnia-wasi-http`.
 - Phase work driven by following `/spec:plan`, `/spec:refine`, `/spec:build`, and `/spec:merge` skill bodies via CLI verbs with the plan lock held via `specify plan lock -- <cmd>`.
 - Gate 1 stamped with `specify plan transition feature-doc approved --actor agent`.
-- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing); judged acceptable.
+- Initial synthesis artifacts needed proposal `## Why` and tasks `X.Y` checkbox format fixes before `specify slice validate` passed cleanly (two `kind: review` suggestions on imperative/SHALL language judged acceptable).
 
 ## Notes
 
-- `specify plan next` after lock release returns `plan-lock-not-held` (exit 2); drained state verified via `specify plan status` per the workspace-fail-resume probe guidance.
-- `grep -c '^  - name: ' plan.yaml` returns 0 because this CLI writes slice rows as `- name:` (no leading indent); journal `slice-count:1` and `plan.yaml` `^- name:` count of 1 are the authoritative probes.
+- `specify plan next` after lock release returns `plan-lock-not-held` (exit 2); drained state verified via `specify plan status`.
+- `grep -c '^  - name: ' plan.yaml` returns 0 because this CLI writes slice rows as `- name:` (no leading indent); journal `slice-count:1` and `^- name:` count of 1 are the authoritative probes.
 
 ## Evidence
 

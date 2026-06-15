@@ -4,7 +4,7 @@
 
 - **Scenario:** `lead-reconciliation`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:** `evals/.sandbox/lead-reconciliation/`
 
 ## Assertions

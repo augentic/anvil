@@ -4,7 +4,7 @@
 
 - **Scenario:** `target-shape`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:** `evals/.sandbox/target-shape-intent/` (intent fixture), `evals/.sandbox/target-shape-docs/` (documentation fixture)
 
 ## Assertions
@@ -28,7 +28,7 @@
 
 ## Notes
 
-- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on both fixtures — judged acceptable.
+- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on the lead-reconciliation run; target-shape fixtures validated with zero blocking findings.
 - Docs source key `brief` binds `documentation:docs/greeting.md`; intent source uses `intent:value:…` degenerate N=1 binding.
 
 ## Evidence
