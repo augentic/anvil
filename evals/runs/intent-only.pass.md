@@ -24,7 +24,7 @@ Probe transcript highlights: fresh sandbox recreated; `plan.yaml` existed with `
 
 ## Deviations
 
-- `specify init omnia@v1` substituted with the documented offline fallback `specify init <framework>/adapters/targets/omnia` (local adapter path).
+- `specify init omnia@1.0.0` substituted with the documented offline fallback `specify init <framework>/adapters/targets/omnia` (local adapter path).
 - Symlinked the `intent` source adapter into the sandbox (`adapters/sources/intent`) per setup prerequisites.
 - Gate 1 stamped with `specify plan transition fix-typo approved --actor agent`.
 - Plan lock held for refine via `specify plan lock -- <cmd>`.

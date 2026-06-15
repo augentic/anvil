@@ -31,7 +31,7 @@ version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    adapter: omnia@v1        # optional greenfield scaffold seed only
+    adapter: omnia@1.0.0        # optional greenfield scaffold seed only
     greenfield_seed:         # optional plan-time routing seed only
       domains: [ingest, alerting]
   - name: command-centre

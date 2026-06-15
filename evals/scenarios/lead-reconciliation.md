@@ -33,7 +33,7 @@ Prove the `/spec:plan` propose step reconciles leads automatically when two adap
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Bind two sources (e.g. a docs path and a legacy repo) that describe the same candidate behavior. Plan a change named `account-lockout`.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Bind two sources (e.g. a docs path and a legacy repo) that describe the same candidate behavior. Plan a change named `account-lockout`.
 
 ## Invocation
 

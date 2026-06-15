@@ -1,6 +1,6 @@
 # Contract Test Scenarios
 
-These documents are owner-local eval scenarios for `contracts@v1`
+These documents are owner-local eval scenarios for `contracts@1.0.0`
 interface generation. They exercise the dedicated contract slice loop:
 
 1. `/spec:refine` creates `proposal.md`, `specs/**/*.md`, and `tasks.md`.
@@ -78,7 +78,7 @@ The body remains canonical for human-readable prose.
 id: contracts-describe                # required, kebab-case, globally unique
 owner: contracts                      # required
 kind: adapter                      # required: adapter | adapter-boundary
-adapter: contracts@v1              # required for adapter and adapter-boundary
+adapter: contracts@1.0.0              # required for adapter and adapter-boundary
 entrypoint: /spec:refine              # required: slash-command, /<plugin>:<skill>
 stages: [refine, build, merge]        # required: contiguous slice of plan | refine | build | merge | drop
 isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice
@@ -98,11 +98,11 @@ Static validation in `scripts/check.ts` enforces the frontmatter shape.
 
 ## Manual Test Flow
 
-Run each scenario from a project initialized with the `contracts@v1` schema, or
+Run each scenario from a project initialized with the `contracts@1.0.0` schema, or
 from a test workspace where `/spec:init` has already selected that schema. The
 boundary scenario [`update.md`](update.md) is the one exception — its initial
 prompt runs in an implementation-schema project (Omnia or Vectis) and its
-regression path runs in a `contracts@v1` project; the file documents both.
+regression path runs in a `contracts@1.0.0` project; the file documents both.
 
 For each scenario:
 
@@ -128,7 +128,7 @@ For each scenario:
 
 The `update.md` scenario is expected to demonstrate a boundary. It should not
 make an implementation `design.md` update act as the contract source; the
-correct path is a separate `contracts@v1` change. Its **Negative Expectations**
+correct path is a separate `contracts@1.0.0` change. Its **Negative Expectations**
 section is the primary oracle for that scenario.
 
 ## Run-All Prompt
@@ -147,7 +147,7 @@ Run all contract test scenarios in adapters/targets/contracts/tests/ in this ord
 Do not ask for confirmation between scenarios. For each scenario:
 - Read the scenario file completely before acting.
 - Create any temporary source files the scenario requires.
-- Run the listed /spec:refine prompt as a contracts@v1 change.
+- Run the listed /spec:refine prompt as a contracts@1.0.0 change.
 - Run /spec:build for the generated change.
 - Check that the expected change-local contracts/**/*.yaml files exist.
 - Check verifier output for failures or manual-review warnings.

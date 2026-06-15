@@ -32,7 +32,7 @@ Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`
 ```yaml
 # yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
 name: typescript
-version: 1
+version: "1.0.0"
 axis: source
 execution: agent
 description: TypeScript / JavaScript legacy-code source adapter.
@@ -48,7 +48,7 @@ tools:
 | Field | Required | Meaning |
 | ----- | -------- | ------- |
 | `name` | yes | Kebab-case source identifier. Must match the directory name under `adapters/sources/` and be unique across both axes. |
-| `version` | yes | Integer ≥ 1. Increments when the adapter ships breaking changes. |
+| `version` | yes | Exact semver string (`x.y.z`, e.g. `"1.0.0"`). The adapter's identity; resolution keys on it. |
 | `axis` | yes | Must be `source`. |
 | `execution` | yes | Must be `agent` — source extraction is agent-only. The brief is run by an agent via the two-phase `prepare` / `finalize` handoff. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |

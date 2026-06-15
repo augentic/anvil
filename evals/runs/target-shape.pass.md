@@ -20,7 +20,7 @@
 
 ## Deviations
 
-- Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@v1` network fetch.
+- Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@1.0.0` network fetch.
 - Symlinked `intent` and `documentation` source adapters per setup prerequisites.
 - Two sandbox roots (`target-shape-intent`, `target-shape-docs`) instead of one directory — scenario allows sequential or parallel fresh projects.
 - Gate 1 stamped with `--actor agent`; plan lock held for the session via `specify plan lock -- <cmd>`.

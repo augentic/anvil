@@ -33,7 +33,7 @@ Prove the propose / edit / reject loop and the Gate-1 amendment flow: a docs pat
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Create a multi-feature brief at `docs/catalog-revamp.md` that clearly describes N (3+) separable behaviors. Add a cross-cutting conventions doc at `docs/conventions.md` (e.g. validation and error-shape rules that apply to every behavior in the brief) bound as a second source, so its survey synopsis marks it cross-cutting and propose can multi-home it.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Create a multi-feature brief at `docs/catalog-revamp.md` that clearly describes N (3+) separable behaviors. Add a cross-cutting conventions doc at `docs/conventions.md` (e.g. validation and error-shape rules that apply to every behavior in the brief) bound as a second source, so its survey synopsis marks it cross-cutting and propose can multi-home it.
 
 ## Invocation
 

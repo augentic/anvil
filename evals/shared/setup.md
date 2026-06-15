@@ -7,7 +7,7 @@ Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (
 ## Prerequisites
 
 - A `specify` binary on your PATH that is the build under test. The sweep needs a binary **built from the `specify-cli` source** — the same source `make lint` builds from the `cli` pin. `make install-cli` builds the resolved `cli` source and symlinks `.cli/bin/specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), so the bare `specify` commands below resolve to this build with no further setup — it warns if that directory is not on your PATH. An agent driving the sweep self-heals this: if `specify --version` does not resolve to the build under test, prepend the symlink dir to PATH for its own shells (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute `../specify-cli/target/release/specify` path. To build without `make`, run `cargo build --release --manifest-path ../specify-cli/Cargo.toml --bin specify` and symlink `../specify-cli/target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
-- The adapters a scenario names (`omnia@v1`, `vectis@v1`, `contracts@v1`) are resolvable. The first-party shorthand (`specify init omnia@v1`) fetches the published adapter from GitHub, so `init` needs network access. To run fully offline, pass a local adapter path instead — `specify init ./adapters/targets/omnia` (or a `file://` URI) against a checkout of this framework repo. There is no `SPECIFY_ROOT`-style environment fallback; resolution after `init` reads the project-local manifest cache that `init` populates.
+- The adapters a scenario names (`omnia@1.0.0`, `vectis@1.0.0`, `contracts@1.0.0`) are resolvable. The first-party shorthand (`specify init omnia@1.0.0`) fetches the published adapter from GitHub, so `init` needs network access. To run fully offline, pass a local adapter path instead — `specify init ./adapters/targets/omnia` (or a `file://` URI) against a checkout of this framework repo. There is no `SPECIFY_ROOT`-style environment fallback; resolution after `init` reads the project-local manifest cache that `init` populates.
 - Source adapters a scenario binds (`documentation`, `typescript`, …) are **not** vendored by `specify init` — it caches only the target adapter. Before the first `specify source survey`, vendor or symlink the adapter into the project at `adapters/sources/<name>/` (e.g. `mkdir -p adapters/sources && ln -s <framework-checkout>/adapters/sources/typescript adapters/sources/typescript`), then confirm with `specify source resolve <name>`.
 - Git is available for local branches and remotes. Scenarios that run `/spec:finalize` push the prepared `specify/<change>` branch to each routed project's `origin`, so every routed project needs a reachable `origin` remote before finalize. A **local bare repository** (`git init --bare`) reached via a `file://` URL satisfies this with no network or forge — see the cross-repo setup below.
 - No forge client (`gh`) is required. `/spec:finalize` pushes branches and then archives the plan; it never creates, observes, or merges pull requests. Opening the PR and merging it is an operator action done entirely outside Specify.
@@ -20,7 +20,7 @@ For scenarios that run against one initialized project (no registry):
 ```bash
 SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/evals/.sandbox}/<scenario>"
 rm -rf "$SANDBOX" && mkdir -p "$SANDBOX" && cd "$SANDBOX"
-specify init <adapter>     # e.g. omnia@v1
+specify init <adapter>     # e.g. omnia@1.0.0
 ```
 
 Then create the scenario's brief (see its **Setup** section) and run its **Invocation**.
@@ -33,9 +33,9 @@ Create the disposable project directories under the pinned sandbox. Every projec
 
 ```text
 evals/.sandbox/<scenario>/platform/    # registry-only workspace
-evals/.sandbox/<scenario>/backend/     # omnia@v1 project
-evals/.sandbox/<scenario>/mobile/      # vectis@v1 project
-evals/.sandbox/<scenario>/contracts/   # contracts@v1 project (contract-routing scenarios)
+evals/.sandbox/<scenario>/backend/     # omnia@1.0.0 project
+evals/.sandbox/<scenario>/mobile/      # vectis@1.0.0 project
+evals/.sandbox/<scenario>/contracts/   # contracts@1.0.0 project (contract-routing scenarios)
 ```
 
 Initialize them:
@@ -48,13 +48,13 @@ cd platform
 specify init --workspace
 
 cd ../backend
-specify init omnia@v1
+specify init omnia@1.0.0
 
 cd ../mobile
-specify init vectis@v1
+specify init vectis@1.0.0
 
 cd ../contracts
-specify init contracts@v1
+specify init contracts@1.0.0
 ```
 
 Give each routed project a local bare-repo `origin` so `specify workspace prepare` can resolve `origin/HEAD` and `/spec:finalize` has somewhere to push — no network, no forge. (Drop `contracts` from the list for scenarios that do not route a contract slice.)

@@ -41,7 +41,7 @@ Use the `contracts` adapter when:
 - **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the slice's `contracts/` directory.
 - **Standalone modification:** Modifying existing platform contracts independently of implementation slices.
 
-Use the Omnia or Vectis adapters when implementing code that conforms to existing contracts. Their `shape` briefs guide core synthesis to read baseline contracts as context, but implementation slices do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
+Use the Omnia or Vectis adapters when implementing code that conforms to existing contracts. Their `shape` briefs guide core synthesis to read baseline contracts as context, but implementation slices do not author contract deltas. Use a separate `contracts@1.0.0` change when an implementation needs a new or changed interface shape.
 
 ## Contracts adapter vs implementation adapters
 
@@ -50,7 +50,7 @@ The `contracts` adapter and the implementation adapters serve complementary purp
 | Concern | Contracts adapter | Omnia/Vectis adapters |
 |---------|----------------------|---------------------------|
 | Purpose | Author or import contract artifacts | Implement code that conforms to baseline contracts |
-| Plan entry | `adapter: contracts@v1` (no `project`) | Normal project-bound entry |
+| Plan entry | `adapter: contracts@1.0.0` (no `project`) | Normal project-bound entry |
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 

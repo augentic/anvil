@@ -251,7 +251,7 @@ An opt-in scenario looks like:
 id: contracts-describe
 owner: contracts
 kind: adapter
-adapter: contracts@v1
+adapter: contracts@1.0.0
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project

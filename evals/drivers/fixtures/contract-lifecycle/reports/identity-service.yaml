@@ -1,5 +1,5 @@
 version: 1
 slice: identity-service
-target: omnia@v1
+target: omnia@1.0.0
 status: success
 findings: []

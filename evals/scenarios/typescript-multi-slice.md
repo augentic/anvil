@@ -32,7 +32,7 @@ Prove `typescript` survey and the enumerate / repair loop under `/spec:plan`: a 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Bind a small legacy TypeScript service as a `typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Bind a small legacy TypeScript service as a `typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
 
 ## Invocation
 

@@ -9,7 +9,7 @@ rule_hints:
     description: Narrow the candidate set to adapter manifests before schema validation.
   - kind: schema
     value: adapter
-    description: Validate each adapter manifest against the embedded `adapter.schema.json` shape (kebab `name`, integer `version`, axis discriminator, `briefs` map, optional `tools` declarations, single-sentence `description`).
+    description: Validate each adapter manifest against the embedded `adapter.schema.json` shape (kebab `name`, semver-string `version`, axis discriminator, `briefs` map, optional `tools` declarations, single-sentence `description`).
 ---
 
 ## Rule
@@ -19,7 +19,7 @@ Every source and target adapter ships a manifest at `adapters/sources/<name>/ada
 `adapter.schema.json` pins the closed shape:
 
 - `name` — kebab-case identifier; MUST match the directory name under `sources/` or `targets/`.
-- `version` — integer `>= 1`; increments on breaking operation or contract changes.
+- `version` — exact semver string (`x.y.z`, with optional `-prerelease` / `+build`); the adapter's identity (RFC-47) that resolution keys on.
 - `axis` — `source` or `target`. The per-axis schemas (`source.schema.json` / `target.schema.json`) lock this to a single literal and close the legal `briefs.keys()` set; this shared shape is the common-denominator validation that runs against every manifest before the per-axis schemas refine the result.
 - `description` — single-sentence human-readable summary; required.
 - `briefs` — map from operation name to a relative brief path; absolute paths and URIs are rejected.

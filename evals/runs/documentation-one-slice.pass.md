@@ -23,7 +23,7 @@ Probe transcript highlights: fresh sandbox recreated; `plan.reconcile.completed`
 
 ## Deviations
 
-- Offline init via local omnia adapter path instead of `omnia@v1` network fetch.
+- Offline init via local omnia adapter path instead of `omnia@1.0.0` network fetch.
 - Symlinked `adapters/sources/documentation` per setup prerequisites.
 - Build used `omnia-sdk = "0.33"` on crates.io; workspace `wasip3` pinned to `0.6` to match `omnia-wasi-http`.
 - Phase work driven by following `/spec:plan`, `/spec:refine`, `/spec:build`, and `/spec:merge` skill bodies via CLI verbs with the plan lock held via `specify plan lock -- <cmd>`.

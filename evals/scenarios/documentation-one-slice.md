@@ -32,7 +32,7 @@ Prove `documentation` survey correctness at the new entry point: a single bound 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Create a short single-feature brief at `docs/feature-doc.md` describing one self-contained behavior (e.g. a single validated endpoint).
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Create a short single-feature brief at `docs/feature-doc.md` describing one self-contained behavior (e.g. a single validated endpoint).
 
 ## Invocation
 

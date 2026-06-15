@@ -15,7 +15,7 @@ The Omnia target declares exactly three operations — `shape`, `build`, `merge`
 
 When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `typescript`) and reconciles claims into `spec.md` requirements with `Sources:` provenance lines. The same `shape` guidance applies whether the slice's evidence is pure intent, documentation, or code.
 
-The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@1.0.0` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
 ### build
 

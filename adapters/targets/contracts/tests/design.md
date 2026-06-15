@@ -2,7 +2,7 @@
 id: contracts-design
 owner: contracts
 kind: adapter
-adapter: contracts@v1
+adapter: contracts@1.0.0
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project
@@ -36,19 +36,19 @@ Pipeline note:
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts as
   context. New or changed interface shapes should be introduced through a
-  separate `contracts@v1` change before implementation depends on them.
+  separate `contracts@1.0.0` change before implementation depends on them.
 
 ## Intent
 
-Prove that the `contracts@v1` slice loop can author HTTP and JSON Schema
+Prove that the `contracts@1.0.0` slice loop can author HTTP and JSON Schema
 artifacts when the requirements live in a separate prose design document
 referenced by the `/spec:refine` prompt as `Source Material:`. The scenario
 exercises the source-document path of the prose authorship mode end-to-end.
 
 ## Workspace
 
-- **Adapter:** `contracts@v1`.
-- **Project shape:** a single project initialised with the `contracts@v1`
+- **Adapter:** `contracts@1.0.0`.
+- **Project shape:** a single project initialised with the `contracts@1.0.0`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable.
 - **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline.
@@ -148,7 +148,7 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
   `contracts/http/` or `contracts/schemas/`. The slice must not author
   implementation files (Omnia crates, Vectis Crux modules, etc.).
 - `implementation-shapes-authored-inline`: the slice must not pre-author
-  Omnia/Vectis interface shapes; only the `contracts@v1` artifacts above are
+  Omnia/Vectis interface shapes; only the `contracts@1.0.0` artifacts above are
   produced.
 
 ## Cleanup

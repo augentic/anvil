@@ -1,5 +1,5 @@
 version: 1
 slice: identity-contracts
-target: contracts@v1
+target: contracts@1.0.0
 status: success
 findings: []

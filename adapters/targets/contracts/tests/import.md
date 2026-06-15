@@ -2,7 +2,7 @@
 id: contracts-import
 owner: contracts
 kind: adapter
-adapter: contracts@v1
+adapter: contracts@1.0.0
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project
@@ -35,19 +35,19 @@ Pipeline note:
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts as
   context. Imported interface shapes should be introduced through a separate
-  `contracts@v1` change before implementation depends on them.
+  `contracts@1.0.0` change before implementation depends on them.
 
 ## Intent
 
-Prove that the `contracts@v1` slice loop can normalise an externally supplied
+Prove that the `contracts@1.0.0` slice loop can normalise an externally supplied
 OpenAPI document: it preserves the source endpoint behavior, upgrades the
 document to OpenAPI 3.1, decomposes inline schemas into `contracts/schemas/`,
 and runs the verifier on the resulting artifacts.
 
 ## Workspace
 
-- **Adapter:** `contracts@v1`.
-- **Project shape:** a single project initialised with the `contracts@v1`
+- **Adapter:** `contracts@1.0.0`.
+- **Project shape:** a single project initialised with the `contracts@1.0.0`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable.
 - **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline.

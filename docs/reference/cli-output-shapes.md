@@ -31,7 +31,7 @@ Scaffolds an empty plan and emits its first entry.
     "project": null,
     "sources": [],
     "status": "pending",
-    "target": "contracts@v1"
+    "target": "contracts@1.0.0"
   },
   "plan": {
     "name": "demo",
@@ -87,8 +87,8 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
   "version": 1,
   "kind": "request",
   "projects": [
-    { "name": "identity-contracts", "target": "contracts@v1", "description": "Versioned API contracts crate for the identity domain." },
-    { "name": "identity-service", "target": "omnia@v1", "description": "Omnia identity service implementing auth and password flows." }
+    { "name": "identity-contracts", "target": "contracts@1.0.0", "description": "Versioned API contracts crate for the identity domain." },
+    { "name": "identity-service", "target": "omnia@1.0.0", "description": "Omnia identity service implementing auth and password flows." }
   ],
   "leads": [
     { "source": "docs", "lead": "identity-api", "synopsis": "Identity API contract for authentication and account access." },
@@ -318,7 +318,7 @@ Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** 
 ```json
 {
   "slice": "identity-service",
-  "target": "omnia@v1",
+  "target": "omnia@1.0.0",
   "execution": "agent",
   "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
   "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
@@ -332,7 +332,7 @@ Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** 
 ```json
 {
   "slice": "identity-service",
-  "target": "omnia@v1",
+  "target": "omnia@1.0.0",
   "status": "success",
   "findings": 0
 }

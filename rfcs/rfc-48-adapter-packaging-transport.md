@@ -4,44 +4,54 @@
 
 ## Abstract
 
-An adapter is published, fetched, verified, and cached as an **immutable registry artifact** over the same wasm-pkg / OCI plumbing first-party WASI tools already use. A single package carries both the adapter's **prose** (`adapter.yaml`, briefs, references) and its **wasm** (declared tools), so `omnia@1.0.0` is one pull, not a git sparse checkout plus N separate tool fetches. Identity ([RFC-47](rfc-47-adapter-identity.md)) is a semver; this RFC binds that semver to an immutable, content-addressed locator and proves it on read with the **registry's own content digest** rather than a bespoke downstream Merkle. Because the registry already gives immutability and content-addressing, the shared cache is an ordinary download-once-by-identity store.
+An adapter is published, fetched, verified, and cached as an **immutable registry artifact**, over the same wasm-pkg / OCI plumbing first-party WASI tools already use.
+
+One package carries both the adapter's **prose** (`adapter.yaml`, briefs, references) and its **wasm** (declared tools). So `omnia@1.0.0` is one pull — not a git sparse checkout plus N separate tool fetches.
+
+Identity ([RFC-47](rfc-47-adapter-identity.md)) is a semver. This RFC binds that semver to an immutable, content-addressed locator and proves it on read with the **registry's own content digest**, not a bespoke downstream Merkle. Because the registry already gives immutability and content-addressing, the shared cache is an ordinary download-once-by-identity store.
 
 ## Motivation
 
 [RFC-47](rfc-47-adapter-identity.md) fixes what an adapter is *named*. This RFC fixes how the bytes behind that name travel and how they are *proven*. Three facts make the registry the natural transport:
 
-- **We already run the loop.** The `wasi-tools` job in `release.yaml` builds `wasm32-wasip2` components and publishes `specify:contract@${VERSION}` / `specify:vectis@${VERSION}` to `augentic.io` (GHCR-backed) via `wkg`; `crates/tool/src/{package,resolver}.rs` resolve them through layered wasm-pkg config (`.specify/wasm-pkg.toml` → `WKG_CONFIG` → embedded `specify -> augentic.io` fallback), stream the bytes, hash with `specify_schema::digest::Hasher`, sha256-verify, and atomically install. Adapter distribution is the same loop with a tree payload instead of one blob.
+- **We already run the loop.** The `wasi-tools` job in `release.yaml` publishes `wasm32-wasip2` components to the `augentic.io` (GHCR-backed) registry via `wkg`. `crates/tool/src/{package,resolver}.rs` fetch them through layered wasm-pkg config, then stream, sha256-verify (`specify_schema::digest::Hasher`), and atomically install. Adapter distribution is the same loop with a tree payload instead of one blob.
 - **Adapters are trees, not single blobs.** The tool fetch path installs exactly one `module.wasm`; an adapter is a directory of prose plus optional wasm (see [Background](#background)). The gap this RFC closes is *one blob → a packed tree*.
-- **The registry gives immutability and a digest for free.** Distribution today is a git sparse checkout from `github.com/augentic/specify/adapters/...@ref` (`init/git.rs`), copied into the per-project manifest cache by `init/cache.rs`. A git ref is a *moving* locator; proving immutability against it needs a bespoke publish-time Merkle plus a moved-tag backstop. An OCI content digest *is* immutable identity, so that machinery collapses to verifying the registry descriptor.
+- **The registry gives immutability and a digest for free.** Distribution today is a git sparse checkout (`init/git.rs`) copied into the per-project manifest cache (`init/cache.rs`). A git ref is a *moving* locator: proving immutability against it needs a bespoke publish-time Merkle plus a moved-tag backstop. An OCI content digest *is* immutable identity, so that machinery collapses to verifying the registry descriptor.
 
 ## Background
 
 ### What an adapter is, and isn't
 
-A WASI tool is one wasm component — a single blob with a single content digest, which is exactly why the existing fetch path (`crates/tool/src/package.rs`) installs one `module.wasm` and is done. An adapter is not that shape. It is a **directory tree**:
+A WASI tool is one wasm component — a single blob with a single content digest, which is why the existing fetch path (`crates/tool/src/package.rs`) installs one `module.wasm` and is done. An adapter is a **directory tree**:
 
 - `adapter.yaml` — the prose manifest the loader validates.
 - `briefs/*.md` — prose the *agent* reads and acts against; never run as code.
 - `references/**` — supporting prose plus the vendored `references/spec-runtime/` bundle.
-- optionally a `tools.yaml` sidecar that *declares* wasm tools, each currently fetched separately from the registry.
+- optionally a `tools.yaml` sidecar that *declares* wasm tools, each currently fetched separately.
 
-The loader (`SourceAdapter::resolve` / `TargetAdapter::resolve`) probes a *directory*, and distribution materialises that directory today by git sparse checkout (`init/git.rs`) into the per-project manifest cache (`init/cache.rs`). So the packaging problem is precisely *one blob → a tree of prose plus (optionally) wasm*, and the prose dominates: most of an adapter is markdown a human and an agent read.
+The loader (`SourceAdapter::resolve` / `TargetAdapter::resolve`) probes a *directory*. So the packaging problem is precisely *one blob → a tree of prose plus (optionally) wasm*, and the prose dominates.
 
-That forces the framing point this RFC keeps returning to: **distribution is not execution.** Shipping an adapter as a registry artifact changes how its bytes travel and how its identity is proven — it does not turn briefs into executable wasm. Source adapters stay `execution: agent` (enforced by `source.schema.json`), and all eight first-party manifests remain agent-driven. "All adapters become wasi artifacts" is true only in the *distribution* sense — they ride the same registry, auth, and digest plumbing as tools — and false in the *execution* sense: there is no run-the-adapter-as-wasm step, and adding one (option C below) buys nothing at runtime. It also means packaging cannot *hide* the prose: the agent reads it as cleartext at point of use, so IP protection is an access-control and licensing concern, not a packaging one (see [Security / IP considerations](#security--ip-considerations)).
+**Distribution is not execution.** Shipping an adapter as a registry artifact changes how its bytes travel and how identity is proven. It does not turn briefs into executable wasm: source adapters stay `execution: agent` (enforced by `source.schema.json`), and there is no run-the-adapter-as-wasm step.
+
+Packaging also cannot *hide* the prose — the agent reads it as cleartext at point of use. IP protection is therefore an access-control and licensing concern, not a packaging one (see [Security / IP considerations](#security--ip-considerations)).
 
 ### Three ways to put a tree in the registry
 
-The registry stores content-addressed blobs and (via wasm-pkg) wasm components; an adapter is neither the single blob the tool path expects nor a component. Three shapes close that gap, in rising order of how literally the adapter "becomes wasm":
+The registry stores content-addressed blobs and (via wasm-pkg) wasm components; an adapter is neither. Three shapes close that gap, in rising order of how literally the adapter "becomes wasm":
 
-- **(A) Packed-tree blob.** Pack the whole tree (`adapter.tar.zst`, sidecar wasm included) and stream it through the existing acquire-bytes path, then unpack. Greatest reuse — the stream / hash / size-cap / tempfile machinery in `package.rs` is untouched; only "persist one `module.wasm`" becomes "persist and unpack one tarball." Hinges on whether `wasm-pkg-client` will carry an opaque, non-component blob (the [Prerequisite spike](#prerequisite-spike)).
-- **(B) OCI artifact with layers.** Push the prose tree as one OCI layer and each wasm tool as additional layers, under the same `augentic.io` namespace, fetched via an OCI client (`oci-client` / `oci-distribution`). The most natural fit for "prose + wasm in one package" and the registry's native model, at the cost of a fetch path parallel to the wasm-pkg component path. The fallback if (A) is infeasible.
-- **(C) Wrap-as-component.** Compile a thin wasm component that embeds the tree as data and self-extracts on the consumer side. The only shape under which an adapter is *literally* a wasm artifact — and the heaviest: prose gains a build step, and the component is an elaborate self-extracting archive that does nothing at runtime, since execution stays agent-only.
+- **(A) Packed-tree blob.** Pack the whole tree (`adapter.tar.zst`, sidecar wasm included), stream it through the existing acquire-bytes path, then unpack. Greatest reuse: only "persist one `module.wasm`" becomes "persist and unpack one tarball." Hinges on whether `wasm-pkg-client` will carry an opaque, non-component blob (the [Prerequisite spike](#prerequisite-spike)).
+- **(B) OCI artifact with layers.** Push the prose tree as one OCI layer and each wasm tool as additional layers, fetched via an OCI client (`oci-client` / `oci-distribution`). The registry's native model for "prose + wasm in one package," at the cost of a fetch path parallel to the wasm-pkg one. The fallback if (A) is infeasible.
+- **(C) Wrap-as-component.** Compile a thin wasm component that embeds the tree as data and self-extracts on the consumer side. The only *literal* wasm artifact, and the heaviest: prose gains a build step for an elaborate self-extracting archive that does nothing at runtime.
 
-All three reuse the asset that already exists — the registry, its auth, namespace routing, and content digests — and none requires prose to stop being prose. The choice is purely *how the tree is wrapped*, which is why it reduces to the single spike question and is recorded normatively as D1.
+All three reuse what already exists — the registry, its auth, namespace routing, and content digests — and none requires prose to stop being prose. The choice is purely *how the tree is wrapped*, which is why it reduces to the single spike question and is recorded as D1.
 
 ## Prerequisite spike
 
-One library question sizes the whole effort and picks D1's packaging form: **can `wasm-pkg-client` push and pull an opaque, non-component blob (a packed tree), or must adapter transport use an OCI client (`oci-client` / `oci-distribution`) directly against the same registry?** wasm-pkg is component-oriented; if it rejects a non-component media type, adapter fetch becomes a parallel OCI path rather than a near-verbatim reuse of `crates/tool/src/package.rs`. Resolve this before authoring D1's mechanism — it decides "reuse the tool fetch" versus "add an OCI fetch path."
+One library question sizes the whole effort and picks D1's packaging form:
+
+> **Can `wasm-pkg-client` push and pull an opaque, non-component blob (a packed tree)? Or must adapter transport use an OCI client (`oci-client` / `oci-distribution`) directly against the same registry?**
+
+wasm-pkg is component-oriented. If it rejects a non-component media type, adapter fetch becomes a parallel OCI path (B) rather than a near-verbatim reuse of `crates/tool/src/package.rs` (A). Resolve this before authoring D1's mechanism.
 
 ## Principles
 
@@ -55,10 +65,10 @@ One library question sizes the whole effort and picks D1's packaging form: **can
 
 The prose *is* the IP — the briefs encode the methodology. The packaging layer cannot protect it, and this RFC says so explicitly so no later change reaches for obfuscation:
 
-- **Prose is plaintext at the consumer at point of use.** The agent reads briefs directly from the per-project manifest cache (or the prepare-phase `$SCRATCH_DIR` lane); the bytes are in the clear on a machine the publisher does not control at the moment the model consumes them. No packaging shape changes this — tarball (A) untars, OCI layers (B) are pullable, and wasm-wrapped bytes (C) are `strings`-able; any "expand at point of use" step must still hand the model cleartext. Client-side obfuscation is a speed bump, not protection.
-- **Access control is the real lever.** Whether the registry namespace is public or authenticated (D8) gates *who* obtains the bytes — far stronger than obfuscating bytes handed out freely, and a net improvement over today's public git checkout regardless of which packaging shape wins.
-- **Licensing carries the rest.** Copyright and registry terms govern redistribution; reverse-engineering markdown is not the risk, redistribution is.
-- **Sensitive logic belongs in the bundled wasm, not the prose.** Genuinely proprietary deterministic logic compiled into a declared tool (bundled by D3) is meaningfully better protected than markdown — compiled, not plaintext — while the briefs stay prose. That is the right home for IP-sensitive computation.
+- **Prose is plaintext at the consumer at point of use.** No packaging shape changes this — tarball (A) untars, OCI layers (B) are pullable, wasm-wrapped bytes (C) are `strings`-able, and any "expand at point of use" step must still hand the model cleartext. Client-side obfuscation is a speed bump, not protection.
+- **Access control is the real lever.** Whether the registry namespace is public or authenticated (D8) gates *who* obtains the bytes — stronger than obfuscating freely-handed-out bytes, and a net improvement over today's public git checkout.
+- **Licensing carries the rest.** Copyright and registry terms govern redistribution; the risk is redistribution, not reverse-engineering markdown.
+- **Sensitive logic belongs in the bundled wasm, not the prose.** Proprietary deterministic logic compiled into a declared tool (bundled by D3) is better protected than plaintext markdown, while the briefs stay prose.
 
 Per-licensee **watermarking** (attribution, not prevention) and **server-side prose expansion** (the only true-prevention path, at the cost of the self-contained / offline property) are recorded under [Non-Goals](#non-goals).
 
@@ -72,7 +82,7 @@ Per-licensee **watermarking** (attribution, not prevention) and **server-side pr
 | **D2 Immutable fetch locator** | Fetch targets an **immutable, content-addressed locator** (OCI `@sha256:` digest, or an immutable tag whose digest is recorded), never a branch. | `init/adapter_uri.rs` gains a package-ref form (`specify:omnia@1.0.0`) alongside the local-path / GitHub-URL / shorthand forms, and does no branch-ref defaulting. The recorded digest (D4) is the backstop: a moved tag is caught as `adapter-digest-mismatch`. |
 | **D3 Self-contained artifact** | Spec-runtime, and the wasm of declared tools, are bundled **at publish**. Downstream resolution does no vendoring and dereferences no in-tree symlinks; the installed tree *is* the published tree. | `vendor_spec_runtime` (`init/cache.rs`) runs at the publish step, not in the consumer's install. The `tools.yaml` declaration's `module.wasm` ships inside the artifact rather than being separately resolved (see [Bundled tools (D3)](#bundled-tools-d3)). |
 | **D4 Identity via registry content digest, verified on read** | The artifact's identity is the registry content digest (`sha256:`). On install the consumer records it; on every read it re-hashes (or re-checks the descriptor) and refuses a mismatch. Re-publishing an existing `(name, version)` with different bytes is rejected **at publish**; a downstream mismatch is corruption, not routine. | Verification reuses the streaming `specify_schema::digest::Hasher` already in `package.rs`. The bespoke publish-time tree Merkle (the rejected stopgap below) is **not** built — the registry descriptor is the trust anchor. `ManifestMeta` (`init/cache.rs`) records the digest. |
-| **D5 Trivial global store + projection** | A global store at `<adapters-root>/<name>@<version>/`, resolved `$SPECIFY_ADAPTER_CACHE` → `$XDG_CACHE_HOME/specify/adapters` → `$HOME/.cache/specify/adapters` → `<temp>/specify/adapters` — the `mirror_dir` precedent. Install = pull → temp → verify digest → atomic rename → `chmod` read-only. The per-project manifest cache is a **directory symlink** into the read-only entry, degrading to a recursive **copy** when symlink creation fails. | New resolver in `crates/schema/src/cache.rs` (sibling to `mirror_dir` / `project_cache_dir`); install path in `init/cache.rs` link-or-copies from the store; `locate_axis` and the `AdapterLocation::{Cached,Local}` labels are unchanged. See [Store layout and projection (D5)](#store-layout-and-projection-d5). |
+| **D5 Trivial global store + projection** | A global store at `<adapters-root>/<name>@<version>/`, resolved `$SPECIFY_ADAPTER_CACHE` → `$XDG_CACHE_HOME/specify/adapters` → `$HOME/.cache/specify/adapters` → `<temp>/specify/adapters` — the `mirror_dir` precedent. Install = pull → temp → verify digest → atomic rename → `chmod` read-only. The per-project manifest cache is a **directory symlink** into the read-only entry, degrading to a recursive **copy** when symlink creation fails. | New resolver in `crates/schema/src/cache.rs`; install path in `init/cache.rs` link-or-copies from the store; `locate_axis` and the `AdapterLocation::{Cached,Local}` labels are unchanged. See [Store layout and projection (D5)](#store-layout-and-projection-d5). |
 | **D6 Publish tooling** | A publish step mirrors the `wasi-tools` release job for adapters: pack the tree (+ bundled wasm), push `specify:<name>@${VERSION}` to the registry, pull back and verify. | New job in `.github/workflows/release.yaml` (parent repo), reusing the `wkg` / GHCR / `specify -> augentic.io` namespace plumbing the tool job already exercises. |
 | **D7 Repo split** | Fetch/unpack, store resolver, digest verification, and the package-ref parser live in `augentic/specify-cli`; packing, publish tooling, and brief/doc references in `augentic/specify`. | Per [AGENTS.md §"Note to the implementing agent"](https://github.com/augentic/specify-cli/blob/main/AGENTS.md), touching the adapter loader / cache scope — including the `resolve` signature shared with [RFC-47](rfc-47-adapter-identity.md) — requires the cross-repo `rg` sweep in the same PR. |
 | **D8 Registry visibility and pull auth** | First-party adapter artifacts publish to an **authenticated** registry namespace; pulling requires credentials, gating *who* obtains the bytes. Visibility is the IP-bearing knob — packaging cannot obfuscate prose (see [Security / IP considerations](#security--ip-considerations)), so access control is the lever. A public namespace is a deliberate per-adapter opt-out, not the default. | Pull-side auth reuses the wasm-pkg / GHCR credential path the publish step (D6) already exercises — layered config in `crates/tool/src/package.rs::load_config` and `.specify/wasm-pkg.toml`. No new transport: the registry's native auth gates the pull. |
@@ -87,7 +97,9 @@ The [design space](#three-ways-to-put-a-tree-in-the-registry) is three shapes (A
 
 ### Bundled tools (D3)
 
-An adapter that declares wasm tools via `tools.yaml` ships their `module.wasm` *inside* the artifact, so one pull is fully self-contained and one digest covers prose + wasm — consistent with the self-contained principle. The alternative (prose-only artifact; tools resolved separately as today) lets a tool bump avoid republishing the whole adapter but reintroduces N fetches and N digests per adapter. v1 bundles; a split-tool-channel is a deferred optimisation if tool churn outpaces adapter churn. The bundled wasm is also the right home for IP-sensitive logic: compiled tool bytes are better protected than plaintext prose (see [Security / IP considerations](#security--ip-considerations)).
+An adapter that declares wasm tools via `tools.yaml` ships their `module.wasm` *inside* the artifact, so one pull is fully self-contained and one digest covers prose + wasm.
+
+The alternative — a prose-only artifact, tools resolved separately as today — lets a tool bump avoid republishing the whole adapter, but reintroduces N fetches and N digests per adapter. v1 bundles; a split-tool-channel is a deferred optimisation if tool churn outpaces adapter churn.
 
 ### Store layout and projection (D5)
 
@@ -101,9 +113,9 @@ $XDG_CACHE_HOME/specify/adapters/
   documentation@1.0.0/
 ```
 
-- **The store is CLI-write-only.** Pristine artifact bytes are installed by the CLI fetch path; the agent interacts only with the per-project manifest cache, a read-only projection.
-- **Install is pull → temp → verify digest → atomic rename → `chmod` read-only.** The temp dir lives under the store root so the rename is atomic on one filesystem. Because identity is immutable upstream, two concurrent installs of the same identity are idempotent: one wins the rename, the other verifies the matching digest and discards its temp. A flock around the rename (reusing the `File::try_lock` family from `plan_lock.rs`, and the staged-install precedent in `crates/tool/src/cache/fetch.rs`) is sufficient and unremarkable.
-- **The per-project cache (`<project-cache>/manifests/{sources,targets}/<name>/`) is a directory symlink** into the read-only store entry, degrading to a recursive copy when symlink creation fails (Windows privilege, cross-device). `locate_axis` still finds a real directory at the same path; the `AdapterLocation::{Cached,Local}` labels are unchanged.
+- **The store is CLI-write-only.** The CLI fetch path installs pristine bytes; the agent interacts only with the per-project manifest cache, a read-only projection.
+- **Install is pull → temp → verify digest → atomic rename → `chmod` read-only.** The temp dir lives under the store root so the rename is atomic on one filesystem. Because identity is immutable upstream, two concurrent installs are idempotent: one wins the rename, the other verifies the matching digest and discards its temp. A flock around the rename suffices — reusing the `File::try_lock` family from `plan_lock.rs` and the staged-install precedent in `crates/tool/src/cache/fetch.rs`.
+- **The per-project cache (`<project-cache>/manifests/{sources,targets}/<name>/`) is a directory symlink** into the read-only store entry. It degrades to a recursive copy when symlink creation fails (Windows privilege, cross-device). `locate_axis` still finds a real directory; the `AdapterLocation::{Cached,Local}` labels are unchanged.
 
 ### CLI surface
 
@@ -149,13 +161,13 @@ D5 must follow D2–D4 (sharing is only correct once identity is immutable and t
 
 ## Alternatives considered
 
-- **Keep git transport; re-derive a canonical tree digest downstream and guard it with a bespoke atomic-publish protocol.** Rejected as steady state — it content-addresses the *symptom*. The downstream Merkle identity, the digest-after-vendoring dance, and the bespoke publish protocol exist only because a git ref is a *moving* locator. An immutable registry digest (D2/D4) collapses the lot to a one-line verify. Acceptable only as a stopgap while no immutable distribution exists — and the registry already exists.
-- **Wrap each adapter as a wasm component (prose compiled in).** Rejected as default — adds a build step for prose and buys nothing at runtime, since execution stays agent-only. The packaging win is registry transport, not literal wasm execution. It also does not protect the prose as IP: embedded markdown is `strings`-able and must still reach the model as cleartext (see [Security / IP considerations](#security--ip-considerations)).
-- **Client-side prose expansion — thin briefs that expand from bundled wasm at point of use.** Rejected — proposed as a way to keep prose out of flat `.md` files, it protects nothing: the expander emits cleartext the agent (and any operator running the same tool) reads, while the embedded source stays `strings`-able, so it combines both weak postures. It also collides with the *"CLI never reads brief bodies"* contract and breaks the `specify lint framework` checkers that parse brief prose (`links-registry`, `prose`, `brief-schema-link-resolve`). The salvageable kernels — per-licensee watermarking and context-computed prose — are recorded under [Non-Goals](#non-goals).
-- **Prose-only artifact; resolve declared tools separately as today.** Deferred — bundling (D3) keeps one pull and one digest covering prose + wasm. Revisit only if tool churn meaningfully outpaces adapter churn.
+- **Keep git transport; re-derive a canonical tree digest downstream and guard it with a bespoke atomic-publish protocol.** Rejected — it content-addresses the *symptom*. The downstream Merkle, the digest-after-vendoring dance, and the bespoke publish protocol exist only because a git ref is a *moving* locator; an immutable registry digest (D2/D4) collapses the lot to a one-line verify.
+- **Wrap each adapter as a wasm component (prose compiled in).** Rejected — adds a build step for prose and buys nothing at runtime, since execution stays agent-only. It also does not protect the prose: embedded markdown is `strings`-able and must still reach the model as cleartext.
+- **Client-side prose expansion — thin briefs that expand from bundled wasm at point of use.** Rejected — it protects nothing (the expander emits cleartext, the embedded source stays `strings`-able), collides with the *"CLI never reads brief bodies"* contract, and breaks the `specify lint framework` checkers that parse brief prose (`links-registry`, `prose`, `brief-schema-link-resolve`). The salvageable kernels are recorded under [Non-Goals](#non-goals).
+- **Prose-only artifact; resolve declared tools separately as today.** Deferred — bundling (D3) keeps one pull and one digest. Revisit only if tool churn meaningfully outpaces adapter churn.
 - **Key the store by `(name, major)`.** Rejected — a major spans infinite commits; sharing it yields first-fetch-wins drift. The store keys on the full `(name, version)` ([RFC-47](rfc-47-adapter-identity.md) identity).
 - **A global resolution fallback by name.** Rejected — reintroduces the ambient mutable-namespace footgun [DECISIONS.md §"Resolution is project-local only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) deliberately removed. The store is storage, not a resolution fallback.
-- **Hardlink the per-project projection (D5).** Rejected as the default — hardlinks share inodes, so an accidental write through the per-project cache would mutate the shared store, and they break across filesystems. A read-only store entry plus a symlink (copy fallback) keeps the store immutable and the failure mode loud.
+- **Hardlink the per-project projection (D5).** Rejected — shared inodes mean an accidental write through the per-project cache would mutate the store, and they break across filesystems. A read-only store entry plus a symlink (copy fallback) keeps the store immutable and the failure mode loud.
 
 ## Non-Goals
 

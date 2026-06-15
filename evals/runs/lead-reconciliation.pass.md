@@ -26,7 +26,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending` at Ga
 
 ## Deviations
 
-- Offline init via `specify init $FRAMEWORK/adapters/targets/omnia` (local adapter path) instead of `omnia@v1` network fetch.
+- Offline init via `specify init $FRAMEWORK/adapters/targets/omnia` (local adapter path) instead of `omnia@1.0.0` network fetch.
 - Symlinked `adapters/sources/documentation` and `adapters/sources/typescript` from the framework checkout per setup prerequisites.
 - Docs binding uses only `password-reset.md` under `./docs` (copied from `evals/fixtures/sources/documentation/input/password-reset.md`); source key `product-notes`.
 - TypeScript binding copies `evals/fixtures/sources/typescript/source` to `./legacy-monolith` and adds `POST /auth/reset-password` handler at `src/auth/reset-password.ts` describing the same lockout/reset behaviour; survey lead `account-pwd-reset`.

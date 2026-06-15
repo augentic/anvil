@@ -105,7 +105,7 @@ _build_slice() {
   ( cd "$cdir" && cargo test ) > "$cwd/.specify/slices/$slice/.build-log" 2>&1 || trc=$?
   status="success"; [ "$trc" -eq 0 ] || status="failure"
   mkdir -p "$cwd/.specify/slices/$slice/build"
-  printf 'version: 1\nslice: %s\ntarget: omnia@v1\nstatus: %s\nfindings: []\n' \
+  printf 'version: 1\nslice: %s\ntarget: omnia@1.0.0\nstatus: %s\nfindings: []\n' \
     "$slice" "$status" > "$cwd/.specify/slices/$slice/build/report.yaml"
   [ "$trc" -eq 0 ] && try "$cwd" slice task mark "$slice" 1.2
   try "$cwd" slice build "$slice" --phase finalize --format json

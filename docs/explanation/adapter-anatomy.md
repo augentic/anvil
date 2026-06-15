@@ -36,7 +36,7 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 ```yaml
 # adapters/sources/<name>/adapter.yaml
 name: typescript
-version: 1
+version: "1.0.0"
 axis: source
 execution: agent
 briefs:
@@ -47,7 +47,7 @@ briefs:
 ```yaml
 # adapters/targets/<name>/adapter.yaml
 name: omnia
-version: 1
+version: "1.0.0"
 axis: target
 execution: agent
 briefs:

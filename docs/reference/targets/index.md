@@ -19,7 +19,7 @@ Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/target.schema.json
 name: omnia
-version: 1
+version: "1.0.0"
 axis: target
 execution: agent
 description: Omnia Rust WASM target adapter.
@@ -37,7 +37,7 @@ inputs:
 | Field         | Required | Meaning |
 | ------------- | -------- | ------- |
 | `name`        | yes      | Kebab-case target identifier. Must match the directory name under `adapters/targets/`. |
-| `version`     | yes      | Integer ≥ 1. Increments when the adapter ships breaking pipeline or contract changes. |
+| `version`     | yes      | Exact semver string (`x.y.z`, e.g. `"1.0.0"`). The adapter's identity; resolution keys on it and synthesized refs render `name@<semver>`. |
 | `axis`        | yes      | Must be `target`. |
 | `execution`   | yes      | Closed mode (`agent` \| `tool`). `agent` runs the brief via an agent; `tool` dispatches through a declared WASI tool. First-party targets currently declare `agent`. |
 | `description` | yes      | Single-sentence summary of the target's outcome domain. |

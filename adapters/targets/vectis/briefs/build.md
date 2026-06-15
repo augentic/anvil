@@ -134,7 +134,7 @@ When the algorithm resolves, write a schema-valid build report to `.specify/slic
 ```yaml
 version: 1
 slice: <slice-name>     # matches the build request's `slice`
-target: vectis@v1       # this adapter at its manifest version
+target: vectis@1.0.0       # this adapter at its manifest version
 status: success         # or: failure
 findings: []            # structured diagnostics; default []
 ui-surface:             # optional; this slice's UI-surface signal (see below)
