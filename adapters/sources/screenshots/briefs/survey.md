@@ -41,6 +41,7 @@ Skip images that contain no application content (orphan splash screens, full-scr
 
 - `lead`: kebab-case slug derived from the screen's vision-inferred title (visible app-bar title, prominent heading) or, when no title is legible, from the input filename stem with `-` substituted for non-kebab characters. Lowercase, strip punctuation, replace whitespace with `-`. Example: visible header "Task list" → `task-list`; filename `Settings Detail.png` → `settings-detail`. Re-surveying the same source replaces by `(source, lead)`, so stability matters more than prettiness.
 - `synopsis`: a content-bearing description of the screen — typically `<screen-title>: <one-sentence content summary>` lifted from visible cues (e.g. "Task list: today's open tasks for the signed-in user."). Name the screen's surface and its salient content so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line and keep it tight (~200 characters); it MAY run to a few lines when one is too thin. Do not invent content the screens do not show.
+- `topics` (optional): an inline list of kebab-case slugs naming the screen's domains, drawn from visible cues (e.g. `[tasks, list-view]`). Author them only when the screen clearly supports the classification; omit the bullet when unsure. They are extra grouping context for `propose` and the join key for the decision-contradiction warning — never a grouping the CLI computes.
 
 ## Output
 
@@ -51,9 +52,10 @@ Return one block per lead, in alphabetical `lead` order. The CLI appends them un
 
 - lead: task-list
 - synopsis: Task list: today's open tasks for the signed-in user.
+- topics: [tasks, list-view]
 ```
 
-Field order is fixed (`lead`, `synopsis`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job — see [From sources to slices](../references/spec-runtime/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
+Field order is fixed (`lead`, `synopsis`, then optional `topics`). Do not emit `source`; the CLI stamps it from the survey binding. Cross-source merging is `/spec:plan`'s `propose` sub-step, not this brief's job — see [From sources to slices](../references/spec-runtime/reconciliation.md#plan-time-leads-become-slices) for how leads reconcile into slices.
 
 ## Worked example
 
@@ -84,7 +86,7 @@ A full input / output fixture for this example lives at [`evals/fixtures/sources
 ## Determinism
 
 - Emit leads sorted alphabetically by `lead`.
-- Field order inside each block is fixed: `lead`, `synopsis`.
+- Field order inside each block is fixed: `lead`, `synopsis`, then optional `topics` (slugs ordered deterministically).
 - No timestamps, host paths, or other run-state in the output — re-running against unchanged inputs produces byte-identical blocks.
 - Triage of state variants into the same lead MUST be reproducible. When two images are equally plausible as the dominant variant of a screen, pick the one whose filename sorts first lexicographically.
 

@@ -24,7 +24,7 @@ Validation codes (all exit 2):
 | `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
 | `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
-| `plan-reconcile-partition` | Grouped leads do not achieve total coverage. |
+| `lead-coverage-orphan` | Grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
 | `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
 | `plan-reconcile-slice-name-collision` | Two slices resolve to the same plan slice name. |
@@ -32,5 +32,14 @@ Validation codes (all exit 2):
 | `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
 | `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
 | `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
+
+Advisory findings (non-blocking; `--from` still succeeds, exit 0):
+
+| Code | Meaning |
+|------|---------|
+| `lead-decision-topic-overlap` | A surveyed lead's `topics[]` overlaps an accepted decision's `topics[]` on the slice's bound project. Review nudge: confirm the slice aligns with that decision (or record a superseding one). Latent until both leads and decisions carry topics. |
+| `slice-divergence-unrecorded` | A slice flags `divergence: likely`/`accepted` but records no adequate `disagreements[]` (≥2 distinct source values per field). |
+| `slice-divergence-orphan-values` | A slice records `disagreements[]` without a `divergence` flag. |
+| `greenfield-seed-shadowed` | A bound project still declares a `registry.yaml` `greenfield_seed` after acquiring a baseline (`.specify/specs/` exists); the derived `surface[]` supersedes the seed — remove it. |
 
 Envelopes validate against `schemas/discovery/proposal.schema.json` (`kind: request` for `--dry-run`, `kind: response` for `--from`). Full CLI reference: [specify plan](https://specify.augentic.io/reference/cli/plan.html#specify-plan-propose).

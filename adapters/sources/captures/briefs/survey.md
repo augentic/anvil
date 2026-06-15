@@ -49,9 +49,10 @@ Emit one fenced block per identified handler, in the shape the CLI appends under
 
 - lead: <handler-id>
 - synopsis: <reconciliation-grade headline>
+- topics: [<optional-kebab-slugs>]
 ```
 
-Field order is fixed (`lead`, `synopsis`). `lead` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source`; the CLI stamps it from the survey binding. `synopsis` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json`.
+Field order is fixed (`lead`, `synopsis`, then optional `topics`). `lead` is kebab-case and matches the `<handler>/` directory name verbatim. Do not emit `source`; the CLI stamps it from the survey binding. `topics` (optional) is an inline list of kebab-case domain slugs drawn from the handler's surface; author them only when the captures clearly support the classification, omit the bullet otherwise. They are extra grouping context for `propose` and the join key for the decision-contradiction warning — never a grouping the CLI computes. `synopsis` names the surface (HTTP route + method, queue + job name, cron expression, WebSocket topic) and the captured-scenario count — content-bearing enough that a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. Quote concrete counts the captures themselves verify; do not infer from `INSTRUCTIONS.md` prose alone. After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json`.
 
 Emit blocks sorted alphabetically by `lead` so re-survey produces byte-stable diffs.
 
@@ -107,7 +108,7 @@ Expected output (alphabetically by `lead`; the CLI stamps `source: runtime`):
 ## Determinism
 
 - Emit leads sorted alphabetically by `lead`.
-- Field order inside each block is fixed: `lead`, `synopsis`.
+- Field order inside each block is fixed: `lead`, `synopsis`, then optional `topics` (slugs ordered deterministically).
 - Quote concrete scenario counts and surface identifiers the captures verify; do not embed timestamps, host paths, or other run-state.
 - Re-running against an unchanged capture tree produces byte-identical blocks.
 

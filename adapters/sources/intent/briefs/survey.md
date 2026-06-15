@@ -23,6 +23,7 @@ Rules:
 - `lead` MUST equal `slice-name`. The bare-string `Slice.sources` shorthand `[<source>]` in `plan.yaml` only normalises cleanly when the lead matches the slice name.
 - Do not emit `source`. The CLI stamps each lead's `source` from the survey binding (the key the source was registered under, typically `intent`); attribution is CLI-owned.
 - `synopsis` MUST be the operator's intent string, verbatim. Collapse internal whitespace to single spaces; do not paraphrase, truncate, or annotate. A multi-line intent MAY stay multi-line when folding to one line would lose discriminating content the operator wrote.
+- Do not emit `topics`. The optional per-lead `topics` field is for sources that read and classify material; `intent` infers nothing, so it always omits the bullet.
 
 ## Worked example
 

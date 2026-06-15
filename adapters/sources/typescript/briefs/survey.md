@@ -20,11 +20,14 @@ Emit one fenced block per identified unit, in the shape the CLI appends under `#
 
 - lead: <lead>
 - synopsis: <reconciliation-grade headline>
+- topics: [<optional-kebab-slugs>]
 ```
 
-`lead` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source, lead)`). After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead`, scalar `source`, content-bearing `synopsis`). One block per lead.
+`lead` is kebab-case, derived from the dominant surface identifier or handler path (e.g. `POST /users` → `user-registration`, `email.send` queue → `email-send`). It is the stable handle re-survey writes against (keyed by `(source, lead)`). After the CLI stamps `source`, the block validates against `schemas/discovery/lead.schema.json` (kebab-case `lead`, scalar `source`, content-bearing `synopsis`, optional kebab-case `topics`). One block per lead.
 
 `synopsis` SHOULD name the handler's surface (route + method, queue + job, topic) and its salient behaviour/constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. Prefer one line; it MAY run to a few lines when one is too thin. It stays plan-time headline material — slice-time behaviour belongs in `typescript.extract` claims, not here.
+
+`topics` (optional) is an inline list of kebab-case domain slugs drawn from the surface (e.g. `[identity, http-route]`); author them only when the code clearly supports the classification, omit the bullet otherwise. They are extra grouping context for `propose` and the join key for the decision-contradiction warning — never a grouping the CLI computes.
 
 ## Internal staging
 

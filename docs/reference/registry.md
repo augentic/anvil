@@ -32,6 +32,8 @@ projects:
   - name: traffic
     url: git@github.com:org/traffic.git
     adapter: omnia@v1        # optional greenfield scaffold seed only
+    greenfield_seed:         # optional plan-time routing seed only
+      domains: [ingest, alerting]
   - name: command-centre
     url: git@github.com:org/command-centre.git
 ```
@@ -44,6 +46,7 @@ projects:
 | `projects[].url`            | yes                          | Clone target — `.`, a repo-relative path (`../peer`, `./foo`), `git@host:path`, or an `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://` remote. |
 | `projects[].adapter`        | optional                     | Greenfield scaffold seed only — the adapter written into a brand-new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology; the project's own `project.yaml` is authoritative once it exists. |
 | `projects[].contracts`      | optional                     | Per-project contract role declarations (`produces`, `consumes`). |
+| `projects[].greenfield_seed.domains` | optional            | Greenfield routing seed only (RFC-46 D6) — kebab-case domain slugs that project into the project's plan-time `surface[]` as domains with empty requirements *while the project has no baseline*. The greenfield analog of the derived `surface[]` domain list, it lets a fresh project route leads before `.specify/specs/` exists. Ignored once a real baseline exists (the derived surface supersedes it); a still-declared seed then surfaces the advisory `greenfield-seed-shadowed` finding at `specify plan propose`. Carries domain slugs only — never adapter or description material. |
 
 A project's `description` is **not** a registry field — it is authored in the project's own `.specify/project.yaml`. Routing identity (`surface[]` / `recent[]`) is derived from that project's baseline and projected into `.specify/topology.lock`; the hand-authored `capabilities` / `keywords` facets are removed.
 

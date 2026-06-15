@@ -25,7 +25,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 - Used offline init with local adapter paths per the documented offline fallback in `shared/setup.md`.
 - Pre-scaffolded minimal `shared/src/app.rs`, `iOS/App.swift`, and `Android/.../App.kt` in `mobile` before propose to avoid the `--reconcile-platforms` `app-foundation` bootstrap slice (two-slice plan: `auth-rotate`, `oauth-mobile`).
-- Survey limited to `backend-implementation` and `mobile-implementation` leads (no contract slice) to satisfy `plan-reconcile-partition` on the two-slice plan.
+- Survey limited to `backend-implementation` and `mobile-implementation` leads (no contract slice) to satisfy `lead-coverage-orphan` on the two-slice plan.
 - Gate 1 stamped with `--actor agent`; build failure injected via `session_cookie_secure_flag_set` test in `crates/auth_rotate` (fixed before workspace `/spec:build` breakout).
 - Execute/breakout driven by `evals/drivers/workspace.py` following `/spec:execute` and breakout routing from the workspace root; breakout triage committed parked slot dirtiness before retrying build.
 
