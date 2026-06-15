@@ -37,7 +37,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Invocation
 
-1. **Plan** — `/spec:plan catalog-revamp source brief=docs/catalog-revamp.md source conventions=docs/conventions.md`; confirm the propose step yields multiple slices and stops at `pending`.
+1. **Plan** — `/spec:plan catalog-revamp source storefront=docs/catalog-revamp.md source conventions=docs/conventions.md`; confirm the propose step yields multiple slices and stops at `pending`.
 2. **Review + amend** — inspect `plan.yaml`; use `specify plan amend` to edit or reject at least one proposed slice; re-validate.
 3. Stop at Gate 1 (do not stamp `approved`).
 

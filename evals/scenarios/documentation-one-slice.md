@@ -36,7 +36,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Invocation
 
-1. **Plan** — `/spec:plan feature-doc source brief=docs/feature-doc.md`; confirm it produces one slice and stops at `pending`.
+1. **Plan** — `/spec:plan feature-doc source feature=docs/feature-doc.md`; confirm it produces one slice and stops at `pending`.
 2. **Stamp Gate 1** — `specify plan transition feature-doc approved`.
 3. **Execute** — `/spec:execute`; confirm `all-done`.
 

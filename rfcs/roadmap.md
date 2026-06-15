@@ -187,7 +187,6 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 
 ## Open Questions
 
-- Which reconciliation-polish surfaces land first — the coverage check, lead-side `topics[]`, source-authored `affinity`, or synthesis `advisory-context`? ([RFC-46](future/rfc-46-reconciliation-polish.md) proposes the judgment-free coverage check first, then `topics[]` + divergence-consistency, then `affinity` + the decision-contradiction warning, with `advisory-context` / greenfield seed last — and rejects CLI-computed `clusters[]` outright.)
 - Which rules should ship as deterministic scanners next, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
