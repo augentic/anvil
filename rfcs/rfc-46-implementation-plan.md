@@ -22,6 +22,16 @@
 
 When a step finishes: mark it ✅, set **Last completed**, advance **Active step**, append any discoveries to [Discovery log](#discovery-log), and fold material changes back into the step list (do not leave silent drift).
 
+**Step completion gate (mandatory — do not mark ✅ until all pass):**
+
+| Repo touched | Required before ✅ |
+|--------------|-------------------|
+| `specify-cli` | [`cargo make check`](#specify-cli-step-assurance) green (fmt, clippy, **full** `cargo nextest` workspace suite including `rust_quality`, test-docs) |
+| `specify` | `make lint` green when framework/docs changed |
+| Both | Run both rows when the step touches both repos |
+
+Step-specific test filters (e.g. `cargo test -p specify-vectis materialize`) are **additive smoke** — they do not substitute for the gate above. A step that only adds unit tests in a workspace crate still runs the full `specify-cli` gate when that repo is touched.
+
 ### Architectural correction (R46-S01/S02)
 
 Steps **R46-S01** and **R46-S02** landed on `specify-cli` `rfc-46` with the wrong integration model: `vectis_missing_platforms` in `specify-workflow` dispatches the vectis **WASM** component via `WasiRunner`. That couples plan-time `propose` to `cargo make vectis-wasm`, breaks reusable CI (bootstrap tests `assert!` the artifact; `rust-cache` does not share `target/vectis-wasi-tools/` across jobs), and duplicates logic that is already pure Rust filesystem code in `wasi-tools/vectis/src/verify.rs`.
@@ -128,21 +138,30 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S20 | Safe zone enforced by scaling master into central 66% of adaptive/legacy canvases (no separate warning). Background from `tint` → `tokens.yaml` `colors.<name>.light`, default `#FFFFFF`. Android `ExportLayout::artifacts` lists 13 paths (2 adaptive XML + background + 5 foreground PNGs + 5 legacy mipmaps). Adaptive XML reuses scaffold templates via `include_str!`. | No new steps. |
 | 2026-06-15 | R46-S21 | Pin skip was already wired via `active_platform_pin` (R46-S17); S21 adds `yaml_pins.rs` with `collect_auto_pins` / `apply_auto_pins` / atomic temp+rename write. Auto-write uses `ExportLayout::pin` (not per-artifact paths). Vectis carve-out cannot link `specify-model::atomic` — local std-only writer mirrors the same pattern. | No new steps. |
 | 2026-06-15 | R46-S22 | Bootstrap `app-icon` scope reuses §6.2 satisfaction (path A master on disk or path B pin) — not export presence; typical `design-system` bulk pass (rule c) materializes launcher exports before `app-foundation`. `platform_satisfied` stays in `bootstrap_app_icon`; `materialize_scope` inlines equivalent check to avoid private-module coupling. | No new steps; R46-S23 wires prepare hook. |
+| 2026-06-15 | R46-S22 | Step marked ✅ after filtered tests only; `rust_quality` `no_long_test_fn_names` failed on five `materialize_scope` test fns (>40 chars). | Added [step completion gate](#step-completion-gate-mandatory--do-not-mark--until-all-pass); per-step minimum is now `cargo make check`, not filtered subsets. Tests regrouped under `mod bulk/feature/bootstrap/effective_path`. |
 
 ### Specify-cli step assurance
 
-Every step with **Repo:** `specify-cli` must pass the checks below **in addition to** any step-specific tests, before marking the step ✅. Run from the `specify-cli` repo root. Phase assurance gates (R46-S05, S14, S26, S30) still require full `cargo make ci` as the merge bar; these are the per-step minimum that mirrors CI on push.
+Every step with **Repo:** `specify-cli` must pass the checks below **in addition to** any step-specific tests, before marking the step ✅. Run from the `specify-cli` repo root. Phase assurance gates (R46-S05, S14, S26, S30) still require full `cargo make ci` as the merge bar.
 
-**Every step must also satisfy** [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope).
+**Per-step minimum (required before marking ✅):**
 
-**Required (CI `Format`, `Clippy`, `Test`, and `Docs` jobs):**
+```bash
+cargo make check
+```
+
+`cargo make check` runs fmt, clippy, the **full** workspace `cargo nextest` suite (all integration + unit tests, including `rust_quality`), and test-docs. Do **not** mark a step ✅ after only a filtered subset (e.g. `cargo test -p specify-workflow materialize_scope`) — filtered runs are useful mid-step but are not the completion gate.
+
+**Constituent checks** (what `cargo make check` enforces — run individually only when iterating):
 
 ```bash
 cargo +nightly fmt --all -- --check
 RUSTFLAGS=-Dwarnings cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-RUSTFLAGS=-Dwarnings cargo test --test rust_quality
-RUSTDOCFLAGS=-Dwarnings cargo doc --workspace --no-deps
+RUSTFLAGS=-Dwarnings cargo nextest run --workspace --all-targets --all-features
+RUSTDOCFLAGS=-Dwarnings cargo test --test test-docs
 ```
+
+**Every step must also satisfy** [Hard rule: no host runtime ↔ WASM tests](#hard-rule-no-host-runtime--wasm-tests-rfc-46-scope).
 
 **When the step changes `wasi-tools/`** (vectis or other carve-out crates), also from `wasi-tools/`:
 
@@ -784,10 +803,10 @@ RFC §Implementation phases · Phase 2.
 2. Heavy unit tests with fixture slice trees.
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- Table tests for design-system bulk pass vs feature slice incremental pass.
+- [Specify-cli step assurance](#specify-cli-step-assurance) — `cargo make check` green.
+- Table tests for design-system bulk pass vs feature slice incremental pass (`mod bulk` / `mod feature` / `mod bootstrap` / `mod effective_path`).
 
-**Status:** ✅ `crates/workflow/src/slice/build/materialize_scope.rs` — `resolve_effective_assets`, `resolve_materialize_scope`, six unit tests (bulk / composition / artifact / bootstrap).
+**Status:** ✅ `crates/workflow/src/slice/build/materialize_scope.rs` — `resolve_effective_assets`, `resolve_materialize_scope`, six unit tests; `cargo make check` verified.
 
 ---
 
