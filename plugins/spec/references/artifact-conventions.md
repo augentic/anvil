@@ -42,7 +42,7 @@ slug: identity-store-postgres
 status: accepted            # accepted | rejected (slice-authored); superseded is engine-only
 supersedes: [DEC-0003]      # optional: a baseline DEC-NNNN, or a slug authored earlier in this slice
 related: [REQ-001, REQ-014] # optional: traceability into this slice's requirements
-topics: [identity, storage] # optional: kebab-case domains this decision governs (RFC-46 D3 join key)
+topics: [identity, storage] # optional: kebab-case domains this decision governs (decision-contradiction join key)
 ---
 # Use PostgreSQL for the identity store
 
