@@ -40,9 +40,9 @@ Three tracks run in parallel:
 2. **Reconciliation polish (RFC-38)** — additive deterministic hints on the lead side (`topics[]`, advisory `clusters[]`, binding `affinity`, decision-conflict warnings), wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed.
 3. **Observability and portability (RM-14 / RM-15 / RM-18)** — most valuable once RM-05 proves the loop on realistic flows.
 
-**In flight (RFC refinement — not yet implementation):**
+**Recently implemented:**
 
-- [RFC-46: Asset materialization and mandatory app icon](rfc-46-asset-materialization.md) — canonical SVG inputs with auto-convert or operator-pinned `exports/<platform>/` hand-built assets, deterministic `vectis materialize assets`, render-by-`kind` shell writers, one logical `app-icon` with per-platform delivery, and bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Scoped to iOS/Android so it ships as a single initiative; web asset materialization is split out to [RFC-46a](future/rfc-46a-web-asset-materialization.md) (deferred). Refinement branch: `rfc-46` in `augentic/specify` and `augentic/specify-cli`.
+- [RFC-46: Asset materialization and mandatory app icon](rfc-46-asset-materialization.md) — canonical SVG inputs with auto-convert or operator-pinned `exports/<platform>/` hand-built assets, deterministic `vectis materialize assets`, render-by-`kind` shell writers, one logical `app-icon` with per-platform delivery, and bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Scoped to iOS/Android; web asset materialization is split out to [RFC-46a](future/rfc-46a-web-asset-materialization.md) (deferred). Landed on `rfc-46` in `augentic/specify` and `augentic/specify-cli` (final assurance: [implementation plan](rfc-46-implementation-plan.md) R46-S30).
 
 **Deferred until trigger conditions or prerequisites:**
 

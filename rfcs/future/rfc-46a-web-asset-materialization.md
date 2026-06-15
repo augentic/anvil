@@ -85,7 +85,7 @@ Extends RFC-46 §6.1 with the deferred web trigger:
 
 | Trigger | Detection |
 |---------|-----------|
-| **C. Explicit web bootstrap** | A `plan.yaml` entry or proposal flag declares `bootstrap-web` (or a `{project}-bootstrap-web` reconcile equivalent), or `project.yaml.platforms` includes `web` and `detect_missing_platforms` reports it absent |
+| **C. Explicit web bootstrap** | A `plan.yaml` entry or proposal flag declares `bootstrap-web` (or a `{project}-bootstrap-web` reconcile equivalent), or `project.yaml.platforms` includes `web` and vectis shell-detect semantics report it absent |
 
 When this trigger fires, the RFC-46 §6.2 `plan-bootstrap-app-icon-missing` rule applies with `web` added to the missing-UI-platform set: materialized web app-icon exports must be present (or producible in check-only mode).
 

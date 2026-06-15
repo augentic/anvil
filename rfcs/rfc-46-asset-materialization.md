@@ -1,6 +1,6 @@
 # RFC-46: Asset Materialization and Mandatory App Icon
 
-> Status: Draft · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols · **Scope includes Phase 0** (specify-cli): remove the optional `--reconcile-platforms` propose flag and make Vectis self-contained for shell-bootstrap detection
+> Status: Implemented · Serves: Vectis target adapter, `design-system/assets.yaml`, `vectis` WASI tool · Motivated by: iOS `actool` failures on unmaterialized assets and silent substitution of designer SVGs with platform symbols · **Phase 0** (specify-cli): default-on platform-bootstrap reconciliation on `propose --from` and vectis-owned shell-detect (`specify-vectis-shell-detect`; no plan-time WASM dispatch)
 
 ## Abstract
 
@@ -365,7 +365,7 @@ A 2026-06 survey against `main` (post–RFC-46 renumbering) found the design in 
 
 | # | Drift (as surveyed) | Remediation | Phase |
 |---|---------------------|-------------|-------|
-| **1** | `wasi-tools/vectis/DECISIONS.md` draft stub ties `plan-bootstrap-app-icon-missing` to plan slice names (`app-foundation`, `bootstrap-ios`/`android`) **and** workflow `detect_missing_platforms`. | Replace the draft bullet with §6.1 language: bootstrap context is **`vectis verify --mode detect` `missing[]` only** (plus the §6.3 shell-resident escape hatch). Plan DAG row names are **not** gate inputs. When Phase 1 codifies §K/§L, delete the “draft, not implemented” blockhead and point at the shipped checks. | **1** (stub fix may land earlier as a one-line doc PR) |
+| **1** | ~~`wasi-tools/vectis/DECISIONS.md` draft stub ties `plan-bootstrap-app-icon-missing` to plan slice names (`app-foundation`, `bootstrap-ios`/`android`) **and** workflow `detect_missing_platforms`.~~ | **Remediated (R46-S12/S29):** codified §K (materialization) and §L (`app-icon` gate) in `wasi-tools/vectis/DECISIONS.md`; bootstrap context is vectis shell-detect `missing[]` plus the §6.3 shell-resident escape hatch — plan DAG row names are not gate inputs. | **0** ✅ |
 | **2** | ~~`plugins/spec/skills/plan/SKILL.md` still mandates `propose --from … --reconcile-platforms`…~~ | **Remediated (R46-S04/S05):** flag removed; default-on reconciliation via in-process `specify-vectis-shell-detect`; plan skill + `plan-propose.md` updated; `CORE-057` `cli-contract` guards retired flag in prose. | **0** ✅ |
 | **3** | ~~`specify-cli` `DECISIONS.md` / `AGENTS.md` still document optional `--reconcile-platforms`…~~ | **Remediated (R46-S04/S05):** both docs amended; `detect_missing_platforms` absent from `specify-cli` Rust sources. | **0** ✅ |
 | **4** | ~~Eval run records and `tests/workflow/propose.rs` still record or invoke `--reconcile-platforms`.~~ | **Remediated (R46-S04/S05):** eval pass records and propose integration tests updated; `cargo nextest run --test plan reconcile` passes without `vectis-wasm`. | **0** ✅ |

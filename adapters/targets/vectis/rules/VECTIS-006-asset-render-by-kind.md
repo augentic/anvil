@@ -24,7 +24,7 @@ Shell writers resolve each composition `icon` / `image` / `icon-button` / `fab` 
 
 **Forbidden:** emitting `Image(systemName:)` (iOS) or `Icons.Default.*` / Material Icons substitutes (Android) for an id whose entry is `vector` or `raster`. Missing platform exports are validation errors (`assets-materialization-missing`) — never a writer shortcut. Platform glyph use requires an explicit `kind: symbol` entry (optionally `inferred: true` when promoted from screenshot inference).
 
-v1 enforcement is **review-scoped**: build reviewers cross-reference `composition.yaml`, the effective `assets.yaml`, and shell UI sources. Mechanical `specify lint project` hints that join composition ids to shell symbol fallbacks are deferred until materialize and export paths are stable in consumer projects.
+v1 enforcement is **review-scoped**: build reviewers cross-reference `composition.yaml`, the effective `assets.yaml`, committed `exports/<platform>/` trees, and shell UI sources. Mechanical `specify lint project` hints that join composition ids to shell symbol fallbacks remain deferred to a follow-on rule.
 
 ## Look For
 

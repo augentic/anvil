@@ -64,9 +64,9 @@ The Vectis core / test / iOS / Android writer and reviewer orchestration lives i
 - [`review/crux-checks.md`](review/crux-checks.md), [`review/logic-checks.md`](review/logic-checks.md), [`review/general-checks.md`](review/general-checks.md), [`review/ios-checks.md`](review/ios-checks.md), [`review/swift-quality-checks.md`](review/swift-quality-checks.md), [`review/android-checks.md`](review/android-checks.md), [`review/kotlin-quality-checks.md`](review/kotlin-quality-checks.md), [`review/universal-checks.md`](review/universal-checks.md) — check libraries.
 - [`review/iteration-report.md`](review/iteration-report.md) — iteration-report template and finding-ID conventions.
 
-### RFCs (in flight)
+### Asset materialization (implemented)
 
-- [Asset materialization and mandatory app icon](../../../../rfcs/roadmap.md) — canonical SVG → per-platform exports, `app-icon` gate on UI bootstrap plans, inference-only symbol fallback. Draft; refinement in flight (see roadmap **In flight**).
+Canonical SVG → per-platform exports (`vectis materialize assets`), render-by-`kind` shell writers, bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Inference-only symbol fallback; see [`VECTIS-006`](../rules/VECTIS-006-asset-render-by-kind.md), [`ios/design-system-integration.md`](ios/design-system-integration.md), [`android/design-system-integration.md`](android/design-system-integration.md), and [`rfcs/roadmap.md`](../../../../rfcs/roadmap.md#current-priorities) (**Recently implemented**).
 
 ### Layout inferer contract (legacy)
 

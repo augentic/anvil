@@ -95,6 +95,18 @@ The contracts target adapter owns API contract authoring, import, and validation
 
 The matching CLI validation surface is the declared `contract` WASI tool, run via `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
+## Vectis asset materialization
+
+Vectis-bound projects commit per-platform exports under `design-system/assets/exports/`; shell writers render by `assets.yaml` entry `kind` — never substitute platform glyphs for `vector` / `raster` ids at build time. See [`rfcs/roadmap.md`](rfcs/roadmap.md#current-priorities) (**Recently implemented**).
+
+| Concern | Where |
+| ------- | ----- |
+| Materialize CLI + export conventions | `specify tool run vectis -- materialize assets` — codified in [`specify-cli` `wasi-tools/vectis/DECISIONS.md` §K](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/DECISIONS.md#k--materialization-and-render-by-kind) |
+| Prepare auto-materialize | `specify slice build --phase prepare` — sole automatic in-loop caller; scope in DECISIONS §K (prepare hook) |
+| Bootstrap `app-icon` gate | `plan-bootstrap-app-icon-missing` on `specify plan validate`; bootstrap-only — codified in [`wasi-tools/vectis/DECISIONS.md` §L](https://github.com/augentic/specify-cli/blob/main/wasi-tools/vectis/DECISIONS.md#l--bootstrap-app-icon-gate) |
+| Render-by-`kind` review rule | [`adapters/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md`](adapters/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md) |
+| Writer / integration contracts | [`adapters/targets/vectis/references/ios/design-system-integration.md`](adapters/targets/vectis/references/ios/design-system-integration.md), [`android/design-system-integration.md`](adapters/targets/vectis/references/android/design-system-integration.md), [`briefs/build/ios/write.md`](adapters/targets/vectis/briefs/build/ios/write.md), [`briefs/build/android/write.md`](adapters/targets/vectis/briefs/build/android/write.md) |
+
 ## Plan-driven loop
 
 `/spec:plan` authors the plan and exits at Gate 1; the operator stamps `approved`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. Per-entry status walks backwards only via `specify plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
