@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S28` |
-| **Last completed** | `R46-S27` |
+| **Active step** | `R46-S29` |
+| **Last completed** | `R46-S28` |
 | **Last updated** | 2026-06-16 |
 | **Blocked on** | — |
 
@@ -103,7 +103,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ✅ | both repos — task-list `design-system/` + wasi-tools golden layout tests |
 | [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ✅ | both repos — `cargo make check` + `make lint`; carve-out materialize + host scope/bootstrap tests green |
 | [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ✅ | specify — export-path tables + explicit `exports/` copy steps in write briefs |
-| [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ⬜ | specify-cli |
+| [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ✅ | specify-cli — `shell-catalog-entry-missing` in verify mode |
 | [R46-S29](#r46-s29-rfc-closure-and-stale-reference-sweep) | RFC closure & reference sweep | ⬜ | both repos |
 | [R46-S30](#r46-s30-final-assurance-gate) | Final assurance gate | ⬜ | |
 
@@ -144,6 +144,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-16 | R46-S25 | `specify-cli` CI does not check out `augentic/specify`; golden layout tests use a mirrored copy under `wasi-tools/vectis/tests/fixtures/acceptance/task-list/` (synced from `evals/fixtures/targets/vectis/task-list/design-system/`). | Documented sync command in both READMEs; no new steps. |
 | 2026-06-16 | R46-S25 | Host `cargo make check` did not run `wasi-tools/` clippy; R46-S24 (`needless_raw_string_hashes`) and R46-S25 (`uninlined_format_args`) failed only in the dedicated CI job. | `cargo make wasi-tools-check` added to `Makefile.toml` as a `check`/`ci` dependency; plan gate documents CI parity trap. |
 | 2026-06-16 | R46-S26 | No eval fixture ships a full `iOS/` / `Android/` shell tree — `task-list` pins committed `design-system/assets/exports/` only. Export fitness for shell consumption is covered by carve-out golden layout (`materialize_acceptance_fixture`), `materialize_then_validate_passes`, and plan-validate path B; `make sim-build` / `assembleDebug` remain the build-brief verify loop on downstream consumer projects (out of RFC-46 automated scope). | Checklist item documented as N/A for eval harness; no new steps. |
+| 2026-06-16 | R46-S28 | `actool` dry-run deferred — filesystem probes (`Assets.xcassets/<id>.imageset/` with content; Android `res/drawable*` paths) match the writer contract without invoking Xcode tooling. Optional `actool` env flag remains a future RFC-46a / Phase 3 item. | No new steps; diagnostic id `shell-catalog-entry-missing`. |
 
 ### Specify-cli step assurance
 
@@ -979,7 +980,7 @@ RFC §Implementation phases · Phase 3 (partial — `exports.lock` remains defer
 | Area | Location |
 |------|----------|
 | Shell-detect library (authoritative heuristics) | `specify-cli/crates/vectis-shell-detect/` (`shell_present`, `shell_resident_app_icon`) |
-| Vectis detect JSON wrapper | `specify-cli/wasi-tools/vectis/src/verify.rs` |
+| Vectis detect JSON wrapper | `specify-cli/wasi-tools/vectis/src/verify.rs` (+ `verify/catalog.rs` shell asset-catalog completeness) |
 | Host detect gate | `specify-cli/crates/workflow/src/platform/detect.rs` |
 | Propose handler | `specify-cli/src/runtime/commands/plan/propose.rs` |
 | Bootstrap DAG insertion | `specify-cli/crates/workflow/src/change/plan/core/propose/platforms.rs` |
