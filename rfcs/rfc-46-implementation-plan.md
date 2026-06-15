@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S20` |
-| **Last completed** | `R46-S19` |
+| **Active step** | `R46-S21` |
+| **Last completed** | `R46-S20` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -85,7 +85,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ✅ | specify-cli — SVG profile + iOS PDF imageset + Android VD XML |
 | [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ✅ | specify-cli — `resvg` SVG→PNG @2x/@3x + Android densities; photo copy-only |
 | [R46-S19](#r46-s19-materialize-app-icon-ios) | Materialize app-icon (iOS) | ✅ | specify-cli — `decode_to_launcher_canvas` + `AppIcon.appiconset` |
-| [R46-S20](#r46-s20-materialize-app-icon-android) | Materialize app-icon (Android) | ⬜ | specify-cli |
+| [R46-S20](#r46-s20-materialize-app-icon-android) | Materialize app-icon (Android) | ✅ | specify-cli — adaptive + legacy mipmap tree; tint→`colors.<tint>.light` background |
 | [R46-S21](#r46-s21-pin-semantics-and-yaml-auto-write) | Pin semantics & YAML auto-write | ⬜ | specify-cli |
 | [R46-S22](#r46-s22-in-scope-asset-resolution) | In-scope asset resolution | ⬜ | specify-cli |
 | [R46-S23](#r46-s23-slice-build-prepare-hook) | Slice build prepare hook | ⬜ | specify-cli |
@@ -125,6 +125,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S17 | `usvg` may resolve simple gradient fills to solid `Paint::Color` at parse time — profile gate uses `has_defs_nodes` plus per-path solid-paint checks and rejects filters/images/text. iOS PDF is a minimal vector writer (path ops from `tiny-skia-path` segments, quad→cubic); pin skip landed early (read-only, no YAML write — full semantics remain R46-S21). | No new steps. |
 | 2026-06-15 | R46-S18 | `role: illustration` vector uses the same SVG profile gate as icons (`parse_icon_svg`). Raster `role: illustration` with per-density `sources` (Appendix E path B) is **not** copy-materialized in S18 — only `role: photo` gets the copy path; operators commit raster illustration exports manually or a follow-on step may extend copy to `kind: raster` + `role: illustration`. | Note under R46-S18; consider small follow-on if Appendix E raster illustration auto-copy is required before R46-S25 fixtures. |
 | 2026-06-15 | R46-S19 | App-icon SVG decode uses full `usvg::Tree::from_data` (not `parse_icon_svg` profile) — launcher masters are not subject to UI icon gradient/text restrictions; raster >1024 downscales to 1024. iOS `ExportLayout::artifacts` lists `Contents.json` + `AppIcon.png` (pin remains export root dir). | No new steps; R46-S20 reuses `decode_to_launcher_canvas`. |
+| 2026-06-15 | R46-S20 | Safe zone enforced by scaling master into central 66% of adaptive/legacy canvases (no separate warning). Background from `tint` → `tokens.yaml` `colors.<name>.light`, default `#FFFFFF`. Android `ExportLayout::artifacts` lists 13 paths (2 adaptive XML + background + 5 foreground PNGs + 5 legacy mipmaps). Adaptive XML reuses scaffold templates via `include_str!`. | No new steps. |
 
 ### Specify-cli step assurance
 
