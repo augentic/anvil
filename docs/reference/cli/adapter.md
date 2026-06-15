@@ -1,6 +1,6 @@
 # specify source and target resolve
 
-Adapter resolution splits by axis. The retired top-level `adapter *` verb family is replaced by two entry points.
+Adapter resolution splits by axis into two entry points.
 
 ## specify source resolve
 
@@ -24,7 +24,7 @@ specify target resolve <value>
 
 ## Caching
 
-Resolved manifests cache under `.specify/cache/manifests/{sources,targets}/<name>/`. Cache layout is per-axis.
+Resolved manifests cache in the out-of-tree per-project cache at `<project-cache>/manifests/{sources,targets}/<name>/`. Cache layout is per-axis.
 
 ## See also
 

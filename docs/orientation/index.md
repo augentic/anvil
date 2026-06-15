@@ -28,7 +28,7 @@ Every change flows through one rhythm:
 1. **Plan** — `/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
 2. **Operator review (Gate 1)** — you stamp `approved`: `specify plan transition <name> approved`.
 3. **Execute** — `/spec:execute` loops per slice: refine → build → merge.
-4. **Finalize** — `/spec:finalize` pushes branches, observes PRs, archives the plan.
+4. **Finalize** — `/spec:finalize` pushes branches and archives the plan; opening and merging PRs is operator-owned, outside Specify.
 
 <div class="pipeline">
 

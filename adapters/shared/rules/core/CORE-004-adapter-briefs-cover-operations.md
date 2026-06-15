@@ -16,7 +16,7 @@ rule_hints:
       expected-operations:
         sources: [survey, extract]
         targets: [shape, build, merge]
-    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` covers the per-axis operation set the rule supplies in `config`. One finding per missing `(adapter, operation)` pair; extras are silent (the `set-eq` kind tightens that).
+    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` covers the per-axis operation set the rule supplies in `config`. One finding per missing `(adapter, operation)` pair; extras are silent (the default `subset` mode — `CORE-007`'s exact mode tightens that).
 ---
 
 ## Rule
@@ -25,7 +25,7 @@ Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its operation di
 
 The deterministic-hint interpreter consumes the `AdapterManifest` facts the framework-profile indexer already produced (`crates/standards/src/lint/index/adapter.rs::extract`, including the new `brief-keys` field that mirrors the manifest's `briefs:` map keys verbatim), so the rule cost is one set-difference per candidate manifest at lint time. The path scope intentionally pins the canonical `adapters/{sources,targets}/<name>/adapter.yaml` shape; nested `adapter.yaml` files (e.g. inside `briefs/` subtrees) are dropped upstream by the extractor and never reach this layer.
 
-`set-coverage` is one-sided by design: extras (`briefs.keys()` values not in the expected operation set) stay silent here. The JSON schema in `source.schema.json` / `target.schema.json` already rejects unknown keys via `additionalProperties: false`; the future `set-eq` reserved kind will tighten this rule to both sides when contributor demand reaches it.
+`set-coverage` defaults to one-sided (`mode: subset`): extras (`briefs.keys()` values not in the expected operation set) stay silent here. The JSON schema in `source.schema.json` / `target.schema.json` already rejects unknown keys via `additionalProperties: false`; [`CORE-007`](CORE-007-adapter-briefs-equal-operations.md) carries the same `set-coverage` kind with `config: { mode: exact }` to tighten the check to both sides.
 
 ## Look For
 

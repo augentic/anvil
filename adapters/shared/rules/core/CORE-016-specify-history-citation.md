@@ -13,8 +13,6 @@ rule_hints:
   - kind: path-pattern
     value: "AGENTS.md"
   - kind: path-pattern
-    value: "REVIEW.md"
-  - kind: path-pattern
     value: "!docs/assets/**"
   - kind: path-pattern
     value: "!adapters/shared/rules/**"
@@ -29,11 +27,11 @@ rule_hints:
 
 ## Rule
 
-Retired Specify design-history citations (`RFC-N` where `N < 100`, `rfcs/…`, and sibling forms) must not appear in operator-facing prose. Standards RFCs at 100 and above are allowed.
+Retired Specify design-history citations (`RFC-N` where `N < 100`, `rfcs/…`, and sibling forms) must not appear in operator-facing prose. Standards RFCs at 100 and above are allowed. Point-in-time review documents (`REVIEW.md`) are out of scope — a review legitimately discusses design history by name.
 
 ## Look For
 
-- `RFC-5` or `RFC 5` in docs, plugins, adapters, `AGENTS.md`, or `REVIEW.md`.
+- `RFC-5` or `RFC 5` in docs, plugins, adapters, or `AGENTS.md`.
 - Markdown links into `rfcs/` trees with numbered design-history paths.
 
 ## Fix

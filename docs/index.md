@@ -119,7 +119,7 @@ specify plan transition fix-typo approved
   --> /spec:refine + /spec:build + /spec:merge per slice until drained
 
 /spec:finalize fix-typo
-  --> push branches, observe PRs, archive plan
+  --> push branches, archive plan
 ```
 
 ## Built for the Augentic stack

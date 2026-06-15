@@ -18,6 +18,9 @@ use std::process::Command;
 const INSTALL_ROOT: &str = ".cli";
 // Where `cargo install --root INSTALL_ROOT` lands the binary; keep in sync with INSTALL_ROOT.
 const BIN: &str = ".cli/bin/specify";
+// Sidecar recording the resolved pin the cached BIN was built from; a matching
+// key skips the per-run `cargo install` entirely.
+const REF_SIDECAR: &str = ".cli/ref";
 const DEFAULT_GIT_HOST: &str = "github.com/augentic/specify-cli";
 
 fn main() {
@@ -30,14 +33,14 @@ fn main() {
                 println!("{path}/target/release/specify");
             }
             CliSource::Git { url, git } => {
-                install(&git.cargo_selector(url));
+                ensure_installed(url, git);
                 println!("{BIN}");
             }
         },
         Mode::Run(args) => match source {
             CliSource::Path(path) => run_local(&path, &args),
             CliSource::Git { url, git } => {
-                install(&git.cargo_selector(url));
+                ensure_installed(url, git);
                 run_installed(&args);
             }
         },
@@ -172,6 +175,35 @@ fn install(selector: &[String]) {
         .args(selector)
         .arg("specify");
     run(cargo_install, "cargo install failed");
+}
+
+// Cache key for the installed binary. Immutable refs key on themselves; a
+// branch keys on its current remote sha so a moved branch invalidates the
+// cache. An unresolvable branch (e.g. offline) yields no key — never cached.
+fn cache_key(url: &str, git: &GitRef) -> Option<String> {
+    match git {
+        GitRef::Rev(r) => Some(format!("rev:{r}")),
+        GitRef::Tag(t) => Some(format!("tag:{t}")),
+        GitRef::Branch(b) => ls_remote(url, b).map(|sha| format!("branch:{b}:{sha}")),
+    }
+}
+
+// Reuse the cached BIN when the resolved pin matches the REF_SIDECAR record;
+// otherwise install and record the new pin.
+fn ensure_installed(url: String, git: GitRef) {
+    let key = cache_key(&url, &git);
+    if let Some(key) = &key
+        && std::fs::read_to_string(REF_SIDECAR).is_ok_and(|recorded| recorded.trim() == key)
+        && std::path::Path::new(BIN).exists()
+    {
+        return;
+    }
+    install(&git.cargo_selector(url));
+    if let Some(key) = key {
+        if let Err(e) = std::fs::write(REF_SIDECAR, format!("{key}\n")) {
+            eprintln!("specify: warning: could not record cache key: {e}");
+        }
+    }
 }
 
 fn run_installed(args: &[String]) {

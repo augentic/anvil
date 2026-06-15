@@ -36,12 +36,12 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Change umbrella
 
-- `specify plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specify plan *`; PR-state confirmation belongs to `/spec:finalize` and its `gh pr view` observation loop before this verb runs.
+- `specify plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specify plan *`; `/spec:finalize` runs this verb after `specify workspace push`. Pull-request creation and merging are operator-owned and happen outside Specify.
 
 ### Registry and workspace
 
 - `specify registry {validate, add, remove}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- `specify workspace {sync, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. the retired `workspace merge` subcommand has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `/spec:finalize` verifies remote PR state with `gh pr view` before archiving via `specify plan archive`.
+- `specify workspace {sync, push}` — `sync` materialises top-level `workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches to `origin` only — it does not create remote repositories or pull requests. the retired `workspace merge` subcommand has been removed and must not be called by skills; operators open and merge pull requests through the forge UI or explicit `gh` invocations, entirely outside Specify, while `/spec:finalize` runs `specify workspace push` then archives via `specify plan archive`.
 
 ### Source / target adapters and declared tools
 
@@ -61,9 +61,9 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specify plan transition <change-name> approved` command is printed for the operator.
 2. **Gate 1.** Operator runs `specify plan transition <change-name> approved` — the only writer of `approved`. `/spec:plan` never stamps `approved` itself.
 3. **Execute.** `/spec:execute` refuses unless the plan is `approved` (rendered as `specify plan status`'s `stop plan-not-approved`); under the plan lock it loops `specify plan status` → `specify plan next` → the phase skill the CLI named (`/spec:refine` / `/spec:build` / `/spec:merge`), preparing only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set. Per-entry `done` is stamped by `specify slice merge`. Exits on the first `stop <reason>` or on `drained`.
-4. **Finalize.** `/spec:finalize <change-name>` runs `specify workspace push`, observes PR state via `gh pr view`, and runs `specify plan archive` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+4. **Finalize.** `/spec:finalize <change-name>` runs `specify workspace push`, then runs `specify plan archive`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Opening and merging the pull requests is the operator's job, done outside Specify.
 
-Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, hold the plan lock for the session (the snippet in [`plugins/spec/references/plan-lock.md`](../../plugins/spec/references/plan-lock.md) — the loop verbs refuse `plan-lock-not-held` otherwise), drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), then run `specify workspace push`, verify PRs with `gh pr view`, and run `specify plan archive` by hand.
+Hand-driven fallback: skip `/spec:plan`, `/spec:execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, hold the plan lock for the session (the snippet in [`plugins/spec/references/plan-lock.md`](../../plugins/spec/references/plan-lock.md) — the loop verbs refuse `plan-lock-not-held` otherwise), drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), then run `specify workspace push` and `specify plan archive` by hand; open and merge the pull requests yourself outside Specify.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specify plan propose --from` (default), `specify plan add`, `specify plan amend`, and `specify plan remove`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
@@ -111,13 +111,13 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, `specify slice build --phase prepare` |
 | Workspace | `workspace.sync.completed`, `workspace.push.completed` | `specify workspace sync` / `push` |
-| Bootstrap and standards | `cli.upgraded`, `plugins.refreshed`, `migration.applied`, `migration.skipped`, `lint-completed` | `specify upgrade`, `specify plugins refresh`, `specify migrate`, `specify lint` |
+| Bootstrap and standards | `cli.upgraded`, `plugins.refreshed`, `lint-completed` | `specify upgrade`, `specify plugins refresh`, `specify lint` |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.
 
 ## Exit codes
 
-The CLI uses a five-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
+The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|
@@ -125,9 +125,8 @@ The CLI uses a five-slot exit-code table. The authoritative definition (variants
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, undeclared/over-permissioned tool, argument errors. |
 | `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` — the project's `specify_version` is **newer** than this binary; surface the upgrade hint (`specify upgrade`). |
-| `4` | `EXIT_MIGRATION_REQUIRED` | `Error::ProjectNeedsMigration` — the project's pinned `specify_version` MAJOR is **older** than this binary; run `specify migrate`. The asymmetric twin of code `3`. |
 
-Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the five slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
+Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 
 ## Cross-references
 

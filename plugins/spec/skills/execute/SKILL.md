@@ -23,7 +23,7 @@ Every skill that touches plan state from outside the loop reuses the shell snipp
 
 ## Workspace routing
 
-When the active plan entry carries a `project` field, plan artifacts stay at the workspace and phase work runs in the materialised slot at `.specify/workspace/<project>/`. The routing rules — slot resolution, `specify workspace sync` + `specify workspace prepare`, `chdir` into the slot, the `SPECIFY_PLAN_DIR=<workspace-root>` export that lets slot-side plan readers resolve the workspace's `plan.yaml`, residue commit, and CWD restore before the next `specify plan status` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
+When the active plan entry carries a `project` field, plan artifacts stay at the workspace and phase work runs in the materialised slot at `workspace/<project>/`. The routing rules — slot resolution, `specify workspace sync` + `specify workspace prepare`, `chdir` into the slot, the `SPECIFY_PLAN_DIR=<workspace-root>` export that lets slot-side plan readers resolve the workspace's `plan.yaml`, residue commit, and CWD restore before the next `specify plan status` — live in [`references/workspace-routing.md`](references/workspace-routing.md). Breakout skills run from the workspace with the same routing rules: read the active entry, resolve `project`, `chdir` into the slot before phase work, restore CWD before exit.
 
 ## Phase invocation
 
@@ -40,5 +40,5 @@ Inside the lock, after routing, invoke the phase skill named by `plan status` ag
 - **Never write per-entry `done` directly.** `/spec:merge` is the sole writer of per-entry `done`; this skill only invokes the phase skills.
 - **Never skip the lock.** Every shell that runs `specify plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); the CLI refuses unlocked drivers with `plan-lock-not-held`.
 - **Never re-classify stops.** `specify plan status` owns stop classification (`refine-failed`, `build-failed`, `merge-conflict`, `slice-dropped`, `merge-incomplete`, `stuck`); render its block and hint verbatim.
-- **No `gh pr merge`, no branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
+- **No branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
 - Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

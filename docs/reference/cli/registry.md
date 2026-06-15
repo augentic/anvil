@@ -27,7 +27,7 @@ Validates:
 - Registry shape (required fields, kebab-case names, well-formed `url:` values).
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
 
-The registry no longer authors a project's adapter/description for plan-time topology, so the `adapter`-required and `description-missing-multi-repo` invariants are retired; those facets live in each project's `project.yaml` and are checked against `.specify/topology.lock` by `specify plan validate` (`topology-cache-stale`).
+A project's adapter and description for plan-time topology live in its own `project.yaml` and are checked against `.specify/topology.lock` by `specify plan validate` (`topology-cache-stale`); the registry carries membership and location only.
 
 Used by `/spec:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
@@ -66,5 +66,5 @@ Behaviour:
 ## See also
 
 - [specify plan](plan.md) -- the umbrella verbs for the operator brief at `change.md` and `plan.yaml`.
-- [specify workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
+- [specify workspace](workspace.md) -- materialise registry projects under top-level `workspace/<peer>/`.
 - [Configuration Files → registry.yaml](../configuration.md#registryyaml) -- file format reference.

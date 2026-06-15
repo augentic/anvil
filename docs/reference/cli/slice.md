@@ -53,7 +53,7 @@ specify slice synthesize <name> --from <response.json> [--format json]
 
 The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
 
-This is the CLI verb invoked by [`/spec:refine`](../slice-skills/refine.md) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
+This is the CLI verb invoked by [`/spec:refine`](../slice-skills/index.md#specrefine) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
 
 ### specify slice model
 
@@ -92,7 +92,7 @@ specify slice build <name> [--phase prepare|finalize] [--format json]
 - `--phase prepare` resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, prints the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`), and returns without blocking. The agent then runs the target `build` brief against the prepared request and writes `.specify/slices/<name>/build/report.yaml`.
 - `--phase finalize` emits `slice.build.started`, validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts prepare with `target-build-input-missing`.
 
-This is the CLI verb invoked by [`/spec:build`](../slice-skills/build.md) — the skill no longer hand-transitions to `built`; `finalize` owns that gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
+This is the CLI verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — `finalize` owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
 
 ### specify slice transition
 
@@ -198,13 +198,13 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Journal events.** `slice merge run` brackets the merge with `slice.merge.started` then `slice.merge.succeeded` / `slice.merge.failed`, which fire on the merge **validator outcome** — there is no v1 merge envelope or merge report. The durable record stays the append-only `slice.archive.created` outcome ledger written by the archive step.
 
-**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
+**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under top-level `workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
 **Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`). When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it probes the `.specify/plan.lock` driver lock first and refuses an unlocked session with `plan-lock-not-held` (exit 2); plan-less standalone merges skip the probe.
 
 ### specify slice task
 
-Two subcommands cover the task surface (renamed from the old top-level `task progress` / `task mark` verbs).
+Two subcommands cover the task surface.
 
 #### specify slice task progress
 
@@ -231,9 +231,9 @@ Used by `/spec:build` as it completes each task.
 ## See also
 
 - [/spec:refine](../slice-skills/index.md) -- per-slice refine breakout
-- [/spec:build](../slice-skills/build.md) -- skill that drives build, calls `slice task progress`/`mark`
-- [/spec:merge](../slice-skills/merge.md) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
-- [/spec:drop](../slice-skills/drop.md) -- skill that drops slices
+- [/spec:build](../slice-skills/index.md#specbuild) -- skill that drives build, calls `slice task progress`/`mark`
+- [/spec:merge](../slice-skills/index.md#specmerge) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
+- [/spec:drop](../slice-skills/index.md#specdrop) -- skill that drops slices
 - [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

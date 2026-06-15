@@ -7,7 +7,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
-| [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
+| [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [`propose`](#specify-plan-propose) | Reconcile surveyed leads into `slices[]`: `--dry-run` emits the request envelope; `--from <response.json>` is the slice writer that validates the agent grouping and replaces `slices[]` on a replaceable plan. |

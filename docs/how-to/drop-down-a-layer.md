@@ -35,7 +35,7 @@ Repeat `specify plan next` between slices when the plan has multiple entries; `s
 
 ## When finalize is blocked
 
-If push or PR observation fails, use CLI verbs directly:
+If push or archive fails, use CLI verbs directly:
 
 ```bash
 specify workspace push

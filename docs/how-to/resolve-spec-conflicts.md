@@ -62,5 +62,5 @@ Do **not** hand-edit `Status:` to `agreed` or strip the `[conflict]` tag — tha
 ## See also
 
 - [Glossary](../appendices/glossary.md) — Conflict, Divergence, Authority
-- [/spec:refine](../reference/slice-skills/refine.md) — synthesis and validation
+- [/spec:refine](../reference/slice-skills/index.md#specrefine) — synthesis and validation
 - [Artifact format](../reference/artifact-format.md) — requirement block shape

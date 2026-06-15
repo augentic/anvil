@@ -66,7 +66,7 @@ The Vectis core / test / iOS / Android writer and reviewer orchestration lives i
 
 ### Asset materialization (implemented)
 
-Canonical SVG → per-platform exports (`vectis materialize assets`), render-by-`kind` shell writers, bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Inference-only symbol fallback; see [`VECTIS-006`](../rules/VECTIS-006-asset-render-by-kind.md), [`ios/design-system-integration.md`](ios/design-system-integration.md), [`android/design-system-integration.md`](android/design-system-integration.md), and [`rfcs/roadmap.md`](../../../../rfcs/roadmap.md#current-priorities) (**Recently implemented**).
+Canonical SVG → per-platform exports (`vectis materialize assets`), render-by-`kind` shell writers, bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Inference-only symbol fallback; see [`VECTIS-006`](../rules/VECTIS-006-asset-render-by-kind.md), [`ios/design-system-integration.md`](ios/design-system-integration.md), [`android/design-system-integration.md`](android/design-system-integration.md), and [`rfcs/roadmap.md`](../../../../rfcs/roadmap.md#recently-implemented) (**Recently implemented**).
 
 ### Layout inferer contract (legacy)
 

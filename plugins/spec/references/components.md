@@ -12,7 +12,7 @@ Each `screenshots.extract` invocation only sees one lead. Stage-6 detection prom
 .specify/design-system/components.yaml
 ```
 
-Workspace mode: `<coordinator-root>/.specify/workspace/<project>/.specify/design-system/components.yaml`
+Workspace mode: `<coordinator-root>/workspace/<project>/.specify/design-system/components.yaml`
 
 ## Schema (minimal)
 

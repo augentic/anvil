@@ -20,36 +20,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      # -------------------------------------------------------------
-      # The specify-cli version to use — sibling branch or main
-      # -------------------------------------------------------------
-      - id: specify-cli
-        run: |
-          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          if git ls-remote --exit-code --heads https://github.com/augentic/specify-cli.git "$branch" >/dev/null 2>&1; then
-            echo "ref=$branch" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=main" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@v6
-        with:
-          repository: augentic/specify-cli
-          path: specify-cli
-          ref: ${{ steps.specify-cli.outputs.ref }}
-          fetch-depth: 1
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: specify-cli
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
-
-      # -------------------------------------------------------------
-      # CI Checks
-      # -------------------------------------------------------------
+      # Symlink integrity check — fail early if broken
       - name: Verify symlinks
         run: |
           status=0
@@ -64,6 +35,49 @@ jobs:
           done
           exit $status
 
-      - name: Verify framework
+      # Resolve specify-cli version
+      - id: specify-cli
         run: |
-          cargo run --locked --manifest-path specify-cli/Cargo.toml --bin specify -- lint framework --framework-root .
+          branch="${{ github.ref_name }}"
+          line=$(git ls-remote --heads https://github.com/augentic/specify-cli.git "refs/heads/$branch")
+          if [ -n "$line" ]; then
+            echo "ref=$branch" >> "$GITHUB_OUTPUT"
+            echo "sha=$(echo "$line" | cut -f1)" >> "$GITHUB_OUTPUT"
+          else
+            sha=$(git ls-remote https://github.com/augentic/specify-cli.git main | cut -f1)
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Restore or build a specify binary
+      - id: specify-bin
+        uses: actions/cache@v4
+        with:
+          path: specify-cli/target/release/specify
+          key: specify-bin-${{ steps.specify-cli.outputs.sha }}
+
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: augentic/specify-cli
+          path: specify-cli
+          ref: ${{ steps.specify-cli.outputs.ref }}
+          fetch-depth: 1
+
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: specify-cli
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
+
+      - if: steps.specify-bin.outputs.cache-hit != 'true'
+        run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
+
+      # Run checks
+      - name: Verify framework
+        run: specify-cli/target/release/specify lint framework --framework-root .
+

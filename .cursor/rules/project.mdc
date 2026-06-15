@@ -32,13 +32,13 @@ When conflicts arise, follow this strict precedence order:
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
-When `spec.md` requirements disagree, the closed `authority` enum (`intent` > `documentation` > `behaviour`) controls: higher-authority sources win, losers survive as inline commentary, and same-authority disagreements emit `[conflict]`. See [AGENTS.md](../../AGENTS.md#authority-and-reconciliation-mechanics) and [synthesis/authority.md](../../plugins/spec/references/synthesis/authority.md) for the resolution order, and [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md) for the adapter contract.
+For `spec.md` requirement disagreements (the closed `authority` enum and its resolution order), see [AGENTS.md](../../AGENTS.md#authority-and-reconciliation-mechanics) and [synthesis/authority.md](../../plugins/spec/references/synthesis/authority.md); for the adapter contract, see [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md).
 
 **Key principle**: If artifacts conflict with source, trust the artifacts. If artifacts are incomplete, mark unknowns rather than guessing.
 
 ## Artifact Boundaries
 
-Artifacts carry separate responsibilities (`proposal.md` = why/scope, `spec.md` = behavioral *what*, `design.md` = the *how*, `tasks.md` = sequencing; Vectis adds `tokens.yaml` / `assets.yaml`), and behavioral specs stay platform-neutral — Omnia trait selection, guest wiring, WASM translation, and target build outputs (e.g. Vectis `composition.yaml`) live in specialist skills and references, not `spec.md`. See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the per-artifact breakdown and [docs/explanation/augentic-specify-usage.md](../../docs/explanation/augentic-specify-usage.md) for the specialist-vs-artifact dividing line.
+See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the per-artifact responsibility breakdown and [docs/explanation/augentic-specify-usage.md](../../docs/explanation/augentic-specify-usage.md) for the specialist-vs-artifact dividing line (behavioral specs stay platform-neutral; target-specific detail lives in specialist skills and references, not `spec.md`).
 
 ## Specialist Skills
 
@@ -138,7 +138,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved WASI tool (Road B), with all policy carried in the rule's `config:`; the `authoring-predicate` bridge has been removed. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

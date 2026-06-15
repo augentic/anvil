@@ -380,7 +380,7 @@ A failed run carries one `kind: "violation"` finding per breached invariant (e.g
 
 ## Bootstrap verbs
 
-The bootstrap lifecycle verbs (`specify upgrade`, `specify plugins doctor`, `specify init --check-migration`, `specify migrate`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
+The bootstrap lifecycle verbs (`specify upgrade`, `specify plugins doctor`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
 
 ### `specify upgrade --dry-run`
 
@@ -433,40 +433,6 @@ Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plu
     { "name": "capture", "expected-sha": "f1b21b2…", "cached-sha": "f1b21b2…", "status": "ok" }
   ],
   "summary": { "ok": 1, "drifted": 1, "present": 0, "missing": 0, "extra": 0 }
-}
-```
-
-### `specify init --check-migration`
-
-Read-only major-version probe. `needs-migration` is the headline the `/spec:init` skill branches on; `from` is the pinned `project.yaml.specify_version` (`null` when unset), `to` is this binary's version, and `plan` carries one entry per registered hop in the `from → to` window with its `actions[]` (internally-tagged on `action`: `move` / `rewrite` / `remove`). Exits `0` regardless of outcome.
-
-```json
-{
-  "version": 1,
-  "needs-migration": false,
-  "from": "2.0.0",
-  "to": "2.0.0",
-  "plan": []
-}
-```
-
-A project owed a migration carries a populated `plan`:
-
-```json
-{
-  "version": 1,
-  "needs-migration": true,
-  "from": "1.4.0",
-  "to": "2.0.0",
-  "plan": [
-    {
-      "kind": "v1-to-v2",
-      "actions": [
-        { "action": "move", "from": "adapters/omnia/adapter.yaml", "to": "adapters/targets/omnia/adapter.yaml" },
-        { "action": "rewrite", "path": "discovery.md", "contents": "## Lead inventory\n…" }
-      ]
-    }
-  ]
 }
 ```
 

@@ -10,13 +10,14 @@ rule_hints:
   - kind: path-pattern
     value: "adapters/targets/*/adapter.yaml"
     description: Target adapter manifests; `briefs.keys()` must equal exactly `shape`, `build`, and `merge`.
-  - kind: set-eq
+  - kind: set-coverage
     value: adapter-briefs
     config:
+      mode: exact
       expected-operations:
         sources: [survey, extract]
         targets: [shape, build, merge]
-    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` is exactly the per-axis operation set the rule supplies in `config`. One finding per divergence — `missing` for an absent required operation, `unexpected` for a stray key.
+    description: For each `AdapterManifest` fact in the candidate set, assert that `briefs.keys()` is exactly the per-axis operation set the rule supplies in `config` (the `exact` mode tightens the default one-sided `subset` comparison to two-sided). One finding per divergence — `missing` for an absent required operation, `unexpected` for a stray key.
 ---
 
 ## Rule

@@ -13,7 +13,7 @@ rule_hints:
       catalog: evals/scenarios/README.md
       scenarios-dir: evals/scenarios
       runs-dir: evals/runs
-      statuses: [pending, passed, failed, deferred]
+      statuses: [pending, parked, passed, failed, deferred]
       gates: [release-blocker, full]
       status-result-map:
         passed: pass
@@ -24,16 +24,16 @@ rule_hints:
 
 ## Rule
 
-The scenario catalog (`evals/scenarios/README.md`), the scenario files (`evals/scenarios/<id>.md`), and the committed run records (`evals/runs/<id>.<result>.md`) must agree. The catalog is the single status surface and the run record is the contract behind every status flip (see the [record contract](../../../../evals/runs/README.md)): a status-bearing row (`passed` / `failed` / `deferred`) requires exactly one committed record whose `<result>` token agrees per this rule's `status-result-map`, and a `pending` row must have no record at all.
+The scenario catalog (`evals/scenarios/README.md`), the scenario files (`evals/scenarios/<id>.md`), and the committed run records (`evals/runs/<id>.<result>.md`) must agree. The catalog is the single status surface and the run record is the contract behind every status flip (see the [record contract](../../../../evals/runs/README.md)): a status-bearing row (`passed` / `failed` / `deferred`) requires exactly one committed record whose `<result>` token agrees per this rule's `status-result-map`, and a `pending` or `parked` row must have no record at all.
 
 This check is whole-tree: the `scenarios` framework tool parses every group-table row in the catalog (id from the File link), joins it against the scenario tree and the run-record filenames, and validates the Status and Gate cells against the closed value sets carried in this rule's `config:`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 
 - A catalog row whose linked scenario file does not exist, or a scenario file with no catalog row (including duplicate rows for one id).
-- A `Status` or `Gate` cell outside the closed sets (`pending | passed | failed | deferred`; `release-blocker | full`).
+- A `Status` or `Gate` cell outside the closed sets (`pending | parked | passed | failed | deferred`; `release-blocker | full`).
 - A `passed` / `failed` / `deferred` row without its committed `evals/runs/<id>.<result>.md` record, or a record whose `<result>` disagrees with the row's status.
-- A record filed against a `pending` row, more than one record per id, a record naming an unknown scenario id, or a record filename that does not parse as `<id>.<result>.md`.
+- A record filed against a `pending` or `parked` row, more than one record per id, a record naming an unknown scenario id, or a record filename that does not parse as `<id>.<result>.md`.
 
 ## Fix
 

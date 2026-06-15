@@ -1,6 +1,6 @@
 # Workspace routing
 
-Plan artifacts (`plan.yaml`, `change.md`, `discovery.md`, `.specify/plan.lock`) live at the workspace. Each project's slot lives at `.specify/workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. `/spec:execute` (and breakouts) share one uniform routing rule: lock at the workspace, resolve the active slice's `project`, `chdir` into the slot for phase work, return for the next plan write.
+Plan artifacts (`plan.yaml`, `change.md`, `discovery.md`, `.specify/plan.lock`) live at the workspace. Each project's slot lives at `workspace/<project>/` and carries its own `.specify/slices/<name>/` tree. `/spec:execute` (and breakouts) share one uniform routing rule: lock at the workspace, resolve the active slice's `project`, `chdir` into the slot for phase work, return for the next plan write.
 
 This is the file companion to the `## Workspace routing` H2 in [`../SKILL.md`](../SKILL.md). The single-repo path skips every step here: when the active plan entry has no `project` field, phase work runs in the project root and no `workspace sync` or `chdir` happens.
 
@@ -32,7 +32,7 @@ For every iteration of the loop where `entry.project` is non-null:
 4. Run the single phase the operator asked for.
 5. Restore CWD (and unset `SPECIFY_PLAN_DIR`) before exit; release the lock on the trailing edge of the snippet.
 
-The plan lock at the workspace is what guarantees that an operator running `/spec:build` from the workspace cannot race a background `/spec:execute` (or a sibling operator running `/spec:merge`) on the same plan — and the CLI enforces it: the plan-state-writing verbs probe the lock at the plan root (so a slot-side `slice merge run` under `SPECIFY_PLAN_DIR` probes the *workspace* lock) and refuse `plan-lock-not-held` when no session holds it. Scenario #11 in [`../../../../../evals/fixtures/skills/execute/`](../../../../../evals/fixtures/skills/execute/) pins the breakout-after-build-failure path: `/spec:execute` parks on `auth-rotate` in `project-a`, releases the lock, and the operator runs `/spec:build` from the workspace — which re-acquires the lock, resolves `auth-rotate → project-a`, `chdir`s into the slot, and resumes the failing task.
+The plan lock at the workspace is what guarantees that an operator running `/spec:build` from the workspace cannot race a background `/spec:execute` (or a sibling operator running `/spec:merge`) on the same plan — and the CLI enforces it: the plan-state-writing verbs probe the lock at the plan root (so a slot-side `slice merge run` under `SPECIFY_PLAN_DIR` probes the *workspace* lock) and refuse `plan-lock-not-held` when no session holds it. Scenario #11 in [`../../../../../evals/fixtures/skills/execute/`](../../../../../evals/fixtures/skills/execute/) pins the breakout-after-build-failure path: `/spec:execute` parks on `auth-rotate` in `backend`, releases the lock, and the operator runs `/spec:build` from the workspace — which re-acquires the lock, resolves `auth-rotate → backend`, `chdir`s into the slot, and resumes the failing task.
 
 ## CWD restore in the loop
 

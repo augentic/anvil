@@ -1,6 +1,6 @@
 # Run: `<id>` — **`<pass | fail | deferred>`**
 
-> Copy into `evals/runs/<id>.<result>.md` (e.g. `pure-intent.pass.md`), fill against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). Assertion ids and negative-expectations come from the scenario file — do not duplicate them in prose. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from **Notes**.
+> Copy into `evals/runs/<id>.<result>.md` (e.g. `intent-only.pass.md`), fill against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). Assertion ids and negative-expectations come from the scenario file — do not duplicate them in prose. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from **Notes**.
 
 ## Context
 

@@ -28,6 +28,6 @@
   <text x="752" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">merge</text>
   <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">adapters/sources/&lt;name&gt;/adapter.yaml</text>
   <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">adapters/targets/&lt;name&gt;/adapter.yaml</text>
-  <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/cache/manifests/sources/&lt;name&gt;/</text>
-  <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">.specify/cache/manifests/targets/&lt;name&gt;/</text>
+  <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;project-cache&gt;/manifests/sources/&lt;name&gt;/ (out-of-tree)</text>
+  <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;project-cache&gt;/manifests/targets/&lt;name&gt;/ (out-of-tree)</text>
 </svg>

@@ -11,7 +11,7 @@ Filled run-summaries for eval scenario runs. Run records are the audit trail; th
 
 ## How to record a run
 
-1. Copy [`evals/shared/run-template.md`](../shared/run-template.md) to `evals/runs/<id>.<result>.md` (e.g. `pure-intent.pass.md`).
+1. Copy [`evals/shared/run-template.md`](../shared/run-template.md) to `evals/runs/<id>.<result>.md` (e.g. `intent-only.pass.md`).
 2. Set the title and fill **Context**, **Assertions** (grading through the [assertion taxonomy](../shared/assertions.md)), **Deviations**, **Notes**, and **Evidence**.
 3. On `pass`, skip the fail-only sections at the bottom of the template.
 4. On `fail` or `deferred`, add **Fault**, **Failure detail**, and (when useful) **Plan structure**; link a follow-up issue from **Notes**.
