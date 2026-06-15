@@ -111,6 +111,8 @@ The per-platform reviewers above ([`build/core/review.md`](build/core/review.md)
 
 Vectis render-by-`kind` drift ([`VECTIS-006`](../rules/VECTIS-006-asset-render-by-kind.md)) is review-scoped in v1: iOS and Android Integration specialists run **IOS-020** / **AND-028** on the first full-scope iteration (see per-platform review briefs and team protocols). Mechanical cross-artifact hints are deferred until materialize export paths are stable in consumer projects.
 
+Framework acceptance fixtures under `evals/fixtures/targets/vectis/` version-control `design-system/assets/exports/` (see [`task-list/design-system/`](../../../../evals/fixtures/targets/vectis/task-list/design-system/)) so build brief examples and eval pins demonstrate the materialize-then-copy hand-off without requiring image-processing deps in every CI job.
+
 Per [Standards layer](../references/spec-runtime/standards-layer-snippet.md), deterministic findings may block CI but never transition plan entries, slices, or changes. CI wiring is consumer-project policy, not adapter policy; this brief acknowledges the surface and links out for the contract.
 
 ## § Template / version-pin drift handling

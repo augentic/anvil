@@ -13,9 +13,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S25` |
-| **Last completed** | `R46-S24` |
-| **Last updated** | 2026-06-15 |
+| **Active step** | `R46-S26` |
+| **Last completed** | `R46-S25` |
+| **Last updated** | 2026-06-16 |
 | **Blocked on** | — |
 
 **Step status legend:** `⬜ pending` · `🔄 in progress` · `✅ done` · `⏸ blocked` · `↩ superseded`
@@ -100,7 +100,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S22](#r46-s22-in-scope-asset-resolution) | In-scope asset resolution | ✅ | specify-cli — `materialize_scope.rs`; bulk vs incremental table tests |
 | [R46-S23](#r46-s23-slice-build-prepare-hook) | Slice build prepare hook | ✅ | specify-cli — prepare auto-materialize + bootstrap app-icon re-check |
 | [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ✅ | specify-cli — `export_layout`-aligned presence; materialize→validate tests |
-| [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ⬜ | both repos |
+| [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ✅ | both repos — task-list `design-system/` + wasi-tools golden layout tests |
 | [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ⬜ | |
 | [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ⬜ | specify |
 | [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ⬜ | specify-cli |
@@ -141,6 +141,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S22 | Step marked ✅ after filtered tests only; `rust_quality` `no_long_test_fn_names` failed on five `materialize_scope` test fns (>40 chars). | Added [step completion gate](#step-completion-gate-mandatory--do-not-mark--until-all-pass); per-step minimum is now `cargo make check`, not filtered subsets. Tests regrouped under `mod bulk/feature/bootstrap/effective_path`. |
 | 2026-06-15 | R46-S23 | Prepare hook triggers full `materialize assets` when any in-scope asset lacks exports (not per-id guest filter); guest skips pinned slots idempotently. Bootstrap gate reuses `bootstrap_app_icon_findings` → `plan-bootstrap-app-icon-missing`. Host tests cover `scope_needs_materialize` only — no new `run_captured` integration tests. | No new steps; R46-S24 unchanged. |
 | 2026-06-15 | R46-S24 | `conventional_export_exists` now delegates auto-materializable vector roles to `materialize::paths::export_layout` (S16 path conventions); raster keeps density/imageset heuristics. `role: app-icon` stays on `assets-app-icon-*` ids (skipped in composition coverage). | No new steps; R46-S25 unchanged. |
+| 2026-06-16 | R46-S25 | `specify-cli` CI does not check out `augentic/specify`; golden layout tests use a mirrored copy under `wasi-tools/vectis/tests/fixtures/acceptance/task-list/` (synced from `evals/fixtures/targets/vectis/task-list/design-system/`). | Documented sync command in both READMEs; no new steps. |
 
 ### Specify-cli step assurance
 
@@ -876,9 +877,9 @@ RFC §Implementation phases · Phase 2.
 4. Golden layout checks in `wasi-tools/vectis` or fixture docs — **not** a host `tool run materialize` test.
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance) (when adding or changing `specify-cli` Rust in this step).
-- CI builds without invoking materialize on every job (exports already committed in fixtures).
-- No new host test dispatches vectis WASM to regenerate exports in CI.
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance) (when adding or changing `specify-cli` Rust in this step).
+- [x] CI builds without invoking materialize on every job (exports already committed in fixtures).
+- [x] No new host test dispatches vectis WASM to regenerate exports in CI.
 
 ---
 

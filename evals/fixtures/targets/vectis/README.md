@@ -10,7 +10,7 @@ Fixtures for the Vectis target adapter (eval scenario #5h: "Target `shape` injec
 
 The Vectis target's `shape` brief carries idiom guidance — Crux app structure (`App`, `Model`, `Event`, `ViewModel`, `Page`, `Route`, `Effect`), platform-shell expectations (iOS SwiftUI, Android Compose), operator-curated build inputs (`tokens.yaml` / `assets.yaml`) — that core synthesis (`/spec:refine`) folds into a slice's `spec.md` and `design.md`. The `build` brief then regenerates `composition.yaml` from those canonical artifacts on every run, alongside the implementation code.
 
-These fixtures pin the *output* shape: what synthesised `spec.md` / `design.md` / `tasks.md` look like once the `shape` brief has been consumed, plus the `composition.yaml` that `build` reconstructs from them.
+These fixtures pin the *output* shape: what synthesised `spec.md` / `design.md` / `tasks.md` look like once the `shape` brief has been consumed, plus the `composition.yaml` that `build` reconstructs from them. The [`task-list/`](task-list/) fixture also carries a committed `design-system/` tree (RFC-46 R46-S25) demonstrating version-controlled `assets/exports/` and auto-written pins after `vectis materialize assets`.
 
 ## Status
 
