@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S18` |
-| **Last completed** | `R46-S17` |
+| **Active step** | `R46-S19` |
+| **Last completed** | `R46-S18` |
 | **Last updated** | 2026-06-15 |
 | **Blocked on** | — |
 
@@ -83,7 +83,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S15](#r46-s15-materialize-subcommand-skeleton) | Materialize subcommand skeleton | ✅ | specify-cli — `materialize assets` CLI + report envelope; `resvg`/`usvg`/`image` deps declared |
 | [R46-S16](#r46-s16-materialize-path-conventions) | Export path conventions | ✅ | specify-cli — `materialize/paths.rs`; shared `kebab_to_snake` |
 | [R46-S17](#r46-s17-materialize-icons) | Materialize icons | ✅ | specify-cli — SVG profile + iOS PDF imageset + Android VD XML |
-| [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ⬜ | specify-cli |
+| [R46-S18](#r46-s18-materialize-illustrations) | Materialize illustrations | ✅ | specify-cli — `resvg` SVG→PNG @2x/@3x + Android densities; photo copy-only |
 | [R46-S19](#r46-s19-materialize-app-icon-ios) | Materialize app-icon (iOS) | ⬜ | specify-cli |
 | [R46-S20](#r46-s20-materialize-app-icon-android) | Materialize app-icon (Android) | ⬜ | specify-cli |
 | [R46-S21](#r46-s21-pin-semantics-and-yaml-auto-write) | Pin semantics & YAML auto-write | ⬜ | specify-cli |
@@ -123,6 +123,7 @@ Append-only. When implementation diverges from the RFC or this plan, record the 
 | 2026-06-15 | R46-S15 | `resvg`/`usvg`/`tiny-skia`/`image` compile for `wasm32-wasip2` with `default-features = false`; deps unused until R46-S17 (no `touch_deps` shim). Report envelope adds `command`, `path`, `dry_run`, `platforms` alongside the three arrays. | No new steps. |
 | 2026-06-15 | R46-S16 | Illustration auto-write pins use the highest-density artifact (`@3x` iOS, `xxxhdpi` Android) because `vectorEntry` `sources.<platform>` is a single `filePath`; all density files still land in `artifacts[]` for writers. `kebab_to_snake` deduped — validate `exports.rs` imports `materialize::paths`. | No new steps; R46-S21 auto-write uses `ExportLayout::pin`. |
 | 2026-06-15 | R46-S17 | `usvg` may resolve simple gradient fills to solid `Paint::Color` at parse time — profile gate uses `has_defs_nodes` plus per-path solid-paint checks and rejects filters/images/text. iOS PDF is a minimal vector writer (path ops from `tiny-skia-path` segments, quad→cubic); pin skip landed early (read-only, no YAML write — full semantics remain R46-S21). | No new steps. |
+| 2026-06-15 | R46-S18 | `role: illustration` vector uses the same SVG profile gate as icons (`parse_icon_svg`). Raster `role: illustration` with per-density `sources` (Appendix E path B) is **not** copy-materialized in S18 — only `role: photo` gets the copy path; operators commit raster illustration exports manually or a follow-on step may extend copy to `kind: raster` + `role: illustration`. | Note under R46-S18; consider small follow-on if Appendix E raster illustration auto-copy is required before R46-S25 fixtures. |
 
 ### Specify-cli step assurance
 
@@ -697,8 +698,10 @@ RFC §Implementation phases · Phase 2.
 2. Copy-only path for `role: photo` raster masters (per-density `sources` already pinned).
 
 **Assurance:**
-- [Specify-cli step assurance](#specify-cli-step-assurance).
-- PNG dimensions match expected scale; deterministic output for fixed input (hash optional in test).
+- [x] [Specify-cli step assurance](#specify-cli-step-assurance).
+- [x] PNG dimensions match expected scale; deterministic output for fixed input (hash optional in test).
+
+**Status:** ✅ `materialize/illustrations/` (`resvg` render), `materialize/raster_copy.rs` (photo copy-only), scale table in `wasi-tools/vectis/DECISIONS.md` §K.
 
 ---
 
