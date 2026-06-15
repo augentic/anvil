@@ -42,9 +42,9 @@ iOS/
     │   ├── (Elevation.swift, Border.swift, Opacity.swift, … as needed)
     │   └── Theme.swift
     └── Resources/
-        └── Assets.xcassets/               # generated from assets.yaml
+        └── Assets.xcassets/               # copied from assets/exports/ios/
             ├── AppIcon.appiconset/
-            └── <asset-id>.imageset/ (or .symbolset/, etc.)
+            └── <asset-id>.imageset/
 ```
 
 The `specify tool run vectis -- scaffold ios <AppName>` render step produces `<App>/`, the
@@ -234,14 +234,15 @@ asset catalog at `iOS/<App>/Resources/Assets.xcassets/`. The canonical
 shell project must build from its own platform directory after generation; it
 MUST NOT symlink, alias, or path-reference `design-system/assets/` from
 `project.yml`, nor consume files from `<change>/assets/` at runtime.
-Per-platform copy targets:
+Per-platform copy targets (paths relative to `design-system/`; materialize writes under `assets/exports/ios/`):
 
-| Asset `kind` | Export key(s) read (`sources.ios`) | Target catalog entry |
+| `role` + `kind` | Export tree read (`sources.ios` pin) | Shell catalog target |
 |---|---|---|
-| `raster` | `{1x,2x,3x}` density files under the pinned imageset path | `<asset-id>.imageset/` containing the per-density PNG / JPEG files plus a `Contents.json` that maps the density slots. |
-| `vector` | PDF (preferred) or SVG under the pinned imageset path | `<asset-id>.imageset/` (PDF) or SVG imageset per `template-rendering-intent` (defaults to `original`). |
-| `symbol` | `symbols.ios` | No catalog copy — emit `Image(systemName: "<sf-symbol>")` at the call site. |
-| `app-icon` (`role: app-icon`) | `exports/ios/app-icon/AppIcon.appiconset/` (path A auto-convert or path B operator pin) | Copy into `AppIcon.appiconset/`; scaffold ships an empty skeleton materialize fills. |
+| `icon` or `decorative` + `vector` | `<id>.imageset/<id>.pdf` and `Contents.json` (SVG master materialized to PDF) | Copy the whole `<asset-id>.imageset/` directory into `Assets.xcassets/`. |
+| `illustration` + `vector` | `<id>.imageset/<id>@2x.png`, `<id>@3x.png`, and `Contents.json` (no `@1x` — illustration materialize emits `@2x` / `@3x` only) | Copy the whole `<asset-id>.imageset/` directory. |
+| `photo` or UI `icon` + `raster` | `{1x,2x,3x}` per-density files under the pinned imageset (operator-pinned; materialize does not invent density ladders) | `<asset-id>.imageset/` with per-density PNG / JPEG files plus `Contents.json`. |
+| `symbol` (any role) | `symbols.ios` | No catalog copy — emit `Image(systemName: "<sf-symbol>")` at the call site. |
+| `app-icon` | `assets/exports/ios/app-icon/AppIcon.appiconset/` directory pin (`AppIcon.png` + `Contents.json`; path A auto-convert or path B operator pin) | Copy into `AppIcon.appiconset/`; scaffold ships an empty skeleton materialize fills. |
 
 Reference the copied asset by its kebab-case asset id at the call site:
 

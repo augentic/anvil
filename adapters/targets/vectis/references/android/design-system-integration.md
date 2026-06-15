@@ -51,13 +51,15 @@ Android/
 │       │   │       ├── (Elevation.kt, Border.kt, Opacity.kt, … as needed)
 │       │   │       └── Theme.kt
 │       │   └── di/...
-│       └── res/                               # generated from assets.yaml
+│       └── res/                               # copied from assets/exports/android/
 │           ├── drawable-mdpi/<asset-id>.png
 │           ├── drawable-hdpi/<asset-id>.png
 │           ├── drawable-xhdpi/<asset-id>.png
 │           ├── drawable-xxhdpi/<asset-id>.png
 │           ├── drawable-xxxhdpi/<asset-id>.png
-│           ├── drawable/<asset-id>.xml         # vector drawable
+│           ├── drawable/<asset-id>.xml         # vector drawable (icon / decorative)
+│           ├── mipmap-*/ic_launcher*.png       # app-icon only
+│           ├── mipmap-anydpi-v26/ic_launcher*.xml
 │           └── values/themes.xml
 └── shared/
     └── build.gradle.kts
@@ -317,14 +319,15 @@ module's `res/` tree at generation time. The canonical `source:` file is
 provenance only — never copied into the shell. The generated shell project must
 build from its own platform directory after generation; it MUST NOT symlink,
 alias, or path-reference `design-system/assets/` from `build.gradle.kts`, nor
-consume files from `<change>/assets/` at runtime. Per-platform copy targets:
+consume files from `<change>/assets/` at runtime. Per-platform copy targets (paths relative to `design-system/`; materialize writes under `assets/exports/android/`):
 
-| Asset `kind` | Export key(s) read (`sources.android`) | Target resource location |
+| `role` + `kind` | Export tree read (`sources.android` pin) | Shell `res/` target |
 |---|---|---|
-| `raster` | `{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}` under the pinned bucket paths | `res/drawable-<density>/<asset-id>.png` (or `.jpg`) — one file per declared density bucket. |
-| `vector` | `.xml` Vector Drawable under the pinned drawable path (`.svg` is **not** an Android resource type — materialize converts canonical SVG beforehand) | `res/drawable/<asset-id>.xml`. |
-| `symbol` | `symbols.android` | No resource copy — emit `Icons.Default.<glyph>` (or an explicit `material-icons-extended` reference) at the call site. |
-| `app-icon` (`role: app-icon`) | `exports/android/app-icon/` adaptive + legacy mipmap tree (path A auto-convert or path B operator pin) | Copy into `mipmap-*/` and `mipmap-anydpi-v26/` stubs; scaffold ships empty adaptive stubs materialize fills. |
+| `icon` or `decorative` + `vector` | `drawable/<id_snake>.xml` (SVG master materialized to Vector Drawable; `.svg` is never an Android resource) | `res/drawable/<asset-id_snake>.xml`. |
+| `illustration` + `vector` | `drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/<id_snake>.png` (one PNG per density bucket) | Matching `res/drawable-<density>/<asset-id_snake>.png` files. |
+| `photo` or UI `icon` + `raster` | `{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}` under operator-pinned bucket paths (materialize does not invent density ladders) | `res/drawable-<density>/<asset-id_snake>.png` (or `.jpg`) — one file per declared bucket. |
+| `symbol` (any role) | `symbols.android` | No resource copy — emit `Icons.Default.<glyph>` (or an explicit `material-icons-extended` reference) at the call site. |
+| `app-icon` | `assets/exports/android/app-icon/` directory pin (`mipmap-*/`, `mipmap-anydpi-v26/`, `drawable-*/ic_launcher_foreground.png`, `values/ic_launcher_background.xml`; path A auto-convert or path B operator pin) | Copy the export tree into matching `res/` locations; scaffold ships empty adaptive stubs materialize fills. |
 
 Reference the copied asset by its kebab-case asset id at the call site:
 

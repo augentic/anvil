@@ -13,8 +13,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Active step** | `R46-S27` |
-| **Last completed** | `R46-S26` |
+| **Active step** | `R46-S28` |
+| **Last completed** | `R46-S27` |
 | **Last updated** | 2026-06-16 |
 | **Blocked on** | — |
 
@@ -102,7 +102,7 @@ For the **remainder of RFC-46** (all steps from R46-S02a through R46-S30), **do 
 | [R46-S24](#r46-s24-validate-export-presence) | Validate export presence | ✅ | specify-cli — `export_layout`-aligned presence; materialize→validate tests |
 | [R46-S25](#r46-s25-acceptance-fixtures-committed-exports) | Acceptance fixtures | ✅ | both repos — task-list `design-system/` + wasi-tools golden layout tests |
 | [R46-S26](#r46-s26-phase-2-assurance-gate) | Phase 2 assurance gate | ✅ | both repos — `cargo make check` + `make lint`; carve-out materialize + host scope/bootstrap tests green |
-| [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ⬜ | specify |
+| [R46-S27](#r46-s27-writer-contract-docs) | Writer contract docs | ✅ | specify — export-path tables + explicit `exports/` copy steps in write briefs |
 | [R46-S28](#r46-s28-vectis-verify-catalog-completeness) | Verify catalog completeness | ⬜ | specify-cli |
 | [R46-S29](#r46-s29-rfc-closure-and-stale-reference-sweep) | RFC closure & reference sweep | ⬜ | both repos |
 | [R46-S30](#r46-s30-final-assurance-gate) | Final assurance gate | ⬜ | |
