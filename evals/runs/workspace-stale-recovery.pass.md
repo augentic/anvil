@@ -24,7 +24,7 @@ Probe transcript highlights: interrupted `/spec:execute` mid `oauth-backend` bui
 ## Deviations
 
 - Offline local adapter paths; bare-repo `file://` origins.
-- Plan authored headlessly via `evals/drivers/workspace.py`; Gate 1 stamped `--actor agent`.
+- Plan authored headlessly via `evals/drivers/workspace.sh workspace-stale-recovery`; Gate 1 stamped `--actor agent`.
 - Pre-merge git staging fix in `merge_slice` to avoid `dirty-unrelated-tracked` on contracts slot.
 
 ## Notes

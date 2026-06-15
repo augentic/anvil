@@ -11,6 +11,7 @@ Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (
 - Source adapters a scenario binds (`documentation`, `typescript`, …) are **not** vendored by `specify init` — it caches only the target adapter. Before the first `specify source survey`, vendor or symlink the adapter into the project at `adapters/sources/<name>/` (e.g. `mkdir -p adapters/sources && ln -s <framework-checkout>/adapters/sources/typescript adapters/sources/typescript`), then confirm with `specify source resolve <name>`.
 - Git is available for local branches and remotes. Scenarios that run `/spec:finalize` push the prepared `specify/<change>` branch to each routed project's `origin`, so every routed project needs a reachable `origin` remote before finalize. A **local bare repository** (`git init --bare`) reached via a `file://` URL satisfies this with no network or forge — see the cross-repo setup below.
 - No forge client (`gh`) is required. `/spec:finalize` pushes branches and then archives the plan; it never creates, observes, or merges pull requests. Opening the PR and merging it is an operator action done entirely outside Specify.
+- The replay drivers under [`drivers/`](../drivers/README.md) need `jq` on PATH (the only structured-data dependency). They are bash 3.2-compatible, so the stock macOS `/bin/bash` works — no Homebrew bash 4 required.
 
 ## Single-project setup
 

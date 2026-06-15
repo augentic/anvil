@@ -1,0 +1,5 @@
+version: 1
+slice: identity-service
+target: omnia@v1
+status: success
+findings: []

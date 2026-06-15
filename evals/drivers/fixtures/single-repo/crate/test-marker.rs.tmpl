@@ -1,0 +1,6 @@
+use @@CRATE@@::marker;
+
+#[test]
+fn marker_is_stable() {
+    assert_eq!(marker(), "@@CRATE@@");
+}

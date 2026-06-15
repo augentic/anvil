@@ -27,15 +27,15 @@ Probe transcript highlights: two-slice `dashboard` plan (`metrics-summary`, `use
 - Pause simulated by stopping `/spec:execute` after `build --phase prepare` on second slice while entry remained `in-progress` at `refined`; breakout completed build+finalize for `user-activity-feed`.
 - Plan lock held for the session via `specify plan lock -- <cmd>` (same posture as other eval runs).
 - Minimal serde-only library crates (`metrics_summary`, `user_activity_feed`) with `cargo test` — no wasm32 guest pre-merge gate in this sandbox.
-- Driver: `evals/drivers/execute_pause_resume.py` with shared loop helper `evals/drivers/execute_loop.py`.
+- Driver: `evals/drivers/execute-pause-resume.sh` over shared helpers `evals/drivers/single-repo.sh` + `evals/drivers/lib.sh`.
 
 ## Notes
 
 - Resume path after breakout: `specify plan status` named `merge user-activity-feed` directly — no `--continue` or other flags.
-- Subagent driver `evals/drivers/execute_pause_resume.py` authored the multi-slice plan and full pause/breakout/resume sequence.
+- Subagent driver `evals/drivers/execute-pause-resume.sh` authored the multi-slice plan and full pause/breakout/resume sequence.
 
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-pause-resume`
 - **Retained at:** `evals/.sandbox/execute-pause-resume/`
-- **Key paths:** `plan.yaml`, `crates/`, `.specify/specs/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute_pause_resume.py`
+- **Key paths:** `plan.yaml`, `crates/`, `.specify/specs/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-pause-resume.sh`

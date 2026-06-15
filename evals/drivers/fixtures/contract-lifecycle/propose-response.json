@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "kind": "response",
+  "slices": [
+    {
+      "name": "identity-contracts",
+      "sources": [
+        { "source": "docs", "lead": "identity-api" }
+      ],
+      "project": "identity-contracts",
+      "rationale": "identity API contract surface, owned by the contracts project"
+    },
+    {
+      "name": "identity-service",
+      "sources": [
+        { "source": "docs", "lead": "identity-api" },
+        { "source": "legacy", "lead": "identity-api" }
+      ],
+      "project": "identity-service",
+      "depends-on": ["identity-contracts"],
+      "rationale": "identity-api matched across docs + legacy by shared slug; service implements against the merged contracts"
+    },
+    {
+      "name": "password-reset",
+      "sources": [
+        { "source": "docs", "lead": "password-reset" },
+        { "source": "legacy", "lead": "reset-password" }
+      ],
+      "project": "identity-service",
+      "rationale": "password-reset (docs) and reset-password (legacy) are the same flow by synopsis judgment despite the slug mismatch"
+    }
+  ]
+}

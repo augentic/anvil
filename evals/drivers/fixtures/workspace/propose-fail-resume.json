@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "kind": "response",
+  "slices": [
+    { "name": "auth-rotate", "project": "backend", "sources": [{ "source": "brief", "lead": "backend-implementation" }], "rationale": "Backend auth secret rotation slice parks on build failure." },
+    { "name": "oauth-mobile", "project": "mobile", "sources": [{ "source": "brief", "lead": "mobile-implementation" }], "rationale": "Mobile OAuth sign-in UI and callback handling." }
+  ]
+}

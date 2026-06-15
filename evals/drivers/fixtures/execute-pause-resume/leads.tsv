@@ -1,0 +1,2 @@
+metrics-summary	Expose a metrics summary endpoint for dashboard KPIs.
+user-activity-feed	Stream recent user activity for the dashboard feed.

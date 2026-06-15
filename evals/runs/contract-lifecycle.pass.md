@@ -34,7 +34,7 @@ Probe transcript highlights: fresh sandbox with offline local adapter paths (`om
 ## Deviations
 
 - Used offline init with local adapter paths per `shared/setup.md` (no `@v1` network fetch).
-- Plan draft and execute phases driven headlessly (CLI + `evals/drivers/contract_lifecycle.sh`) following `/spec:plan` / `/spec:execute` / `/spec:finalize` skill routing rather than live slash-command skill sessions; Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
+- Plan draft and execute phases driven headlessly (CLI + `evals/drivers/contract-lifecycle.sh`) following `/spec:plan` / `/spec:execute` / `/spec:finalize` skill routing rather than live slash-command skill sessions; Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
 - Platform reconciliation inserted `app-foundation` bootstrap slice; first journal advance is bootstrap, not the contract slice — contract still precedes implementation slices via `depends-on`.
 - Build/merge used minimal target stubs (success `build/report.yaml`, `specify slice merge run`) rather than full Omnia/Vectis/Contracts brief codegen; durable lifecycle and workspace routing exercised against real CLI verbs.
 - `grep -c 'project: mobile'` returns 2 on the archived plan because `app-foundation` also routes to `mobile`; exactly one implementation slice each targets `backend` (`oauth-backend`) and `mobile` (`oauth-mobile`).

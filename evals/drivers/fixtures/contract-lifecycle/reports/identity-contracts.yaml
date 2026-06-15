@@ -1,0 +1,5 @@
+version: 1
+slice: identity-contracts
+target: contracts@v1
+status: success
+findings: []

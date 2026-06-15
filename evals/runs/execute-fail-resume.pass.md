@@ -32,10 +32,10 @@ Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four
 
 - `.build-log` at `.specify/slices/session-cookie-harden/.build-log` captures failing `cargo test` output naming `session_cookie_secure_flag_set`.
 - `plan.entry.advanced` events cover each slice claim; no duplicate advance after the build-failed park.
-- Driver: `evals/drivers/execute_fail_resume.py` with shared loop helper `evals/drivers/execute_loop.py`.
+- Driver: `evals/drivers/execute-fail-resume.sh` over shared helpers `evals/drivers/single-repo.sh` + `evals/drivers/lib.sh`.
 
 ## Evidence
 
 - **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-fail-resume`
 - **Retained at:** `evals/.sandbox/execute-fail-resume/`
-- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute_fail_resume.py`
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-fail-resume.sh`

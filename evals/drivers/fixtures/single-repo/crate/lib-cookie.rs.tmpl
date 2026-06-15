@@ -1,0 +1,14 @@
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct CookieConfig {
+    pub secure: bool,
+}
+
+impl Default for CookieConfig {
+    fn default() -> Self {
+        Self { secure: @@SECURE@@ }
+    }
+}
+
+pub fn session_cookie_config() -> CookieConfig {
+    CookieConfig::default()
+}

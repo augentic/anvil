@@ -1,0 +1,1 @@
+Rate-limit and harden authentication: per-IP auth limits, password hash rotation, session cookie hardening, and retiring the legacy reset flow.
