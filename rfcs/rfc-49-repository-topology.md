@@ -30,7 +30,7 @@ Consolidation removes all four rather than maintaining them.
 
 ### The contract stays a contract
 
-The binary and the prose meet at a **wire contract**: the CLI verbs skills invoke, the kebab-case `error` discriminants they branch on, the journal taxonomy they emit, and the embedded JSON Schemas artifacts validate against — specified in `workflow.md`. Consolidation does not dissolve that contract; it stops being a *cross-repo* contract between prose and binary and remains the contract between the platform and (a) downstream consumer projects (via `project.yaml.specify_version`) and (b) the extracted adapters repo. The seam moves; it does not vanish (T5).
+The binary and the prose meet at a **wire contract**: the CLI verbs skills invoke, the kebab-case `error` discriminants they branch on, the journal taxonomy they emit, and the embedded JSON Schemas artifacts validate against — specified in `workflow.md`. Consolidation does not dissolve that contract; it stops being a *cross-repo* contract between prose and binary and remains the contract between the platform and (a) downstream consumer projects (via `project.yaml.specify`) and (b) the extracted adapters repo. The seam moves; it does not vanish (T5).
 
 ### Why this consolidates but adapters extract
 
@@ -52,7 +52,7 @@ The binary and the prose meet at a **wire contract**: the CLI verbs skills invok
 | --- | --- | --- |
 | **T1 Single platform repo** | `augentic/specify-cli` folds into `augentic/specify`: one repo, one history, one release, one PR / CI run. | Import the `specify-cli` history under `/cli/` (subtree or `--allow-unrelated-histories` merge); archive `specify-cli`. The cross-repo `rg`-sweep discipline becomes intra-repo. |
 | **T2 Layout: prose at root, runtime under `/cli/`** | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/` keep the root; the whole Cargo workspace moves to `/cli/`. | One workspace root at `/cli/Cargo.toml`; `target/` and toolchain quarantined. `lint framework --framework-root .` runs from the root and ignores `/cli/`. Nested `AGENTS.md` auto-fences context. See [Repo layout (T2)](#repo-layout-t2). |
-| **T3 Single version line** | One platform version replaces the plugin line (`0.27.0`) and the runtime line (`0.2.0`). | Adopt `0.27.0` (the user-facing marketplace number); the internal `0.2.0` line retires. One tag moves marketplace `version`, every `plugin.json` `version`, the Cargo workspace `version`, and consumer `specify_version` together. See [Version unification (T3)](#version-unification-t3). |
+| **T3 Single version line** | One platform version replaces the plugin line (`0.27.0`) and the runtime line (`0.2.0`). | Adopt `0.27.0` (the user-facing marketplace number); the internal `0.2.0` line retires. One tag moves marketplace `version`, every `plugin.json` `version`, the Cargo workspace `version`, and the consumer `project.yaml.specify` pin together. The consumer pin is renamed `specify_version` → `specify` to reflect that it now references the whole framework. See [Version unification (T3)](#version-unification-t3). |
 | **T4 Tooling + CI collapse** | Delete the source pin, the cargo-script shims, and the branch-matched CI checkout. `make lint` builds the in-tree binary; CI becomes one job; the marketplace `$schema` becomes a relative in-repo path. | `make lint` → `cargo run -p specify -- lint framework --framework-root .`. `ci.yaml` drops resolve-version / sibling-checkout / build-sibling. See [Tooling and CI collapse (T4)](#tooling-and-ci-collapse-t4). |
 | **T5 Contract relocates, not dissolves** | The workflow contract stays the consumer- and adapter-facing surface; the only remaining cross-repo seam is platform ↔ `augentic/specify-adapters`. | The branch-matched-CI pattern relocates to the adapters repo. `workflow.md` and `DECISIONS.md` stay the durable spec, now intra-platform. See [Contract seam relocates, not dissolves (T5)](#contract-seam-relocates-not-dissolves-t5). |
 | **T6 Adapters remain the second repo** | Consolidation does not absorb adapters; they extract per [RFC-48](rfc-48-adapter-packaging-transport.md) (D7 / D10 / D12). | `wasi-tools/{contract,vectis}` leave the runtime for the adapters repo (RFC-48 D10), so `/cli/` ships no `wasi-tools/` workspace. |
@@ -96,11 +96,12 @@ Why prose-at-root, engine-under-`/cli/` (not a root-level workspace):
 
 ### Version unification (T3)
 
-Three fields drift independently today: marketplace `0.27.0`, each `plugin.json` `0.27.0`, and the Cargo workspace `0.2.0`. After consolidation they are **one number**, which the consumer `project.yaml.specify_version` pins — so pinning the platform pins a binary *and* a known-compatible plugin set.
+Three fields drift independently today: marketplace `0.27.0`, each `plugin.json` `0.27.0`, and the Cargo workspace `0.2.0`. After consolidation they are **one number**, which the consumer `project.yaml.specify` pins — so pinning the platform pins a binary *and* a known-compatible plugin set.
 
 - **Which line wins.** Adopt `0.27.0` (the user-facing marketplace number) and retire the internal `0.2.0` line, preserving marketplace continuity for installed users. This is the one operator decision in this RFC; confirm it before the retag.
 - **How it moves.** One tagged commit sets the marketplace `version`, every `plugin.json` `version`, and the Cargo `[workspace.package] version` to the same value; there is no path where they diverge.
 - **`$schema` continuity.** The marketplace `$schema` stops pointing at `specify-cli/raw/main/...` and resolves to the in-repo `cli/schemas/authoring/marketplace.schema.json`, so a tagged release validates against the schema it shipped with.
+- **Consumer pin renamed `specify_version` → `specify`.** With one unified line the field no longer pins only the CLI binary — it references the whole Specify framework (binary *and* plugin set), so the bare product name carries the meaning. `specify: 0.27.0` reads as a named dependency beside the adapter pin (`adapter: omnia@1.0.0`), and matches the `specify` host-CLI floor adapter manifests already declare ([RFC-47](rfc-47-adapter-identity.md) D3). The value is unchanged (a semver floor); only the key shrinks.
 
 ### Tooling and CI collapse (T4)
 
